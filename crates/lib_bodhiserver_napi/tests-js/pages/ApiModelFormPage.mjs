@@ -7,12 +7,15 @@ export class ApiModelFormPage extends BasePage {
     providerSelect: '[data-testid="api-model-provider"]',
     baseUrlInput: '[data-testid="api-model-base-url"]',
     apiKeyInput: '[data-testid="api-model-api-key"]',
-    fetchModelsButton: 'button:has-text("Fetch Models")',
+    usePrefixCheckbox: '[data-testid="api-model-use-prefix"]',
+    prefixInput: '[data-testid="api-model-prefix"]',
+    fetchModelsButton: '[data-testid="fetch-models-button"]',
     testConnectionButton: '[data-testid="test-connection-button"]',
     createButton: '[data-testid="create-api-model-button"]',
     updateButton: '[data-testid="update-api-model-button"]',
-    modelOption: (model) => `.cursor-pointer >> text="${model}"`,
+    modelOption: (model) => `[data-testid="available-model-${model}"]`,
     modelsScrollArea: '.scroll-area', // Container for model selection
+    modelSearchInput: '[data-testid="model-search-input"]', // Search input for filtering models
     successToast: '[data-state="open"]',
   };
 
@@ -23,18 +26,86 @@ export class ApiModelFormPage extends BasePage {
     await this.fillTestId('api-model-api-key', apiKey);
   }
 
-  async fetchAndSelectModels(models = ['gpt-4', 'gpt-3.5-turbo']) {
-    // Fetch models from API
-    await this.expectVisible(this.selectors.fetchModelsButton);
-    await this.page.click(this.selectors.fetchModelsButton);
+  async fetchAndSelectModels(models = ['gpt-4', 'gpt-3.5-turbo'], maxRetries = 1) {
+    let attempt = 0;
+    const maxAttempts = maxRetries + 1;
 
-    // Wait for models to load - check for specific model
-    await this.waitForSelector('text=gpt-4');
+    while (attempt < maxAttempts) {
+      try {
+        attempt++;
 
-    // Select specified models from the available models list
-    for (const model of models) {
-      await this.page.click(this.selectors.modelOption(model));
+        await this.expectVisible(this.selectors.fetchModelsButton);
+        await this.page.click(this.selectors.fetchModelsButton);
+
+        await this.page.waitForFunction(
+          () => {
+            const fetchContainer = document.querySelector('[data-testid="fetch-models-container"]');
+            if (!fetchContainer) return false;
+            const fetchState = fetchContainer.getAttribute('data-fetch-state');
+            return fetchState === 'success' || fetchState === 'error';
+          },
+          { timeout: 30000 }
+        );
+
+        const fetchResult = await this.page.evaluate(() => {
+          const fetchContainer = document.querySelector('[data-testid="fetch-models-container"]');
+          if (!fetchContainer) return { success: false, hasModels: false };
+
+          const fetchState = fetchContainer.getAttribute('data-fetch-state');
+          const hasModels = fetchContainer.getAttribute('data-models-fetched') === 'true';
+
+          return {
+            success: fetchState === 'success',
+            hasModels: hasModels,
+            fetchState: fetchState,
+          };
+        });
+
+        if (fetchResult.success && fetchResult.hasModels) {
+          await this.page.waitForFunction(
+            () => {
+              const searchInput = document.querySelector('[data-testid="model-search-input"]');
+              return searchInput && !searchInput.disabled;
+            },
+            { timeout: 5000 }
+          );
+
+          for (const model of models) {
+            await this.searchAndSelectModel(model);
+          }
+
+          return;
+        }
+
+        if (attempt < maxAttempts) {
+          await this.page.waitForTimeout(2000);
+        } else {
+          throw new Error(
+            `Failed to fetch models after ${maxAttempts} attempts. Final state: ${fetchResult.fetchState}, hasModels: ${fetchResult.hasModels}`
+          );
+        }
+      } catch (error) {
+        if (attempt < maxAttempts) {
+          await this.page.waitForTimeout(2000);
+        } else {
+          throw error;
+        }
+      }
     }
+  }
+
+  async searchAndSelectModel(modelName) {
+    // Clear search and type the model name to filter
+    await this.page.fill(this.selectors.modelSearchInput, modelName);
+
+    // Wait for the filtered model to appear
+    await this.waitForSelector(this.selectors.modelOption(modelName));
+
+    // Click on the model to select it
+    await this.page.click(this.selectors.modelOption(modelName));
+
+    // Clear the search to see all models again for next selection
+    await this.page.fill(this.selectors.modelSearchInput, '');
   }
 
   async testConnection() {
@@ -42,7 +113,7 @@ export class ApiModelFormPage extends BasePage {
     await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
     await this.page.click(this.selectors.testConnectionButton);
     // Wait for connection test to complete - may take a few seconds
-    await this.waitForToast(/Connection Test Successful/i);
+    await this.waitForToast(/Connection Test Successful/i, { timeout: 10000 });
   }
 
   async createModel() {
@@ -124,14 +195,77 @@ export class ApiModelFormPage extends BasePage {
 
   // Provider-specific methods
   async selectProvider(provider) {
-    if (provider !== 'OpenAI') {
-      // This would need implementation for other providers
-      throw new Error(`Provider ${provider} not yet implemented in test framework`);
-    }
-    // OpenAI is default, so no action needed for now
+    // For Shadcn Select component (combobox), need to click trigger then select option
+    await this.page.click(this.selectors.providerSelect);
+    await this.page.click(`text=${provider}`);
   }
 
   async setCustomBaseUrl(url) {
     await this.page.fill(this.selectors.baseUrlInput, url);
+  }
+
+  // Prefix-related methods
+  async enablePrefix() {
+    await this.page.check(this.selectors.usePrefixCheckbox);
+    // Prefix input should become enabled
+    await expect(this.page.locator(this.selectors.prefixInput)).toBeEnabled();
+  }
+
+  async disablePrefix() {
+    await this.page.uncheck(this.selectors.usePrefixCheckbox);
+    // Prefix input should become disabled but remain visible
+    await expect(this.page.locator(this.selectors.prefixInput)).toBeDisabled();
+  }
+
+  async setPrefix(prefix) {
+    await this.enablePrefix();
+    await this.page.fill(this.selectors.prefixInput, prefix);
+  }
+
+  async fillBasicInfoWithPrefix(
+    modelId,
+    apiKey,
+    prefix = null,
+    baseUrl = 'https://api.openai.com/v1'
+  ) {
+    // Fill basic info
+    await this.fillBasicInfo(modelId, apiKey, baseUrl);
+
+    // Handle prefix if provided
+    if (prefix) {
+      await this.setPrefix(prefix);
+    }
+  }
+
+  async verifyFormPreFilledWithPrefix(
+    modelId,
+    provider = 'OpenAI',
+    baseUrl = 'https://api.openai.com/v1',
+    prefix = null
+  ) {
+    // Verify basic form fields
+    await this.verifyFormPreFilled(modelId, provider, baseUrl);
+
+    // Verify prefix state
+    if (prefix) {
+      await expect(this.page.locator(this.selectors.usePrefixCheckbox)).toBeChecked();
+      await expect(this.page.locator(this.selectors.prefixInput)).toBeEnabled();
+      await this.expectValue(this.selectors.prefixInput, prefix);
+    } else {
+      await expect(this.page.locator(this.selectors.usePrefixCheckbox)).not.toBeChecked();
+      await expect(this.page.locator(this.selectors.prefixInput)).toBeDisabled();
+    }
+  }
+
+  async isPrefixEnabled() {
+    return await this.page.locator(this.selectors.usePrefixCheckbox).isChecked();
+  }
+
+  async getPrefixValue() {
+    const isEnabled = await this.isPrefixEnabled();
+    if (!isEnabled) {
+      return null;
+    }
+    return await this.page.locator(this.selectors.prefixInput).inputValue();
   }
 }

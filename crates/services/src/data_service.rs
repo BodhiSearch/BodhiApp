@@ -210,11 +210,13 @@ impl DataService for LocalDataService {
       }
     }
 
-    // Priority 3: Check API aliases (from database) - search in models array
+    // Priority 3: Check API aliases (from database) - with prefix-aware routing
     if let Ok(api_aliases) = self.db_service.list_api_model_aliases().await {
+      // Use matchable_models() to check if the incoming alias matches any API alias
+      // This automatically handles both prefixed (e.g., "azure/gpt-4") and direct (e.g., "gpt-4") matches
       if let Some(api) = api_aliases
         .into_iter()
-        .find(|api| api.models.contains(&alias.to_string()))
+        .find(|api| api.matchable_models().contains(&alias.to_string()))
       {
         return Some(Alias::Api(api));
       }
@@ -517,6 +519,7 @@ chat_template: llama3
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      None,
       db_service.now(),
     );
     db_service
@@ -560,6 +563,7 @@ chat_template: llama3
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
+      None,
       db_service.now(),
     );
     db_service
@@ -604,6 +608,7 @@ chat_template: llama3
       "openai",
       "https://api.openai.com/v1",
       vec!["testalias-exists:instruct".to_string()], // Same name as user alias
+      None,
       db_service.now(),
     );
     db_service
@@ -777,6 +782,125 @@ chat_template: llama3
       result.unwrap_err(),
       DataServiceError::DataFileNotFound(error) if error == DataFileNotFoundError::new("non_existent_file.txt".to_string(), "non_existent_folder".to_string())
     ));
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("azure/gpt-4", Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure-openai")]
+  #[case("gpt-4", None, vec!["gpt-4".to_string()], "legacy-api")]
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_with_prefix_matches(
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+    #[case] search_term: &str,
+    #[case] api_prefix: Option<String>,
+    #[case] api_models: Vec<String>,
+    #[case] expected_id: &str,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    let test_alias = objs::ApiAlias::new(
+      expected_id,
+      "openai",
+      "https://api.openai.com/v1",
+      api_models,
+      api_prefix,
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&test_alias, "test-key")
+      .await?;
+
+    let found = data_service.find_alias(search_term).await;
+    let Some(Alias::Api(api)) = found else {
+      panic!("Expected to find Api alias, but found none");
+    };
+    assert_eq!(expected_id, api.id);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("non-matching-term")]
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_with_non_matching_prefix_returns_none(
+    #[case] search_term: &str,
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    let test_alias = objs::ApiAlias::new(
+      "azure-openai",
+      "openai",
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string()],
+      Some("azure/".to_string()),
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&test_alias, "test-key")
+      .await?;
+
+    let found = data_service.find_alias(search_term).await;
+    assert!(found.is_none());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    // Create API alias with prefix
+    let prefixed_alias = objs::ApiAlias::new(
+      "azure-openai",
+      "azure",
+      "https://api.azure.com/v1",
+      vec!["gpt-4".to_string()],
+      Some("azure/".to_string()),
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&prefixed_alias, "test-key")
+      .await?;
+
+    // Searching for "gpt-4" should NOT match the prefixed API
+    let found = data_service.find_alias("gpt-4").await;
+    assert!(
+      found.is_none(),
+      "Should not match 'gpt-4' when API has prefix 'azure/'"
+    );
+
+    // Searching for "azure/gpt-4" SHOULD match
+    let found = data_service.find_alias("azure/gpt-4").await;
+    assert!(matches!(found, Some(Alias::Api(api)) if api.id == "azure-openai"));
+
     Ok(())
   }
 }

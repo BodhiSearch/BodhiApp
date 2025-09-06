@@ -6,6 +6,7 @@ export class ApiModelFixtures {
       provider: 'OpenAI',
       baseUrl: 'https://api.openai.com/v1',
       models: ['gpt-4', 'gpt-3.5-turbo'],
+      prefix: null, // Default no prefix
       ...overrides,
     };
   }
@@ -18,10 +19,14 @@ export class ApiModelFixtures {
 
   static getRequiredEnvVars() {
     const apiKey = process.env.INTEG_TEST_OPENAI_API_KEY;
+    const openrouterApiKey = process.env.INTEG_TEST_OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error('INTEG_TEST_OPENAI_API_KEY environment variable not set');
     }
-    return { apiKey };
+    if (!openrouterApiKey) {
+      throw new Error('INTEG_TEST_OPENROUTER_API_KEY environment variable not set');
+    }
+    return { apiKey, openrouterApiKey };
   }
 
   // Predefined test scenarios
@@ -112,6 +117,52 @@ export class ApiModelFixtures {
         modelId: this.generateUniqueId('minimal'),
         models: ['gpt-3.5-turbo'],
       }),
+
+    // Prefix-specific scenarios with separators
+    WITH_PREFIX: () =>
+      this.createModelData({
+        modelId: this.generateUniqueId('with-prefix'),
+        provider: 'OpenRouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        models: ['openai/gpt-4', 'openai/gpt-3.5-turbo'],
+        prefix: 'openrouter/',
+      }),
+
+    OPENAI_PREFIX: () =>
+      this.createModelData({
+        modelId: this.generateUniqueId('openai-prefix'),
+        provider: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        models: ['gpt-4', 'gpt-3.5-turbo'],
+        prefix: 'openai:',
+      }),
+
+    CUSTOM_PREFIX: () =>
+      this.createModelData({
+        modelId: this.generateUniqueId('custom-prefix'),
+        provider: 'OpenRouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        models: ['anthropic/claude-3-sonnet', 'openai/gpt-4'],
+        prefix: 'custom-',
+      }),
+
+    NO_PREFIX: () =>
+      this.createModelData({
+        modelId: this.generateUniqueId('no-prefix'),
+        provider: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        models: ['gpt-4'],
+        prefix: null,
+      }),
+
+    EMPTY_PREFIX: () =>
+      this.createModelData({
+        modelId: this.generateUniqueId('empty-prefix'),
+        provider: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        models: ['gpt-4'],
+        prefix: '',
+      }),
   };
 
   // Environment setup helpers
@@ -128,6 +179,7 @@ export class ApiModelFixtures {
   static getTestEnvironment() {
     return {
       hasApiKey: !!process.env.INTEG_TEST_OPENAI_API_KEY,
+      hasOpenRouterApiKey: !!process.env.INTEG_TEST_OPENROUTER_API_KEY,
       isCI: !!process.env.CI,
       testMode: process.env.NODE_ENV || 'test',
     };

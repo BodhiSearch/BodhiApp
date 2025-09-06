@@ -185,8 +185,9 @@ pub async fn create_api_model_handler(
   let api_alias = ApiAlias::new(
     payload.id,
     payload.provider,
-    payload.base_url,
+    payload.base_url.trim_end_matches('/').to_string(),
     payload.models,
+    payload.prefix,
     now,
   );
 
@@ -243,16 +244,15 @@ pub async fn update_api_model_handler(
     )))
   })?;
 
-  // Update fields if provided
-  if let Some(provider) = payload.provider {
-    api_alias.provider = provider;
-  }
-  if let Some(base_url) = payload.base_url {
-    api_alias.base_url = base_url;
-  }
-  if let Some(models) = payload.models {
-    api_alias.models = models;
-  }
+  // Update all fields (api_key is handled separately for security)
+  api_alias.provider = payload.provider;
+  api_alias.base_url = payload.base_url.trim_end_matches('/').to_string();
+  api_alias.models = payload.models;
+  api_alias.prefix = if payload.prefix.as_ref().is_some_and(|p| p.is_empty()) {
+    None
+  } else {
+    payload.prefix
+  };
 
   api_alias.updated_at = time_service.utc_now();
 
@@ -370,7 +370,12 @@ pub async fn test_api_model_handler(
 
   // Test the API connection with resolved parameters
   match ai_api_service
-    .test_prompt(&api_key, &base_url, &payload.model, &payload.prompt)
+    .test_prompt(
+      &api_key,
+      base_url.trim_end_matches('/'),
+      &payload.model,
+      &payload.prompt,
+    )
     .await
   {
     Ok(response) => Ok(Json(TestPromptResponse::success(response))),
@@ -440,7 +445,9 @@ pub async fn fetch_models_handler(
   };
 
   // Fetch models from the API with resolved parameters
-  let models = ai_api_service.fetch_models(&api_key, &base_url).await?;
+  let models = ai_api_service
+    .fetch_models(&api_key, base_url.trim_end_matches('/'))
+    .await?;
 
   Ok(Json(FetchModelsResponse { models }))
 }
@@ -469,6 +476,7 @@ mod tests {
   use objs::{test_utils::setup_l10n, ApiAlias, FluentLocalizationService};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
   use server_core::{
     test_utils::{RequestTestExt, ResponseTestExt},
     DefaultRouterState, MockSharedContext,
@@ -488,6 +496,7 @@ mod tests {
     base_url: &str,
     api_key_masked: &str,
     models: Vec<String>,
+    prefix: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
   ) -> ApiModelResponse {
@@ -497,6 +506,7 @@ mod tests {
       base_url: base_url.to_string(),
       api_key_masked: api_key_masked.to_string(),
       models,
+      prefix,
       created_at,
       updated_at,
     }
@@ -514,6 +524,26 @@ mod tests {
       "https://api.openai.com/v1",
       "***", // Masked in list view
       models,
+      None, // No prefix in original seed data
+      created_at,
+      created_at,
+    )
+  }
+
+  /// Create expected ApiModelResponse for list view with prefix support
+  fn create_expected_list_response_with_prefix(
+    id: &str,
+    models: Vec<String>,
+    prefix: Option<String>,
+    created_at: DateTime<Utc>,
+  ) -> ApiModelResponse {
+    create_expected_response(
+      id,
+      "openai",
+      "https://api.openai.com/v1",
+      "***", // Masked in list view
+      models,
+      prefix,
       created_at,
       created_at,
     )
@@ -579,10 +609,10 @@ mod tests {
       .await?;
 
     // Verify response structure
-    assert_eq!(response.total, 5);
+    assert_eq!(response.total, 7);
     assert_eq!(response.page, 1);
     assert_eq!(response.page_size, 30);
-    assert_eq!(response.data.len(), 5);
+    assert_eq!(response.data.len(), 7);
 
     // Create expected response array sorted by created_at DESC (newest first)
     let expected_data = vec![
@@ -607,11 +637,23 @@ mod tests {
         vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
         base_time - chrono::Duration::seconds(40),
       ),
+      create_expected_list_response_with_prefix(
+        "azure-openai",
+        vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+        Some("azure/".to_string()),
+        base_time - chrono::Duration::seconds(50),
+      ),
+      create_expected_list_response_with_prefix(
+        "custom-provider",
+        vec!["custom-model-1".to_string()],
+        Some("my.custom_".to_string()),
+        base_time - chrono::Duration::seconds(60),
+      ),
     ];
 
     let expected_response = PaginatedApiModelResponse {
       data: expected_data,
-      total: 5,
+      total: 7,
       page: 1,
       page_size: 30,
     };
@@ -623,9 +665,14 @@ mod tests {
   }
 
   #[rstest]
+  #[case::no_trailing_slash("https://api.openai.com/v1", "https://api.openai.com/v1")]
+  #[case::single_trailing_slash("https://api.openai.com/v1/", "https://api.openai.com/v1")]
+  #[case::multiple_trailing_slashes("https://api.openai.com/v1///", "https://api.openai.com/v1")]
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_success(
+    #[case] input_url: &str,
+    #[case] expected_url: &str,
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
@@ -640,9 +687,10 @@ mod tests {
     let create_request = CreateApiModelRequest {
       id: "openai-test".to_string(),
       provider: "openai".to_string(),
-      base_url: "https://api.openai.com/v1".to_string(),
+      base_url: input_url.to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      prefix: None,
     };
 
     // Make POST request to create API model
@@ -660,9 +708,10 @@ mod tests {
     let expected_response = create_expected_response(
       "openai-test",
       "openai",
-      "https://api.openai.com/v1",
+      expected_url,
       "sk-...456789",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      None,                    // No prefix
       api_response.created_at, // Use actual timestamp
       api_response.updated_at, // Use actual timestamp
     );
@@ -698,6 +747,7 @@ mod tests {
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     // Make POST request to create API model with duplicate alias
@@ -737,6 +787,7 @@ mod tests {
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     let response = test_router(Arc::new(app_service))
@@ -775,6 +826,7 @@ mod tests {
       base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     let response = test_router(Arc::new(app_service))
@@ -813,6 +865,7 @@ mod tests {
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec![], // Invalid: empty models array
+      prefix: None,
     };
 
     let response = test_router(Arc::new(app_service))
@@ -831,9 +884,14 @@ mod tests {
   }
 
   #[rstest]
+  #[case::no_trailing_slash("https://api.openai.com/v2", "https://api.openai.com/v2")]
+  #[case::single_trailing_slash("https://api.openai.com/v2/", "https://api.openai.com/v2")]
+  #[case::multiple_trailing_slashes("https://api.openai.com/v2///", "https://api.openai.com/v2")]
   #[awt]
   #[tokio::test]
   async fn test_update_api_model_handler_success(
+    #[case] input_url: &str,
+    #[case] expected_url: &str,
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
@@ -851,10 +909,11 @@ mod tests {
       .build()?;
 
     let update_request = UpdateApiModelRequest {
-      provider: Some("openai".to_string()),
-      base_url: Some("https://api.openai.com/v2".to_string()), // Updated URL
-      api_key: Some("sk-updated123456789".to_string()),        // New API key
-      models: Some(vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()]), // Updated models
+      provider: "openai".to_string(),
+      base_url: input_url.to_string(), // Updated URL with potential trailing slashes
+      api_key: Some("sk-updated123456789".to_string()), // New API key
+      models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
+      prefix: Some("openai".to_string()),
     };
 
     // Make PUT request to update existing API model
@@ -872,10 +931,11 @@ mod tests {
     let expected_response = create_expected_response(
       "openai-gpt4",
       "openai",
-      "https://api.openai.com/v2",                          // Updated URL
-      "sk-...456789",                                       // Updated API key masked
+      expected_url,   // Expected URL with trailing slashes removed
+      "sk-...456789", // Updated API key masked
       vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
-      base_time,                                            // Original created_at
+      Some("openai".to_string()), // Updated prefix
+      base_time,      // Original created_at
       api_response.updated_at, // Use actual updated_at (FrozenTimeService returns same time)
     );
 
@@ -900,10 +960,11 @@ mod tests {
       .build()?;
 
     let update_request = UpdateApiModelRequest {
-      provider: Some("openai".to_string()),
-      base_url: Some("https://api.openai.com/v2".to_string()),
+      provider: "openai".to_string(),
+      base_url: "https://api.openai.com/v2".to_string(),
       api_key: Some("sk-updated123456789".to_string()),
-      models: Some(vec!["gpt-4-turbo".to_string()]),
+      models: vec!["gpt-4-turbo".to_string()],
+      prefix: None,
     };
 
     // Make PUT request to update non-existent API model
@@ -1042,6 +1103,7 @@ mod tests {
       "https://api.openai.com/v1",
       "***", // Masked in get view (no API key provided)
       vec!["gpt-4".to_string()],
+      None, // No prefix in original seed data
       base_time,
       base_time,
     );
@@ -1103,6 +1165,7 @@ mod tests {
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     // Create API model via database
@@ -1111,6 +1174,7 @@ mod tests {
       request.provider.clone(),
       request.base_url.clone(),
       request.models.clone(),
+      request.prefix.clone(),
       now,
     );
 
@@ -1133,50 +1197,6 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_update_api_model(
-    #[future]
-    #[from(test_db_service)]
-    db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = db_service.now();
-
-    // Create initial API model
-    let api_alias = ApiAlias::new(
-      "test-alias".to_string(),
-      "openai".to_string(),
-      "https://api.openai.com/v1".to_string(),
-      vec!["gpt-3.5-turbo".to_string()],
-      now,
-    );
-
-    db_service
-      .create_api_model_alias(&api_alias, "sk-old-key")
-      .await?;
-
-    // Update it
-    let mut updated = api_alias.clone();
-    updated.models = vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()];
-    updated.base_url = "https://api.openai.com/v2".to_string();
-
-    db_service
-      .update_api_model_alias("test-alias", &updated, Some("sk-new-key".to_string()))
-      .await?;
-
-    // Verify updates
-    let retrieved = db_service.get_api_model_alias("test-alias").await?.unwrap();
-    assert_eq!(retrieved.models.len(), 2);
-    assert_eq!(retrieved.base_url, "https://api.openai.com/v2");
-
-    // Verify new API key
-    let api_key = db_service.get_api_key_for_alias("test-alias").await?;
-    assert_eq!(api_key, Some("sk-new-key".to_string()));
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
   async fn test_delete_api_model(
     #[future]
     #[from(test_db_service)]
@@ -1190,6 +1210,7 @@ mod tests {
       "openai".to_string(),
       "https://api.openai.com/v1".to_string(),
       vec!["gpt-4".to_string()],
+      None,
       now,
     );
 
@@ -1239,5 +1260,226 @@ mod tests {
 
     // Validation should pass (both are provided, api_key takes preference)
     assert!(fetch_request.validate().is_ok());
+  }
+
+  #[rstest]
+  #[case::prefix_removal(
+    json!({
+      "id": "test-prefix-removal",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "sk-test-key-123",
+      "models": ["gpt-4"],
+      "prefix": "azure/"
+    }),
+    json!({
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "models": ["gpt-4"],
+      "prefix": null
+    }),
+    json!({
+      "id": "test-prefix-removal",
+      "provider": "openai", 
+      "base_url": "https://api.openai.com/v1",
+      "api_key_masked": "***",
+      "models": ["gpt-4"],
+      "prefix": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[case::prefix_addition(
+    json!({
+      "id": "test-prefix-addition",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1", 
+      "api_key": "sk-test-key-123",
+      "models": ["gpt-4"],
+      "prefix": null
+    }),
+    json!({
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "models": ["gpt-4"],
+      "prefix": "azure/"
+    }),
+    json!({
+      "id": "test-prefix-addition",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_masked": "***", 
+      "models": ["gpt-4"],
+      "prefix": "azure/",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[case::prefix_empty_string_removal(
+    json!({
+      "id": "test-empty-string-removal",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "sk-test-key-123", 
+      "models": ["gpt-4"],
+      "prefix": "azure/"
+    }),
+    json!({
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "models": ["gpt-4"],
+      "prefix": ""
+    }),
+    json!({
+      "id": "test-empty-string-removal",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_masked": "***",
+      "models": ["gpt-4"],
+      "prefix": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[case::prefix_change(
+    json!({
+      "id": "test-prefix-change",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "sk-test-key-123",
+      "models": ["gpt-4"],
+      "prefix": "azure/"
+    }),
+    json!({
+      "provider": "openai", 
+      "base_url": "https://api.openai.com/v1",
+      "models": ["gpt-4"],
+      "prefix": "openai:"
+    }),
+    json!({
+      "id": "test-prefix-change",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_masked": "***",
+      "models": ["gpt-4"],
+      "prefix": "openai:",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[case::no_prefix_no_change(
+    json!({
+      "id": "test-no-prefix-no-change", 
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "sk-test-key-123",
+      "models": ["gpt-4"],
+      "prefix": null
+    }),
+    json!({
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1", 
+      "models": ["gpt-4"],
+      "prefix": null
+    }),
+    json!({
+      "id": "test-no-prefix-no-change",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key_masked": "***",
+      "models": ["gpt-4"],
+      "prefix": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[case::models_and_url_update(
+    json!({
+      "id": "test-models-url-update",
+      "provider": "openai", 
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "sk-old-key-123",
+      "models": ["gpt-3.5-turbo"],
+      "prefix": null
+    }),
+    json!({
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v2",
+      "models": ["gpt-4", "gpt-3.5-turbo"],
+      "prefix": null
+    }),
+    json!({
+      "id": "test-models-url-update",
+      "provider": "openai",
+      "base_url": "https://api.openai.com/v2",
+      "api_key_masked": "***",
+      "models": ["gpt-4", "gpt-3.5-turbo"],
+      "prefix": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    })
+  )]
+  #[awt]
+  #[tokio::test]
+  async fn test_api_model_prefix_lifecycle(
+    #[case] create_json: serde_json::Value,
+    #[case] update_json: serde_json::Value,
+    #[case] expected_get_json: serde_json::Value,
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let _base_time = db_service.now();
+
+    // Parse create request
+    let create_request: CreateApiModelRequest = serde_json::from_value(create_json.clone())?;
+    let model_id = create_request.id.clone();
+
+    // Create app service
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .with_secret_service()
+        .build()?,
+    );
+
+    // Step 1: Create the API model
+    let create_response = test_router(app_service.clone())
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .await?;
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    // Step 2: Update the API model
+    let update_request: UpdateApiModelRequest = serde_json::from_value(update_json)?;
+    let update_response = test_router(app_service.clone())
+      .oneshot(Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, model_id)).json(update_request)?)
+      .await?;
+
+    assert_eq!(update_response.status(), StatusCode::OK);
+
+    // Step 3: Get the API model and verify final state
+    let get_response = test_router(app_service)
+      .oneshot(
+        Request::get(&format!("{}/{}", ENDPOINT_API_MODELS, model_id))
+          .body(axum::body::Body::empty())
+          .unwrap(),
+      )
+      .await?;
+
+    assert_eq!(get_response.status(), StatusCode::OK);
+
+    let api_response: ApiModelResponse = get_response.json().await?;
+
+    // Build expected response with actual timestamps
+    let mut expected_response: ApiModelResponse = serde_json::from_value(expected_get_json)?;
+    expected_response.created_at = api_response.created_at;
+    expected_response.updated_at = api_response.updated_at;
+
+    // Use pretty_assertions for comprehensive comparison
+    assert_eq!(expected_response, api_response);
+
+    Ok(())
   }
 }

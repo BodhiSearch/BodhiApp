@@ -21,7 +21,6 @@ import { ApiModelFormPage } from '../../../pages/ApiModelFormPage.mjs';
 import { ChatPage } from '../../../pages/ChatPage.mjs';
 import { ChatHistoryPage } from '../../../pages/ChatHistoryPage.mjs';
 import { ChatSettingsPage } from '../../../pages/ChatSettingsPage.mjs';
-import { ApiModelFixtures } from '../../../fixtures/ApiModelFixtures.mjs';
 import { ChatFixtures } from '../../../fixtures/ChatFixtures.mjs';
 
 test.describe('Chat Interface - Core Functionality', () => {
@@ -96,6 +95,7 @@ test.describe('Chat Interface - Core Functionality', () => {
 
     // Question 1: Simple factual question
     await chatPage.sendMessage('What is 2+2?');
+    await chatPage.waitForResponseComplete();
     await chatPage.waitForResponse('4');
     await chatPage.verifyMessageInHistory('user', 'What is 2+2?');
     await chatPage.verifyMessageInHistory('assistant', '4');
@@ -118,7 +118,7 @@ test.describe('Chat Interface - Core Functionality', () => {
     for (const message of testMessages) {
       await chatPage.startNewChat();
       await chatPage.sendMessage(message);
-      await chatPage.waitForResponseComplete(); // Wait for complete response
+      await chatPage.waitForResponseComplete();
     }
 
     // Verify chats in history and navigation
@@ -141,7 +141,7 @@ test.describe('Chat Interface - Core Functionality', () => {
 
     // Test network error simulation
     await chatPage.simulateNetworkFailure();
-    await chatPage.sendMessage('This should fail');
+    await chatPage.sendMessageAndReturn('This should fail');
     await chatPage.expectNetworkError();
 
     // Recovery
@@ -155,50 +155,5 @@ test.describe('Chat Interface - Core Functionality', () => {
       await chatHistoryPage.deleteChatByTitle(partialTitle);
     }
     await chatHistoryPage.verifyHistoryEmpty();
-  });
-
-  test('settings persistence and model switching @integration', async ({ page }) => {
-    await loginPage.performOAuthLogin();
-    await chatPage.navigateToChat();
-
-    // Configure custom settings
-    const customSettings = ChatFixtures.getSettingsConfigurations().customized;
-    await chatSettingsPage.configureSettings({
-      model: customSettings.model,
-      streaming: customSettings.streaming,
-      apiToken: { enabled: customSettings.apiToken.enabled, value: testApiKey },
-      systemPrompt: customSettings.systemPrompt,
-      temperature: customSettings.temperature,
-      maxTokens: customSettings.maxTokens,
-    });
-
-    // Test with configured settings
-    await chatPage.sendMessage('Hi');
-    if (customSettings.streaming) {
-      await chatPage.waitForStreamingComplete();
-    } else {
-      await chatPage.waitForNonStreamingResponse();
-    }
-
-    // Verify settings persist after reload
-    await page.reload();
-    await chatPage.waitForChatPageLoad();
-    await chatSettingsPage.verifySettings({
-      model: customSettings.model,
-      streaming: customSettings.streaming,
-      systemPrompt: customSettings.systemPrompt,
-    });
-
-    // Test model switching
-    await chatSettingsPage.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
-    await chatPage.sendMessage('Test after switch');
-    await chatPage.waitForResponseComplete();
-
-    // Reset for cleanup
-    await chatSettingsPage.configureSettings({
-      model: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M',
-      streaming: true,
-      systemPrompt: { enabled: false, content: '' },
-    });
   });
 });

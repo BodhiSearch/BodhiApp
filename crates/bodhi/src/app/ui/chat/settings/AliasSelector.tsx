@@ -5,6 +5,7 @@ import { CopyButton } from '@/components/CopyButton';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { formatPrefixedModel } from '@/schemas/apiModel';
 import { Alias } from '@bodhiapp/ts-client';
 import { HelpCircle } from 'lucide-react';
 
@@ -20,11 +21,14 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
     if (m.source === 'api') {
-      // For API models, create entries for each individual model
-      return (m.models || []).map((modelName) => ({
-        value: modelName,
-        label: `${modelName} (${m.provider || 'API'})`,
-      }));
+      // For API models, create entries for each individual model with prefix if exists
+      return (m.models || []).map((modelName) => {
+        const prefixedModelName = formatPrefixedModel(modelName, m.prefix);
+        return {
+          value: prefixedModelName,
+          label: prefixedModelName,
+        };
+      });
     } else {
       // For local models, use the alias
       return [

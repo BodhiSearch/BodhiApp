@@ -97,6 +97,7 @@ mod tests {
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      None,
       Utc::now(),
     );
 
@@ -149,6 +150,7 @@ mod tests {
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
+      None,
       Utc::now(),
     );
     let api_model = Alias::Api(api_alias);
@@ -168,6 +170,7 @@ mod tests {
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
+      None,
       Utc::now(),
     );
     let api_model = Alias::Api(api_alias.clone());

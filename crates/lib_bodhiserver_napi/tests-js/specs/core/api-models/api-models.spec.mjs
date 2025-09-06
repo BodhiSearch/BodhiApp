@@ -96,11 +96,11 @@ test.describe('API Models Integration', () => {
     // Test chat functionality
     const testMessage = 'What day comes after Monday?';
     await chatPage.sendMessage(testMessage);
-    await chatPage.waitForAssistantResponse();
+    await chatPage.waitForResponseComplete();
 
     // Verify response contains expected answer
     const response = await chatPage.getLastAssistantMessage();
-    await expect(response.toLowerCase()).toContain('tuesday');
+    expect(response.toLowerCase()).toContain('tuesday');
 
     // Navigate back to models for further testing
     await modelsPage.navigateToModels();

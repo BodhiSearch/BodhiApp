@@ -22,6 +22,7 @@ import { useModels } from '@/hooks/useQuery';
 import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 import { SortState } from '@/types/models';
 import { Alias } from '@bodhiapp/ts-client';
+import { formatPrefixedModel } from '@/schemas/apiModel';
 import {
   Cloud,
   ExternalLink,
@@ -109,7 +110,11 @@ function ModelsPageContent() {
     direction: 'asc',
   });
   const [deleteModel, setDeleteModel] = useState<{ id: string; name: string } | null>(null);
-  const [moreModelsModal, setMoreModelsModal] = useState<{ models: string[]; modelId: string } | null>(null);
+  const [moreModelsModal, setMoreModelsModal] = useState<{
+    models: string[];
+    modelId: string;
+    prefix?: string | null;
+  } | null>(null);
 
   const { toast } = useToast();
   const deleteApiModel = useDeleteApiModel();
@@ -173,8 +178,8 @@ function ModelsPageContent() {
     }
   };
 
-  const handleShowMoreModels = (models: string[], modelId: string) => {
-    setMoreModelsModal({ models: models.slice(2), modelId });
+  const handleShowMoreModels = (models: string[], modelId: string, prefix?: string | null) => {
+    setMoreModelsModal({ models: models.slice(2), modelId, prefix });
   };
 
   const getHuggingFaceFileUrl = (repo: string, filename: string) => {
@@ -214,39 +219,32 @@ function ModelsPageContent() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleChat(model)}
-            title="Chat with the model in playground"
-            className="h-8 w-8 p-0"
-            data-testid={`${testIdPrefix}chat-button-${model.id}`}
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-          {/* Desktop view - show first 2 models directly */}
           <div className="hidden sm:flex items-center gap-1">
             {model.models
-              .map((modelName) => (
-                <Button
-                  key={`${model.id}-${modelName}`}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-xs"
-                  onClick={() => router.push(`/ui/chat?model=${modelName}`)}
-                  title={`Chat with ${modelName}`}
-                  data-testid={`${testIdPrefix}model-chat-button-${modelName}`}
-                >
-                  {modelName}
-                </Button>
-              ))
+              .map((modelName) => {
+                const displayName = formatPrefixedModel(modelName, model.prefix);
+                const chatModel = formatPrefixedModel(modelName, model.prefix);
+                return (
+                  <Button
+                    key={`${model.id}-${modelName}`}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => router.push(`/ui/chat?model=${chatModel}`)}
+                    title={`Chat with ${displayName}`}
+                    data-testid={`${testIdPrefix}model-chat-button-${chatModel}`}
+                  >
+                    {displayName}
+                  </Button>
+                );
+              })
               .slice(0, 2)}
             {model.models.length > 2 && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-xs text-muted-foreground"
-                onClick={() => handleShowMoreModels(model.models, model.id)}
+                onClick={() => handleShowMoreModels(model.models, model.id, model.prefix)}
                 title="Show more models"
                 data-testid={`${testIdPrefix}more-models-button-${model.id}`}
               >
@@ -269,11 +267,15 @@ function ModelsPageContent() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {model.models.map((modelName) => (
-                  <DropdownMenuItem key={modelName} onClick={() => router.push(`/ui/chat?model=${modelName}`)}>
-                    {modelName}
-                  </DropdownMenuItem>
-                ))}
+                {model.models.map((modelName) => {
+                  const displayName = formatPrefixedModel(modelName, model.prefix);
+                  const chatModel = formatPrefixedModel(modelName, model.prefix);
+                  return (
+                    <DropdownMenuItem key={modelName} onClick={() => router.push(`/ui/chat?model=${chatModel}`)}>
+                      {displayName}
+                    </DropdownMenuItem>
+                  );
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -512,20 +514,24 @@ function ModelsPageContent() {
             <DialogTitle>Additional Models</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
-            {moreModelsModal?.models.map((modelName) => (
-              <Button
-                key={modelName}
-                variant="outline"
-                className="justify-start"
-                onClick={() => {
-                  router.push(`/ui/chat?model=${modelName}`);
-                  setMoreModelsModal(null);
-                }}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {modelName}
-              </Button>
-            ))}
+            {moreModelsModal?.models.map((modelName) => {
+              const displayName = formatPrefixedModel(modelName, moreModelsModal.prefix);
+              const chatModel = formatPrefixedModel(modelName, moreModelsModal.prefix);
+              return (
+                <Button
+                  key={modelName}
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => {
+                    router.push(`/ui/chat?model=${chatModel}`);
+                    setMoreModelsModal(null);
+                  }}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {displayName}
+                </Button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

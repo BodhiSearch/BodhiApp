@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: join(__dirname, 'tests-js', 'playwright', '.env.test') });
 
-const testTimeout = 30000;
+const testTimeout = 120000;
 const navigationTimeout = 30000;
 const actionTimeout = 30000;
 

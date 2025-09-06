@@ -22,6 +22,24 @@ pub fn create_test_api_model_alias(
     "openai",
     "https://api.openai.com/v1",
     models,
+    None,
+    created_at,
+  )
+}
+
+/// Create a test ApiModelAlias with prefix for prefix-based routing tests
+pub fn create_test_api_model_alias_with_prefix(
+  alias: &str,
+  models: Vec<String>,
+  prefix: Option<String>,
+  created_at: DateTime<Utc>,
+) -> ApiAlias {
+  ApiAlias::new(
+    alias,
+    "openai",
+    "https://api.openai.com/v1",
+    models,
+    prefix,
     created_at,
   )
 }
@@ -52,6 +70,19 @@ pub async fn seed_test_api_models(
       "openai-multi-model",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       base_time - chrono::Duration::seconds(40),
+    ),
+    // Add prefix test data with separators
+    create_test_api_model_alias_with_prefix(
+      "azure-openai",
+      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      Some("azure/".to_string()),
+      base_time - chrono::Duration::seconds(50),
+    ),
+    create_test_api_model_alias_with_prefix(
+      "custom-provider",
+      vec!["custom-model-1".to_string()],
+      Some("my.custom_".to_string()),
+      base_time - chrono::Duration::seconds(60),
     ),
   ];
 

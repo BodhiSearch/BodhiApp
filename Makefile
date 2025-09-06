@@ -14,14 +14,15 @@ test.ui:
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
 test.napi:
-	cd crates/lib_bodhiserver_napi && npm install && npm run test
+	cd crates/lib_bodhiserver_napi && npm install && npm run test:all
 
 test: test.backend test.ui test.napi
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all
 	cd crates/bodhi && npm run format
-	cd openai-pysdk-compat && poetry run ruff format .
+	cd crates/lib_bodhiserver_napi && npm run format
+	# cd openai-pysdk-compat && poetry run ruff format .
 
 format.all: format ## Format code in all projects (Rust, Node, Python), and run Clippy
 	cargo clippy --fix --allow-dirty --allow-staged

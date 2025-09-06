@@ -166,11 +166,11 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should show individual API models with provider labels
-      expect(screen.getByText('gpt-4 (OpenAI)')).toBeInTheDocument();
-      expect(screen.getByText('gpt-3.5-turbo (OpenAI)')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-opus (Anthropic)')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-sonnet (Anthropic)')).toBeInTheDocument();
+      // Should show individual API models without provider labels
+      expect(screen.getByText('gpt-4')).toBeInTheDocument();
+      expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
+      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
+      expect(screen.getByText('claude-3-sonnet')).toBeInTheDocument();
     });
 
     it('shows local models as individual entries with their alias names', () => {
@@ -200,11 +200,11 @@ describe('AliasSelector', () => {
       expect(screen.getByText('local-model-1')).toBeInTheDocument();
       expect(screen.getByText('local-model-2')).toBeInTheDocument();
 
-      // Should show expanded API models with provider labels
-      expect(screen.getByText('gpt-4 (OpenAI)')).toBeInTheDocument();
-      expect(screen.getByText('gpt-3.5-turbo (OpenAI)')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-opus (Anthropic)')).toBeInTheDocument();
-      expect(screen.getByText('claude-3-sonnet (Anthropic)')).toBeInTheDocument();
+      // Should show expanded API models without provider labels
+      expect(screen.getByText('gpt-4')).toBeInTheDocument();
+      expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
+      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
+      expect(screen.getByText('claude-3-sonnet')).toBeInTheDocument();
     });
 
     it('calls setModel with correct value when local model is selected', () => {
@@ -246,7 +246,7 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      const apiModelOption = screen.getByText('gpt-4 (OpenAI)');
+      const apiModelOption = screen.getByText('gpt-4');
       fireEvent.click(apiModelOption);
 
       // Should call setModel with the actual model name (not the API id)
@@ -265,8 +265,8 @@ describe('AliasSelector', () => {
         wrapper: createWrapper(),
       });
 
-      // Should show the selected API model with provider label
-      expect(screen.getByText('claude-3-opus (Anthropic)')).toBeInTheDocument();
+      // Should show the selected API model without provider label
+      expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
     });
 
     it('correctly identifies and displays currently selected local model', () => {
