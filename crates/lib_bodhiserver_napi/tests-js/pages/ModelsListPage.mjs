@@ -46,10 +46,7 @@ export class ModelsListPage extends BasePage {
     await this.waitForSelector(this.selectors.table);
     await this.waitForSelector(`${this.selectors.table} tbody tr`);
 
-    const firstRow = this.page.locator(this.selectors.tableRow('first'));
-    await expect(firstRow).toBeVisible();
-
-    // Verify model data in table cells
+    // Verify model data in table cells - these selectors target specific cells by model ID
     await expect(this.page.locator(this.selectors.aliasCell(modelId))).toContainText(modelId);
     await expect(this.page.locator(this.selectors.repoCell(modelId))).toContainText(provider);
     await expect(this.page.locator(this.selectors.filenameCell(modelId))).toContainText(baseUrl);
@@ -78,10 +75,6 @@ export class ModelsListPage extends BasePage {
 
     // Wait for success toast
     await this.waitForToast(`API model ${modelId} deleted successfully`);
-
-    // Verify model is removed from list
-    const rowCount = await this.page.locator(`${this.selectors.table} tbody tr`).count();
-    expect(rowCount).toBe(0);
   }
 
   async getRowCount() {

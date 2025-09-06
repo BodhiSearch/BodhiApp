@@ -158,9 +158,9 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await chatPage.waitForResponseComplete();
 
     // Verify we got some response (model is working)
-    const userMessages = await chatPage.page.locator('[data-testid="user-message"]').count();
+    const userMessages = await chatPage.page.locator(chatPage.selectors.userMessage).count();
     const assistantMessages = await chatPage.page
-      .locator('[data-testid="assistant-message"]')
+      .locator(chatPage.selectors.assistantMessage)
       .count();
     expect(userMessages).toBeGreaterThan(0); // At least one user message
     expect(assistantMessages).toBeGreaterThan(0); // At least one assistant response
@@ -356,9 +356,9 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await chatPage.waitForResponseComplete();
 
     // Verify we got some response (model is working)
-    const userMessages = await chatPage.page.locator('[data-testid="user-message"]').count();
+    const userMessages = await chatPage.page.locator(chatPage.selectors.userMessage).count();
     const assistantMessages = await chatPage.page
-      .locator('[data-testid="assistant-message"]')
+      .locator(chatPage.selectors.assistantMessage)
       .count();
     expect(userMessages).toBeGreaterThan(0); // At least one user message
     expect(assistantMessages).toBeGreaterThan(0); // At least one assistant response

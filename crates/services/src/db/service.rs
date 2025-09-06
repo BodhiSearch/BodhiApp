@@ -729,14 +729,15 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_model_aliases (id, provider, base_url, models_json, encrypted_api_key, salt, nonce, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO api_model_aliases (id, provider, base_url, models_json, prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#
     )
     .bind(&alias.id)
     .bind(&alias.provider)
     .bind(&alias.base_url)
     .bind(&models_json)
+    .bind(&alias.prefix)
     .bind(&encrypted_api_key)
     .bind(&salt)
     .bind(&nonce)
@@ -749,15 +750,15 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
-    let result = query_as::<_, (String, String, String, String, i64)>(
-      "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases WHERE id = ?",
+    let result = query_as::<_, (String, String, String, String, Option<String>, i64)>(
+      "SELECT id, provider, base_url, models_json, prefix, created_at FROM api_model_aliases WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((id, provider, base_url, models_json, created_at)) => {
+      Some((id, provider, base_url, models_json, prefix, created_at)) => {
         let models: Vec<String> = serde_json::from_str(&models_json)
           .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
@@ -768,6 +769,7 @@ impl DbService for SqliteDbService {
           provider,
           base_url,
           models,
+          prefix,
           created_at,
           updated_at: created_at,
         }))
@@ -795,13 +797,14 @@ impl DbService for SqliteDbService {
       sqlx::query(
         r#"
         UPDATE api_model_aliases 
-        SET provider = ?, base_url = ?, models_json = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+        SET provider = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
         WHERE id = ?
         "#
       )
       .bind(&model.provider)
       .bind(&model.base_url)
       .bind(&models_json)
+      .bind(&model.prefix)
       .bind(&encrypted_api_key)
       .bind(&salt)
       .bind(&nonce)
@@ -814,13 +817,14 @@ impl DbService for SqliteDbService {
       sqlx::query(
         r#"
         UPDATE api_model_aliases 
-        SET provider = ?, base_url = ?, models_json = ?, updated_at = ?
+        SET provider = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
         WHERE id = ?
         "#,
       )
       .bind(&model.provider)
       .bind(&model.base_url)
       .bind(&models_json)
+      .bind(&model.prefix)
       .bind(now.timestamp())
       .bind(id)
       .execute(&self.pool)
@@ -840,14 +844,14 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
-    let results = query_as::<_, (String, String, String, String, i64)>(
-      "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases ORDER BY created_at DESC"
+    let results = query_as::<_, (String, String, String, String, Option<String>, i64)>(
+      "SELECT id, provider, base_url, models_json, prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
     .fetch_all(&self.pool)
     .await?;
 
     let mut aliases = Vec::new();
-    for (id, provider, base_url, models_json, created_at) in results {
+    for (id, provider, base_url, models_json, prefix, created_at) in results {
       let models: Vec<String> = serde_json::from_str(&models_json)
         .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
@@ -858,6 +862,7 @@ impl DbService for SqliteDbService {
         provider,
         base_url,
         models,
+        prefix,
         created_at,
         updated_at: created_at,
       });
@@ -1324,6 +1329,7 @@ mod test {
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      None,
       now,
     );
     let api_key = "sk-test123456789";
@@ -1356,6 +1362,7 @@ mod test {
       "anthropic",
       "https://api.anthropic.com/v1",
       vec!["claude-3".to_string()],
+      None,
       now,
     );
     let original_api_key = "sk-original123";
@@ -1397,6 +1404,7 @@ mod test {
       "google",
       "https://generativelanguage.googleapis.com/v1",
       vec!["gemini-pro".to_string()],
+      None,
       now,
     );
     let api_key = "AIzaSy-test123";
@@ -1457,6 +1465,7 @@ mod test {
         *provider,
         "https://api.example.com/v1",
         vec!["model1".to_string()],
+        None,
         *created_at,
       );
       service.create_api_model_alias(&alias_obj, key).await?;
@@ -1487,6 +1496,7 @@ mod test {
       "test-provider",
       "https://api.test.com/v1",
       vec!["test-model".to_string()],
+      None,
       now,
     );
 
@@ -1518,6 +1528,7 @@ mod test {
       "secure-provider",
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
+      None,
       now,
     );
     let sensitive_key = "sk-very-secret-key-12345";
@@ -1533,6 +1544,7 @@ mod test {
       "secure-provider",
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
+      None,
       now,
     );
     service

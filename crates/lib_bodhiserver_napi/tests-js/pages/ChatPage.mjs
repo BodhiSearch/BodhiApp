@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
 import { BasePage } from './BasePage.mjs';
-import { getCurrentPath } from '../test-helpers.mjs';
 
 export class ChatPage extends BasePage {
   selectors = {
@@ -8,20 +7,22 @@ export class ChatPage extends BasePage {
     chatContainer: '[data-testid="chat-ui"]',
     messageInput: '[data-testid="chat-input"]',
     sendButton: '[data-testid="send-button"]',
-
-    // Messages
     messageList: '[data-testid="message-list"]',
+
+    // Message elements (by data-testid)
     userMessage: '[data-testid="user-message"]',
     assistantMessage: '[data-testid="assistant-message"]',
-    messageContent: (role) => `[data-testid="${role}-message-content"]`,
-    streamingMessage: '[data-testid="streaming-message"]',
+    userMessageContent: '[data-testid="user-message-content"]',
+    assistantMessageContent: '[data-testid="assistant-message-content"]',
 
-    // Message state classes
+    // Message state classes (deterministic from ChatMessage refactor)
     latestUserMessage: '.chat-user-message',
     archivedUserMessage: '.chat-user-message-archive',
     latestAiMessage: '.chat-ai-message',
     archivedAiMessage: '.chat-ai-archive',
     streamingAiMessage: '.chat-ai-streaming',
+    completedMessage: '.message-completed',
+    streamingMessage: '.message-streaming',
 
     // Chat management
     newChatButton: '[data-testid="new-chat-button"]',
@@ -65,16 +66,17 @@ export class ChatPage extends BasePage {
    * Send a message in the chat
    */
   async sendMessage(message) {
-    await this.page.fill(this.selectors.messageInput, message);
+    const sendButton = await this.sendMessageAndReturn(message);
+    await expect(sendButton).toBeDisabled();
+    await this.waitForLatestUserMessage();
+  }
 
-    // Wait for the send button to be enabled before clicking
+  async sendMessageAndReturn(message) {
+    await this.page.fill(this.selectors.messageInput, message);
     const sendButton = this.page.locator(this.selectors.sendButton);
     await expect(sendButton).toBeEnabled();
     await sendButton.click();
-    await expect(sendButton).toBeDisabled();
-
-    // Wait for the user message to appear as latest
-    await this.waitForLatestUserMessage();
+    return sendButton;
   }
 
   /**
@@ -93,29 +95,36 @@ export class ChatPage extends BasePage {
   }
 
   /**
+   * Get the content of the last assistant message
+   */
+  async getLastAssistantMessage() {
+    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastAssistantMessage).toBeVisible();
+    return await lastAssistantMessage.locator(this.selectors.assistantMessageContent).textContent();
+  }
+
+  /**
    * Wait for streaming to complete (streaming indicator disappears)
    */
   async waitForStreamingComplete() {
-    // Wait for streaming message to appear
-    await expect(this.page.locator(this.selectors.streamingMessage)).toBeVisible();
+    // Wait for streaming AI message to appear
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).toBeVisible();
 
-    // Wait for streaming to complete (streaming message disappears)
-    await expect(this.page.locator(this.selectors.streamingMessage)).not.toBeVisible();
-
-    // Wait for the last assistant message to be marked as completed
-    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
-    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
+    // Wait for streaming to complete (streaming message becomes latest)
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).not.toBeVisible();
+    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
   }
 
   /**
    * Wait for non-streaming response (when streaming is disabled)
    */
   async waitForNonStreamingResponse() {
-    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
-    await expect(lastAssistantMessage).toBeVisible();
+    // Wait for latest AI message to appear (non-streaming)
+    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
 
-    // Wait for this specific message to be marked as completed
-    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
+    // Ensure it's marked as completed
+    const latestAiMessage = this.page.locator(this.selectors.latestAiMessage);
+    await expect(latestAiMessage).toHaveClass(/message-completed/);
   }
 
   /**
@@ -124,13 +133,14 @@ export class ChatPage extends BasePage {
   async waitForResponseComplete() {
     // Wait for assistant message to appear
     const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
-    await expect(lastAssistantMessage).toBeVisible();
+    await expect(lastAssistantMessage).toBeVisible({ timeout: 20000 }); // wait longer for chat messages
 
-    // Wait for this specific message to have the message-completed class (legacy)
-    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
-
-    // Also wait for the latest AI message class to appear
+    // Wait for the latest AI message class to appear (indicates completion)
     await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
+
+    // Ensure it's marked as completed
+    const latestAiMessage = this.page.locator(this.selectors.latestAiMessage);
+    await expect(latestAiMessage).toHaveClass(/message-completed/);
   }
 
   /**
@@ -152,20 +162,6 @@ export class ChatPage extends BasePage {
    */
   async waitForStreamingAiMessage() {
     await expect(this.page.locator(this.selectors.streamingAiMessage)).toBeVisible();
-  }
-
-  /**
-   * Wait for streaming to complete and message to become latest
-   */
-  async waitForStreamingToComplete() {
-    // First, wait for streaming to start
-    await this.waitForStreamingAiMessage();
-
-    // Then wait for streaming to complete and become latest
-    await this.waitForLatestAiMessage();
-
-    // Ensure streaming message is no longer present
-    await expect(this.page.locator(this.selectors.streamingAiMessage)).not.toBeVisible();
   }
 
   // Model operations
@@ -336,7 +332,7 @@ export class ChatPage extends BasePage {
    * Verify streaming has started
    */
   async verifyStreamingStarted() {
-    await expect(this.page.locator(this.selectors.streamingMessage)).toBeVisible();
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).toBeVisible();
   }
 
   /**
@@ -355,7 +351,7 @@ export class ChatPage extends BasePage {
    * Verify streaming has stopped
    */
   async verifyStreamingStopped() {
-    await expect(this.page.locator(this.selectors.streamingMessage)).not.toBeVisible();
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).not.toBeVisible();
   }
 
   /**

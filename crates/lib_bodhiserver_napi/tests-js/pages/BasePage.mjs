@@ -12,9 +12,8 @@ export class BasePage {
   }
 
   async waitForSPAReady() {
+    await this.page.waitForLoadState('networkidle');
     await this.page.waitForLoadState('domcontentloaded');
-    // Give SPA time to initialize
-    await this.page.waitForTimeout(500);
   }
 
   async clickTestId(testId) {

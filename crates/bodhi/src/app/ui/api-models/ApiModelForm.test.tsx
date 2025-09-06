@@ -98,6 +98,7 @@ const mockApiModelResponse: ApiModelResponse = {
   base_url: 'https://api.openai.com/v1',
   api_key_masked: '****key',
   models: ['gpt-4', 'gpt-3.5-turbo'],
+  prefix: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };

@@ -223,11 +223,19 @@ impl AiApiService for DefaultAiApiService {
   async fn forward_chat_completion(
     &self,
     id: &str,
-    request: CreateChatCompletionRequest,
+    mut request: CreateChatCompletionRequest,
   ) -> Result<Response> {
-    let (api_config, api_key) = self.get_api_config(id).await?;
-
-    let url = format!("{}/chat/completions", api_config.base_url);
+    let (api_alias, api_key) = self.get_api_config(id).await?;
+    let url = format!("{}/chat/completions", api_alias.base_url);
+    if let Some(ref prefix) = api_alias.prefix {
+      if request.model.starts_with(prefix) {
+        request.model = request
+          .model
+          .strip_prefix(prefix)
+          .unwrap_or(&request.model)
+          .to_string();
+      }
+    }
 
     // Forward the request to the remote API
     let response = self
@@ -267,8 +275,12 @@ impl AiApiService for DefaultAiApiService {
 mod tests {
   use crate::ai_api_service::{AiApiService, AiApiServiceError, DefaultAiApiService};
   use crate::db::MockDbService;
+  use axum::http::StatusCode;
+  use chrono::Utc;
   use mockito::Server;
+  use objs::ApiAlias;
   use rstest::rstest;
+  use serde_json::json;
   use std::sync::Arc;
 
   #[rstest]
@@ -402,6 +414,95 @@ mod tests {
 
     assert!(matches!(result, Err(AiApiServiceError::NotFound(_))));
 
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::strips_prefix(
+    "azure-openai",
+    "azure",
+    vec!["gpt-4".to_string()],
+    Some("azure/".to_string()),
+    "azure/gpt-4",
+    "gpt-4"
+  )]
+  #[case::no_prefix_unchanged(
+    "openai-api",
+    "openai",
+    vec!["gpt-4".to_string()],
+    None,
+    "gpt-4",
+    "gpt-4"
+  )]
+  #[case::strips_nested_prefix(
+    "openrouter-api",
+    "openrouter",
+    vec!["openai/gpt-4".to_string()],
+    Some("openrouter/".to_string()),
+    "openrouter/openai/gpt-4",
+    "openai/gpt-4"
+  )]
+  #[tokio::test]
+  async fn test_forward_chat_completion_model_prefix_handling(
+    #[case] api_id: &str,
+    #[case] provider: &str,
+    #[case] models: Vec<String>,
+    #[case] prefix: Option<String>,
+    #[case] input_model: &str,
+    #[case] expected_model: &str,
+  ) -> anyhow::Result<()> {
+    let mut mock_db = MockDbService::new();
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Create API alias with the provided parameters
+    let api_alias = ApiAlias::new(api_id, provider, &url, models, prefix, Utc::now());
+
+    // Setup mock expectations
+    let api_id_owned = api_id.to_string();
+    mock_db
+      .expect_get_api_model_alias()
+      .with(mockall::predicate::eq(api_id_owned.clone()))
+      .returning(move |_| Ok(Some(api_alias.clone())));
+
+    mock_db
+      .expect_get_api_key_for_alias()
+      .with(mockall::predicate::eq(api_id_owned))
+      .returning(|_| Ok(Some("test-key".to_string())));
+
+    let incoming_request = json! {{
+      "model": input_model,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ]
+    }};
+    let fwd_request = json! {{
+      "model": expected_model,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ]
+    }};
+    let _mock = server
+      .mock("POST", "/chat/completions")
+      .match_body(mockito::Matcher::JsonString(serde_json::to_string(
+        &fwd_request,
+      )?))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(r#"{"choices":[{"message":{"content":"Hi there!"}}]}"#)
+      .create_async()
+      .await;
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+    let response = service
+      .forward_chat_completion(api_id, serde_json::from_value(incoming_request)?)
+      .await?;
+    assert_eq!(response.status(), StatusCode::OK);
     Ok(())
   }
 }

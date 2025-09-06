@@ -29,12 +29,14 @@ export const createApiModelSchema = z.object({
     .array(z.string().min(1, 'Model name cannot be empty'))
     .min(1, 'At least one model must be selected')
     .max(20, 'Maximum 20 models allowed'),
+  prefix: z.string().optional(),
+  usePrefix: z.boolean().default(false), // Checkbox to control prefix inclusion
 });
 
 // Zod schema for updating API models
 export const updateApiModelSchema = z.object({
-  provider: z.string().min(1, 'Provider is required').max(20, 'Provider must be less than 20 characters').optional(),
-  base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required').optional(),
+  provider: z.string().min(1, 'Provider is required').max(20, 'Provider must be less than 20 characters'),
+  base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
   api_key: z
     .string()
     .max(200, 'API key is too long')
@@ -43,8 +45,9 @@ export const updateApiModelSchema = z.object({
   models: z
     .array(z.string().min(1, 'Model name cannot be empty'))
     .min(1, 'At least one model must be selected')
-    .max(20, 'Maximum 20 models allowed')
-    .optional(),
+    .max(20, 'Maximum 20 models allowed'),
+  prefix: z.string().optional(),
+  usePrefix: z.boolean().default(false), // Checkbox to control prefix inclusion
 });
 
 // Form data types
@@ -58,6 +61,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateAp
   base_url: formData.base_url,
   api_key: formData.api_key,
   models: formData.models,
+  prefix: formData.usePrefix && formData.prefix ? formData.prefix : undefined, // Only include prefix if checkbox is checked and has value
 });
 
 export const convertFormToUpdateRequest = (formData: UpdateApiModelFormData): UpdateApiModelRequest => ({
@@ -65,6 +69,7 @@ export const convertFormToUpdateRequest = (formData: UpdateApiModelFormData): Up
   base_url: formData.base_url,
   api_key: formData.api_key || undefined,
   models: formData.models,
+  prefix: formData.usePrefix && formData.prefix ? formData.prefix : undefined, // Send undefined when unchecked (backend will handle as None)
 });
 
 export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData => ({
@@ -73,6 +78,8 @@ export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData =>
   base_url: apiData.base_url,
   api_key: '', // API key is masked, will be empty for edit forms
   models: apiData.models,
+  prefix: apiData.prefix || '', // Set prefix or empty string
+  usePrefix: Boolean(apiData.prefix), // Set checkbox based on whether prefix exists
 });
 
 export const convertApiToUpdateForm = (apiData: ApiModelResponse): UpdateApiModelFormData => ({
@@ -80,6 +87,8 @@ export const convertApiToUpdateForm = (apiData: ApiModelResponse): UpdateApiMode
   base_url: apiData.base_url,
   api_key: '', // API key is masked, will be empty for edit forms
   models: apiData.models,
+  prefix: apiData.prefix || '', // Set prefix or empty string
+  usePrefix: Boolean(apiData.prefix), // Set checkbox based on whether prefix exists
 });
 
 // Helper function to mask API key for display
@@ -103,4 +112,11 @@ export const getProviderPreset = (provider: string): (typeof PROVIDER_PRESETS)[P
     ([key, value]) => key === provider.toLowerCase() || value.name === provider
   );
   return preset ? preset[1] : null;
+};
+
+// Helper function to format prefixed model name for display
+// The prefix should include its own separator (e.g., "azure/", "azure:", "provider-")
+export const formatPrefixedModel = (model: string, prefix?: string | null): string => {
+  if (!prefix) return model;
+  return `${prefix}${model}`;
 };

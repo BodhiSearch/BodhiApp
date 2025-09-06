@@ -140,6 +140,7 @@ mod tests {
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-3.5-turbo".to_string()],
+      None,
       chrono::Utc::now(),
     ));
     mock_data

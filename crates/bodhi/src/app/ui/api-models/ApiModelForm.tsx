@@ -37,6 +37,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   const [selectedProvider, setSelectedProvider] = useState<ProviderPreset>('openai');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [fetchModelsState, setFetchModelsState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const createMutation = useCreateApiModel();
   const updateMutation = useUpdateApiModel();
@@ -54,6 +55,8 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           base_url: initialData?.base_url || 'https://api.openai.com/v1',
           api_key: '',
           models: initialData?.models || [],
+          prefix: initialData?.prefix || '',
+          usePrefix: Boolean(initialData?.prefix),
         }
       : {
           id: '',
@@ -61,6 +64,8 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           base_url: 'https://api.openai.com/v1',
           api_key: '',
           models: [],
+          prefix: '',
+          usePrefix: false,
         },
   });
 
@@ -87,6 +92,8 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
     setValue('provider', preset.name);
     setValue('base_url', preset.baseUrl);
     setValue('models', []); // Clear selected models
+    setValue('prefix', ''); // Clear prefix when provider changes
+    setValue('usePrefix', false); // Uncheck prefix checkbox
     setAvailableModels([]); // Clear available models - user must fetch them
   };
 
@@ -156,15 +163,18 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
       base_url: watchedValues.base_url || '',
     };
 
+    setFetchModelsState('loading');
     try {
       const response = await fetchModelsMutation.mutateAsync(fetchData);
       const models = response.data.models;
       setAvailableModels(models);
+      setFetchModelsState('success');
       toast({
         title: 'Models Fetched Successfully',
         description: `Found ${models.length} available models`,
       });
     } catch (error: unknown) {
+      setFetchModelsState('error');
       const errorMessage =
         (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
           ?.message ||
@@ -241,7 +251,11 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-8 mx-4 my-6"
+      data-testid={isEditMode ? 'edit-api-model-form' : 'create-api-model-form'}
+    >
       <Card>
         <CardHeader>
           <CardTitle>{isEditMode ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
@@ -249,70 +263,105 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
             {isEditMode ? 'Update the configuration for your API model' : 'Configure a new external AI API model'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="id">ID</Label>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="id">ID</Label>
+            <Input
+              id="id"
+              data-testid="api-model-id"
+              {...(isEditMode ? { value: initialData?.id || '', disabled: true } : register('id'))}
+              placeholder="my-gpt-4"
+            />
+            {errors.id && <p className="text-sm text-destructive">{errors.id.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="provider-preset">Provider Type</Label>
+            <Select value={selectedProvider} onValueChange={handleProviderChange}>
+              <SelectTrigger id="provider-preset" data-testid="api-model-provider">
+                <SelectValue placeholder="Select a provider type" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
+                  <SelectItem key={key} value={key}>
+                    {preset.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="base_url">Base URL</Label>
+            <Input
+              id="base_url"
+              data-testid="api-model-base-url"
+              {...register('base_url')}
+              placeholder="https://api.openai.com/v1"
+            />
+            {errors.base_url && <p className="text-sm text-destructive">{errors.base_url.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="api_key">API Key</Label>
+            <div className="relative">
               <Input
-                id="id"
-                data-testid="api-model-id"
-                {...(isEditMode ? { value: initialData?.id || '', disabled: true } : register('id'))}
-                placeholder="my-gpt-4"
+                id="api_key"
+                data-testid="api-model-api-key"
+                type={showApiKey ? 'text' : 'password'}
+                {...register('api_key')}
+                placeholder={isEditMode ? 'Leave empty to keep existing key' : 'Enter your API key'}
               />
-              {errors.id && <p className="text-sm text-destructive">{errors.id.message}</p>}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                data-testid="toggle-api-key-visibility"
+                onClick={() => setShowApiKey(!showApiKey)}
+              >
+                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
             </div>
+            {errors.api_key && <p className="text-sm text-destructive">{errors.api_key.message}</p>}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="provider-preset">Provider Type</Label>
-              <Select value={selectedProvider} onValueChange={handleProviderChange}>
-                <SelectTrigger id="provider-preset" data-testid="api-model-provider">
-                  <SelectValue placeholder="Select a provider type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
-                    <SelectItem key={key} value={key}>
-                      {preset.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="base_url">Base URL</Label>
+          <div className="space-y-2">
+            <Label htmlFor="prefix">Model Prefix</Label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="usePrefix"
+                data-testid="api-model-use-prefix"
+                {...register('usePrefix')}
+                className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+              />
+              <Label htmlFor="usePrefix" className="text-sm text-muted-foreground">
+                Enable prefix
+              </Label>
               <Input
-                id="base_url"
-                data-testid="api-model-base-url"
-                {...register('base_url')}
-                placeholder="https://api.openai.com/v1"
+                id="prefix"
+                data-testid="api-model-prefix"
+                {...register('prefix')}
+                placeholder="e.g., 'azure/', 'openai:', 'provider-', 'my.custom_'"
+                disabled={!watchedValues.usePrefix}
+                className="flex-1"
               />
-              {errors.base_url && <p className="text-sm text-destructive">{errors.base_url.message}</p>}
             </div>
+            <p className="text-sm text-muted-foreground">
+              Prefix to differentiate models from different providers. You can use any separator you prefer (e.g.,
+              "azure/" → "azure/gpt-4", "openai:" → "openai:gpt-4", "provider-" → "provider-gpt-4"). Leave empty or
+              uncheck to use no prefix.
+            </p>
+            {errors.prefix && <p className="text-sm text-destructive">{errors.prefix.message}</p>}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="api_key">API Key</Label>
-              <div className="relative">
-                <Input
-                  id="api_key"
-                  data-testid="api-model-api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  {...register('api_key')}
-                  placeholder={isEditMode ? 'Leave empty to keep existing key' : 'Enter your API key'}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  data-testid="toggle-api-key-visibility"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-              {errors.api_key && <p className="text-sm text-destructive">{errors.api_key.message}</p>}
-            </div>
-
+          <div
+            data-testid="fetch-models-container"
+            data-fetch-state={fetchModelsState}
+            data-models-fetched={availableModels.length > 0}
+            data-can-fetch={canFetch}
+          >
             <ModelSelector
               selectedModels={watchedValues.models || []}
               availableModels={availableModels}
@@ -324,60 +373,60 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
               canFetch={canFetch}
               fetchDisabledReason={getFetchDisabledReason()}
             />
-            {errors.models && <p className="text-sm text-destructive">{errors.models.message}</p>}
+          </div>
+          {errors.models && <p className="text-sm text-destructive">{errors.models.message}</p>}
 
-            <div className="flex justify-between">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        data-testid="test-connection-button"
-                        onClick={handleTestConnection}
-                        disabled={!canTest || testMutation.isLoading}
-                      >
-                        <TestTube className="h-4 w-4 mr-2" />
-                        {testMutation.isLoading ? 'Testing...' : 'Test Connection'}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!canTest && !testMutation.isLoading && (
-                    <TooltipContent>
-                      <p>{getMissingRequirements()}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
+          <div className="flex justify-between">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      data-testid="test-connection-button"
+                      onClick={handleTestConnection}
+                      disabled={!canTest || testMutation.isLoading}
+                    >
+                      <TestTube className="h-4 w-4 mr-2" />
+                      {testMutation.isLoading ? 'Testing...' : 'Test Connection'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!canTest && !testMutation.isLoading && (
+                  <TooltipContent>
+                    <p>{getMissingRequirements()}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
 
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  data-testid="cancel-button"
-                  onClick={() => router.push('/ui/models')}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  data-testid={isEditMode ? 'update-api-model-button' : 'create-api-model-button'}
-                  disabled={isSubmitting || createMutation.isLoading || updateMutation.isLoading}
-                >
-                  {isSubmitting || createMutation.isLoading || updateMutation.isLoading
-                    ? isEditMode
-                      ? 'Updating...'
-                      : 'Creating...'
-                    : isEditMode
-                      ? 'Update API Model'
-                      : 'Create API Model'}
-                </Button>
-              </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                data-testid="cancel-button"
+                onClick={() => router.push('/ui/models')}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                data-testid={isEditMode ? 'update-api-model-button' : 'create-api-model-button'}
+                disabled={isSubmitting || createMutation.isLoading || updateMutation.isLoading}
+              >
+                {isSubmitting || createMutation.isLoading || updateMutation.isLoading
+                  ? isEditMode
+                    ? 'Updating...'
+                    : 'Creating...'
+                  : isEditMode
+                    ? 'Update API Model'
+                    : 'Create API Model'}
+              </Button>
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
-    </div>
+    </form>
   );
 }

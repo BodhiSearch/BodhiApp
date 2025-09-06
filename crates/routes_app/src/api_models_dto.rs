@@ -11,7 +11,8 @@ use validator::Validate;
     "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-...",
-    "models": ["gpt-4", "gpt-3.5-turbo"]
+    "models": ["gpt-4", "gpt-3.5-turbo"],
+    "prefix": "openai"
 }))]
 pub struct CreateApiModelRequest {
   /// Unique identifier for this API configuration
@@ -41,6 +42,9 @@ pub struct CreateApiModelRequest {
   /// List of available models
   #[validate(length(min = 1, message = "Models list must not be empty"))]
   pub models: Vec<String>,
+
+  /// Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4")
+  pub prefix: Option<String>,
 }
 
 /// Request to update an existing API model configuration
@@ -49,28 +53,32 @@ pub struct CreateApiModelRequest {
     "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-new-key",
-    "models": ["gpt-4-turbo", "gpt-3.5-turbo"]
+    "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
+    "prefix": "openai"
 }))]
 pub struct UpdateApiModelRequest {
-  /// Provider name (optional)
+  /// Provider name (required)
   #[validate(length(
     min = 1,
     max = 50,
     message = "Provider must not be empty and should be between 1 and 50 characters"
   ))]
-  pub provider: Option<String>,
+  pub provider: String,
 
-  /// API base URL (optional)
+  /// API base URL (required)
   #[validate(url(message = "Base URL must be a valid URL"))]
-  pub base_url: Option<String>,
+  pub base_url: String,
 
-  /// API key for authentication (optional, only update if provided)
+  /// API key for authentication (optional, only update if provided for security)
   #[validate(length(min = 1, message = "API key must not be empty"))]
   pub api_key: Option<String>,
 
-  /// List of available models (optional)
+  /// List of available models (required)
   #[validate(length(min = 1, message = "Models list must not be empty"))]
-  pub models: Option<Vec<String>>,
+  pub models: Vec<String>,
+
+  /// Optional prefix for model namespacing
+  pub prefix: Option<String>,
 }
 
 /// Request to test API connectivity with a prompt
@@ -141,6 +149,7 @@ pub struct FetchModelsRequest {
     "base_url": "https://api.openai.com/v1",
     "api_key_masked": "sk-...abc123",
     "models": ["gpt-4", "gpt-3.5-turbo"],
+    "prefix": "openai",
     "created_at": "2024-01-01T00:00:00Z",
     "updated_at": "2024-01-01T00:00:00Z"
 }))]
@@ -150,6 +159,7 @@ pub struct ApiModelResponse {
   pub base_url: String,
   pub api_key_masked: String,
   pub models: Vec<String>,
+  pub prefix: Option<String>,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -167,6 +177,7 @@ impl ApiModelResponse {
         .map(|k| mask_api_key(&k))
         .unwrap_or_else(|| "***".to_string()),
       models: alias.models,
+      prefix: alias.prefix,
       created_at: alias.created_at,
       updated_at: alias.updated_at,
     }
@@ -288,6 +299,7 @@ mod tests {
       base_url: "not-a-url".to_string(),
       api_key: "key".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     assert!(request.validate().is_err());
@@ -298,6 +310,7 @@ mod tests {
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test".to_string(),
       models: vec!["gpt-4".to_string()],
+      prefix: None,
     };
 
     assert!(valid_request.validate().is_ok());

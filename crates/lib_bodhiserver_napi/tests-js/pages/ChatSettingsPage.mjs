@@ -9,9 +9,7 @@ export class ChatSettingsPage extends BasePage {
 
     // Model selection
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
-    comboboxTrigger: '[data-testid="combobox-trigger"]', // Desktop version (no prefix)
-    mobileComboboxTrigger: '[data-testid="m-combobox-trigger"]', // Mobile version
-    tabletComboboxTrigger: '[data-testid="tab-combobox-trigger"]', // Tablet version
+    comboboxTrigger: '[data-testid="model-selector-trigger"]', // Desktop version (no prefix)
     comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings controls

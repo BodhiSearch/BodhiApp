@@ -17,6 +17,7 @@ export type ApiAlias = {
     created_at: string;
     id: string;
     models: Array<string>;
+    prefix?: string | null;
     provider: string;
     updated_at: string;
 };
@@ -30,6 +31,7 @@ export type ApiModelResponse = {
     created_at: string;
     id: string;
     models: Array<string>;
+    prefix?: string | null;
     provider: string;
     updated_at: string;
 };
@@ -126,6 +128,10 @@ export type CreateApiModelRequest = {
      * List of available models
      */
     models: Array<string>;
+    /**
+     * Optional prefix for model namespacing (e.g., "azure" for "azure/gpt-4")
+     */
+    prefix?: string | null;
     /**
      * Provider name (e.g., "openai", "anthropic")
      */
@@ -586,6 +592,10 @@ export type UpdateApiModelRequest = {
      * List of available models (optional)
      */
     models?: Array<string> | null;
+    /**
+     * Optional prefix for model namespacing
+     */
+    prefix?: string | null;
     /**
      * Provider name (optional)
      */
