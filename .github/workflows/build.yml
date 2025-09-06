@@ -59,6 +59,11 @@ jobs:
         with:
           platform: ubuntu-latest
 
+      - name: Check TypeScript client
+        uses: ./.github/actions/ts-client-check
+        with:
+          platform: ubuntu-latest
+
       - name: Build and test
         id: build-test
         uses: ./.github/actions/build-and-test
@@ -75,11 +80,6 @@ jobs:
           INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
           INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
           INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
-
-      - name: Check TypeScript client
-        uses: ./.github/actions/ts-client-check
-        with:
-          platform: ubuntu-latest
 
       - name: Build NAPI bindings
         uses: ./.github/actions/napi-build

@@ -14,4 +14,8 @@ runs:
 
     - name: Check ts-client tests pass
       shell: bash
-      run: make ci.ts-client-test 
+      run: make ci.ts-client-test
+
+    - name: Check ts-client bundle
+      shell: bash
+      run: make ts-client
