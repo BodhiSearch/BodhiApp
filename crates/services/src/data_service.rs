@@ -368,7 +368,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use objs::{
     test_utils::{assert_error_message, setup_l10n, temp_bodhi_home},
-    Alias, AppError, FluentLocalizationService, RemoteModel, UserAlias,
+    Alias, ApiFormat, AppError, FluentLocalizationService, RemoteModel, UserAlias,
   };
   use rstest::rstest;
   use std::{fs, sync::Arc};
@@ -516,7 +516,7 @@ chat_template: llama3
     // Insert API alias with multiple models
     let api_alias = objs::ApiAlias::new(
       "openai-api",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       None,
@@ -560,7 +560,7 @@ chat_template: llama3
     // Insert API alias with gpt-4 model
     let api_alias = objs::ApiAlias::new(
       "test-api",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
@@ -605,7 +605,7 @@ chat_template: llama3
     // Insert API alias with model name that matches existing user alias
     let api_alias = objs::ApiAlias::new(
       "conflicting-api",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["testalias-exists:instruct".to_string()], // Same name as user alias
       None,
@@ -808,7 +808,7 @@ chat_template: llama3
 
     let test_alias = objs::ApiAlias::new(
       expected_id,
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       api_models,
       api_prefix,
@@ -846,7 +846,7 @@ chat_template: llama3
 
     let test_alias = objs::ApiAlias::new(
       "azure-openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       Some("azure/".to_string()),
@@ -880,7 +880,7 @@ chat_template: llama3
     // Create API alias with prefix
     let prefixed_alias = objs::ApiAlias::new(
       "azure-openai",
-      "azure",
+      ApiFormat::OpenAI,
       "https://api.azure.com/v1",
       vec!["gpt-4".to_string()],
       Some("azure/".to_string()),

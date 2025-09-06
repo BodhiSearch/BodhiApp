@@ -18,10 +18,16 @@ import {
   updateApiModelSchema,
   convertFormToCreateRequest,
   convertFormToUpdateRequest,
-  PROVIDER_PRESETS,
-  ProviderPreset,
+  API_FORMAT_PRESETS,
+  ApiFormatPreset,
 } from '@/schemas/apiModel';
-import { useCreateApiModel, useUpdateApiModel, useTestApiModel, useFetchApiModels } from '@/hooks/useApiModels';
+import {
+  useCreateApiModel,
+  useUpdateApiModel,
+  useTestApiModel,
+  useFetchApiModels,
+  useApiFormats,
+} from '@/hooks/useApiModels';
 import { ApiModelResponse, TestPromptRequest, FetchModelsRequest } from '@bodhiapp/ts-client';
 import { ModelSelector } from '@/components/ModelSelector';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,8 +39,8 @@ interface ApiModelFormProps {
 
 export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
-  const [selectedProvider, setSelectedProvider] = useState<ProviderPreset>('openai');
+  const { toast, dismiss } = useToast();
+  const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormatPreset>('openai');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [showApiKey, setShowApiKey] = useState(false);
   const [fetchModelsState, setFetchModelsState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -43,6 +49,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   const updateMutation = useUpdateApiModel();
   const testMutation = useTestApiModel();
   const fetchModelsMutation = useFetchApiModels();
+  const { data: apiFormatsData } = useApiFormats();
 
   const schema = isEditMode ? updateApiModelSchema : createApiModelSchema;
   type FormData = typeof isEditMode extends true ? UpdateApiModelFormData : ApiModelFormData;
@@ -51,7 +58,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
     resolver: zodResolver(schema),
     defaultValues: isEditMode
       ? {
-          provider: initialData?.provider || 'OpenAI',
+          api_format: initialData?.api_format || 'openai',
           base_url: initialData?.base_url || 'https://api.openai.com/v1',
           api_key: '',
           models: initialData?.models || [],
@@ -60,7 +67,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         }
       : {
           id: '',
-          provider: 'OpenAI',
+          api_format: 'openai',
           base_url: 'https://api.openai.com/v1',
           api_key: '',
           models: [],
@@ -80,19 +87,19 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
 
   useEffect(() => {
     if (initialData) {
-      setSelectedProvider('openai');
+      setSelectedApiFormat('openai');
       // Do not pre-populate available models - user must fetch them
     }
   }, [initialData]);
 
-  const handleProviderChange = (provider: ProviderPreset) => {
-    setSelectedProvider(provider);
-    const preset = PROVIDER_PRESETS[provider];
+  const handleApiFormatChange = (apiFormat: ApiFormatPreset) => {
+    setSelectedApiFormat(apiFormat);
+    const preset = API_FORMAT_PRESETS[apiFormat];
 
-    setValue('provider', preset.name);
+    setValue('api_format', apiFormat);
     setValue('base_url', preset.baseUrl);
     setValue('models', []); // Clear selected models
-    setValue('prefix', ''); // Clear prefix when provider changes
+    setValue('prefix', ''); // Clear prefix when API format changes
     setValue('usePrefix', false); // Uncheck prefix checkbox
     setAvailableModels([]); // Clear available models - user must fetch them
   };
@@ -120,6 +127,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   };
 
   const handleTestConnection = async () => {
+    dismiss();
     const testData: TestPromptRequest = {
       // In edit mode, use stored model ID if no API key provided
       ...(watchedValues.api_key
@@ -153,6 +161,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   };
 
   const handleFetchModels = async () => {
+    dismiss();
     const fetchData: FetchModelsRequest = {
       // In edit mode, use stored model ID if no API key provided
       ...(watchedValues.api_key
@@ -189,6 +198,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   };
 
   const onSubmit = async (data: FormData) => {
+    dismiss();
     try {
       if (isEditMode && initialData) {
         const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
@@ -276,15 +286,15 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="provider-preset">Provider Type</Label>
-            <Select value={selectedProvider} onValueChange={handleProviderChange}>
-              <SelectTrigger id="provider-preset" data-testid="api-model-provider">
-                <SelectValue placeholder="Select a provider type" />
+            <Label htmlFor="api-format-preset">API Format</Label>
+            <Select value={selectedApiFormat} onValueChange={handleApiFormatChange}>
+              <SelectTrigger id="api-format-preset" data-testid="api-model-format">
+                <SelectValue placeholder="Select an API format" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(PROVIDER_PRESETS).map(([key, preset]) => (
-                  <SelectItem key={key} value={key}>
-                    {preset.name}
+                {(apiFormatsData?.data || ['openai']).map((format) => (
+                  <SelectItem key={format} value={format}>
+                    {format}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -343,16 +353,11 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
                 id="prefix"
                 data-testid="api-model-prefix"
                 {...register('prefix')}
-                placeholder="e.g., 'azure/', 'openai:', 'provider-', 'my.custom_'"
+                placeholder="e.g., 'azure/', 'openai:', 'my.custom_'"
                 disabled={!watchedValues.usePrefix}
                 className="flex-1"
               />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Prefix to differentiate models from different providers. You can use any separator you prefer (e.g.,
-              "azure/" → "azure/gpt-4", "openai:" → "openai:gpt-4", "provider-" → "provider-gpt-4"). Leave empty or
-              uncheck to use no prefix.
-            </p>
             {errors.prefix && <p className="text-sm text-destructive">{errors.prefix.message}</p>}
           </div>
 

@@ -4,7 +4,7 @@ import { BasePage } from './BasePage.mjs';
 export class ApiModelFormPage extends BasePage {
   selectors = {
     modelIdInput: '[data-testid="api-model-id"]',
-    providerSelect: '[data-testid="api-model-provider"]',
+    apiFormatSelect: '[data-testid="api-model-format"]',
     baseUrlInput: '[data-testid="api-model-base-url"]',
     apiKeyInput: '[data-testid="api-model-api-key"]',
     usePrefixCheckbox: '[data-testid="api-model-use-prefix"]',
@@ -62,23 +62,19 @@ export class ApiModelFormPage extends BasePage {
         });
 
         if (fetchResult.success && fetchResult.hasModels) {
-          await this.page.waitForFunction(
-            () => {
-              const searchInput = document.querySelector('[data-testid="model-search-input"]');
-              return searchInput && !searchInput.disabled;
-            },
-            { timeout: 5000 }
-          );
-
+          await this.page.waitForFunction(() => {
+            const searchInput = document.querySelector('[data-testid="model-search-input"]');
+            return searchInput && !searchInput.disabled;
+          });
+          await this.waitForToast(/Models Fetched Successfully/i);
           for (const model of models) {
             await this.searchAndSelectModel(model);
           }
-
           return;
         }
 
         if (attempt < maxAttempts) {
-          await this.page.waitForTimeout(2000);
+          await this.page.waitForTimeout(1000);
         } else {
           throw new Error(
             `Failed to fetch models after ${maxAttempts} attempts. Final state: ${fetchResult.fetchState}, hasModels: ${fetchResult.hasModels}`
@@ -86,7 +82,7 @@ export class ApiModelFormPage extends BasePage {
         }
       } catch (error) {
         if (attempt < maxAttempts) {
-          await this.page.waitForTimeout(2000);
+          await this.page.waitForTimeout(1000);
         } else {
           throw error;
         }
@@ -108,12 +104,30 @@ export class ApiModelFormPage extends BasePage {
     await this.page.fill(this.selectors.modelSearchInput, '');
   }
 
-  async testConnection() {
-    // Wait for the button to be enabled first
-    await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
-    await this.page.click(this.selectors.testConnectionButton);
-    // Wait for connection test to complete - may take a few seconds
-    await this.waitForToast(/Connection Test Successful/i, { timeout: 10000 });
+  async testConnection(maxRetries = 1) {
+    let attempt = 0;
+    const maxAttempts = maxRetries + 1;
+
+    while (attempt < maxAttempts) {
+      try {
+        attempt++;
+
+        await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
+        await this.page.click(this.selectors.testConnectionButton);
+        await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
+        await this.waitForToast(/Connection Test Successful/i, { timeout: 10000 });
+        return; // Success, exit the function
+      } catch (error) {
+        if (attempt < maxAttempts) {
+          console.log(`Test connection attempt ${attempt} failed, retrying...`);
+          await this.page.waitForTimeout(1000); // Wait 1 second before retry
+        } else {
+          throw new Error(
+            `Failed to test connection after ${maxAttempts} attempts. Last error: ${error.message}`
+          );
+        }
+      }
+    }
   }
 
   async createModel() {
@@ -128,10 +142,10 @@ export class ApiModelFormPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async verifyFormPreFilled(modelId, provider = 'OpenAI', baseUrl = 'https://api.openai.com/v1') {
+  async verifyFormPreFilled(modelId, api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
     // Verify form fields are pre-filled with existing data
     await this.expectValue(this.selectors.modelIdInput, modelId);
-    await this.expectText(this.selectors.providerSelect, provider);
+    await this.expectText(this.selectors.apiFormatSelect, api_format);
     await this.expectValue(this.selectors.baseUrlInput, baseUrl);
 
     // API key should be empty (masked for security)
@@ -193,11 +207,10 @@ export class ApiModelFormPage extends BasePage {
     await this.waitForToast(/Connection Test Failed/i);
   }
 
-  // Provider-specific methods
-  async selectProvider(provider) {
+  async selectApiFormat(api_format) {
     // For Shadcn Select component (combobox), need to click trigger then select option
-    await this.page.click(this.selectors.providerSelect);
-    await this.page.click(`text=${provider}`);
+    await this.page.click(this.selectors.apiFormatSelect);
+    await this.page.click(`text=${api_format}`);
   }
 
   async setCustomBaseUrl(url) {
@@ -239,12 +252,12 @@ export class ApiModelFormPage extends BasePage {
 
   async verifyFormPreFilledWithPrefix(
     modelId,
-    provider = 'OpenAI',
+    api_format = 'openai',
     baseUrl = 'https://api.openai.com/v1',
     prefix = null
   ) {
     // Verify basic form fields
-    await this.verifyFormPreFilled(modelId, provider, baseUrl);
+    await this.verifyFormPreFilled(modelId, api_format, baseUrl);
 
     // Verify prefix state
     if (prefix) {

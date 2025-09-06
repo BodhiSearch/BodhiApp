@@ -1,9 +1,11 @@
 use crate::{
   api_models_dto::{
-    ApiModelResponse, CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse,
-    PaginatedApiModelResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
+    ApiFormatsResponse, ApiModelResponse, CreateApiModelRequest, FetchModelsRequest,
+    FetchModelsResponse, PaginatedApiModelResponse, TestPromptRequest, TestPromptResponse,
+    UpdateApiModelRequest,
   },
-  PaginationSortParams, ENDPOINT_API_MODELS,
+  PaginationSortParams, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
+  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -12,7 +14,8 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use objs::{
-  ApiAlias, ApiError, BadRequestError, ObjValidationError, OpenAIApiError, API_TAG_API_MODELS,
+  ApiAlias, ApiError, ApiFormat, BadRequestError, ObjValidationError, OpenAIApiError,
+  API_TAG_API_MODELS,
 };
 use server_core::RouterState;
 use std::sync::Arc;
@@ -25,14 +28,14 @@ use validator::Validate;
     tag = API_TAG_API_MODELS,
     operation_id = "listApiModels",
     summary = "List API Model Configurations",
-    description = "Retrieves paginated list of all configured API model aliases including external providers like OpenAI, Anthropic, etc. API keys are masked in list view for security.",
+    description = "Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.",
     params(PaginationSortParams),
     responses(
         (status = 200, description = "API model configurations retrieved successfully", body = PaginatedApiModelResponse,
          example = json!({
              "data": [{
                  "id": "openai-gpt4",
-                 "provider": "openai", 
+                 "api_format": "openai",
                  "base_url": "https://api.openai.com/v1",
                  "api_key": "sk-****"
              }],
@@ -99,7 +102,7 @@ pub async fn list_api_models_handler(
         (status = 200, description = "API model configuration retrieved successfully", body = ApiModelResponse,
          example = json!({
              "id": "openai-gpt4",
-             "provider": "openai",
+             "api_format": "openai",
              "base_url": "https://api.openai.com/v1",
              "api_key": "sk-****",
              "model": "gpt-4"
@@ -184,7 +187,7 @@ pub async fn create_api_model_handler(
   let now = time_service.utc_now();
   let api_alias = ApiAlias::new(
     payload.id,
-    payload.provider,
+    payload.api_format,
     payload.base_url.trim_end_matches('/').to_string(),
     payload.models,
     payload.prefix,
@@ -245,7 +248,7 @@ pub async fn update_api_model_handler(
   })?;
 
   // Update all fields (api_key is handled separately for security)
-  api_alias.provider = payload.provider;
+  api_alias.api_format = payload.api_format;
   api_alias.base_url = payload.base_url.trim_end_matches('/').to_string();
   api_alias.models = payload.models;
   api_alias.prefix = if payload.prefix.as_ref().is_some_and(|p| p.is_empty()) {
@@ -310,7 +313,7 @@ pub async fn delete_api_model_handler(
 /// Test API connectivity with a prompt
 #[utoipa::path(
     post,
-    path = ENDPOINT_API_MODELS.to_owned() + "/test",
+    path = ENDPOINT_API_MODELS_TEST.to_owned(),
     tag = API_TAG_API_MODELS,
     operation_id = "testApiModel",
     request_body = TestPromptRequest,
@@ -383,10 +386,10 @@ pub async fn test_api_model_handler(
   }
 }
 
-/// Fetch available models from the API provider
+/// Fetch available models from the API
 #[utoipa::path(
     post,
-    path = ENDPOINT_API_MODELS.to_owned() + "/fetch-models",
+    path = ENDPOINT_API_MODELS_FETCH_MODELS.to_owned(),
     tag = API_TAG_API_MODELS,
     operation_id = "fetchApiModels",
     request_body = FetchModelsRequest,
@@ -452,6 +455,35 @@ pub async fn fetch_models_handler(
   Ok(Json(FetchModelsResponse { models }))
 }
 
+/// Get available API formats
+#[utoipa::path(
+    get,
+    path = ENDPOINT_API_MODELS_API_FORMATS.to_owned(),
+    tag = API_TAG_API_MODELS,
+    operation_id = "getApiFormats",
+    summary = "Get Available API Formats",
+    description = "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
+    responses(
+        (status = 200, description = "API formats retrieved successfully", body = ApiFormatsResponse,
+         example = json!({
+             "data": ["openai"]
+         })),
+        (status = 500, description = "Internal server error during API format retrieval", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Service unavailable",
+                 "type": "internal_server_error",
+                 "code": "service_error"
+             }
+         }))
+    )
+)]
+pub async fn get_api_formats_handler() -> Result<Json<ApiFormatsResponse>, ApiError> {
+  Ok(Json(ApiFormatsResponse {
+    data: vec![ApiFormat::OpenAI],
+  }))
+}
+
 #[cfg(test)]
 mod tests {
   use super::{
@@ -473,7 +505,7 @@ mod tests {
     Router,
   };
   use chrono::{DateTime, Utc};
-  use objs::{test_utils::setup_l10n, ApiAlias, FluentLocalizationService};
+  use objs::{test_utils::setup_l10n, ApiAlias, ApiFormat::OpenAI, FluentLocalizationService};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
@@ -492,7 +524,7 @@ mod tests {
   /// Create expected ApiModelResponse for testing
   fn create_expected_response(
     id: &str,
-    provider: &str,
+    api_format: &str,
     base_url: &str,
     api_key_masked: &str,
     models: Vec<String>,
@@ -500,9 +532,10 @@ mod tests {
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
   ) -> ApiModelResponse {
+    use std::str::FromStr;
     ApiModelResponse {
       id: id.to_string(),
-      provider: provider.to_string(),
+      api_format: objs::ApiFormat::from_str(api_format).unwrap(),
       base_url: base_url.to_string(),
       api_key_masked: api_key_masked.to_string(),
       models,
@@ -644,7 +677,7 @@ mod tests {
         base_time - chrono::Duration::seconds(50),
       ),
       create_expected_list_response_with_prefix(
-        "custom-provider",
+        "custom-alias",
         vec!["custom-model-1".to_string()],
         Some("my.custom_".to_string()),
         base_time - chrono::Duration::seconds(60),
@@ -686,7 +719,7 @@ mod tests {
 
     let create_request = CreateApiModelRequest {
       id: "openai-test".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: input_url.to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
@@ -743,7 +776,7 @@ mod tests {
 
     let create_request = CreateApiModelRequest {
       id: "openai-gpt4".to_string(), // This id already exists in seed data
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
@@ -783,7 +816,7 @@ mod tests {
 
     let create_request = CreateApiModelRequest {
       id: "".to_string(), // Invalid: empty id
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
@@ -822,7 +855,7 @@ mod tests {
 
     let create_request = CreateApiModelRequest {
       id: "test-alias".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
       api_key: "sk-test123456789".to_string(),
       models: vec!["gpt-4".to_string()],
@@ -861,7 +894,7 @@ mod tests {
 
     let create_request = CreateApiModelRequest {
       id: "test-alias-2".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
       models: vec![], // Invalid: empty models array
@@ -909,7 +942,7 @@ mod tests {
       .build()?;
 
     let update_request = UpdateApiModelRequest {
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: input_url.to_string(), // Updated URL with potential trailing slashes
       api_key: Some("sk-updated123456789".to_string()), // New API key
       models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
@@ -960,7 +993,7 @@ mod tests {
       .build()?;
 
     let update_request = UpdateApiModelRequest {
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v2".to_string(),
       api_key: Some("sk-updated123456789".to_string()),
       models: vec!["gpt-4-turbo".to_string()],
@@ -1161,7 +1194,7 @@ mod tests {
     // Create request
     let request = CreateApiModelRequest {
       id: "openai-test".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123".to_string(),
       models: vec!["gpt-4".to_string()],
@@ -1171,7 +1204,7 @@ mod tests {
     // Create API model via database
     let api_alias = ApiAlias::new(
       request.id.clone(),
-      request.provider.clone(),
+      request.api_format,
       request.base_url.clone(),
       request.models.clone(),
       request.prefix.clone(),
@@ -1207,7 +1240,7 @@ mod tests {
     // Create API model
     let api_alias = ApiAlias::new(
       "to-delete".to_string(),
-      "openai".to_string(),
+      OpenAI,
       "https://api.openai.com/v1".to_string(),
       vec!["gpt-4".to_string()],
       None,
@@ -1266,21 +1299,21 @@ mod tests {
   #[case::prefix_removal(
     json!({
       "id": "test-prefix-removal",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key": "sk-test-key-123",
       "models": ["gpt-4"],
       "prefix": "azure/"
     }),
     json!({
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "models": ["gpt-4"],
       "prefix": null
     }),
     json!({
       "id": "test-prefix-removal",
-      "provider": "openai", 
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key_masked": "***",
       "models": ["gpt-4"],
@@ -1292,21 +1325,21 @@ mod tests {
   #[case::prefix_addition(
     json!({
       "id": "test-prefix-addition",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1", 
       "api_key": "sk-test-key-123",
       "models": ["gpt-4"],
       "prefix": null
     }),
     json!({
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "models": ["gpt-4"],
       "prefix": "azure/"
     }),
     json!({
       "id": "test-prefix-addition",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key_masked": "***", 
       "models": ["gpt-4"],
@@ -1318,21 +1351,21 @@ mod tests {
   #[case::prefix_empty_string_removal(
     json!({
       "id": "test-empty-string-removal",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key": "sk-test-key-123", 
       "models": ["gpt-4"],
       "prefix": "azure/"
     }),
     json!({
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "models": ["gpt-4"],
       "prefix": ""
     }),
     json!({
       "id": "test-empty-string-removal",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key_masked": "***",
       "models": ["gpt-4"],
@@ -1344,21 +1377,21 @@ mod tests {
   #[case::prefix_change(
     json!({
       "id": "test-prefix-change",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key": "sk-test-key-123",
       "models": ["gpt-4"],
       "prefix": "azure/"
     }),
     json!({
-      "provider": "openai", 
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "models": ["gpt-4"],
       "prefix": "openai:"
     }),
     json!({
       "id": "test-prefix-change",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key_masked": "***",
       "models": ["gpt-4"],
@@ -1370,21 +1403,21 @@ mod tests {
   #[case::no_prefix_no_change(
     json!({
       "id": "test-no-prefix-no-change", 
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key": "sk-test-key-123",
       "models": ["gpt-4"],
       "prefix": null
     }),
     json!({
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1", 
       "models": ["gpt-4"],
       "prefix": null
     }),
     json!({
       "id": "test-no-prefix-no-change",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key_masked": "***",
       "models": ["gpt-4"],
@@ -1396,21 +1429,21 @@ mod tests {
   #[case::models_and_url_update(
     json!({
       "id": "test-models-url-update",
-      "provider": "openai", 
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v1",
       "api_key": "sk-old-key-123",
       "models": ["gpt-3.5-turbo"],
       "prefix": null
     }),
     json!({
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v2",
       "models": ["gpt-4", "gpt-3.5-turbo"],
       "prefix": null
     }),
     json!({
       "id": "test-models-url-update",
-      "provider": "openai",
+      "api_format": "openai",
       "base_url": "https://api.openai.com/v2",
       "api_key_masked": "***",
       "models": ["gpt-4", "gpt-3.5-turbo"],

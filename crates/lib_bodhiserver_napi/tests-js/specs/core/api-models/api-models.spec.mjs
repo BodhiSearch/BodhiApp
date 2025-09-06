@@ -84,7 +84,11 @@ test.describe('API Models Integration', () => {
     await formPage.createModel();
 
     // Step 3: Verify model appears in models list
-    await modelsPage.verifyApiModelInList(modelData.modelId, modelData.provider, modelData.baseUrl);
+    await modelsPage.verifyApiModelInList(
+      modelData.modelId,
+      modelData.api_format,
+      modelData.baseUrl
+    );
 
     // Step 4: Test chat integration with model
     const modelName = 'gpt-4'; // Use the exact model we selected during creation
@@ -108,12 +112,16 @@ test.describe('API Models Integration', () => {
     // Step 5: Test edit functionality with pre-filled data validation
     await modelsPage.editModel(modelData.modelId);
     await formPage.waitForFormReady();
-    await formPage.verifyFormPreFilled(modelData.modelId, modelData.provider, modelData.baseUrl);
+    await formPage.verifyFormPreFilled(modelData.modelId, modelData.api_format, modelData.baseUrl);
     await formPage.testConnection(); // Test with masked API key
     await formPage.updateModel();
 
     // Step 5: Verify model is still in the list after edit
-    await modelsPage.verifyApiModelInList(modelData.modelId, modelData.provider, modelData.baseUrl);
+    await modelsPage.verifyApiModelInList(
+      modelData.modelId,
+      modelData.api_format,
+      modelData.baseUrl
+    );
 
     // Step 6: Navigate back to models and test delete functionality
     await modelsPage.navigateToModels();

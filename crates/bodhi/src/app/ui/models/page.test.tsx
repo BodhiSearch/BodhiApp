@@ -269,7 +269,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'test-api-model',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: '****key',
             models: ['gpt-4', 'gpt-3.5-turbo'],
@@ -294,7 +294,7 @@ describe('ModelsPage', () => {
 
       // Check that API model is displayed with its ID (using getAllByText to handle multiple responsive layouts)
       expect(screen.getAllByText('test-api-model')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('OpenAI')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
       expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
       expect(screen.getAllByText('gpt-4, gpt-3.5-turbo')[0]).toBeInTheDocument();
     });
@@ -305,7 +305,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'test-api-model',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: '****key',
             models: ['gpt-4'],
@@ -344,7 +344,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'test-api-model',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: '****key',
             models: ['gpt-4'],
@@ -369,15 +369,15 @@ describe('ModelsPage', () => {
 
       // Find the API model row and then look for the chat button within it
       const apiModelRow = screen.getByTestId('actions-cell-api_test-api-model');
-      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
+      const chatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
       expect(chatButton).toBeInTheDocument();
-      expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
+      expect(chatButton).toHaveAttribute('title', 'Chat with gpt-4');
 
       await act(async () => {
         chatButton?.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=test-api-model');
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=gpt-4');
     });
 
     it('does not show HuggingFace button for API models', async () => {
@@ -386,7 +386,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'test-api-model',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: '****key',
             models: ['gpt-4'],
@@ -420,7 +420,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'openai-config',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: 'sk-...abc123',
             models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
@@ -445,7 +445,7 @@ describe('ModelsPage', () => {
 
       // Wait for data to load and verify API model is displayed (use getAllByText for responsive layouts)
       await screen.findAllByText('openai-config');
-      expect(screen.getAllByText('OpenAI')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
       expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
 
       // Models might be displayed differently in responsive layouts
@@ -472,7 +472,7 @@ describe('ModelsPage', () => {
           {
             source: 'api' as const,
             id: 'my-openai',
-            provider: 'OpenAI',
+            api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
             api_key_masked: 'sk-...xyz789',
             models: ['gpt-4', 'gpt-3.5-turbo'],
@@ -501,15 +501,17 @@ describe('ModelsPage', () => {
       // Find the API model row and then look for the chat button within it
       const apiModelRow = screen.getByTestId('actions-cell-api_my-openai');
       const chatButton = apiModelRow.querySelector('[data-testid="chat-button-my-openai"]');
-      expect(chatButton).toBeInTheDocument();
-      expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
+      expect(chatButton).not.toBeInTheDocument();
+      const modelChatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
+      expect(modelChatButton).toBeInTheDocument();
+      expect(modelChatButton).toHaveAttribute('title', 'Chat with gpt-4');
 
       await act(async () => {
-        chatButton?.click();
+        modelChatButton?.click();
       });
 
       // Verify navigation to chat page with the API model ID
-      expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=my-openai');
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=gpt-4');
     });
   });
 

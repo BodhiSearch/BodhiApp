@@ -18,16 +18,18 @@ use routes_app::{
   app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
   create_api_model_handler, create_pull_request_handler, create_token_handler,
   delete_api_model_handler, delete_setting_handler, dev_secrets_handler, envs_handler,
-  fetch_models_handler, get_api_model_handler, get_download_status_handler, get_user_alias_handler,
-  health_handler, list_aliases_handler, list_api_models_handler, list_downloads_handler,
-  list_local_modelfiles_handler, list_settings_handler, list_tokens_handler, logout_handler,
-  ping_handler, pull_by_alias_handler, request_access_handler, setup_handler,
-  test_api_model_handler, update_alias_handler, update_api_model_handler, update_setting_handler,
-  update_token_handler, user_info_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier,
-  ENDPOINT_API_MODELS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
-  ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
-  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
-  ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  fetch_models_handler, get_api_formats_handler, get_api_model_handler,
+  get_download_status_handler, get_user_alias_handler, health_handler, list_aliases_handler,
+  list_api_models_handler, list_downloads_handler, list_local_modelfiles_handler,
+  list_settings_handler, list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler,
+  request_access_handler, setup_handler, test_api_model_handler, update_alias_handler,
+  update_api_model_handler, update_setting_handler, update_token_handler, user_info_handler,
+  BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
+  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST, ENDPOINT_APP_INFO,
+  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS,
+  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS,
+  ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -134,6 +136,12 @@ pub fn build_routes(
     .route(ENDPOINT_API_MODELS, get(list_api_models_handler))
     .route(ENDPOINT_API_MODELS, post(create_api_model_handler))
     .route(
+      ENDPOINT_API_MODELS_API_FORMATS,
+      get(get_api_formats_handler),
+    )
+    .route(ENDPOINT_API_MODELS_TEST, post(test_api_model_handler))
+    .route(ENDPOINT_API_MODELS_FETCH_MODELS, post(fetch_models_handler))
+    .route(
       &format!("{ENDPOINT_API_MODELS}/{{alias}}"),
       get(get_api_model_handler),
     )
@@ -144,14 +152,6 @@ pub fn build_routes(
     .route(
       &format!("{ENDPOINT_API_MODELS}/{{alias}}"),
       delete(delete_api_model_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/test"),
-      post(test_api_model_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_API_MODELS}/fetch-models"),
-      post(fetch_models_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

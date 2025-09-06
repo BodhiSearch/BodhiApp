@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
 // Mock toast
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: mockToast }),
+  useToast: () => ({ toast: mockToast, dismiss: () => { } }),
 }));
 
 // Mock component dependencies
@@ -94,7 +94,7 @@ beforeEach(() => {
 
 const mockApiModelResponse: ApiModelResponse = {
   id: 'test-api-model',
-  provider: 'OpenAI',
+  api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   api_key_masked: '****key',
   models: ['gpt-4', 'gpt-3.5-turbo'],
@@ -139,7 +139,7 @@ describe('ApiModelForm', () => {
 
       // Form fields
       expect(screen.getByTestId('api-model-id')).toBeInTheDocument();
-      expect(screen.getByTestId('api-model-provider')).toBeInTheDocument();
+      expect(screen.getByTestId('api-model-format')).toBeInTheDocument();
       expect(screen.getByTestId('api-model-base-url')).toBeInTheDocument();
       expect(screen.getByTestId('api-model-api-key')).toBeInTheDocument();
 
@@ -165,7 +165,7 @@ describe('ApiModelForm', () => {
       });
     });
 
-    it('handles provider preset selection', async () => {
+    it('handles api_format preset selection', async () => {
       const user = userEvent.setup();
       await act(async () => {
         render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
@@ -259,7 +259,7 @@ describe('ApiModelForm', () => {
 
       // Fill the form
       await user.type(screen.getByTestId('api-model-id'), 'test-model');
-      // Provider Type and Base URL are pre-filled with OpenAI defaults
+      // Api format and Base URL are pre-filled with OpenAI defaults
       await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
 
       // Select models

@@ -1,7 +1,7 @@
 use crate::{
-  ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest, FetchModelsRequest,
-  FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse, PaginationSortParams,
-  PingResponse, RoleSource, TestPromptRequest, TestPromptResponse, TokenType,
+  ApiFormatsResponse, ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest,
+  FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
+  PaginationSortParams, PingResponse, RoleSource, TestPromptRequest, TestPromptResponse, TokenType,
   UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
@@ -12,9 +12,9 @@ use crate::{
   __path_app_info_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
   __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
   __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
-  __path_fetch_models_handler, __path_get_api_model_handler, __path_get_download_status_handler,
-  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
-  __path_list_api_models_handler, __path_list_downloads_handler,
+  __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
+  __path_get_download_status_handler, __path_get_user_alias_handler, __path_health_handler,
+  __path_list_aliases_handler, __path_list_api_models_handler, __path_list_downloads_handler,
   __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
   __path_request_access_handler, __path_setup_handler, __path_test_api_model_handler,
@@ -22,7 +22,7 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{
-  Alias, OAIRequestParams, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource,
+  Alias, ApiFormat, OAIRequestParams, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource,
   API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA,
   API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
@@ -65,6 +65,9 @@ make_ui_endpoint!(ENDPOINT_MODELS, "models");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 make_ui_endpoint!(ENDPOINT_API_MODELS, "api-models");
+make_ui_endpoint!(ENDPOINT_API_MODELS_TEST, "api-models/test");
+make_ui_endpoint!(ENDPOINT_API_MODELS_FETCH_MODELS, "api-models/fetch-models");
+make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 
 // dev-only debugging info endpoint
@@ -159,6 +162,8 @@ For API keys, specify required scope when creating the token.
             TestPromptResponse,
             FetchModelsRequest,
             FetchModelsResponse,
+            ApiFormatsResponse,
+            ApiFormat,
             // models
             CreateAliasRequest,
             OAIRequestParams,
@@ -214,6 +219,7 @@ For API keys, specify required scope when creating the token.
         delete_api_model_handler,
         test_api_model_handler,
         fetch_models_handler,
+        get_api_formats_handler,
 
         // Models endpoints
         create_alias_handler,

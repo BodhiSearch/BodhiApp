@@ -131,14 +131,9 @@ export class ChatPage extends BasePage {
    * Wait for any response to complete (streaming or non-streaming)
    */
   async waitForResponseComplete() {
-    // Wait for assistant message to appear
     const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
     await expect(lastAssistantMessage).toBeVisible({ timeout: 20000 }); // wait longer for chat messages
-
-    // Wait for the latest AI message class to appear (indicates completion)
     await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
-
-    // Ensure it's marked as completed
     const latestAiMessage = this.page.locator(this.selectors.latestAiMessage);
     await expect(latestAiMessage).toHaveClass(/message-completed/);
   }

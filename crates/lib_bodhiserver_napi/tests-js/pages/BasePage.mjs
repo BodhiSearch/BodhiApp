@@ -1,6 +1,10 @@
 import { expect } from '@playwright/test';
 
 export class BasePage {
+  baseSelectors = {
+    successToast: '[data-state="open"]',
+  };
+
   constructor(page, baseUrl) {
     this.page = page;
     this.baseUrl = baseUrl;
@@ -12,7 +16,6 @@ export class BasePage {
   }
 
   async waitForSPAReady() {
-    await this.page.waitForLoadState('networkidle');
     await this.page.waitForLoadState('domcontentloaded');
   }
 
@@ -30,10 +33,14 @@ export class BasePage {
 
   async waitForToast(message) {
     if (message instanceof RegExp) {
-      await expect(this.page.locator('[data-state="open"]')).toContainText(message);
+      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message);
     } else {
-      await expect(this.page.locator('[data-state="open"]')).toContainText(message);
+      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message);
     }
+  }
+
+  async waitForToastToHide() {
+    await expect(this.page.locator(this.baseSelectors.successToast)).toBeHidden({ timeout: 10000 }); // wait for toast to hide
   }
 
   async getCurrentPath() {

@@ -2,10 +2,25 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+/// API format/protocol specification
+#[derive(
+  Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum ApiFormat {
+  #[serde(rename = "openai")]
+  #[strum(serialize = "openai")]
+  OpenAI,
+  #[serde(rename = "placeholder")]
+  #[strum(serialize = "placeholder")]
+  Placeholder,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ApiAlias {
   pub id: String,
-  pub provider: String,
+  pub api_format: ApiFormat,
   pub base_url: String,
   pub models: Vec<String>,
   pub prefix: Option<String>,
@@ -18,7 +33,7 @@ pub struct ApiAlias {
 impl ApiAlias {
   pub fn new(
     id: impl Into<String>,
-    provider: impl Into<String>,
+    api_format: ApiFormat,
     base_url: impl Into<String>,
     models: Vec<String>,
     prefix: Option<String>,
@@ -26,7 +41,7 @@ impl ApiAlias {
   ) -> Self {
     Self {
       id: id.into(),
-      provider: provider.into(),
+      api_format,
       base_url: base_url.into(),
       models,
       prefix,
@@ -55,15 +70,15 @@ impl std::fmt::Display for ApiAlias {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
-      "ApiAlias {{ id: {}, provider: {}, prefix: {:?}, models: {:?} }}",
-      self.id, self.provider, self.prefix, self.models
+      "ApiAlias {{ id: {}, api_format: {}, prefix: {:?}, models: {:?} }}",
+      self.id, self.api_format, self.prefix, self.models
     )
   }
 }
 
 #[cfg(test)]
 mod test {
-  use super::ApiAlias;
+  use super::{ApiAlias, ApiFormat};
   use chrono::Utc;
   use rstest::rstest;
 
@@ -76,7 +91,7 @@ mod test {
   ) -> anyhow::Result<()> {
     let alias = ApiAlias::new(
       "test",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       models,
       prefix,
@@ -94,7 +109,7 @@ mod test {
   fn test_api_model_alias_with_prefix_builder() {
     let alias = ApiAlias::new(
       "openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
@@ -114,9 +129,25 @@ mod test {
     #[case] prefix: Option<String>,
     #[case] expected: Vec<String>,
   ) {
-    let alias = ApiAlias::new("test", "provider", "url", models, prefix, Utc::now());
+    let alias = ApiAlias::new("test", ApiFormat::OpenAI, "url", models, prefix, Utc::now());
     let matchable = alias.matchable_models();
 
     assert_eq!(expected, matchable);
+  }
+
+  #[test]
+  fn test_api_format_serialization() -> anyhow::Result<()> {
+    let format = ApiFormat::OpenAI;
+    let serialized = serde_json::to_string(&format)?;
+    assert_eq!(serialized, "\"openai\"");
+
+    let deserialized: ApiFormat = serde_json::from_str(&serialized)?;
+    assert_eq!(deserialized, ApiFormat::OpenAI);
+    Ok(())
+  }
+
+  #[test]
+  fn test_api_format_display() {
+    assert_eq!(ApiFormat::OpenAI.to_string(), "openai");
   }
 }
