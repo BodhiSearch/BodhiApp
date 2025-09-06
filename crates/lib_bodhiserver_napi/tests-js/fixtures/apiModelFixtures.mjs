@@ -3,7 +3,7 @@ export class ApiModelFixtures {
     const timestamp = Date.now();
     return {
       modelId: `test-model-${timestamp}`,
-      provider: 'OpenAI',
+      api_format: 'openai',
       baseUrl: 'https://api.openai.com/v1',
       models: ['gpt-4', 'gpt-3.5-turbo'],
       prefix: null, // Default no prefix
@@ -58,10 +58,10 @@ export class ApiModelFixtures {
     });
   }
 
-  static createCustomProviderData(baseUrl, models) {
+  static createCustomAliasData(baseUrl, models) {
     return this.createModelData({
-      modelId: `custom-provider-${Date.now()}`,
-      provider: 'Custom',
+      modelId: `custom-alias-${Date.now()}`,
+      api_format: 'openai',
       baseUrl,
       models,
     });
@@ -69,7 +69,7 @@ export class ApiModelFixtures {
 
   // Test data validation
   static validateModelData(data) {
-    const required = ['modelId', 'provider', 'baseUrl', 'models'];
+    const required = ['modelId', 'api_format', 'baseUrl', 'models'];
     const missing = required.filter((field) => !data[field]);
 
     if (missing.length > 0) {
@@ -122,7 +122,7 @@ export class ApiModelFixtures {
     WITH_PREFIX: () =>
       this.createModelData({
         modelId: this.generateUniqueId('with-prefix'),
-        provider: 'OpenRouter',
+        api_format: 'openai',
         baseUrl: 'https://openrouter.ai/api/v1',
         models: ['openai/gpt-4', 'openai/gpt-3.5-turbo'],
         prefix: 'openrouter/',
@@ -131,7 +131,7 @@ export class ApiModelFixtures {
     OPENAI_PREFIX: () =>
       this.createModelData({
         modelId: this.generateUniqueId('openai-prefix'),
-        provider: 'OpenAI',
+        api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         models: ['gpt-4', 'gpt-3.5-turbo'],
         prefix: 'openai:',
@@ -140,7 +140,7 @@ export class ApiModelFixtures {
     CUSTOM_PREFIX: () =>
       this.createModelData({
         modelId: this.generateUniqueId('custom-prefix'),
-        provider: 'OpenRouter',
+        api_format: 'openai',
         baseUrl: 'https://openrouter.ai/api/v1',
         models: ['anthropic/claude-3-sonnet', 'openai/gpt-4'],
         prefix: 'custom-',
@@ -149,7 +149,7 @@ export class ApiModelFixtures {
     NO_PREFIX: () =>
       this.createModelData({
         modelId: this.generateUniqueId('no-prefix'),
-        provider: 'OpenAI',
+        api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         models: ['gpt-4'],
         prefix: null,
@@ -158,7 +158,7 @@ export class ApiModelFixtures {
     EMPTY_PREFIX: () =>
       this.createModelData({
         modelId: this.generateUniqueId('empty-prefix'),
-        provider: 'OpenAI',
+        api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
         models: ['gpt-4'],
         prefix: '',

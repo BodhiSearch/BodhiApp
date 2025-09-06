@@ -72,7 +72,7 @@ impl ModelRouter for DefaultModelRouter {
 mod tests {
   use crate::model_router::{DefaultModelRouter, ModelRouter, ModelRouterError, RouteDestination};
   use mockall::predicate::eq;
-  use objs::{Alias, ApiAlias};
+  use objs::{Alias, ApiAlias, ApiFormat};
   use rstest::rstest;
   use services::MockDataService;
   use std::sync::Arc;
@@ -137,7 +137,7 @@ mod tests {
     let mut mock_data = MockDataService::new();
     let api_alias = Alias::Api(ApiAlias::new(
       "test-api",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-3.5-turbo".to_string()],
       None,
@@ -152,7 +152,7 @@ mod tests {
     match result {
       RouteDestination::Remote(alias) => {
         assert_eq!(alias.id, "test-api");
-        assert_eq!(alias.provider, "openai");
+        assert_eq!(alias.api_format, ApiFormat::OpenAI);
       }
       _ => panic!("Expected Remote destination with API alias"),
     }

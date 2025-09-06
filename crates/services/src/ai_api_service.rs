@@ -278,7 +278,7 @@ mod tests {
   use axum::http::StatusCode;
   use chrono::Utc;
   use mockito::Server;
-  use objs::ApiAlias;
+  use objs::{ApiAlias, ApiFormat};
   use rstest::rstest;
   use serde_json::json;
   use std::sync::Arc;
@@ -420,7 +420,7 @@ mod tests {
   #[rstest]
   #[case::strips_prefix(
     "azure-openai",
-    "azure",
+    ApiFormat::OpenAI,
     vec!["gpt-4".to_string()],
     Some("azure/".to_string()),
     "azure/gpt-4",
@@ -428,7 +428,7 @@ mod tests {
   )]
   #[case::no_prefix_unchanged(
     "openai-api",
-    "openai",
+    ApiFormat::OpenAI,
     vec!["gpt-4".to_string()],
     None,
     "gpt-4",
@@ -436,7 +436,7 @@ mod tests {
   )]
   #[case::strips_nested_prefix(
     "openrouter-api",
-    "openrouter",
+    ApiFormat::OpenAI,
     vec!["openai/gpt-4".to_string()],
     Some("openrouter/".to_string()),
     "openrouter/openai/gpt-4",
@@ -445,7 +445,7 @@ mod tests {
   #[tokio::test]
   async fn test_forward_chat_completion_model_prefix_handling(
     #[case] api_id: &str,
-    #[case] provider: &str,
+    #[case] api_format: ApiFormat,
     #[case] models: Vec<String>,
     #[case] prefix: Option<String>,
     #[case] input_model: &str,
@@ -456,7 +456,7 @@ mod tests {
     let url = server.url();
 
     // Create API alias with the provided parameters
-    let api_alias = ApiAlias::new(api_id, provider, &url, models, prefix, Utc::now());
+    let api_alias = ApiAlias::new(api_id, api_format, &url, models, prefix, Utc::now());
 
     // Setup mock expectations
     let api_id_owned = api_id.to_string();

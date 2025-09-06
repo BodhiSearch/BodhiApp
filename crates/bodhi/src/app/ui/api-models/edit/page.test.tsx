@@ -9,7 +9,7 @@ import { ApiModelResponse } from '@bodhiapp/ts-client';
 
 const mockApiModel: ApiModelResponse = {
   id: 'test-api-model',
-  provider: 'OpenAI',
+  api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
   api_key_masked: '****key',
   models: ['gpt-4', 'gpt-3.5-turbo'],

@@ -48,7 +48,7 @@ use std::sync::Arc;
               {
                 "source": "api",
                 "id": "openai-gpt4",
-                "provider": "openai",
+                "api_format": "openai",
                 "base_url": "https://api.openai.com/v1",
                 "models": ["gpt-4", "gpt-3.5-turbo"],
                 "created_at": "2024-01-01T00:00:00Z",

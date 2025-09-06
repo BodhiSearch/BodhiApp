@@ -8,8 +8,8 @@ use crate::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
-use objs::ApiAlias;
 use objs::{impl_error_from, AppError, ErrorType};
+use objs::{ApiAlias, ApiFormat};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -729,12 +729,12 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_model_aliases (id, provider, base_url, models_json, prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
+      INSERT INTO api_model_aliases (id, api_format, base_url, models_json, prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#
     )
     .bind(&alias.id)
-    .bind(&alias.provider)
+    .bind(&alias.api_format.to_string())
     .bind(&alias.base_url)
     .bind(&models_json)
     .bind(&alias.prefix)
@@ -751,14 +751,18 @@ impl DbService for SqliteDbService {
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
     let result = query_as::<_, (String, String, String, String, Option<String>, i64)>(
-      "SELECT id, provider, base_url, models_json, prefix, created_at FROM api_model_aliases WHERE id = ?",
+      "SELECT id, api_format, base_url, models_json, prefix, created_at FROM api_model_aliases WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((id, provider, base_url, models_json, prefix, created_at)) => {
+      Some((id, api_format_str, base_url, models_json, prefix, created_at)) => {
+        let api_format = api_format_str
+          .parse::<ApiFormat>()
+          .map_err(|e| DbError::EncryptionError(format!("Failed to parse api_format: {}", e)))?;
+
         let models: Vec<String> = serde_json::from_str(&models_json)
           .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
@@ -766,7 +770,7 @@ impl DbService for SqliteDbService {
 
         Ok(Some(ApiAlias {
           id,
-          provider,
+          api_format,
           base_url,
           models,
           prefix,
@@ -797,11 +801,11 @@ impl DbService for SqliteDbService {
       sqlx::query(
         r#"
         UPDATE api_model_aliases 
-        SET provider = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+        SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
         WHERE id = ?
         "#
       )
-      .bind(&model.provider)
+      .bind(&model.api_format.to_string())
       .bind(&model.base_url)
       .bind(&models_json)
       .bind(&model.prefix)
@@ -817,11 +821,11 @@ impl DbService for SqliteDbService {
       sqlx::query(
         r#"
         UPDATE api_model_aliases 
-        SET provider = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
+        SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
         WHERE id = ?
         "#,
       )
-      .bind(&model.provider)
+      .bind(&model.api_format.to_string())
       .bind(&model.base_url)
       .bind(&models_json)
       .bind(&model.prefix)
@@ -845,13 +849,17 @@ impl DbService for SqliteDbService {
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
     let results = query_as::<_, (String, String, String, String, Option<String>, i64)>(
-      "SELECT id, provider, base_url, models_json, prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
+      "SELECT id, api_format, base_url, models_json, prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
     .fetch_all(&self.pool)
     .await?;
 
     let mut aliases = Vec::new();
-    for (id, provider, base_url, models_json, prefix, created_at) in results {
+    for (id, api_format_str, base_url, models_json, prefix, created_at) in results {
+      let api_format = api_format_str
+        .parse::<ApiFormat>()
+        .map_err(|e| DbError::EncryptionError(format!("Failed to parse api_format: {}", e)))?;
+
       let models: Vec<String> = serde_json::from_str(&models_json)
         .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
@@ -859,7 +867,7 @@ impl DbService for SqliteDbService {
 
       aliases.push(ApiAlias {
         id,
-        provider,
+        api_format,
         base_url,
         models,
         prefix,
@@ -905,6 +913,7 @@ mod test {
   };
   use chrono::Utc;
   use objs::ApiAlias;
+  use objs::ApiFormat;
   use rstest::rstest;
   use uuid::Uuid;
 
@@ -1326,7 +1335,7 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       None,
@@ -1359,7 +1368,7 @@ mod test {
     let now = service.now();
     let mut alias_obj = ApiAlias::new(
       "claude",
-      "anthropic",
+      ApiFormat::OpenAI,
       "https://api.anthropic.com/v1",
       vec!["claude-3".to_string()],
       None,
@@ -1401,7 +1410,7 @@ mod test {
     let now = service.now();
     let mut alias_obj = ApiAlias::new(
       "gemini",
-      "google",
+      ApiFormat::OpenAI,
       "https://generativelanguage.googleapis.com/v1",
       vec!["gemini-pro".to_string()],
       None,
@@ -1444,25 +1453,15 @@ mod test {
 
     // Create multiple aliases with different timestamps for proper sorting test
     let aliases = vec![
-      (
-        "alias1",
-        "provider1",
-        "key1",
-        now - chrono::Duration::seconds(20),
-      ),
-      (
-        "alias2",
-        "provider2",
-        "key2",
-        now - chrono::Duration::seconds(10),
-      ),
-      ("alias3", "provider3", "key3", now),
+      ("alias1", "key1", now - chrono::Duration::seconds(20)),
+      ("alias2", "key2", now - chrono::Duration::seconds(10)),
+      ("alias3", "key3", now),
     ];
 
-    for (alias, provider, key, created_at) in &aliases {
+    for (alias, key, created_at) in &aliases {
       let alias_obj = ApiAlias::new(
         *alias,
-        *provider,
+        ApiFormat::OpenAI,
         "https://api.example.com/v1",
         vec!["model1".to_string()],
         None,
@@ -1493,7 +1492,7 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "to-delete",
-      "test-provider",
+      ApiFormat::OpenAI,
       "https://api.test.com/v1",
       vec!["test-model".to_string()],
       None,
@@ -1525,7 +1524,7 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "security-test",
-      "secure-provider",
+      ApiFormat::OpenAI,
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
       None,
@@ -1541,7 +1540,7 @@ mod test {
     // Verify different encryptions produce different results
     let alias_obj2 = ApiAlias::new(
       "security-test2",
-      "secure-provider",
+      ApiFormat::OpenAI,
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
       None,

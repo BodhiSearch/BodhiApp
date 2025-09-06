@@ -13,26 +13,38 @@ export type Alias = (UserAlias & {
 });
 
 export type ApiAlias = {
+    api_format: ApiFormat;
     base_url: string;
     created_at: string;
     id: string;
     models: Array<string>;
     prefix?: string | null;
-    provider: string;
     updated_at: string;
+};
+
+/**
+ * API format/protocol specification
+ */
+export type ApiFormat = 'openai' | 'placeholder';
+
+/**
+ * Response containing available API formats
+ */
+export type ApiFormatsResponse = {
+    data: Array<ApiFormat>;
 };
 
 /**
  * Response containing API model configuration
  */
 export type ApiModelResponse = {
+    api_format: ApiFormat;
     api_key_masked: string;
     base_url: string;
     created_at: string;
     id: string;
     models: Array<string>;
     prefix?: string | null;
-    provider: string;
     updated_at: string;
 };
 
@@ -113,6 +125,10 @@ export type CreateAliasRequest = {
  */
 export type CreateApiModelRequest = {
     /**
+     * API format/protocol (e.g., "openai")
+     */
+    api_format: ApiFormat;
+    /**
      * API key for authentication
      */
     api_key: string;
@@ -129,13 +145,9 @@ export type CreateApiModelRequest = {
      */
     models: Array<string>;
     /**
-     * Optional prefix for model namespacing (e.g., "azure" for "azure/gpt-4")
+     * Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4")
      */
     prefix?: string | null;
-    /**
-     * Provider name (e.g., "openai", "anthropic")
-     */
-    provider: string;
 };
 
 /**
@@ -581,25 +593,25 @@ export type UpdateAliasRequest = {
  */
 export type UpdateApiModelRequest = {
     /**
-     * API key for authentication (optional, only update if provided)
+     * API format/protocol (required)
+     */
+    api_format: ApiFormat;
+    /**
+     * API key for authentication (optional, only update if provided for security)
      */
     api_key?: string | null;
     /**
-     * API base URL (optional)
+     * API base URL (required)
      */
-    base_url?: string | null;
+    base_url: string;
     /**
-     * List of available models (optional)
+     * List of available models (required)
      */
-    models?: Array<string> | null;
+    models: Array<string>;
     /**
      * Optional prefix for model namespacing
      */
     prefix?: string | null;
-    /**
-     * Provider name (optional)
-     */
-    provider?: string | null;
 };
 
 /**
@@ -831,6 +843,31 @@ export type CreateApiModelResponses = {
 };
 
 export type CreateApiModelResponse = CreateApiModelResponses[keyof CreateApiModelResponses];
+
+export type GetApiFormatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/api-models/api-formats';
+};
+
+export type GetApiFormatsErrors = {
+    /**
+     * Internal server error during API format retrieval
+     */
+    500: OpenAiApiError;
+};
+
+export type GetApiFormatsError = GetApiFormatsErrors[keyof GetApiFormatsErrors];
+
+export type GetApiFormatsResponses = {
+    /**
+     * API formats retrieved successfully
+     */
+    200: ApiFormatsResponse;
+};
+
+export type GetApiFormatsResponse = GetApiFormatsResponses[keyof GetApiFormatsResponses];
 
 export type FetchApiModelsData = {
     body: FetchModelsRequest;

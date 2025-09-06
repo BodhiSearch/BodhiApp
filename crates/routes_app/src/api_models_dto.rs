@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use objs::ApiAlias;
+use objs::{ApiAlias, ApiFormat};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -8,7 +8,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "id": "openai-gpt4",
-    "provider": "openai",
+    "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-...",
     "models": ["gpt-4", "gpt-3.5-turbo"],
@@ -23,13 +23,8 @@ pub struct CreateApiModelRequest {
   ))]
   pub id: String,
 
-  /// Provider name (e.g., "openai", "anthropic")
-  #[validate(length(
-    min = 1,
-    max = 50,
-    message = "Provider must not be empty and should be between 1 and 50 characters"
-  ))]
-  pub provider: String,
+  /// API format/protocol (e.g., "openai")
+  pub api_format: ApiFormat,
 
   /// API base URL
   #[validate(url(message = "Base URL must be a valid URL"))]
@@ -50,20 +45,15 @@ pub struct CreateApiModelRequest {
 /// Request to update an existing API model configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
-    "provider": "openai",
+    "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-new-key",
     "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
 pub struct UpdateApiModelRequest {
-  /// Provider name (required)
-  #[validate(length(
-    min = 1,
-    max = 50,
-    message = "Provider must not be empty and should be between 1 and 50 characters"
-  ))]
-  pub provider: String,
+  /// API format/protocol (required)
+  pub api_format: ApiFormat,
 
   /// API base URL (required)
   #[validate(url(message = "Base URL must be a valid URL"))]
@@ -145,7 +135,7 @@ pub struct FetchModelsRequest {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "id": "openai-gpt4",
-    "provider": "openai",
+    "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key_masked": "sk-...abc123",
     "models": ["gpt-4", "gpt-3.5-turbo"],
@@ -155,7 +145,7 @@ pub struct FetchModelsRequest {
 }))]
 pub struct ApiModelResponse {
   pub id: String,
-  pub provider: String,
+  pub api_format: ApiFormat,
   pub base_url: String,
   pub api_key_masked: String,
   pub models: Vec<String>,
@@ -171,7 +161,7 @@ impl ApiModelResponse {
   pub fn from_alias(alias: ApiAlias, api_key: Option<String>) -> Self {
     Self {
       id: alias.id,
-      provider: alias.provider,
+      api_format: alias.api_format,
       base_url: alias.base_url,
       api_key_masked: api_key
         .map(|k| mask_api_key(&k))
@@ -222,6 +212,15 @@ impl TestPromptResponse {
 }))]
 pub struct FetchModelsResponse {
   pub models: Vec<String>,
+}
+
+/// Response containing available API formats
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "data": ["openai"]
+}))]
+pub struct ApiFormatsResponse {
+  pub data: Vec<ApiFormat>,
 }
 
 /// Paginated response for API model listings
@@ -281,6 +280,7 @@ mod tests {
   use super::{
     mask_api_key, CreateApiModelRequest, FetchModelsRequest, TestPromptRequest, TestPromptResponse,
   };
+  use objs::ApiFormat::OpenAI;
   use validator::Validate;
 
   #[test]
@@ -295,7 +295,7 @@ mod tests {
   fn test_create_api_model_request_validation() {
     let request = CreateApiModelRequest {
       id: "test".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "not-a-url".to_string(),
       api_key: "key".to_string(),
       models: vec!["gpt-4".to_string()],
@@ -306,7 +306,7 @@ mod tests {
 
     let valid_request = CreateApiModelRequest {
       id: "test".to_string(),
-      provider: "openai".to_string(),
+      api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test".to_string(),
       models: vec!["gpt-4".to_string()],

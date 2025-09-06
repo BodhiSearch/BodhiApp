@@ -1,8 +1,8 @@
 import * as z from 'zod';
-import type { ApiModelResponse, CreateApiModelRequest, UpdateApiModelRequest } from '@bodhiapp/ts-client';
+import type { ApiFormat, ApiModelResponse, CreateApiModelRequest, UpdateApiModelRequest } from '@bodhiapp/ts-client';
 
-// Provider presets for AI APIs
-export const PROVIDER_PRESETS = {
+// API format presets for AI APIs
+export const API_FORMAT_PRESETS = {
   openai: {
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
@@ -10,7 +10,7 @@ export const PROVIDER_PRESETS = {
   },
 };
 
-export type ProviderPreset = keyof typeof PROVIDER_PRESETS;
+export type ApiFormatPreset = keyof typeof API_FORMAT_PRESETS;
 
 // Zod schema for creating API models
 export const createApiModelSchema = z.object({
@@ -22,7 +22,7 @@ export const createApiModelSchema = z.object({
       /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/,
       'ID must start with alphanumeric character and contain only letters, numbers, hyphens, and underscores'
     ),
-  provider: z.string().min(1, 'Provider is required').max(20, 'Provider must be less than 20 characters'),
+  api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
   base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
   api_key: z.string().min(10, 'API key must be at least 10 characters long').max(200, 'API key is too long'),
   models: z
@@ -35,7 +35,7 @@ export const createApiModelSchema = z.object({
 
 // Zod schema for updating API models
 export const updateApiModelSchema = z.object({
-  provider: z.string().min(1, 'Provider is required').max(20, 'Provider must be less than 20 characters'),
+  api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
   base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
   api_key: z
     .string()
@@ -57,7 +57,7 @@ export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
 // Conversion functions between form and API formats
 export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateApiModelRequest => ({
   id: formData.id,
-  provider: formData.provider,
+  api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
   api_key: formData.api_key,
   models: formData.models,
@@ -65,7 +65,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateAp
 });
 
 export const convertFormToUpdateRequest = (formData: UpdateApiModelFormData): UpdateApiModelRequest => ({
-  provider: formData.provider,
+  api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
   api_key: formData.api_key || undefined,
   models: formData.models,
@@ -74,7 +74,7 @@ export const convertFormToUpdateRequest = (formData: UpdateApiModelFormData): Up
 
 export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData => ({
   id: apiData.id,
-  provider: apiData.provider,
+  api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '', // API key is masked, will be empty for edit forms
   models: apiData.models,
@@ -83,7 +83,7 @@ export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData =>
 });
 
 export const convertApiToUpdateForm = (apiData: ApiModelResponse): UpdateApiModelFormData => ({
-  provider: apiData.provider,
+  api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '', // API key is masked, will be empty for edit forms
   models: apiData.models,
@@ -104,14 +104,6 @@ export const maskApiKey = (apiKey: string): string => {
 // Helper function to validate API key format
 export const isValidApiKey = (apiKey: string): boolean => {
   return !!apiKey && apiKey.length >= 10 && apiKey.length <= 200;
-};
-
-// Helper function to get provider preset
-export const getProviderPreset = (provider: string): (typeof PROVIDER_PRESETS)[ProviderPreset] | null => {
-  const preset = Object.entries(PROVIDER_PRESETS).find(
-    ([key, value]) => key === provider.toLowerCase() || value.name === provider
-  );
-  return preset ? preset[1] : null;
 };
 
 // Helper function to format prefixed model name for display

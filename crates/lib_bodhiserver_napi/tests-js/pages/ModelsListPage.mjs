@@ -41,14 +41,14 @@ export class ModelsListPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async verifyApiModelInList(modelId, provider = 'OpenAI', baseUrl = 'https://api.openai.com/v1') {
+  async verifyApiModelInList(modelId, api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
     // Wait for table and data to load
     await this.waitForSelector(this.selectors.table);
     await this.waitForSelector(`${this.selectors.table} tbody tr`);
 
     // Verify model data in table cells - these selectors target specific cells by model ID
     await expect(this.page.locator(this.selectors.aliasCell(modelId))).toContainText(modelId);
-    await expect(this.page.locator(this.selectors.repoCell(modelId))).toContainText(provider);
+    await expect(this.page.locator(this.selectors.repoCell(modelId))).toContainText(api_format);
     await expect(this.page.locator(this.selectors.filenameCell(modelId))).toContainText(baseUrl);
   }
 

@@ -47,7 +47,7 @@ const columns = [
   },
   {
     id: 'repo_filename',
-    name: 'Provider/Repository',
+    name: 'API Format/Repository',
     sorted: true,
     className: 'hidden sm:table-cell lg:hidden',
   },
@@ -57,7 +57,7 @@ const columns = [
     sorted: true,
     className: 'hidden lg:table-cell',
   },
-  { id: 'repo', name: 'Provider/Repo', sorted: true, className: 'hidden lg:table-cell' },
+  { id: 'repo', name: 'API Format/Repo', sorted: true, className: 'hidden lg:table-cell' },
   {
     id: 'filename',
     name: 'File/Endpoint',
@@ -345,7 +345,7 @@ function ModelsPageContent() {
 
   const getModelDisplayRepo = (model: Alias): string => {
     if (isApiAlias(model)) {
-      return model.provider;
+      return model.api_format;
     } else {
       return model.repo;
     }
@@ -363,22 +363,17 @@ function ModelsPageContent() {
     // Mobile view (single column with all items stacked)
     <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
       <div className="flex flex-col gap-2">
-        {/* Name - for API models, show list of models */}
         <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
         {isApiAlias(model) && <div className="text-xs text-muted-foreground">Models: {model.models.join(', ')}</div>}
 
-        {/* Repo/Provider */}
         <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
 
-        {/* Filename/Base URL */}
         <CopyableContent text={getModelDisplayFilename(model)} className="text-xs text-muted-foreground" />
 
-        {/* Source/Type */}
         <div className="w-fit">
           <SourceBadge model={model} testIdPrefix="m-" />
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 pt-2 border-t" data-testid={`actions-${getItemId(model)}`}>
           {actionUi(model, 'm-')}
         </div>

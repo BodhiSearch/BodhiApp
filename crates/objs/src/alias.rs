@@ -50,7 +50,7 @@ impl Alias {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{AliasSource, ModelAliasBuilder, Repo, UserAliasBuilder};
+  use crate::{AliasSource, ApiFormat, ModelAliasBuilder, Repo, UserAliasBuilder};
   use anyhow::Result;
   use chrono::Utc;
   use std::str::FromStr;
@@ -94,7 +94,7 @@ mod tests {
   fn test_model_alias_api_can_serve() {
     let api_alias = ApiAlias::new(
       "openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       None,
@@ -147,7 +147,7 @@ mod tests {
     // Test Api variant
     let api_alias = ApiAlias::new(
       "openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
@@ -167,7 +167,7 @@ mod tests {
     // With tagged enum, the JSON includes a source field
     let api_alias = ApiAlias::new(
       "openai",
-      "openai",
+      ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,

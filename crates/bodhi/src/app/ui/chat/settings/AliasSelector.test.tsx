@@ -62,13 +62,13 @@ const mockUnifiedModels = [
   {
     source: 'api' as const,
     id: 'openai-api',
-    provider: 'OpenAI',
+    api_format: 'openai',
     models: ['gpt-4', 'gpt-3.5-turbo'],
   },
   {
     source: 'api' as const,
     id: 'anthropic-api',
-    provider: 'Anthropic',
+    api_format: 'openai',
     models: ['claude-3-opus', 'claude-3-sonnet'],
   },
 ];
@@ -156,7 +156,7 @@ describe('AliasSelector', () => {
 
   // New tests for unified model support (local + API models)
   describe('Unified Model Support', () => {
-    it('expands API models to show individual model names with provider labels', () => {
+    it('expands API models to show individual model names with api_format labels', () => {
       const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
       render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
@@ -166,7 +166,7 @@ describe('AliasSelector', () => {
       const select = screen.getByRole('combobox');
       fireEvent.click(select);
 
-      // Should show individual API models without provider labels
+      // Should show individual API models without api_format labels
       expect(screen.getByText('gpt-4')).toBeInTheDocument();
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
@@ -200,7 +200,7 @@ describe('AliasSelector', () => {
       expect(screen.getByText('local-model-1')).toBeInTheDocument();
       expect(screen.getByText('local-model-2')).toBeInTheDocument();
 
-      // Should show expanded API models without provider labels
+      // Should show expanded API models without api_format labels
       expect(screen.getByText('gpt-4')).toBeInTheDocument();
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument();
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
@@ -265,7 +265,7 @@ describe('AliasSelector', () => {
         wrapper: createWrapper(),
       });
 
-      // Should show the selected API model without provider label
+      // Should show the selected API model without api_format label
       expect(screen.getByText('claude-3-opus')).toBeInTheDocument();
     });
 
@@ -290,7 +290,7 @@ describe('AliasSelector', () => {
         {
           source: 'api' as const,
           id: 'empty-api',
-          provider: 'Empty Provider',
+          api_format: 'openai',
           models: [],
         },
       ];
@@ -303,7 +303,7 @@ describe('AliasSelector', () => {
       fireEvent.click(select);
 
       // Should not show any options for API models with no models
-      expect(screen.queryByText('Empty Provider')).not.toBeInTheDocument();
+      expect(screen.queryByText('openai')).not.toBeInTheDocument();
     });
 
     it('falls back to displaying unknown selected model', () => {

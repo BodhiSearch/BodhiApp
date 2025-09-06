@@ -277,7 +277,7 @@
           "api-models"
         ],
         "summary": "List API Model Configurations",
-        "description": "Retrieves paginated list of all configured API model aliases including external providers like OpenAI, Anthropic, etc. API keys are masked in list view for security.",
+        "description": "Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.",
         "operationId": "listApiModels",
         "parameters": [
           {
@@ -330,10 +330,10 @@
                 "example": {
                   "data": [
                     {
+                      "api_format": "openai",
                       "api_key": "sk-****",
                       "base_url": "https://api.openai.com/v1",
-                      "id": "openai-gpt4",
-                      "provider": "openai"
+                      "id": "openai-gpt4"
                     }
                   ],
                   "page": 1,
@@ -438,12 +438,56 @@
         ]
       }
     },
+    "/bodhi/v1/api-models/api-formats": {
+      "get": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Get Available API Formats",
+        "description": "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
+        "operationId": "getApiFormats",
+        "responses": {
+          "200": {
+            "description": "API formats retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiFormatsResponse"
+                },
+                "example": {
+                  "data": [
+                    "openai"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error during API format retrieval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "service_error",
+                    "message": "Service unavailable",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bodhi/v1/api-models/fetch-models": {
       "post": {
         "tags": [
           "api-models"
         ],
-        "summary": "Fetch available models from the API provider",
+        "summary": "Fetch available models from the API",
         "operationId": "fetchApiModels",
         "requestBody": {
           "content": {
@@ -716,11 +760,11 @@
                   "$ref": "#/components/schemas/ApiModelResponse"
                 },
                 "example": {
+                  "api_format": "openai",
                   "api_key": "sk-****",
                   "base_url": "https://api.openai.com/v1",
                   "id": "openai-gpt4",
-                  "model": "gpt-4",
-                  "provider": "openai"
+                  "model": "gpt-4"
                 }
               }
             }
@@ -1640,6 +1684,7 @@
                       "source": "model"
                     },
                     {
+                      "api_format": "openai",
                       "base_url": "https://api.openai.com/v1",
                       "created_at": "2024-01-01T00:00:00Z",
                       "id": "openai-gpt4",
@@ -1647,7 +1692,6 @@
                         "gpt-4",
                         "gpt-3.5-turbo"
                       ],
-                      "provider": "openai",
                       "source": "api",
                       "updated_at": "2024-01-01T00:00:00Z"
                     }
@@ -3030,13 +3074,16 @@
         "type": "object",
         "required": [
           "id",
-          "provider",
+          "api_format",
           "base_url",
           "models",
           "created_at",
           "updated_at"
         ],
         "properties": {
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat"
+          },
           "base_url": {
             "type": "string"
           },
@@ -3059,13 +3106,38 @@
               "null"
             ]
           },
-          "provider": {
-            "type": "string"
-          },
           "updated_at": {
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "ApiFormat": {
+        "type": "string",
+        "description": "API format/protocol specification",
+        "enum": [
+          "openai",
+          "placeholder"
+        ]
+      },
+      "ApiFormatsResponse": {
+        "type": "object",
+        "description": "Response containing available API formats",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiFormat"
+            }
+          }
+        },
+        "example": {
+          "data": [
+            "openai"
+          ]
         }
       },
       "ApiModelResponse": {
@@ -3073,7 +3145,7 @@
         "description": "Response containing API model configuration",
         "required": [
           "id",
-          "provider",
+          "api_format",
           "base_url",
           "api_key_masked",
           "models",
@@ -3081,6 +3153,9 @@
           "updated_at"
         ],
         "properties": {
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat"
+          },
           "api_key_masked": {
             "type": "string"
           },
@@ -3106,15 +3181,13 @@
               "null"
             ]
           },
-          "provider": {
-            "type": "string"
-          },
           "updated_at": {
             "type": "string",
             "format": "date-time"
           }
         },
         "example": {
+          "api_format": "openai",
           "api_key_masked": "sk-...abc123",
           "base_url": "https://api.openai.com/v1",
           "created_at": "2024-01-01T00:00:00Z",
@@ -3124,7 +3197,6 @@
             "gpt-3.5-turbo"
           ],
           "prefix": "openai",
-          "provider": "openai",
           "updated_at": "2024-01-01T00:00:00Z"
         }
       },
@@ -3364,12 +3436,16 @@
         "description": "Request to create a new API model configuration",
         "required": [
           "id",
-          "provider",
+          "api_format",
           "base_url",
           "api_key",
           "models"
         ],
         "properties": {
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat",
+            "description": "API format/protocol (e.g., \"openai\")"
+          },
           "api_key": {
             "type": "string",
             "description": "API key for authentication"
@@ -3394,14 +3470,11 @@
               "string",
               "null"
             ],
-            "description": "Optional prefix for model namespacing (e.g., \"azure\" for \"azure/gpt-4\")"
-          },
-          "provider": {
-            "type": "string",
-            "description": "Provider name (e.g., \"openai\", \"anthropic\")"
+            "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\", \"openai:\" for \"openai:gpt-4\")"
           }
         },
         "example": {
+          "api_format": "openai",
           "api_key": "sk-...",
           "base_url": "https://api.openai.com/v1",
           "id": "openai-gpt4",
@@ -3409,8 +3482,7 @@
             "gpt-4",
             "gpt-3.5-turbo"
           ],
-          "prefix": "openai",
-          "provider": "openai"
+          "prefix": "openai"
         }
       },
       "CreateApiTokenRequest": {
@@ -4754,30 +4826,33 @@
       "UpdateApiModelRequest": {
         "type": "object",
         "description": "Request to update an existing API model configuration",
+        "required": [
+          "api_format",
+          "base_url",
+          "models"
+        ],
         "properties": {
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat",
+            "description": "API format/protocol (required)"
+          },
           "api_key": {
             "type": [
               "string",
               "null"
             ],
-            "description": "API key for authentication (optional, only update if provided)"
+            "description": "API key for authentication (optional, only update if provided for security)"
           },
           "base_url": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "API base URL (optional)"
+            "type": "string",
+            "description": "API base URL (required)"
           },
           "models": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "List of available models (optional)"
+            "description": "List of available models (required)"
           },
           "prefix": {
             "type": [
@@ -4785,24 +4860,17 @@
               "null"
             ],
             "description": "Optional prefix for model namespacing"
-          },
-          "provider": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Provider name (optional)"
           }
         },
         "example": {
+          "api_format": "openai",
           "api_key": "sk-new-key",
           "base_url": "https://api.openai.com/v1",
           "models": [
             "gpt-4-turbo",
             "gpt-3.5-turbo"
           ],
-          "prefix": "openai",
-          "provider": "openai"
+          "prefix": "openai"
         }
       },
       "UpdateApiTokenRequest": {

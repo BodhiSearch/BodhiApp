@@ -1,6 +1,6 @@
 use crate::AppRegInfo;
 use chrono::{DateTime, Utc};
-use objs::ApiAlias;
+use objs::{ApiAlias, ApiFormat};
 use rstest::fixture;
 
 #[fixture]
@@ -19,7 +19,7 @@ pub fn create_test_api_model_alias(
 ) -> ApiAlias {
   ApiAlias::new(
     alias,
-    "openai",
+    ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     models,
     None,
@@ -36,7 +36,7 @@ pub fn create_test_api_model_alias_with_prefix(
 ) -> ApiAlias {
   ApiAlias::new(
     alias,
-    "openai",
+    ApiFormat::OpenAI,
     "https://api.openai.com/v1",
     models,
     prefix,
@@ -79,7 +79,7 @@ pub async fn seed_test_api_models(
       base_time - chrono::Duration::seconds(50),
     ),
     create_test_api_model_alias_with_prefix(
-      "custom-provider",
+      "custom-alias",
       vec!["custom-model-1".to_string()],
       Some("my.custom_".to_string()),
       base_time - chrono::Duration::seconds(60),

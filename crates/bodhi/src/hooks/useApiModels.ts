@@ -7,6 +7,7 @@ import {
   TestPromptResponse,
   FetchModelsRequest,
   FetchModelsResponse,
+  ApiFormatsResponse,
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -27,6 +28,7 @@ type ErrorResponse = OpenAiApiError;
 export const ENDPOINT_API_MODELS = '/bodhi/v1/api-models';
 export const ENDPOINT_API_MODELS_TEST = '/bodhi/v1/api-models/test';
 export const ENDPOINT_API_MODELS_FETCH = '/bodhi/v1/api-models/fetch-models';
+export const ENDPOINT_API_MODELS_FORMATS = '/bodhi/v1/api-models/api-formats';
 
 /**
  * Hook to fetch a single API model by id
@@ -172,6 +174,26 @@ export function useFetchApiModels(
 }
 
 /**
+ * Hook to fetch available API formats
+ */
+export function useApiFormats(
+  options?: UseQueryOptions<ApiFormatsResponse, AxiosError<ErrorResponse>>
+): UseQueryResult<ApiFormatsResponse, AxiosError<ErrorResponse>> {
+  return useReactQuery<ApiFormatsResponse, AxiosError<ErrorResponse>>(
+    ['api-formats'],
+    async () => {
+      const { data } = await apiClient.get<ApiFormatsResponse>(ENDPOINT_API_MODELS_FORMATS);
+      return data;
+    },
+    {
+      refetchOnWindowFocus: false,
+      staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)
+      ...options,
+    }
+  );
+}
+
+/**
  * Helper function to check if a model is an API model
  */
 export function isApiModel(model: unknown): model is ApiModelResponse {
@@ -180,7 +202,7 @@ export function isApiModel(model: unknown): model is ApiModelResponse {
     model !== null &&
     'api_key_masked' in model &&
     'base_url' in model &&
-    'provider' in model
+    'api_format' in model
   );
 }
 

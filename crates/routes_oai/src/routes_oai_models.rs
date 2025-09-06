@@ -272,7 +272,7 @@ fn api_model_to_oai_model(model_name: String, api_alias: &ApiAlias) -> OAIModel 
     id: model_name, // Use the individual model name, not api_alias.id
     object: "model".to_string(),
     created,
-    owned_by: api_alias.provider.clone(),
+    owned_by: api_alias.base_url.clone(),
   }
 }
 
