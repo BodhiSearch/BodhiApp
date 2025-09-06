@@ -3,7 +3,6 @@ import { BasePage } from './BasePage.mjs';
 
 export class ApiModelFormPage extends BasePage {
   selectors = {
-    modelIdInput: '[data-testid="api-model-id"]',
     apiFormatSelect: '[data-testid="api-model-format"]',
     baseUrlInput: '[data-testid="api-model-base-url"]',
     apiKeyInput: '[data-testid="api-model-api-key"]',
@@ -19,9 +18,8 @@ export class ApiModelFormPage extends BasePage {
     successToast: '[data-state="open"]',
   };
 
-  async fillBasicInfo(modelId, apiKey, baseUrl = 'https://api.openai.com/v1') {
+  async fillBasicInfo(apiKey, baseUrl = 'https://api.openai.com/v1') {
     // Fill form fields
-    await this.fillTestId('api-model-id', modelId);
     await this.fillTestId('api-model-base-url', baseUrl);
     await this.fillTestId('api-model-api-key', apiKey);
   }
@@ -136,15 +134,27 @@ export class ApiModelFormPage extends BasePage {
     await this.waitForSPAReady();
   }
 
+  async createModelAndCaptureId() {
+    await this.page.click(this.selectors.createButton);
+
+    // Capture the generated ID from the success toast
+    const generatedId = await this.waitForToastAndExtractId(/Successfully created API model/i);
+
+    // Navigate to models page
+    await this.waitForUrl('/ui/models/');
+    await this.waitForSPAReady();
+
+    return generatedId;
+  }
+
   async updateModel() {
     await this.page.click(this.selectors.updateButton);
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
   }
 
-  async verifyFormPreFilled(modelId, api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
-    // Verify form fields are pre-filled with existing data
-    await this.expectValue(this.selectors.modelIdInput, modelId);
+  async verifyFormPreFilled(api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
+    // Verify form fields are pre-filled with existing data (no ID field since it's auto-generated)
     await this.expectText(this.selectors.apiFormatSelect, api_format);
     await this.expectValue(this.selectors.baseUrlInput, baseUrl);
 
@@ -153,8 +163,7 @@ export class ApiModelFormPage extends BasePage {
   }
 
   async waitForFormReady() {
-    // Wait for form to be fully loaded
-    await this.waitForSelector(this.selectors.modelIdInput);
+    // Wait for form to be fully loaded (no ID field since it's auto-generated)
     await this.waitForSelector(this.selectors.baseUrlInput);
     await this.waitForSelector(this.selectors.apiKeyInput);
   }
@@ -235,14 +244,9 @@ export class ApiModelFormPage extends BasePage {
     await this.page.fill(this.selectors.prefixInput, prefix);
   }
 
-  async fillBasicInfoWithPrefix(
-    modelId,
-    apiKey,
-    prefix = null,
-    baseUrl = 'https://api.openai.com/v1'
-  ) {
+  async fillBasicInfoWithPrefix(apiKey, prefix = null, baseUrl = 'https://api.openai.com/v1') {
     // Fill basic info
-    await this.fillBasicInfo(modelId, apiKey, baseUrl);
+    await this.fillBasicInfo(apiKey, baseUrl);
 
     // Handle prefix if provided
     if (prefix) {
@@ -251,13 +255,12 @@ export class ApiModelFormPage extends BasePage {
   }
 
   async verifyFormPreFilledWithPrefix(
-    modelId,
     api_format = 'openai',
     baseUrl = 'https://api.openai.com/v1',
     prefix = null
   ) {
     // Verify basic form fields
-    await this.verifyFormPreFilled(modelId, api_format, baseUrl);
+    await this.verifyFormPreFilled(api_format, baseUrl);
 
     // Verify prefix state
     if (prefix) {

@@ -3435,7 +3435,6 @@
         "type": "object",
         "description": "Request to create a new API model configuration",
         "required": [
-          "id",
           "api_format",
           "base_url",
           "api_key",
@@ -3453,10 +3452,6 @@
           "base_url": {
             "type": "string",
             "description": "API base URL"
-          },
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for this API configuration"
           },
           "models": {
             "type": "array",
@@ -3477,7 +3472,6 @@
           "api_format": "openai",
           "api_key": "sk-...",
           "base_url": "https://api.openai.com/v1",
-          "id": "openai-gpt4",
           "models": [
             "gpt-4",
             "gpt-3.5-turbo"

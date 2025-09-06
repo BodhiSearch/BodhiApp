@@ -137,10 +137,6 @@ export type CreateApiModelRequest = {
      */
     base_url: string;
     /**
-     * Unique identifier for this API configuration
-     */
-    id: string;
-    /**
      * List of available models
      */
     models: Array<string>;

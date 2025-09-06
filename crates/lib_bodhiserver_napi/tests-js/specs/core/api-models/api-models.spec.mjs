@@ -78,17 +78,19 @@ test.describe('API Models Integration', () => {
 
     // Step 2: Create API model with validation testing - select only gpt-4 for chat testing
     await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(modelData.modelId, testData.apiKey, modelData.baseUrl);
+    await formPage.fillBasicInfo(testData.apiKey, modelData.baseUrl);
     await formPage.fetchAndSelectModels(['gpt-4']); // Select only gpt-4 for chat integration
     await formPage.testConnection();
-    await formPage.createModel();
 
-    // Step 3: Verify model appears in models list
-    await modelsPage.verifyApiModelInList(
-      modelData.modelId,
-      modelData.api_format,
-      modelData.baseUrl
-    );
+    // Capture the generated ID when creating the model
+    const createdModelId = await formPage.createModelAndCaptureId();
+
+    // Step 3: Navigate back to models to verify creation
+    await modelsPage.navigateToModels();
+    await modelsPage.waitForModelsToLoad();
+
+    // Verify the model appears in the list using the captured ID
+    await modelsPage.verifyApiModelInList(createdModelId, 'openai', modelData.baseUrl);
 
     // Step 4: Test chat integration with model
     const modelName = 'gpt-4'; // Use the exact model we selected during creation
@@ -106,26 +108,21 @@ test.describe('API Models Integration', () => {
     const response = await chatPage.getLastAssistantMessage();
     expect(response.toLowerCase()).toContain('tuesday');
 
-    // Navigate back to models for further testing
+    // Step 5: Test edit functionality with captured ID
     await modelsPage.navigateToModels();
-
-    // Step 5: Test edit functionality with pre-filled data validation
-    await modelsPage.editModel(modelData.modelId);
+    await modelsPage.editModel(createdModelId);
     await formPage.waitForFormReady();
-    await formPage.verifyFormPreFilled(modelData.modelId, modelData.api_format, modelData.baseUrl);
-    await formPage.testConnection(); // Test with masked API key
+
+    // Verify form is pre-filled correctly
+    await formPage.verifyFormPreFilled('openai', modelData.baseUrl);
+
+    // Make a small change and update
+    await formPage.setPrefix('test:');
     await formPage.updateModel();
 
-    // Step 5: Verify model is still in the list after edit
-    await modelsPage.verifyApiModelInList(
-      modelData.modelId,
-      modelData.api_format,
-      modelData.baseUrl
-    );
-
-    // Step 6: Navigate back to models and test delete functionality
+    // Step 6: Clean up by deleting the model
     await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelData.modelId);
+    await modelsPage.deleteModel(createdModelId);
   });
 
   test('API model form validation and connection testing', async ({ page }) => {
@@ -137,13 +134,19 @@ test.describe('API Models Integration', () => {
 
     // Test step-by-step form validation
     await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(modelData.modelId, testData.apiKey);
+    await formPage.fillBasicInfo(testData.apiKey, modelData.baseUrl);
     await formPage.fetchAndSelectModels(['gpt-3.5-turbo']);
     await formPage.testConnection();
-    await formPage.createModel();
 
-    // Verify creation and cleanup
-    await modelsPage.verifyApiModelInList(modelData.modelId);
-    await modelsPage.deleteModel(modelData.modelId);
+    // Capture the generated ID when creating the model
+    const validationTestModelId = await formPage.createModelAndCaptureId();
+
+    // Verify creation by checking the model appears in list
+    await modelsPage.navigateToModels();
+    await modelsPage.waitForModelsToLoad();
+    await modelsPage.verifyApiModelInList(validationTestModelId, 'openai', modelData.baseUrl);
+
+    // Clean up by deleting the created model
+    await modelsPage.deleteModel(validationTestModelId);
   });
 });

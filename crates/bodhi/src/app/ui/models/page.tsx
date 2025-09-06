@@ -81,7 +81,7 @@ const SourceBadge = ({ model, testIdPrefix = '' }: { model: Alias; testIdPrefix?
       <Badge
         variant="outline"
         className="bg-purple-500/10 text-purple-600 border-purple-200"
-        data-testid={`${prefix}source-badge-api_${model.id}`}
+        data-testid={`${prefix}source-badge-${model.id}`}
       >
         <Cloud className="h-3 w-3 mr-1" />
         API
@@ -131,7 +131,7 @@ function ModelsPageContent() {
   };
 
   const getItemId = (model: Alias) => {
-    return isApiAlias(model) ? `api_${model.id}` : model.alias;
+    return isApiAlias(model) ? model.id : model.alias;
   };
 
   const handleEdit = (model: Alias) => {
@@ -409,11 +409,13 @@ function ModelsPageContent() {
         <CopyableContent text={getModelDisplayFilename(model)} className="text-xs text-muted-foreground truncate" />
       </div>
     </TableCell>,
-    // Desktop view (separate columns)
+    // Desktop view (separate columns) - only add data-model-id for desktop
     <TableCell
       key="alias"
       className="max-w-[250px] hidden lg:table-cell"
       data-testid={`alias-cell-${getItemId(model)}`}
+      data-model-id={isApiAlias(model) ? model.id : undefined}
+      data-model-type={isApiAlias(model) ? 'api' : 'local'}
     >
       <div className="flex flex-col gap-1">
         <CopyableContent text={isApiAlias(model) ? model.id : model.alias} />
