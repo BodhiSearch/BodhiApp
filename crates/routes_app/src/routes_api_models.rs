@@ -19,6 +19,7 @@ use objs::{
 };
 use server_core::RouterState;
 use std::sync::Arc;
+use uuid::Uuid;
 use validator::Validate;
 
 /// List all API model configurations
@@ -175,18 +176,13 @@ pub async fn create_api_model_handler(
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
 
-  // Check if id already exists
-  if db_service.get_api_model_alias(&payload.id).await?.is_some() {
-    return Err(ApiError::from(BadRequestError::new(format!(
-      "API model ID '{}' already exists",
-      payload.id
-    ))));
-  }
+  // Generate a unique UUID for the API model
+  let id = Uuid::new_v4().to_string();
 
   // Create the API model alias
   let now = time_service.utc_now();
   let api_alias = ApiAlias::new(
-    payload.id,
+    id,
     payload.api_format,
     payload.base_url.trim_end_matches('/').to_string(),
     payload.models,
@@ -519,6 +515,7 @@ mod tests {
   };
   use std::sync::Arc;
   use tower::ServiceExt;
+  use uuid::Uuid;
   use validator::Validate;
 
   /// Create expected ApiModelResponse for testing
@@ -718,7 +715,6 @@ mod tests {
       .build()?;
 
     let create_request = CreateApiModelRequest {
-      id: "openai-test".to_string(),
       api_format: OpenAI,
       base_url: input_url.to_string(),
       api_key: "sk-test123456789".to_string(),
@@ -737,19 +733,18 @@ mod tests {
     // Verify response body
     let api_response = response.json::<ApiModelResponse>().await?;
 
-    // Create expected response (note: we can't predict the exact timestamp, so we'll check it separately)
-    let expected_response = create_expected_response(
-      "openai-test",
-      "openai",
-      expected_url,
-      "sk-...456789",
-      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
-      None,                    // No prefix
-      api_response.created_at, // Use actual timestamp
-      api_response.updated_at, // Use actual timestamp
+    // Verify the response structure (note: ID is now auto-generated UUID)
+    assert_eq!(api_response.api_format, objs::ApiFormat::OpenAI);
+    assert_eq!(api_response.base_url, expected_url);
+    assert_eq!(api_response.api_key_masked, "sk-...456789");
+    assert_eq!(
+      api_response.models,
+      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()]
     );
+    assert_eq!(api_response.prefix, None);
 
-    assert_eq!(expected_response, api_response);
+    // Verify that ID is a valid UUID
+    assert!(Uuid::parse_str(&api_response.id).is_ok());
 
     Ok(())
   }
@@ -757,7 +752,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_create_api_model_handler_duplicate_alias(
+  async fn test_create_api_model_handler_generates_uuid(
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
@@ -775,7 +770,6 @@ mod tests {
       .build()?;
 
     let create_request = CreateApiModelRequest {
-      id: "openai-gpt4".to_string(), // This id already exists in seed data
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
@@ -783,18 +777,17 @@ mod tests {
       prefix: None,
     };
 
-    // Make POST request to create API model with duplicate alias
+    // Make POST request to create API model (should succeed since UUIDs are unique)
     let response = test_router(Arc::new(app_service))
       .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
       .await?;
 
-    // Verify response status is 400 Bad Request
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    // Verify response status is 201 Created (no duplicate ID issue with UUIDs)
+    assert_eq!(response.status(), StatusCode::CREATED);
 
-    // Verify error message
-    let error_response = response.json::<serde_json::Value>().await?;
-    let error_message = error_response["error"]["message"].as_str().unwrap();
-    assert!(error_message.contains("API model ID 'openai-gpt4' already exists"));
+    // Verify response structure
+    let api_response = response.json::<ApiModelResponse>().await?;
+    assert!(Uuid::parse_str(&api_response.id).is_ok());
 
     Ok(())
   }
@@ -802,7 +795,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_create_api_model_handler_validation_error_empty_alias(
+  async fn test_create_api_model_handler_validation_error_empty_api_key(
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
@@ -815,10 +808,9 @@ mod tests {
       .build()?;
 
     let create_request = CreateApiModelRequest {
-      id: "".to_string(), // Invalid: empty id
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "sk-test123456789".to_string(),
+      api_key: "".to_string(), // Invalid: empty api_key
       models: vec!["gpt-4".to_string()],
       prefix: None,
     };
@@ -830,10 +822,10 @@ mod tests {
     // Verify response status is 400 Bad Request
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    // Verify error response contains validation error for ID length
+    // Verify error response contains validation error for API key length
     let error_response = response.json::<serde_json::Value>().await?;
     let error_message = error_response["error"]["message"].as_str().unwrap();
-    assert!(error_message.contains("ID must not be empty"));
+    assert!(error_message.contains("API key must not be empty"));
 
     Ok(())
   }
@@ -854,7 +846,6 @@ mod tests {
       .build()?;
 
     let create_request = CreateApiModelRequest {
-      id: "test-alias".to_string(),
       api_format: OpenAI,
       base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
       api_key: "sk-test123456789".to_string(),
@@ -893,7 +884,6 @@ mod tests {
       .build()?;
 
     let create_request = CreateApiModelRequest {
-      id: "test-alias-2".to_string(),
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123456789".to_string(),
@@ -1193,7 +1183,6 @@ mod tests {
 
     // Create request
     let request = CreateApiModelRequest {
-      id: "openai-test".to_string(),
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test123".to_string(),
@@ -1201,9 +1190,12 @@ mod tests {
       prefix: None,
     };
 
+    // Generate a unique ID for the test
+    let test_id = Uuid::new_v4().to_string();
+
     // Create API model via database
     let api_alias = ApiAlias::new(
-      request.id.clone(),
+      test_id.clone(),
       request.api_format,
       request.base_url.clone(),
       request.models.clone(),
@@ -1216,12 +1208,12 @@ mod tests {
       .await?;
 
     // Verify it was created
-    let retrieved = db_service.get_api_model_alias(&request.id).await?;
+    let retrieved = db_service.get_api_model_alias(&test_id).await?;
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().id, "openai-test");
+    assert_eq!(retrieved.unwrap().id, test_id);
 
     // Verify API key is encrypted but retrievable
-    let api_key = db_service.get_api_key_for_alias(&request.id).await?;
+    let api_key = db_service.get_api_key_for_alias(&test_id).await?;
     assert_eq!(api_key, Some("sk-test123".to_string()));
 
     Ok(())
@@ -1467,7 +1459,6 @@ mod tests {
 
     // Parse create request
     let create_request: CreateApiModelRequest = serde_json::from_value(create_json.clone())?;
-    let model_id = create_request.id.clone();
 
     // Create app service
     let app_service = Arc::new(
@@ -1483,6 +1474,10 @@ mod tests {
       .await?;
 
     assert_eq!(create_response.status(), StatusCode::CREATED);
+
+    // Get the generated model ID from the response
+    let create_api_response: ApiModelResponse = create_response.json().await?;
+    let model_id = create_api_response.id;
 
     // Step 2: Update the API model
     let update_request: UpdateApiModelRequest = serde_json::from_value(update_json)?;
@@ -1505,8 +1500,9 @@ mod tests {
 
     let api_response: ApiModelResponse = get_response.json().await?;
 
-    // Build expected response with actual timestamps
+    // Build expected response with actual timestamps and generated ID
     let mut expected_response: ApiModelResponse = serde_json::from_value(expected_get_json)?;
+    expected_response.id = api_response.id.clone(); // Use the generated UUID
     expected_response.created_at = api_response.created_at;
     expected_response.updated_at = api_response.updated_at;
 

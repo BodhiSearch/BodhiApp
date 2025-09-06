@@ -14,14 +14,6 @@ export type ApiFormatPreset = keyof typeof API_FORMAT_PRESETS;
 
 // Zod schema for creating API models
 export const createApiModelSchema = z.object({
-  id: z
-    .string()
-    .min(3, 'ID must be at least 3 characters long')
-    .max(50, 'ID must be less than 50 characters')
-    .regex(
-      /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/,
-      'ID must start with alphanumeric character and contain only letters, numbers, hyphens, and underscores'
-    ),
   api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
   base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
   api_key: z.string().min(10, 'API key must be at least 10 characters long').max(200, 'API key is too long'),
@@ -56,7 +48,6 @@ export type UpdateApiModelFormData = z.infer<typeof updateApiModelSchema>;
 
 // Conversion functions between form and API formats
 export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateApiModelRequest => ({
-  id: formData.id,
   api_format: formData.api_format as ApiFormat,
   base_url: formData.base_url,
   api_key: formData.api_key,
@@ -73,7 +64,6 @@ export const convertFormToUpdateRequest = (formData: UpdateApiModelFormData): Up
 });
 
 export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData => ({
-  id: apiData.id,
   api_format: apiData.api_format,
   base_url: apiData.base_url,
   api_key: '', // API key is masked, will be empty for edit forms

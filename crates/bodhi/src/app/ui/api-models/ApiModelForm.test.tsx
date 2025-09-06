@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
 // Mock toast
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: mockToast, dismiss: () => { } }),
+  useToast: () => ({ toast: mockToast, dismiss: () => {} }),
 }));
 
 // Mock component dependencies
@@ -112,6 +112,10 @@ describe('ApiModelForm', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
+      // API format endpoint
+      rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) => {
+        return res(ctx.json(['openai']));
+      }),
       // API model endpoints
       rest.post('*/bodhi/v1/api-models', (_, res, ctx) => {
         return res(ctx.json(mockApiModelResponse));
@@ -137,8 +141,7 @@ describe('ApiModelForm', () => {
       // Form title
       expect(screen.getByText('Create New API Model')).toBeInTheDocument();
 
-      // Form fields
-      expect(screen.getByTestId('api-model-id')).toBeInTheDocument();
+      // Form fields (no ID field since it's auto-generated)
       expect(screen.getByTestId('api-model-format')).toBeInTheDocument();
       expect(screen.getByTestId('api-model-base-url')).toBeInTheDocument();
       expect(screen.getByTestId('api-model-api-key')).toBeInTheDocument();
@@ -161,7 +164,11 @@ describe('ApiModelForm', () => {
       await user.click(screen.getByTestId('create-api-model-button'));
 
       await waitFor(() => {
-        expect(screen.getByText(/ID must be at least 3 characters long/i)).toBeInTheDocument();
+        // Look for any validation error message about API key
+        const errorMessages = screen.getAllByText((content, element) => {
+          return element?.tagName.toLowerCase() === 'p' && content.toLowerCase().includes('api key');
+        });
+        expect(errorMessages.length).toBeGreaterThan(0);
       });
     });
 
@@ -257,8 +264,7 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
       });
 
-      // Fill the form
-      await user.type(screen.getByTestId('api-model-id'), 'test-model');
+      // Fill the form (no ID field - it's auto-generated)
       // Api format and Base URL are pre-filled with OpenAI defaults
       await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
 
@@ -312,10 +318,7 @@ describe('ApiModelForm', () => {
       // Form title
       expect(screen.getByText('Edit API Model')).toBeInTheDocument();
 
-      // ID field should be disabled in edit mode
-      const idField = screen.getByTestId('api-model-id');
-      expect(idField).toHaveValue('test-api-model');
-      expect(idField).toBeDisabled();
+      // No ID field in edit mode since ID is auto-generated and immutable
 
       // Other fields should be populated with initial data
       expect(screen.getByTestId('api-model-base-url')).toHaveValue('https://api.openai.com/v1');
@@ -666,8 +669,7 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
       });
 
-      // Fill the form
-      await user.type(screen.getByTestId('api-model-id'), 'duplicate-id');
+      // Fill the form (no ID field - it's auto-generated)
       await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
       await user.click(screen.getByText('Select gpt-4'));
 

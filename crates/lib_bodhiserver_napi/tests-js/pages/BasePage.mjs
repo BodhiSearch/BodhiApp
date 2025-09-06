@@ -31,12 +31,37 @@ export class BasePage {
     await expect(this.page.locator(selector)).toBeVisible();
   }
 
-  async waitForToast(message) {
+  async waitForToast(message, options = {}) {
     if (message instanceof RegExp) {
-      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message);
+      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+        message,
+        options
+      );
     } else {
-      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(message);
+      await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+        message,
+        options
+      );
     }
+  }
+
+  async waitForToastAndExtractId(messagePattern) {
+    // Wait for toast to appear with the pattern
+    await this.waitForToast(messagePattern);
+
+    // Get the toast text content
+    const toastText = await this.page.locator(this.baseSelectors.successToast).textContent();
+
+    // Extract UUID from the toast message using regex
+    // UUID pattern: 8-4-4-4-12 hexadecimal characters
+    const uuidPattern = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+    const match = toastText.match(uuidPattern);
+
+    if (!match) {
+      throw new Error(`Failed to extract UUID from toast message: "${toastText}"`);
+    }
+
+    return match[1];
   }
 
   async waitForToastToHide() {

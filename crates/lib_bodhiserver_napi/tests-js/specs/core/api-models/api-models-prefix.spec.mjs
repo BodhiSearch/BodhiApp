@@ -69,6 +69,7 @@ test.describe('API Models Prefix Functionality', () => {
   test('comprehensive API model prefix lifecycle with multi-api-format management', async ({
     page,
   }) => {
+    // Updated to work with auto-generated UUIDs by capturing IDs from API responses
     const baseNoPrefix = ApiModelFixtures.scenarios.BASIC_OPENAI();
     const azureModel = ApiModelFixtures.scenarios.WITH_PREFIX();
     const customModel = ApiModelFixtures.scenarios.CUSTOM_PREFIX();
@@ -80,30 +81,33 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== SCENARIO A: Create basic model without prefix =====
     await modelsPage.clickNewApiModel();
     await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(baseNoPrefix.modelId, testData.apiKey, baseNoPrefix.baseUrl);
+    await formPage.fillBasicInfo(testData.apiKey, baseNoPrefix.baseUrl);
     await formPage.fetchAndSelectModels(['gpt-4']);
     await formPage.testConnection();
-    await formPage.createModel();
 
-    // Verify it appears in list without prefix
-    await modelsPage.verifyApiModelInList(baseNoPrefix.modelId, 'openai', baseNoPrefix.baseUrl);
+    // Capture the generated ID when creating the model
+    const baseNoPrefixId = await formPage.createModelAndCaptureId();
+
+    // Verify it appears in list without prefix using the captured ID
+    await modelsPage.verifyApiModelInList(baseNoPrefixId, 'openai', baseNoPrefix.baseUrl);
 
     // ===== SCENARIO B: Create model with OpenRouter prefix =====
     await modelsPage.clickNewApiModel();
     await formPage.waitForFormReady();
 
     await formPage.fillBasicInfoWithPrefix(
-      azureModel.modelId,
       testData.openrouterApiKey,
       'openrouter/',
       azureModel.baseUrl
     );
     await formPage.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
     await formPage.testConnection();
-    await formPage.createModel();
+
+    // Capture the generated ID when creating the model with prefix
+    const azureModelId = await formPage.createModelAndCaptureId();
 
     // Verify prefixed model appears correctly and test chat
-    await modelsPage.verifyApiModelInList(azureModel.modelId, 'openai', azureModel.baseUrl);
+    await modelsPage.verifyApiModelInList(azureModelId, 'openai', azureModel.baseUrl);
     const openrouterPrefixedModel = 'openrouter/openai/gpt-3.5-turbo';
     await modelsPage.clickChatWithModel(openrouterPrefixedModel);
     await chatPage.expectChatPageWithModel(openrouterPrefixedModel);
@@ -116,16 +120,11 @@ test.describe('API Models Prefix Functionality', () => {
 
     // ===== SCENARIO C: Edit existing model to add prefix =====
     await modelsPage.navigateToModels();
-    await modelsPage.editModel(baseNoPrefix.modelId);
+    await modelsPage.editModel(baseNoPrefixId);
     await formPage.waitForFormReady();
 
     // Verify form is pre-filled without prefix
-    await formPage.verifyFormPreFilledWithPrefix(
-      baseNoPrefix.modelId,
-      'openai',
-      baseNoPrefix.baseUrl,
-      null
-    );
+    await formPage.verifyFormPreFilledWithPrefix('openai', baseNoPrefix.baseUrl, null);
 
     // Add openai: prefix to existing model
     await formPage.setPrefix('openai:');
@@ -142,16 +141,17 @@ test.describe('API Models Prefix Functionality', () => {
     await formPage.waitForFormReady();
 
     await formPage.fillBasicInfoWithPrefix(
-      customModel.modelId,
       testData.openrouterApiKey,
       'custom-',
       customModel.baseUrl
     );
     await formPage.fetchAndSelectModels(['openai/gpt-4']);
-    await formPage.createModel();
+
+    // Capture the generated ID when creating the custom model
+    const customModelId = await formPage.createModelAndCaptureId();
 
     // ===== SCENARIO E: Edit OpenRouter model to remove prefix =====
-    await modelsPage.editModel(azureModel.modelId);
+    await modelsPage.editModel(azureModelId);
     await formPage.waitForFormReady();
 
     // Remove the prefix
@@ -165,15 +165,15 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== SCENARIO F: Multi-model verification =====
     await modelsPage.navigateToModels();
 
-    // Verify all models display correctly in list:
-    await modelsPage.verifyApiModelInList(baseNoPrefix.modelId, 'openai', baseNoPrefix.baseUrl); // now has openai: prefix
+    // Verify all models display correctly in list using captured IDs:
+    await modelsPage.verifyApiModelInList(baseNoPrefixId, 'openai', baseNoPrefix.baseUrl); // now has openai: prefix
     await modelsPage.verifyApiModelInList(
-      azureModel.modelId,
+      azureModelId,
       'openai', // Shows OpenAI format even when using OpenRouter
       azureModel.baseUrl
     ); // prefix removed (OpenRouter)
     await modelsPage.verifyApiModelInList(
-      customModel.modelId,
+      customModelId,
       'openai', // Shows OpenAI format even when using OpenRouter
       customModel.baseUrl
     ); // has custom- prefix (OpenRouter)
@@ -186,14 +186,15 @@ test.describe('API Models Prefix Functionality', () => {
     await modelsPage.clickChatWithModel('custom-openai/gpt-4'); // OpenRouter with dash prefix
     await chatPage.expectChatPageWithModel('custom-openai/gpt-4');
 
-    // ===== CLEANUP: Delete all created models =====
+    // ===== CLEANUP: Delete all created models using captured IDs =====
     await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(baseNoPrefix.modelId);
-    await modelsPage.deleteModel(azureModel.modelId);
-    await modelsPage.deleteModel(customModel.modelId);
+    await modelsPage.deleteModel(baseNoPrefixId);
+    await modelsPage.deleteModel(azureModelId);
+    await modelsPage.deleteModel(customModelId);
   });
 
   test('prefix form validation, UI behavior and edge cases', async ({ page }) => {
+    // Updated to work with auto-generated UUIDs by capturing IDs from API responses
     // This test focuses on validation, UI behavior, and edge cases for prefix functionality
     // combining form validation, api_format persistence, and edge cases
 
@@ -228,21 +229,21 @@ test.describe('API Models Prefix Functionality', () => {
 
     // Fill form with OpenRouter API key and URL
     await formPage.fillBasicInfoWithPrefix(
-      modelData.modelId,
       testData.openrouterApiKey,
       'openai-new:',
       modelData.baseUrl
     );
     await formPage.fetchAndSelectModels(['openai/gpt-4']);
-    await formPage.createModel();
+
+    // Capture the generated ID when creating the model
+    const createdModelId = await formPage.createModelAndCaptureId();
 
     // ===== PERSISTENCE TESTING =====
 
     // Edit the created model and verify prefix persists correctly
-    await modelsPage.editModel(modelData.modelId);
+    await modelsPage.editModel(createdModelId);
     await formPage.waitForFormReady();
     await formPage.verifyFormPreFilledWithPrefix(
-      modelData.modelId,
       'openai', // Shows OpenAI format even when using OpenRouter
       'https://openrouter.ai/api/v1', // OpenRouter URL
       'openai-new:'
@@ -253,10 +254,9 @@ test.describe('API Models Prefix Functionality', () => {
     await formPage.updateModel();
 
     // Verify the update worked by editing again
-    await modelsPage.editModel(modelData.modelId);
+    await modelsPage.editModel(createdModelId);
     await formPage.waitForFormReady();
     await formPage.verifyFormPreFilledWithPrefix(
-      modelData.modelId,
       'openai', // Shows OpenAI format even when using OpenRouter
       'https://openrouter.ai/api/v1',
       'updated-prefix-'
@@ -267,16 +267,16 @@ test.describe('API Models Prefix Functionality', () => {
     await modelsPage.clickNewApiModel();
     await formPage.waitForFormReady();
 
-    const edgeCaseId = `edge-case-${Date.now()}`;
     // Use base URL with trailing slash and prefix with slash
     await formPage.fillBasicInfoWithPrefix(
-      edgeCaseId,
       testData.openrouterApiKey,
       'test/',
       'https://openrouter.ai/api/v1/' // URL with trailing slash
     );
     await formPage.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
-    await formPage.createModel();
+
+    // Capture the generated ID for the edge case model
+    const edgeCaseId = await formPage.createModelAndCaptureId();
 
     // Verify model was created and works (URL should be normalized)
     await modelsPage.verifyApiModelInList(edgeCaseId, 'openai', 'https://openrouter.ai/api/v1'); // Normalized URL
@@ -288,14 +288,15 @@ test.describe('API Models Prefix Functionality', () => {
     await modelsPage.clickNewApiModel();
     await formPage.waitForFormReady();
 
-    const emptyPrefixId = `empty-prefix-${Date.now()}`;
-    await formPage.fillBasicInfo(emptyPrefixId, testData.apiKey);
+    await formPage.fillBasicInfo(testData.apiKey);
 
     // Enable prefix but leave it empty
     await formPage.enablePrefix();
     await formPage.page.fill(formPage.selectors.prefixInput, ''); // Empty prefix
     await formPage.fetchAndSelectModels(['gpt-4']);
-    await formPage.createModel();
+
+    // Capture the generated ID for the empty prefix model
+    const emptyPrefixId = await formPage.createModelAndCaptureId();
 
     // Should work with empty prefix (acts like no prefix)
     await modelsPage.verifyApiModelInList(emptyPrefixId, 'openai', 'https://api.openai.com/v1');
@@ -304,7 +305,7 @@ test.describe('API Models Prefix Functionality', () => {
 
     // ===== CLEANUP =====
     await modelsPage.navigateToModels();
-    await modelsPage.deleteModel(modelData.modelId);
+    await modelsPage.deleteModel(createdModelId);
     await modelsPage.deleteModel(edgeCaseId);
     await modelsPage.deleteModel(emptyPrefixId);
   });

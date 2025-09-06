@@ -66,7 +66,6 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           usePrefix: Boolean(initialData?.prefix),
         }
       : {
-          id: '',
           api_format: 'openai',
           base_url: 'https://api.openai.com/v1',
           api_key: '',
@@ -212,10 +211,10 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         });
       } else {
         const createData = convertFormToCreateRequest(data as ApiModelFormData);
-        await createMutation.mutateAsync(createData);
+        const response = await createMutation.mutateAsync(createData);
         toast({
           title: 'API Model Created',
-          description: `Successfully created ${createData.id}`,
+          description: `Successfully created API model: ${response.data.id}`,
         });
       }
       router.push('/ui/models');
@@ -274,17 +273,6 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="id">ID</Label>
-            <Input
-              id="id"
-              data-testid="api-model-id"
-              {...(isEditMode ? { value: initialData?.id || '', disabled: true } : register('id'))}
-              placeholder="my-gpt-4"
-            />
-            {errors.id && <p className="text-sm text-destructive">{errors.id.message}</p>}
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="api-format-preset">API Format</Label>
             <Select value={selectedApiFormat} onValueChange={handleApiFormatChange}>

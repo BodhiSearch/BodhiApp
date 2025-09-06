@@ -7,17 +7,14 @@ export class ModelsListPage extends BasePage {
     table: '[data-testid="table-list-models"]',
     newApiModelButton: 'button:has-text("New API Model")',
     newModelAliasButton: '[data-testid="new-model-alias-button"]',
-    tableRow: (index = 'first') =>
-      `[data-testid="table-list-models"] tbody tr${index === 'first' ? '' : ':nth-child(' + index + ')'}`,
-    // API model selectors
-    aliasCell: (modelId) => `[data-testid="alias-cell-api_${modelId}"]`,
-    repoCell: (modelId) => `[data-testid="repo-cell-api_${modelId}"]`,
-    filenameCell: (modelId) => `[data-testid="filename-cell-api_${modelId}"]`,
+    // Simplified API model selectors using consistent data attributes
+    modelRow: (modelId) => `[data-model-id="${modelId}"]`,
+    aliasCell: (modelId) => `[data-testid="alias-cell-${modelId}"]`,
+    repoCell: (modelId) => `[data-testid="repo-cell-${modelId}"]`,
+    filenameCell: (modelId) => `[data-testid="filename-cell-${modelId}"]`,
     editButton: (modelId) => `[data-testid="edit-button-${modelId}"]:visible`,
     deleteButton: (modelId) => `[data-testid="delete-button-${modelId}"]:visible`,
-    chatButton: (modelId) => `[data-testid="chat-button-${modelId}"]`,
     modelChatButton: (modelName) => `[data-testid="model-chat-button-${modelName}"]`,
-    modelsDropdown: (modelId) => `[data-testid="models-dropdown-${modelId}"]`,
     deleteConfirmDialog: 'text=Delete API Model',
     confirmDeleteButton: 'button:has-text("Delete")',
     // Local model alias selectors
@@ -27,6 +24,7 @@ export class ModelsListPage extends BasePage {
     sourceBadge: (identifier) => `[data-testid="source-badge-${identifier}"]`,
     createAliasFromModelButton: (alias) => `[data-testid="create-alias-from-model-${alias}"]`,
     externalButton: (alias) => `[data-testid="external-button-${alias}"]`,
+    chatButton: (alias) => `[data-testid="chat-button-${alias}"]`,
   };
 
   async navigateToModels() {
@@ -41,12 +39,20 @@ export class ModelsListPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async verifyApiModelInList(modelId, api_format = 'openai', baseUrl = 'https://api.openai.com/v1') {
+  async verifyApiModelInList(
+    modelId,
+    api_format = 'openai',
+    baseUrl = 'https://api.openai.com/v1'
+  ) {
     // Wait for table and data to load
     await this.waitForSelector(this.selectors.table);
     await this.waitForSelector(`${this.selectors.table} tbody tr`);
 
-    // Verify model data in table cells - these selectors target specific cells by model ID
+    // Use simplified model row selector for direct access (select first matching cell)
+    const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
+    await expect(modelRow).toBeVisible();
+
+    // Verify model data in table cells using consistent selectors
     await expect(this.page.locator(this.selectors.aliasCell(modelId))).toContainText(modelId);
     await expect(this.page.locator(this.selectors.repoCell(modelId))).toContainText(api_format);
     await expect(this.page.locator(this.selectors.filenameCell(modelId))).toContainText(baseUrl);
@@ -77,33 +83,10 @@ export class ModelsListPage extends BasePage {
     await this.waitForToast(`API model ${modelId} deleted successfully`);
   }
 
-  async getRowCount() {
-    try {
-      return await this.page.locator(`${this.selectors.table} tbody tr`).count();
-    } catch (error) {
-      return 0;
-    }
-  }
-
   async waitForModelsToLoad() {
     await this.waitForSelector(this.selectors.content);
     // Give time for models to load
     await this.page.waitForTimeout(1000);
-  }
-
-  // Mobile-specific methods
-  async clickModelsDropdown(modelId) {
-    const dropdown = this.page.locator(this.selectors.modelsDropdown(modelId));
-    await expect(dropdown.first()).toBeVisible();
-    await dropdown.first().click();
-  }
-
-  async verifyDropdownModels(expectedCount = 2) {
-    await expect(this.page.locator('[role="menuitem"]')).toHaveCount(expectedCount);
-  }
-
-  async selectModelFromDropdown(modelName) {
-    await this.page.click(`[role="menuitem"]:has-text("${modelName}")`);
   }
 
   async clickChatWithModel(modelName) {
@@ -122,19 +105,6 @@ export class ModelsListPage extends BasePage {
       (url) => url.pathname === '/ui/chat/' && url.searchParams.get('model') === modelName
     );
     await this.waitForSPAReady();
-  }
-
-  // Responsive design helpers
-  async setMobileViewport() {
-    await this.page.setViewportSize({ width: 375, height: 667 });
-  }
-
-  async setTabletViewport() {
-    await this.page.setViewportSize({ width: 768, height: 1024 });
-  }
-
-  async setDesktopViewport() {
-    await this.page.setViewportSize({ width: 1920, height: 1080 });
   }
 
   // Local Model Alias specific methods
@@ -219,35 +189,10 @@ export class ModelsListPage extends BasePage {
     await expect(badge).toContainText(expectedType);
   }
 
-  async getModelByAlias(alias) {
-    // Get the row that contains the specified alias
-    const rows = this.page.locator(`${this.selectors.table} tbody tr`);
-    const rowCount = await rows.count();
-
-    for (let i = 0; i < rowCount; i++) {
-      const row = rows.nth(i);
-      const aliasText = await row.locator('[data-testid*="alias-cell-"]').textContent();
-      if (aliasText?.includes(alias)) {
-        return row;
-      }
-    }
-
-    throw new Error(`Model with alias "${alias}" not found in the list`);
-  }
-
-  async verifyModelNotInList(alias) {
-    // Verify that a model with the given alias is not in the list
+  // Simplified helper method for API model verification
+  async verifyApiModelExists(modelId) {
     await this.waitForSelector(this.selectors.table);
-
-    try {
-      await this.getModelByAlias(alias);
-      throw new Error(`Model with alias "${alias}" should not be in the list`);
-    } catch (error) {
-      if (error.message.includes('not found in the list')) {
-        // This is expected - the model should not be found
-        return;
-      }
-      throw error;
-    }
+    const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
+    await expect(modelRow).toBeVisible();
   }
 }

@@ -7,7 +7,6 @@ use validator::Validate;
 /// Request to create a new API model configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
-    "id": "openai-gpt4",
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-...",
@@ -15,14 +14,6 @@ use validator::Validate;
     "prefix": "openai"
 }))]
 pub struct CreateApiModelRequest {
-  /// Unique identifier for this API configuration
-  #[validate(length(
-    min = 1,
-    max = 100,
-    message = "ID must not be empty and should be between 1 and 100 characters"
-  ))]
-  pub id: String,
-
   /// API format/protocol (e.g., "openai")
   pub api_format: ApiFormat,
 
@@ -294,7 +285,6 @@ mod tests {
   #[test]
   fn test_create_api_model_request_validation() {
     let request = CreateApiModelRequest {
-      id: "test".to_string(),
       api_format: OpenAI,
       base_url: "not-a-url".to_string(),
       api_key: "key".to_string(),
@@ -305,7 +295,6 @@ mod tests {
     assert!(request.validate().is_err());
 
     let valid_request = CreateApiModelRequest {
-      id: "test".to_string(),
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
       api_key: "sk-test".to_string(),
