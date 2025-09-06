@@ -268,9 +268,11 @@ impl DefaultTokenService {
   ) -> Result<(String, Role), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
+
     // Check if token is expired
     let now = Utc::now().timestamp();
     if now < claims.exp as i64 {
+      // Token still valid, return immediately
       let client_id = self
         .secret_service
         .app_reg_info()?
@@ -284,30 +286,50 @@ impl DefaultTokenService {
       return Ok((access_token, role));
     }
 
-    let Some(refresh_token) = session.get::<String>("refresh_token").await? else {
+    // Token is expired, try to refresh
+    let refresh_token = session.get::<String>("refresh_token").await?;
+
+    // Add better error handling and logging
+    let Some(refresh_token) = refresh_token else {
+      tracing::warn!("Refresh token not found in session for expired access token");
       return Err(AuthError::RefreshTokenNotFound);
     };
 
-    // Token is expired, try to refresh
+    tracing::info!("Attempting to refresh expired access token");
+
+    // Get app registration info
     let app_reg_info: AppRegInfo = self
       .secret_service
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?;
 
-    let (new_access_token, new_refresh_token) = self
+    // Attempt token refresh
+    let (new_access_token, new_refresh_token) = match self
       .auth_service
       .refresh_token(
         &app_reg_info.client_id,
         &app_reg_info.client_secret,
         &refresh_token,
       )
-      .await?;
+      .await
+    {
+      Ok(tokens) => tokens,
+      Err(e) => {
+        tracing::error!("Failed to refresh token: {:?}", e);
+        return Err(e.into());
+      }
+    };
 
     // Store new tokens in session
     session.insert("access_token", &new_access_token).await?;
     if let Some(refresh_token) = new_refresh_token.as_ref() {
       session.insert("refresh_token", refresh_token).await?;
+      tracing::info!("Updated both access and refresh tokens in session");
+    } else {
+      tracing::info!("Updated access token in session (no new refresh token provided)");
     }
+
+    // Extract claims from new token
     let claims = extract_claims::<Claims>(&new_access_token)?;
     let client_id = self
       .secret_service
@@ -319,6 +341,8 @@ impl DefaultTokenService {
       .get(&client_id)
       .ok_or(AuthError::MissingRoles)?;
     let role = Role::from_resource_role(&resource_claims.roles)?;
+
+    tracing::info!("Successfully refreshed token for role: {:?}", role);
     Ok((new_access_token, role))
   }
 }
