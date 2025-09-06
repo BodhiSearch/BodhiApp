@@ -209,7 +209,7 @@ pub async fn inject_session_auth_info(
         .await
       {
         Ok((validated_token, role)) => {
-          debug!("inject_session_auth_info: session token injected");
+          debug!("inject_session_auth_info: session token injected successfully");
           req
             .headers_mut()
             .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
@@ -217,15 +217,22 @@ pub async fn inject_session_auth_info(
             .headers_mut()
             .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
         }
+        Err(AuthError::RefreshTokenNotFound) => {
+          // Log this specific case - user needs to re-login
+          debug!(
+            "inject_session_auth_info: session has no refresh token - user must re-authenticate"
+          );
+        }
         Err(err) => {
+          // Log other errors but continue
           debug!(
             ?err,
-            "inject_session_auth_info: session token validation failed"
+            "inject_session_auth_info: token validation/refresh failed"
           );
         }
       }
     } else {
-      debug!("inject_session_auth_info: session token not found");
+      debug!("inject_session_auth_info: no access token in session");
     }
   } else {
     debug!("inject_session_auth_info: is_same_origin is false");
