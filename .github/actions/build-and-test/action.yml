@@ -51,7 +51,7 @@ runs:
 
     - name: Run UI Tests
       shell: bash
-      run: make ci.ui
+      run: make ci.ui.unit
 
     - name: Upload UI coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
