@@ -65,9 +65,13 @@ ci.build: ## Build the Tauri application
 ci.app-npm: ## Install npm dependencies for the app
 	cd crates/bodhi && npm install
 
-ci.ui: ## Run UI tests with coverage
+ci.ui.unit: ## Run UI tests with coverage
 	cd crates/bodhi && npm run test
+
+ci.ui.integration: ## Run UI tests with coverage
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
+
+ci.ui: ci.ui.unit ci.ui.integration
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
