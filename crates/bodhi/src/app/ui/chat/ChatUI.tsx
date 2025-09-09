@@ -6,6 +6,7 @@ import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { Message } from '@/types/chat';
 import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
 import { Plus } from 'lucide-react';
@@ -40,27 +41,34 @@ const ChatInput = memo(function ChatInput({
   isModelSelected,
 }: ChatInputProps) {
   const { createNewChat } = useChatDB();
+  const getTestId = useResponsiveTestId();
 
   return (
-    <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <div
+      className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75"
+      data-testid={getTestId('chat-input-panel')}
+    >
       <div className="mx-auto max-w-3xl px-4 py-2">
-        <div className="relative flex items-center rounded-lg border bg-background shadow-sm">
+        <div
+          className="relative flex items-center rounded-lg border bg-background shadow-sm"
+          data-testid={getTestId('chat-input-container')}
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="absolute left-2 h-8 w-8"
             onClick={createNewChat}
-            data-testid="new-chat-inline-button"
+            data-testid={getTestId('new-chat-inline-button')}
           >
             <Plus className="h-5 w-5" />
             <span className="sr-only">New chat</span>
           </Button>
 
-          <form onSubmit={handleSubmit} className="flex w-full items-center">
+          <form onSubmit={handleSubmit} className="flex w-full items-center" data-testid={getTestId('chat-form')}>
             <textarea
               ref={inputRef}
-              data-testid="chat-input"
+              data-testid={getTestId('chat-input')}
               className={cn(
                 'flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:opacity-50',
                 !isModelSelected && 'ring-2 ring-destructive'
@@ -79,7 +87,7 @@ const ChatInput = memo(function ChatInput({
             <Button
               type="submit"
               size="icon"
-              data-testid="send-button"
+              data-testid={getTestId('send-button')}
               disabled={!input.trim() || streamLoading || !isModelSelected}
               className="absolute right-2 h-8 w-8"
             >
@@ -100,7 +108,9 @@ const ChatInput = memo(function ChatInput({
           </form>
         </div>
 
-        <p className="px-2 py-2 text-center text-xs text-muted-foreground">Chat assistant can make mistakes.</p>
+        <p className="px-2 py-2 text-center text-xs text-muted-foreground" data-testid={getTestId('chat-disclaimer')}>
+          Chat assistant can make mistakes.
+        </p>
       </div>
     </div>
   );
@@ -167,6 +177,7 @@ export function ChatUI() {
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
   const { input, setInput, isLoading: streamLoading, append, userMessage, assistantMessage } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const getTestId = useResponsiveTestId();
 
   useEffect(() => {
     if (!streamLoading && inputRef.current) {
@@ -193,11 +204,14 @@ export function ChatUI() {
   };
 
   return (
-    <div data-testid="chat-ui" className="flex h-full flex-col">
-      <div className="relative flex-1 min-h-0">
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="sticky top-0 h-8 bg-background/80 backdrop-blur-sm z-30" />
-          <div className="px-3">
+    <div data-testid={getTestId('chat-ui')} className="flex h-full flex-col">
+      <div className="relative flex-1 min-h-0" data-testid={getTestId('chat-content-area')}>
+        <div className="absolute inset-0 overflow-y-auto" data-testid={getTestId('chat-scroll-area')}>
+          <div
+            className="sticky top-0 h-8 bg-background/80 backdrop-blur-sm z-30"
+            data-testid={getTestId('chat-header-spacer')}
+          />
+          <div className="px-3" data-testid={getTestId('chat-messages-container')}>
             {(currentChat === null || !currentChat?.messages?.length) && !userMessage.content ? (
               <EmptyState />
             ) : (

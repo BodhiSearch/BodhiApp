@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use strum::IntoEnumIterator;
+use utoipa::ToSchema;
 
 use crate::{AppError, ErrorType};
 
@@ -16,6 +17,7 @@ use crate::{AppError, ErrorType};
   strum::EnumIter,
   Serialize,
   Deserialize,
+  ToSchema,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]

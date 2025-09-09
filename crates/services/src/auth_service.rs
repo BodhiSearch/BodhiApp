@@ -91,6 +91,10 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     client_secret: &str,
     app_client_id: &str,
   ) -> Result<String>;
+
+  async fn assign_user_role(&self, reveiwer_token: &str, username: &str, role: &str) -> Result<()>;
+
+  async fn remove_user(&self, reviewer_token: &str, username: &str) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -181,12 +185,12 @@ pub struct RegisterClientRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct RequestAccessRequest {
+pub struct AppAccessRequest {
   pub app_client_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct RequestAccessResponse {
+pub struct AppAccessResponse {
   pub scope: String,
 }
 
@@ -466,7 +470,7 @@ impl AuthService for KeycloakAuthService {
       .client
       .post(&endpoint)
       .bearer_auth(access_token.secret())
-      .json(&RequestAccessRequest {
+      .json(&AppAccessRequest {
         app_client_id: app_client_id.to_string(),
       })
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
@@ -474,8 +478,65 @@ impl AuthService for KeycloakAuthService {
       .await?;
 
     if response.status().is_success() {
-      let response_body: RequestAccessResponse = response.json().await?;
+      let response_body: AppAccessResponse = response.json().await?;
       Ok(response_body.scope)
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error.error);
+      Err(error.into())
+    }
+  }
+
+  async fn assign_user_role(&self, reviewer_token: &str, username: &str, role: &str) -> Result<()> {
+    // Make API call to assign role to user
+    let endpoint = format!(
+      "{}/realms/{}/bodhi/resources/assign-role",
+      self.auth_url, self.realm
+    );
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .bearer_auth(reviewer_token)
+      .json(&serde_json::json!({
+        "username": username,
+        "role": role
+      }))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error.error);
+      Err(error.into())
+    }
+  }
+
+  async fn remove_user(&self, reviewer_token: &str, username: &str) -> Result<()> {
+    // Make API call to remove user from all roles
+    let endpoint = format!(
+      "{}/realms/{}/bodhi/resources/remove-user",
+      self.auth_url, self.realm
+    );
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .bearer_auth(reviewer_token)
+      .json(&serde_json::json!({
+        "username": username
+      }))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      Ok(())
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error.error);

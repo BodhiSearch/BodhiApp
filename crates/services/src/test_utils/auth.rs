@@ -120,13 +120,13 @@ pub fn access_token_with_exp(exp: i64) -> Value {
 }
 
 pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
-  sign_token(&PRIVATE_KEY, &PUBLIC_KEY, claims)
+  sign_token(&PRIVATE_KEY, &PUBLIC_KEY, &claims)
 }
 
 pub fn sign_token(
   private_key: &RsaPrivateKey,
   public_key: &RsaPublicKey,
-  claims: Value,
+  claims: &Value,
 ) -> Result<(String, String), anyhow::Error> {
   let header = Header {
     kid: Some("test-kid".to_string()),
@@ -136,7 +136,7 @@ pub fn sign_token(
   let pem_file = private_key.to_pkcs1_pem(rsa::pkcs8::LineEnding::CRLF)?;
   let token = encode(
     &header,
-    &claims,
+    claims,
     &EncodingKey::from_rsa_pem(pem_file.as_bytes())?,
   )?;
 

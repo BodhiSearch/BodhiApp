@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
+import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -36,6 +37,7 @@ const settingsSidebarStyles = {
 function ChatWithSettings() {
   const { open, openMobile, isMobile } = useSidebar();
   const showSettingsPanel = isMobile ? openMobile : open;
+  const getTestId = useResponsiveTestId();
 
   return (
     <>
@@ -45,6 +47,7 @@ function ChatWithSettings() {
           'transition-[margin] duration-300 ease-in-out',
           !isMobile && open ? 'mr-[calc(24rem)]' : ''
         )}
+        data-testid={getTestId('chat-main-content')}
       >
         <ChatUI />
       </div>
@@ -57,7 +60,7 @@ function ChatWithSettings() {
           !open && 'md:right-4'
         )}
         aria-label="Toggle settings"
-        data-testid="settings-toggle-button"
+        data-testid={getTestId('settings-toggle-button')}
       >
         {showSettingsPanel ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
       </SidebarTrigger>
@@ -73,18 +76,19 @@ function ChatWithHistory() {
   const searchParams = useSearchParams();
   const model = searchParams?.get('model');
   const initialData = model ? { model: model } : undefined;
+  const getTestId = useResponsiveTestId();
 
   return (
     <>
-      <Sidebar side="left">
-        <SidebarContent>
+      <Sidebar side="left" data-testid={getTestId('chat-history-sidebar')}>
+        <SidebarContent data-testid={getTestId('chat-history-content')}>
           <NewChatButton />
           <SidebarSeparator />
           <ChatHistory />
         </SidebarContent>
       </Sidebar>
-      <div className="flex flex-1 flex-col w-full">
-        <div className="flex flex-1 flex-col h-full">
+      <div className="flex flex-1 flex-col w-full" data-testid={getTestId('chat-layout-main')}>
+        <div className="flex flex-1 flex-col h-full" data-testid={getTestId('chat-layout-inner')}>
           <SidebarTrigger
             variant="ghost"
             size="icon"
@@ -94,7 +98,7 @@ function ChatWithHistory() {
               !open && 'md:left-5'
             )}
             aria-label="Toggle history"
-            data-testid="chat-history-toggle"
+            data-testid={getTestId('chat-history-toggle')}
           >
             {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
           </SidebarTrigger>

@@ -271,6 +271,327 @@
         ]
       }
     },
+    "/bodhi/v1/access-requests": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List All Access Requests",
+        "description": "List all access requests regardless of status. Requires manager or admin role.",
+        "operationId": "listAllAccessRequests",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based indexing)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items to return per page (maximum 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All requests retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedUserAccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/access-requests/pending": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List Pending Access Requests",
+        "description": "List all pending access requests. Requires manager or admin role.",
+        "operationId": "listPendingAccessRequests",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based indexing)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items to return per page (maximum 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending requests retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedUserAccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/access-requests/{id}/approve": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Approve Access Request",
+        "description": "Approve an access request and assign a role. Requires manager or admin role.",
+        "operationId": "approveAccessRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Role to assign to the user",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveUserAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request approved successfully"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/access-requests/{id}/reject": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reject Access Request",
+        "description": "Reject an access request. Requires manager or admin role.",
+        "operationId": "rejectAccessRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request rejected successfully"
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/api-models": {
       "get": {
         "tags": [
@@ -814,6 +1135,79 @@
         ]
       }
     },
+    "/bodhi/v1/apps/request-access": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Request Resource Access",
+        "description": "Requests access permissions for an application client to access this resource server's protected resources.",
+        "operationId": "requestAccess",
+        "requestBody": {
+          "description": "Application client requesting access",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppAccessRequest"
+              },
+              "example": {
+                "app_client_id": "my_app_client_123"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Access granted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppAccessResponse"
+                },
+                "example": {
+                  "scope": "scope_resource_bodhi-server"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, application not registered, or incorrect app status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "app_reg_info_not_found",
+                    "message": "Application registration information not found",
+                    "type": "invalid_app_state"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error during access request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "auth_service_error",
+                    "message": "Failed to communicate with authorization server",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bodhi/v1/auth/callback": {
       "post": {
         "tags": [
@@ -944,79 +1338,6 @@
                   "error": {
                     "code": "app_reg_info_missing",
                     "message": "Application not registered with auth server",
-                    "type": "internal_server_error"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/bodhi/v1/auth/request-access": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Request Resource Access",
-        "description": "Requests access permissions for an application client to access this resource server's protected resources.",
-        "operationId": "requestAccess",
-        "requestBody": {
-          "description": "Application client requesting access",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RequestAccessRequest"
-              },
-              "example": {
-                "app_client_id": "my_app_client_123"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Access granted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestAccessResponse"
-                },
-                "example": {
-                  "scope": "scope_resource_bodhi-server"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request, application not registered, or incorrect app status",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "app_reg_info_not_found",
-                    "message": "Application registration information not found",
-                    "type": "invalid_app_state"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error during access request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "auth_service_error",
-                    "message": "Failed to communicate with authorization server",
                     "type": "internal_server_error"
                   }
                 }
@@ -2638,6 +2959,120 @@
         }
       }
     },
+    "/bodhi/v1/user/request-access": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Request User Access",
+        "description": "Authenticated users without roles can request access to the system. Only one pending request is allowed per user.",
+        "operationId": "requestUserAccess",
+        "responses": {
+          "201": {
+            "description": "Access request created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmptyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending request already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "User already has role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/user/request-status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Access Request Status",
+        "description": "Check the status of the current user's access request.",
+        "operationId": "getUserAccessStatus",
+        "responses": {
+          "200": {
+            "description": "Request status retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccessStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -3259,6 +3694,28 @@
           "offline_token": "bapp_1234567890abcdef"
         }
       },
+      "AppAccessRequest": {
+        "type": "object",
+        "required": [
+          "app_client_id"
+        ],
+        "properties": {
+          "app_client_id": {
+            "type": "string"
+          }
+        }
+      },
+      "AppAccessResponse": {
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string"
+          }
+        }
+      },
       "AppInfo": {
         "type": "object",
         "description": "Application information and status",
@@ -3290,6 +3747,22 @@
           "resource-admin"
         ],
         "example": "ready"
+      },
+      "ApproveUserAccessRequest": {
+        "type": "object",
+        "description": "Request body for approving access with role assignment",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "description": "Role to assign to the user"
+          }
+        },
+        "example": {
+          "role": "resource_user"
+        }
       },
       "AuthCallbackRequest": {
         "type": "object",
@@ -3568,6 +4041,10 @@
       },
       "Duration": {
         "type": "string"
+      },
+      "EmptyResponse": {
+        "type": "object",
+        "example": {}
       },
       "ErrorBody": {
         "type": "object",
@@ -4363,6 +4840,55 @@
           }
         }
       },
+      "PaginatedUserAccessResponse": {
+        "type": "object",
+        "description": "Paginated response for access requests",
+        "required": [
+          "requests",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Current page number",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of items per page",
+            "minimum": 0
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAccessRequest"
+            },
+            "description": "List of access requests"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total number of requests",
+            "minimum": 0
+          }
+        },
+        "example": {
+          "page": 1,
+          "page_size": 20,
+          "requests": [
+            {
+              "created_at": "2024-01-01T12:00:00Z",
+              "email": "user@example.com",
+              "id": 1,
+              "reviewer": null,
+              "status": "pending",
+              "updated_at": "2024-01-01T12:00:00Z"
+            }
+          ],
+          "total": 1
+        }
+      },
       "PaginatedUserAliasResponse": {
         "type": "object",
         "required": [
@@ -4458,27 +4984,14 @@
           "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
         }
       },
-      "RequestAccessRequest": {
-        "type": "object",
-        "required": [
-          "app_client_id"
-        ],
-        "properties": {
-          "app_client_id": {
-            "type": "string"
-          }
-        }
-      },
-      "RequestAccessResponse": {
-        "type": "object",
-        "required": [
-          "scope"
-        ],
-        "properties": {
-          "scope": {
-            "type": "string"
-          }
-        }
+      "Role": {
+        "type": "string",
+        "enum": [
+          "resource_user",
+          "resource_power_user",
+          "resource_manager",
+          "resource_admin"
+        ]
       },
       "RoleSource": {
         "type": "string",
@@ -4905,6 +5418,89 @@
         },
         "example": {
           "value": "debug"
+        }
+      },
+      "UserAccessRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email of the requesting user"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unique identifier for the request"
+          },
+          "reviewer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserAccessRequestStatus",
+            "description": "Current status of the request"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      },
+      "UserAccessRequestStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ]
+      },
+      "UserAccessStatusResponse": {
+        "type": "object",
+        "description": "Response for checking access request status",
+        "required": [
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email of the requesting user"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserAccessRequestStatus",
+            "description": "Current status of the request (pending, approved, rejected)"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        },
+        "example": {
+          "created_at": "2024-01-01T12:00:00Z",
+          "status": "pending"
         }
       },
       "UserAlias": {

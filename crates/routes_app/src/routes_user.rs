@@ -126,10 +126,14 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       }))
     }
     (None, None) => {
-      debug!("no role or token header");
-      Err(BadRequestError::new(
-        "missing resource role header".to_string(),
-      ))?
+      debug!("no role or token header, returning logged in user without role");
+      Ok(Json(UserInfo {
+        logged_in: true,
+        email: Some(claims.email),
+        role: None,
+        token_type: Some(TokenType::Session),
+        role_source: None,
+      }))
     }
   }
 }
@@ -426,16 +430,16 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(StatusCode::BAD_REQUEST, response.status());
-    let response_json = response.json::<Value>().await?;
+    assert_eq!(StatusCode::OK, response.status());
+    let response_json = response.json::<UserInfo>().await?;
     assert_eq!(
-      json!({
-        "error": {
-          "message": "invalid request, reason: \u{2068}missing resource role header\u{2069}",
-          "type": "invalid_request_error",
-          "code": "bad_request_error"
-        }
-      }),
+      UserInfo {
+        logged_in: true,
+        email: Some("testuser@email.com".to_string()),
+        role: None,
+        token_type: Some(TokenType::Session),
+        role_source: None,
+      },
       response_json
     );
     Ok(())

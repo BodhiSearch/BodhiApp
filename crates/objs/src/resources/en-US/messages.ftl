@@ -1,8 +1,10 @@
 bad_request_error = invalid request, reason: {$reason}
+not_found_error = {$reason}
 service_unavailable_error = service unavailable, reason: {$reason}
 builder_error-uninitialized_field = builder_error: uninitialized field: {$var_0}
 builder_error-validation_error = builder_error: validation error: {$var_0}
 internal_server_error = internal_server_error: {$reason}
+unauthorized_error = unauthorized access: {$reason}
 io_error = io_error: {$source}
 io_with_path_error = io_error: path: {$path}, {$source}
 io_dir_create_error = io_error: failed to create directory $BODHI_HOME/{$path}, error: {$source}

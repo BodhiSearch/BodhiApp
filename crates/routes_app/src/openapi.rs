@@ -5,21 +5,24 @@ use crate::{
   UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
-  ApiTokenResponse, AppInfo, CreateAliasRequest, CreateApiTokenRequest, NewDownloadRequest,
-  PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
-  PaginatedLocalModelResponse, PaginatedUserAliasResponse, RedirectResponse, SetupRequest,
-  SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAliasResponse, UserInfo,
-  __path_app_info_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
+  ApiTokenResponse, AppInfo, ApproveUserAccessRequest, CreateAliasRequest, CreateApiTokenRequest,
+  NewDownloadRequest, PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
+  PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
+  RedirectResponse, SetupRequest, SetupResponse, UpdateAliasRequest, UpdateSettingRequest,
+  UserAccessStatusResponse, UserAliasResponse, UserInfo, __path_app_info_handler,
+  __path_approve_request_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
   __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
   __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
   __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
   __path_get_download_status_handler, __path_get_user_alias_handler, __path_health_handler,
-  __path_list_aliases_handler, __path_list_api_models_handler, __path_list_downloads_handler,
-  __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
+  __path_list_aliases_handler, __path_list_all_requests_handler, __path_list_api_models_handler,
+  __path_list_downloads_handler, __path_list_local_modelfiles_handler,
+  __path_list_pending_requests_handler, __path_list_settings_handler, __path_list_tokens_handler,
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
-  __path_request_access_handler, __path_setup_handler, __path_test_api_model_handler,
-  __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
-  __path_update_token_handler, __path_user_info_handler,
+  __path_reject_request_handler, __path_request_access_handler, __path_request_status_handler,
+  __path_setup_handler, __path_test_api_model_handler, __path_update_alias_handler,
+  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
+  __path_user_info_handler, __path_user_request_access_handler,
 };
 use objs::{
   Alias, ApiFormat, OAIRequestParams, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource,
@@ -34,7 +37,7 @@ use routes_oai::{
 use services::db::DownloadStatus;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppStatus, RequestAccessRequest, RequestAccessResponse, SettingService,
+  AppAccessRequest, AppAccessResponse, AppStatus, SettingService,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -55,9 +58,13 @@ make_ui_endpoint!(ENDPOINT_LOGOUT, "logout");
 make_ui_endpoint!(ENDPOINT_APP_INFO, "info");
 make_ui_endpoint!(ENDPOINT_APP_SETUP, "setup");
 make_ui_endpoint!(ENDPOINT_USER_INFO, "user");
+make_ui_endpoint!(ENDPOINT_USER_REQUEST_ACCESS, "user/request-access");
+make_ui_endpoint!(ENDPOINT_USER_REQUEST_STATUS, "user/request-status");
+make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_PENDING, "access-requests/pending");
+make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_ALL, "access-requests");
 make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
 make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
-make_ui_endpoint!(ENDPOINT_AUTH_REQUEST_ACCESS, "auth/request-access");
+make_ui_endpoint!(ENDPOINT_APPS_REQUEST_ACCESS, "apps/request-access");
 
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
@@ -141,11 +148,15 @@ For API keys, specify required scope when creating the token.
             SetupResponse,
             // auth
             AuthCallbackRequest,
-            RequestAccessRequest,
-            RequestAccessResponse,
+            AppAccessRequest,
+            AppAccessResponse,
             UserInfo,
             TokenType,
             RoleSource,
+            // access requests
+            UserAccessStatusResponse,
+            ApproveUserAccessRequest,
+            PaginatedUserAccessResponse,
             // api keys/token
             CreateApiTokenRequest,
             ApiTokenResponse,
@@ -245,7 +256,15 @@ For API keys, specify required scope when creating the token.
         // Ollama endpoints
         ollama_models_handler,
         ollama_model_show_handler,
-        ollama_model_chat_handler
+        ollama_model_chat_handler,
+
+        // Access request endpoints
+        user_request_access_handler,
+        request_status_handler,
+        list_pending_requests_handler,
+        list_all_requests_handler,
+        approve_request_handler,
+        reject_request_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;
@@ -305,9 +324,8 @@ impl Modify for OpenAPIEnvModifier {
 #[cfg(test)]
 mod tests {
   use crate::{
-    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_REQUEST_ACCESS,
-    ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-    ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+    ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -492,45 +510,6 @@ mod tests {
     if let RefOr::T(response) = success_response {
       assert!(response.content.get("application/json").is_some());
     }
-  }
-
-  #[test]
-  fn test_request_access_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
-
-    // Verify endpoint
-    let paths = &api_doc.paths;
-    let request_access = paths
-      .paths
-      .get(ENDPOINT_AUTH_REQUEST_ACCESS)
-      .expect("Request access endpoint not found");
-    let post_op = request_access
-      .post
-      .as_ref()
-      .expect("POST operation not found");
-
-    // Check operation details
-    assert_eq!(post_op.tags.as_ref().unwrap()[0], "auth");
-    assert_eq!(post_op.operation_id.as_ref().unwrap(), "requestAccess");
-
-    // Check responses
-    let responses = &post_op.responses;
-    assert!(responses.responses.contains_key("200"));
-    assert!(responses.responses.contains_key("400"));
-    assert!(responses.responses.contains_key("500"));
-
-    // Verify response schema references RequestAccessResponse
-    let success_response = responses.responses.get("200").unwrap();
-    if let RefOr::T(response) = success_response {
-      assert!(response.content.get("application/json").is_some());
-    }
-
-    // Verify request body references RequestAccessRequest
-    let request_body = post_op
-      .request_body
-      .as_ref()
-      .expect("Request body not found");
-    assert!(request_body.content.get("application/json").is_some());
   }
 
   #[test]

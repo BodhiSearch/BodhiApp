@@ -30,10 +30,16 @@ pub enum ErrorType {
   InternalServer,
   #[strum(serialize = "authentication_error")]
   Authentication,
+  #[strum(serialize = "unauthorized_error")]
+  Unauthorized,
   #[strum(serialize = "forbidden_error")]
   Forbidden,
   #[strum(serialize = "not_found_error")]
   NotFound,
+  #[strum(serialize = "conflict_error")]
+  Conflict,
+  #[strum(serialize = "unprocessable_entity_error")]
+  UnprocessableEntity,
   #[default]
   #[strum(serialize = "unknown_error")]
   Unknown,
@@ -49,7 +55,10 @@ impl ErrorType {
       ErrorType::BadRequest => StatusCode::BAD_REQUEST.as_u16(),
       ErrorType::InvalidAppState => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
       ErrorType::Authentication => StatusCode::UNAUTHORIZED.as_u16(),
+      ErrorType::Unauthorized => StatusCode::UNAUTHORIZED.as_u16(),
       ErrorType::NotFound => StatusCode::NOT_FOUND.as_u16(),
+      ErrorType::Conflict => StatusCode::CONFLICT.as_u16(),
+      ErrorType::UnprocessableEntity => StatusCode::UNPROCESSABLE_ENTITY.as_u16(),
       ErrorType::Unknown => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
       ErrorType::Forbidden => StatusCode::FORBIDDEN.as_u16(),
       ErrorType::ServiceUnavailable => StatusCode::SERVICE_UNAVAILABLE.as_u16(),

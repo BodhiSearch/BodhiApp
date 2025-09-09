@@ -10,7 +10,9 @@ use objs::{
   ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError, UserScopeError,
 };
 use server_core::RouterState;
-use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
+use services::{
+  extract_claims, AppStatus, AuthServiceError, SecretServiceError, TokenError, UserIdClaims,
+};
 use std::sync::Arc;
 use tower_sessions::Session;
 use tracing::debug;
@@ -19,6 +21,7 @@ pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
 
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
+pub const KEY_RESOURCE_USER_EMAIL: &str = "X-Resource-User-Email";
 pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
 pub const KEY_RESOURCE_SCOPE: &str = "X-Resource-Scope";
 
@@ -109,6 +112,7 @@ pub async fn auth_middleware(
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
   req.headers_mut().remove(KEY_RESOURCE_ROLE);
   req.headers_mut().remove(KEY_RESOURCE_SCOPE);
+  req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
 
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
@@ -155,6 +159,11 @@ pub async fn auth_middleware(
       req
         .headers_mut()
         .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+      // email only for session tokens for now, will implement for bearer once we implement access token story
+      let claims = extract_claims::<UserIdClaims>(&access_token)?;
+      req
+        .headers_mut()
+        .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
       debug!("auth_middleware: session token validated");
       Ok(next.run(req).await)
     } else {
@@ -165,7 +174,7 @@ pub async fn auth_middleware(
   }
 }
 
-pub async fn inject_session_auth_info(
+pub async fn inject_optional_auth_info(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
@@ -174,6 +183,7 @@ pub async fn inject_session_auth_info(
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
   req.headers_mut().remove(KEY_RESOURCE_ROLE);
   req.headers_mut().remove(KEY_RESOURCE_SCOPE);
+  req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -189,6 +199,7 @@ pub async fn inject_session_auth_info(
     return Ok(next.run(req).await);
   }
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+    // Bearer token
     if let Ok(header) = header.to_str() {
       if let Ok((access_token, resource_scope)) = token_service.validate_bearer_token(header).await
       {
@@ -202,7 +213,7 @@ pub async fn inject_session_auth_info(
       }
     }
   } else if is_same_origin(req.headers()) {
-    // Check for token in session
+    // session token
     if let Ok(Some(access_token)) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
       match token_service
         .get_valid_session_token(session, access_token)
@@ -216,6 +227,10 @@ pub async fn inject_session_auth_info(
           req
             .headers_mut()
             .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+          let claims = extract_claims::<UserIdClaims>(&validated_token)?;
+          req
+            .headers_mut()
+            .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
         }
         Err(AuthError::RefreshTokenNotFound) => {
           // Log this specific case - user needs to re-login
@@ -244,7 +259,7 @@ pub async fn inject_session_auth_info(
 #[cfg(test)]
 mod tests {
   use super::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN};
-  use crate::{auth_middleware, inject_session_auth_info, KEY_RESOURCE_SCOPE};
+  use crate::{auth_middleware, inject_optional_auth_info, KEY_RESOURCE_SCOPE};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -339,7 +354,7 @@ mod tests {
       .merge(router_with_auth().route_layer(from_fn_with_state(state.clone(), auth_middleware)))
       .merge(
         router_with_optional_auth()
-          .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info)),
+          .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info)),
       )
       .layer(state.app_service().session_service().session_layer())
       .with_state(state)
@@ -797,8 +812,8 @@ mod tests {
     #[case] scope: &str,
     #[case] expected_header: &str,
   ) -> anyhow::Result<()> {
-    let (bearer_token, _) = build_token(offline_token_claims())?;
-    let mut access_token_claims = offline_access_token_claims();
+    let mut access_token_claims = offline_token_claims();
+    let (bearer_token, _) = build_token(access_token_claims.clone())?;
     access_token_claims["scope"] = Value::String(scope.to_string());
     let (access_token, _) = build_token(access_token_claims)?;
     let access_token_cl = access_token.clone();

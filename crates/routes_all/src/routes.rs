@@ -7,7 +7,7 @@ macro_rules! make_ui_endpoint {
 
 use crate::proxy_router;
 use auth_middleware::canonical_url_middleware;
-use auth_middleware::{api_auth_middleware, auth_middleware, inject_session_auth_info};
+use auth_middleware::{api_auth_middleware, auth_middleware, inject_optional_auth_info};
 use axum::{
   middleware::from_fn_with_state,
   routing::{delete, get, post, put},
@@ -15,21 +15,24 @@ use axum::{
 };
 use objs::{Role, TokenScope, UserScope};
 use routes_app::{
-  app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
-  create_api_model_handler, create_pull_request_handler, create_token_handler,
-  delete_api_model_handler, delete_setting_handler, dev_secrets_handler, envs_handler,
-  fetch_models_handler, get_api_formats_handler, get_api_model_handler,
+  app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
+  create_alias_handler, create_api_model_handler, create_pull_request_handler,
+  create_token_handler, delete_api_model_handler, delete_setting_handler, dev_secrets_handler,
+  envs_handler, fetch_models_handler, get_api_formats_handler, get_api_model_handler,
   get_download_status_handler, get_user_alias_handler, health_handler, list_aliases_handler,
-  list_api_models_handler, list_downloads_handler, list_local_modelfiles_handler,
-  list_settings_handler, list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler,
-  request_access_handler, setup_handler, test_api_model_handler, update_alias_handler,
-  update_api_model_handler, update_setting_handler, update_token_handler, user_info_handler,
-  BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
-  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST, ENDPOINT_APP_INFO,
-  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS,
-  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS,
-  ENDPOINT_USER_INFO,
+  list_all_requests_handler, list_api_models_handler, list_downloads_handler,
+  list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
+  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, reject_request_handler,
+  request_access_handler, request_status_handler, setup_handler, test_api_model_handler,
+  update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
+  user_info_handler, user_request_access_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier,
+  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS,
+  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
+  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH,
+  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
+  ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -75,8 +78,13 @@ pub fn build_routes(
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
-    .route(ENDPOINT_AUTH_REQUEST_ACCESS, post(request_access_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
+    .route(ENDPOINT_APPS_REQUEST_ACCESS, post(request_access_handler))
+    .route(
+      ENDPOINT_USER_REQUEST_ACCESS,
+      post(user_request_access_handler),
+    )
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler))
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info));
 
   // User level APIs (role=user & scope=scope_token_user)
   let user_apis = Router::new()
@@ -195,12 +203,33 @@ pub fn build_routes(
       move |state, req, next| api_auth_middleware(Role::Admin, None, None, state, req, next),
     ));
 
+  // Manager/Admin access request APIs (session-only)
+  let manager_session_apis = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_PENDING,
+      get(list_pending_requests_handler),
+    )
+    .route(ENDPOINT_ACCESS_REQUESTS_ALL, get(list_all_requests_handler))
+    .route(
+      &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/approve"),
+      post(approve_request_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/reject"),
+      post(reject_request_handler),
+    )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| api_auth_middleware(Role::Manager, None, None, state, req, next),
+    ));
+
   // Combine all protected APIs
   let protected_apis = Router::new()
     .merge(user_apis)
     .merge(power_user_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)
+    .merge(manager_session_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware));
 
   // Reduce verbose middleware logging - only log errors and warnings for better signal-to-noise ratio
