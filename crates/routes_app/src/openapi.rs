@@ -1,7 +1,7 @@
 use crate::{
-  ApiFormatsResponse, ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest,
+  ApiFormatsResponse, ApiModelResponse, AppRole, AuthCallbackRequest, CreateApiModelRequest,
   FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
-  PaginationSortParams, PingResponse, RoleSource, TestPromptRequest, TestPromptResponse, TokenType,
+  PaginationSortParams, PingResponse, TestPromptRequest, TestPromptResponse,
   UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
@@ -25,9 +25,9 @@ use crate::{
   __path_user_info_handler, __path_user_request_access_handler,
 };
 use objs::{
-  Alias, ApiFormat, OAIRequestParams, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource,
-  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA,
-  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  Alias, ApiFormat, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
+  SettingSource, TokenScope, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH,
+  API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
   ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_oai_model_handler,
@@ -151,8 +151,10 @@ For API keys, specify required scope when creating the token.
             AppAccessRequest,
             AppAccessResponse,
             UserInfo,
-            TokenType,
-            RoleSource,
+            AppRole,
+            Role,
+            TokenScope,
+            UserScope,
             // access requests
             UserAccessStatusResponse,
             ApproveUserAccessRequest,

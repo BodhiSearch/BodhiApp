@@ -10,18 +10,30 @@ import {
   ROUTE_RESOURCE_ADMIN,
   ROUTE_SETUP,
   ROUTE_SETUP_DOWNLOAD_MODELS,
+  ROUTE_REQUEST_ACCESS,
+  ROUTE_LOGIN,
 } from '@/lib/constants';
 import { AppStatus, OpenAiApiError } from '@bodhiapp/ts-client';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
+import { Role, meetsMinRole, getCleanRoleName } from '@/lib/roles';
+
+// For backward compatibility, allow passing clean role names (admin, manager, etc.)
+type MinRole = 'user' | 'power_user' | 'manager' | 'admin';
 
 interface AppInitializerProps {
   children?: ReactNode;
   allowedStatus?: AppStatus;
   authenticated?: boolean;
+  minRole?: MinRole;
 }
 
-export default function AppInitializer({ children, allowedStatus, authenticated = false }: AppInitializerProps) {
+export default function AppInitializer({
+  children,
+  allowedStatus,
+  authenticated = false,
+  minRole,
+}: AppInitializerProps) {
   const router = useRouter();
   const [hasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, false);
 
@@ -59,10 +71,32 @@ export default function AppInitializer({ children, allowedStatus, authenticated 
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
+
     if (authenticated && !userInfo?.logged_in) {
-      router.push('/ui/login');
+      router.push(ROUTE_LOGIN);
+      return;
     }
-  }, [authenticated, userInfo, router, appLoading, userLoading, appError, userError]);
+
+    // Check for authenticated users
+    if (authenticated && userInfo?.logged_in) {
+      // Check if user has no role - redirect to request access
+      if (!userInfo.role) {
+        router.push(ROUTE_REQUEST_ACCESS);
+        return;
+      }
+
+      // Check minimum role requirement
+      if (minRole) {
+        const userRoleValue = typeof userInfo.role === 'string' ? userInfo.role : null;
+        const requiredRole = `resource_${minRole}` as Role; // Convert to resource_ format
+
+        if (!userRoleValue || !meetsMinRole(userRoleValue, requiredRole)) {
+          router.push(ROUTE_LOGIN + '?error=insufficient-role');
+          return;
+        }
+      }
+    }
+  }, [authenticated, userInfo, minRole, router, appLoading, userLoading, appError, userError]);
 
   if (appLoading || userLoading) {
     return <Loading message="Initializing app..." />;

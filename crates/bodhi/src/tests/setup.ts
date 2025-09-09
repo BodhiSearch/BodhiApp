@@ -92,6 +92,16 @@ class MockResizeObserver {
 
 global.ResizeObserver = MockResizeObserver;
 
+// Polyfill for Pointer Events API (not supported in JSDOM)
+// Required for Radix UI Select and other pointer-based components
+Element.prototype.hasPointerCapture = vi.fn(() => false);
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
+
+// Polyfill for scrollIntoView (not supported in JSDOM)
+// Required for Radix UI Select and other scroll-based components
+Element.prototype.scrollIntoView = vi.fn();
+
 // Suppress console errors for specific messages
 const originalError = console.error;
 beforeAll(() => {
