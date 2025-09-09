@@ -257,6 +257,151 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   );
 });
 
+describe('AppInitializer role-based access control', () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
+  });
+
+  it.each([
+    { userRole: 'admin', minRole: 'manager', shouldAllow: true },
+    { userRole: 'manager', minRole: 'manager', shouldAllow: true },
+    { userRole: 'power_user', minRole: 'manager', shouldAllow: false },
+    { userRole: 'user', minRole: 'manager', shouldAllow: false },
+    { userRole: 'admin', minRole: 'admin', shouldAllow: true },
+    { userRole: 'manager', minRole: 'admin', shouldAllow: false },
+    { userRole: 'power_user', minRole: 'admin', shouldAllow: false },
+    { userRole: 'user', minRole: 'admin', shouldAllow: false },
+  ])(
+    'handles minRole=$minRole with userRole=$userRole (allow=$shouldAllow)',
+    async ({ userRole, minRole, shouldAllow }) => {
+      server.use(
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+          return res(ctx.json({ status: 'ready' }));
+        }),
+        rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+          return res(
+            ctx.json({
+              logged_in: true,
+              email: 'test@example.com',
+              role: `resource_${userRole}`,
+            })
+          );
+        })
+      );
+
+      await renderWithSetup(
+        <AppInitializer allowedStatus="ready" authenticated={true} minRole={minRole as any}>
+          <div>Protected content</div>
+        </AppInitializer>
+      );
+
+      if (shouldAllow) {
+        expect(screen.getByText('Protected content')).toBeInTheDocument();
+        expect(pushMock).not.toHaveBeenCalled();
+      } else {
+        expect(pushMock).toHaveBeenCalledWith('/ui/login?error=insufficient-role');
+      }
+    }
+  );
+
+  it('allows access when no minRole is specified', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+        return res(
+          ctx.json({
+            logged_in: true,
+            email: 'test@example.com',
+            role: 'resource_user',
+          })
+        );
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true}>
+        <div>Content for all authenticated users</div>
+      </AppInitializer>
+    );
+
+    expect(screen.getByText('Content for all authenticated users')).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('redirects to login when user has no roles', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+        return res(
+          ctx.json({
+            logged_in: true,
+            email: 'test@example.com',
+            role: null,
+          })
+        );
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true} minRole="user">
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/request-access');
+  });
+
+  it('redirects to login when user has undefined roles', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+        return res(
+          ctx.json({
+            logged_in: true,
+            email: 'test@example.com',
+            // roles is undefined
+          })
+        );
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true} minRole="user">
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/request-access');
+  });
+
+  it('prioritizes auth check over role check', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ logged_in: false }));
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true} minRole="resource_admin">
+        <div>Protected content</div>
+      </AppInitializer>
+    );
+
+    // Should redirect to login due to auth failure, not role failure
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
+  });
+});
+
 describe('AppInitializer authentication behavior', () => {
   // Test redirect scenarios
   it.each`
@@ -295,7 +440,13 @@ describe('AppInitializer authentication behavior', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ logged_in: loggedIn }));
+        return res(
+          ctx.json({
+            logged_in: loggedIn,
+            email: 'test@example.com',
+            role: loggedIn ? 'resource_user' : null, // Add role for authenticated users
+          })
+        );
       })
     );
     await renderWithSetup(

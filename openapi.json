@@ -2932,9 +2932,7 @@
                 "example": {
                   "email": "user@example.com",
                   "logged_in": true,
-                  "role": "admin",
-                  "role_source": "role",
-                  "token_type": "bearer"
+                  "role": "resource_admin"
                 }
               }
             }
@@ -3738,6 +3736,19 @@
           "status": "ready",
           "version": "0.1.0"
         }
+      },
+      "AppRole": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Role"
+          },
+          {
+            "$ref": "#/components/schemas/TokenScope"
+          },
+          {
+            "$ref": "#/components/schemas/UserScope"
+          }
+        ]
       },
       "AppStatus": {
         "type": "string",
@@ -4993,15 +5004,6 @@
           "resource_admin"
         ]
       },
-      "RoleSource": {
-        "type": "string",
-        "description": "Role Source\n`role` - client level user role\n`scope_token` - scope granted token role\n`scope_user` - scope granted user role",
-        "enum": [
-          "role",
-          "scope_token",
-          "scope_user"
-        ]
-      },
       "SettingInfo": {
         "type": "object",
         "required": [
@@ -5275,19 +5277,20 @@
           "success": true
         }
       },
+      "TokenScope": {
+        "type": "string",
+        "enum": [
+          "scope_token_user",
+          "scope_token_power_user",
+          "scope_token_manager",
+          "scope_token_admin"
+        ]
+      },
       "TokenStatus": {
         "type": "string",
         "enum": [
           "active",
           "inactive"
-        ]
-      },
-      "TokenType": {
-        "type": "string",
-        "description": "Token Type\n`session` - token stored in cookie based http session\n`bearer` - token received from http authorization header as bearer token",
-        "enum": [
-          "session",
-          "bearer"
         ]
       },
       "UpdateAliasRequest": {
@@ -5601,31 +5604,13 @@
             "description": "If user is logged in"
           },
           "role": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "List of roles assigned to the user"
-          },
-          "role_source": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/RoleSource",
-                "description": "Role source"
-              }
-            ]
-          },
-          "token_type": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/TokenType",
-                "description": "Token type"
+                "$ref": "#/components/schemas/AppRole",
+                "description": "Role assigned to the user"
               }
             ]
           }
@@ -5633,11 +5618,17 @@
         "example": {
           "email": "user@example.com",
           "logged_in": true,
-          "roles": [
-            "admin",
-            "user"
-          ]
+          "role": "resource_user"
         }
+      },
+      "UserScope": {
+        "type": "string",
+        "enum": [
+          "scope_user_user",
+          "scope_user_power_user",
+          "scope_user_manager",
+          "scope_user_admin"
+        ]
       }
     }
   },

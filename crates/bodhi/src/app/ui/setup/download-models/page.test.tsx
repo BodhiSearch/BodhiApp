@@ -108,7 +108,7 @@ describe('ModelDownloadPage access control', () => {
           ctx.json({
             logged_in: true,
             email: 'user@email.com',
-            roles: [],
+            role: 'resource_user',
           })
         );
       }),

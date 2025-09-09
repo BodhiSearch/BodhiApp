@@ -88,6 +88,8 @@ export type AppInfo = {
     version: string;
 };
 
+export type AppRole = Role | TokenScope | UserScope;
+
 export type AppStatus = 'setup' | 'ready' | 'resource-admin';
 
 /**
@@ -501,14 +503,6 @@ export type RedirectResponse = {
 
 export type Role = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
-/**
- * Role Source
- * `role` - client level user role
- * `scope_token` - scope granted token role
- * `scope_user` - scope granted user role
- */
-export type RoleSource = 'role' | 'scope_token' | 'scope_user';
-
 export type SettingInfo = {
     current_value: unknown;
     default_value: unknown;
@@ -605,14 +599,9 @@ export type TestPromptResponse = {
     success: boolean;
 };
 
-export type TokenStatus = 'active' | 'inactive';
+export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_token_manager' | 'scope_token_admin';
 
-/**
- * Token Type
- * `session` - token stored in cookie based http session
- * `bearer` - token received from http authorization header as bearer token
- */
-export type TokenType = 'session' | 'bearer';
+export type TokenStatus = 'active' | 'inactive';
 
 export type UpdateAliasRequest = {
     context_params?: Array<string> | null;
@@ -752,13 +741,10 @@ export type UserInfo = {
      * If user is logged in
      */
     logged_in: boolean;
-    /**
-     * List of roles assigned to the user
-     */
-    role?: string | null;
-    role_source?: null | RoleSource;
-    token_type?: null | TokenType;
+    role?: null | AppRole;
 };
+
+export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
 
 export type ChatOllamaModelData = {
     /**

@@ -1,7 +1,10 @@
 use crate::ENDPOINT_USER_INFO;
 use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN};
 use axum::{http::header::HeaderMap, Json};
-use objs::{ApiError, BadRequestError, OpenAIApiError, ResourceScope, Role, API_TAG_AUTH};
+use objs::{
+  ApiError, BadRequestError, OpenAIApiError, ResourceScope, Role, TokenScope, UserScope,
+  API_TAG_AUTH,
+};
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
 use tracing::debug;
@@ -29,24 +32,28 @@ pub enum RoleSource {
   ScopeUser,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[serde(untagged)]
+pub enum AppRole {
+  Session(Role),
+  ApiToken(TokenScope),
+  ExchangedToken(UserScope),
+}
+
 /// Information about the currently logged in user
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema, Default)]
 #[schema(example = json!({
     "logged_in": true,
     "email": "user@example.com",
-    "roles": ["admin", "user"]
+    "role": "resource_user"
 }))]
 pub struct UserInfo {
   /// If user is logged in
   pub logged_in: bool,
   /// User's email address
   pub email: Option<String>,
-  /// List of roles assigned to the user
-  pub role: Option<String>,
-  /// Token type
-  pub token_type: Option<TokenType>,
-  /// Role source
-  pub role_source: Option<RoleSource>,
+  /// Role assigned to the user
+  pub role: Option<AppRole>,
 }
 
 /// Get information about the currently logged in user
@@ -62,9 +69,7 @@ pub struct UserInfo {
          example = json!({
              "logged_in": true,
              "email": "user@example.com",
-             "role": "admin",
-             "token_type": "bearer",
-             "role_source": "role"
+             "role": "resource_admin"
          })),
         (status = 500, description = "Authentication error or invalid token", body = OpenAIApiError,
          example = json!({
@@ -102,9 +107,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       Ok(Json(UserInfo {
         logged_in: true,
         email: Some(claims.email),
-        role: Some(role.to_string()),
-        token_type: Some(TokenType::Session),
-        role_source: Some(RoleSource::Role),
+        role: Some(AppRole::Session(role)),
       }))
     }
     (None, Some(token_header)) => {
@@ -113,16 +116,14 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
       let token = ResourceScope::try_parse(token)?;
-      let (role_source, role) = match token {
-        ResourceScope::Token(token_scope) => (RoleSource::ScopeToken, token_scope.to_string()),
-        ResourceScope::User(user_scope) => (RoleSource::ScopeUser, user_scope.to_string()),
+      let app_role = match token {
+        ResourceScope::Token(token_scope) => AppRole::ApiToken(token_scope),
+        ResourceScope::User(user_scope) => AppRole::ExchangedToken(user_scope),
       };
       Ok(Json(UserInfo {
         logged_in: true,
         email: Some(claims.email),
-        role: Some(role),
-        token_type: Some(TokenType::Bearer),
-        role_source: Some(role_source),
+        role: Some(app_role),
       }))
     }
     (None, None) => {
@@ -131,8 +132,6 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         logged_in: true,
         email: Some(claims.email),
         role: None,
-        token_type: Some(TokenType::Session),
-        role_source: None,
       }))
     }
   }
@@ -140,7 +139,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
 
 #[cfg(test)]
 mod tests {
-  use crate::{user_info_handler, RoleSource, TokenType, UserInfo};
+  use crate::{user_info_handler, AppRole, UserInfo};
   use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN};
   use axum::{
     body::Body,
@@ -189,8 +188,6 @@ mod tests {
         logged_in: false,
         email: None,
         role: None,
-        token_type: None,
-        role_source: None,
       },
       response_json
     );
@@ -288,9 +285,7 @@ mod tests {
       UserInfo {
         logged_in: true,
         email: Some("testuser@email.com".to_string()),
-        role: Some(role.to_string()),
-        token_type: Some(TokenType::Session),
-        role_source: Some(RoleSource::Role),
+        role: Some(AppRole::Session(role)),
       },
       response_json
     );
@@ -327,9 +322,7 @@ mod tests {
       UserInfo {
         logged_in: true,
         email: Some("testuser@email.com".to_string()),
-        role: Some(token_scope.to_string()),
-        token_type: Some(TokenType::Bearer),
-        role_source: Some(RoleSource::ScopeToken),
+        role: Some(AppRole::ApiToken(token_scope)),
       },
       response_json
     );
@@ -366,9 +359,7 @@ mod tests {
       UserInfo {
         logged_in: true,
         email: Some("testuser@email.com".to_string()),
-        role: Some(user_scope.to_string()),
-        token_type: Some(TokenType::Bearer),
-        role_source: Some(RoleSource::ScopeUser),
+        role: Some(AppRole::ExchangedToken(user_scope)),
       },
       response_json
     );
@@ -404,9 +395,7 @@ mod tests {
       UserInfo {
         logged_in: true,
         email: Some("testuser@email.com".to_string()),
-        role: Some(Role::Manager.to_string()),
-        token_type: Some(TokenType::Session),
-        role_source: Some(RoleSource::Role),
+        role: Some(AppRole::Session(Role::Manager)),
       },
       response_json
     );
@@ -437,8 +426,6 @@ mod tests {
         logged_in: true,
         email: Some("testuser@email.com".to_string()),
         role: None,
-        token_type: Some(TokenType::Session),
-        role_source: None,
       },
       response_json
     );
