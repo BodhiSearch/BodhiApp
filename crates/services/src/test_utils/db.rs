@@ -1,6 +1,6 @@
 use crate::db::{
-  AccessRequest, ApiToken, DbError, DbService, DownloadRequest, RequestStatus, SqliteDbService,
-  TimeService,
+  ApiToken, DbError, DbService, DownloadRequest, SqliteDbService, TimeService, UserAccessRequest,
+  UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -126,7 +126,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_download_requests"))
   }
 
-  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
+  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError> {
     self
       .inner
       .insert_pending_request(email)
@@ -134,7 +134,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("insert_pending_request"))
   }
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError> {
+  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError> {
     self
       .inner
       .get_pending_request(email)
@@ -146,7 +146,7 @@ impl DbService for TestDbService {
     &self,
     page: u32,
     per_page: u32,
-  ) -> Result<Vec<AccessRequest>, DbError> {
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
     self
       .inner
       .list_pending_requests(page, per_page)
@@ -154,12 +154,25 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_pending_requests"))
   }
 
-  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError> {
+  async fn update_request_status(
+    &self,
+    id: i64,
+    status: UserAccessRequestStatus,
+    reviewer: String,
+  ) -> Result<(), DbError> {
     self
       .inner
-      .update_request_status(id, status)
+      .update_request_status(id, status, reviewer)
       .await
       .tap(|_| self.notify("update_request_status"))
+  }
+
+  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
+    self
+      .inner
+      .get_request_by_id(id)
+      .await
+      .tap(|_| self.notify("get_request_by_id"))
   }
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {

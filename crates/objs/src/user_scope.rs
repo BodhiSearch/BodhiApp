@@ -1,8 +1,7 @@
+use crate::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use strum::IntoEnumIterator;
-
-use crate::{AppError, ErrorType};
 
 #[derive(
   Debug,

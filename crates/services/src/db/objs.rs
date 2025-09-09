@@ -51,19 +51,28 @@ impl DownloadRequest {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct AccessRequest {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct UserAccessRequest {
+  /// Unique identifier for the request
   pub id: i64,
+  /// Email of the requesting user
   pub email: String,
+  #[serde(default)]
+  pub reviewer: Option<String>,
+  /// Current status of the request
+  pub status: UserAccessRequestStatus,
+  /// Creation timestamp
+  #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
+  /// Last update timestamp
+  #[schema(value_type = String, format = "date-time")]
   pub updated_at: DateTime<Utc>,
-  pub status: RequestStatus,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
-pub enum RequestStatus {
+pub enum UserAccessRequestStatus {
   Pending,
   Approved,
   Rejected,

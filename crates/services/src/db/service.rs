@@ -1,8 +1,8 @@
 use crate::{
   db::{
     encryption::{decrypt_api_key, encrypt_api_key},
-    AccessRequest, ApiToken, DownloadRequest, DownloadStatus, RequestStatus, SqlxError,
-    SqlxMigrateError, TokenStatus,
+    ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError, TokenStatus,
+    UserAccessRequest, UserAccessRequestStatus,
   },
   extract_claims,
 };
@@ -82,17 +82,24 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     page_size: usize,
   ) -> Result<(Vec<DownloadRequest>, usize), DbError>;
 
-  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError>;
+  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError>;
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError>;
+  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError>;
 
   async fn list_pending_requests(
     &self,
     page: u32,
     per_page: u32,
-  ) -> Result<Vec<AccessRequest>, DbError>;
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
 
-  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError>;
+  async fn update_request_status(
+    &self,
+    id: i64,
+    status: UserAccessRequestStatus,
+    reviewer: String,
+  ) -> Result<(), DbError>;
+
+  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError>;
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 
@@ -340,52 +347,74 @@ impl DbService for SqliteDbService {
     Ok((items, total))
   }
 
-  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
+  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError> {
     let now = self.time_service.utc_now();
-    let result = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
+    let result = query_as::<
+      _,
+      (
+        i64,
+        String,
+        Option<String>,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
       "INSERT INTO access_requests (email, created_at, updated_at, status)
          VALUES (?, ?, ?, ?)
-         RETURNING id, email, created_at, updated_at, status",
+         RETURNING id, email, reviewer, status, created_at, updated_at",
     )
     .bind(&email)
     .bind(now)
     .bind(now)
-    .bind(RequestStatus::Pending.to_string())
+    .bind(UserAccessRequestStatus::Pending.to_string())
     .fetch_one(&self.pool)
     .await?;
 
-    Ok(AccessRequest {
+    Ok(UserAccessRequest {
       id: result.0,
       email: result.1,
-      created_at: result.2,
-      updated_at: result.3,
-      status: RequestStatus::from_str(&result.4)?,
+      reviewer: result.2,
+      status: UserAccessRequestStatus::from_str(&result.3)?,
+      created_at: result.4,
+      updated_at: result.5,
     })
   }
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError> {
-    let result = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
-      "SELECT id, email, created_at, updated_at, status
+  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError> {
+    let result = query_as::<
+      _,
+      (
+        i64,
+        String,
+        Option<String>,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      "SELECT id, email, reviewer, status, created_at, updated_at
          FROM access_requests
          WHERE email = ? AND status = ?",
     )
     .bind(&email)
-    .bind(RequestStatus::Pending.to_string())
+    .bind(UserAccessRequestStatus::Pending.to_string())
     .fetch_optional(&self.pool)
     .await?;
 
     let result = result
-      .map(|(id, email, created_at, updated_at, status)| {
-        let Ok(status) = RequestStatus::from_str(&status) else {
+      .map(|(id, email, reviewer, status, created_at, updated_at)| {
+        let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
           tracing::warn!("unknown request status: {} for id: {}", status, id);
           return None;
         };
-        let result = AccessRequest {
+        let result = UserAccessRequest {
           id,
           email,
+          reviewer,
+          status,
           created_at,
           updated_at,
-          status,
         };
         Some(result)
       })
@@ -397,16 +426,31 @@ impl DbService for SqliteDbService {
     &self,
     page: u32,
     per_page: u32,
-  ) -> Result<Vec<AccessRequest>, DbError> {
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
     let offset = (page - 1) * per_page;
-    let results = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
-      "SELECT id, email, created_at, updated_at, status
+    // Get total count of pending requests
+    let total_count: (i64,) = query_as("SELECT COUNT(*) FROM access_requests WHERE status = ?")
+      .bind(UserAccessRequestStatus::Pending.to_string())
+      .fetch_one(&self.pool)
+      .await?;
+    let results = query_as::<
+      _,
+      (
+        i64,
+        String,
+        Option<String>,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      "SELECT id, email, reviewer, status, created_at, updated_at
          FROM access_requests
          WHERE status = ?
          ORDER BY created_at ASC
          LIMIT ? OFFSET ?",
     )
-    .bind(RequestStatus::Pending.to_string())
+    .bind(UserAccessRequestStatus::Pending.to_string())
     .bind(per_page as i64)
     .bind(offset as i64)
     .fetch_all(&self.pool)
@@ -414,37 +458,80 @@ impl DbService for SqliteDbService {
 
     let results = results
       .into_iter()
-      .filter_map(|(id, email, created_at, updated_at, status)| {
-        let Ok(status) = RequestStatus::from_str(&status) else {
+      .filter_map(|(id, email, reviewer, status, created_at, updated_at)| {
+        let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
           tracing::warn!("unknown request status: {} for id: {}", status, id);
           return None;
         };
-        let result = AccessRequest {
+        let result = UserAccessRequest {
           id,
           email,
+          reviewer,
+          status,
           created_at,
           updated_at,
-          status,
         };
         Some(result)
       })
-      .collect::<Vec<AccessRequest>>();
-    Ok(results)
+      .collect::<Vec<UserAccessRequest>>();
+    Ok((results, total_count.0 as usize))
   }
 
-  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError> {
+  async fn update_request_status(
+    &self,
+    id: i64,
+    status: UserAccessRequestStatus,
+    reviewer: String,
+  ) -> Result<(), DbError> {
     let now = self.time_service.utc_now();
     sqlx::query(
       "UPDATE access_requests
-         SET status = ?, updated_at = ?
+         SET status = ?, updated_at = ?, reviewer = ?
          WHERE id = ?",
     )
     .bind(status.to_string())
     .bind(now)
+    .bind(&reviewer)
     .bind(id)
     .execute(&self.pool)
     .await?;
     Ok(())
+  }
+
+  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
+    let result = query_as::<
+      _,
+      (
+        i64,
+        String,
+        Option<String>,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      "SELECT id, email, reviewer, status, created_at, updated_at
+         FROM access_requests
+         WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    if let Some((id, email, reviewer, status, created_at, updated_at)) = result {
+      let status =
+        UserAccessRequestStatus::from_str(&status).map_err(|err| DbError::StrumParse(err))?;
+      Ok(Some(UserAccessRequest {
+        id,
+        email,
+        reviewer,
+        status,
+        created_at,
+        updated_at,
+      }))
+    } else {
+      Ok(None)
+    }
   }
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
@@ -906,8 +993,8 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      AccessRequest, ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, RequestStatus,
-      SqlxError, TokenStatus,
+      ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, SqlxError, TokenStatus,
+      UserAccessRequest, UserAccessRequestStatus,
     },
     test_utils::{build_token, test_db_service, TestDbService},
   };
@@ -1017,12 +1104,13 @@ mod test {
     let now = service.now();
     let email = "test@example.com".to_string();
     let pending_request = service.insert_pending_request(email.clone()).await?;
-    let expected_request = AccessRequest {
+    let expected_request = UserAccessRequest {
       id: pending_request.id, // We don't know this in advance
       email,
       created_at: now,
       updated_at: now,
-      status: RequestStatus::Pending,
+      status: UserAccessRequestStatus::Pending,
+      reviewer: None,
     };
     assert_eq!(pending_request, expected_request);
     Ok(())
@@ -1061,17 +1149,20 @@ mod test {
     for email in &emails {
       service.insert_pending_request(email.clone()).await?;
     }
-    let page1 = service.list_pending_requests(1, 2).await?;
+    let (page1, total) = service.list_pending_requests(1, 2).await?;
     assert_eq!(2, page1.len());
-    let page2 = service.list_pending_requests(2, 2).await?;
+    assert_eq!(3, total);
+    let (page2, total) = service.list_pending_requests(2, 2).await?;
     assert_eq!(1, page2.len());
+    assert_eq!(3, total);
     for (i, request) in page1.iter().chain(page2.iter()).enumerate() {
-      let expected_request = AccessRequest {
+      let expected_request = UserAccessRequest {
         id: request.id,
         email: emails[i].clone(),
         created_at: now,
         updated_at: now,
-        status: RequestStatus::Pending,
+        status: UserAccessRequestStatus::Pending,
+        reviewer: None,
       };
       assert_eq!(request, &expected_request);
     }
@@ -1089,7 +1180,11 @@ mod test {
     let email = "test@example.com".to_string();
     let inserted_request = service.insert_pending_request(email.clone()).await?;
     service
-      .update_request_status(inserted_request.id, RequestStatus::Approved)
+      .update_request_status(
+        inserted_request.id,
+        UserAccessRequestStatus::Approved,
+        "admin@example.com".to_string(),
+      )
       .await?;
     let updated_request = service.get_pending_request(email).await?;
     assert!(updated_request.is_none());

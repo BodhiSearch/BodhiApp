@@ -66,6 +66,14 @@ export type ApiTokenResponse = {
     offline_token: string;
 };
 
+export type AppAccessRequest = {
+    app_client_id: string;
+};
+
+export type AppAccessResponse = {
+    scope: string;
+};
+
 /**
  * Application information and status
  */
@@ -81,6 +89,16 @@ export type AppInfo = {
 };
 
 export type AppStatus = 'setup' | 'ready' | 'resource-admin';
+
+/**
+ * Request body for approving access with role assignment
+ */
+export type ApproveUserAccessRequest = {
+    /**
+     * Role to assign to the user
+     */
+    role: Role;
+};
 
 export type AuthCallbackRequest = {
     /**
@@ -172,6 +190,10 @@ export type DownloadRequest = {
 export type DownloadStatus = 'pending' | 'completed' | 'error';
 
 export type Duration = string;
+
+export type EmptyResponse = {
+    [key: string]: unknown;
+};
 
 export type ErrorBody = {
     /**
@@ -409,6 +431,28 @@ export type PaginatedLocalModelResponse = {
     total: number;
 };
 
+/**
+ * Paginated response for access requests
+ */
+export type PaginatedUserAccessResponse = {
+    /**
+     * Current page number
+     */
+    page: number;
+    /**
+     * Number of items per page
+     */
+    page_size: number;
+    /**
+     * List of access requests
+     */
+    requests: Array<UserAccessRequest>;
+    /**
+     * Total number of requests
+     */
+    total: number;
+};
+
 export type PaginatedUserAliasResponse = {
     data: Array<UserAliasResponse>;
     page: number;
@@ -455,13 +499,7 @@ export type RedirectResponse = {
     location: string;
 };
 
-export type RequestAccessRequest = {
-    app_client_id: string;
-};
-
-export type RequestAccessResponse = {
-    scope: string;
-};
+export type Role = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
 /**
  * Role Source
@@ -634,6 +672,54 @@ export type UpdateSettingRequest = {
     value: unknown;
 };
 
+export type UserAccessRequest = {
+    /**
+     * Creation timestamp
+     */
+    created_at: string;
+    /**
+     * Email of the requesting user
+     */
+    email: string;
+    /**
+     * Unique identifier for the request
+     */
+    id: number;
+    reviewer?: string | null;
+    /**
+     * Current status of the request
+     */
+    status: UserAccessRequestStatus;
+    /**
+     * Last update timestamp
+     */
+    updated_at: string;
+};
+
+export type UserAccessRequestStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Response for checking access request status
+ */
+export type UserAccessStatusResponse = {
+    /**
+     * Creation timestamp
+     */
+    created_at: string;
+    /**
+     * Email of the requesting user
+     */
+    email: string;
+    /**
+     * Current status of the request (pending, approved, rejected)
+     */
+    status: UserAccessRequestStatus;
+    /**
+     * Last update timestamp
+     */
+    updated_at: string;
+};
+
 export type UserAlias = {
     alias: string;
     context_params?: Array<string>;
@@ -764,6 +850,173 @@ export type ListOllamaModelsResponses = {
 };
 
 export type ListOllamaModelsResponse = ListOllamaModelsResponses[keyof ListOllamaModelsResponses];
+
+export type ListAllAccessRequestsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (1-based indexing)
+         */
+        page?: number;
+        /**
+         * Number of items to return per page (maximum 100)
+         */
+        page_size?: number;
+        /**
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
+         */
+        sort?: string;
+        /**
+         * Sort order: 'asc' for ascending, 'desc' for descending
+         */
+        sort_order?: string;
+    };
+    url: '/bodhi/v1/access-requests';
+};
+
+export type ListAllAccessRequestsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+};
+
+export type ListAllAccessRequestsError = ListAllAccessRequestsErrors[keyof ListAllAccessRequestsErrors];
+
+export type ListAllAccessRequestsResponses = {
+    /**
+     * All requests retrieved
+     */
+    200: PaginatedUserAccessResponse;
+};
+
+export type ListAllAccessRequestsResponse = ListAllAccessRequestsResponses[keyof ListAllAccessRequestsResponses];
+
+export type ListPendingAccessRequestsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (1-based indexing)
+         */
+        page?: number;
+        /**
+         * Number of items to return per page (maximum 100)
+         */
+        page_size?: number;
+        /**
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
+         */
+        sort?: string;
+        /**
+         * Sort order: 'asc' for ascending, 'desc' for descending
+         */
+        sort_order?: string;
+    };
+    url: '/bodhi/v1/access-requests/pending';
+};
+
+export type ListPendingAccessRequestsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+};
+
+export type ListPendingAccessRequestsError = ListPendingAccessRequestsErrors[keyof ListPendingAccessRequestsErrors];
+
+export type ListPendingAccessRequestsResponses = {
+    /**
+     * Pending requests retrieved
+     */
+    200: PaginatedUserAccessResponse;
+};
+
+export type ListPendingAccessRequestsResponse = ListPendingAccessRequestsResponses[keyof ListPendingAccessRequestsResponses];
+
+export type ApproveAccessRequestData = {
+    /**
+     * Role to assign to the user
+     */
+    body: ApproveUserAccessRequest;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/approve';
+};
+
+export type ApproveAccessRequestErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Request not found
+     */
+    404: OpenAiApiError;
+};
+
+export type ApproveAccessRequestError = ApproveAccessRequestErrors[keyof ApproveAccessRequestErrors];
+
+export type ApproveAccessRequestResponses = {
+    /**
+     * Request approved successfully
+     */
+    200: unknown;
+};
+
+export type RejectAccessRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/reject';
+};
+
+export type RejectAccessRequestErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Request not found
+     */
+    404: OpenAiApiError;
+};
+
+export type RejectAccessRequestError = RejectAccessRequestErrors[keyof RejectAccessRequestErrors];
+
+export type RejectAccessRequestResponses = {
+    /**
+     * Request rejected successfully
+     */
+    200: unknown;
+};
 
 export type ListApiModelsData = {
     body?: never;
@@ -1029,6 +1282,38 @@ export type GetApiModelResponses = {
 
 export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
 
+export type RequestAccessData = {
+    /**
+     * Application client requesting access
+     */
+    body: AppAccessRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/apps/request-access';
+};
+
+export type RequestAccessErrors = {
+    /**
+     * Invalid request, application not registered, or incorrect app status
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error during access request
+     */
+    500: OpenAiApiError;
+};
+
+export type RequestAccessError = RequestAccessErrors[keyof RequestAccessErrors];
+
+export type RequestAccessResponses = {
+    /**
+     * Access granted successfully
+     */
+    200: AppAccessResponse;
+};
+
+export type RequestAccessResponse = RequestAccessResponses[keyof RequestAccessResponses];
+
 export type CompleteOAuthFlowData = {
     /**
      * OAuth callback parameters from authorization server
@@ -1089,38 +1374,6 @@ export type InitiateOAuthFlowResponses = {
 };
 
 export type InitiateOAuthFlowResponse = InitiateOAuthFlowResponses[keyof InitiateOAuthFlowResponses];
-
-export type RequestAccessData = {
-    /**
-     * Application client requesting access
-     */
-    body: RequestAccessRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/auth/request-access';
-};
-
-export type RequestAccessErrors = {
-    /**
-     * Invalid request, application not registered, or incorrect app status
-     */
-    400: OpenAiApiError;
-    /**
-     * Internal server error during access request
-     */
-    500: OpenAiApiError;
-};
-
-export type RequestAccessError = RequestAccessErrors[keyof RequestAccessErrors];
-
-export type RequestAccessResponses = {
-    /**
-     * Access granted successfully
-     */
-    200: RequestAccessResponse;
-};
-
-export type RequestAccessResponse2 = RequestAccessResponses[keyof RequestAccessResponses];
 
 export type GetAppInfoData = {
     body?: never;
@@ -1783,6 +2036,72 @@ export type GetCurrentUserResponses = {
 };
 
 export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];
+
+export type RequestUserAccessData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/user/request-access';
+};
+
+export type RequestUserAccessErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Pending request already exists
+     */
+    409: OpenAiApiError;
+    /**
+     * User already has role
+     */
+    422: OpenAiApiError;
+};
+
+export type RequestUserAccessError = RequestUserAccessErrors[keyof RequestUserAccessErrors];
+
+export type RequestUserAccessResponses = {
+    /**
+     * Access request created successfully
+     */
+    201: EmptyResponse;
+};
+
+export type RequestUserAccessResponse = RequestUserAccessResponses[keyof RequestUserAccessResponses];
+
+export type GetUserAccessStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/user/request-status';
+};
+
+export type GetUserAccessStatusErrors = {
+    /**
+     * Bad Request
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Request not found
+     */
+    404: OpenAiApiError;
+};
+
+export type GetUserAccessStatusError = GetUserAccessStatusErrors[keyof GetUserAccessStatusErrors];
+
+export type GetUserAccessStatusResponses = {
+    /**
+     * Request status retrieved
+     */
+    200: UserAccessStatusResponse;
+};
+
+export type GetUserAccessStatusResponse = GetUserAccessStatusResponses[keyof GetUserAccessStatusResponses];
 
 export type HealthCheckData = {
     body?: never;

@@ -1,6 +1,6 @@
 use crate::utils::extract_request_host;
-use crate::{LoginError, ENDPOINT_LOGOUT};
-use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS};
+use crate::{LoginError, RedirectResponse, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_LOGOUT};
+use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use auth_middleware::{
   app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
   SESSION_KEY_REFRESH_TOKEN,
@@ -20,23 +20,13 @@ use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_T
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
-  extract_claims, AppStatus, Claims, RequestAccessRequest, RequestAccessResponse, SecretServiceExt,
+  extract_claims, AppAccessRequest, AppAccessResponse, AppStatus, Claims, SecretServiceExt,
   CHAT_PATH, DOWNLOAD_MODELS_PATH,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use utoipa::ToSchema;
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
-#[schema(example = json!({
-    "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
-}))]
-pub struct RedirectResponse {
-  /// The URL to redirect to (OAuth authorization URL or application home page)
-  #[schema(example = "https://oauth.example.com/auth?client_id=test&redirect_uri=...")]
-  pub location: String,
-}
 
 /// Start OAuth flow - returns location for OAuth provider or home
 #[utoipa::path(
@@ -399,20 +389,20 @@ pub async fn logout_handler(
 /// Request access for an app client to this resource server
 #[utoipa::path(
     post,
-    path = ENDPOINT_AUTH_REQUEST_ACCESS,
+    path = ENDPOINT_APPS_REQUEST_ACCESS,
     tag = API_TAG_AUTH,
     operation_id = "requestAccess",
     summary = "Request Resource Access",
     description = "Requests access permissions for an application client to access this resource server's protected resources.",
     request_body(
-        content = RequestAccessRequest,
+        content = AppAccessRequest,
         description = "Application client requesting access",
         example = json!({
             "app_client_id": "my_app_client_123"
         })
     ),
     responses(
-        (status = 200, description = "Access granted successfully", body = RequestAccessResponse,
+        (status = 200, description = "Access granted successfully", body = AppAccessResponse,
          example = json!({
              "scope": "scope_resource_bodhi-server"
          })),
@@ -436,8 +426,8 @@ pub async fn logout_handler(
 )]
 pub async fn request_access_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Json(request): Json<RequestAccessRequest>,
-) -> Result<Json<RequestAccessResponse>, ApiError> {
+  Json(request): Json<AppAccessRequest>,
+) -> Result<Json<AppAccessResponse>, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let auth_service = app_service.auth_service();
@@ -456,7 +446,7 @@ pub async fn request_access_handler(
     )
     .await?;
 
-  Ok(Json(RequestAccessResponse { scope }))
+  Ok(Json(AppAccessResponse { scope }))
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -490,7 +480,7 @@ mod tests {
     request_access_handler, RedirectResponse,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::{generate_random_string, inject_session_auth_info};
+  use auth_middleware::{generate_random_string, inject_optional_auth_info};
   use axum::body::to_bytes;
   use axum::{
     http::{status::StatusCode, Request},
@@ -519,8 +509,8 @@ mod tests {
       build_token, expired_token, test_auth_service, token, AppServiceStub, AppServiceStubBuilder,
       SecretServiceStub, SessionTestExt, SettingServiceStub,
     },
-    AppRegInfo, AppService, AuthServiceError, MockAuthService, RequestAccessResponse,
-    SecretServiceExt, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+    AppAccessResponse, AppRegInfo, AppService, AuthServiceError, MockAuthService, SecretServiceExt,
+    SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   };
   use services::{AppStatus, BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
   use std::{collections::HashMap, sync::Arc};
@@ -788,7 +778,7 @@ mod tests {
     ));
     let router = Router::new()
       .route("/auth/initiate", post(auth_initiate_handler))
-      .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info))
+      .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
       .with_state(state)
       .layer(app_service.session_service().session_layer());
     let resp = router
@@ -1560,7 +1550,7 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::OK, resp.status());
-    let body: RequestAccessResponse = resp.json().await?;
+    let body: AppAccessResponse = resp.json().await?;
     assert_eq!(expected_scope, body.scope);
 
     token_mock.assert();

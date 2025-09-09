@@ -60,6 +60,11 @@ pub struct ResourceClaims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct UserIdClaims {
+  pub email: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScopeClaims {
   pub iss: String,
   pub azp: String,

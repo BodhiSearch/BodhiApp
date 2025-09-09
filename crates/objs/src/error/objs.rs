@@ -50,9 +50,37 @@ pub struct BadRequestError {
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("not_found_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
+pub struct NotFoundError {
+  reason: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("internal_server_error")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct InternalServerError {
+  reason: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("unauthorized_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Unauthorized)]
+pub struct UnauthorizedError {
+  reason: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("conflict_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Conflict)]
+pub struct ConflictError {
+  reason: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("unprocessable_entity_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::UnprocessableEntity)]
+pub struct UnprocessableEntityError {
   reason: String,
 }
 
