@@ -141,14 +141,22 @@ export class AuthServerTestClient {
    * @param {number} serverUrl - Server URL for redirect URI
    * @param {string} name - Client name
    * @param {string} description - Client description
+   * @param {boolean} liveTest - Whether to enable liveTest mode for direct grants
    * @returns {Promise<Object>} Created resource client info
    */
   async createResourceClient(
     serverUrl,
     name = 'Test Resource Client',
-    description = 'Test resource client for Playwright tests'
+    description = 'Test resource client for Playwright tests',
+    liveTest = true
   ) {
-    const resourcesUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources`;
+    let resourcesUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources`;
+
+    // Add live_test query parameter if liveTest is true
+    if (liveTest) {
+      resourcesUrl += '?live_test=true';
+    }
+
     const response = await fetch(resourcesUrl, {
       method: 'POST',
       headers: {
@@ -271,6 +279,64 @@ export class AuthServerTestClient {
       console.log('Make resource admin failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
       throw new Error(`Failed to make resource admin: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Assign a role to a user (for testing with liveTest mode)
+   * @param {string} reviewerToken - Admin token for authorization
+   * @param {string} username - Username to assign role to
+   * @param {string} role - Role to assign (resource_user, resource_manager, etc.)
+   * @returns {Promise<void>}
+   */
+  async assignUserRole(reviewerToken, username, role) {
+    const assignRoleUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/assign-role`;
+
+    const response = await fetch(assignRoleUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${reviewerToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        role: role,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Assign user role failed:', response.status, response.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(`Failed to assign user role: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  /**
+   * Remove a user from all roles (for testing with liveTest mode)
+   * @param {string} reviewerToken - Admin token for authorization
+   * @param {string} username - Username to remove from all roles
+   * @returns {Promise<void>}
+   */
+  async removeUser(reviewerToken, username) {
+    const removeUserUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/remove-user`;
+
+    const response = await fetch(removeUserUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${reviewerToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Remove user failed:', response.status, response.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(`Failed to remove user: ${response.status} ${response.statusText}`);
     }
   }
 

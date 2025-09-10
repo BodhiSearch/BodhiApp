@@ -42,11 +42,13 @@ export class BodhiAppServer {
    * Stop the server
    */
   async stopServer() {
-    const isRunning = await this.server.isRunning();
-    if (isRunning) {
-      await this.server.stop();
+    if (this.server) {
+      const isRunning = await this.server.isRunning();
+      if (isRunning) {
+        await this.server.stop();
+      }
+      this.server = null;
     }
-    this.server = null;
     this.baseUrl = null;
   }
 
