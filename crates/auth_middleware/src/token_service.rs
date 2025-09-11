@@ -1,4 +1,4 @@
-use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID};
+use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
 use objs::{AppRegInfoMissingError, ResourceScope, Role, TokenScope, UserScope};
@@ -323,7 +323,6 @@ impl DefaultTokenService {
     // Extract claims from new token first to get user_id
     let claims = extract_claims::<Claims>(&new_access_token)?;
     // Store user_id and new tokens in session
-    session.insert(SESSION_KEY_USER_ID, &claims.sub).await?;
     session
       .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
       .await?;

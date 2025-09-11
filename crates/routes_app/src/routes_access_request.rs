@@ -394,6 +394,7 @@ pub async fn approve_request_handler(
 
   // Clear existing sessions for the user to ensure new role is applied
   let session_service = state.app_service().session_service();
+
   let cleared_sessions = session_service
     .clear_sessions_for_user(&access_request.user_id)
     .await?;
