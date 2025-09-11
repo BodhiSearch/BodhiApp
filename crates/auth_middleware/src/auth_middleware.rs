@@ -20,11 +20,18 @@ use tracing::debug;
 pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
 
-pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
-pub const KEY_RESOURCE_USER_EMAIL: &str = "X-Resource-User-Email";
-pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
-pub const KEY_RESOURCE_SCOPE: &str = "X-Resource-Scope";
-pub const KEY_RESOURCE_USER_ID: &str = "X-Resource-User-Id";
+macro_rules! bodhi_header {
+  ($name:literal) => {
+    concat!("X-BodhiApp-", $name)
+  };
+}
+
+pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
+pub const KEY_HEADER_BODHIAPP_TOKEN: &str = bodhi_header!("Token");
+pub const KEY_HEADER_BODHIAPP_USERNAME: &str = bodhi_header!("Username");
+pub const KEY_HEADER_BODHIAPP_ROLE: &str = bodhi_header!("Role");
+pub const KEY_HEADER_BODHIAPP_SCOPE: &str = bodhi_header!("Scope");
+pub const KEY_HEADER_BODHIAPP_USER_ID: &str = bodhi_header!("User-Id");
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
@@ -110,11 +117,7 @@ pub async fn auth_middleware(
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
-  req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_RESOURCE_ROLE);
-  req.headers_mut().remove(KEY_RESOURCE_SCOPE);
-  req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
-  req.headers_mut().remove(KEY_RESOURCE_USER_ID);
+  remove_app_headers(&mut req);
 
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
@@ -138,10 +141,10 @@ pub async fn auth_middleware(
     let (access_token, resource_scope) = token_service.validate_bearer_token(header).await?;
     req
       .headers_mut()
-      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+      .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
 
     req.headers_mut().insert(
-      KEY_RESOURCE_SCOPE,
+      KEY_HEADER_BODHIAPP_SCOPE,
       resource_scope.to_string().parse().unwrap(),
     );
     Ok(next.run(req).await)
@@ -157,18 +160,21 @@ pub async fn auth_middleware(
         .await?;
       req
         .headers_mut()
-        .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
-      // email only for session tokens for now, will implement for bearer once we implement access token story
+        .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
+      if let Some(role) = role {
+        req
+          .headers_mut()
+          .insert(KEY_HEADER_BODHIAPP_ROLE, role.to_string().parse().unwrap());
+      }
+      // username only for session tokens for now, will implement for bearer once we implement access token story
       let claims = extract_claims::<UserIdClaims>(&access_token)?;
+      req.headers_mut().insert(
+        KEY_HEADER_BODHIAPP_USERNAME,
+        claims.preferred_username.parse().unwrap(),
+      );
       req
         .headers_mut()
-        .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_USER_ID, claims.sub.parse().unwrap());
+        .insert(KEY_HEADER_BODHIAPP_USER_ID, claims.sub.parse().unwrap());
       debug!("auth_middleware: session token validated");
       Ok(next.run(req).await)
     } else {
@@ -185,11 +191,7 @@ pub async fn inject_optional_auth_info(
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
-  req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_RESOURCE_ROLE);
-  req.headers_mut().remove(KEY_RESOURCE_SCOPE);
-  req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
-  req.headers_mut().remove(KEY_RESOURCE_USER_ID);
+  remove_app_headers(&mut req);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -211,9 +213,9 @@ pub async fn inject_optional_auth_info(
       {
         req
           .headers_mut()
-          .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+          .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
         req.headers_mut().insert(
-          KEY_RESOURCE_SCOPE,
+          KEY_HEADER_BODHIAPP_SCOPE,
           resource_scope.to_string().parse().unwrap(),
         );
       }
@@ -229,17 +231,20 @@ pub async fn inject_optional_auth_info(
           debug!("inject_session_auth_info: session token injected successfully");
           req
             .headers_mut()
-            .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
-          req
-            .headers_mut()
-            .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+            .insert(KEY_HEADER_BODHIAPP_TOKEN, validated_token.parse().unwrap());
+          if let Some(role) = role {
+            req
+              .headers_mut()
+              .insert(KEY_HEADER_BODHIAPP_ROLE, role.to_string().parse().unwrap());
+          }
           let claims = extract_claims::<UserIdClaims>(&validated_token)?;
+          req.headers_mut().insert(
+            KEY_HEADER_BODHIAPP_USERNAME,
+            claims.preferred_username.parse().unwrap(),
+          );
           req
             .headers_mut()
-            .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
-          req
-            .headers_mut()
-            .insert(KEY_RESOURCE_USER_ID, claims.sub.parse().unwrap());
+            .insert(KEY_HEADER_BODHIAPP_USER_ID, claims.sub.parse().unwrap());
         }
         Err(AuthError::RefreshTokenNotFound) => {
           // Log this specific case - user needs to re-login
@@ -265,10 +270,31 @@ pub async fn inject_optional_auth_info(
   Ok(next.run(req).await)
 }
 
+fn remove_app_headers(req: &mut axum::http::Request<axum::body::Body>) {
+  // Remove internal headers to prevent injection attacks
+  let headers_to_remove: Vec<_> = req
+    .headers()
+    .keys()
+    .filter(|key| {
+      key
+        .as_str()
+        .to_lowercase()
+        .starts_with(&KEY_PREFIX_HEADER_BODHIAPP.to_lowercase())
+    })
+    .cloned()
+    .collect();
+  for key in headers_to_remove {
+    req.headers_mut().remove(key);
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use super::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN};
-  use crate::{auth_middleware, inject_optional_auth_info, KEY_RESOURCE_SCOPE};
+  use super::{
+    KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+    KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
+  };
+  use crate::{auth_middleware, inject_optional_auth_info};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -323,13 +349,13 @@ mod tests {
       .get("Authorization")
       .map(|v| v.to_str().unwrap().to_string());
     let x_resource_token = headers
-      .get(KEY_RESOURCE_TOKEN)
+      .get(KEY_HEADER_BODHIAPP_TOKEN)
       .map(|v| v.to_str().unwrap().to_string());
     let x_resource_role = headers
-      .get(KEY_RESOURCE_ROLE)
+      .get(KEY_HEADER_BODHIAPP_ROLE)
       .map(|v| v.to_str().unwrap().to_string());
     let x_resource_scope = headers
-      .get(KEY_RESOURCE_SCOPE)
+      .get(KEY_HEADER_BODHIAPP_SCOPE)
       .map(|v| v.to_str().unwrap().to_string());
     (
       StatusCode::IM_A_TEAPOT,
@@ -782,9 +808,11 @@ mod tests {
     ));
     let router = test_router(state);
     let req = Request::get("/with_optional_auth")
-      .header(KEY_RESOURCE_TOKEN, "user-sent-token")
-      .header(KEY_RESOURCE_ROLE, "user-sent-role")
-      .header(KEY_RESOURCE_SCOPE, "user-sent-scope")
+      .header(KEY_HEADER_BODHIAPP_TOKEN, "user-sent-token")
+      .header(KEY_HEADER_BODHIAPP_ROLE, "user-sent-role")
+      .header(KEY_HEADER_BODHIAPP_SCOPE, "user-sent-scope")
+      .header(KEY_HEADER_BODHIAPP_USERNAME, "user-sent-username")
+      .header(KEY_HEADER_BODHIAPP_USER_ID, "user-sent-userid")
       .json(json! {{}})?;
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());

@@ -2,7 +2,7 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   auth_middleware,
   test_utils::{AuthServerConfig, AuthServerTestClient},
-  KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
+  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN, SESSION_KEY_ACCESS_TOKEN,
 };
 use axum::{
   body::Body,
@@ -50,11 +50,11 @@ async fn test_token_info_handler(
   State(_state): State<Arc<dyn RouterState>>,
 ) -> Json<TestTokenResponse> {
   let token = headers
-    .get(KEY_RESOURCE_TOKEN)
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
     .and_then(|t| t.to_str().ok())
     .map(|s| s.to_string());
   let scope = headers
-    .get(KEY_RESOURCE_SCOPE)
+    .get(KEY_HEADER_BODHIAPP_SCOPE)
     .and_then(|s| s.to_str().ok())
     .map(|s| s.to_string());
   Json(TestTokenResponse { token, scope })
@@ -85,7 +85,7 @@ async fn create_token_handler(
     .ok_or("app_reg_info missing".to_string())?;
 
   let token = headers
-    .get(KEY_RESOURCE_TOKEN)
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
     .ok_or("token missing".to_string())?
     .to_str()
     .map_err(|err| err.to_string())?;
@@ -380,8 +380,8 @@ async fn test_cross_client_token_exchange_success(
   let token = body.token.as_ref().unwrap();
   let claims = extract_claims::<Claims>(token)?;
   assert_eq!(
-    claims.email, username,
-    "JWT email claim should match test user"
+    claims.preferred_username, username,
+    "JWT preferred_username claim should match test user"
   );
   assert_eq!(claims.azp, resource_client_id);
   let mut scopes = claims.scope.split_whitespace().collect::<Vec<&str>>();

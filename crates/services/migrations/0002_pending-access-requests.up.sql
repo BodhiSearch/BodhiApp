@@ -1,6 +1,6 @@
 CREATE TABLE access_requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
+    username TEXT NOT NULL,
     user_id TEXT NOT NULL,
     reviewer TEXT DEFAULT NULL,
     status TEXT NOT NULL DEFAULT 'pending',

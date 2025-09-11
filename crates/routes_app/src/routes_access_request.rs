@@ -2,7 +2,10 @@ use crate::{
   EmptyResponse, PaginationSortParams, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN, KEY_RESOURCE_USER_ID};
+use auth_middleware::{
+  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME,
+  KEY_HEADER_BODHIAPP_USER_ID,
+};
 use axum::{
   extract::{Path, Query, State},
   http::{HeaderMap, StatusCode},
@@ -47,7 +50,7 @@ pub struct UserAccessStatusResponse {
 impl From<UserAccessRequest> for UserAccessStatusResponse {
   fn from(request: UserAccessRequest) -> Self {
     Self {
-      email: request.email,
+      email: request.username,
       status: request.status,
       created_at: request.created_at,
       updated_at: request.updated_at,
@@ -115,37 +118,42 @@ pub async fn user_request_access_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<(StatusCode, Json<EmptyResponse>), ApiError> {
-  // Extract token from headers
-  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
+  // Extract username from headers
+  let Some(username) = headers.get(KEY_HEADER_BODHIAPP_USERNAME) else {
     return Err(BadRequestError::new(
-      "No authentication token present".to_string(),
+      "User logged in information not present".to_string(),
     ))?;
   };
 
-  let token = token
+  let username = username
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
 
-  if token.is_empty() {
+  if username.is_empty() {
     return Err(BadRequestError::new(
-      "Authentication token is empty".to_string(),
+      "User logged in information is empty".to_string(),
     ))?;
   }
 
-  let claims: Claims = extract_claims::<Claims>(token)?;
-  let email = claims.email.clone();
-  let user_id = claims.sub.clone();
+  // Extract user_id from headers
+  let Some(user_id) = headers.get(KEY_HEADER_BODHIAPP_USER_ID) else {
+    return Err(BadRequestError::new("User ID not present".to_string()))?;
+  };
 
-  info!("User {} requesting access", email);
+  let user_id = user_id
+    .to_str()
+    .map_err(|err| BadRequestError::new(err.to_string()))?;
+
+  info!("User {} requesting access", username);
 
   // Check if user already has a role
-  if let Some(role_header) = headers.get(KEY_RESOURCE_ROLE) {
+  if let Some(role_header) = headers.get(KEY_HEADER_BODHIAPP_ROLE) {
     let role = role_header
       .to_str()
       .map_err(|err| BadRequestError::new(err.to_string()))?;
 
     if !role.is_empty() {
-      debug!("User {} already has role: {}", email, role);
+      debug!("User {} already has role: {}", username, role);
       return Err(UnprocessableEntityError::new(
         "User already has access".to_string(),
       ))?;
@@ -156,11 +164,11 @@ pub async fn user_request_access_handler(
 
   // Check for existing pending request
   if db_service
-    .get_pending_request(user_id.clone())
+    .get_pending_request(user_id.to_string())
     .await?
     .is_some()
   {
-    debug!("User {} already has pending request", email);
+    debug!("User {} already has pending request", username);
     return Err(ConflictError::new(
       "Access request already pending".to_string(),
     ))?;
@@ -168,10 +176,10 @@ pub async fn user_request_access_handler(
 
   // Create new access request
   let _ = db_service
-    .insert_pending_request(email.clone(), user_id.clone())
+    .insert_pending_request(username.to_string(), user_id.to_string())
     .await?;
 
-  info!("Access request created for user {}", email);
+  info!("Access request created for user {}", username);
   Ok((StatusCode::CREATED, Json(EmptyResponse {})))
 }
 
@@ -197,7 +205,7 @@ pub async fn request_status_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<UserAccessStatusResponse>, ApiError> {
-  let Some(user_id) = headers.get(KEY_RESOURCE_USER_ID) else {
+  let Some(user_id) = headers.get(KEY_HEADER_BODHIAPP_USER_ID) else {
     return Err(UnauthorizedError::new("user not found".to_string()))?;
   };
   let user_id = user_id
@@ -322,7 +330,7 @@ pub async fn approve_request_handler(
 ) -> Result<StatusCode, ApiError> {
   // Extract approver's role from headers
   let role_header = headers
-    .get(KEY_RESOURCE_ROLE)
+    .get(KEY_HEADER_BODHIAPP_ROLE)
     .ok_or_else(|| BadRequestError::new("No role header present".to_string()))?;
 
   let approver_role_str = role_header
@@ -333,7 +341,7 @@ pub async fn approve_request_handler(
 
   // Extract approver's email for logging
   let token = headers
-    .get(KEY_RESOURCE_TOKEN)
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
     .ok_or_else(|| BadRequestError::new("No authentication token present".to_string()))?
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
@@ -342,14 +350,14 @@ pub async fn approve_request_handler(
 
   info!(
     "User {} with role {:?} approving request {} with role {:?}",
-    claims.email, approver_role, id, request.role
+    claims.preferred_username, approver_role, id, request.role
   );
 
   // Validate role hierarchy - users can only assign roles equal to or lower than their own
   if !approver_role.has_access_to(&request.role) {
     error!(
       "User {} with role {:?} cannot assign role {:?}",
-      claims.email, approver_role, request.role
+      claims.preferred_username, approver_role, request.role
     );
     return Err(BadRequestError::new(
       "Insufficient privileges to assign this role".to_string(),
@@ -366,7 +374,11 @@ pub async fn approve_request_handler(
 
   // Update request status to approved
   db_service
-    .update_request_status(id, UserAccessRequestStatus::Approved, claims.email.clone())
+    .update_request_status(
+      id,
+      UserAccessRequestStatus::Approved,
+      claims.preferred_username.clone(),
+    )
     .await?;
 
   // Phase 4 - Call auth service to assign role to user
@@ -379,7 +391,7 @@ pub async fn approve_request_handler(
 
   info!(
     "Access request {} approved by {}, user {} assigned role {}",
-    id, claims.email, access_request.email, role_name
+    id, claims.preferred_username, access_request.username, role_name
   );
   Ok(StatusCode::OK)
 }
@@ -412,22 +424,32 @@ pub async fn reject_request_handler(
 ) -> Result<StatusCode, ApiError> {
   // Extract rejector's email for logging
   let token = headers
-    .get(KEY_RESOURCE_TOKEN)
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
     .ok_or_else(|| BadRequestError::new("No authentication token present".to_string()))?
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
 
   let claims: Claims = extract_claims::<Claims>(token)?;
 
-  info!("User {} rejecting access request {}", claims.email, id);
+  info!(
+    "User {} rejecting access request {}",
+    claims.preferred_username, id
+  );
 
   // Update request status to rejected
   let db_service = state.app_service().db_service();
   db_service
-    .update_request_status(id, UserAccessRequestStatus::Rejected, claims.email.clone())
+    .update_request_status(
+      id,
+      UserAccessRequestStatus::Rejected,
+      claims.preferred_username.clone(),
+    )
     .await?;
 
-  info!("Access request {} rejected by {}", id, claims.email);
+  info!(
+    "Access request {} rejected by {}",
+    id, claims.preferred_username
+  );
   Ok(StatusCode::OK)
 }
 
@@ -440,7 +462,7 @@ mod tests {
     // Test DTO conversion
     let request = UserAccessRequest {
       id: 1,
-      email: "test@example.com".to_string(),
+      username: "test@example.com".to_string(),
       user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
       reviewer: None,
       status: UserAccessRequestStatus::Pending,
@@ -450,7 +472,7 @@ mod tests {
 
     let response = UserAccessStatusResponse::from(request.clone());
 
-    assert_eq!(response.email, request.email);
+    assert_eq!(response.email, request.username);
     assert_eq!(response.status, request.status);
     assert_eq!(response.created_at, request.created_at);
     assert_eq!(response.updated_at, request.updated_at);

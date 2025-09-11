@@ -114,8 +114,7 @@ pub fn access_token_with_exp(exp: i64) -> Value {
       "name": "Test User",
       "preferred_username": "testuser@email.com",
       "given_name": "Test",
-      "family_name": "User",
-      "email": "testuser@email.com"
+      "family_name": "User"
   })
 }
 

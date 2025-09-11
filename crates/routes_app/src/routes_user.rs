@@ -1,5 +1,7 @@
 use crate::ENDPOINT_USER_INFO;
-use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN};
+use auth_middleware::{
+  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+};
 use axum::{http::header::HeaderMap, Json};
 use objs::{
   ApiError, BadRequestError, OpenAIApiError, ResourceScope, Role, TokenScope, UserScope,
@@ -44,14 +46,14 @@ pub enum AppRole {
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema, Default)]
 #[schema(example = json!({
     "logged_in": true,
-    "email": "user@example.com",
+    "username": "user@example.com",
     "role": "resource_user"
 }))]
 pub struct UserInfo {
   /// If user is logged in
   pub logged_in: bool,
-  /// User's email address
-  pub email: Option<String>,
+  /// User's username
+  pub username: Option<String>,
   /// Role assigned to the user
   pub role: Option<AppRole>,
 }
@@ -68,7 +70,7 @@ pub struct UserInfo {
         (status = 200, description = "Current user information retrieved successfully", body = UserInfo,
          example = json!({
              "logged_in": true,
-             "email": "user@example.com",
+             "username": "user@example.com",
              "role": "resource_admin"
          })),
         (status = 500, description = "Authentication error or invalid token", body = OpenAIApiError,
@@ -83,7 +85,7 @@ pub struct UserInfo {
 )]
 pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, ApiError> {
   let not_loggedin = UserInfo::default();
-  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
+  let Some(token) = headers.get(KEY_HEADER_BODHIAPP_TOKEN) else {
     debug!("no token header");
     return Ok(Json(not_loggedin));
   };
@@ -95,8 +97,8 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
     return Err(BadRequestError::new("injected token is empty".to_string()))?;
   }
   let claims: Claims = extract_claims::<Claims>(token)?;
-  let role_header = headers.get(KEY_RESOURCE_ROLE);
-  let token_header = headers.get(KEY_RESOURCE_SCOPE);
+  let role_header = headers.get(KEY_HEADER_BODHIAPP_ROLE);
+  let token_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
   match (role_header, token_header) {
     (Some(role_header), _) => {
       debug!("role header present");
@@ -106,7 +108,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       let role = role.parse::<Role>()?;
       Ok(Json(UserInfo {
         logged_in: true,
-        email: Some(claims.email),
+        username: Some(claims.preferred_username),
         role: Some(AppRole::Session(role)),
       }))
     }
@@ -122,7 +124,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       };
       Ok(Json(UserInfo {
         logged_in: true,
-        email: Some(claims.email),
+        username: Some(claims.preferred_username),
         role: Some(app_role),
       }))
     }
@@ -130,7 +132,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       debug!("no role or token header, returning logged in user without role");
       Ok(Json(UserInfo {
         logged_in: true,
-        email: Some(claims.email),
+        username: Some(claims.preferred_username),
         role: None,
       }))
     }
@@ -140,7 +142,9 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
 #[cfg(test)]
 mod tests {
   use crate::{user_info_handler, AppRole, UserInfo};
-  use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN};
+  use auth_middleware::{
+    KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+  };
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -186,7 +190,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: false,
-        email: None,
+        username: None,
         role: None,
       },
       response_json
@@ -205,7 +209,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, "")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, "")
           .body(Body::empty())?,
       )
       .await?;
@@ -236,7 +240,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, "invalid_token")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid_token")
           .body(Body::empty())?,
       )
       .await?;
@@ -273,8 +277,8 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_ROLE, role.to_string())
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, role.to_string())
           .body(Body::empty())?,
       )
       .await?;
@@ -284,7 +288,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: true,
-        email: Some("testuser@email.com".to_string()),
+        username: Some("testuser@email.com".to_string()),
         role: Some(AppRole::Session(role)),
       },
       response_json
@@ -310,8 +314,8 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_SCOPE, resource_scope.to_string())
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
           .body(Body::empty())?,
       )
       .await?;
@@ -321,7 +325,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: true,
-        email: Some("testuser@email.com".to_string()),
+        username: Some("testuser@email.com".to_string()),
         role: Some(AppRole::ApiToken(token_scope)),
       },
       response_json
@@ -347,8 +351,8 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_SCOPE, resource_scope.to_string())
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
           .body(Body::empty())?,
       )
       .await?;
@@ -358,7 +362,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: true,
-        email: Some("testuser@email.com".to_string()),
+        username: Some("testuser@email.com".to_string()),
         role: Some(AppRole::ExchangedToken(user_scope)),
       },
       response_json
@@ -379,10 +383,10 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_ROLE, Role::Manager.to_string())
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, Role::Manager.to_string())
           .header(
-            KEY_RESOURCE_SCOPE,
+            KEY_HEADER_BODHIAPP_SCOPE,
             ResourceScope::Token(TokenScope::User).to_string(),
           )
           .body(Body::empty())?,
@@ -394,7 +398,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: true,
-        email: Some("testuser@email.com".to_string()),
+        username: Some("testuser@email.com".to_string()),
         role: Some(AppRole::Session(Role::Manager)),
       },
       response_json
@@ -414,7 +418,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
           .body(Body::empty())?,
       )
       .await?;
@@ -424,7 +428,7 @@ mod tests {
     assert_eq!(
       UserInfo {
         logged_in: true,
-        email: Some("testuser@email.com".to_string()),
+        username: Some("testuser@email.com".to_string()),
         role: None,
       },
       response_json
@@ -444,8 +448,8 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_ROLE, "invalid_role")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role")
           .body(Body::empty())?,
       )
       .await?;
@@ -477,8 +481,8 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .header(KEY_RESOURCE_SCOPE, "invalid_scope")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_SCOPE, "invalid_scope")
           .body(Body::empty())?,
       )
       .await?;

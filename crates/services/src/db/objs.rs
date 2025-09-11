@@ -55,8 +55,8 @@ impl DownloadRequest {
 pub struct UserAccessRequest {
   /// Unique identifier for the request
   pub id: i64,
-  /// Email of the requesting user
-  pub email: String,
+  /// Username of the requesting user
+  pub username: String,
   /// User ID (UUID) of the requesting user
   pub user_id: String,
   #[serde(default)]

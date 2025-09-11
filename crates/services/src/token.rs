@@ -61,8 +61,9 @@ pub struct ResourceClaims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserIdClaims {
+  pub jti: String,
   pub sub: String,
-  pub email: String,
+  pub preferred_username: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,7 +100,7 @@ pub struct Claims {
   pub azp: String,
   pub aud: Option<String>,
   pub scope: String,
-  pub email: String,
+  pub preferred_username: String,
   #[serde(default)]
   pub resource_access: HashMap<String, ResourceClaims>,
 }

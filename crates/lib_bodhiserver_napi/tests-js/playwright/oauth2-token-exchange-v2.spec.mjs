@@ -185,7 +185,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       // For now, verify that we got a response and the token was processed
       expect(userInfo).toBeDefined();
       expect(userInfo.logged_in).toBe(true);
-      expect(userInfo.email).toBe('user@email.com');
+      expect(userInfo.username).toBe('user@email.com');
       expect(userInfo.role).toBe('scope_user_user');
       console.log(`✅ OAuth token flow completed - token validation behavior documented`);
 
@@ -224,7 +224,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       expect(userInfoResponse.status).toBe(200);
       const userInfo = await userInfoResponse.json();
       expect(userInfo.logged_in).toBe(false);
-      expect(userInfo.email).toBeNull();
+      expect(userInfo.username).toBeNull();
       console.log(`✅ Error handling verified: Unauthenticated user gets logged_in: false`);
     } finally {
       await serverManager.stopServer();

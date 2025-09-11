@@ -1,4 +1,4 @@
-use crate::{KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE};
+use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
 use axum::{
   extract::{Request, State},
   middleware::Next,
@@ -73,8 +73,8 @@ pub async fn _impl(
   next: Next,
 ) -> Result<Response, ApiAuthError> {
   // Get headers
-  let role_header = req.headers().get(KEY_RESOURCE_ROLE);
-  let scope_header = req.headers().get(KEY_RESOURCE_SCOPE);
+  let role_header = req.headers().get(KEY_HEADER_BODHIAPP_ROLE);
+  let scope_header = req.headers().get(KEY_HEADER_BODHIAPP_SCOPE);
 
   match (role_header, scope_header) {
     // Role header present - validate against required role (takes precedence)
@@ -128,7 +128,7 @@ pub async fn _impl(
 
 #[cfg(test)]
 mod tests {
-  use crate::{api_auth_middleware, KEY_RESOURCE_ROLE, KEY_RESOURCE_SCOPE};
+  use crate::{api_auth_middleware, KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
   use axum::{
     body::Body,
     http::{HeaderValue, Request, Response, StatusCode},
@@ -215,7 +215,7 @@ mod tests {
     let router = test_router(required_role, None);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -239,7 +239,7 @@ mod tests {
     let router = test_router(required_role, None);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -261,7 +261,7 @@ mod tests {
     let router = test_router(Role::User, Some(required_scope));
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -282,7 +282,7 @@ mod tests {
     let router = test_router(Role::User, Some(required_scope));
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -303,7 +303,7 @@ mod tests {
     let router = test_router(Role::User, None);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -329,8 +329,8 @@ mod tests {
     let router = test_router(required_role, required_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -356,8 +356,8 @@ mod tests {
     let router = test_router(required_role, required_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -383,8 +383,8 @@ mod tests {
     let router = test_router(required_role, required_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -424,7 +424,7 @@ mod tests {
     let req = Request::builder()
       .uri("/test")
       .header(
-        KEY_RESOURCE_ROLE,
+        KEY_HEADER_BODHIAPP_ROLE,
         HeaderValue::from_bytes(b"some_invalid_role")?,
       )
       .body(Body::empty())?;
@@ -469,7 +469,7 @@ mod tests {
     let router = test_router_user_scope(Role::User, Some(required_user_scope));
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -493,7 +493,7 @@ mod tests {
     let router = test_router_user_scope(Role::User, Some(required_user_scope));
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -514,7 +514,7 @@ mod tests {
     let router = test_router_user_scope(Role::User, None);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -540,8 +540,8 @@ mod tests {
     let router = test_router_user_scope(required_role, required_user_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -567,8 +567,8 @@ mod tests {
     let router = test_router_user_scope(required_role, required_user_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -594,8 +594,8 @@ mod tests {
     let router = test_router_user_scope(required_role, required_user_scope);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_ROLE, user_role.to_string())
-      .header(KEY_RESOURCE_SCOPE, user_scope.to_string())
+      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -635,7 +635,7 @@ mod tests {
     let req = Request::builder()
       .uri("/test")
       .header(
-        KEY_RESOURCE_SCOPE,
+        KEY_HEADER_BODHIAPP_SCOPE,
         HeaderValue::from_bytes(b"invalid_user_scope")?,
       )
       .body(Body::empty())?;
@@ -665,7 +665,7 @@ mod tests {
     let router = test_router_user_scope(Role::User, Some(UserScope::User));
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_RESOURCE_SCOPE, TokenScope::Admin.to_string())
+      .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::Admin.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
