@@ -1,8 +1,8 @@
 use crate::{
   ApiFormatsResponse, ApiModelResponse, AppRole, AuthCallbackRequest, CreateApiModelRequest,
   FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
-  PaginationSortParams, PingResponse, TestPromptRequest, TestPromptResponse,
-  UpdateApiModelRequest, UpdateApiTokenRequest,
+  PaginationSortParams, PingResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
+  UpdateApiTokenRequest,
 };
 use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, CreateAliasRequest, CreateApiTokenRequest,

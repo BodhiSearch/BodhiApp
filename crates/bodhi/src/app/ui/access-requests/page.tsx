@@ -15,9 +15,10 @@ import { ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_ACCESS_REQUESTS_ALL, ROUTE_USERS }
 import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequest';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { UserAccessRequestDto } from '@bodhiapp/ts-client';
+import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { ROLE_OPTIONS, getAvailableRoles } from '@/lib/roles';
+import { SortState } from '@/types/models';
 
 function NavigationLinks() {
   const pathname = usePathname();
@@ -70,7 +71,7 @@ function getStatusBadge(status: string) {
   }
 }
 
-function AllRequestRow({ request, userRole }: { request: UserAccessRequestDto; userRole: string }) {
+function AllRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
   const { showSuccess, showError } = useToastMessages();
 
@@ -142,6 +143,11 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequestDto; u
 function AllRequestsContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  // Dummy sort values - no actual sorting functionality
+  const dummySort: SortState = { column: '', direction: 'asc' };
+  const noOpSortChange = () => {}; // No-op function
+  const getItemId = (request: UserAccessRequest) => request.id.toString();
+
   const { data: userInfo } = useUser();
   const { data: requestsData, isLoading } = useAllRequests(page, pageSize);
 
@@ -150,7 +156,7 @@ function AllRequestsContent() {
 
   const columns = [
     { id: 'email', name: 'Email', sorted: false },
-    { id: 'created_at', name: 'Requested Date', sorted: true, className: 'hidden sm:table-cell' },
+    { id: 'created_at', name: 'Requested Date', sorted: false, className: 'hidden sm:table-cell' },
     { id: 'status', name: 'Status', sorted: false },
     { id: 'actions', name: 'Actions', sorted: false },
   ];
@@ -188,7 +194,7 @@ function AllRequestsContent() {
     );
   }
 
-  const renderRow = (request: UserAccessRequestDto) => <AllRequestRow request={request} userRole={userRole} />;
+  const renderRow = (request: UserAccessRequest) => <AllRequestRow request={request} userRole={userRole} />;
 
   return (
     <Card>
@@ -202,10 +208,18 @@ function AllRequestsContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <DataTable columns={columns} data={requests} renderRow={renderRow} />
+        <DataTable
+          columns={columns}
+          data={requests}
+          renderRow={renderRow}
+          loading={isLoading}
+          sort={dummySort}
+          onSortChange={noOpSortChange}
+          getItemId={getItemId}
+        />
         {total > pageSize && (
           <div className="mt-4">
-            <Pagination currentPage={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
+            <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
           </div>
         )}
       </CardContent>

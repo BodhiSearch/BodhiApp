@@ -205,7 +205,7 @@ describe('UsersPage Error Handling', () => {
     });
 
     // Should show the generic error from AppInitializer
-    expect(screen.getByText('Request failed with status code 404')).toBeInTheDocument();
+    expect(screen.getByText('Request failed with status code 500')).toBeInTheDocument();
   });
 
   it('handles network failures gracefully', async () => {

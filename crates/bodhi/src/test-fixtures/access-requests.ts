@@ -3,34 +3,28 @@ import { PaginatedUserAccessResponse, UserAccessStatusResponse, UserAccessReques
 export const mockPendingRequest: UserAccessRequest = {
   id: 1,
   email: 'user@example.com',
-  name: 'Test User',
   status: 'pending',
   created_at: '2024-01-01T00:00:00Z',
-  processed_at: null,
-  processed_by: null,
-  role: null,
+  updated_at: '2024-01-01T00:00:00Z',
+  reviewer: null,
 };
 
 export const mockApprovedRequest: UserAccessRequest = {
   id: 2,
   email: 'approved@example.com',
-  name: 'Approved User',
   status: 'approved',
   created_at: '2024-01-01T00:00:00Z',
-  processed_at: '2024-01-02T00:00:00Z',
-  processed_by: 'admin@example.com',
-  role: 'resource_user',
+  updated_at: '2024-01-02T00:00:00Z',
+  reviewer: 'admin@example.com',
 };
 
 export const mockRejectedRequest: UserAccessRequest = {
   id: 3,
   email: 'rejected@example.com',
-  name: 'Rejected User',
   status: 'rejected',
   created_at: '2024-01-01T00:00:00Z',
-  processed_at: '2024-01-02T00:00:00Z',
-  processed_by: 'admin@example.com',
-  role: null,
+  updated_at: '2024-01-02T00:00:00Z',
+  reviewer: 'admin@example.com',
 };
 
 export const mockPendingRequests: PaginatedUserAccessResponse = {
@@ -55,12 +49,6 @@ export const mockEmptyRequests: PaginatedUserAccessResponse = {
 };
 
 // User access status scenarios
-export const mockUserAccessStatusNone: UserAccessStatusResponse = {
-  status: 'none',
-  email: 'user@example.com',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-};
 
 export const mockUserAccessStatusPending: UserAccessStatusResponse = {
   status: 'pending',
@@ -95,7 +83,6 @@ export const createMockUserInfo = (role: string, loggedIn: boolean = true) => {
   return {
     logged_in: loggedIn,
     email: `${role}@example.com`,
-    name: `${role} User`,
     role: loggedIn ? resourceRole : null,
   };
 };
