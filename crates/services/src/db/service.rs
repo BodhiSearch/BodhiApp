@@ -82,9 +82,16 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     page_size: usize,
   ) -> Result<(Vec<DownloadRequest>, usize), DbError>;
 
-  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError>;
+  async fn insert_pending_request(
+    &self,
+    email: String,
+    user_id: String,
+  ) -> Result<UserAccessRequest, DbError>;
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError>;
+  async fn get_pending_request(
+    &self,
+    user_id: String,
+  ) -> Result<Option<UserAccessRequest>, DbError>;
 
   async fn list_pending_requests(
     &self,
@@ -347,12 +354,17 @@ impl DbService for SqliteDbService {
     Ok((items, total))
   }
 
-  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError> {
+  async fn insert_pending_request(
+    &self,
+    email: String,
+    user_id: String,
+  ) -> Result<UserAccessRequest, DbError> {
     let now = self.time_service.utc_now();
     let result = query_as::<
       _,
       (
         i64,
+        String,
         String,
         Option<String>,
         String,
@@ -360,11 +372,12 @@ impl DbService for SqliteDbService {
         DateTime<Utc>,
       ),
     >(
-      "INSERT INTO access_requests (email, created_at, updated_at, status)
-         VALUES (?, ?, ?, ?)
-         RETURNING id, email, reviewer, status, created_at, updated_at",
+      "INSERT INTO access_requests (email, user_id, created_at, updated_at, status)
+         VALUES (?, ?, ?, ?, ?)
+         RETURNING id, email, user_id, reviewer, status, created_at, updated_at",
     )
     .bind(&email)
+    .bind(&user_id)
     .bind(now)
     .bind(now)
     .bind(UserAccessRequestStatus::Pending.to_string())
@@ -374,18 +387,23 @@ impl DbService for SqliteDbService {
     Ok(UserAccessRequest {
       id: result.0,
       email: result.1,
-      reviewer: result.2,
-      status: UserAccessRequestStatus::from_str(&result.3)?,
-      created_at: result.4,
-      updated_at: result.5,
+      user_id: result.2,
+      reviewer: result.3,
+      status: UserAccessRequestStatus::from_str(&result.4)?,
+      created_at: result.5,
+      updated_at: result.6,
     })
   }
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError> {
+  async fn get_pending_request(
+    &self,
+    user_id: String,
+  ) -> Result<Option<UserAccessRequest>, DbError> {
     let result = query_as::<
       _,
       (
         i64,
+        String,
         String,
         Option<String>,
         String,
@@ -393,31 +411,34 @@ impl DbService for SqliteDbService {
         DateTime<Utc>,
       ),
     >(
-      "SELECT id, email, reviewer, status, created_at, updated_at
+      "SELECT id, email, user_id, reviewer, status, created_at, updated_at
          FROM access_requests
-         WHERE email = ? AND status = ?",
+         WHERE user_id = ? AND status = ?",
     )
-    .bind(&email)
+    .bind(&user_id)
     .bind(UserAccessRequestStatus::Pending.to_string())
     .fetch_optional(&self.pool)
     .await?;
 
     let result = result
-      .map(|(id, email, reviewer, status, created_at, updated_at)| {
-        let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
-          tracing::warn!("unknown request status: {} for id: {}", status, id);
-          return None;
-        };
-        let result = UserAccessRequest {
-          id,
-          email,
-          reviewer,
-          status,
-          created_at,
-          updated_at,
-        };
-        Some(result)
-      })
+      .map(
+        |(id, email, user_id, reviewer, status, created_at, updated_at)| {
+          let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
+            tracing::warn!("unknown request status: {} for id: {}", status, id);
+            return None;
+          };
+          let result = UserAccessRequest {
+            id,
+            email,
+            user_id,
+            reviewer,
+            status,
+            created_at,
+            updated_at,
+          };
+          Some(result)
+        },
+      )
       .unwrap_or(None);
     Ok(result)
   }
@@ -438,13 +459,14 @@ impl DbService for SqliteDbService {
       (
         i64,
         String,
+        String,
         Option<String>,
         String,
         DateTime<Utc>,
         DateTime<Utc>,
       ),
     >(
-      "SELECT id, email, reviewer, status, created_at, updated_at
+      "SELECT id, email, user_id, reviewer, status, created_at, updated_at
          FROM access_requests
          WHERE status = ?
          ORDER BY created_at ASC
@@ -458,21 +480,24 @@ impl DbService for SqliteDbService {
 
     let results = results
       .into_iter()
-      .filter_map(|(id, email, reviewer, status, created_at, updated_at)| {
-        let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
-          tracing::warn!("unknown request status: {} for id: {}", status, id);
-          return None;
-        };
-        let result = UserAccessRequest {
-          id,
-          email,
-          reviewer,
-          status,
-          created_at,
-          updated_at,
-        };
-        Some(result)
-      })
+      .filter_map(
+        |(id, email, user_id, reviewer, status, created_at, updated_at)| {
+          let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
+            tracing::warn!("unknown request status: {} for id: {}", status, id);
+            return None;
+          };
+          let result = UserAccessRequest {
+            id,
+            email,
+            user_id,
+            reviewer,
+            status,
+            created_at,
+            updated_at,
+          };
+          Some(result)
+        },
+      )
       .collect::<Vec<UserAccessRequest>>();
     Ok((results, total_count.0 as usize))
   }
@@ -504,13 +529,14 @@ impl DbService for SqliteDbService {
       (
         i64,
         String,
+        String,
         Option<String>,
         String,
         DateTime<Utc>,
         DateTime<Utc>,
       ),
     >(
-      "SELECT id, email, reviewer, status, created_at, updated_at
+      "SELECT id, email, user_id, reviewer, status, created_at, updated_at
          FROM access_requests
          WHERE id = ?",
     )
@@ -518,12 +544,12 @@ impl DbService for SqliteDbService {
     .fetch_optional(&self.pool)
     .await?;
 
-    if let Some((id, email, reviewer, status, created_at, updated_at)) = result {
-      let status =
-        UserAccessRequestStatus::from_str(&status).map_err(|err| DbError::StrumParse(err))?;
+    if let Some((id, email, user_id, reviewer, status, created_at, updated_at)) = result {
+      let status = UserAccessRequestStatus::from_str(&status).map_err(DbError::StrumParse)?;
       Ok(Some(UserAccessRequest {
         id,
         email,
+        user_id,
         reviewer,
         status,
         created_at,
@@ -1103,10 +1129,14 @@ mod test {
   ) -> anyhow::Result<()> {
     let now = service.now();
     let email = "test@example.com".to_string();
-    let pending_request = service.insert_pending_request(email.clone()).await?;
+    let user_id = "550e8400-e29b-41d4-a716-446655440000".to_string();
+    let pending_request = service
+      .insert_pending_request(email.clone(), user_id.clone())
+      .await?;
     let expected_request = UserAccessRequest {
       id: pending_request.id, // We don't know this in advance
       email,
+      user_id,
       created_at: now,
       updated_at: now,
       status: UserAccessRequestStatus::Pending,
@@ -1125,8 +1155,11 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let email = "test@example.com".to_string();
-    let inserted_request = service.insert_pending_request(email.clone()).await?;
-    let fetched_request = service.get_pending_request(email).await?;
+    let user_id = "550e8400-e29b-41d4-a716-446655440001".to_string();
+    let inserted_request = service
+      .insert_pending_request(email, user_id.clone())
+      .await?;
+    let fetched_request = service.get_pending_request(user_id).await?;
     assert!(fetched_request.is_some());
     assert_eq!(fetched_request.unwrap(), inserted_request);
     Ok(())
@@ -1141,13 +1174,24 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let emails = vec![
-      "test1@example.com".to_string(),
-      "test2@example.com".to_string(),
-      "test3@example.com".to_string(),
+    let test_data = vec![
+      (
+        "test1@example.com".to_string(),
+        "550e8400-e29b-41d4-a716-446655440002".to_string(),
+      ),
+      (
+        "test2@example.com".to_string(),
+        "550e8400-e29b-41d4-a716-446655440003".to_string(),
+      ),
+      (
+        "test3@example.com".to_string(),
+        "550e8400-e29b-41d4-a716-446655440004".to_string(),
+      ),
     ];
-    for email in &emails {
-      service.insert_pending_request(email.clone()).await?;
+    for (email, user_id) in &test_data {
+      service
+        .insert_pending_request(email.clone(), user_id.clone())
+        .await?;
     }
     let (page1, total) = service.list_pending_requests(1, 2).await?;
     assert_eq!(2, page1.len());
@@ -1158,7 +1202,8 @@ mod test {
     for (i, request) in page1.iter().chain(page2.iter()).enumerate() {
       let expected_request = UserAccessRequest {
         id: request.id,
-        email: emails[i].clone(),
+        email: test_data[i].0.clone(),
+        user_id: test_data[i].1.clone(),
         created_at: now,
         updated_at: now,
         status: UserAccessRequestStatus::Pending,
@@ -1178,7 +1223,10 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let email = "test@example.com".to_string();
-    let inserted_request = service.insert_pending_request(email.clone()).await?;
+    let user_id = "550e8400-e29b-41d4-a716-446655440005".to_string();
+    let inserted_request = service
+      .insert_pending_request(email, user_id.clone())
+      .await?;
     service
       .update_request_status(
         inserted_request.id,
@@ -1186,7 +1234,7 @@ mod test {
         "admin@example.com".to_string(),
       )
       .await?;
-    let updated_request = service.get_pending_request(email).await?;
+    let updated_request = service.get_pending_request(user_id).await?;
     assert!(updated_request.is_none());
     Ok(())
   }

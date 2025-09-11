@@ -36,7 +36,7 @@ test.describe('API Models Prefix Functionality', () => {
     await authClient.makeResourceAdmin(
       resourceClient.clientId,
       resourceClient.clientSecret,
-      testCredentials.username
+      testCredentials.userId
     );
 
     serverManager = createServerManager({

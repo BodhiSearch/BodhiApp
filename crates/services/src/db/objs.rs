@@ -57,6 +57,8 @@ pub struct UserAccessRequest {
   pub id: i64,
   /// Email of the requesting user
   pub email: String,
+  /// User ID (UUID) of the requesting user
+  pub user_id: String,
   #[serde(default)]
   pub reviewer: Option<String>,
   /// Current status of the request

@@ -28,7 +28,7 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
     await authClient.makeResourceAdmin(
       resourceClient.clientId,
       resourceClient.clientSecret,
-      testCredentials.username
+      testCredentials.userId
     );
     serverManager = createServerManager({
       appStatus: 'ready',

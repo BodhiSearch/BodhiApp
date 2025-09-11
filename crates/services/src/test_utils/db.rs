@@ -126,18 +126,25 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_download_requests"))
   }
 
-  async fn insert_pending_request(&self, email: String) -> Result<UserAccessRequest, DbError> {
+  async fn insert_pending_request(
+    &self,
+    email: String,
+    user_id: String,
+  ) -> Result<UserAccessRequest, DbError> {
     self
       .inner
-      .insert_pending_request(email)
+      .insert_pending_request(email, user_id)
       .await
       .tap(|_| self.notify("insert_pending_request"))
   }
 
-  async fn get_pending_request(&self, email: String) -> Result<Option<UserAccessRequest>, DbError> {
+  async fn get_pending_request(
+    &self,
+    user_id: String,
+  ) -> Result<Option<UserAccessRequest>, DbError> {
     self
       .inner
-      .get_pending_request(email)
+      .get_pending_request(user_id)
       .await
       .tap(|_| self.notify("get_pending_request"))
   }

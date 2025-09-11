@@ -61,6 +61,7 @@ pub struct ResourceClaims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserIdClaims {
+  pub sub: String,
   pub email: String,
 }
 

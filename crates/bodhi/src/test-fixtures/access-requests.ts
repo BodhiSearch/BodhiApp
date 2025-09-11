@@ -2,6 +2,7 @@ import { PaginatedUserAccessResponse, UserAccessStatusResponse, UserAccessReques
 
 export const mockPendingRequest: UserAccessRequest = {
   id: 1,
+  user_id: '550e8400-e29b-41d4-a716-446655440001',
   email: 'user@example.com',
   status: 'pending',
   created_at: '2024-01-01T00:00:00Z',
@@ -11,6 +12,7 @@ export const mockPendingRequest: UserAccessRequest = {
 
 export const mockApprovedRequest: UserAccessRequest = {
   id: 2,
+  user_id: '550e8400-e29b-41d4-a716-446655440002',
   email: 'approved@example.com',
   status: 'approved',
   created_at: '2024-01-01T00:00:00Z',
@@ -20,6 +22,7 @@ export const mockApprovedRequest: UserAccessRequest = {
 
 export const mockRejectedRequest: UserAccessRequest = {
   id: 3,
+  user_id: '550e8400-e29b-41d4-a716-446655440003',
   email: 'rejected@example.com',
   status: 'rejected',
   created_at: '2024-01-01T00:00:00Z',

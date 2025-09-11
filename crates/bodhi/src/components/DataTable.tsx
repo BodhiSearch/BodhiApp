@@ -133,15 +133,28 @@ export function Pagination({
   totalPages: number;
   onPageChange: (newPage: number) => void;
 }) {
+  const currentPage = page ?? 1;
+  const currentTotalPages = totalPages ?? 1;
+
   return (
-    <div className="flex justify-center gap-4">
-      <Button size="sm" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1} className="px-6">
+    <div className="flex justify-center gap-4" data-testid="pagination">
+      <Button
+        size="sm"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="px-6"
+      >
         Previous
       </Button>
-      <span className="flex items-center">
-        {page}/{totalPages}
+      <span className="flex items-center" data-testid="page-info">
+        Page {currentPage} of {currentTotalPages}
       </span>
-      <Button size="sm" onClick={() => onPageChange(page + 1)} disabled={page === totalPages} className="px-6">
+      <Button
+        size="sm"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === currentTotalPages}
+        className="px-6"
+      >
         Next
       </Button>
     </div>

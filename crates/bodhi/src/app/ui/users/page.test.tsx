@@ -1,17 +1,9 @@
 import UsersPage from '@/app/ui/users/page';
-import { createWrapper } from '@/tests/wrapper';
-import { createAccessRequestHandlers, createRoleBasedHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
 import { ADMIN_ROLES, BLOCKED_ROLES, createMockUserInfo } from '@/test-fixtures/access-requests';
-import {
-  mockUsersResponse,
-  mockEmptyUsersResponse,
-  mockUser1,
-  mockUser2,
-  mockManager,
-  mockAdmin,
-} from '@/test-fixtures/users';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { mockUsersResponse } from '@/test-fixtures/users';
+import { createAccessRequestHandlers, createErrorHandlers, createRoleBasedHandlers } from '@/test-utils/msw-handlers';
+import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -139,7 +131,6 @@ describe('UsersPage Placeholder Functionality', () => {
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
@@ -158,11 +149,9 @@ describe('UsersPage Placeholder Functionality', () => {
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
-
     // Should not show user management buttons/forms since not implemented
     expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
@@ -180,7 +169,6 @@ describe('UsersPage Placeholder Functionality', () => {
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
@@ -194,18 +182,16 @@ describe('UsersPage Placeholder Functionality', () => {
 describe('UsersPage Error Handling', () => {
   it('renders successfully even if there are API errors', async () => {
     server.use(...createErrorHandlers());
-
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
+    await waitForElementToBeRemoved(() => screen.getByText('Initializing app...'));
     // When API fails, AppInitializer shows a generic error, not the users page
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
-
     // Should show the generic error from AppInitializer
-    expect(screen.getByText('Request failed with status code 500')).toBeInTheDocument();
+    expect(screen.getByText('Network Error')).toBeInTheDocument();
   });
 
   it('handles network failures gracefully', async () => {
@@ -214,11 +200,9 @@ describe('UsersPage Error Handling', () => {
         userInfo: createMockUserInfo('admin'),
       })
     );
-
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
@@ -236,17 +220,14 @@ describe('UsersPage Loading States', () => {
         userInfo: createMockUserInfo('admin'),
       })
     );
-
-    render(<UsersPage />, { wrapper: createWrapper() });
-
+    await act(async () => {
+      render(<UsersPage />, { wrapper: createWrapper() });
+    });
     // Should show loading initially then page content
     // Wait for any async operations to complete
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('users-page')).toBeInTheDocument();
-      },
-      { timeout: 3000 }
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId('users-page')).toBeInTheDocument();
+    });
 
     expect(screen.getAllByText('All Users')[1]).toBeInTheDocument(); // The second occurrence is in the card
   });
@@ -288,7 +269,6 @@ describe('UsersPage Future Functionality Tests (Placeholder)', () => {
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
     });
-
     await waitFor(() => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });

@@ -683,6 +683,10 @@ export type UserAccessRequest = {
      * Last update timestamp
      */
     updated_at: string;
+    /**
+     * User ID (UUID) of the requesting user
+     */
+    user_id: string;
 };
 
 export type UserAccessRequestStatus = 'pending' | 'approved' | 'rejected';

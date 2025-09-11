@@ -387,8 +387,6 @@ describe('PendingRequestsPage Loading States', () => {
   });
 
   it('shows approve and reject buttons for pending requests', async () => {
-    const user = userEvent.setup();
-
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: {

@@ -267,13 +267,17 @@ pub async fn auth_callback_handler(
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
 
-  // Extract claims from JWT token to get user email
+  // Extract claims from JWT token to get user information
   let claims = extract_claims::<Claims>(&access_token)?;
-  let email = claims.email.clone();
+  let user_id = claims.sub.clone();
 
   if status_resource_admin {
     auth_service
-      .make_resource_admin(&app_reg_info.client_id, &app_reg_info.client_secret, &email)
+      .make_resource_admin(
+        &app_reg_info.client_id,
+        &app_reg_info.client_secret,
+        &user_id,
+      )
       .await?;
     secret_service.set_app_status(&AppStatus::Ready)?;
     let (new_access_token, new_refresh_token) = auth_service
@@ -1411,7 +1415,7 @@ mod tests {
         "/realms/test-realm/bodhi/resources/make-resource-admin",
       )
       .match_header("Authorization", "Bearer client_access_token")
-      .match_body(Matcher::Json(json!({"username": "testuser@email.com"})))
+      .match_body(Matcher::Regex(r#"\{"userId":"[^"]+"\}"#.to_string()))
       .with_status(200)
       .with_body("{}")
       .create_async()

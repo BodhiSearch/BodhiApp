@@ -82,7 +82,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     &self,
     client_id: &str,
     client_secret: &str,
-    email: &str,
+    user_id: &str,
   ) -> Result<()>;
 
   async fn request_access(
@@ -92,9 +92,9 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     app_client_id: &str,
   ) -> Result<String>;
 
-  async fn assign_user_role(&self, reveiwer_token: &str, username: &str, role: &str) -> Result<()>;
+  async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
-  async fn remove_user(&self, reviewer_token: &str, username: &str) -> Result<()>;
+  async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -418,7 +418,7 @@ impl AuthService for KeycloakAuthService {
     &self,
     client_id: &str,
     client_secret: &str,
-    email: &str,
+    user_id: &str,
   ) -> Result<()> {
     // Get client access token
     let access_token = self
@@ -433,7 +433,7 @@ impl AuthService for KeycloakAuthService {
       .client
       .post(&endpoint)
       .bearer_auth(access_token.secret())
-      .json(&serde_json::json!({ "username": email }))
+      .json(&serde_json::json!({ "userId": user_id }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
@@ -487,7 +487,7 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  async fn assign_user_role(&self, reviewer_token: &str, username: &str, role: &str) -> Result<()> {
+  async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()> {
     // Make API call to assign role to user
     let endpoint = format!(
       "{}/realms/{}/bodhi/resources/assign-role",
@@ -500,7 +500,7 @@ impl AuthService for KeycloakAuthService {
       .post(&endpoint)
       .bearer_auth(reviewer_token)
       .json(&serde_json::json!({
-        "username": username,
+        "userId": user_id,
         "role": role
       }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
@@ -516,7 +516,7 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  async fn remove_user(&self, reviewer_token: &str, username: &str) -> Result<()> {
+  async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()> {
     // Make API call to remove user from all roles
     let endpoint = format!(
       "{}/realms/{}/bodhi/resources/remove-user",
@@ -529,7 +529,7 @@ impl AuthService for KeycloakAuthService {
       .post(&endpoint)
       .bearer_auth(reviewer_token)
       .json(&serde_json::json!({
-        "username": username
+        "userId": user_id
       }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
@@ -744,12 +744,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case("test_client_id", "test_client_secret", "test@example.com")]
+  #[case(
+    "test_client_id",
+    "test_client_secret",
+    "550e8400-e29b-41d4-a716-446655440000"
+  )]
   #[tokio::test]
   async fn test_make_resource_admin_success(
     #[case] client_id: &str,
     #[case] client_secret: &str,
-    #[case] email: &str,
+    #[case] user_id: &str,
   ) -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
     let url = server.url();
@@ -780,14 +784,14 @@ mod tests {
         "/realms/test-realm/bodhi/resources/make-resource-admin",
       )
       .match_header("Authorization", "Bearer test_access_token")
-      .match_body(Matcher::Json(json!({"username": email})))
+      .match_body(Matcher::Json(json!({"userId": user_id})))
       .with_status(200)
       .with_body("{}")
       .create();
 
     let service = test_auth_service(&url);
     let result = service
-      .make_resource_admin(client_id, client_secret, email)
+      .make_resource_admin(client_id, client_secret, user_id)
       .await;
 
     assert!(result.is_ok());
@@ -798,12 +802,16 @@ mod tests {
   }
 
   #[rstest]
-  #[case("test_client_id", "test_client_secret", "test@example.com")]
+  #[case(
+    "test_client_id",
+    "test_client_secret",
+    "550e8400-e29b-41d4-a716-446655440001"
+  )]
   #[tokio::test]
   async fn test_make_resource_admin_token_failure(
     #[case] client_id: &str,
     #[case] client_secret: &str,
-    #[case] email: &str,
+    #[case] user_id: &str,
   ) -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
     let url = server.url();
@@ -817,7 +825,7 @@ mod tests {
 
     let service = test_auth_service(&url);
     let result = service
-      .make_resource_admin(client_id, client_secret, email)
+      .make_resource_admin(client_id, client_secret, user_id)
       .await;
 
     assert!(result.is_err());
