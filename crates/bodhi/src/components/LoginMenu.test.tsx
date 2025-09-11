@@ -25,14 +25,12 @@ vi.mock('@/hooks/use-toast', () => ({
 
 const mockLoggedOutUser = {
   logged_in: false,
-  email: null,
-  roles: [],
 };
 
 const mockLoggedInUser = {
   logged_in: true,
-  email: 'test@example.com',
-  roles: ['user'],
+  username: 'test@example.com',
+  role: 'resource_user',
 };
 
 const mockAppInfo = {
@@ -88,7 +86,7 @@ describe('LoginMenu Component', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
-      expect(screen.getByText(`Logged in as ${mockLoggedInUser.email}`)).toBeInTheDocument();
+      expect(screen.getByText(`Logged in as ${mockLoggedInUser.username}`)).toBeInTheDocument();
     });
   });
 

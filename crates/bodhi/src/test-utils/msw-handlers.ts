@@ -36,7 +36,7 @@ export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) =>
       ctx.json(
         overrides.requestStatus || {
           status: 'pending',
-          email: 'user@example.com',
+          username: 'user@example.com',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
@@ -52,7 +52,7 @@ export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) =>
           id: 1,
           user_id: '550e8400-e29b-41d4-a716-446655440000',
           status: 'pending',
-          email: 'test@example.com',
+          username: 'test@example.com',
           created_at: new Date().toISOString(),
         }
       )

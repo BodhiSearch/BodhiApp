@@ -41,7 +41,7 @@ describe('RequestAccessPage Display States', () => {
     server.use(
       ...createAccessRequestHandlers({
         requestStatus: mockUserAccessStatusPending,
-        userInfo: { logged_in: true, email: 'user@example.com', role: null }, // No role
+        userInfo: { logged_in: true, username: 'user@example.com', role: null }, // No role
       })
     );
 
@@ -81,7 +81,7 @@ describe('RequestAccessPage Display States', () => {
     server.use(
       ...createAccessRequestHandlers({
         requestStatus: mockUserAccessStatusRejected,
-        userInfo: { logged_in: true, email: 'user@example.com', role: null }, // No role
+        userInfo: { logged_in: true, username: 'user@example.com', role: null }, // No role
       })
     );
 
@@ -154,7 +154,7 @@ describe('RequestAccessPage Loading States', () => {
     server.use(
       ...createAccessRequestHandlers({
         requestStatus: mockUserAccessStatusPending,
-        userInfo: { logged_in: true, email: 'user@example.com', role: null }, // No role
+        userInfo: { logged_in: true, username: 'user@example.com', role: null }, // No role
       })
     );
 
@@ -177,7 +177,7 @@ describe('RequestAccessPage UI Interactions', () => {
     server.use(
       ...createAccessRequestHandlers({
         requestStatus: mockUserAccessStatusRejected,
-        userInfo: { logged_in: true, email: 'user@example.com', role: null }, // No role
+        userInfo: { logged_in: true, username: 'user@example.com', role: null }, // No role
       })
     );
 
@@ -204,7 +204,7 @@ describe('RequestAccessPage UI Interactions', () => {
     server.use(
       ...createAccessRequestHandlers({
         requestStatus: mockUserAccessStatusPending,
-        userInfo: { logged_in: true, email: 'user@example.com', role: null }, // No role
+        userInfo: { logged_in: true, username: 'user@example.com', role: null }, // No role
       })
     );
 
@@ -245,7 +245,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     server.use(
       ...createNoRequestHandlers({
         logged_in: true,
-        email: 'user@example.com',
+        username: 'user@example.com',
         role: null,
       })
     );
@@ -270,7 +270,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     const trackingHandlers = [
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, email: 'user@example.com', role: null }))
+        res(ctx.json({ logged_in: true, username: 'user@example.com', role: null }))
       ),
       rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
         res(
@@ -312,7 +312,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     server.use(
       ...createNoRequestHandlers({
         logged_in: true,
-        email: 'user@example.com',
+        username: 'user@example.com',
         role: null,
       })
     );
@@ -335,7 +335,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     const errorHandlers = [
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, email: 'user@example.com', role: null }))
+        res(ctx.json({ logged_in: true, username: 'user@example.com', role: null }))
       ),
       rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
         res(
@@ -375,7 +375,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     const countingHandlers = [
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, email: 'user@example.com', role: null }))
+        res(ctx.json({ logged_in: true, username: 'user@example.com', role: null }))
       ),
       rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
         res(
@@ -415,7 +415,7 @@ describe('RequestAccessPage - No Request Exists', () => {
     server.use(
       ...createNoRequestHandlers({
         logged_in: true,
-        email: 'user@example.com',
+        username: 'user@example.com',
         role: null,
       })
     );

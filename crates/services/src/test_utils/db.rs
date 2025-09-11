@@ -128,12 +128,12 @@ impl DbService for TestDbService {
 
   async fn insert_pending_request(
     &self,
-    email: String,
+    username: String,
     user_id: String,
   ) -> Result<UserAccessRequest, DbError> {
     self
       .inner
-      .insert_pending_request(email, user_id)
+      .insert_pending_request(username, user_id)
       .await
       .tap(|_| self.notify("insert_pending_request"))
   }

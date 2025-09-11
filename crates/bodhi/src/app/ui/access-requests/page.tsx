@@ -17,7 +17,7 @@ import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { ROLE_OPTIONS, getAvailableRoles } from '@/lib/roles';
+import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 
 function NavigationLinks() {
@@ -77,7 +77,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
 
   const { mutate: approveRequest, isLoading: isApproving } = useApproveRequest({
     onSuccess: () => {
-      showSuccess('Request Approved', `Access granted to ${request.email}`);
+      showSuccess('Request Approved', `Access granted to ${request.username}`);
     },
     onError: (message) => {
       showError('Approval Failed', message);
@@ -86,7 +86,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
 
   const { mutate: rejectRequest, isLoading: isRejecting } = useRejectRequest({
     onSuccess: () => {
-      showSuccess('Request Rejected', `Access rejected for ${request.email}`);
+      showSuccess('Request Rejected', `Access rejected for ${request.username}`);
     },
     onError: (message) => {
       showError('Rejection Failed', message);
@@ -107,7 +107,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
 
   return (
     <>
-      <TableCell className="font-medium">{request.email}</TableCell>
+      <TableCell className="font-medium">{request.username}</TableCell>
       <TableCell className="hidden sm:table-cell">{new Date(request.created_at).toLocaleDateString()}</TableCell>
       <TableCell>{getStatusBadge(request.status)}</TableCell>
       <TableCell>
@@ -155,7 +155,7 @@ function AllRequestsContent() {
   const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';
 
   const columns = [
-    { id: 'email', name: 'Email', sorted: false },
+    { id: 'username', name: 'Username', sorted: false },
     { id: 'created_at', name: 'Requested Date', sorted: false, className: 'hidden sm:table-cell' },
     { id: 'status', name: 'Status', sorted: false },
     { id: 'actions', name: 'Actions', sorted: false },

@@ -81,7 +81,7 @@ export function LoginContent() {
     return (
       <AuthCard
         title="Welcome"
-        description={`You are logged in as ${userInfo.email}`}
+        description={`You are logged in as ${userInfo.username}`}
         actions={[
           {
             label: 'Go to Home',

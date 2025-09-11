@@ -667,10 +667,6 @@ export type UserAccessRequest = {
      */
     created_at: string;
     /**
-     * Email of the requesting user
-     */
-    email: string;
-    /**
      * Unique identifier for the request
      */
     id: number;
@@ -687,6 +683,10 @@ export type UserAccessRequest = {
      * User ID (UUID) of the requesting user
      */
     user_id: string;
+    /**
+     * Username of the requesting user
+     */
+    username: string;
 };
 
 export type UserAccessRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -700,10 +700,6 @@ export type UserAccessStatusResponse = {
      */
     created_at: string;
     /**
-     * Email of the requesting user
-     */
-    email: string;
-    /**
      * Current status of the request (pending, approved, rejected)
      */
     status: UserAccessRequestStatus;
@@ -711,6 +707,10 @@ export type UserAccessStatusResponse = {
      * Last update timestamp
      */
     updated_at: string;
+    /**
+     * Username of the requesting user
+     */
+    username: string;
 };
 
 export type UserAlias = {
@@ -738,14 +738,14 @@ export type UserAliasResponse = {
  */
 export type UserInfo = {
     /**
-     * User's email address
-     */
-    email?: string | null;
-    /**
      * If user is logged in
      */
     logged_in: boolean;
     role?: null | AppRole;
+    /**
+     * User's username
+     */
+    username?: string | null;
 };
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';

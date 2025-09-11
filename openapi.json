@@ -2930,9 +2930,9 @@
                   "$ref": "#/components/schemas/UserInfo"
                 },
                 "example": {
-                  "email": "user@example.com",
                   "logged_in": true,
-                  "role": "resource_admin"
+                  "role": "resource_admin",
+                  "username": "user@example.com"
                 }
               }
             }
@@ -5427,7 +5427,7 @@
         "type": "object",
         "required": [
           "id",
-          "email",
+          "username",
           "user_id",
           "status",
           "created_at",
@@ -5438,10 +5438,6 @@
             "type": "string",
             "format": "date-time",
             "description": "Creation timestamp"
-          },
-          "email": {
-            "type": "string",
-            "description": "Email of the requesting user"
           },
           "id": {
             "type": "integer",
@@ -5466,6 +5462,10 @@
           "user_id": {
             "type": "string",
             "description": "User ID (UUID) of the requesting user"
+          },
+          "username": {
+            "type": "string",
+            "description": "Username of the requesting user"
           }
         }
       },
@@ -5481,7 +5481,7 @@
         "type": "object",
         "description": "Response for checking access request status",
         "required": [
-          "email",
+          "username",
           "status",
           "created_at",
           "updated_at"
@@ -5492,10 +5492,6 @@
             "format": "date-time",
             "description": "Creation timestamp"
           },
-          "email": {
-            "type": "string",
-            "description": "Email of the requesting user"
-          },
           "status": {
             "$ref": "#/components/schemas/UserAccessRequestStatus",
             "description": "Current status of the request (pending, approved, rejected)"
@@ -5504,6 +5500,10 @@
             "type": "string",
             "format": "date-time",
             "description": "Last update timestamp"
+          },
+          "username": {
+            "type": "string",
+            "description": "Username of the requesting user"
           }
         },
         "example": {
@@ -5597,13 +5597,6 @@
           "logged_in"
         ],
         "properties": {
-          "email": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "User's email address"
-          },
           "logged_in": {
             "type": "boolean",
             "description": "If user is logged in"
@@ -5618,12 +5611,19 @@
                 "description": "Role assigned to the user"
               }
             ]
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "User's username"
           }
         },
         "example": {
-          "email": "user@example.com",
           "logged_in": true,
-          "role": "resource_user"
+          "role": "resource_user",
+          "username": "user@example.com"
         }
       },
       "UserScope": {

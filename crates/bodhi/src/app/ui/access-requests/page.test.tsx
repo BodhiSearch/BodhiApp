@@ -114,7 +114,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: allRequestsData,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -140,7 +140,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: mockEmptyRequests,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -164,7 +164,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: paginatedData,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -191,7 +191,7 @@ describe('AllRequestsPage Request Management', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
   });
@@ -288,7 +288,7 @@ describe('AllRequestsPage Error Handling', () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, email: 'admin@example.com', roles: ['admin'] }))
+        res(ctx.json({ logged_in: true, username: 'admin@example.com', role: 'resource_admin' }))
       ),
       rest.get(`*${ENDPOINT_ACCESS_REQUESTS}`, (_, res, ctx) =>
         res(ctx.status(500), ctx.json({ error: { message: 'Internal server error' } }))
@@ -317,7 +317,7 @@ describe('AllRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       }),
       ...createErrorHandlers()
     );
@@ -351,7 +351,7 @@ describe('AllRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       }),
       ...createErrorHandlers()
     );
@@ -381,7 +381,7 @@ describe('AllRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -408,7 +408,7 @@ describe('AllRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 

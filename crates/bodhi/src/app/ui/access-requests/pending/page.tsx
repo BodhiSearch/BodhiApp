@@ -11,7 +11,7 @@ import { TableCell } from '@/components/ui/table';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock } from 'lucide-react';
-import { ROLE_OPTIONS, getAvailableRoles } from '@/lib/roles';
+import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequest';
 import { useUser } from '@/hooks/useQuery';
@@ -49,7 +49,7 @@ function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; 
 
   const { mutate: approveRequest, isLoading: isApproving } = useApproveRequest({
     onSuccess: () => {
-      showSuccess('Request Approved', `Access granted to ${request.email}`);
+      showSuccess('Request Approved', `Access granted to ${request.username}`);
     },
     onError: (message) => {
       showError('Approval Failed', message);
@@ -58,7 +58,7 @@ function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; 
 
   const { mutate: rejectRequest, isLoading: isRejecting } = useRejectRequest({
     onSuccess: () => {
-      showSuccess('Request Rejected', `Access rejected for ${request.email}`);
+      showSuccess('Request Rejected', `Access rejected for ${request.username}`);
     },
     onError: (message) => {
       showError('Rejection Failed', message);
@@ -79,7 +79,7 @@ function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; 
 
   return (
     <>
-      <TableCell className="font-medium">{request.email}</TableCell>
+      <TableCell className="font-medium">{request.username}</TableCell>
       <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
       <TableCell>
         <Badge variant="outline" className="gap-1">
@@ -118,7 +118,7 @@ function PendingRequestsContent() {
   const [pageSize] = useState(10);
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
-  const noOpSortChange = () => { }; // No-op function
+  const noOpSortChange = () => {}; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id.toString();
 
   const { data: userInfo } = useUser();
@@ -128,7 +128,7 @@ function PendingRequestsContent() {
   const userRole = typeof userInfo?.role === 'string' ? userInfo.role : '';
 
   const columns = [
-    { id: 'email', name: 'Email', sorted: false },
+    { id: 'username', name: 'Username', sorted: false },
     { id: 'created_at', name: 'Requested Date', sorted: false, className: 'hidden sm:table-cell' },
     { id: 'status', name: 'Status', sorted: false },
     { id: 'actions', name: 'Actions', sorted: false },

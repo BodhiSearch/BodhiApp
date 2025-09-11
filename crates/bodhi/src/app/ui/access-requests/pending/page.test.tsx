@@ -107,7 +107,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: pendingRequestsData,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -129,7 +129,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: mockEmptyRequests,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -153,7 +153,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: paginatedData,
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -180,7 +180,7 @@ describe('PendingRequestsPage Request Management', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
   });
@@ -277,7 +277,7 @@ describe('PendingRequestsPage Error Handling', () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, email: 'admin@example.com', role: 'resource_admin' }))
+        res(ctx.json({ logged_in: true, username: 'admin@example.com', role: 'resource_admin' }))
       ),
       rest.get(`*${ENDPOINT_ACCESS_REQUESTS_PENDING}`, (_, res, ctx) =>
         res(ctx.status(404), ctx.json({ error: { message: 'Not found' } }))
@@ -306,7 +306,7 @@ describe('PendingRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       }),
       ...createErrorHandlers()
     );
@@ -340,7 +340,7 @@ describe('PendingRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       }),
       ...createErrorHandlers()
     );
@@ -370,7 +370,7 @@ describe('PendingRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -395,7 +395,7 @@ describe('PendingRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 
@@ -429,7 +429,7 @@ describe('PendingRequestsPage UI Interactions', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, email: 'admin@example.com', role: 'resource_admin' },
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
       })
     );
 

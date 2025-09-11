@@ -76,7 +76,7 @@ describe('PullPage', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json(mockDownloadsResponse));
@@ -163,7 +163,7 @@ describe('PullPage access control', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
       })
     );
     await act(async () => {

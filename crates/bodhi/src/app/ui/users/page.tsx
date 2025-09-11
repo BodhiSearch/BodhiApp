@@ -18,14 +18,7 @@ import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserInfo } from '@bodhiapp/ts-client';
 import { Users, AlertCircle, Trash2 } from 'lucide-react';
-import {
-  ROLE_OPTIONS,
-  getRoleLabel,
-  getRoleBadgeVariant,
-  getAvailableRoles,
-  getRoleLevel,
-  getCleanRoleName,
-} from '@/lib/roles';
+import { getRoleLabel, getRoleBadgeVariant, getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 
 function NavigationLinks() {
@@ -63,7 +56,7 @@ function UserRow({ user, currentUserRole }: { user: UserInfo; currentUserRole: s
 
   const { mutate: changeRole } = useChangeUserRole({
     onSuccess: () => {
-      showSuccess('Role Updated', `Role updated for ${user.email}`);
+      showSuccess('Role Updated', `Role updated for ${user.username}`);
     },
     onError: (message) => {
       showError('Update Failed', message);
@@ -72,7 +65,7 @@ function UserRow({ user, currentUserRole }: { user: UserInfo; currentUserRole: s
 
   const { mutate: removeUser, isLoading: isRemoving } = useRemoveUser({
     onSuccess: () => {
-      showSuccess('User Removed', `User access removed for ${user.email}`);
+      showSuccess('User Removed', `User access removed for ${user.username}`);
     },
     onError: (message) => {
       showError('Removal Failed', message);
@@ -81,12 +74,12 @@ function UserRow({ user, currentUserRole }: { user: UserInfo; currentUserRole: s
 
   const handleRoleChange = (newRole: string) => {
     setSelectedRole(newRole);
-    changeRole({ userId: user.email || '', newRole });
+    changeRole({ userId: user.username || '', newRole });
   };
 
   const handleRemoveUser = () => {
-    if (!user.email) return;
-    removeUser(user.email);
+    if (!user.username) return;
+    removeUser(user.username);
   };
 
   // Filter role options based on current user's role hierarchy
@@ -97,7 +90,7 @@ function UserRow({ user, currentUserRole }: { user: UserInfo; currentUserRole: s
 
   return (
     <>
-      <TableCell className="font-medium">{user.email}</TableCell>
+      <TableCell className="font-medium">{user.username}</TableCell>
       <TableCell>{getRoleBadge(currentRole)}</TableCell>
       <TableCell>
         <Badge variant="outline">Active</Badge>
@@ -143,7 +136,7 @@ function UsersContent() {
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
   const noOpSortChange = () => {}; // No-op function
-  const getItemId = (user: UserInfo) => user.email || 'unknown';
+  const getItemId = (user: UserInfo) => user.username || 'unknown';
 
   const { data: currentUserInfo } = useUser();
   const { data: usersData, isLoading, error } = useAllUsers(page, pageSize);
@@ -152,7 +145,7 @@ function UsersContent() {
   const currentUserRole = typeof currentUserInfo?.role === 'string' ? currentUserInfo.role : '';
 
   const columns = [
-    { id: 'email', name: 'Email', sorted: false },
+    { id: 'username', name: 'Username', sorted: false },
     { id: 'role', name: 'Role', sorted: false },
     { id: 'status', name: 'Status', sorted: false },
     { id: 'last_login', name: 'Last Login', sorted: false, className: 'hidden md:table-cell' },
