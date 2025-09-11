@@ -1,15 +1,15 @@
 import RequestAccessPage from '@/app/ui/request-access/page';
-import { createWrapper } from '@/tests/wrapper';
-import { createAccessRequestHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
-import {
-  mockUserAccessStatusPending,
-  mockUserAccessStatusApproved,
-  mockUserAccessStatusRejected,
-  createMockUserInfo,
-} from '@/test-fixtures/access-requests';
+import { ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS } from '@/hooks/useAccessRequest';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { ENDPOINT_USER_REQUEST_STATUS, ENDPOINT_USER_REQUEST_ACCESS } from '@/hooks/useAccessRequest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  createMockUserInfo,
+  mockUserAccessStatusApproved,
+  mockUserAccessStatusPending,
+  mockUserAccessStatusRejected,
+} from '@/test-fixtures/access-requests';
+import { createAccessRequestHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
+import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -121,11 +121,10 @@ describe('RequestAccessPage Authentication and Access Control', () => {
 describe('RequestAccessPage Error Handling', () => {
   it('displays error message when request status fetch fails', async () => {
     server.use(...createErrorHandlers());
-
     await act(async () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
-
+    await waitForElementToBeRemoved(() => screen.getByText('Initializing app...'));
     await waitFor(() => {
       expect(screen.getByRole('alert') || screen.getByText(/error/i)).toBeInTheDocument();
     });

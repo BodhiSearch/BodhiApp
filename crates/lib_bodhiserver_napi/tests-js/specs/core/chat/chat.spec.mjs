@@ -51,7 +51,7 @@ test.describe('Chat Interface - Core Functionality', () => {
     await authClient.makeResourceAdmin(
       resourceClient.clientId,
       resourceClient.clientSecret,
-      testCredentials.username
+      testCredentials.userId
     );
 
     serverManager = createServerManager({

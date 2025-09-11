@@ -102,7 +102,7 @@ test.describe('App Initializer Integration', () => {
       await authClient.makeResourceAdmin(
         resourceClient.clientId,
         resourceClient.clientSecret,
-        testCredentials.username
+        testCredentials.userId
       );
 
       serverManager = createServerManager({

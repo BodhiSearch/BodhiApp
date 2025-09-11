@@ -24,6 +24,7 @@ pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_RESOURCE_USER_EMAIL: &str = "X-Resource-User-Email";
 pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
 pub const KEY_RESOURCE_SCOPE: &str = "X-Resource-Scope";
+pub const KEY_RESOURCE_USER_ID: &str = "X-Resource-User-Id";
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
@@ -113,6 +114,7 @@ pub async fn auth_middleware(
   req.headers_mut().remove(KEY_RESOURCE_ROLE);
   req.headers_mut().remove(KEY_RESOURCE_SCOPE);
   req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
+  req.headers_mut().remove(KEY_RESOURCE_USER_ID);
 
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
@@ -164,6 +166,9 @@ pub async fn auth_middleware(
       req
         .headers_mut()
         .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
+      req
+        .headers_mut()
+        .insert(KEY_RESOURCE_USER_ID, claims.sub.parse().unwrap());
       debug!("auth_middleware: session token validated");
       Ok(next.run(req).await)
     } else {
@@ -184,6 +189,7 @@ pub async fn inject_optional_auth_info(
   req.headers_mut().remove(KEY_RESOURCE_ROLE);
   req.headers_mut().remove(KEY_RESOURCE_SCOPE);
   req.headers_mut().remove(KEY_RESOURCE_USER_EMAIL);
+  req.headers_mut().remove(KEY_RESOURCE_USER_ID);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -231,6 +237,9 @@ pub async fn inject_optional_auth_info(
           req
             .headers_mut()
             .insert(KEY_RESOURCE_USER_EMAIL, claims.email.parse().unwrap());
+          req
+            .headers_mut()
+            .insert(KEY_RESOURCE_USER_ID, claims.sub.parse().unwrap());
         }
         Err(AuthError::RefreshTokenNotFound) => {
           // Log this specific case - user needs to re-login

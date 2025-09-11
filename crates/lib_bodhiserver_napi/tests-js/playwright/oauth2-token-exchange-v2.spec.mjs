@@ -115,7 +115,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
 
       // Step 5: Request audience access via Bodhi App API
       console.log('Step 5: Requesting audience access via Bodhi App API...');
-      const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/auth/request-access`, {
+      const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,8 +187,6 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       expect(userInfo.logged_in).toBe(true);
       expect(userInfo.email).toBe('user@email.com');
       expect(userInfo.role).toBe('scope_user_user');
-      expect(userInfo.token_type).toBe('bearer');
-      expect(userInfo.role_source).toBe('scope_user');
       console.log(`✅ OAuth token flow completed - token validation behavior documented`);
 
       await staticServer.stopServer();

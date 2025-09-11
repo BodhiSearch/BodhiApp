@@ -70,7 +70,7 @@ cargo fmt -p routes_app
 
 ### Task 2.1: Create Request/Response DTOs ✅
 - [x] Create new file `crates/routes_app/src/routes_access_request.rs`
-- [x] Define `UserAccessRequestDto` struct for responses
+- [x] Define `UserAccessRequest` struct for responses
 - [x] Define `UserAccessStatusResponse` with status field
 - [x] Define `ApproveAccessRequest` with `role: Role` field (using enum directly)
 - [x] Define `PaginatedAccessRequestResponse` following existing pattern

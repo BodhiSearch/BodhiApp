@@ -41,7 +41,7 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await authClient.makeResourceAdmin(
       resourceClient.clientId,
       resourceClient.clientSecret,
-      testCredentials.username
+      testCredentials.userId
     );
 
     serverManager = createServerManager({

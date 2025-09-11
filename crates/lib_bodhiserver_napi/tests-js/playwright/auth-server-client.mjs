@@ -26,10 +26,11 @@ export function getTestCredentials() {
   const config = {
     username: process.env.INTEG_TEST_USERNAME,
     password: process.env.INTEG_TEST_PASSWORD,
+    userId: process.env.INTEG_TEST_USERNAME_ID,
   };
 
   // Validate required environment variables
-  const requiredVars = ['username', 'password'];
+  const requiredVars = ['username', 'password', 'userId'];
   for (const varName of requiredVars) {
     if (!config[varName]) {
       throw new Error(`Required environment variable missing: ${varName.toUpperCase()}`);
@@ -257,7 +258,7 @@ export class AuthServerTestClient {
     return data.scope;
   }
 
-  async makeResourceAdmin(resourceClientId, resourceClientSecret, username) {
+  async makeResourceAdmin(resourceClientId, resourceClientSecret, userId) {
     const resourceAdminUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/make-resource-admin`;
     const resourceToken = await this.getResourceServiceAccountToken(
       resourceClientId,
@@ -270,7 +271,7 @@ export class AuthServerTestClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: username,
+        userId: userId,
       }),
     });
 

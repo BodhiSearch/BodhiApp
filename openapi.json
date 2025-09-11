@@ -5428,6 +5428,7 @@
         "required": [
           "id",
           "email",
+          "user_id",
           "status",
           "created_at",
           "updated_at"
@@ -5461,6 +5462,10 @@
             "type": "string",
             "format": "date-time",
             "description": "Last update timestamp"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID (UUID) of the requesting user"
           }
         }
       },

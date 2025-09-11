@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_ACCESS_REQUESTS_ALL, ROUTE_USERS } from '@/lib/constants';
-import { usePendingRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequest';
-import { useUser } from '@/hooks/useQuery';
+import { TableCell } from '@/components/ui/table';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock } from 'lucide-react';
 import { ROLE_OPTIONS, getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
+import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequest';
+import { useUser } from '@/hooks/useQuery';
+import { ROUTE_ACCESS_REQUESTS_ALL, ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_USERS } from '@/lib/constants';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 function NavigationLinks() {
   const pathname = usePathname();
@@ -118,7 +118,7 @@ function PendingRequestsContent() {
   const [pageSize] = useState(10);
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
-  const noOpSortChange = () => {}; // No-op function
+  const noOpSortChange = () => { }; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id.toString();
 
   const { data: userInfo } = useUser();

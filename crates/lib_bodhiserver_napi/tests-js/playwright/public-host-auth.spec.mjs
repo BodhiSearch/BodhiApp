@@ -28,7 +28,7 @@ test.describe('Public Host Configuration Authentication Tests', () => {
     await authClient.makeResourceAdmin(
       resourceClient.clientId,
       resourceClient.clientSecret,
-      testCredentials.username
+      testCredentials.userId
     );
     serverManager = createServerManager({
       appStatus: 'ready',

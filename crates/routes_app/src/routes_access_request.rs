@@ -2,7 +2,7 @@ use crate::{
   EmptyResponse, PaginationSortParams, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN, KEY_RESOURCE_USER_EMAIL};
+use auth_middleware::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN, KEY_RESOURCE_USER_ID};
 use axum::{
   extract::{Path, Query, State},
   http::{HeaderMap, StatusCode},
@@ -134,6 +134,7 @@ pub async fn user_request_access_handler(
 
   let claims: Claims = extract_claims::<Claims>(token)?;
   let email = claims.email.clone();
+  let user_id = claims.sub.clone();
 
   info!("User {} requesting access", email);
 
@@ -154,7 +155,11 @@ pub async fn user_request_access_handler(
   let db_service = state.app_service().db_service();
 
   // Check for existing pending request
-  if let Some(_existing) = db_service.get_pending_request(email.clone()).await? {
+  if db_service
+    .get_pending_request(user_id.clone())
+    .await?
+    .is_some()
+  {
     debug!("User {} already has pending request", email);
     return Err(ConflictError::new(
       "Access request already pending".to_string(),
@@ -162,7 +167,9 @@ pub async fn user_request_access_handler(
   }
 
   // Create new access request
-  let _request = db_service.insert_pending_request(email.clone()).await?;
+  let _ = db_service
+    .insert_pending_request(email.clone(), user_id.clone())
+    .await?;
 
   info!("Access request created for user {}", email);
   Ok((StatusCode::CREATED, Json(EmptyResponse {})))
@@ -190,17 +197,15 @@ pub async fn request_status_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<UserAccessStatusResponse>, ApiError> {
-  let Some(email) = headers.get(KEY_RESOURCE_USER_EMAIL) else {
-    return Err(UnauthorizedError::new(
-      "you do not have access to request access status".to_string(),
-    ))?;
+  let Some(user_id) = headers.get(KEY_RESOURCE_USER_ID) else {
+    return Err(UnauthorizedError::new("user not found".to_string()))?;
   };
-  let email = email
+  let user_id = user_id
     .to_str()
     .map_err(|err| InternalServerError::new(err.to_string()))?;
-  debug!("Checking access request status for user {}", email);
+  debug!("Checking access request status for user {}", user_id);
   let db_service = state.app_service().db_service();
-  if let Some(request) = db_service.get_pending_request(email.to_string()).await? {
+  if let Some(request) = db_service.get_pending_request(user_id.to_string()).await? {
     Ok(Json(UserAccessStatusResponse::from(request)))
   } else {
     Err(NotFoundError::new(
@@ -369,7 +374,7 @@ pub async fn approve_request_handler(
   let role_name = request.role.to_string();
 
   auth_service
-    .assign_user_role(token, &access_request.email, &role_name)
+    .assign_user_role(token, &access_request.user_id, &role_name)
     .await?;
 
   info!(
@@ -436,6 +441,7 @@ mod tests {
     let request = UserAccessRequest {
       id: 1,
       email: "test@example.com".to_string(),
+      user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
       reviewer: None,
       status: UserAccessRequestStatus::Pending,
       created_at: chrono::Utc::now(),
