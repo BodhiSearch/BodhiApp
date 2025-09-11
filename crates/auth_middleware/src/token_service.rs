@@ -333,7 +333,9 @@ impl DefaultTokenService {
         .await?;
       tracing::debug!("Updated user_id, access and refresh tokens in session");
     } else {
-      tracing::debug!("Updated user_id and access token in session (no new refresh token provided)");
+      tracing::debug!(
+        "Updated user_id and access token in session (no new refresh token provided)"
+      );
     }
     let client_id = self
       .secret_service
