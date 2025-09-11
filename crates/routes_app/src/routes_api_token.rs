@@ -1,5 +1,5 @@
 use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
-use auth_middleware::KEY_RESOURCE_TOKEN;
+use auth_middleware::KEY_HEADER_BODHIAPP_TOKEN;
 use axum::{
   extract::{Path, Query, State},
   http::{HeaderMap, StatusCode},
@@ -196,7 +196,9 @@ pub async fn update_token_handler(
   let app_service = state.app_service();
   let db_service = app_service.db_service();
 
-  let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
+  let resource_token = headers
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
+    .map(|token| token.to_str());
   let Some(Ok(resource_token)) = resource_token else {
     return Err(ApiTokenError::AccessTokenMissing)?;
   };
@@ -280,7 +282,9 @@ pub async fn list_tokens_handler(
   Query(query): Query<PaginationSortParams>,
 ) -> Result<Json<PaginatedApiTokenResponse>, ApiError> {
   let per_page = query.page_size.min(100);
-  let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
+  let resource_token = headers
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
+    .map(|token| token.to_str());
   let Some(Ok(resource_token)) = resource_token else {
     return Err(ApiTokenError::AccessTokenMissing)?;
   };
@@ -309,7 +313,7 @@ mod tests {
     UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::KEY_RESOURCE_TOKEN;
+  use auth_middleware::KEY_HEADER_BODHIAPP_TOKEN;
   use axum::{
     body::Body,
     http::{Method, Request},
@@ -441,7 +445,7 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header(KEY_RESOURCE_TOKEN, "test_token")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, "test_token")
           .json(&payload)?,
       )
       .await?;
@@ -519,7 +523,7 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header(KEY_RESOURCE_TOKEN, "test_token")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, "test_token")
           .json(&payload)?,
       )
       .await?;
@@ -579,7 +583,7 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header(KEY_RESOURCE_TOKEN, "invalid_token")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid_token")
           .json(&payload)?,
       )
       .await?;
@@ -641,7 +645,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
-          .header(KEY_RESOURCE_TOKEN, &token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .uri("/api/tokens?page=1&page_size=10")
           .body(Body::empty())
           .unwrap(),
@@ -660,7 +664,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
-          .header(KEY_RESOURCE_TOKEN, &token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .uri("/api/tokens?page=2&page_size=10")
           .body(Body::empty())
           .unwrap(),
@@ -698,7 +702,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
-          .header(KEY_RESOURCE_TOKEN, &token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .uri("/api/tokens")
           .body(Body::empty())
           .unwrap(),
@@ -751,7 +755,7 @@ mod tests {
         Request::builder()
           .method(Method::PUT)
           .uri(format!("/api/tokens/{}", token.id))
-          .header(KEY_RESOURCE_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
           .json(&UpdateApiTokenRequest {
             name: "Updated Name".to_string(),
             status: TokenStatus::Inactive,
@@ -796,7 +800,7 @@ mod tests {
         Request::builder()
           .method(Method::PUT)
           .uri("/api/tokens/non-existent-id")
-          .header(KEY_RESOURCE_TOKEN, &token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .json(&UpdateApiTokenRequest {
             name: "Updated Name".to_string(),
             status: TokenStatus::Inactive,

@@ -2,8 +2,8 @@ use crate::utils::extract_request_host;
 use crate::{LoginError, RedirectResponse, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_LOGOUT};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use auth_middleware::{
-  app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
-  SESSION_KEY_REFRESH_TOKEN,
+  app_status_or_default, generate_random_string, KEY_HEADER_BODHIAPP_TOKEN,
+  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN,
 };
 use axum::{
   extract::State,
@@ -65,7 +65,7 @@ pub async fn auth_initiate_handler(
   let setting_service = app_service.setting_service();
 
   // Early return if user is already authenticated
-  if headers.get(KEY_RESOURCE_TOKEN).is_some() {
+  if headers.get(KEY_HEADER_BODHIAPP_TOKEN).is_some() {
     return Ok((
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],

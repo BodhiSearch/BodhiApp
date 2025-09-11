@@ -1,1 +1,0 @@
-ALTER TABLE api_model_aliases RENAME COLUMN provider TO api_format;

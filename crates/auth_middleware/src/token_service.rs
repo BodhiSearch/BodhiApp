@@ -265,7 +265,7 @@ impl DefaultTokenService {
     &self,
     session: Session,
     access_token: String,
-  ) -> Result<(String, Role), AuthError> {
+  ) -> Result<(String, Option<Role>), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
 
@@ -278,11 +278,11 @@ impl DefaultTokenService {
         .app_reg_info()?
         .ok_or(AppRegInfoMissingError)?
         .client_id;
-      let roles = claims
+      let role = claims
         .resource_access
         .get(&client_id)
-        .ok_or(AuthError::MissingRoles)?;
-      let role = Role::from_resource_role(&roles.roles)?;
+        .map(|roles| Role::from_resource_role(&roles.roles))
+        .transpose()?;
       return Ok((access_token, role));
     }
 
@@ -336,11 +336,11 @@ impl DefaultTokenService {
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?
       .client_id;
-    let resource_claims = claims
+    let role = claims
       .resource_access
       .get(&client_id)
-      .ok_or(AuthError::MissingRoles)?;
-    let role = Role::from_resource_role(&resource_claims.roles)?;
+      .map(|resource_claims| Role::from_resource_role(&resource_claims.roles))
+      .transpose()?;
 
     tracing::info!("Successfully refreshed token for role: {:?}", role);
     Ok((new_access_token, role))

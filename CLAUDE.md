@@ -120,3 +120,4 @@ The application embeds the UI build, so changes to React components won't be vis
 - Testing UI changes in integration tests
 
 **Development Mode**: For active development, use `cd crates/bodhi && npm run dev` to run Next.js dev server with hot reload.
+- Do not plan for backwards compatibility unless specifically mentioned.
