@@ -1,4 +1,4 @@
-use crate::AuthError;
+use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
 use objs::{AppRegInfoMissingError, ResourceScope, Role, TokenScope, UserScope};
@@ -320,17 +320,21 @@ impl DefaultTokenService {
       }
     };
 
-    // Store new tokens in session
-    session.insert("access_token", &new_access_token).await?;
-    if let Some(refresh_token) = new_refresh_token.as_ref() {
-      session.insert("refresh_token", refresh_token).await?;
-      tracing::info!("Updated both access and refresh tokens in session");
-    } else {
-      tracing::info!("Updated access token in session (no new refresh token provided)");
-    }
-
-    // Extract claims from new token
+    // Extract claims from new token first to get user_id
     let claims = extract_claims::<Claims>(&new_access_token)?;
+    // Store user_id and new tokens in session
+    session.insert(SESSION_KEY_USER_ID, &claims.sub).await?;
+    session
+      .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
+      .await?;
+    if let Some(refresh_token) = new_refresh_token.as_ref() {
+      session
+        .insert(SESSION_KEY_REFRESH_TOKEN, refresh_token)
+        .await?;
+      tracing::debug!("Updated user_id, access and refresh tokens in session");
+    } else {
+      tracing::debug!("Updated user_id and access token in session (no new refresh token provided)");
+    }
     let client_id = self
       .secret_service
       .app_reg_info()?
