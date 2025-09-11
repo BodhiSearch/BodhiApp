@@ -19,6 +19,7 @@ use tracing::debug;
 
 pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
+pub const SESSION_KEY_USER_ID: &str = "user_id";
 
 macro_rules! bodhi_header {
   ($name:literal) => {

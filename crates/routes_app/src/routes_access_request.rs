@@ -144,8 +144,6 @@ pub async fn user_request_access_handler(
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
 
-  info!("User {} requesting access", username);
-
   // Check if user already has a role
   if let Some(role_header) = headers.get(KEY_HEADER_BODHIAPP_ROLE) {
     let role = role_header
@@ -179,7 +177,7 @@ pub async fn user_request_access_handler(
     .insert_pending_request(username.to_string(), user_id.to_string())
     .await?;
 
-  info!("Access request created for user {}", username);
+  debug!("Access request created for user {}", username);
   Ok((StatusCode::CREATED, Json(EmptyResponse {})))
 }
 
@@ -389,9 +387,15 @@ pub async fn approve_request_handler(
     .assign_user_role(token, &access_request.user_id, &role_name)
     .await?;
 
+  // Clear existing sessions for the user to ensure new role is applied
+  let session_service = state.app_service().session_service();
+  let cleared_sessions = session_service
+    .clear_sessions_for_user(&access_request.user_id)
+    .await?;
+
   info!(
-    "Access request {} approved by {}, user {} assigned role {}",
-    id, claims.preferred_username, access_request.username, role_name
+    "Access request {} approved by {}, user {} assigned role {}, cleared {} sessions",
+    id, claims.preferred_username, access_request.username, role_name, cleared_sessions
   );
   Ok(StatusCode::OK)
 }
