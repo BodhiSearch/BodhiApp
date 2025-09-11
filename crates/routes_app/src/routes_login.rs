@@ -3,7 +3,7 @@ use crate::{LoginError, RedirectResponse, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use auth_middleware::{
   app_status_or_default, generate_random_string, KEY_HEADER_BODHIAPP_TOKEN,
-  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN,
+  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID,
 };
 use axum::{
   extract::State,
@@ -292,7 +292,11 @@ pub async fn auth_callback_handler(
       new_refresh_token.expect("refresh token is missing when refreshing an existing token");
   }
 
-  // Store tokens in session
+  // Store user_id and tokens in session
+  session
+    .insert(SESSION_KEY_USER_ID, &user_id)
+    .await
+    .map_err(LoginError::from)?;
   session
     .insert(SESSION_KEY_ACCESS_TOKEN, access_token)
     .await

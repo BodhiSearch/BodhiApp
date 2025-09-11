@@ -39,8 +39,6 @@ type Result<T> = std::result::Result<T, SessionServiceError>;
 pub trait SessionService: Send + Sync + std::fmt::Debug {
   fn session_layer(&self) -> SessionManagerLayer<AppSessionStore>;
   async fn clear_sessions_for_user(&self, user_id: &str) -> Result<usize>;
-
-  #[cfg(any(test, feature = "test-utils"))]
   fn get_session_store(&self) -> &AppSessionStore;
 }
 
@@ -116,6 +114,25 @@ impl AppSessionStore {
 
     Ok(count)
   }
+
+  pub async fn get_session_ids_for_user(&self, user_id: &str) -> Result<Vec<String>> {
+    let session_ids =
+      sqlx::query_scalar::<_, String>("SELECT id FROM tower_sessions WHERE user_id = ?")
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+    Ok(session_ids)
+  }
+
+  pub async fn dump_all_sessions(&self) -> Result<Vec<(String, Option<String>)>> {
+    let sessions =
+      sqlx::query_as::<_, (String, Option<String>)>("SELECT id, user_id FROM tower_sessions")
+        .fetch_all(&self.pool)
+        .await?;
+
+    Ok(sessions)
+  }
 }
 
 impl SqliteSessionService {
@@ -183,7 +200,6 @@ impl SessionService for SqliteSessionService {
     self.session_store.clear_sessions_for_user(user_id).await
   }
 
-  #[cfg(any(test, feature = "test-utils"))]
   fn get_session_store(&self) -> &AppSessionStore {
     &self.session_store
   }

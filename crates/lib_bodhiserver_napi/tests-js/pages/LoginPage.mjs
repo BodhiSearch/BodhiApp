@@ -15,6 +15,13 @@ export class LoginPage extends BasePage {
     signInButton: 'button:has-text("Sign In")',
   };
 
+  async performOAuthLoginFromSession() {
+    const loginButton = this.page.locator(this.selectors.loginButton);
+    await loginButton.first().click();
+    await this.waitForSPAReady();
+    await this.page.waitForURL((url) => url.origin === this.baseUrl);
+  }
+
   async performOAuthLogin(expectedRedirectPath = '/ui/chat/') {
     // Navigate to login page if not already there
     if (!this.page.url().includes('/ui/login')) {
