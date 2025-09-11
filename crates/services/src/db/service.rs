@@ -99,6 +99,12 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     per_page: u32,
   ) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
 
+  async fn list_all_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
+
   async fn update_request_status(
     &self,
     id: i64,
@@ -486,6 +492,59 @@ impl DbService for SqliteDbService {
             tracing::warn!("unknown request status: {} for id: {}", status, id);
             return None;
           };
+          let result = UserAccessRequest {
+            id,
+            username,
+            user_id,
+            reviewer,
+            status,
+            created_at,
+            updated_at,
+          };
+          Some(result)
+        },
+      )
+      .collect::<Vec<UserAccessRequest>>();
+    Ok((results, total_count.0 as usize))
+  }
+
+  async fn list_all_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
+    let offset = (page - 1) * per_page;
+    // Get total count of all requests
+    let total_count: (i64,) = query_as("SELECT COUNT(*) FROM access_requests")
+      .fetch_one(&self.pool)
+      .await?;
+    let results = query_as::<
+      _,
+      (
+        i64,
+        String,
+        String,
+        Option<String>,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      "SELECT id, username, user_id, reviewer, status, created_at, updated_at
+         FROM access_requests
+         ORDER BY created_at ASC
+         LIMIT ? OFFSET ?",
+    )
+    .bind(per_page as i64)
+    .bind(offset as i64)
+    .fetch_all(&self.pool)
+    .await?;
+
+    let results = results
+      .into_iter()
+      .filter_map(
+        |(id, username, user_id, reviewer, status, created_at, updated_at)| {
+          let status = UserAccessRequestStatus::from_str(&status).ok()?;
           let result = UserAccessRequest {
             id,
             username,
