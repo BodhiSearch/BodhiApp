@@ -106,6 +106,16 @@ impl AppSessionStore {
 
     Ok(result.rows_affected() as usize)
   }
+
+  pub async fn count_sessions_for_user(&self, user_id: &str) -> Result<i32> {
+    let count =
+      sqlx::query_scalar::<_, i32>("SELECT COUNT(*) FROM tower_sessions WHERE user_id = ?")
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+    Ok(count)
+  }
 }
 
 impl SqliteSessionService {
