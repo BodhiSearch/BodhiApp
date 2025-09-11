@@ -290,9 +290,18 @@ pub async fn list_all_requests_handler(
 ) -> Result<Json<PaginatedUserAccessResponse>, ApiError> {
   debug!("Listing all access requests with pagination: {:?}", params);
 
-  // For now, this uses the same method as pending requests
-  // In production, we'd need a separate method to get all requests
-  list_pending_requests_handler(State(state), Query(params)).await
+  let db_service = state.app_service().db_service();
+  let (requests, total) = db_service
+    .list_all_requests(params.page as u32, params.page_size as u32)
+    .await
+    .map_err(|e| InternalServerError::new(format!("Failed to fetch all access requests: {}", e)))?;
+
+  Ok(Json(PaginatedUserAccessResponse {
+    page: params.page,
+    page_size: params.page_size,
+    total,
+    requests,
+  }))
 }
 
 /// Approve access request

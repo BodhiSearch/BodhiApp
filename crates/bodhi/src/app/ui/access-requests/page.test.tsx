@@ -103,7 +103,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(...createAccessRequestHandlers());
   });
 
-  it('displays all requests with correct status badges', async () => {
+  it('displays all requests with correct status badges and reviewer information', async () => {
     const allRequestsData = {
       requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
       total: 3,
@@ -134,6 +134,10 @@ describe('AllRequestsPage Data Display', () => {
     expect(screen.getByText('Pending')).toBeInTheDocument();
     expect(screen.getByText('Approved')).toBeInTheDocument();
     expect(screen.getByText('Rejected')).toBeInTheDocument();
+
+    // Check reviewer information for approved/rejected requests
+    const reviewerElements = screen.getAllByText('by admin@example.com');
+    expect(reviewerElements).toHaveLength(2); // One for approved, one for rejected
   });
 
   it('displays empty state when no requests exist', async () => {
@@ -175,6 +179,67 @@ describe('AllRequestsPage Data Display', () => {
     await waitFor(() => {
       // Should show pagination controls for multiple pages
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+    });
+  });
+
+  it('displays correct date for pending vs processed requests', async () => {
+    const allRequestsData = {
+      requests: [mockPendingRequest, mockApprovedRequest],
+      total: 2,
+      page: 1,
+      page_size: 10,
+    };
+
+    server.use(
+      ...createAccessRequestHandlers({
+        allRequests: allRequestsData,
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+      })
+    );
+
+    await act(async () => {
+      render(<AllRequestsPage />, { wrapper: createWrapper() });
+    });
+
+    // Wait for data to load
+    await screen.findByText('user@example.com');
+
+    // Pending request should show created_at date (1/1/2024)
+    expect(screen.getByText('1/1/2024')).toBeInTheDocument();
+
+    // Approved request should show updated_at date (1/2/2024)
+    expect(screen.getByText('1/2/2024')).toBeInTheDocument();
+  });
+
+  it('shows reviewer information only for approved/rejected requests', async () => {
+    const allRequestsData = {
+      requests: [mockPendingRequest, mockApprovedRequest, mockRejectedRequest],
+      total: 3,
+      page: 1,
+      page_size: 10,
+    };
+
+    server.use(
+      ...createAccessRequestHandlers({
+        allRequests: allRequestsData,
+        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+      })
+    );
+
+    await act(async () => {
+      render(<AllRequestsPage />, { wrapper: createWrapper() });
+    });
+
+    // Wait for data to load
+    await screen.findByText('user@example.com');
+
+    // Check that reviewer information is shown for approved/rejected
+    const reviewerElements = screen.getAllByTestId('request-reviewer');
+    expect(reviewerElements).toHaveLength(2); // Only approved and rejected, not pending
+
+    // Verify both show the correct reviewer
+    reviewerElements.forEach((element) => {
+      expect(element).toHaveTextContent('by admin@example.com');
     });
   });
 });

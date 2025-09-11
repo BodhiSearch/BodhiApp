@@ -8,6 +8,7 @@ import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
 import { LoginPage } from '../../pages/LoginPage.mjs';
 import { RequestAccessPage } from '../../pages/RequestAccessPage.mjs';
 import { UsersManagementPage } from '../../pages/UsersManagementPage.mjs';
+import { AllAccessRequestsPage } from '../../pages/AllAccessRequestsPage.mjs';
 
 test.describe('Multi-User Request and Approval Flow', () => {
   let serverManager;
@@ -240,11 +241,43 @@ test.describe('Multi-User Request and Approval Flow', () => {
       await managerUsersPage.expectRequestNotInList(powerUserCredentials.username);
       await managerUsersPage.expectRequestExists(userCredentials.username);
 
+      // 3.3c Manager verifies all requests page shows correct data after PowerUser approval
+      console.log('3.3c Manager verifies all requests page with approved/pending requests');
+      const allRequestsPage = new AllAccessRequestsPage(managerPage, baseUrl);
+      await allRequestsPage.navigateToAllRequests();
+      await allRequestsPage.expectAllRequestsPage();
+
+      // Verify total count
+      await allRequestsPage.verifyRequestCount(3);
+
+      // Verify each request with detailed assertions
+      await allRequestsPage.verifyAllRequests([
+        {
+          username: managerCredentials.username,
+          status: 'approved',
+          reviewer: adminCredentials.username
+        },
+        {
+          username: powerUserCredentials.username,
+          status: 'approved',
+          reviewer: managerCredentials.username
+        },
+        {
+          username: userCredentials.username,
+          status: 'pending',
+          reviewer: null
+        }
+      ]);
+
+      // Verify date columns (approved show updated_at, pending shows created_at)
+      await allRequestsPage.verifyDateDisplay(managerCredentials.username, false);
+      await allRequestsPage.verifyDateDisplay(powerUserCredentials.username, false);
+      await allRequestsPage.verifyDateDisplay(userCredentials.username, true);
+
+      console.log('✓ All requests page correctly displays 2 approved, 1 pending with proper metadata');
+
       // 3.4 Manager navigates between admin pages
       console.log('3.4 Manager tests admin page navigation');
-      await managerUsersPage.navigateToAllRequests();
-      // Should see approved requests (manager, poweruser)
-
       await managerUsersPage.navigateToUsers();
       // Should access users page
 
@@ -254,10 +287,36 @@ test.describe('Multi-User Request and Approval Flow', () => {
       await managerUsersPage.rejectRequest(userCredentials.username);
       await managerUsersPage.expectRequestNotInList(userCredentials.username);
 
-      // 3.6 Verify empty state and all requests
-      console.log('3.6 Manager verifies empty state and history');
-      await managerUsersPage.navigateToAllRequests();
-      // Should see all processed requests including rejected one
+      // 3.6 Manager verifies final state with all requests processed
+      console.log('3.6 Manager verifies all requests processed');
+      await allRequestsPage.navigateToAllRequests();
+
+      // Verify all 3 requests are processed
+      await allRequestsPage.verifyRequestCount(3);
+
+      await allRequestsPage.verifyAllRequests([
+        {
+          username: managerCredentials.username,
+          status: 'approved',
+          reviewer: adminCredentials.username
+        },
+        {
+          username: powerUserCredentials.username,
+          status: 'approved',
+          reviewer: managerCredentials.username
+        },
+        {
+          username: userCredentials.username,
+          status: 'rejected',
+          reviewer: managerCredentials.username
+        }
+      ]);
+
+      // Verify no pending requests remain
+      await managerUsersPage.navigateToPendingRequests();
+      await managerUsersPage.expectNoRequests();
+
+      console.log('✓ All requests processed: 2 approved, 1 rejected, 0 pending');
 
       console.log('All phases completed successfully');
     } finally {

@@ -161,6 +161,18 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_pending_requests"))
   }
 
+  async fn list_all_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
+    self
+      .inner
+      .list_all_requests(page, per_page)
+      .await
+      .tap(|_| self.notify("list_all_requests"))
+  }
+
   async fn update_request_status(
     &self,
     id: i64,
