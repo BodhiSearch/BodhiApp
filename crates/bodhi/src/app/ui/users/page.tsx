@@ -26,6 +26,7 @@ import {
   getRoleLevel,
   getCleanRoleName,
 } from '@/lib/roles';
+import { SortState } from '@/types/models';
 
 function NavigationLinks() {
   const pathname = usePathname();
@@ -138,6 +139,12 @@ function UserRow({ user, currentUserRole }: { user: UserInfo; currentUserRole: s
 function UsersContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+
+  // Dummy sort values - no actual sorting functionality
+  const dummySort: SortState = { column: '', direction: 'asc' };
+  const noOpSortChange = () => {}; // No-op function
+  const getItemId = (user: UserInfo) => user.email || 'unknown';
+
   const { data: currentUserInfo } = useUser();
   const { data: usersData, isLoading, error } = useAllUsers(page, pageSize);
 
@@ -215,10 +222,14 @@ function UsersContent() {
                 columns={columns}
                 data={users}
                 renderRow={(user) => <UserRow user={user} currentUserRole={currentUserRole} />}
+                loading={isLoading}
+                sort={dummySort}
+                onSortChange={noOpSortChange}
+                getItemId={getItemId}
               />
               {total > pageSize && (
                 <div className="mt-4">
-                  <Pagination currentPage={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
+                  <Pagination page={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
                 </div>
               )}
             </>

@@ -4,6 +4,7 @@ import {
   ApproveUserAccessRequest,
   OpenAiApiError,
   PaginatedUserAccessResponse,
+  Role,
   UserAccessRequest,
   UserAccessStatusResponse,
   UserInfo,
@@ -40,20 +41,26 @@ const queryKeys = {
 // User request status
 export function useRequestStatus(): UseQueryResult<UserAccessStatusResponse, AxiosError<ErrorResponse>> {
   return useQuery<UserAccessStatusResponse>(queryKeys.requestStatus, ENDPOINT_USER_REQUEST_STATUS, undefined, {
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 (no request exists) - this is expected
+      if (error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 1;
+    },
   });
 }
 
 // Submit access request
 export function useSubmitAccessRequest(options?: {
-  onSuccess?: (request: UserAccessRequest) => void;
+  onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<UserAccessRequest>, AxiosError<ErrorResponse>, void> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, void> {
   const queryClient = useQueryClient();
-  return useMutationQuery<UserAccessRequest, void>(ENDPOINT_USER_REQUEST_ACCESS, 'post', {
-    onSuccess: (response) => {
+  return useMutationQuery<void, void>(ENDPOINT_USER_REQUEST_ACCESS, 'post', {
+    onSuccess: () => {
       queryClient.invalidateQueries(queryKeys.requestStatus);
-      options?.onSuccess?.(response.data);
+      options?.onSuccess?.();
     },
     onError: (error: AxiosError<ErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to submit access request';
@@ -100,7 +107,7 @@ export function useApproveRequest(options?: {
   const queryClient = useQueryClient();
   return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: number; role: string }>(
     async ({ id, role }) => {
-      const request: ApproveUserAccessRequest = { role };
+      const request: ApproveUserAccessRequest = { role: role as Role };
       // We need to use the traditional mutation approach here since useMutationQuery
       // doesn't support variables in the endpoint path directly
       const response = await apiClient.post<void>(`${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`, request, {

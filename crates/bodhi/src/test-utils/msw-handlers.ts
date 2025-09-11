@@ -6,12 +6,7 @@ import {
   ENDPOINT_ACCESS_REQUESTS_PENDING,
   ENDPOINT_ACCESS_REQUESTS,
 } from '@/hooks/useAccessRequest';
-import {
-  mockPendingRequests,
-  mockAllRequests,
-  mockUserAccessStatusNone,
-  createMockUserInfo,
-} from '@/test-fixtures/access-requests';
+import { mockPendingRequests, mockAllRequests, createMockUserInfo } from '@/test-fixtures/access-requests';
 import { mockUsersResponse } from '@/test-fixtures/users';
 
 export interface HandlerOverrides {
@@ -37,7 +32,16 @@ export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) =>
 
   // User request status
   rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-    res(ctx.json(overrides.requestStatus || mockUserAccessStatusNone))
+    res(
+      ctx.json(
+        overrides.requestStatus || {
+          status: 'pending',
+          email: 'user@example.com',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      )
+    )
   ),
 
   // Submit access request

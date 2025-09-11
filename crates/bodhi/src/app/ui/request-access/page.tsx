@@ -11,7 +11,7 @@ import { useUser } from '@/hooks/useQuery';
 export function RequestAccessContent() {
   const router = useRouter();
   const { data: userInfo } = useUser();
-  const { data: requestStatus, isLoading: statusLoading } = useRequestStatus();
+  const { data: requestStatus, isLoading: statusLoading, error: statusError } = useRequestStatus();
   const { showSuccess, showError } = useToastMessages();
 
   const { mutate: submitRequest, isLoading: isSubmitting } = useSubmitAccessRequest({
@@ -52,7 +52,7 @@ export function RequestAccessContent() {
     );
   }
 
-  // No request or rejected - show request button
+  // No request (404 error) or rejected - show request button
   return (
     <AuthCard
       title="Request Access"

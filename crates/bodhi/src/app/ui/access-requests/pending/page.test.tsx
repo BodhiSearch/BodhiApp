@@ -31,9 +31,9 @@ vi.mock('@/components/DataTable', () => ({
       </table>
     </div>
   ),
-  Pagination: ({ currentPage, totalPages }: any) => (
+  Pagination: ({ page, totalPages }: any) => (
     <div data-testid="pagination">
-      Page {currentPage} of {totalPages}
+      Page {page} of {totalPages}
     </div>
   ),
 }));
