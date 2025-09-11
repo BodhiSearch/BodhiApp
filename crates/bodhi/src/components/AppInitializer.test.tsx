@@ -283,7 +283,7 @@ describe('AppInitializer role-based access control', () => {
           return res(
             ctx.json({
               logged_in: true,
-              email: 'test@example.com',
+              username: 'test@example.com',
               role: `resource_${userRole}`,
             })
           );

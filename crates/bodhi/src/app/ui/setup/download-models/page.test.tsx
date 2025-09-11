@@ -107,7 +107,7 @@ describe('ModelDownloadPage access control', () => {
         return res(
           ctx.json({
             logged_in: true,
-            email: 'user@email.com',
+            username: 'user@email.com',
             role: 'resource_user',
           })
         );
@@ -138,8 +138,6 @@ describe('ModelDownloadPage access control', () => {
         return res(
           ctx.json({
             logged_in: false,
-            email: null,
-            roles: [],
           })
         );
       }),

@@ -35,8 +35,8 @@ use utoipa::ToSchema;
     "created_at": "2024-01-01T12:00:00Z"
 }))]
 pub struct UserAccessStatusResponse {
-  /// Email of the requesting user
-  pub email: String,
+  /// Username of the requesting user
+  pub username: String,
   /// Current status of the request (pending, approved, rejected)
   pub status: UserAccessRequestStatus,
   /// Creation timestamp
@@ -50,7 +50,7 @@ pub struct UserAccessStatusResponse {
 impl From<UserAccessRequest> for UserAccessStatusResponse {
   fn from(request: UserAccessRequest) -> Self {
     Self {
-      email: request.username,
+      username: request.username,
       status: request.status,
       created_at: request.created_at,
       updated_at: request.updated_at,
@@ -472,7 +472,7 @@ mod tests {
 
     let response = UserAccessStatusResponse::from(request.clone());
 
-    assert_eq!(response.email, request.username);
+    assert_eq!(response.username, request.username);
     assert_eq!(response.status, request.status);
     assert_eq!(response.created_at, request.created_at);
     assert_eq!(response.updated_at, request.updated_at);

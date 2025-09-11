@@ -273,12 +273,6 @@ describe('UsersPage Future Functionality Tests (Placeholder)', () => {
       expect(screen.getByTestId('users-page')).toBeInTheDocument();
     });
 
-    // Currently shows placeholder, but when implemented should show user data
-    // Future implementation would test:
-    // - expect(screen.getByText(mockUser1.email)).toBeInTheDocument();
-    // - expect(screen.getByText(mockUser2.email)).toBeInTheDocument();
-    // - Role display, management actions, etc.
-
     // For now, just verify placeholder is shown
     expect(screen.getByText('No Users')).toBeInTheDocument();
     expect(screen.getByText('User management API not yet implemented')).toBeInTheDocument();

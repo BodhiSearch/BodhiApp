@@ -313,7 +313,7 @@ describe('LoginContent with user Logged In', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: true, email: 'test@example.com' }));
+        return res(ctx.status(200), ctx.json({ logged_in: true, username: 'test@example.com' }));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));

@@ -95,7 +95,7 @@ describe('EditAliasPage', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
       }),
       rest.get(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
         return res(ctx.json(mockModelData));
@@ -264,7 +264,7 @@ describe('EditAliasPage access control', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
       })
     );
     await act(async () => {

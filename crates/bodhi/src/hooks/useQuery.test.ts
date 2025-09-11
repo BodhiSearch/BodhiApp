@@ -55,8 +55,8 @@ const mockAppInfo: AppInfo = {
 
 const mockUserInfo = {
   logged_in: true,
-  email: 'test@example.com',
-  roles: [],
+  username: 'test@example.com',
+  role: 'resource_user',
 };
 
 const server = setupServer(

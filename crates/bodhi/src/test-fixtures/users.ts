@@ -1,31 +1,31 @@
 import { UserInfo } from '@bodhiapp/ts-client';
 
 export const mockUser1: UserInfo = {
-  email: 'user1@example.com',
+  username: 'user1@example.com',
   role: 'resource_user',
   logged_in: true,
 };
 
 export const mockUser2: UserInfo = {
-  email: 'user2@example.com',
+  username: 'user2@example.com',
   role: 'resource_power_user',
   logged_in: true,
 };
 
 export const mockManager: UserInfo = {
-  email: 'manager@example.com',
+  username: 'manager@example.com',
   role: 'resource_manager',
   logged_in: true,
 };
 
 export const mockAdmin: UserInfo = {
-  email: 'admin@example.com',
+  username: 'admin@example.com',
   role: 'resource_admin',
   logged_in: true,
 };
 
 export const mockMultiRoleUser: UserInfo = {
-  email: 'multi@example.com',
+  username: 'multi@example.com',
   role: 'resource_manager',
   logged_in: true,
 };
@@ -48,7 +48,7 @@ export const mockEmptyUsersResponse = {
 // Helper function to create users with specific roles
 export const createMockUsersWithRoles = (roles: string[]) => {
   return roles.map((role, index) => ({
-    email: `${role}${index}@example.com`,
+    username: `${role}${index}@example.com`,
     role: role,
     logged_in: true,
   }));

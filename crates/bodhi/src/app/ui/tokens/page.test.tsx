@@ -51,7 +51,7 @@ const server = setupServer(
     return res(ctx.json({ status: 'ready' }));
   }),
   rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-    return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+    return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
   }),
   rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockListResponse));
