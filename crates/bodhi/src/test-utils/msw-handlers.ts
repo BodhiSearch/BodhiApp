@@ -7,7 +7,7 @@ import {
   ENDPOINT_ACCESS_REQUESTS,
 } from '@/hooks/useAccessRequest';
 import { mockPendingRequests, mockAllRequests, createMockUserInfo } from '@/test-fixtures/access-requests';
-import { mockUsersResponse } from '@/test-fixtures/users';
+import { mockSimpleUsersResponse } from '@/test-fixtures/users';
 
 export interface HandlerOverrides {
   appInfo?: unknown;
@@ -73,40 +73,60 @@ export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) =>
   // Reject request
   rest.post(`*${ENDPOINT_ACCESS_REQUESTS}/:id/reject`, (_, res, ctx) => res(ctx.json(overrides.rejectRequest || {}))),
 
-  // Users endpoint (placeholder - returns mock data since not implemented yet)
-  rest.get('*/users', (_, res, ctx) => res(ctx.json(overrides.users || mockUsersResponse))),
+  // Users endpoint
+  rest.get('*/bodhi/v1/users', (_, res, ctx) => {
+    if (overrides.users === 'error') {
+      return res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch users' } }));
+    }
+    return res(ctx.json(overrides.users || mockSimpleUsersResponse));
+  }),
 
-  // Change user role (placeholder)
-  rest.put('*/users/:userId/role', (_, res, ctx) => res(ctx.json({}))),
+  // Change user role
+  rest.put('*/bodhi/v1/users/:userId/role', (_, res, ctx) => res(ctx.json({}))),
 
-  // Remove user (placeholder)
-  rest.delete('*/users/:userId', (_, res, ctx) => res(ctx.json({}))),
+  // Remove user
+  rest.delete('*/bodhi/v1/users/:userId', (_, res, ctx) => res(ctx.json({}))),
 ];
 
 // Create handlers for error scenarios
 export const createErrorHandlers = () => [
+  // App info endpoint error
+  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) =>
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch app info' } }))
+  ),
+
+  // User info endpoint error
+  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch user info' } }))
+  ),
+
   rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { message: 'Failed to fetch request status' } }))
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch request status' } }))
   ),
 
   rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (_, res, ctx) =>
-    res(ctx.status(400), ctx.json({ error: { message: 'Request already exists' } }))
+    res(ctx.status(400), ctx.json({ error: { type: 'invalid_request_error', message: 'Request already exists' } }))
   ),
 
   rest.get(`*${ENDPOINT_ACCESS_REQUESTS_PENDING}`, (_, res, ctx) =>
-    res(ctx.status(403), ctx.json({ error: { message: 'Insufficient permissions' } }))
+    res(ctx.status(403), ctx.json({ error: { type: 'authentication_error', message: 'Insufficient permissions' } }))
   ),
 
   rest.get(`*${ENDPOINT_ACCESS_REQUESTS}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { message: 'Internal server error' } }))
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Internal server error' } }))
   ),
 
   rest.post(`*${ENDPOINT_ACCESS_REQUESTS}/*/approve`, (_, res, ctx) =>
-    res(ctx.status(400), ctx.json({ error: { message: 'Invalid request' } }))
+    res(ctx.status(400), ctx.json({ error: { type: 'invalid_request_error', message: 'Invalid request' } }))
   ),
 
   rest.post(`*${ENDPOINT_ACCESS_REQUESTS}/*/reject`, (_, res, ctx) =>
-    res(ctx.status(400), ctx.json({ error: { message: 'Cannot reject request' } }))
+    res(ctx.status(400), ctx.json({ error: { type: 'invalid_request_error', message: 'Cannot reject request' } }))
+  ),
+
+  // Users endpoint error
+  rest.get('*/bodhi/v1/users', (_, res, ctx) =>
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch users' } }))
   ),
 ];
 
@@ -119,22 +139,31 @@ export const createRoleBasedHandlers = (userRole: string, shouldHaveAccess: bool
   // Access-restricted endpoints return 403 if user doesn't have access
   rest.get(`*${ENDPOINT_ACCESS_REQUESTS_PENDING}`, (_, res, ctx) => {
     if (!shouldHaveAccess) {
-      return res(ctx.status(403), ctx.json({ error: { message: 'Insufficient permissions' } }));
+      return res(
+        ctx.status(403),
+        ctx.json({ error: { type: 'authentication_error', message: 'Insufficient permissions' } })
+      );
     }
     return res(ctx.json(mockPendingRequests));
   }),
 
   rest.get(`*${ENDPOINT_ACCESS_REQUESTS}`, (_, res, ctx) => {
     if (!shouldHaveAccess) {
-      return res(ctx.status(403), ctx.json({ error: { message: 'Insufficient permissions' } }));
+      return res(
+        ctx.status(403),
+        ctx.json({ error: { type: 'authentication_error', message: 'Insufficient permissions' } })
+      );
     }
     return res(ctx.json(mockAllRequests));
   }),
 
-  rest.get('*/users', (_, res, ctx) => {
+  rest.get('*/bodhi/v1/users', (_, res, ctx) => {
     if (!shouldHaveAccess) {
-      return res(ctx.status(403), ctx.json({ error: { message: 'Insufficient permissions' } }));
+      return res(
+        ctx.status(403),
+        ctx.json({ error: { type: 'authentication_error', message: 'Insufficient permissions' } })
+      );
     }
-    return res(ctx.json(mockUsersResponse));
+    return res(ctx.json(mockSimpleUsersResponse));
   }),
 ];

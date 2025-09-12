@@ -298,12 +298,9 @@ describe('LoginContent with user not Logged In', () => {
     });
 
     // Should use router.push for same-origin URLs
-    await waitFor(
-      () => {
-        expect(pushMock).toHaveBeenCalledWith('/ui/chat');
-      },
-      { timeout: 3000 }
-    );
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat');
+    });
   });
 });
 

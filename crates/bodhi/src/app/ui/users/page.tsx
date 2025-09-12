@@ -28,7 +28,7 @@ import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserInfo, UserInfoResponse } from '@bodhiapp/ts-client';
 import { Users, AlertCircle, Trash2 } from 'lucide-react';
-import { getRoleLabel, getRoleBadgeVariant, getAvailableRoles } from '@/lib/roles';
+import { getRoleLabel, getRoleBadgeVariant, getAvailableRoles, getRoleLevel } from '@/lib/roles';
 import { SortState } from '@/types/models';
 
 function NavigationLinks() {
@@ -60,7 +60,15 @@ function getRoleBadge(role: string) {
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-function UserRow({ user, currentUserRole }: { user: UserInfoResponse; currentUserRole: string }) {
+function UserRow({
+  user,
+  currentUserRole,
+  currentUsername,
+}: {
+  user: UserInfoResponse;
+  currentUserRole: string;
+  currentUsername: string;
+}) {
   const [selectedRole, setSelectedRole] = useState<string>(typeof user.role === 'string' ? user.role : 'resource_user');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
@@ -108,50 +116,77 @@ function UserRow({ user, currentUserRole }: { user: UserInfoResponse; currentUse
 
   const currentRole = typeof user.role === 'string' ? user.role : 'resource_user';
 
+  // Check if this is the current user (self-modification prevention)
+  const isCurrentUser = user.username === currentUsername;
+
+  // Check if target user has higher or equal role (hierarchy enforcement)
+  const targetUserLevel = getRoleLevel(currentRole);
+  const currentUserLevel = getRoleLevel(currentUserRole);
+  const canModifyUser = !isCurrentUser && targetUserLevel < currentUserLevel;
+
+  // Show actions only if user can be modified
+  const showActions = canModifyUser;
+
   return (
     <>
-      <TableCell className="font-medium" data-testid="user-username">
-        {user.username}
+      <TableCell className="font-medium" data-testid={`user-username-${user.username}`}>
+        <span data-testid="user-username">{user.username}</span>
       </TableCell>
-      <TableCell data-testid="user-role">{getRoleBadge(currentRole)}</TableCell>
-      <TableCell data-testid="user-status">
-        <Badge variant="outline">Active</Badge>
+      <TableCell data-testid={`user-role-${user.username}`}>
+        <span data-testid="user-role">{getRoleBadge(currentRole)}</span>
       </TableCell>
-      <TableCell className="hidden md:table-cell" data-testid="user-created">
-        {new Date().toLocaleDateString()}
+      <TableCell data-testid={`user-status-${user.username}`}>
+        <Badge variant="outline" data-testid="user-status">
+          Active
+        </Badge>
       </TableCell>
-      <TableCell data-testid="user-actions">
-        <div className="flex flex-wrap gap-2">
-          <Select value={selectedRole} onValueChange={handleRoleChange} data-testid={`role-select-${user.username}`}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableRoles.map((role) => (
-                <SelectItem key={role.value} value={role.value}>
-                  {role.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleRemoveUser}
-            disabled={isRemoving}
-            className="gap-1"
-            data-testid={`remove-user-btn-${user.username}`}
-          >
-            {isRemoving ? (
-              'Removing...'
-            ) : (
-              <>
-                <Trash2 className="h-3 w-3" />
-                Remove
-              </>
-            )}
-          </Button>
-        </div>
+      <TableCell className="hidden md:table-cell" data-testid={`user-created-${user.username}`}>
+        <span data-testid="user-created">{new Date().toLocaleDateString()}</span>
+      </TableCell>
+      <TableCell data-testid={`user-actions-${user.username}`}>
+        {showActions ? (
+          <div className="flex flex-wrap gap-2" data-testid={`user-actions-container-${user.username}`}>
+            <Select value={selectedRole} onValueChange={handleRoleChange} data-testid={`role-select-${user.username}`}>
+              <SelectTrigger className="w-32" data-testid={`role-select-trigger-${user.username}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent data-testid={`role-select-content-${user.username}`}>
+                {availableRoles.map((role) => (
+                  <SelectItem
+                    key={role.value}
+                    value={role.value}
+                    data-testid={`role-option-${role.value}-${user.username}`}
+                  >
+                    {role.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleRemoveUser}
+              disabled={isRemoving}
+              className="gap-1"
+              data-testid={`remove-user-btn-${user.username}`}
+            >
+              {isRemoving ? (
+                'Removing...'
+              ) : (
+                <>
+                  <Trash2 className="h-3 w-3" />
+                  Remove
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground" data-testid={`no-actions-${user.username}`}>
+            <span data-testid={isCurrentUser ? 'current-user-indicator' : 'restricted-user-indicator'}>
+              {isCurrentUser ? 'You' : 'Restricted'}
+            </span>
+          </div>
+        )}
       </TableCell>
 
       {/* Role Change Confirmation Dialog */}
@@ -212,11 +247,12 @@ function UsersContent() {
   const noOpSortChange = () => {}; // No-op function
   const getItemId = (user: UserInfoResponse) => user.username;
 
-  const { data: currentUserInfo } = useUser();
-  const { data: usersData, isLoading, error } = useAllUsers(page, pageSize);
+  const { data: currentUserInfo, isLoading: isLoadingUser } = useUser();
+  const { data: usersData, isLoading: isLoadingUsers, error } = useAllUsers(page, pageSize);
 
-  // Get current user's role for filtering
+  // Get current user's role and username for filtering
   const currentUserRole = typeof currentUserInfo?.role === 'string' ? currentUserInfo.role : '';
+  const currentUsername = typeof currentUserInfo?.username === 'string' ? currentUserInfo.username : '';
 
   const columns = [
     { id: 'username', name: 'Username', sorted: false },
@@ -227,7 +263,8 @@ function UsersContent() {
     { id: 'actions', name: 'Actions', sorted: false },
   ];
 
-  if (isLoading) {
+  // Show loading state if either users or current user info is loading
+  if (isLoadingUsers || isLoadingUser || !currentUserInfo) {
     return (
       <Card>
         <CardHeader>
@@ -280,8 +317,10 @@ function UsersContent() {
               <DataTable
                 columns={columns}
                 data={users}
-                renderRow={(user) => <UserRow user={user} currentUserRole={currentUserRole} />}
-                loading={isLoading}
+                renderRow={(user) => (
+                  <UserRow user={user} currentUserRole={currentUserRole} currentUsername={currentUsername} />
+                )}
+                loading={isLoadingUsers}
                 sort={dummySort}
                 onSortChange={noOpSortChange}
                 getItemId={getItemId}
