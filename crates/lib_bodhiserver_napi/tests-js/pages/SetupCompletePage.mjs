@@ -45,7 +45,7 @@ export class SetupCompletePage extends SetupBasePage {
     let messageFound = false;
     for (const message of completionMessages) {
       try {
-        await expect(this.page.locator(message)).toBeVisible({ timeout: 2000 });
+        await expect(this.page.locator(message)).toBeVisible();
         messageFound = true;
         break;
       } catch {
@@ -62,7 +62,7 @@ export class SetupCompletePage extends SetupBasePage {
   async expectSocialLinksDisplayed() {
     // Check for social links - they might be icons or text
     try {
-      await expect(this.page.locator(this.selectors.githubLink)).toBeVisible({ timeout: 3000 });
+      await expect(this.page.locator(this.selectors.githubLink)).toBeVisible();
     } catch {
       // Social links might not be visible or have different selectors
       // This is optional verification

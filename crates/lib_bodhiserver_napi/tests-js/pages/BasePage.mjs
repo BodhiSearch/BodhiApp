@@ -65,7 +65,7 @@ export class BasePage {
   }
 
   async waitForToastToHide() {
-    await expect(this.page.locator(this.baseSelectors.successToast)).toBeHidden({ timeout: 10000 }); // wait for toast to hide
+    await expect(this.page.locator(this.baseSelectors.successToast)).toBeHidden(); // wait for toast to hide
   }
 
   async getCurrentPath() {

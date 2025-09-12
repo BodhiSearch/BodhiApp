@@ -56,6 +56,7 @@ uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
 tokio = { workspace = true, features = ["full"], optional = true }
 utoipa = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }

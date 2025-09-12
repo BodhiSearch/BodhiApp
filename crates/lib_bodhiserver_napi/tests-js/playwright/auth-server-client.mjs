@@ -226,6 +226,47 @@ export class AuthServerTestClient {
   }
 
   /**
+   * Get user token using direct access grant for resource clients (liveTest mode)
+   * @param {string} clientId - Resource client ID
+   * @param {string} clientSecret - Resource client secret
+   * @param {string} username - Username for authentication
+   * @param {string} password - Password for authentication
+   * @returns {Promise<string>} User access token
+   */
+  async getResourceUserToken(clientId, clientSecret, username, password) {
+    const tokenUrl = `${this.authUrl}/realms/${this.authRealm}/protocol/openid-connect/token`;
+
+    const params = new URLSearchParams({
+      grant_type: 'password',
+      client_id: clientId,
+      client_secret: clientSecret,
+      username: username,
+      password: password,
+      scope: 'openid email profile roles',
+    });
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Get resource user token failed:', response.status, response.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(
+        `Failed to get resource user token: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  }
+
+  /**
    * Request audience access for resource client (dynamic audience management)
    * @param {string} resourceToken - Resource client service account token
    * @param {string} appClientId - App client ID to request access for
@@ -271,7 +312,7 @@ export class AuthServerTestClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userId: userId,
+        user_id: userId,
       }),
     });
 
@@ -286,11 +327,11 @@ export class AuthServerTestClient {
   /**
    * Assign a role to a user (for testing with liveTest mode)
    * @param {string} reviewerToken - Admin token for authorization
-   * @param {string} username - Username to assign role to
+   * @param {string} userId - User ID to assign role to
    * @param {string} role - Role to assign (resource_user, resource_manager, etc.)
    * @returns {Promise<void>}
    */
-  async assignUserRole(reviewerToken, username, role) {
+  async assignUserRole(reviewerToken, userId, role) {
     const assignRoleUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/assign-role`;
 
     const response = await fetch(assignRoleUrl, {
@@ -300,7 +341,7 @@ export class AuthServerTestClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: username,
+        user_id: userId,
         role: role,
       }),
     });
@@ -316,10 +357,10 @@ export class AuthServerTestClient {
   /**
    * Remove a user from all roles (for testing with liveTest mode)
    * @param {string} reviewerToken - Admin token for authorization
-   * @param {string} username - Username to remove from all roles
+   * @param {string} userId - User ID to remove from all roles
    * @returns {Promise<void>}
    */
-  async removeUser(reviewerToken, username) {
+  async removeUser(reviewerToken, userId) {
     const removeUserUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/remove-user`;
 
     const response = await fetch(removeUserUrl, {
@@ -329,7 +370,7 @@ export class AuthServerTestClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: username,
+        user_id: userId,
       }),
     });
 

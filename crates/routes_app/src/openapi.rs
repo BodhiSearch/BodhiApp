@@ -5,12 +5,13 @@ use crate::{
   UpdateApiTokenRequest,
 };
 use crate::{
-  ApiTokenResponse, AppInfo, ApproveUserAccessRequest, CreateAliasRequest, CreateApiTokenRequest,
-  NewDownloadRequest, PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
-  PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
-  RedirectResponse, SetupRequest, SetupResponse, UpdateAliasRequest, UpdateSettingRequest,
-  UserAccessStatusResponse, UserAliasResponse, UserInfo, __path_app_info_handler,
-  __path_approve_request_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
+  ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CreateAliasRequest,
+  CreateApiTokenRequest, ListUsersParams, NewDownloadRequest, PaginatedAliasResponse,
+  PaginatedApiTokenResponse, PaginatedDownloadResponse, PaginatedLocalModelResponse,
+  PaginatedUserAccessResponse, PaginatedUserAliasResponse, RedirectResponse, SetupRequest,
+  SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse,
+  UserAliasResponse, UserInfo, __path_app_info_handler, __path_approve_request_handler,
+  __path_auth_callback_handler, __path_auth_initiate_handler, __path_change_user_role_handler,
   __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
   __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
   __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
@@ -18,11 +19,12 @@ use crate::{
   __path_list_aliases_handler, __path_list_all_requests_handler, __path_list_api_models_handler,
   __path_list_downloads_handler, __path_list_local_modelfiles_handler,
   __path_list_pending_requests_handler, __path_list_settings_handler, __path_list_tokens_handler,
-  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
-  __path_reject_request_handler, __path_request_access_handler, __path_request_status_handler,
-  __path_setup_handler, __path_test_api_model_handler, __path_update_alias_handler,
-  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
-  __path_user_info_handler, __path_user_request_access_handler,
+  __path_list_users_handler, __path_logout_handler, __path_ping_handler,
+  __path_pull_by_alias_handler, __path_reject_request_handler, __path_remove_user_handler,
+  __path_request_access_handler, __path_request_status_handler, __path_setup_handler,
+  __path_test_api_model_handler, __path_update_alias_handler, __path_update_api_model_handler,
+  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
+  __path_user_request_access_handler,
 };
 use objs::{
   Alias, ApiFormat, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
@@ -37,7 +39,8 @@ use routes_oai::{
 use services::db::DownloadStatus;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppAccessRequest, AppAccessResponse, AppStatus, SettingService,
+  AppAccessRequest, AppAccessResponse, AppStatus, SettingService, UserInfoResponse,
+  UserListResponse,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -159,6 +162,11 @@ For API keys, specify required scope when creating the token.
             UserAccessStatusResponse,
             ApproveUserAccessRequest,
             PaginatedUserAccessResponse,
+            // user management
+            ListUsersParams,
+            UserListResponse,
+            UserInfoResponse,
+            ChangeRoleRequest,
             // api keys/token
             CreateApiTokenRequest,
             ApiTokenResponse,
@@ -266,7 +274,12 @@ For API keys, specify required scope when creating the token.
         list_pending_requests_handler,
         list_all_requests_handler,
         approve_request_handler,
-        reject_request_handler
+        reject_request_handler,
+
+        // User management endpoints
+        list_users_handler,
+        change_user_role_handler,
+        remove_user_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

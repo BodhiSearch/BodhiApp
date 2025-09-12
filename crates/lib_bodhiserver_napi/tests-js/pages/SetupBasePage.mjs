@@ -30,7 +30,7 @@ export class SetupBasePage extends BasePage {
 
     for (const selector of logoSelectors) {
       try {
-        await expect(this.page.locator(selector)).toBeVisible({ timeout: 2000 });
+        await expect(this.page.locator(selector)).toBeVisible();
         logoFound = true;
         break;
       } catch {

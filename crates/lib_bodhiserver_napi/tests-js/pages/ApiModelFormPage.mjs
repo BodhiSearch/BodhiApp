@@ -35,15 +35,12 @@ export class ApiModelFormPage extends BasePage {
         await this.expectVisible(this.selectors.fetchModelsButton);
         await this.page.click(this.selectors.fetchModelsButton);
 
-        await this.page.waitForFunction(
-          () => {
-            const fetchContainer = document.querySelector('[data-testid="fetch-models-container"]');
-            if (!fetchContainer) return false;
-            const fetchState = fetchContainer.getAttribute('data-fetch-state');
-            return fetchState === 'success' || fetchState === 'error';
-          },
-          { timeout: 30000 }
-        );
+        await this.page.waitForFunction(() => {
+          const fetchContainer = document.querySelector('[data-testid="fetch-models-container"]');
+          if (!fetchContainer) return false;
+          const fetchState = fetchContainer.getAttribute('data-fetch-state');
+          return fetchState === 'success' || fetchState === 'error';
+        });
 
         const fetchResult = await this.page.evaluate(() => {
           const fetchContainer = document.querySelector('[data-testid="fetch-models-container"]');
@@ -113,7 +110,7 @@ export class ApiModelFormPage extends BasePage {
         await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
         await this.page.click(this.selectors.testConnectionButton);
         await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
-        await this.waitForToast(/Connection Test Successful/i, { timeout: 10000 });
+        await this.waitForToast(/Connection Test Successful/i);
         return; // Success, exit the function
       } catch (error) {
         if (attempt < maxAttempts) {
@@ -170,7 +167,7 @@ export class ApiModelFormPage extends BasePage {
 
   async isCreateMode() {
     try {
-      await this.waitForSelector(this.selectors.createButton, { timeout: 1000 });
+      await this.waitForSelector(this.selectors.createButton);
       return true;
     } catch {
       return false;
@@ -179,7 +176,7 @@ export class ApiModelFormPage extends BasePage {
 
   async isUpdateMode() {
     try {
-      await this.waitForSelector(this.selectors.updateButton, { timeout: 1000 });
+      await this.waitForSelector(this.selectors.updateButton);
       return true;
     } catch {
       return false;
