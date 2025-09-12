@@ -3071,6 +3071,267 @@
         ]
       }
     },
+    "/bodhi/v1/users": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List all users",
+        "description": "Retrieve a paginated list of all users with their roles. Only admins and managers can access this endpoint.",
+        "operationId": "listUsers",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (default: 10)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/users/{user_id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Remove user access",
+        "description": "Remove a user from all roles. Admins can remove any user except themselves, managers can remove user/power_user/manager but not admin.",
+        "operationId": "removeUser",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID to remove",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User removed successfully"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/users/{user_id}/role": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change user role",
+        "description": "Assign a new role to a user. Admins can assign any role, managers can assign user/power_user/manager roles.",
+        "operationId": "changeUserRole",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID to change role for",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Role changed successfully"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "role:manager",
+              "role:admin"
+            ]
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -3821,6 +4082,22 @@
           "state": "random_state_456"
         }
       },
+      "ChangeRoleRequest": {
+        "type": "object",
+        "description": "Request body for changing user role",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "New role to assign to the user"
+          }
+        },
+        "example": {
+          "role": "resource_power_user"
+        }
+      },
       "ChatRequest": {
         "type": "object",
         "required": [
@@ -4187,6 +4464,24 @@
           },
           "object": {
             "type": "string"
+          }
+        }
+      },
+      "ListUsersParams": {
+        "type": "object",
+        "description": "Request parameters for listing users with pagination",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Page number (default: 1)",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of items per page (default: 10)",
+            "minimum": 0
           }
         }
       },
@@ -5624,6 +5919,99 @@
           "logged_in": true,
           "role": "resource_user",
           "username": "user@example.com"
+        }
+      },
+      "UserInfoResponse": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "username",
+          "role"
+        ],
+        "properties": {
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "John"
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "Doe"
+          },
+          "role": {
+            "type": "string",
+            "example": "resource_user"
+          },
+          "user_id": {
+            "type": "string",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "username": {
+            "type": "string",
+            "example": "user@example.com"
+          }
+        }
+      },
+      "UserListResponse": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "users",
+          "page",
+          "page_size",
+          "total_pages",
+          "total_users",
+          "has_next",
+          "has_previous"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "example": "resource-abc123def456"
+          },
+          "has_next": {
+            "type": "boolean",
+            "example": true
+          },
+          "has_previous": {
+            "type": "boolean",
+            "example": false
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1,
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int32",
+            "example": 10,
+            "minimum": 0
+          },
+          "total_pages": {
+            "type": "integer",
+            "format": "int32",
+            "example": 5,
+            "minimum": 0
+          },
+          "total_users": {
+            "type": "integer",
+            "format": "int32",
+            "example": 45,
+            "minimum": 0
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserInfoResponse"
+            }
+          }
         }
       },
       "UserScope": {

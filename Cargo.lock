@@ -6198,6 +6198,7 @@ dependencies = [
  "tower-sessions",
  "tower-sessions-sqlx-store",
  "tracing",
+ "url",
  "utoipa",
  "uuid",
  "walkdir",

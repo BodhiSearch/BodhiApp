@@ -95,6 +95,13 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
   async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
+
+  async fn list_users(
+    &self,
+    reviewer_token: &str,
+    page: Option<u32>,
+    page_size: Option<u32>,
+  ) -> Result<UserListResponse>;
 }
 
 #[derive(Debug)]
@@ -105,7 +112,7 @@ pub struct KeycloakAuthService {
   client: reqwest::Client,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 struct KeycloakError {
   error: String,
 }
@@ -192,6 +199,39 @@ pub struct AppAccessRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AppAccessResponse {
   pub scope: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserListResponse {
+  #[schema(example = "resource-abc123def456")]
+  pub client_id: String,
+  pub users: Vec<UserInfoResponse>,
+  #[schema(example = 1)]
+  pub page: u32,
+  #[schema(example = 10)]
+  pub page_size: u32,
+  #[schema(example = 5)]
+  pub total_pages: u32,
+  #[schema(example = 45)]
+  pub total_users: u32,
+  #[schema(example = true)]
+  pub has_next: bool,
+  #[schema(example = false)]
+  pub has_previous: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UserInfoResponse {
+  #[schema(example = "550e8400-e29b-41d4-a716-446655440000")]
+  pub user_id: String,
+  #[schema(example = "user@example.com")]
+  pub username: String,
+  #[schema(example = "John")]
+  pub first_name: Option<String>,
+  #[schema(example = "Doe")]
+  pub last_name: Option<String>,
+  #[schema(example = "resource_user")]
+  pub role: String,
 }
 
 #[async_trait]
@@ -433,7 +473,7 @@ impl AuthService for KeycloakAuthService {
       .client
       .post(&endpoint)
       .bearer_auth(access_token.secret())
-      .json(&serde_json::json!({ "userId": user_id }))
+      .json(&serde_json::json!({ "user_id": user_id }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
@@ -500,7 +540,7 @@ impl AuthService for KeycloakAuthService {
       .post(&endpoint)
       .bearer_auth(reviewer_token)
       .json(&serde_json::json!({
-        "userId": user_id,
+        "user_id": user_id,
         "role": role
       }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
@@ -529,7 +569,7 @@ impl AuthService for KeycloakAuthService {
       .post(&endpoint)
       .bearer_auth(reviewer_token)
       .json(&serde_json::json!({
-        "userId": user_id
+        "user_id": user_id
       }))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
@@ -540,6 +580,41 @@ impl AuthService for KeycloakAuthService {
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error.error);
+      Err(error.into())
+    }
+  }
+
+  async fn list_users(
+    &self,
+    reviewer_token: &str,
+    page: Option<u32>,
+    page_size: Option<u32>,
+  ) -> Result<UserListResponse> {
+    let mut url = url::Url::parse(&format!("{}/resources/users", self.auth_api_url())).unwrap();
+    if let Some(page) = page {
+      url.query_pairs_mut().append_pair("page", &page.to_string());
+    }
+    if let Some(page_size) = page_size {
+      url
+        .query_pairs_mut()
+        .append_pair("page_size", &page_size.to_string());
+    }
+
+    let endpoint = url.to_string();
+    log::log_http_request("GET", &endpoint, "auth_service", None);
+    let response = self
+      .client
+      .get(&endpoint)
+      .bearer_auth(reviewer_token)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      return Ok(response.json::<UserListResponse>().await?);
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      log::log_http_error("GET", &endpoint, "auth_service", &error.error);
       Err(error.into())
     }
   }
@@ -784,7 +859,7 @@ mod tests {
         "/realms/test-realm/bodhi/resources/make-resource-admin",
       )
       .match_header("Authorization", "Bearer test_access_token")
-      .match_body(Matcher::Json(json!({"userId": user_id})))
+      .match_body(Matcher::Json(json!({"user_id": user_id})))
       .with_status(200)
       .with_body("{}")
       .create();

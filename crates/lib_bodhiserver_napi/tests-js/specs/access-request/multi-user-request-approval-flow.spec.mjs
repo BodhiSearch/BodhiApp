@@ -255,18 +255,18 @@ test.describe('Multi-User Request and Approval Flow', () => {
         {
           username: managerCredentials.username,
           status: 'approved',
-          reviewer: adminCredentials.username
+          reviewer: adminCredentials.username,
         },
         {
           username: powerUserCredentials.username,
           status: 'approved',
-          reviewer: managerCredentials.username
+          reviewer: managerCredentials.username,
         },
         {
           username: userCredentials.username,
           status: 'pending',
-          reviewer: null
-        }
+          reviewer: null,
+        },
       ]);
 
       // Verify date columns (approved show updated_at, pending shows created_at)
@@ -274,7 +274,9 @@ test.describe('Multi-User Request and Approval Flow', () => {
       await allRequestsPage.verifyDateDisplay(powerUserCredentials.username, false);
       await allRequestsPage.verifyDateDisplay(userCredentials.username, true);
 
-      console.log('✓ All requests page correctly displays 2 approved, 1 pending with proper metadata');
+      console.log(
+        '✓ All requests page correctly displays 2 approved, 1 pending with proper metadata'
+      );
 
       // 3.4 Manager navigates between admin pages
       console.log('3.4 Manager tests admin page navigation');
@@ -298,18 +300,18 @@ test.describe('Multi-User Request and Approval Flow', () => {
         {
           username: managerCredentials.username,
           status: 'approved',
-          reviewer: adminCredentials.username
+          reviewer: adminCredentials.username,
         },
         {
           username: powerUserCredentials.username,
           status: 'approved',
-          reviewer: managerCredentials.username
+          reviewer: managerCredentials.username,
         },
         {
           username: userCredentials.username,
           status: 'rejected',
-          reviewer: managerCredentials.username
-        }
+          reviewer: managerCredentials.username,
+        },
       ]);
 
       // Verify no pending requests remain

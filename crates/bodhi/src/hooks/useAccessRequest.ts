@@ -8,6 +8,7 @@ import {
   UserAccessRequest,
   UserAccessStatusResponse,
   UserInfo,
+  UserInfoResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useMutation, UseMutationResult, useQueryClient, UseQueryResult } from 'react-query';
@@ -158,31 +159,26 @@ export function useRejectRequest(options?: {
   );
 }
 
-// List all users (admin/manager) - TODO: Replace with actual users endpoint when available
+// List all users (admin/manager)
 export function useAllUsers(
   page: number = 1,
   pageSize: number = 10
-): UseQueryResult<{ users: UserInfo[]; total: number; page: number; page_size: number }, AxiosError<ErrorResponse>> {
-  // TODO: Replace with actual users endpoint when available
-  // For now, use useQuery with a mock endpoint that returns empty data
-  return useQuery<{ users: UserInfo[]; total: number; page: number; page_size: number }>(
+): UseQueryResult<
+  { users: UserInfoResponse[]; total: number; page: number; page_size: number },
+  AxiosError<ErrorResponse>
+> {
+  return useQuery<{ users: UserInfoResponse[]; total: number; page: number; page_size: number }>(
     queryKeys.users(page, pageSize),
-    '/users', // Mock endpoint - will fail but maintains structure
+    '/bodhi/v1/users',
     { page, page_size: pageSize },
     {
-      retry: 0,
-      enabled: false, // Disabled since endpoint doesn't exist yet
-      initialData: {
-        users: [],
-        total: 0,
-        page,
-        page_size: pageSize,
-      },
+      retry: 1,
+      refetchOnWindowFocus: false,
     }
   );
 }
 
-// Change user role (admin/manager) - TODO: Implement when user management API is available
+// Change user role (admin/manager)
 export function useChangeUserRole(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -191,9 +187,7 @@ export function useChangeUserRole(options?: {
 
   return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }>(
     async ({ userId, newRole }) => {
-      // TODO: Implement actual API call when user management endpoint is available
-      console.log(`Would change user ${userId} to role ${newRole}`);
-      throw new Error('User role management not yet implemented');
+      return await apiClient.put(`/bodhi/v1/users/${userId}/role`, { role: newRole });
     },
     {
       onSuccess: () => {
@@ -208,7 +202,7 @@ export function useChangeUserRole(options?: {
   );
 }
 
-// Remove user (admin/manager) - TODO: Implement when user management API is available
+// Remove user (admin only)
 export function useRemoveUser(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
@@ -217,9 +211,7 @@ export function useRemoveUser(options?: {
 
   return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
     async (userId: string) => {
-      // TODO: Implement actual API call when user management endpoint is available
-      console.log(`Would remove user ${userId}`);
-      throw new Error('User removal not yet implemented');
+      return await apiClient.delete(`/bodhi/v1/users/${userId}`);
     },
     {
       onSuccess: () => {

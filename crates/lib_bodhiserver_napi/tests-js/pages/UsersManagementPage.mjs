@@ -101,7 +101,6 @@ export class UsersManagementPage extends BasePage {
     // The SelectContent is rendered in a Portal outside the table row
     await this.page.waitForSelector(this.selectors.roleSelectContent, {
       state: 'visible',
-      timeout: 10000,
     });
 
     // Find role option by exact display name (e.g., "User" for resource_user)
@@ -111,7 +110,7 @@ export class UsersManagementPage extends BasePage {
       .filter({ hasText: new RegExp(`^${roleDisplayName}$`) });
 
     // Wait for the option to be visible
-    await roleOption.waitFor({ state: 'visible', timeout: 5000 });
+    await roleOption.waitFor({ state: 'visible' });
 
     // Click the role option
     await roleOption.click();
@@ -119,7 +118,6 @@ export class UsersManagementPage extends BasePage {
     // Wait for dropdown to close (content becomes hidden)
     await this.page.waitForSelector(this.selectors.roleSelectContent, {
       state: 'hidden',
-      timeout: 5000,
     });
 
     console.log(`Selected role: ${roleDisplayName} for user: ${username}`);
@@ -227,7 +225,6 @@ export class UsersManagementPage extends BasePage {
     // Wait for the dropdown to open
     await this.page.waitForSelector(this.selectors.roleSelectContent, {
       state: 'visible',
-      timeout: 10000,
     });
 
     // Get all available role options
@@ -239,7 +236,6 @@ export class UsersManagementPage extends BasePage {
     // Wait for dropdown to close
     await this.page.waitForSelector(this.selectors.roleSelectContent, {
       state: 'hidden',
-      timeout: 5000,
     });
 
     return roleOptions.map((role) => role.trim());

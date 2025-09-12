@@ -1419,7 +1419,7 @@ mod tests {
         "/realms/test-realm/bodhi/resources/make-resource-admin",
       )
       .match_header("Authorization", "Bearer client_access_token")
-      .match_body(Matcher::Regex(r#"\{"userId":"[^"]+"\}"#.to_string()))
+      .match_body(Matcher::Regex(r#"\{"user_id":"[^"]+"\}"#.to_string()))
       .with_status(200)
       .with_body("{}")
       .create_async()
@@ -1469,6 +1469,7 @@ mod tests {
       }})
       .unwrap();
     let response = router.oneshot(request).await?;
+    assert_eq!(StatusCode::OK, response.status());
     Ok(response)
   }
 
@@ -1476,7 +1477,6 @@ mod tests {
     response: Response,
     app_service: Arc<AppServiceStub>,
   ) -> anyhow::Result<()> {
-    assert_eq!(StatusCode::OK, response.status());
     let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
     let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
     assert_eq!(

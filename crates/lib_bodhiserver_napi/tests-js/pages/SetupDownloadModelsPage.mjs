@@ -33,9 +33,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
   async expectRecommendedModelsDisplayed() {
     // Check that model cards are visible
     try {
-      await expect(this.page.locator(this.selectors.modelCard).first()).toBeVisible({
-        timeout: 5000,
-      });
+      await expect(this.page.locator(this.selectors.modelCard).first()).toBeVisible({});
     } catch {
       // Fallback: look for model names or download buttons
       const hasModels = await Promise.race([
@@ -62,9 +60,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
     await downloadButton.click();
 
     // Wait for download to start (button changes to "Downloading")
-    await expect(this.page.locator(this.selectors.downloadingButton).first()).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(this.page.locator(this.selectors.downloadingButton).first()).toBeVisible({});
   }
 
   async waitForDownloadComplete(timeout = 30000) {

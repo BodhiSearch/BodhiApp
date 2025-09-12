@@ -122,6 +122,16 @@ export type AuthCallbackRequest = {
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
 };
 
+/**
+ * Request body for changing user role
+ */
+export type ChangeRoleRequest = {
+    /**
+     * New role to assign to the user
+     */
+    role: string;
+};
+
 export type ChatRequest = {
     format?: string | null;
     keep_alive?: null | Duration;
@@ -261,6 +271,20 @@ export type ListModelResponse = {
         owned_by: string;
     }>;
     object: string;
+};
+
+/**
+ * Request parameters for listing users with pagination
+ */
+export type ListUsersParams = {
+    /**
+     * Page number (default: 1)
+     */
+    page?: number;
+    /**
+     * Number of items per page (default: 10)
+     */
+    page_size?: number;
 };
 
 export type LocalModelResponse = {
@@ -746,6 +770,25 @@ export type UserInfo = {
      * User's username
      */
     username?: string | null;
+};
+
+export type UserInfoResponse = {
+    first_name?: string | null;
+    last_name?: string | null;
+    role: string;
+    user_id: string;
+    username: string;
+};
+
+export type UserListResponse = {
+    client_id: string;
+    has_next: boolean;
+    has_previous: boolean;
+    page: number;
+    page_size: number;
+    total_pages: number;
+    total_users: number;
+    users: Array<UserInfoResponse>;
 };
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
@@ -2092,6 +2135,136 @@ export type GetUserAccessStatusResponses = {
 };
 
 export type GetUserAccessStatusResponse = GetUserAccessStatusResponses[keyof GetUserAccessStatusResponses];
+
+export type ListUsersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (default: 1)
+         */
+        page?: number;
+        /**
+         * Number of items per page (default: 10)
+         */
+        page_size?: number;
+    };
+    url: '/bodhi/v1/users';
+};
+
+export type ListUsersErrors = {
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListUsersError = ListUsersErrors[keyof ListUsersErrors];
+
+export type ListUsersResponses = {
+    /**
+     * Users retrieved successfully
+     */
+    200: UserListResponse;
+};
+
+export type ListUsersResponse = ListUsersResponses[keyof ListUsersResponses];
+
+export type RemoveUserData = {
+    body?: never;
+    path: {
+        /**
+         * User ID to remove
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/users/{user_id}';
+};
+
+export type RemoveUserErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * User not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type RemoveUserError = RemoveUserErrors[keyof RemoveUserErrors];
+
+export type RemoveUserResponses = {
+    /**
+     * User removed successfully
+     */
+    200: unknown;
+};
+
+export type ChangeUserRoleData = {
+    body: ChangeRoleRequest;
+    path: {
+        /**
+         * User ID to change role for
+         */
+        user_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/users/{user_id}/role';
+};
+
+export type ChangeUserRoleErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * User not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ChangeUserRoleError = ChangeUserRoleErrors[keyof ChangeUserRoleErrors];
+
+export type ChangeUserRoleResponses = {
+    /**
+     * Role changed successfully
+     */
+    200: unknown;
+};
 
 export type HealthCheckData = {
     body?: never;

@@ -123,9 +123,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
           ? new Date(request.created_at).toLocaleDateString()
           : new Date(request.updated_at).toLocaleDateString()}
       </TableCell>
-      <TableCell data-testid={`request-status-${request.status}`}>
-        {getStatusBadge(request.status)}
-      </TableCell>
+      <TableCell data-testid={`request-status-${request.status}`}>{getStatusBadge(request.status)}</TableCell>
       <TableCell>
         {request.status !== 'pending' && request.reviewer ? (
           <span className="text-sm text-muted-foreground" data-testid="request-reviewer">

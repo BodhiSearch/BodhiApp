@@ -16,13 +16,14 @@ use axum::{
 use objs::{Role, TokenScope, UserScope};
 use routes_app::{
   app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
-  create_alias_handler, create_api_model_handler, create_pull_request_handler,
-  create_token_handler, delete_api_model_handler, delete_setting_handler, dev_secrets_handler,
-  envs_handler, fetch_models_handler, get_api_formats_handler, get_api_model_handler,
-  get_download_status_handler, get_user_alias_handler, health_handler, list_aliases_handler,
-  list_all_requests_handler, list_api_models_handler, list_downloads_handler,
-  list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
-  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, reject_request_handler,
+  change_user_role_handler, create_alias_handler, create_api_model_handler,
+  create_pull_request_handler, create_token_handler, delete_api_model_handler,
+  delete_setting_handler, dev_secrets_handler, envs_handler, fetch_models_handler,
+  get_api_formats_handler, get_api_model_handler, get_download_status_handler,
+  get_user_alias_handler, health_handler, list_aliases_handler, list_all_requests_handler,
+  list_api_models_handler, list_downloads_handler, list_local_modelfiles_handler,
+  list_pending_requests_handler, list_settings_handler, list_tokens_handler, list_users_handler,
+  logout_handler, ping_handler, pull_by_alias_handler, reject_request_handler, remove_user_handler,
   request_access_handler, request_status_handler, setup_handler, test_api_model_handler,
   update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
   user_info_handler, user_request_access_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier,
@@ -198,6 +199,7 @@ pub fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
+    .route("/bodhi/v1/users/{{user_id}}", delete(remove_user_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| api_auth_middleware(Role::Admin, None, None, state, req, next),
@@ -217,6 +219,11 @@ pub fn build_routes(
     .route(
       &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/reject"),
       post(reject_request_handler),
+    )
+    .route("/bodhi/v1/users", get(list_users_handler))
+    .route(
+      "/bodhi/v1/users/{{user_id}}/role",
+      put(change_user_role_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

@@ -12,30 +12,30 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     pageContainer: '[data-testid="all-requests-page"]',
     pageTitle: '[data-testid="page-title"]',
     requestCount: '[data-testid="request-count"]',
-    
+
     // Navigation tabs
     navLinkPending: '[data-testid="nav-link-pending"]',
     navLinkAll: '[data-testid="nav-link-all"]',
     navLinkUsers: '[data-testid="nav-link-users"]',
-    
+
     // Table structure
     requestsTable: '[data-testid="requests-table"]',
     tableBody: 'tbody',
-    
+
     // Row-level selectors (will use dynamic testid)
     requestRow: (username) => `[data-testid="request-row-${username}"]`,
-    
+
     // Cell-level selectors
     usernameCell: '[data-testid="request-username"]',
     dateCell: '[data-testid="request-date"]',
     statusBadge: (status) => `[data-testid="request-status-${status}"]`,
     reviewerCell: '[data-testid="request-reviewer"]',
-    
+
     // Action selectors for pending requests
     roleSelect: (username) => `[data-testid="role-select-${username}"]`,
     approveBtn: (username) => `[data-testid="approve-btn-${username}"]`,
     rejectBtn: (username) => `[data-testid="reject-btn-${username}"]`,
-    
+
     // State indicators
     emptyState: '[data-testid="no-requests"]',
     loadingSkeleton: '[data-testid="loading-skeleton"]',
@@ -63,7 +63,7 @@ export class AllAccessRequestsPage extends UsersManagementPage {
 
   async getRequestData(username) {
     const row = await this.findRequestByUsername(username);
-    
+
     const data = {
       username: await row.locator(this.allRequestsSelectors.usernameCell).textContent(),
       date: await row.locator(this.allRequestsSelectors.dateCell).textContent(),
@@ -71,7 +71,7 @@ export class AllAccessRequestsPage extends UsersManagementPage {
       reviewer: await this.getRequestReviewer(row),
       hasActions: await this.hasActions(row),
     };
-    
+
     return data;
   }
 
@@ -105,9 +105,9 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   // Verification methods
   async verifyRequestStatus(username, expectedStatus, expectedReviewer = null) {
     const data = await this.getRequestData(username);
-    
+
     expect(data.status).toBe(expectedStatus);
-    
+
     if (expectedStatus !== 'pending' && expectedReviewer) {
       expect(data.reviewer).toBe(expectedReviewer);
     } else if (expectedStatus === 'pending') {
@@ -119,11 +119,7 @@ export class AllAccessRequestsPage extends UsersManagementPage {
   async verifyAllRequests(expectedRequests) {
     // expectedRequests: Array of { username, status, reviewer? }
     for (const expected of expectedRequests) {
-      await this.verifyRequestStatus(
-        expected.username, 
-        expected.status, 
-        expected.reviewer
-      );
+      await this.verifyRequestStatus(expected.username, expected.status, expected.reviewer);
     }
   }
 
@@ -131,13 +127,13 @@ export class AllAccessRequestsPage extends UsersManagementPage {
     // Wait for table to load or show empty state
     try {
       // Check if we have the requests table
-      await this.page.waitForSelector(this.allRequestsSelectors.requestsTable, { timeout: 5000 });
-      
+      await this.page.waitForSelector(this.allRequestsSelectors.requestsTable);
+
       // Check if empty state is showing
       if (await this.page.locator(this.allRequestsSelectors.emptyState).isVisible()) {
         return 0;
       }
-      
+
       // Count table rows
       const rows = await this.page.locator('tbody tr').all();
       return rows.length;
@@ -174,7 +170,8 @@ export class AllAccessRequestsPage extends UsersManagementPage {
 
   async verifyRequestCountDisplay(expectedTotal) {
     const countText = await this.page.locator(this.allRequestsSelectors.requestCount).textContent();
-    const expectedText = expectedTotal === 1 ? '1 total request' : `${expectedTotal} total requests`;
+    const expectedText =
+      expectedTotal === 1 ? '1 total request' : `${expectedTotal} total requests`;
     expect(countText).toBe(expectedText);
   }
 }
