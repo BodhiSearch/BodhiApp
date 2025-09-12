@@ -80,19 +80,41 @@ export const BLOCKED_ROLES = ['user', 'power_user'] as const;
 export const ALL_ROLES = [...ADMIN_ROLES, ...BLOCKED_ROLES] as const;
 
 // Create mock user info for different roles
-export const createMockUserInfo = (role: string, loggedIn: boolean = true) => {
-  // Ensure role has resource_ prefix for consistency
-  const resourceRole = role.startsWith('resource_') ? role : `resource_${role}`;
-
-  if (!loggedIn) {
+export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: string | boolean = true) => {
+  // Handle the case where second parameter is loggedIn (boolean) and false
+  if (!usernameOrLoggedIn) {
     return {
       logged_in: false,
     };
   }
 
-  return {
+  // Handle the case where second parameter is a username (string)
+  if (typeof usernameOrLoggedIn === 'string') {
+    const result: any = {
+      logged_in: true,
+      username: usernameOrLoggedIn,
+    };
+
+    // Only add role if provided and not null/undefined (backend doesn't send role field for users without roles)
+    if (role !== null && role !== undefined) {
+      const resourceRole = role.startsWith('resource_') ? role : `resource_${role}`;
+      result.role = resourceRole;
+    }
+
+    return result;
+  }
+
+  // Default case with role
+  const result: any = {
     logged_in: true,
     username: `${role}@example.com`,
-    role: resourceRole,
   };
+
+  // Only add role if provided and not null/undefined (backend doesn't send role field for users without roles)
+  if (role !== null && role !== undefined) {
+    const resourceRole = role.startsWith('resource_') ? role : `resource_${role}`;
+    result.role = resourceRole;
+  }
+
+  return result;
 };
