@@ -64,10 +64,12 @@ function UserRow({
   user,
   currentUserRole,
   currentUsername,
+  currentUserInfo,
 }: {
   user: UserInfoResponse;
   currentUserRole: string;
   currentUsername: string;
+  currentUserInfo: any;
 }) {
   const [selectedRole, setSelectedRole] = useState<string>(typeof user.role === 'string' ? user.role : 'resource_user');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
@@ -117,7 +119,12 @@ function UserRow({
   const currentRole = typeof user.role === 'string' ? user.role : 'resource_user';
 
   // Check if this is the current user (self-modification prevention)
-  const isCurrentUser = user.username === currentUsername;
+  // Use multiple comparison methods to ensure proper identification
+  const isCurrentUser =
+    user.username?.trim() === currentUsername?.trim() ||
+    user.username === currentUserInfo?.username ||
+    (currentUserInfo?.email && user.username === currentUserInfo.email) ||
+    (currentUserInfo?.user_id && user.user_id === currentUserInfo.user_id);
 
   // Check if target user has higher or equal role (hierarchy enforcement)
   const targetUserLevel = getRoleLevel(currentRole);
@@ -125,7 +132,9 @@ function UserRow({
   const canModifyUser = !isCurrentUser && targetUserLevel < currentUserLevel;
 
   // Show actions only if user can be modified
-  const showActions = canModifyUser;
+  // Safety check: If we can't identify current user properly, disable all actions for safety
+  const hasValidCurrentUserInfo = currentUsername && currentUserRole;
+  const showActions = hasValidCurrentUserInfo && canModifyUser;
 
   return (
     <>
@@ -264,7 +273,7 @@ function UsersContent() {
   ];
 
   // Show loading state if either users or current user info is loading
-  if (isLoadingUsers || isLoadingUser || !currentUserInfo) {
+  if (isLoadingUsers || isLoadingUser) {
     return (
       <Card>
         <CardHeader>
@@ -318,7 +327,12 @@ function UsersContent() {
                 columns={columns}
                 data={users}
                 renderRow={(user) => (
-                  <UserRow user={user} currentUserRole={currentUserRole} currentUsername={currentUsername} />
+                  <UserRow
+                    user={user}
+                    currentUserRole={currentUserRole}
+                    currentUsername={currentUsername}
+                    currentUserInfo={currentUserInfo}
+                  />
                 )}
                 loading={isLoadingUsers}
                 sort={dummySort}
