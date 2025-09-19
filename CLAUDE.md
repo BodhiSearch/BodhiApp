@@ -122,3 +122,4 @@ The application embeds the UI build, so changes to React components won't be vis
 **Development Mode**: For active development, use `cd crates/bodhi && npm run dev` to run Next.js dev server with hot reload.
 - Do not plan for backwards compatibility unless specifically mentioned.
 - Do not add timeouts for playwright based UI tests. use the default timeout only. Unless it is on ChatPage which needs to wait for model to warm up and respond
+- if you make changes to @crates/bodhi/src/ you have to run `make rebuild.ui` in project root for playwright test to get the ui updates

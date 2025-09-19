@@ -94,7 +94,7 @@ export const mockEmptyUsersResponse = {
 export const createMockUsersWithRoles = (roles: string[]): UserInfo[] => {
   return roles.map((role, index) => ({
     username: `${role}${index}@example.com`,
-    role: role,
+    role: role as any,
     logged_in: true,
   }));
 };

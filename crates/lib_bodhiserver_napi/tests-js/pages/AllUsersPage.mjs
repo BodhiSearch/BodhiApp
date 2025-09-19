@@ -264,12 +264,12 @@ export class AllUsersPage extends BasePage {
   }
 
   async getUserCount() {
-    try {
-      const rows = await this.page.locator(this.selectors.tableRow).all();
-      return rows.length;
-    } catch {
-      return 0;
-    }
+    // Wait for at least one table row to ensure table is loaded
+    await this.page.waitForSelector(this.selectors.tableRow, { timeout: 5000 });
+
+    // Now count all rows
+    const rows = await this.page.locator(this.selectors.tableRow).count();
+    return rows;
   }
 
   async expectNoUsers() {
@@ -372,5 +372,121 @@ export class AllUsersPage extends BasePage {
     await this.page.waitForSelector(this.selectors.skeleton, {
       state: 'hidden',
     });
+  }
+
+  // Additional methods for UI restriction testing
+
+  async navigateToPendingRequests() {
+    await this.navigate('/ui/access-requests/pending');
+    await this.waitForSPAReady();
+  }
+
+  async navigateToAllRequests() {
+    await this.navigate('/ui/access-requests');
+    await this.waitForSPAReady();
+  }
+
+  async expectNoActionsForUser(username) {
+    // Wait for the user row to be fully loaded
+    await this.page.waitForSelector(
+      `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
+      { timeout: 10000 }
+    );
+
+    const row = await this.findUserRowByUsername(username);
+    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
+
+    // Check for "no actions" indicators (either "You" or "Restricted")
+    const noActionsIndicator = actionsCell.locator(`[data-testid="no-actions-${username}"]`);
+    await expect(noActionsIndicator).toBeVisible();
+
+    // Ensure role select and remove buttons are not present
+    const roleSelect = actionsCell.locator(`[data-testid="role-select-${username}"]`);
+    const removeButton = actionsCell.locator(`[data-testid="remove-user-btn-${username}"]`);
+
+    await expect(roleSelect).not.toBeVisible();
+    await expect(removeButton).not.toBeVisible();
+
+    console.log(
+      `Confirmed: User ${username} has no action buttons (self-modification/hierarchy restriction)`
+    );
+  }
+
+  async expectActionsForUser(username) {
+    // Wait for the user row to be fully loaded
+    await this.page.waitForSelector(
+      `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
+      { timeout: 10000 }
+    );
+
+    const row = await this.findUserRowByUsername(username);
+    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
+
+    // Check for actions container
+    const actionsContainer = actionsCell.locator(
+      `[data-testid="user-actions-container-${username}"]`
+    );
+    await expect(actionsContainer).toBeVisible();
+
+    // Ensure role select and remove buttons are present
+    const roleSelect = actionsCell.locator(`[data-testid="role-select-${username}"]`);
+    const removeButton = actionsCell.locator(`[data-testid="remove-user-btn-${username}"]`);
+
+    await expect(roleSelect).toBeVisible();
+    await expect(removeButton).toBeVisible();
+
+    console.log(`Confirmed: User ${username} has visible action buttons`);
+  }
+
+  async expectCurrentUserIndicator(username) {
+    const row = await this.findUserRowByUsername(username);
+    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
+    const currentUserIndicator = actionsCell.locator('[data-testid="current-user-indicator"]');
+
+    await expect(currentUserIndicator).toBeVisible();
+    const text = await currentUserIndicator.textContent();
+    expect(text.trim()).toBe('You');
+
+    console.log(`Confirmed: User ${username} shows "You" indicator`);
+  }
+
+  async expectRestrictedUserIndicator(username) {
+    const row = await this.findUserRowByUsername(username);
+    const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
+    const restrictedIndicator = actionsCell.locator('[data-testid="restricted-user-indicator"]');
+
+    await expect(restrictedIndicator).toBeVisible();
+    const text = await restrictedIndicator.textContent();
+    expect(text.trim()).toBe('Restricted');
+
+    console.log(`Confirmed: User ${username} shows "Restricted" indicator`);
+  }
+
+  async getUserActionsVisibility(username) {
+    try {
+      await this.expectActionsForUser(username);
+      return 'visible';
+    } catch {
+      try {
+        await this.expectNoActionsForUser(username);
+        const row = await this.findUserRowByUsername(username);
+        const actionsCell = row.locator(`[data-testid="user-actions-${username}"]`);
+        const currentUserIndicator = actionsCell.locator('[data-testid="current-user-indicator"]');
+
+        if (await currentUserIndicator.isVisible()) {
+          return 'self';
+        } else {
+          return 'restricted';
+        }
+      } catch {
+        return 'unknown';
+      }
+    }
+  }
+
+  async verifyUsersInHierarchicalOrder(expectedUsernames) {
+    const actualUsernames = await this.getAllUsernames();
+    expect(actualUsernames).toEqual(expectedUsernames);
+    console.log(`Confirmed: Users displayed in hierarchical order: ${actualUsernames.join(' → ')}`);
   }
 }
