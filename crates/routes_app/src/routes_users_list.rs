@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{extract_claims, Claims, UserListResponse};
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use utoipa::ToSchema;
 
 /// List users query parameters
@@ -130,10 +130,24 @@ pub async fn change_user_role_handler(
       InternalServerError::new(format!("Failed to change user role: {}", e))
     })?;
 
-  info!(
-    "Successfully changed role for user {} to {} by {}",
-    user_id, request.role, claims.preferred_username
-  );
+  // Clear existing sessions for the user to ensure new role is applied
+  // Note: We don't fail the operation if session clearing fails, just log it
+  let session_service = state.app_service().session_service();
+  match session_service.clear_sessions_for_user(&user_id).await {
+    Ok(cleared_count) => {
+      info!(
+        "Successfully changed role for user {} to {} by {}, cleared {} sessions",
+        user_id, request.role, claims.preferred_username, cleared_count
+      );
+    }
+    Err(e) => {
+      warn!(
+        "Changed role for user {} to {} by {}, but failed to clear sessions: {}",
+        user_id, request.role, claims.preferred_username, e
+      );
+    }
+  }
+
   Ok(StatusCode::OK)
 }
 
@@ -200,11 +214,21 @@ mod tests {
   use auth_middleware::{
     KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
   };
-  use axum::{body::Body, http::Request, routing::get, Router};
+  use axum::{
+    body::Body,
+    http::Request,
+    routing::{get, put},
+    Router,
+  };
+  use chrono::{Duration, Utc};
+  use mockall::predicate::{always, eq};
   use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use server_core::{DefaultRouterState, MockSharedContext};
-  use services::{test_utils::AppServiceStubBuilder, MockAuthService, UserInfoResponse};
+  use services::{
+    test_utils::{build_token_with_exp, AppServiceStubBuilder},
+    MockAuthService, MockSessionService, UserInfoResponse,
+  };
   use std::sync::Arc;
   use tempfile::TempDir;
   use tower::ServiceExt;
@@ -441,6 +465,65 @@ mod tests {
     assert_eq!(response_body.has_next, true);
     assert_eq!(response_body.has_previous, true);
 
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    // Create a valid JWT token for testing
+    let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+    // Mock auth service for role assignment
+    let mut mock_auth = MockAuthService::default();
+    mock_auth
+      .expect_assign_user_role()
+      .times(1)
+      .with(always(), eq("user-123"), eq("resource_power_user"))
+      .return_once(|_, _, _| Ok(()));
+
+    // Mock session service to verify sessions are cleared
+    let mut mock_session = MockSessionService::default();
+    mock_session
+      .expect_clear_sessions_for_user()
+      .times(1)
+      .with(eq("user-123"))
+      .return_once(|_| Ok(3)); // Return that 3 sessions were cleared
+
+    // Build app service with mocks
+    let app_service = AppServiceStubBuilder::default()
+      .auth_service(Arc::new(mock_auth))
+      .session_service(Arc::new(mock_session))
+      .build()?;
+
+    // Create router with handler
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      Arc::new(app_service),
+    ));
+
+    let router = Router::new()
+      .route(
+        "/bodhi/v1/users/{user_id}/role",
+        put(change_user_role_handler),
+      )
+      .with_state(state);
+
+    // Make request
+    let request = Request::put("/bodhi/v1/users/user-123/role")
+      .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
+      .header("Content-Type", "application/json")
+      .body(Body::from(r#"{"role": "resource_power_user"}"#))
+      .unwrap();
+
+    // Send request
+    let response = router.oneshot(request).await?;
+
+    // Verify success
+    assert_eq!(axum::http::StatusCode::OK, response.status());
+
+    // The mock expectations will verify that both assign_user_role
+    // AND clear_sessions_for_user were called
     Ok(())
   }
 }

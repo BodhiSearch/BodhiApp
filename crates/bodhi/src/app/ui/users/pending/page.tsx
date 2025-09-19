@@ -1,6 +1,7 @@
 'use client';
 
 import AppInitializer from '@/components/AppInitializer';
+import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,33 +16,7 @@ import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequest';
 import { useUser } from '@/hooks/useQuery';
-import { ROUTE_ACCESS_REQUESTS_ALL, ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_USERS } from '@/lib/constants';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-
-function NavigationLinks() {
-  const pathname = usePathname();
-
-  const linkClass = (path: string) =>
-    pathname === path
-      ? 'font-bold text-primary border-b-2 border-primary pb-1'
-      : 'text-muted-foreground hover:text-foreground';
-
-  return (
-    <div className="flex gap-4 mb-6">
-      <Link href={ROUTE_ACCESS_REQUESTS_PENDING} className={linkClass(ROUTE_ACCESS_REQUESTS_PENDING)}>
-        Pending Requests
-      </Link>
-      <Link href={ROUTE_ACCESS_REQUESTS_ALL} className={linkClass(ROUTE_ACCESS_REQUESTS_ALL)}>
-        All Requests
-      </Link>
-      <Link href={ROUTE_USERS} className={linkClass(ROUTE_USERS)}>
-        All Users
-      </Link>
-    </div>
-  );
-}
 
 function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');
@@ -217,7 +192,7 @@ export default function PendingRequestsPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true} minRole="manager">
       <div className="container mx-auto p-4" data-testid="pending-requests-page">
-        <NavigationLinks />
+        <UserManagementTabs />
         <PendingRequestsContent />
       </div>
     </AppInitializer>

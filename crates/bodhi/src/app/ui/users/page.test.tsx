@@ -6,6 +6,10 @@ import {
   mockUserInfoResponse2,
   mockManagerInfoResponse,
   mockAdminInfoResponse,
+  mockSecondAdminInfoResponse,
+  mockSecondManagerInfoResponse,
+  mockMultipleAdminsResponse,
+  mockMultipleManagersResponse,
 } from '@/test-fixtures/users';
 import { createAccessRequestHandlers, createErrorHandlers, createRoleBasedHandlers } from '@/test-utils/msw-handlers';
 import { createWrapper } from '@/tests/wrapper';
@@ -246,6 +250,79 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
 
     // Should show appropriate indicators
     expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument(); // For self
+    expect(screen.getByTestId('restricted-user-indicator')).toBeInTheDocument(); // For admin
+  });
+
+  it('admin can see action buttons for other admins', async () => {
+    server.use(
+      ...createAccessRequestHandlers({
+        users: mockMultipleAdminsResponse,
+        userInfo: createMockUserInfo('resource_admin', 'admin@example.com'), // Current user is first admin
+      })
+    );
+
+    await act(async () => {
+      render(<UsersPage />, { wrapper: createWrapper() });
+    });
+
+    // Wait for page and users to load
+    await waitFor(() => {
+      expect(screen.getByTestId('users-page')).toBeInTheDocument();
+      expect(screen.getByText('admin@example.com')).toBeInTheDocument();
+      expect(screen.getByText('admin2@example.com')).toBeInTheDocument();
+    });
+
+    // Current admin should NOT see action buttons for themselves
+    expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
+    expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument();
+
+    // Current admin SHOULD see action buttons for the other admin
+    await waitFor(() => {
+      expect(screen.getByTestId('role-select-trigger-admin2@example.com')).toBeInTheDocument();
+      expect(screen.getByTestId('remove-user-btn-admin2@example.com')).toBeInTheDocument();
+    });
+
+    // Should also see action buttons for lower-level users
+    expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('role-select-trigger-manager@example.com')).toBeInTheDocument();
+  });
+
+  it('manager can see action buttons for other managers', async () => {
+    server.use(
+      ...createAccessRequestHandlers({
+        users: mockMultipleManagersResponse,
+        userInfo: createMockUserInfo('resource_manager', 'manager@example.com'), // Current user is first manager
+      })
+    );
+
+    await act(async () => {
+      render(<UsersPage />, { wrapper: createWrapper() });
+    });
+
+    // Wait for page and users to load
+    await waitFor(() => {
+      expect(screen.getByTestId('users-page')).toBeInTheDocument();
+      expect(screen.getByText('manager@example.com')).toBeInTheDocument();
+      expect(screen.getByText('manager2@example.com')).toBeInTheDocument();
+      expect(screen.getByText('admin@example.com')).toBeInTheDocument();
+    });
+
+    // Current manager should NOT see action buttons for themselves
+    expect(screen.queryByTestId('role-select-trigger-manager@example.com')).not.toBeInTheDocument();
+    expect(screen.getByTestId('current-user-indicator')).toBeInTheDocument();
+
+    // Current manager SHOULD see action buttons for the other manager
+    await waitFor(() => {
+      expect(screen.getByTestId('role-select-trigger-manager2@example.com')).toBeInTheDocument();
+      expect(screen.getByTestId('remove-user-btn-manager2@example.com')).toBeInTheDocument();
+    });
+
+    // Should also see action buttons for lower-level users
+    expect(screen.getByTestId('role-select-trigger-user1@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('role-select-trigger-user2@example.com')).toBeInTheDocument();
+
+    // Should NOT see action buttons for admin (higher level)
+    expect(screen.queryByTestId('role-select-trigger-admin@example.com')).not.toBeInTheDocument();
     expect(screen.getByTestId('restricted-user-indicator')).toBeInTheDocument(); // For admin
   });
 });

@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
+import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_ACCESS_REQUESTS_ALL, ROUTE_USERS } from '@/lib/constants';
 import { useAllUsers, useChangeUserRole, useRemoveUser } from '@/hooks/useAccessRequest';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -30,29 +28,6 @@ import { UserInfo, UserInfoResponse } from '@bodhiapp/ts-client';
 import { Users, AlertCircle, Trash2 } from 'lucide-react';
 import { getRoleLabel, getRoleBadgeVariant, getAvailableRoles, getRoleLevel } from '@/lib/roles';
 import { SortState } from '@/types/models';
-
-function NavigationLinks() {
-  const pathname = usePathname();
-
-  const linkClass = (path: string) =>
-    pathname === path
-      ? 'font-bold text-primary border-b-2 border-primary pb-1'
-      : 'text-muted-foreground hover:text-foreground';
-
-  return (
-    <div className="flex gap-4 mb-6">
-      <Link href={ROUTE_ACCESS_REQUESTS_PENDING} className={linkClass(ROUTE_ACCESS_REQUESTS_PENDING)}>
-        Pending Requests
-      </Link>
-      <Link href={ROUTE_ACCESS_REQUESTS_ALL} className={linkClass(ROUTE_ACCESS_REQUESTS_ALL)}>
-        All Requests
-      </Link>
-      <Link href={ROUTE_USERS} className={linkClass(ROUTE_USERS)}>
-        All Users
-      </Link>
-    </div>
-  );
-}
 
 function getRoleBadge(role: string) {
   const label = getRoleLabel(role);
@@ -79,9 +54,12 @@ function UserRow({
   const { mutate: changeRole, isLoading: isChangingRole } = useChangeUserRole({
     onSuccess: () => {
       setShowRoleDialog(false);
+      // selectedRole already has the new value, keep it
       showSuccess('Role Updated', `Role updated for ${user.username}`);
     },
     onError: (message) => {
+      setSelectedRole(currentRole); // Reset to original on error
+      setShowRoleDialog(false);
       showError('Update Failed', message);
     },
   });
@@ -98,7 +76,10 @@ function UserRow({
 
   const handleRoleChange = (newRole: string) => {
     setSelectedRole(newRole);
-    setShowRoleDialog(true);
+    // Use setTimeout to ensure keyboard event completes before dialog opens
+    setTimeout(() => {
+      setShowRoleDialog(true);
+    }, 0);
   };
 
   const confirmRoleChange = () => {
@@ -126,10 +107,10 @@ function UserRow({
     (currentUserInfo?.email && user.username === currentUserInfo.email) ||
     (currentUserInfo?.user_id && user.user_id === currentUserInfo.user_id);
 
-  // Check if target user has higher or equal role (hierarchy enforcement)
+  // Check if target user has higher role (hierarchy enforcement)
   const targetUserLevel = getRoleLevel(currentRole);
   const currentUserLevel = getRoleLevel(currentUserRole);
-  const canModifyUser = !isCurrentUser && targetUserLevel < currentUserLevel;
+  const canModifyUser = !isCurrentUser && targetUserLevel <= currentUserLevel;
 
   // Show actions only if user can be modified
   // Safety check: If we can't identify current user properly, disable all actions for safety
@@ -148,9 +129,6 @@ function UserRow({
         <Badge variant="outline" data-testid="user-status">
           Active
         </Badge>
-      </TableCell>
-      <TableCell className="hidden md:table-cell" data-testid={`user-created-${user.username}`}>
-        <span data-testid="user-created">{new Date().toLocaleDateString()}</span>
       </TableCell>
       <TableCell data-testid={`user-actions-${user.username}`}>
         {showActions ? (
@@ -199,7 +177,17 @@ function UserRow({
       </TableCell>
 
       {/* Role Change Confirmation Dialog */}
-      <AlertDialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+      <AlertDialog
+        open={showRoleDialog}
+        onOpenChange={(open) => {
+          if (!open && !isChangingRole) {
+            // Dialog is closing and not due to successful change
+            // Reset to current role
+            setSelectedRole(currentRole);
+          }
+          setShowRoleDialog(open);
+        }}
+      >
         <AlertDialogContent data-testid="role-change-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle data-testid="role-change-title">Change User Role</AlertDialogTitle>
@@ -267,8 +255,6 @@ function UsersContent() {
     { id: 'username', name: 'Username', sorted: false },
     { id: 'role', name: 'Role', sorted: false },
     { id: 'status', name: 'Status', sorted: false },
-    { id: 'last_login', name: 'Last Login', sorted: false, className: 'hidden md:table-cell' },
-    { id: 'created_at', name: 'Created', sorted: false, className: 'hidden md:table-cell' },
     { id: 'actions', name: 'Actions', sorted: false },
   ];
 
@@ -356,7 +342,7 @@ export default function UsersPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true} minRole="manager">
       <div className="container mx-auto p-4" data-testid="users-page">
-        <NavigationLinks />
+        <UserManagementTabs />
         <UsersContent />
       </div>
     </AppInitializer>

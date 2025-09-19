@@ -4,6 +4,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
+import { createMockUserInfo } from '@/test-fixtures/access-requests';
 import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { rest } from 'msw';
@@ -362,13 +363,7 @@ describe('AppInitializer role-based access control', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.json({
-            logged_in: true,
-            email: 'test@example.com',
-            // roles is undefined
-          })
-        );
+        return res(ctx.json(createMockUserInfo(undefined, 'test@example.com')));
       })
     );
 

@@ -65,6 +65,7 @@ make_ui_endpoint!(ENDPOINT_USER_REQUEST_ACCESS, "user/request-access");
 make_ui_endpoint!(ENDPOINT_USER_REQUEST_STATUS, "user/request-status");
 make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_PENDING, "access-requests/pending");
 make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_ALL, "access-requests");
+make_ui_endpoint!(ENDPOINT_USERS, "users");
 make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
 make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
 make_ui_endpoint!(ENDPOINT_APPS_REQUEST_ACCESS, "apps/request-access");

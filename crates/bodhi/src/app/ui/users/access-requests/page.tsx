@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import AppInitializer from '@/components/AppInitializer';
+import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ROUTE_ACCESS_REQUESTS_PENDING, ROUTE_ACCESS_REQUESTS_ALL, ROUTE_USERS } from '@/lib/constants';
 import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequest';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -19,37 +17,6 @@ import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
-
-function NavigationLinks() {
-  const pathname = usePathname();
-
-  const linkClass = (path: string) =>
-    pathname === path
-      ? 'font-bold text-primary border-b-2 border-primary pb-1'
-      : 'text-muted-foreground hover:text-foreground';
-
-  return (
-    <div className="flex gap-4 mb-6">
-      <Link
-        href={ROUTE_ACCESS_REQUESTS_PENDING}
-        className={linkClass(ROUTE_ACCESS_REQUESTS_PENDING)}
-        data-testid="nav-link-pending"
-      >
-        Pending Requests
-      </Link>
-      <Link
-        href={ROUTE_ACCESS_REQUESTS_ALL}
-        className={linkClass(ROUTE_ACCESS_REQUESTS_ALL)}
-        data-testid="nav-link-all"
-      >
-        All Requests
-      </Link>
-      <Link href={ROUTE_USERS} className={linkClass(ROUTE_USERS)} data-testid="nav-link-users">
-        All Users
-      </Link>
-    </div>
-  );
-}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -272,7 +239,7 @@ export default function AllRequestsPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true} minRole="manager">
       <div className="container mx-auto p-4" data-testid="all-requests-page">
-        <NavigationLinks />
+        <UserManagementTabs />
         <AllRequestsContent />
       </div>
     </AppInitializer>

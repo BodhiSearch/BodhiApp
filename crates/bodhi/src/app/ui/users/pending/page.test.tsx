@@ -1,4 +1,4 @@
-import PendingRequestsPage from '@/app/ui/access-requests/pending/page';
+import PendingRequestsPage from '@/app/ui/users/pending/page';
 import { createWrapper } from '@/tests/wrapper';
 import { createAccessRequestHandlers, createRoleBasedHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
-  usePathname: vi.fn().mockReturnValue('/ui/access-requests/pending'),
+  usePathname: vi.fn().mockReturnValue('/ui/users/pending'),
 }));
 
 // Mock DataTable to avoid sorting prop issues
