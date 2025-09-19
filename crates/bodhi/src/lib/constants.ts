@@ -12,8 +12,8 @@ export const ROUTE_SETUP_RESOURCE_ADMIN = '/ui/setup/resource-admin';
 
 // Access request routes
 export const ROUTE_REQUEST_ACCESS = '/ui/request-access';
-export const ROUTE_ACCESS_REQUESTS_PENDING = '/ui/access-requests/pending';
-export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/access-requests';
+export const ROUTE_ACCESS_REQUESTS_PENDING = '/ui/users/pending';
+export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/users/access-requests';
 export const ROUTE_USERS = '/ui/users';
 export const ROUTE_UNAUTHORIZED = '/ui/unauthorized';
 

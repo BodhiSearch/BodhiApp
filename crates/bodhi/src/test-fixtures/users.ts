@@ -63,10 +63,54 @@ export const mockAdminInfoResponse: UserInfoResponse = {
   last_name: 'User',
 };
 
+export const mockSecondAdminInfoResponse: UserInfoResponse = {
+  user_id: 'admin2-id',
+  username: 'admin2@example.com',
+  role: 'resource_admin',
+  first_name: 'Second',
+  last_name: 'Admin',
+};
+
+export const mockSecondManagerInfoResponse: UserInfoResponse = {
+  user_id: 'manager2-id',
+  username: 'manager2@example.com',
+  role: 'resource_manager',
+  first_name: 'Second',
+  last_name: 'Manager',
+};
+
 // Mock simple paginated response for hook compatibility
 export const mockSimpleUsersResponse = {
   users: [mockUserInfoResponse1, mockUserInfoResponse2, mockManagerInfoResponse, mockAdminInfoResponse],
   total: 4,
+  page: 1,
+  page_size: 10,
+};
+
+// Mock response with multiple admins for testing admin-to-admin modifications
+export const mockMultipleAdminsResponse = {
+  users: [
+    mockUserInfoResponse1,
+    mockUserInfoResponse2,
+    mockManagerInfoResponse,
+    mockAdminInfoResponse,
+    mockSecondAdminInfoResponse,
+  ],
+  total: 5,
+  page: 1,
+  page_size: 10,
+};
+
+// Mock response with multiple managers for testing manager-to-manager modifications
+export const mockMultipleManagersResponse = {
+  users: [
+    mockUserInfoResponse1,
+    mockUserInfoResponse2,
+    mockManagerInfoResponse,
+    mockSecondManagerInfoResponse,
+    mockAdminInfoResponse,
+  ],
+  total: 5,
   page: 1,
   page_size: 10,
 };

@@ -32,8 +32,8 @@ use routes_app::{
   ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
   ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH,
   ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS,
-  ENDPOINT_USER_REQUEST_STATUS,
+  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USERS, ENDPOINT_USER_INFO,
+  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -199,7 +199,6 @@ pub fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
-    .route("/bodhi/v1/users/{{user_id}}", delete(remove_user_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| api_auth_middleware(Role::Admin, None, None, state, req, next),
@@ -220,10 +219,14 @@ pub fn build_routes(
       &format!("{ENDPOINT_ACCESS_REQUESTS_ALL}/{{id}}/reject"),
       post(reject_request_handler),
     )
-    .route("/bodhi/v1/users", get(list_users_handler))
+    .route(ENDPOINT_USERS, get(list_users_handler))
     .route(
-      "/bodhi/v1/users/{{user_id}}/role",
+      &format!("{ENDPOINT_USERS}/{{user_id}}/role"),
       put(change_user_role_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_USERS}/{{user_id}}"),
+      delete(remove_user_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
