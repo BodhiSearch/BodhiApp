@@ -5,6 +5,7 @@ import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { ENDPOINT_ACCESS_REQUESTS_PENDING } from '@/hooks/useAccessRequest';
 import { rest } from 'msw';
 import { ADMIN_ROLES, BLOCKED_ROLES, mockPendingRequest, mockEmptyRequests } from '@/test-fixtures/access-requests';
+import { createMockAdminUser } from '@/test-utils/mock-user';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
@@ -107,7 +108,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: pendingRequestsData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -129,7 +130,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: mockEmptyRequests,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -153,7 +154,7 @@ describe('PendingRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         pendingRequests: paginatedData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -180,7 +181,7 @@ describe('PendingRequestsPage Request Management', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
   });
@@ -276,9 +277,7 @@ describe('PendingRequestsPage Error Handling', () => {
     // Provide good app/user endpoints but failing access-requests-pending endpoint
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, username: 'admin@example.com', role: 'resource_admin' }))
-      ),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(createMockAdminUser()))),
       rest.get(`*${ENDPOINT_ACCESS_REQUESTS_PENDING}`, (_, res, ctx) =>
         res(ctx.status(404), ctx.json({ error: { message: 'Not found' } }))
       )
@@ -306,7 +305,7 @@ describe('PendingRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       }),
       ...createErrorHandlers()
     );
@@ -340,7 +339,7 @@ describe('PendingRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       }),
       ...createErrorHandlers()
     );
@@ -370,7 +369,7 @@ describe('PendingRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -395,7 +394,7 @@ describe('PendingRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -429,7 +428,7 @@ describe('PendingRequestsPage UI Interactions', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 

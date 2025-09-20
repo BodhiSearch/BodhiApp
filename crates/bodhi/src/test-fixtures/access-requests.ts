@@ -84,15 +84,31 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
   // Handle the case where second parameter is loggedIn (boolean) and false
   if (!usernameOrLoggedIn) {
     return {
-      logged_in: false,
+      auth_status: 'logged_out' as const,
     };
   }
+
+  // Helper function to get user_id based on username (matches test-fixtures/users.ts)
+  const getUserId = (username: string): string => {
+    const userIdMap: Record<string, string> = {
+      'admin@example.com': 'admin-id',
+      'manager@example.com': 'manager-id',
+      'user1@example.com': 'user1-id',
+      'user2@example.com': 'user2-id',
+      'user@example.com': 'user-general-id',
+      'power_user@example.com': 'power-user-id',
+    };
+    return userIdMap[username] || '550e8400-e29b-41d4-a716-446655440000';
+  };
 
   // Handle the case where second parameter is a username (string)
   if (typeof usernameOrLoggedIn === 'string') {
     const result: any = {
-      logged_in: true,
+      auth_status: 'logged_in' as const,
+      user_id: getUserId(usernameOrLoggedIn),
       username: usernameOrLoggedIn,
+      first_name: null,
+      last_name: null,
     };
 
     // Only add role if provided and not null/undefined (backend doesn't send role field for users without roles)
@@ -105,9 +121,13 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
   }
 
   // Default case with role
+  const username = `${role}@example.com`;
   const result: any = {
-    logged_in: true,
-    username: `${role}@example.com`,
+    auth_status: 'logged_in' as const,
+    user_id: getUserId(username),
+    username: username,
+    first_name: null,
+    last_name: null,
   };
 
   // Only add role if provided and not null/undefined (backend doesn't send role field for users without roles)

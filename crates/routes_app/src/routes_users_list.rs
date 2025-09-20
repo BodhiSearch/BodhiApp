@@ -222,12 +222,12 @@ mod tests {
   };
   use chrono::{Duration, Utc};
   use mockall::predicate::{always, eq};
-  use objs::test_utils::temp_bodhi_home;
+  use objs::{test_utils::temp_bodhi_home, AppRole, Role, UserInfo};
   use rstest::rstest;
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{
     test_utils::{build_token_with_exp, AppServiceStubBuilder},
-    MockAuthService, MockSessionService, UserInfoResponse,
+    MockAuthService, MockSessionService,
   };
   use std::sync::Arc;
   use tempfile::TempDir;
@@ -241,19 +241,19 @@ mod tests {
     let expected_response = UserListResponse {
       client_id: "test-client-id".to_string(),
       users: vec![
-        UserInfoResponse {
+        UserInfo {
           user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
           username: "admin@example.com".to_string(),
           first_name: Some("Admin".to_string()),
           last_name: Some("User".to_string()),
-          role: "resource_admin".to_string(),
+          role: Some(AppRole::Session(Role::Admin)),
         },
-        UserInfoResponse {
+        UserInfo {
           user_id: "550e8400-e29b-41d4-a716-446655440001".to_string(),
           username: "user@example.com".to_string(),
           first_name: Some("Regular".to_string()),
           last_name: Some("User".to_string()),
-          role: "resource_user".to_string(),
+          role: Some(AppRole::Session(Role::User)),
         },
       ],
       page: 1,

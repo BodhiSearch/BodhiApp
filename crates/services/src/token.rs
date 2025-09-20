@@ -101,6 +101,8 @@ pub struct Claims {
   pub aud: Option<String>,
   pub scope: String,
   pub preferred_username: String,
+  pub given_name: Option<String>,
+  pub family_name: Option<String>,
   #[serde(default)]
   pub resource_access: HashMap<String, ResourceClaims>,
 }

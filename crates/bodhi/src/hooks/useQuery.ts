@@ -15,6 +15,7 @@ import {
   SetupResponse,
   UpdateAliasRequest,
   UserInfo,
+  UserResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
@@ -114,7 +115,7 @@ export function useAppInfo() {
 }
 
 export function useUser(options?: { enabled?: boolean }) {
-  return useQuery<UserInfo | null>('user', ENDPOINT_USER_INFO, undefined, {
+  return useQuery<UserResponse | null>('user', ENDPOINT_USER_INFO, undefined, {
     retry: false,
     enabled: options?.enabled ?? true,
   });

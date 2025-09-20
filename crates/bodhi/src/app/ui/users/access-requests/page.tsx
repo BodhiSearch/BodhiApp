@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequest';
-import { useUser } from '@/hooks/useQuery';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
@@ -153,7 +153,7 @@ function AllRequestsContent() {
   const noOpSortChange = () => {}; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id.toString();
 
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useAuthenticatedUser();
   const { data: requestsData, isLoading } = useAllRequests(page, pageSize);
 
   // Get user's role for filtering

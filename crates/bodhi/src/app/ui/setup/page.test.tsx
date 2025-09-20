@@ -1,6 +1,7 @@
 import Setup from '@/app/ui/setup/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams } from '@/lib/utils.test';
+import { createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -50,7 +51,7 @@ describe('Setup Page', () => {
         return res(ctx.json({ status: 'setup' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: false }));
+        return res(ctx.json(createMockLoggedOutUser()));
       }),
       rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));

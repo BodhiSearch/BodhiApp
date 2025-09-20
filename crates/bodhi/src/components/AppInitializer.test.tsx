@@ -5,6 +5,7 @@ import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockUserInfo } from '@/test-fixtures/access-requests';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { rest } from 'msw';
@@ -60,7 +61,7 @@ describe('AppInitializer loading and error handling', () => {
         return res(ctx.delay(100), ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.json({ logged_in: true }));
+        return res(ctx.delay(100), ctx.json(createMockLoggedInUser()));
       })
     );
 
@@ -83,7 +84,7 @@ describe('AppInitializer loading and error handling', () => {
       scenario: 'app/info error',
       setup: [
         { endpoint: `*${ENDPOINT_APP_INFO}`, response: { error: { message: 'API Error' } }, status: 500 },
-        { endpoint: `*${ENDPOINT_USER_INFO}`, response: { logged_in: true }, status: 200 },
+        { endpoint: `*${ENDPOINT_USER_INFO}`, response: createMockLoggedInUser(), status: 200 },
       ],
     },
     {
@@ -283,7 +284,7 @@ describe('AppInitializer role-based access control', () => {
         rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
           return res(
             ctx.json({
-              logged_in: true,
+              ...createMockLoggedInUser(),
               username: 'test@example.com',
               role: `resource_${userRole}`,
             })
@@ -314,7 +315,7 @@ describe('AppInitializer role-based access control', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
         return res(
           ctx.json({
-            logged_in: true,
+            ...createMockLoggedInUser(),
             email: 'test@example.com',
             role: 'resource_user',
           })
@@ -340,7 +341,7 @@ describe('AppInitializer role-based access control', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
         return res(
           ctx.json({
-            logged_in: true,
+            ...createMockLoggedInUser(),
             email: 'test@example.com',
             role: null,
           })
@@ -382,12 +383,12 @@ describe('AppInitializer role-based access control', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ logged_in: false }));
+        return res(ctx.json(createMockLoggedOutUser()));
       })
     );
 
     await renderWithSetup(
-      <AppInitializer allowedStatus="ready" authenticated={true} minRole="resource_admin">
+      <AppInitializer allowedStatus="ready" authenticated={true} minRole="admin">
         <div>Protected content</div>
       </AppInitializer>
     );
@@ -408,7 +409,7 @@ describe('AppInitializer authentication behavior', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ logged_in: loggedIn }));
+        return res(ctx.json(loggedIn ? createMockLoggedInUser() : createMockLoggedOutUser()));
       })
     );
 
@@ -436,11 +437,14 @@ describe('AppInitializer authentication behavior', () => {
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
         return res(
-          ctx.json({
-            logged_in: loggedIn,
-            email: 'test@example.com',
-            role: loggedIn ? 'resource_user' : null, // Add role for authenticated users
-          })
+          ctx.json(
+            loggedIn
+              ? createMockLoggedInUser({
+                  username: 'test@example.com',
+                  role: 'resource_user',
+                })
+              : createMockLoggedOutUser()
+          )
         );
       })
     );

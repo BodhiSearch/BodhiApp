@@ -6,11 +6,11 @@ import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessReque
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/hooks/useQuery';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 
 export function RequestAccessContent() {
   const router = useRouter();
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useAuthenticatedUser();
   const { data: requestStatus, isLoading: statusLoading, error: statusError } = useRequestStatus();
   const { showSuccess, showError } = useToastMessages();
 

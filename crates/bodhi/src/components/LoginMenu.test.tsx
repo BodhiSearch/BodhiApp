@@ -1,5 +1,6 @@
 import { LoginMenu } from '@/components/LoginMenu';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -23,15 +24,9 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-const mockLoggedOutUser = {
-  logged_in: false,
-};
+const mockLoggedOutUser = createMockLoggedOutUser();
 
-const mockLoggedInUser = {
-  logged_in: true,
-  username: 'test@example.com',
-  role: 'resource_user',
-};
+const mockLoggedInUser = createMockLoggedInUser({ role: 'resource_user' });
 
 const mockAppInfo = {
   status: 'ready',

@@ -77,7 +77,7 @@ export function LoginContent() {
     return <AuthCard title="Loading..." isLoading={true} />;
   }
 
-  if (userInfo?.logged_in) {
+  if (userInfo?.auth_status === 'logged_in') {
     return (
       <AuthCard
         title="Welcome"

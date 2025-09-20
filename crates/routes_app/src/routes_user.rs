@@ -4,8 +4,7 @@ use auth_middleware::{
 };
 use axum::{http::header::HeaderMap, Json};
 use objs::{
-  ApiError, BadRequestError, OpenAIApiError, ResourceScope, Role, TokenScope, UserScope,
-  API_TAG_AUTH,
+  ApiError, AppRole, BadRequestError, OpenAIApiError, ResourceScope, Role, UserInfo, API_TAG_AUTH,
 };
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
@@ -34,28 +33,22 @@ pub enum RoleSource {
   ScopeUser,
 }
 
+/// User authentication response with discriminated union
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
-#[serde(untagged)]
-pub enum AppRole {
-  Session(Role),
-  ApiToken(TokenScope),
-  ExchangedToken(UserScope),
-}
-
-/// Information about the currently logged in user
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema, Default)]
+#[serde(tag = "auth_status")]
 #[schema(example = json!({
-    "logged_in": true,
+    "auth_status": "logged_in",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "username": "user@example.com",
     "role": "resource_user"
 }))]
-pub struct UserInfo {
-  /// If user is logged in
-  pub logged_in: bool,
-  /// User's username
-  pub username: Option<String>,
-  /// Role assigned to the user
-  pub role: Option<AppRole>,
+pub enum UserResponse {
+  /// User is not authenticated
+  #[serde(rename = "logged_out")]
+  LoggedOut,
+  /// User is authenticated with details
+  #[serde(rename = "logged_in")]
+  LoggedIn(UserInfo),
 }
 
 /// Get information about the currently logged in user
@@ -67,9 +60,10 @@ pub struct UserInfo {
     summary = "Get Current User Information",
     description = "Retrieves information about the currently authenticated user including email, roles, token type, and authentication source.",
     responses(
-        (status = 200, description = "Current user information retrieved successfully", body = UserInfo,
+        (status = 200, description = "Current user information retrieved successfully", body = UserResponse,
          example = json!({
-             "logged_in": true,
+             "auth_status": "logged_in",
+             "user_id": "550e8400-e29b-41d4-a716-446655440000",
              "username": "user@example.com",
              "role": "resource_admin"
          })),
@@ -83,8 +77,8 @@ pub struct UserInfo {
          }))
     )
 )]
-pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, ApiError> {
-  let not_loggedin = UserInfo::default();
+pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>, ApiError> {
+  let not_loggedin = UserResponse::LoggedOut;
   let Some(token) = headers.get(KEY_HEADER_BODHIAPP_TOKEN) else {
     debug!("no token header");
     return Ok(Json(not_loggedin));
@@ -106,11 +100,13 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
       let role = role.parse::<Role>()?;
-      Ok(Json(UserInfo {
-        logged_in: true,
-        username: Some(claims.preferred_username),
+      Ok(Json(UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: claims.preferred_username,
+        first_name: claims.given_name,
+        last_name: claims.family_name,
         role: Some(AppRole::Session(role)),
-      }))
+      })))
     }
     (None, Some(token_header)) => {
       debug!("token header present");
@@ -122,26 +118,30 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         ResourceScope::Token(token_scope) => AppRole::ApiToken(token_scope),
         ResourceScope::User(user_scope) => AppRole::ExchangedToken(user_scope),
       };
-      Ok(Json(UserInfo {
-        logged_in: true,
-        username: Some(claims.preferred_username),
+      Ok(Json(UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: claims.preferred_username,
+        first_name: claims.given_name,
+        last_name: claims.family_name,
         role: Some(app_role),
-      }))
+      })))
     }
     (None, None) => {
       debug!("no role or token header, returning logged in user without role");
-      Ok(Json(UserInfo {
-        logged_in: true,
-        username: Some(claims.preferred_username),
+      Ok(Json(UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: claims.preferred_username,
+        first_name: claims.given_name,
+        last_name: claims.family_name,
         role: None,
-      }))
+      })))
     }
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use crate::{user_info_handler, AppRole, UserInfo};
+  use crate::{user_info_handler, UserResponse};
   use auth_middleware::{
     KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
   };
@@ -152,7 +152,8 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, ResourceScope, Role, TokenScope, UserScope,
+    test_utils::setup_l10n, AppRole, FluentLocalizationService, ResourceScope, Role, TokenScope,
+    UserInfo, UserScope,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -186,15 +187,8 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
-    assert_eq!(
-      UserInfo {
-        logged_in: false,
-        username: None,
-        role: None,
-      },
-      response_json
-    );
+    let response_json = response.json::<UserResponse>().await?;
+    assert_eq!(UserResponse::LoggedOut, response_json);
     Ok(())
   }
 
@@ -277,20 +271,26 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_ROLE, role.to_string())
           .body(Body::empty())?,
       )
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
+    let response_json = response.json::<UserResponse>().await?;
+
+    // Extract user_id from the token to verify correct response
+    let claims = services::extract_claims::<services::Claims>(&token)?;
+
     assert_eq!(
-      UserInfo {
-        logged_in: true,
-        username: Some("testuser@email.com".to_string()),
+      UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
         role: Some(AppRole::Session(role)),
-      },
+      }),
       response_json
     );
     Ok(())
@@ -314,20 +314,26 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
           .body(Body::empty())?,
       )
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
+    let response_json = response.json::<UserResponse>().await?;
+
+    // Extract user_id from the token to verify correct response
+    let claims = services::extract_claims::<services::Claims>(&token)?;
+
     assert_eq!(
-      UserInfo {
-        logged_in: true,
-        username: Some("testuser@email.com".to_string()),
+      UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
         role: Some(AppRole::ApiToken(token_scope)),
-      },
+      }),
       response_json
     );
     Ok(())
@@ -351,20 +357,26 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
           .body(Body::empty())?,
       )
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
+    let response_json = response.json::<UserResponse>().await?;
+
+    // Extract user_id from the token to verify correct response
+    let claims = services::extract_claims::<services::Claims>(&token)?;
+
     assert_eq!(
-      UserInfo {
-        logged_in: true,
-        username: Some("testuser@email.com".to_string()),
+      UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
         role: Some(AppRole::ExchangedToken(user_scope)),
-      },
+      }),
       response_json
     );
     Ok(())
@@ -383,7 +395,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_ROLE, Role::Manager.to_string())
           .header(
             KEY_HEADER_BODHIAPP_SCOPE,
@@ -394,13 +406,19 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
+    let response_json = response.json::<UserResponse>().await?;
+
+    // Extract user_id from the token to verify correct response
+    let claims = services::extract_claims::<services::Claims>(&token)?;
+
     assert_eq!(
-      UserInfo {
-        logged_in: true,
-        username: Some("testuser@email.com".to_string()),
+      UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
         role: Some(AppRole::Session(Role::Manager)),
-      },
+      }),
       response_json
     );
     Ok(())
@@ -418,19 +436,25 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .body(Body::empty())?,
       )
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
+    let response_json = response.json::<UserResponse>().await?;
+
+    // Extract user_id from the token to verify correct response
+    let claims = services::extract_claims::<services::Claims>(&token)?;
+
     assert_eq!(
-      UserInfo {
-        logged_in: true,
-        username: Some("testuser@email.com".to_string()),
+      UserResponse::LoggedIn(UserInfo {
+        user_id: claims.sub,
+        username: "testuser@email.com".to_string(),
+        first_name: Some("Test".to_string()),
+        last_name: Some("User".to_string()),
         role: None,
-      },
+      }),
       response_json
     );
     Ok(())
@@ -448,7 +472,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role")
           .body(Body::empty())?,
       )
@@ -481,7 +505,7 @@ mod tests {
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
           .header(KEY_HEADER_BODHIAPP_SCOPE, "invalid_scope")
           .body(Body::empty())?,
       )

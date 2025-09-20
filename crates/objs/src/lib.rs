@@ -21,6 +21,7 @@ mod repo;
 mod resource_scope;
 mod role;
 mod token_scope;
+mod user;
 mod user_scope;
 mod utils;
 
@@ -40,6 +41,7 @@ pub use repo::*;
 pub use resource_scope::*;
 pub use role::*;
 pub use token_scope::*;
+pub use user::*;
 pub use user_scope::*;
 pub use utils::*;
 

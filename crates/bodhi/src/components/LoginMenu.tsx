@@ -72,7 +72,7 @@ export function LoginMenu() {
     return null;
   }
 
-  if (userInfo?.logged_in) {
+  if (userInfo?.auth_status === 'logged_in') {
     return (
       <div className="p-2 space-y-1.5 text-center" data-testid="login-menu-logged-in">
         <p className="text-xs text-muted-foreground">Logged in as {userInfo.username}</p>

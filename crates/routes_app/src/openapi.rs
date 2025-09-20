@@ -1,5 +1,5 @@
 use crate::{
-  ApiFormatsResponse, ApiModelResponse, AppRole, AuthCallbackRequest, CreateApiModelRequest,
+  ApiFormatsResponse, ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest,
   FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
   PaginationSortParams, PingResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
   UpdateApiTokenRequest,
@@ -10,7 +10,7 @@ use crate::{
   PaginatedApiTokenResponse, PaginatedDownloadResponse, PaginatedLocalModelResponse,
   PaginatedUserAccessResponse, PaginatedUserAliasResponse, RedirectResponse, SetupRequest,
   SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse,
-  UserAliasResponse, UserInfo, __path_app_info_handler, __path_approve_request_handler,
+  UserAliasResponse, UserResponse, __path_app_info_handler, __path_approve_request_handler,
   __path_auth_callback_handler, __path_auth_initiate_handler, __path_change_user_role_handler,
   __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
   __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
@@ -27,9 +27,10 @@ use crate::{
   __path_user_request_access_handler,
 };
 use objs::{
-  Alias, ApiFormat, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
-  SettingSource, TokenScope, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH,
-  API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
+  SettingSource, TokenScope, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
+  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
+  API_TAG_SYSTEM,
 };
 use routes_oai::{
   ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_oai_model_handler,
@@ -39,8 +40,7 @@ use routes_oai::{
 use services::db::DownloadStatus;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppAccessRequest, AppAccessResponse, AppStatus, SettingService, UserInfoResponse,
-  UserListResponse,
+  AppAccessRequest, AppAccessResponse, AppStatus, SettingService, UserListResponse,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -154,7 +154,7 @@ For API keys, specify required scope when creating the token.
             AuthCallbackRequest,
             AppAccessRequest,
             AppAccessResponse,
-            UserInfo,
+            UserResponse,
             AppRole,
             Role,
             TokenScope,
@@ -166,7 +166,7 @@ For API keys, specify required scope when creating the token.
             // user management
             ListUsersParams,
             UserListResponse,
-            UserInfoResponse,
+            UserInfo,
             ChangeRoleRequest,
             // api keys/token
             CreateApiTokenRequest,
@@ -521,7 +521,7 @@ mod tests {
     assert!(responses.responses.contains_key("200"));
     assert!(responses.responses.contains_key("500"));
 
-    // Verify response schema references UserInfo
+    // Verify response schema references UserResponse
     let success_response = responses.responses.get("200").unwrap();
     if let RefOr::T(response) = success_response {
       assert!(response.content.get("application/json").is_some());

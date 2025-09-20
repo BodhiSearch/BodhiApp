@@ -123,11 +123,11 @@ export type AuthCallbackRequest = {
 };
 
 /**
- * Request body for changing user role
+ * Change user role request
  */
 export type ChangeRoleRequest = {
     /**
-     * New role to assign to the user
+     * Role to assign to the user
      */
     role: string;
 };
@@ -274,17 +274,11 @@ export type ListModelResponse = {
 };
 
 /**
- * Request parameters for listing users with pagination
+ * List users query parameters
  */
 export type ListUsersParams = {
-    /**
-     * Page number (default: 1)
-     */
-    page?: number;
-    /**
-     * Number of items per page (default: 10)
-     */
-    page_size?: number;
+    page?: number | null;
+    page_size?: number | null;
 };
 
 export type LocalModelResponse = {
@@ -757,25 +751,10 @@ export type UserAliasResponse = {
     source: string;
 };
 
-/**
- * Information about the currently logged in user
- */
 export type UserInfo = {
-    /**
-     * If user is logged in
-     */
-    logged_in: boolean;
-    role?: null | AppRole;
-    /**
-     * User's username
-     */
-    username?: string | null;
-};
-
-export type UserInfoResponse = {
     first_name?: string | null;
     last_name?: string | null;
-    role: string;
+    role?: null | AppRole;
     user_id: string;
     username: string;
 };
@@ -788,8 +767,17 @@ export type UserListResponse = {
     page_size: number;
     total_pages: number;
     total_users: number;
-    users: Array<UserInfoResponse>;
+    users: Array<UserInfo>;
 };
+
+/**
+ * User authentication response with discriminated union
+ */
+export type UserResponse = {
+    auth_status: 'logged_out';
+} | (UserInfo & {
+    auth_status: 'logged_in';
+});
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
 
@@ -2065,7 +2053,7 @@ export type GetCurrentUserResponses = {
     /**
      * Current user information retrieved successfully
      */
-    200: UserInfo;
+    200: UserResponse;
 };
 
 export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];
@@ -2141,11 +2129,11 @@ export type ListUsersData = {
     path?: never;
     query?: {
         /**
-         * Page number (default: 1)
+         * Page number (1-based)
          */
         page?: number;
         /**
-         * Number of items per page (default: 10)
+         * Number of users per page
          */
         page_size?: number;
     };
@@ -2153,6 +2141,10 @@ export type ListUsersData = {
 };
 
 export type ListUsersErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
     /**
      * Not authenticated
      */
