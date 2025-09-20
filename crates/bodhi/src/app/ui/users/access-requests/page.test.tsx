@@ -11,7 +11,10 @@ import {
   mockApprovedRequest,
   mockRejectedRequest,
   mockEmptyRequests,
+  mockAllRequests,
+  createMockUserInfo,
 } from '@/test-fixtures/access-requests';
+import { createMockAdminUser } from '@/test-utils/mock-user';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
@@ -68,7 +71,12 @@ describe('AllRequestsPage Role-Based Access Control', () => {
   });
 
   it.each(ADMIN_ROLES)('allows access for %s role', async (role) => {
-    server.use(...createRoleBasedHandlers(role, true));
+    server.use(
+      ...createAccessRequestHandlers({
+        allRequests: mockAllRequests,
+        userInfo: createMockUserInfo(`resource_${role}`, `${role}@example.com`),
+      })
+    );
 
     await act(async () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
@@ -81,7 +89,12 @@ describe('AllRequestsPage Role-Based Access Control', () => {
   });
 
   it.each(BLOCKED_ROLES)('blocks access for %s role', async (role) => {
-    server.use(...createRoleBasedHandlers(role, false));
+    server.use(
+      ...createAccessRequestHandlers({
+        allRequests: mockAllRequests,
+        userInfo: createMockUserInfo(`resource_${role}`, `${role}@example.com`),
+      })
+    );
 
     await act(async () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
@@ -114,7 +127,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: allRequestsData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -144,7 +157,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: mockEmptyRequests,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -168,7 +181,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: paginatedData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -193,7 +206,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: allRequestsData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -222,7 +235,7 @@ describe('AllRequestsPage Data Display', () => {
     server.use(
       ...createAccessRequestHandlers({
         allRequests: allRequestsData,
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -256,7 +269,7 @@ describe('AllRequestsPage Request Management', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
   });
@@ -352,9 +365,7 @@ describe('AllRequestsPage Error Handling', () => {
     // Provide good app/user endpoints but failing access-requests endpoint
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, username: 'admin@example.com', role: 'resource_admin' }))
-      ),
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(createMockAdminUser()))),
       rest.get(`*${ENDPOINT_ACCESS_REQUESTS}`, (_, res, ctx) =>
         res(ctx.status(500), ctx.json({ error: { message: 'Internal server error' } }))
       )
@@ -382,7 +393,7 @@ describe('AllRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       }),
       ...createErrorHandlers()
     );
@@ -416,7 +427,7 @@ describe('AllRequestsPage Error Handling', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       }),
       ...createErrorHandlers()
     );
@@ -446,7 +457,7 @@ describe('AllRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 
@@ -473,7 +484,7 @@ describe('AllRequestsPage Loading States', () => {
           page: 1,
           page_size: 10,
         },
-        userInfo: { logged_in: true, username: 'admin@example.com', role: 'resource_admin' },
+        userInfo: createMockAdminUser(),
       })
     );
 

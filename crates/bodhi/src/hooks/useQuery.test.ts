@@ -11,6 +11,7 @@ import {
   useUser,
 } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { ErrorBody, AppInfo, SettingInfo } from '@bodhiapp/ts-client';
 
 // Type aliases for compatibility
@@ -54,8 +55,7 @@ const mockAppInfo: AppInfo = {
 };
 
 const mockUserInfo = {
-  logged_in: true,
-  username: 'test@example.com',
+  ...createMockLoggedInUser(),
   role: 'resource_user',
 };
 

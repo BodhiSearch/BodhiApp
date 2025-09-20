@@ -1,6 +1,7 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -95,7 +96,7 @@ describe('EditAliasPage', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       }),
       rest.get(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
         return res(ctx.json(mockModelData));
@@ -264,7 +265,7 @@ describe('EditAliasPage access control', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       })
     );
     await act(async () => {
@@ -281,7 +282,7 @@ describe('EditAliasPage access control', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: false }));
+        return res(ctx.json(createMockLoggedOutUser()));
       })
     );
     await act(async () => {

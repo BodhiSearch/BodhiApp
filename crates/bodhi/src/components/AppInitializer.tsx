@@ -72,13 +72,13 @@ export default function AppInitializer({
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
 
-    if (authenticated && !userInfo?.logged_in) {
+    if (authenticated && userInfo?.auth_status !== 'logged_in') {
       router.push(ROUTE_LOGIN);
       return;
     }
 
     // Check for authenticated users
-    if (authenticated && userInfo?.logged_in) {
+    if (authenticated && userInfo?.auth_status === 'logged_in') {
       // Check if user has no role - redirect to request access
       if (!userInfo.role) {
         router.push(ROUTE_REQUEST_ACCESS);
@@ -139,7 +139,7 @@ export default function AppInitializer({
     }
   }
 
-  if (authenticated && !userInfo?.logged_in) {
+  if (authenticated && userInfo?.auth_status !== 'logged_in') {
     return <Loading message="Redirecting to login..." />;
   }
 

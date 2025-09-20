@@ -15,7 +15,7 @@ import { Shield, Clock } from 'lucide-react';
 import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
 import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequest';
-import { useUser } from '@/hooks/useQuery';
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useState } from 'react';
 
 function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
@@ -96,7 +96,7 @@ function PendingRequestsContent() {
   const noOpSortChange = () => {}; // No-op function
   const getItemId = (request: UserAccessRequest) => request.id.toString();
 
-  const { data: userInfo } = useUser();
+  const { data: userInfo } = useAuthenticatedUser();
   const { data: requestsData, isLoading, error } = usePendingRequests(page, pageSize);
 
   // Get user's role for filtering

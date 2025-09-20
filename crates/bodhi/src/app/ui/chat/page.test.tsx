@@ -1,5 +1,6 @@
 import ChatPage from '@/app/ui/chat/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO, ENDPOINT_MODELS } from '@/hooks/useQuery';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
@@ -53,7 +54,7 @@ describe('ChatPage', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       })
     );
 
@@ -72,7 +73,7 @@ describe('ChatPage', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: false }));
+        return res(ctx.json(createMockLoggedOutUser()));
       })
     );
 

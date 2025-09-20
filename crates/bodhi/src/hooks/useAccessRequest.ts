@@ -8,7 +8,7 @@ import {
   UserAccessRequest,
   UserAccessStatusResponse,
   UserInfo,
-  UserInfoResponse,
+  UserListResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useMutation, UseMutationResult, useQueryClient, UseQueryResult } from 'react-query';
@@ -163,11 +163,8 @@ export function useRejectRequest(options?: {
 export function useAllUsers(
   page: number = 1,
   pageSize: number = 10
-): UseQueryResult<
-  { users: UserInfoResponse[]; total: number; page: number; page_size: number },
-  AxiosError<ErrorResponse>
-> {
-  return useQuery<{ users: UserInfoResponse[]; total: number; page: number; page_size: number }>(
+): UseQueryResult<UserListResponse, AxiosError<ErrorResponse>> {
+  return useQuery<UserListResponse>(
     queryKeys.users(page, pageSize),
     '/bodhi/v1/users',
     { page, page_size: pageSize },

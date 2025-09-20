@@ -2927,11 +2927,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserInfo"
+                  "$ref": "#/components/schemas/UserResponse"
                 },
                 "example": {
-                  "logged_in": true,
+                  "auth_status": "logged_in",
                   "role": "resource_admin",
+                  "user_id": "550e8400-e29b-41d4-a716-446655440000",
                   "username": "user@example.com"
                 }
               }
@@ -3076,31 +3077,33 @@
         "tags": [
           "auth"
         ],
-        "summary": "List all users",
-        "description": "Retrieve a paginated list of all users with their roles. Only admins and managers can access this endpoint.",
+        "summary": "List users",
+        "description": "List all users with roles and status information. Available to managers and admins.",
         "operationId": "listUsers",
         "parameters": [
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (default: 1)",
+            "description": "Page number (1-based)",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int32",
               "minimum": 0
-            }
+            },
+            "example": 1
           },
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (default: 10)",
+            "description": "Number of users per page",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int32",
               "minimum": 0
-            }
+            },
+            "example": 10
           }
         ],
         "responses": {
@@ -3110,6 +3113,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -3161,7 +3174,7 @@
           "auth"
         ],
         "summary": "Remove user access",
-        "description": "Remove a user from all roles. Admins can remove any user except themselves, managers can remove user/power_user/manager but not admin.",
+        "description": "Remove a user's access to the application. Only admins can remove users.",
         "operationId": "removeUser",
         "parameters": [
           {
@@ -4084,18 +4097,16 @@
       },
       "ChangeRoleRequest": {
         "type": "object",
-        "description": "Request body for changing user role",
+        "description": "Change user role request",
         "required": [
           "role"
         ],
         "properties": {
           "role": {
             "type": "string",
-            "description": "New role to assign to the user"
+            "description": "Role to assign to the user",
+            "example": "resource_manager"
           }
-        },
-        "example": {
-          "role": "resource_power_user"
         }
       },
       "ChatRequest": {
@@ -4469,18 +4480,24 @@
       },
       "ListUsersParams": {
         "type": "object",
-        "description": "Request parameters for listing users with pagination",
+        "description": "List users query parameters",
         "properties": {
           "page": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
-            "description": "Page number (default: 1)",
+            "example": 1,
             "minimum": 0
           },
           "page_size": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
-            "description": "Number of items per page (default: 10)",
+            "example": 10,
             "minimum": 0
           }
         }
@@ -5887,46 +5904,9 @@
       },
       "UserInfo": {
         "type": "object",
-        "description": "Information about the currently logged in user",
-        "required": [
-          "logged_in"
-        ],
-        "properties": {
-          "logged_in": {
-            "type": "boolean",
-            "description": "If user is logged in"
-          },
-          "role": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/AppRole",
-                "description": "Role assigned to the user"
-              }
-            ]
-          },
-          "username": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "User's username"
-          }
-        },
-        "example": {
-          "logged_in": true,
-          "role": "resource_user",
-          "username": "user@example.com"
-        }
-      },
-      "UserInfoResponse": {
-        "type": "object",
         "required": [
           "user_id",
-          "username",
-          "role"
+          "username"
         ],
         "properties": {
           "first_name": {
@@ -5944,8 +5924,14 @@
             "example": "Doe"
           },
           "role": {
-            "type": "string",
-            "example": "resource_user"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AppRole"
+              }
+            ]
           },
           "user_id": {
             "type": "string",
@@ -6009,9 +5995,58 @@
           "users": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UserInfoResponse"
+              "$ref": "#/components/schemas/UserInfo"
             }
           }
+        }
+      },
+      "UserResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "User is not authenticated",
+            "required": [
+              "auth_status"
+            ],
+            "properties": {
+              "auth_status": {
+                "type": "string",
+                "enum": [
+                  "logged_out"
+                ]
+              }
+            }
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserInfo",
+                "description": "User is authenticated with details"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "auth_status"
+                ],
+                "properties": {
+                  "auth_status": {
+                    "type": "string",
+                    "enum": [
+                      "logged_in"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "User is authenticated with details"
+          }
+        ],
+        "description": "User authentication response with discriminated union",
+        "example": {
+          "auth_status": "logged_in",
+          "role": "resource_user",
+          "user_id": "550e8400-e29b-41d4-a716-446655440000",
+          "username": "user@example.com"
         }
       },
       "UserScope": {

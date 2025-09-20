@@ -5,7 +5,7 @@ use oauth2::{
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
-use objs::{impl_error_from, log, AppError, ErrorType, ReqwestError};
+use objs::{impl_error_from, log, AppError, AppRole, ErrorType, ReqwestError, Role, UserInfo};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -201,11 +201,50 @@ pub struct AppAccessResponse {
   pub scope: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct UserInfoResponse {
+  pub user_id: String,
+  pub username: String,
+  pub first_name: Option<String>,
+  pub last_name: Option<String>,
+  pub role: String,
+}
+
+impl From<UserInfoResponse> for UserInfo {
+  fn from(response: UserInfoResponse) -> Self {
+    let role = if let Ok(parsed_role) = response.role.parse::<Role>() {
+      Some(AppRole::Session(parsed_role))
+    } else {
+      None
+    };
+
+    Self {
+      user_id: response.user_id,
+      username: response.username,
+      first_name: response.first_name,
+      last_name: response.last_name,
+      role,
+    }
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct UserListResponseRaw {
+  pub client_id: String,
+  pub users: Vec<UserInfoResponse>,
+  pub page: u32,
+  pub page_size: u32,
+  pub total_pages: u32,
+  pub total_users: u32,
+  pub has_next: bool,
+  pub has_previous: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UserListResponse {
   #[schema(example = "resource-abc123def456")]
   pub client_id: String,
-  pub users: Vec<UserInfoResponse>,
+  pub users: Vec<UserInfo>,
   #[schema(example = 1)]
   pub page: u32,
   #[schema(example = 10)]
@@ -218,20 +257,6 @@ pub struct UserListResponse {
   pub has_next: bool,
   #[schema(example = false)]
   pub has_previous: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct UserInfoResponse {
-  #[schema(example = "550e8400-e29b-41d4-a716-446655440000")]
-  pub user_id: String,
-  #[schema(example = "user@example.com")]
-  pub username: String,
-  #[schema(example = "John")]
-  pub first_name: Option<String>,
-  #[schema(example = "Doe")]
-  pub last_name: Option<String>,
-  #[schema(example = "resource_user")]
-  pub role: String,
 }
 
 #[async_trait]
@@ -611,7 +636,22 @@ impl AuthService for KeycloakAuthService {
       .await?;
 
     if response.status().is_success() {
-      return Ok(response.json::<UserListResponse>().await?);
+      let raw_response: UserListResponseRaw = response.json().await?;
+      let converted_response = UserListResponse {
+        client_id: raw_response.client_id,
+        users: raw_response
+          .users
+          .into_iter()
+          .map(|user| user.into())
+          .collect(),
+        page: raw_response.page,
+        page_size: raw_response.page_size,
+        total_pages: raw_response.total_pages,
+        total_users: raw_response.total_users,
+        has_next: raw_response.has_next,
+        has_previous: raw_response.has_previous,
+      };
+      return Ok(converted_response);
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("GET", &endpoint, "auth_service", &error.error);

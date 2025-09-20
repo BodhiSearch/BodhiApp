@@ -3,7 +3,7 @@ use std::str::FromStr;
 use strum::IntoEnumIterator;
 use utoipa::ToSchema;
 
-use crate::{AppError, ErrorType};
+use crate::{AppError, ErrorType, TokenScope, UserScope};
 
 #[derive(
   Debug,
@@ -131,6 +131,14 @@ impl FromStr for Role {
       _ => Err(RoleError::InvalidRoleName(s.to_string())),
     }
   }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[serde(untagged)]
+pub enum AppRole {
+  Session(Role),
+  ApiToken(TokenScope),
+  ExchangedToken(UserScope),
 }
 
 #[cfg(test)]

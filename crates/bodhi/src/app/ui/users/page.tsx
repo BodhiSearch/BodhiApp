@@ -22,9 +22,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAllUsers, useChangeUserRole, useRemoveUser } from '@/hooks/useAccessRequest';
-import { useUser } from '@/hooks/useQuery';
+import { useAuthenticatedUser, AuthenticatedUser } from '@/hooks/useAuthenticatedUser';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { UserInfo, UserInfoResponse } from '@bodhiapp/ts-client';
+import { UserResponse, UserInfo } from '@bodhiapp/ts-client';
 import { Users, AlertCircle, Trash2 } from 'lucide-react';
 import { getRoleLabel, getRoleBadgeVariant, getAvailableRoles, getRoleLevel } from '@/lib/roles';
 import { SortState } from '@/types/models';
@@ -41,10 +41,10 @@ function UserRow({
   currentUsername,
   currentUserInfo,
 }: {
-  user: UserInfoResponse;
+  user: UserInfo;
   currentUserRole: string;
   currentUsername: string;
-  currentUserInfo: any;
+  currentUserInfo?: AuthenticatedUser;
 }) {
   const [selectedRole, setSelectedRole] = useState<string>(typeof user.role === 'string' ? user.role : 'resource_user');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
@@ -100,12 +100,8 @@ function UserRow({
   const currentRole = typeof user.role === 'string' ? user.role : 'resource_user';
 
   // Check if this is the current user (self-modification prevention)
-  // Use multiple comparison methods to ensure proper identification
-  const isCurrentUser =
-    user.username?.trim() === currentUsername?.trim() ||
-    user.username === currentUserInfo?.username ||
-    (currentUserInfo?.email && user.username === currentUserInfo.email) ||
-    (currentUserInfo?.user_id && user.user_id === currentUserInfo.user_id);
+  // Simple comparison using user_id for reliable identification
+  const isCurrentUser = currentUserInfo?.auth_status === 'logged_in' && user.user_id === currentUserInfo.user_id;
 
   // Check if target user has higher role (hierarchy enforcement)
   const targetUserLevel = getRoleLevel(currentRole);
@@ -242,14 +238,14 @@ function UsersContent() {
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
   const noOpSortChange = () => {}; // No-op function
-  const getItemId = (user: UserInfoResponse) => user.username;
+  const getItemId = (user: UserInfo) => user.username;
 
-  const { data: currentUserInfo, isLoading: isLoadingUser } = useUser();
+  const { data: currentUserInfo, isLoading: isLoadingUser } = useAuthenticatedUser();
   const { data: usersData, isLoading: isLoadingUsers, error } = useAllUsers(page, pageSize);
 
   // Get current user's role and username for filtering
   const currentUserRole = typeof currentUserInfo?.role === 'string' ? currentUserInfo.role : '';
-  const currentUsername = typeof currentUserInfo?.username === 'string' ? currentUserInfo.username : '';
+  const currentUsername = currentUserInfo?.username || '';
 
   const columns = [
     { id: 'username', name: 'Username', sorted: false },
@@ -288,7 +284,7 @@ function UsersContent() {
   }
 
   const users = usersData?.users || [];
-  const total = usersData?.total || 0;
+  const total = usersData?.total_users || 0;
 
   return (
     <div className="space-y-4">

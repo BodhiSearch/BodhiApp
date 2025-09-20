@@ -1,6 +1,7 @@
 import ApiModelForm from '@/app/ui/api-models/ApiModelForm';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
@@ -110,7 +111,7 @@ describe('ApiModelForm', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       }),
       // API format endpoint
       rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) => {

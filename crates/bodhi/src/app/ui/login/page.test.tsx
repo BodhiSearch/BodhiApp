@@ -1,5 +1,6 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -37,7 +38,7 @@ describe('LoginContent loading states', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ logged_in: false }));
+        return res(ctx.delay(100), ctx.status(200), ctx.json(createMockLoggedOutUser()));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.delay(100), ctx.status(200), ctx.json({ status: 'ready' }));
@@ -58,7 +59,7 @@ describe('LoginContent with user not Logged In', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
+        return res(ctx.status(200), ctx.json(createMockLoggedOutUser()));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
@@ -310,7 +311,7 @@ describe('LoginContent with user Logged In', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.status(200), ctx.json(createMockLoggedInUser()));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));

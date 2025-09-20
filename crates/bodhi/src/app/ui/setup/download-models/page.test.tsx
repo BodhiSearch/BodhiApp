@@ -1,6 +1,7 @@
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams } from '@/lib/utils.test';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';
 import { rest } from 'msw';
@@ -78,7 +79,7 @@ describe('ModelDownloadPage access control', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
-            logged_in: false,
+            ...createMockLoggedOutUser(),
           })
         );
       }),
@@ -106,7 +107,7 @@ describe('ModelDownloadPage access control', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
-            logged_in: true,
+            ...createMockLoggedInUser(),
             username: 'user@email.com',
             role: 'resource_user',
           })
@@ -137,7 +138,7 @@ describe('ModelDownloadPage access control', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
-            logged_in: false,
+            ...createMockLoggedOutUser(),
           })
         );
       }),

@@ -1,37 +1,48 @@
-import { UserInfo, UserInfoResponse, UserListResponse } from '@bodhiapp/ts-client';
+import { UserInfo, UserListResponse, AppRole } from '@bodhiapp/ts-client';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 
 export const mockUser1: UserInfo = {
+  user_id: 'user1-id',
   username: 'user1@example.com',
+  first_name: 'User',
+  last_name: 'One',
   role: 'resource_user',
-  logged_in: true,
 };
 
 export const mockUser2: UserInfo = {
+  user_id: 'user2-id',
   username: 'user2@example.com',
+  first_name: 'User',
+  last_name: 'Two',
   role: 'resource_power_user',
-  logged_in: true,
 };
 
 export const mockManager: UserInfo = {
+  user_id: 'manager-id',
   username: 'manager@example.com',
+  first_name: 'Manager',
+  last_name: 'User',
   role: 'resource_manager',
-  logged_in: true,
 };
 
 export const mockAdmin: UserInfo = {
+  user_id: 'admin-id',
   username: 'admin@example.com',
+  first_name: 'Admin',
+  last_name: 'User',
   role: 'resource_admin',
-  logged_in: true,
 };
 
 export const mockMultiRoleUser: UserInfo = {
+  user_id: 'multi-id',
   username: 'multi@example.com',
+  first_name: 'Multi',
+  last_name: 'Role',
   role: 'resource_manager',
-  logged_in: true,
 };
 
-// UserInfoResponse objects for the users list API
-export const mockUserInfoResponse1: UserInfoResponse = {
+// UserInfo objects for the users list API
+export const mockUserInfo1: UserInfo = {
   user_id: 'user1-id',
   username: 'user1@example.com',
   role: 'resource_user',
@@ -39,7 +50,7 @@ export const mockUserInfoResponse1: UserInfoResponse = {
   last_name: 'One',
 };
 
-export const mockUserInfoResponse2: UserInfoResponse = {
+export const mockUserInfo2: UserInfo = {
   user_id: 'user2-id',
   username: 'user2@example.com',
   role: 'resource_power_user',
@@ -47,7 +58,7 @@ export const mockUserInfoResponse2: UserInfoResponse = {
   last_name: 'Two',
 };
 
-export const mockManagerInfoResponse: UserInfoResponse = {
+export const mockManagerInfoResponse: UserInfo = {
   user_id: 'manager-id',
   username: 'manager@example.com',
   role: 'resource_manager',
@@ -55,7 +66,7 @@ export const mockManagerInfoResponse: UserInfoResponse = {
   last_name: 'User',
 };
 
-export const mockAdminInfoResponse: UserInfoResponse = {
+export const mockAdminInfoResponse: UserInfo = {
   user_id: 'admin-id',
   username: 'admin@example.com',
   role: 'resource_admin',
@@ -63,7 +74,7 @@ export const mockAdminInfoResponse: UserInfoResponse = {
   last_name: 'User',
 };
 
-export const mockSecondAdminInfoResponse: UserInfoResponse = {
+export const mockSecondAdminInfoResponse: UserInfo = {
   user_id: 'admin2-id',
   username: 'admin2@example.com',
   role: 'resource_admin',
@@ -71,7 +82,7 @@ export const mockSecondAdminInfoResponse: UserInfoResponse = {
   last_name: 'Admin',
 };
 
-export const mockSecondManagerInfoResponse: UserInfoResponse = {
+export const mockSecondManagerInfoResponse: UserInfo = {
   user_id: 'manager2-id',
   username: 'manager2@example.com',
   role: 'resource_manager',
@@ -81,7 +92,7 @@ export const mockSecondManagerInfoResponse: UserInfoResponse = {
 
 // Mock simple paginated response for hook compatibility
 export const mockSimpleUsersResponse = {
-  users: [mockUserInfoResponse1, mockUserInfoResponse2, mockManagerInfoResponse, mockAdminInfoResponse],
+  users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse],
   total: 4,
   page: 1,
   page_size: 10,
@@ -89,13 +100,7 @@ export const mockSimpleUsersResponse = {
 
 // Mock response with multiple admins for testing admin-to-admin modifications
 export const mockMultipleAdminsResponse = {
-  users: [
-    mockUserInfoResponse1,
-    mockUserInfoResponse2,
-    mockManagerInfoResponse,
-    mockAdminInfoResponse,
-    mockSecondAdminInfoResponse,
-  ],
+  users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse, mockSecondAdminInfoResponse],
   total: 5,
   page: 1,
   page_size: 10,
@@ -103,13 +108,7 @@ export const mockMultipleAdminsResponse = {
 
 // Mock response with multiple managers for testing manager-to-manager modifications
 export const mockMultipleManagersResponse = {
-  users: [
-    mockUserInfoResponse1,
-    mockUserInfoResponse2,
-    mockManagerInfoResponse,
-    mockSecondManagerInfoResponse,
-    mockAdminInfoResponse,
-  ],
+  users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockSecondManagerInfoResponse, mockAdminInfoResponse],
   total: 5,
   page: 1,
   page_size: 10,
@@ -118,7 +117,7 @@ export const mockMultipleManagersResponse = {
 // Mock paginated users response
 export const mockUsersResponse: UserListResponse = {
   client_id: 'test-client-id',
-  users: [mockUserInfoResponse1, mockUserInfoResponse2, mockManagerInfoResponse, mockAdminInfoResponse],
+  users: [mockUserInfo1, mockUserInfo2, mockManagerInfoResponse, mockAdminInfoResponse],
   page: 1,
   page_size: 10,
   total_pages: 1,
@@ -136,27 +135,47 @@ export const mockEmptyUsersResponse = {
 
 // Helper function to create users with specific roles
 export const createMockUsersWithRoles = (roles: string[]): UserInfo[] => {
-  return roles.map((role, index) => ({
-    username: `${role}${index}@example.com`,
-    role: role as any,
-    logged_in: true,
-  }));
+  return roles.map((role, index) => {
+    const mockUser = createMockLoggedInUser({ username: `${role}${index}@example.com`, role });
+    if (mockUser.auth_status === 'logged_in') {
+      const { auth_status, ...userInfo } = mockUser;
+      return userInfo;
+    }
+    // Fallback for logged_out users (shouldn't happen in this context)
+    return {
+      user_id: `${role}${index}-id`,
+      username: `${role}${index}@example.com`,
+      first_name: null,
+      last_name: null,
+      role: role as AppRole,
+    };
+  });
 };
 
-// Helper function to create UserInfoResponse objects with specific roles
-export const createMockUserInfoResponses = (roles: string[]): UserInfoResponse[] => {
+// Helper function to create UserInfo objects with specific roles
+export const createMockUserInfos = (roles: string[]): UserInfo[] => {
   return roles.map((role, index) => ({
     user_id: `${role}${index}-id`,
     username: `${role}${index}@example.com`,
-    role: role,
+    role: role as AppRole,
     first_name: 'Test',
     last_name: `User${index}`,
   }));
 };
 
 // Mock for current admin user
-export const createMockCurrentAdminUser = (username = 'current-admin@example.com'): UserInfo => ({
-  username,
-  role: 'resource_admin',
-  logged_in: true,
-});
+export const createMockCurrentAdminUser = (username = 'current-admin@example.com'): UserInfo => {
+  const mockUser = createMockLoggedInUser({ username, role: 'resource_admin' });
+  if (mockUser.auth_status === 'logged_in') {
+    const { auth_status, ...userInfo } = mockUser;
+    return userInfo;
+  }
+  // Fallback
+  return {
+    user_id: 'admin-id',
+    username,
+    first_name: 'Admin',
+    last_name: 'User',
+    role: 'resource_admin' as AppRole,
+  };
+};

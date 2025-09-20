@@ -1,5 +1,6 @@
 import EditApiModel from '@/app/ui/api-models/edit/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
@@ -61,7 +62,7 @@ describe('EditApiModel Page', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       }),
       rest.get('*/api-models/test-api-model', (_, res, ctx) => {
         return res(ctx.json(mockApiModel));

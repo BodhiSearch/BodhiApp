@@ -1,4 +1,5 @@
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -76,7 +77,7 @@ describe('PullPage', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json(mockDownloadsResponse));
@@ -163,7 +164,7 @@ describe('PullPage access control', () => {
     );
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, username: 'test@example.com' }));
+        return res(ctx.json(createMockLoggedInUser()));
       })
     );
     await act(async () => {
@@ -178,7 +179,7 @@ describe('PullPage access control', () => {
         return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: false }));
+        return res(ctx.json(createMockLoggedOutUser()));
       })
     );
     await act(async () => {

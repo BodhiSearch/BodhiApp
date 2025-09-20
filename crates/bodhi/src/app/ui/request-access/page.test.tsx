@@ -7,6 +7,7 @@ import {
   mockUserAccessStatusPending,
   mockUserAccessStatusRejected,
 } from '@/test-fixtures/access-requests';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createAccessRequestHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
@@ -108,7 +109,7 @@ describe('RequestAccessPage Authentication and Access Control', () => {
   it('handles unauthenticated users by redirecting', async () => {
     server.use(
       ...createAccessRequestHandlers({
-        userInfo: { logged_in: false },
+        userInfo: createMockLoggedOutUser(),
       })
     );
 
@@ -143,7 +144,7 @@ describe('RequestAccessPage Error Handling', () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json({ logged_in: true, username: 'user@example.com' }))
+        res(ctx.json(createMockLoggedInUser({ username: 'user@example.com' })))
       ),
       // Make request status API return 404 (no request exists)
       rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
@@ -258,7 +259,7 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('displays request access form when user has no access request', async () => {
     server.use(
       ...createNoRequestHandlers({
-        logged_in: true,
+        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );
@@ -321,7 +322,7 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('shows request button with correct initial state', async () => {
     server.use(
       ...createNoRequestHandlers({
-        logged_in: true,
+        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );
@@ -423,7 +424,7 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('shows request access button for users without roles', async () => {
     server.use(
       ...createNoRequestHandlers({
-        logged_in: true,
+        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );

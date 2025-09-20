@@ -11,6 +11,7 @@ import {
   mockMultipleAdminsResponse,
   mockMultipleManagersResponse,
 } from '@/test-fixtures/users';
+import { createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createAccessRequestHandlers, createErrorHandlers, createRoleBasedHandlers } from '@/test-utils/msw-handlers';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
@@ -86,7 +87,7 @@ describe('UsersPage Role-Based Access Control', () => {
   it('renders page container for unauthenticated users (redirect handled by AppInitializer)', async () => {
     server.use(
       ...createAccessRequestHandlers({
-        userInfo: { logged_in: false },
+        userInfo: createMockLoggedOutUser(),
       })
     );
 
