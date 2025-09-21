@@ -11,14 +11,6 @@ import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
 import { LocalModelFormPage } from '../../../pages/LocalModelFormPage.mjs';
 import { ChatPage } from '../../../pages/ChatPage.mjs';
 import { LocalModelFixtures } from '../../../fixtures/localModelFixtures.mjs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '..', '..', '..', '..', '..', '..');
-const hfHomePath = join(projectRoot, 'hf-home');
 
 test.describe('Local Model Alias Management - Consolidated User Journeys', () => {
   let serverManager;
@@ -52,9 +44,6 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
       clientSecret: resourceClient.clientSecret,
       port,
       host: 'localhost',
-      envVars: {
-        HF_HOME: hfHomePath,
-      },
     });
 
     baseUrl = await serverManager.startServer();

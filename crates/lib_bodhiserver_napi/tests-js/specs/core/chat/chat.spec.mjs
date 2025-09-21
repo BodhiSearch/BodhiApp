@@ -6,14 +6,6 @@ import {
 } from '../../../playwright/auth-server-client.mjs';
 import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
 import { randomPort } from '../../../test-helpers.mjs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '..', '..', '..', '..', '..', '..');
-const hfHomePath = join(projectRoot, 'hf-home');
 
 import { LoginPage } from '../../../pages/LoginPage.mjs';
 import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
@@ -62,7 +54,6 @@ test.describe('Chat Interface - Core Functionality', () => {
       clientSecret: resourceClient.clientSecret,
       port,
       host: 'localhost',
-      envVars: { HF_HOME: hfHomePath },
     });
 
     baseUrl = await serverManager.startServer();

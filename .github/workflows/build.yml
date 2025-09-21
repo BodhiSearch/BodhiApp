@@ -151,6 +151,7 @@ jobs:
           npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
         env:
           CI: true
+          HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
           BODHI_EXEC_VARIANT: cpu
 
       - name: Publish NAPI binding test results
@@ -170,6 +171,7 @@ jobs:
           npm run test:playwright:ci
         env:
           CI: true
+          HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
           BODHI_EXEC_VARIANT: cpu
           PLAYWRIGHT_HEADLESS: true
           PLAYWRIGHT_TIMEOUT: 30000

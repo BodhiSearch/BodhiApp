@@ -35,13 +35,50 @@ function createTempDir() {
 }
 
 /**
+ * Get HF_HOME path with fallback logic
+ * Priority:
+ * 1. Explicitly passed hfHomePath
+ * 2. If CI=true, use HF_HOME env var if set
+ * 3. Default fallback to {project_root}/hf-home
+ * @param {string|null} explicitPath - Explicit path override
+ * @returns {string} HF_HOME path to use
+ */
+function getHfHomePath(explicitPath = null) {
+  if (explicitPath) {
+    return explicitPath;
+  }
+
+  // Check if running in CI
+  if (process.env.CI === 'true' && process.env.HF_HOME) {
+    return process.env.HF_HOME;
+  }
+
+  // Default fallback to project-root/hf-home
+  const projectRoot = join(__dirname, '..', '..', '..');
+  const defaultPath = join(projectRoot, 'hf-home');
+  return defaultPath;
+}
+
+/**
  * Create a test server with a temporary directory
  * @param {Object} bindings - The NAPI bindings
  * @param {Object} options - Configuration options
  * @returns {Object} BodhiServer instance
  */
 function createTestServer(bindings, options = {}) {
-  const config = createFullTestConfig(bindings, options);
+  const hfHomePath = getHfHomePath(options.hfHomePath);
+  console.log(`Using HF_HOME: ${hfHomePath}`);
+
+  const envVars = {
+    ...options.envVars,
+    HF_HOME: hfHomePath
+  };
+
+  const config = createFullTestConfig(bindings, {
+    ...options,
+    envVars
+  });
+
   const server = new bindings.BodhiServer(config);
   return server;
 }
@@ -187,6 +224,7 @@ export {
   createTempDir,
   createTestServer,
   getCurrentPath,
+  getHfHomePath,
   getLocalNetworkIP,
   loadBindings,
   randomPort,
