@@ -1,0 +1,39 @@
+name: build-only
+description: Execute build without tests for faster CI
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  target:
+    description: "Target to build for"
+    required: true
+
+outputs:
+  coverage-success:
+    description: "Whether build was successful"
+    value: ${{ steps.build.outcome == 'success' }}
+
+runs:
+  using: composite
+  steps:
+    - name: Clean build environment
+      shell: bash
+      run: make ci.clean
+
+    - name: Build without tests
+      id: build
+      shell: bash
+      run: make ci.build-only
+      env:
+        CI_DEFAULT_VARIANT: cpu
+
+    - name: Upload llama_server_proc binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: llama-server-binaries-${{ inputs.target }}
+        path: crates/llama_server_proc/bin/
+        retention-days: 1
+
+    - name: Run UI Tests
+      shell: bash
+      run: make ci.ui.unit
