@@ -4,6 +4,9 @@ inputs:
   platform:
     description: "Platform to build for"
     required: true
+  hf-home:
+    description: "HuggingFace home directory path"
+    required: true
 
 runs:
   using: composite
@@ -12,12 +15,14 @@ runs:
       uses: actions/cache@v4
       id: cache-hf
       with:
-        path: ${{ env.USER_HOME }}/.cache/huggingface
+        path: ${{ inputs.hf-home }}
         key: hf-cache-phi4-mini-instruct
         enableCrossOsArchive: true
 
     - name: Check and Download model
       if: steps.cache-hf.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        HF_HOME: ${{ inputs.hf-home }}
       run: |
-        huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf 
+        huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
