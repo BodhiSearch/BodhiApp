@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest-4-cores
     timeout-minutes: 30
     env:
-      HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
+      HF_HOME: /home/runner/.cache/huggingface
     outputs:
       coverage-success: ${{ steps.build-test.outputs.coverage-success }}
     steps:
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
+      HF_HOME: /home/runner/.cache/huggingface
     permissions:
       checks: write
       contents: read
