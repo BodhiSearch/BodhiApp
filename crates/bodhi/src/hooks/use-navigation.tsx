@@ -145,6 +145,11 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
       const docsSubItem = docsItem?.items?.find((item) => item.href === '/docs/');
       return { item: docsSubItem!, parent: docsItem! };
     }
+    if (pathname?.startsWith('/ui/users/')) {
+      const settingsItem = items.find((item) => item.title === 'Settings');
+      const usersSubItem = settingsItem?.items?.find((item) => item.href === '/ui/users/');
+      return { item: usersSubItem!, parent: settingsItem! };
+    }
     const topLevelItem = items.find((item) => item.href === pathname);
     if (topLevelItem) {
       return { item: topLevelItem, parent: null };
