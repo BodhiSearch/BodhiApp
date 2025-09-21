@@ -21,6 +21,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest-4-cores
     timeout-minutes: 30
+    env:
+      HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
     outputs:
       coverage-success: ${{ steps.build-test.outputs.coverage-success }}
     steps:
@@ -47,6 +49,7 @@ jobs:
         uses: ./.github/actions/setup-models
         with:
           platform: ubuntu-latest
+          hf-home: ${{ env.HF_HOME }}
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
@@ -82,6 +85,8 @@ jobs:
     if: needs.build-and-test.outputs.coverage-success == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
     permissions:
       checks: write
       contents: read
@@ -89,6 +94,18 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          platform: ubuntu-latest
+          gh-pat: ${{ secrets.GH_PAT }}
+
+      - name: Setup models
+        uses: ./.github/actions/setup-models
+        with:
+          platform: ubuntu-latest
+          hf-home: ${{ env.HF_HOME }}
 
       - name: Setup Playwright
         uses: ./.github/actions/setup-playwright
@@ -151,7 +168,6 @@ jobs:
           npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
         env:
           CI: true
-          HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
           BODHI_EXEC_VARIANT: cpu
 
       - name: Publish NAPI binding test results
@@ -171,7 +187,6 @@ jobs:
           npm run test:playwright:ci
         env:
           CI: true
-          HF_HOME: ${{ env.USER_HOME }}/.cache/huggingface
           BODHI_EXEC_VARIANT: cpu
           PLAYWRIGHT_HEADLESS: true
           PLAYWRIGHT_TIMEOUT: 30000
