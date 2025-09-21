@@ -350,7 +350,7 @@ export class AuthServerTestClient {
       const errorText = await response.text();
       console.log('Assign user role failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
-      throw new Error(`Failed to assign user role: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to assign user role: ${response.status} ${response.statusText}, url: ${assignRoleUrl}, user_id: ${userId}, role: ${role}`);
     }
   }
 
