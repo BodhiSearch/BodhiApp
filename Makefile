@@ -34,6 +34,11 @@ ci.clean: ## Clean all cargo packages
 ci.coverage: ## Run coverage in CI environment
 	$(MAKE) coverage
 
+ci.build-only: ## Build without running tests for faster CI
+	cargo build -p llama_server_proc; \
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
+	cargo build --all-features $$PACKAGES
+
 clean.ui: ## Clean UI
 	rm -rf crates/bodhi/out
 	cargo clean -p lib_bodhiserver -p bodhi && rm -rf crates/lib_bodhiserver_napi/app-bindings.*.node

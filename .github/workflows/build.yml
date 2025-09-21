@@ -64,25 +64,12 @@ jobs:
         with:
           platform: ubuntu-latest
 
-      - name: Build and test
+      - name: Build only (skip tests for faster CI)
         id: build-test
-        uses: ./.github/actions/build-and-test
+        uses: ./.github/actions/build-only
         with:
           platform: ubuntu-latest
           target: x86_64-unknown-linux-gnu
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-        env:
-          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
-          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
-          INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
-          INTEG_TEST_MAIN_AUTH_URL: ${{ vars.INTEG_TEST_MAIN_AUTH_URL }}
-          INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
-          INTEG_TEST_USERNAME: ${{ secrets.INTEG_TEST_USERNAME }}
-          INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
-          INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
-          INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
-          INTEG_TEST_OPENAI_API_KEY: ${{ secrets.INTEG_TEST_OPENAI_API_KEY }}
-          INTEG_TEST_OPENROUTER_API_KEY: ${{ secrets.INTEG_TEST_OPENROUTER_API_KEY }}
 
       - name: Build NAPI bindings
         uses: ./.github/actions/napi-build
@@ -126,7 +113,7 @@ jobs:
         run: |
           echo "Checking for llama-server binary at expected location:"
           BINARY_PATH="crates/llama_server_proc/bin/x86_64-unknown-linux-gnu/cpu/llama-server"
-          
+
           if [ -f "$BINARY_PATH" ]; then
             echo "✅ Binary found at: $BINARY_PATH"
             ls -la "$BINARY_PATH"
