@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { DataTable, Pagination } from '@/components/DataTable';
@@ -49,6 +49,12 @@ function UserRow({
   const [selectedRole, setSelectedRole] = useState<string>(typeof user.role === 'string' ? user.role : 'resource_user');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+
+  // Sync selectedRole with user.role when props change
+  useEffect(() => {
+    const currentRole = typeof user.role === 'string' ? user.role : 'resource_user';
+    setSelectedRole(currentRole);
+  }, [user.role]);
   const { showSuccess, showError } = useToastMessages();
 
   const { mutate: changeRole, isLoading: isChangingRole } = useChangeUserRole({
@@ -87,7 +93,10 @@ function UserRow({
   };
 
   const handleRemoveUser = () => {
-    setShowRemoveDialog(true);
+    // Use setTimeout to ensure click event completes before dialog opens
+    setTimeout(() => {
+      setShowRemoveDialog(true);
+    }, 0);
   };
 
   const confirmRemoveUser = () => {
@@ -204,7 +213,16 @@ function UserRow({
       </AlertDialog>
 
       {/* Remove User Confirmation Dialog */}
-      <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+      <AlertDialog
+        open={showRemoveDialog}
+        onOpenChange={(open) => {
+          if (!open && !isRemoving) {
+            // Dialog is closing and not due to successful removal
+            // Just close the dialog
+          }
+          setShowRemoveDialog(open);
+        }}
+      >
         <AlertDialogContent data-testid="remove-user-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle data-testid="remove-user-title">Remove User Access</AlertDialogTitle>

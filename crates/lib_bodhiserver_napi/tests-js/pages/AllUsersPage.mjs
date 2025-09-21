@@ -11,8 +11,8 @@ export class AllUsersPage extends BasePage {
     usersPage: '[data-testid="users-page"]',
 
     // Navigation links
-    pendingRequestsLink: 'a[href="/ui/access-requests/pending"]',
-    allRequestsLink: 'a[href="/ui/access-requests"]',
+    pendingRequestsLink: 'a[href="/ui/users/pending"]',
+    allRequestsLink: 'a[href="/ui/users/access-requests"]',
     usersLink: 'a[href="/ui/users"]',
 
     // Table structure
@@ -377,12 +377,12 @@ export class AllUsersPage extends BasePage {
   // Additional methods for UI restriction testing
 
   async navigateToPendingRequests() {
-    await this.navigate('/ui/access-requests/pending');
+    await this.navigate('/ui/users/pending');
     await this.waitForSPAReady();
   }
 
   async navigateToAllRequests() {
-    await this.navigate('/ui/access-requests');
+    await this.navigate('/ui/users/access-requests');
     await this.waitForSPAReady();
   }
 

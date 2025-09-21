@@ -8,8 +8,8 @@ export class UsersManagementPage extends BasePage {
 
   selectors = {
     // Navigation
-    pendingRequestsLink: 'a[href="/ui/access-requests/pending"]',
-    allRequestsLink: 'a[href="/ui/access-requests"]',
+    pendingRequestsLink: 'a[href="/ui/users/pending"]',
+    allRequestsLink: 'a[href="/ui/users/access-requests"]',
     usersLink: 'a[href="/ui/users"]',
 
     // Page containers
@@ -43,13 +43,13 @@ export class UsersManagementPage extends BasePage {
   };
 
   async navigateToPendingRequests() {
-    await this.navigate('/ui/access-requests/pending');
+    await this.navigate('/ui/users/pending');
     await this.waitForSPAReady();
     await this.expectVisible(this.selectors.pendingRequestsPage);
   }
 
   async navigateToAllRequests() {
-    await this.navigate('/ui/access-requests');
+    await this.navigate('/ui/users/access-requests');
     await this.waitForSPAReady();
   }
 
@@ -60,7 +60,7 @@ export class UsersManagementPage extends BasePage {
   }
 
   async expectPendingRequestsPage() {
-    await expect(this.page).toHaveURL(/\/ui\/access-requests\/pending/);
+    await expect(this.page).toHaveURL(/\/ui\/users\/pending/);
     await this.expectVisible(this.selectors.pendingRequestsPage);
   }
 

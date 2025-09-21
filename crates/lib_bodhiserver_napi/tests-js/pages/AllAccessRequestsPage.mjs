@@ -44,13 +44,13 @@ export class AllAccessRequestsPage extends UsersManagementPage {
 
   // Navigation methods
   async navigateToAllRequests() {
-    await this.navigate('/ui/access-requests');
+    await this.navigate('/ui/users/access-requests');
     await this.waitForSPAReady();
     await this.expectVisible(this.allRequestsSelectors.pageContainer);
   }
 
   async expectAllRequestsPage() {
-    await expect(this.page).toHaveURL(/\/ui\/access-requests\/?$/);
+    await expect(this.page).toHaveURL(/\/ui\/users\/access-requests\/?$/);
     await this.expectVisible(this.allRequestsSelectors.pageContainer);
   }
 
