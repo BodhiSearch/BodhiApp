@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { Home, Settings } from 'lucide-react';
+import { Home, Settings, Users, BookText } from 'lucide-react';
 import type { NavigationItem } from '@/types/navigation';
 import { createWrapper } from '@/tests/wrapper';
 
@@ -22,9 +22,15 @@ describe('useNavigation', () => {
       icon: Home,
     },
     {
-      title: 'Parent',
+      title: 'Settings',
       icon: Settings,
       items: [
+        {
+          title: 'Manage Users',
+          href: '/ui/users/',
+          description: 'Manage users and access control',
+          icon: Users,
+        },
         {
           title: 'Child',
           href: '/ui/child/',
@@ -39,6 +45,18 @@ describe('useNavigation', () => {
               skip: true,
             },
           ],
+        },
+      ],
+    },
+    {
+      title: 'Documentation',
+      icon: BookText,
+      items: [
+        {
+          title: 'App Guide',
+          href: '/docs/',
+          description: 'User guides and documentation',
+          icon: BookText,
         },
       ],
     },
@@ -88,7 +106,7 @@ describe('useNavigation', () => {
 
     expect(result.current.currentItem.parent).toEqual(
       expect.objectContaining({
-        title: 'Parent',
+        title: 'Settings',
         items: expect.any(Array),
       })
     );
@@ -113,6 +131,34 @@ describe('useNavigation', () => {
       expect.objectContaining({
         title: 'Child',
         href: '/ui/child/',
+      })
+    );
+  });
+
+  it.each([
+    ['/ui/users/', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
+    ['/ui/users/pending', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
+    ['/ui/users/access-requests', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
+    ['/docs/', 'App Guide', '/docs/', 'User guides and documentation', 'Documentation'],
+  ])('should return %s > %s for %s paths', (pathname, expectedItemTitle, expectedHref, expectedDescription, expectedParentTitle) => {
+    mockUsePathname.mockReturnValue(pathname);
+
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: renderWithProvider,
+    });
+
+    expect(result.current.currentItem.item).toEqual(
+      expect.objectContaining({
+        title: expectedItemTitle,
+        href: expectedHref,
+        description: expectedDescription,
+      })
+    );
+
+    expect(result.current.currentItem.parent).toEqual(
+      expect.objectContaining({
+        title: expectedParentTitle,
+        items: expect.any(Array),
       })
     );
   });
