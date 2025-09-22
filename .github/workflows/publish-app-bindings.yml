@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'bodhi-app-bindings/v*'
+  workflow_dispatch:
 
 # Prevent concurrent releases
 concurrency:
