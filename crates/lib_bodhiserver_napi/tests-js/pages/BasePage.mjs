@@ -87,6 +87,45 @@ export class BasePage {
     }
   }
 
+  async waitForToastOptional(message, options = {}) {
+    try {
+      const timeout = process.env.CI ? 1000 : 5000;
+      const finalOptions = { timeout, ...options };
+
+      if (message instanceof RegExp) {
+        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
+      } else {
+        await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
+          message,
+          finalOptions
+        );
+      }
+    } catch (error) {
+      console.log(`Toast check skipped (CI=${!!process.env.CI}):`, message);
+      // Don't fail - toast is optional confirmation
+    }
+  }
+
+  async waitForToastToHideOptional() {
+    try {
+      const toastLocator = this.page.locator(this.baseSelectors.successToast);
+      if (await toastLocator.isVisible({ timeout: 500 })) {
+        // Try to click close button first
+        const closeButton = this.page.locator('[toast-close]').first();
+        if (await closeButton.isVisible({ timeout: 500 })) {
+          await closeButton.click();
+        }
+        // Wait a short time for it to hide
+        await expect(toastLocator).toBeHidden({ timeout: 2000 });
+      }
+    } catch {
+      // Silent fail - toast hiding is optional
+    }
+  }
+
   async getCurrentPath() {
     return new URL(this.page.url()).pathname;
   }

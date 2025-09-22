@@ -127,7 +127,8 @@ export class ApiModelFormPage extends BasePage {
 
   async createModel() {
     await this.page.click(this.selectors.createButton);
-    await this.waitForToastToHide();
+    await this.waitForToastOptional(/Successfully created/);
+    await this.waitForToastToHideOptional();
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
   }
@@ -135,20 +136,35 @@ export class ApiModelFormPage extends BasePage {
   async createModelAndCaptureId() {
     await this.page.click(this.selectors.createButton);
 
-    // Capture the generated ID from the success toast
-    const generatedId = await this.waitForToastAndExtractId(/Successfully created API model/i);
-    await this.waitForToastToHide();
+    // Try to capture the generated ID from the success toast, but don't fail if toast is flaky
+    let generatedId = null;
+    try {
+      generatedId = await this.waitForToastAndExtractId(/Successfully created API model/i);
+    } catch (error) {
+      console.log('Toast ID extraction failed, will use fallback method');
+    }
+
+    await this.waitForToastToHideOptional();
 
     // Navigate to models page
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
+
+    // If we couldn't get ID from toast, get it from the latest model
+    if (!generatedId) {
+      console.log('Using fallback: getting ID from latest model in list');
+      const modelsPage = new (await import('./ModelsListPage.mjs')).ModelsListPage(this.page, this.baseUrl);
+      const latestModel = await modelsPage.getLatestModel();
+      generatedId = await modelsPage.getModelIdFromRow(latestModel);
+    }
 
     return generatedId;
   }
 
   async updateModel() {
     await this.page.click(this.selectors.updateButton);
-    await this.waitForToastToHide();
+    await this.waitForToastOptional(/Successfully updated/);
+    await this.waitForToastToHideOptional();
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
   }

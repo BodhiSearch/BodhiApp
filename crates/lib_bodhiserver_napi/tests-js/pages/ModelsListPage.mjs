@@ -195,4 +195,79 @@ export class ModelsListPage extends BasePage {
     const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
     await expect(modelRow).toBeVisible();
   }
+
+  // Property-based verification methods (CI-friendly)
+  async getModelCount() {
+    await this.waitForSelector(this.selectors.table);
+    await this.waitForSelector(`${this.selectors.table} tbody tr`);
+    const rows = await this.page.locator(`${this.selectors.table} tbody tr`).count();
+    return rows;
+  }
+
+  async findModelByProperties(baseUrl, apiFormat) {
+    await this.waitForSelector(this.selectors.table);
+    await this.waitForSelector(`${this.selectors.table} tbody tr`);
+
+    const rows = await this.page.locator(`${this.selectors.table} tbody tr`).all();
+    for (const row of rows) {
+      try {
+        // Get text from URL and format columns (adjust indices as needed)
+        const urlText = await row.locator('td:nth-child(3)').textContent();
+        const formatText = await row.locator('td:nth-child(2)').textContent();
+
+        if (urlText && urlText.includes(baseUrl) && formatText && formatText.includes(apiFormat)) {
+          return row;
+        }
+      } catch {
+        // Skip rows that don't have the expected structure
+        continue;
+      }
+    }
+    return null;
+  }
+
+  async verifyModelByProperties(baseUrl, apiFormat, expectedModels = []) {
+    const modelRow = await this.findModelByProperties(baseUrl, apiFormat);
+    expect(modelRow).not.toBeNull();
+
+    // Optionally verify selected models if provided
+    if (expectedModels.length > 0) {
+      const modelText = await modelRow.textContent();
+      for (const model of expectedModels) {
+        expect(modelText).toContain(model);
+      }
+    }
+  }
+
+  async editModelByProperties(baseUrl, apiFormat) {
+    const modelRow = await this.findModelByProperties(baseUrl, apiFormat);
+    expect(modelRow).not.toBeNull();
+
+    const editBtn = modelRow.locator('[data-testid*="edit"], button:has-text("Edit")').first();
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    await this.waitForUrl('/ui/api-models/edit/');
+    await this.waitForSPAReady();
+  }
+
+  async getLatestModel() {
+    await this.waitForSelector(this.selectors.table);
+    await this.waitForSelector(`${this.selectors.table} tbody tr`);
+
+    // Get the first row (assuming models are sorted with newest first)
+    const firstRow = this.page.locator(`${this.selectors.table} tbody tr`).first();
+    await expect(firstRow).toBeVisible();
+    return firstRow;
+  }
+
+  async getModelIdFromRow(row) {
+    // Try to extract ID from the first column (alias/ID column)
+    try {
+      const idText = await row.locator('td:first-child').textContent();
+      return idText?.trim();
+    } catch {
+      return null;
+    }
+  }
 }

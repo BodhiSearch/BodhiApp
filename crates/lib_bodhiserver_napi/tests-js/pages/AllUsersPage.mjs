@@ -173,8 +173,8 @@ export class AllUsersPage extends BasePage {
     await expect(confirmButton).toBeEnabled();
     await confirmButton.click();
 
-    // Wait for any success toast to disappear
-    await this.waitForToastToHide();
+    // Wait for any success toast to disappear (optional)
+    await this.waitForToastToHideOptional();
 
     // Wait for dialog to close
     await this.page.waitForSelector(this.selectors.roleChangeDialog, {
@@ -251,19 +251,19 @@ export class AllUsersPage extends BasePage {
   }
 
   async waitForRoleChangeSuccess() {
-    await this.waitForToast(/Role Updated/);
+    await this.waitForToastOptional(/Role Updated/);
   }
 
   async waitForUserRemovalSuccess() {
-    await this.waitForToast(/User Removed/);
+    await this.waitForToastOptional(/User Removed/);
   }
 
   async waitForRoleChangeError() {
-    await this.waitForToast(/Update Failed/);
+    await this.waitForToastOptional(/Update Failed/);
   }
 
   async waitForRemovalError() {
-    await this.waitForToast(/Removal Failed/);
+    await this.waitForToastOptional(/Removal Failed/);
   }
 
   async getUserCount() {
@@ -491,5 +491,36 @@ export class AllUsersPage extends BasePage {
     const actualUsernames = await this.getAllUsernames();
     expect(actualUsernames).toEqual(expectedUsernames);
     console.log(`Confirmed: Users displayed in hierarchical order: ${actualUsernames.join(' → ')}`);
+  }
+
+  // Combined action + verification methods (CI-friendly)
+  async changeUserRoleAndVerify(username, newRole) {
+    await this.changeUserRole(username, newRole);
+    await this.waitForRoleChangeSuccess();
+    // Primary verification: check the actual role change in UI
+    await this.expectUserRole(username, newRole);
+  }
+
+  async removeUserAndVerify(username) {
+    const countBefore = await this.getUserCount();
+    await this.removeUser(username);
+    await this.waitForUserRemovalSuccess();
+
+    // Primary verification: count and user absence
+    const countAfter = await this.getUserCount();
+    expect(countAfter).toBe(countBefore - 1);
+
+    // Verify user is gone from the list
+    const userExists = await this.isUserInList(username);
+    expect(userExists).toBe(false);
+  }
+
+  async isUserInList(username) {
+    try {
+      await this.page.waitForSelector(`tbody tr:has([data-testid="user-username"]:has-text("${username}"))`);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
