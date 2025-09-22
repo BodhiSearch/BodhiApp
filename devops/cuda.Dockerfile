@@ -64,7 +64,7 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
 # Copy TS client source and generate types
 COPY ts-client/ ts-client/
 COPY openapi.json ./
-RUN cd ts-client && npm ci && npm run build:docker
+RUN cd ts-client && npm ci && npm run build:openapi
 
 # === APPLICATION BUILD STAGE ===
 # Copy all crate source files and restore original Cargo.toml
