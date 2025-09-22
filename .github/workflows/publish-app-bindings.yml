@@ -81,6 +81,9 @@ jobs:
       - name: Build
         working-directory: crates/lib_bodhiserver_napi
         run: ${{ matrix.settings.build }}
+        env:
+          CI_RELEASE: true
+          GH_PAT: ${{ secrets.GH_PAT }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
