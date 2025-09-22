@@ -1,0 +1,208 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches:
+      - main
+      - working
+    paths:
+      - 'crates/**'
+      - 'xtask/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+
+jobs:
+  playwright-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_HOME: /home/runner/.cache/huggingface
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          platform: ubuntu-latest
+          gh-pat: ${{ secrets.GH_PAT }}
+
+      - name: Setup models
+        uses: ./.github/actions/setup-models
+        with:
+          platform: ubuntu-latest
+          hf-home: ${{ env.HF_HOME }}
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          platform: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+        with:
+          platform: ubuntu-latest
+
+      - name: Build llama_server_proc binary
+        shell: bash
+        run: |
+          cargo build -p llama_server_proc
+        env:
+          CI_DEFAULT_VARIANT: cpu
+
+      - name: Build NAPI bindings
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
+        with:
+          platform: ubuntu-latest
+          working-directory: crates/lib_bodhiserver_napi
+
+      - name: Verify llama-server binary exists and set permissions
+        shell: bash
+        run: |
+          echo "Checking for llama-server binary at expected location:"
+          BINARY_PATH="crates/llama_server_proc/bin/x86_64-unknown-linux-gnu/cpu/llama-server"
+
+          if [ -f "$BINARY_PATH" ]; then
+            echo "✅ Binary found at: $BINARY_PATH"
+            ls -la "$BINARY_PATH"
+            chmod +x "$BINARY_PATH"
+          else
+            echo "❌ Binary not found at expected location!"
+            echo "Contents of crates/llama_server_proc/bin/:"
+            find crates/llama_server_proc/bin -type f 2>/dev/null || echo "bin directory not found"
+            exit 1
+          fi
+
+      - name: Verify NAPI bindings exist
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          if [ ! -f app-bindings.*.node ]; then
+            echo "Error: NAPI bindings not found. Build may have failed."
+            exit 1
+          fi
+          echo "✅ NAPI bindings found:"
+          ls -la app-bindings.*.node
+          ls -la index.*
+
+      - name: Run NAPI binding tests
+        id: napi-tests
+        continue-on-error: true
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
+        env:
+          CI: true
+          BODHI_EXEC_VARIANT: cpu
+
+      - name: Publish NAPI binding test results
+        uses: dorny/test-reporter@v1
+        if: (success() || failure()) && steps.napi-tests.outcome != 'skipped'
+        with:
+          name: NAPI Binding Tests (Linux)
+          path: crates/lib_bodhiserver_napi/test-results/vitest-junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Run Playwright tests
+        id: playwright-run
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          npm run test:playwright:ci
+        env:
+          CI: true
+          BODHI_EXEC_VARIANT: cpu
+          PLAYWRIGHT_HEADLESS: true
+          PLAYWRIGHT_TIMEOUT: 30000
+          INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
+          INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
+          INTEG_TEST_MAIN_AUTH_URL: ${{ vars.INTEG_TEST_MAIN_AUTH_URL }}
+          INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
+          INTEG_TEST_USER_ADMIN: ${{ secrets.INTEG_TEST_USER_ADMIN }}
+          INTEG_TEST_USER_ADMIN_ID: ${{ secrets.INTEG_TEST_USER_ADMIN_ID }}
+          INTEG_TEST_USER_MANAGER: ${{ secrets.INTEG_TEST_USER_MANAGER }}
+          INTEG_TEST_USER_MANAGER_ID: ${{ secrets.INTEG_TEST_USER_MANAGER_ID }}
+          INTEG_TEST_USER_POWER_USER: ${{ secrets.INTEG_TEST_USER_POWER_USER }}
+          INTEG_TEST_USER_POWER_USER_ID: ${{ secrets.INTEG_TEST_USER_POWER_USER_ID }}
+          INTEG_TEST_USERNAME: ${{ secrets.INTEG_TEST_USERNAME }}
+          INTEG_TEST_USERNAME_ID: ${{ secrets.INTEG_TEST_USERNAME_ID }}
+          INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
+          INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
+          INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
+          INTEG_TEST_OPENAI_API_KEY: ${{ secrets.INTEG_TEST_OPENAI_API_KEY }}
+          INTEG_TEST_OPENROUTER_API_KEY: ${{ secrets.INTEG_TEST_OPENROUTER_API_KEY }}
+
+      - name: Publish Playwright test results
+        uses: dorny/test-reporter@v1
+        if: (success() || failure()) && steps.playwright-run.outcome != 'skipped'
+        with:
+          name: Playwright Tests (Linux)
+          path: crates/lib_bodhiserver_napi/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload test results on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-playwright
+          path: |
+            crates/lib_bodhiserver_napi/test-results/
+            crates/lib_bodhiserver_napi/playwright-report/
+          retention-days: 7
+
+      - name: Check test results and fail if any failed
+        if: always()
+        shell: bash
+        run: |
+          echo "Checking test results..."
+          echo "NAPI tests outcome: ${{ steps.napi-tests.outcome }}"
+          echo "Playwright tests outcome: ${{ steps.playwright-run.outcome }}"
+
+          if [[ "${{ steps.napi-tests.outcome }}" == "failure" ]]; then
+            echo "❌ NAPI binding tests failed"
+            TESTS_FAILED=true
+          fi
+
+          if [[ "${{ steps.playwright-run.outcome }}" == "failure" ]]; then
+            echo "❌ Playwright tests failed"
+            TESTS_FAILED=true
+          fi
+
+          if [[ "$TESTS_FAILED" == "true" ]]; then
+            echo "💔 One or more test suites failed. Check uploaded artifacts for details."
+            exit 1
+          else
+            echo "✅ All test suites passed!"
+          fi
