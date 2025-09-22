@@ -70,6 +70,11 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           platform: ${{ matrix.settings.host }}
+      - name: Build TypeScript client from checked-in OpenAPI spec
+        working-directory: ts-client
+        run: |
+          npm ci
+          npm run build:openapi
       - name: Install dependencies
         working-directory: crates/lib_bodhiserver_napi
         run: npm ci
