@@ -146,6 +146,41 @@ export class BasePage {
     return await this.page.waitForSelector(selector, options);
   }
 
+  async dismissAllToasts() {
+    try {
+      // Find all visible toasts and close buttons
+      const toastCloseButtons = await this.page.locator('[data-radix-toast-announce-exclude] button').all();
+
+      // Click all close buttons to dismiss toasts
+      for (const closeButton of toastCloseButtons) {
+        try {
+          if (await closeButton.isVisible()) {
+            await closeButton.click();
+          }
+        } catch {
+          // Continue if a specific button fails
+        }
+      }
+
+      // Also try the generic close button selector
+      const genericCloseButtons = await this.page.locator('button[aria-label="Close"]').all();
+      for (const closeButton of genericCloseButtons) {
+        try {
+          if (await closeButton.isVisible()) {
+            await closeButton.click();
+          }
+        } catch {
+          // Continue if a specific button fails
+        }
+      }
+
+      // Wait a brief moment for animations to complete
+      await this.page.waitForTimeout(200);
+    } catch {
+      // Silent fail - dismissing toasts is a best-effort operation
+    }
+  }
+
   async expectText(selector, text) {
     if (text instanceof RegExp) {
       await expect(this.page.locator(selector)).toContainText(text);
