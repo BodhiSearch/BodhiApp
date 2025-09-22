@@ -99,7 +99,6 @@ fn try_main(project_dir: &Path) -> Result<()> {
   };
   let variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| build.default.clone());
   set_build_envs(build, &variant)?;
-  clean()?;
   if env::var("CI_RELEASE").unwrap_or("false".to_string()) == "true" {
     let Ok(gh_pat) = env::var("GH_PAT") else {
       bail!("GH_PAT is not set");
@@ -127,6 +126,7 @@ fn try_main(project_dir: &Path) -> Result<()> {
     }
   } else {
     println!("building default variants");
+    clean()?;
     build_llama_server(build, &variant)?;
   }
   Ok(())
@@ -317,15 +317,36 @@ fn try_fetch_llama_server(
     );
   };
 
-  // Download each matching asset
+  // Download each matching asset with retry logic
   let download_url = &asset.browser_download_url;
   println!("cargo:warning=Downloading {}", download_url);
-  let response = client.get(download_url).send()?;
 
-  // Ensure the response is successful
-  if !response.status().is_success() {
-    bail!("Failed to download file: {}", download_url);
-  }
+  let mut attempts = 0;
+  let max_attempts = 3;
+  let response = loop {
+    attempts += 1;
+
+    match client.get(download_url).send() {
+      Ok(resp) if resp.status().is_success() => {
+        break resp;
+      }
+      Ok(resp) => {
+        let status = resp.status();
+        if attempts >= max_attempts {
+          bail!("Failed to download file after {} attempts: {} (status: {})", max_attempts, download_url, status);
+        }
+        println!("cargo:warning=Download failed with status {} (attempt {}/{}), retrying in 5s...", status, attempts, max_attempts);
+      }
+      Err(e) => {
+        if attempts >= max_attempts {
+          bail!("Failed to download file after {} attempts: {} (error: {})", max_attempts, download_url, e);
+        }
+        println!("cargo:warning=Download failed with error: {} (attempt {}/{}), retrying in 5s...", e, attempts, max_attempts);
+      }
+    }
+
+    thread::sleep(Duration::from_secs(5));
+  };
 
   // Create the target directory
   let target_dir = Path::new("bin").join(&build.target).join(variant);
