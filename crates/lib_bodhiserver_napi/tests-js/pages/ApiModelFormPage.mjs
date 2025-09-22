@@ -127,6 +127,7 @@ export class ApiModelFormPage extends BasePage {
 
   async createModel() {
     await this.page.click(this.selectors.createButton);
+    await this.waitForToastToHide();
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
   }
@@ -136,6 +137,7 @@ export class ApiModelFormPage extends BasePage {
 
     // Capture the generated ID from the success toast
     const generatedId = await this.waitForToastAndExtractId(/Successfully created API model/i);
+    await this.waitForToastToHide();
 
     // Navigate to models page
     await this.waitForUrl('/ui/models/');
@@ -146,6 +148,7 @@ export class ApiModelFormPage extends BasePage {
 
   async updateModel() {
     await this.page.click(this.selectors.updateButton);
+    await this.waitForToastToHide();
     await this.waitForUrl('/ui/models/');
     await this.waitForSPAReady();
   }

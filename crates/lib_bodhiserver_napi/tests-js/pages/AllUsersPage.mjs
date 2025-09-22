@@ -173,6 +173,9 @@ export class AllUsersPage extends BasePage {
     await expect(confirmButton).toBeEnabled();
     await confirmButton.click();
 
+    // Wait for any success toast to disappear
+    await this.waitForToastToHide();
+
     // Wait for dialog to close
     await this.page.waitForSelector(this.selectors.roleChangeDialog, {
       state: 'hidden',
