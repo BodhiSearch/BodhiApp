@@ -65,12 +65,20 @@ jobs:
         with:
           platform: ubuntu-latest
 
+      - name: Build TypeScript client from checked-in OpenAPI spec
+        working-directory: ts-client
+        run: |
+          npm ci
+          npm run build:openapi
+
       - name: Build llama_server_proc binary
         shell: bash
         run: |
           cargo build -p llama_server_proc
         env:
           CI_DEFAULT_VARIANT: cpu
+          CI_RELEASE: true
+          GH_PAT: ${{ secrets.GH_PAT }}
 
       - name: Build NAPI bindings
         shell: bash
