@@ -15,7 +15,7 @@
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
     "generate:types": "openapi-ts",
     "bundle": "npm run bundle:types && npm run bundle:esm && npm run bundle:cjs",
-    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && mkdir -p dist/types && cp -r src/types/* dist/types/",
+    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && cpy 'src/types/**' 'dist/types'",
     "bundle:esm": "esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.mjs --external:./types --allow-overwrite",
     "bundle:cjs": "esbuild src/index.ts --bundle --platform=neutral --format=cjs --outfile=dist/index.js --external:./types --allow-overwrite",
     "test": "vitest run",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.64.15",
     "@types/node": "^22.13.14",
+    "cpy-cli": "^5.0.0",
     "esbuild": "^0.20.2",
     "msw": "^2.7.3",
     "typescript": "^5.3.3",
