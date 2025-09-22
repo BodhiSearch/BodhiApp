@@ -14,4 +14,4 @@ build-x86_64-pc-windows-msvc-cuda-12.4:
 	pwsh scripts/build_target_cuda.win.ps1 -CudaVersion "12.4" -TargetArch "x86_64-pc-windows-msvc" -BuildType "cuda" || exit 1
 
 clean:
-	@pwsh -NoProfile -Command "$$ErrorActionPreference='Stop'; & scripts/clean.win.ps1" || exit 1
+	@pwsh -NoProfile -Command "& scripts/clean.win.ps1" || exit 1
