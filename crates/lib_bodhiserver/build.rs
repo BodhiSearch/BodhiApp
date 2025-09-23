@@ -14,9 +14,11 @@ fn main() {
 fn _main() -> anyhow::Result<()> {
   let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   let bodhi_dir = manifest_dir.join("../bodhi");
+  let project_root = manifest_dir.join("../..");
   let out_dir = bodhi_dir.join("out");
   // Build frontend
   if is_ci() || !out_dir.exists() {
+    ensure_ts_client_built(&project_root)?;
     build_frontend(&bodhi_dir)?;
   }
   // Validate assets exist
@@ -83,5 +85,49 @@ fn validate_frontend_assets(bodhi_dir: &Path) -> anyhow::Result<()> {
       out_dir
     );
   }
+  Ok(())
+}
+
+fn ensure_ts_client_built(project_root: &Path) -> anyhow::Result<()> {
+  let ts_client_dir = project_root.join("ts-client");
+  let ts_client_dist = ts_client_dir.join("dist");
+
+  if !ts_client_dist.exists() {
+    println!("cargo:warning=ts-client dist directory not found, building ts-client");
+    build_ts_client(&ts_client_dir)?;
+  }
+
+  Ok(())
+}
+
+fn build_ts_client(ts_client_dir: &Path) -> anyhow::Result<()> {
+  println!("cargo:warning=Building ts-client in {:?}", ts_client_dir);
+
+  // Install dependencies
+  let status = create_npm_command()
+    .args(["install"])
+    .current_dir(ts_client_dir)
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit())
+    .status()
+    .context("Failed to run npm install in ts-client")?;
+
+  if !status.success() {
+    bail!("npm install failed in ts-client");
+  }
+
+  // Build ts-client with OpenAPI generation
+  let status = create_npm_command()
+    .args(["run", "build:openapi"])
+    .current_dir(ts_client_dir)
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit())
+    .status()
+    .context("Failed to run npm run build:openapi in ts-client")?;
+
+  if !status.success() {
+    bail!("npm run build:openapi failed in ts-client");
+  }
+
   Ok(())
 }
