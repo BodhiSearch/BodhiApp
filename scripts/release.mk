@@ -50,6 +50,11 @@ define get_git_tag_version
 	LATEST_TAG=$$(git tag -l "$(1)*" --sort=-version:refname | head -n1 2>/dev/null); if [ -z "$$LATEST_TAG" ]; then echo "0.0.0"; else echo "$$LATEST_TAG" | sed "s/^$(1)//"; fi
 endef
 
+# Get latest app version from GitHub releases (handles v* to app/v* migration)
+define get_app_version
+	./scripts/get_github_release_version.js BodhiSearch/BodhiApp
+endef
+
 # Increment patch version using existing increment-version.js pattern
 define increment_version
 	./scripts/increment_version.js $(1)
