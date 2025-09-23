@@ -55,7 +55,7 @@ jobs:
       VERSION: ${{ steps.get_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Rewrite submodule URLs and checkout submodules
+      - name: Setup Git with PAT for for non-Windows
         if: matrix.platform != 'windows-latest'
         shell: bash
         run: |
@@ -63,7 +63,7 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
-      - name: Setup Git with PAT
+      - name: Setup Git with PAT for Windows
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
@@ -104,6 +104,12 @@ jobs:
             echo "Failed to update version"
             exit 1
           fi
+      - name: Build lib_bodhiserver to trigger frontend build
+        shell: bash
+        run: |
+          cargo build --release -p lib_bodhiserver
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
       - name: Build and Sign Application
         uses: tauri-apps/tauri-action@v0
         env:
