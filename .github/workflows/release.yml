@@ -3,7 +3,7 @@ name: App Release Flow
 on:
   push:
     tags:
-      - "v*"
+      - "app/v*"
   workflow_dispatch:
     inputs:
       draft:
@@ -102,15 +102,15 @@ jobs:
       - name: Set VERSION environment variable
         id: get_version
         run: |
-          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/app/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
             echo "TAG_BUILD=true" >> $GITHUB_OUTPUT
           else
             git fetch --tags
-            TAGS=$(git tag --list 'v0.*.*')
+            TAGS=$(git tag --list 'app/v0.*.*')
             MAX_VERSION="0.0.0"
             for TAG in $TAGS; do
-              VERSION=${TAG#v}
+              VERSION=${TAG#app/v}
               if [ "$(printf '%s\n' "$VERSION" "$MAX_VERSION" | sort -V | head -n1)" = "$MAX_VERSION" ]; then
                 MAX_VERSION=$VERSION
               fi
@@ -127,7 +127,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
+          tag_name: "app/v${{ steps.get_version.outputs.version }}"
           name: "Bodhi v${{ steps.get_version.outputs.version }}"
           body: "See the assets to download this version and install."
           draft: ${{ inputs.draft }}

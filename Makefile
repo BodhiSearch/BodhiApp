@@ -1,3 +1,6 @@
+# Include shared release utilities
+include scripts/release.mk
+
 .PHONY: help
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -80,36 +83,13 @@ ci.ui: ci.ui.unit ci.ui.integration
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
-	@CURRENT_BRANCH=$$(git branch --show-current) && \
-	if [ "$$CURRENT_BRANCH" != "main" ]; then \
-		read -p "Warning: You are not on main branch (current: $$CURRENT_BRANCH). Continue? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi && \
-	echo "Fetching latest changes from remote..." && \
-	git fetch origin main && \
-	LOCAL_HEAD=$$(git rev-parse HEAD) && \
-	REMOTE_HEAD=$$(git rev-parse origin/main) && \
-	if [ "$$LOCAL_HEAD" != "$$REMOTE_HEAD" ]; then \
-		echo "Warning: Your local main branch is different from origin/main" && \
-		echo "Local:  $$LOCAL_HEAD" && \
-		echo "Remote: $$REMOTE_HEAD" && \
-		read -p "Continue anyway? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi && \
-	cd ts-client && \
-	CURRENT_VERSION=$$(npm view @bodhiapp/ts-client version 2>/dev/null || echo "0.0.0") && \
-	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" && \
-	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
+	$(call check_git_branch)
+	@CURRENT_VERSION=$$($(call get_npm_version,@bodhiapp/ts-client)) && \
+	NEXT_VERSION=$$($(call increment_version,$$CURRENT_VERSION)) && \
 	echo "Current version on npmjs: $$CURRENT_VERSION" && \
 	echo "Next version to release: $$NEXT_VERSION" && \
 	TAG_NAME="ts-client/v$$NEXT_VERSION" && \
-	echo "Cleaning up any existing tag $$TAG_NAME..." && \
-	git tag -d "$$TAG_NAME" 2>/dev/null || true && \
-	git push --delete origin "$$TAG_NAME" 2>/dev/null || true && \
+	$(call delete_tag_if_exists,$$TAG_NAME) && \
 	echo "Creating new tag $$TAG_NAME..." && \
 	git tag "$$TAG_NAME" && \
 	git push origin "$$TAG_NAME" && \
@@ -136,51 +116,31 @@ ts-client: ## Build the TypeScript types package
 	@cd ts-client && npm install && npm run build && npm run test && npm run bundle
 	@echo "✓ ts-client package built successfully"
 
-# Function to check git branch status
-define check_git_branch
-	@CURRENT_BRANCH=$$(git branch --show-current) && \
-	if [ "$$CURRENT_BRANCH" != "main" ]; then \
-		read -p "Warning: You are not on main branch (current: $$CURRENT_BRANCH). Continue? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
+release-app: ## Create and push tag for native app release
+	@echo "Preparing to release native app..."
+	$(call check_git_branch)
+	@LATEST_TAG=$$($(call get_git_tag_version,app/v)) && \
+	if [ "$$LATEST_TAG" = "0.0.0" ]; then \
+		CURRENT_VERSION="0.0.0"; \
+		echo "No existing app releases found, starting with version 0.0.1"; \
+	else \
+		CURRENT_VERSION="$$LATEST_TAG"; \
 	fi && \
-	echo "Fetching latest changes from remote..." && \
-	git fetch origin main && \
-	LOCAL_HEAD=$$(git rev-parse HEAD) && \
-	REMOTE_HEAD=$$(git rev-parse origin/main) && \
-	if [ "$$LOCAL_HEAD" != "$$REMOTE_HEAD" ]; then \
-		echo "Warning: Your local main branch is different from origin/main" && \
-		echo "Local:  $$LOCAL_HEAD" && \
-		echo "Remote: $$REMOTE_HEAD" && \
-		read -p "Continue anyway? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi
-endef
-
-# Function to safely delete existing tag
-define delete_tag_if_exists
-	echo "Checking for existing tag $(1)..." && \
-	if git rev-parse "$(1)" >/dev/null 2>&1; then \
-		read -p "Tag $(1) already exists. Delete and recreate? [y/N] " confirm && \
-		if [ "$$confirm" = "y" ]; then \
-			echo "Deleting existing tag $(1)..." && \
-			git tag -d "$(1)" 2>/dev/null || true && \
-			git push --delete origin "$(1)" 2>/dev/null || true; \
-		else \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi
-endef
+	NEXT_VERSION=$$($(call increment_version,$$CURRENT_VERSION)) && \
+	echo "Current version: $$CURRENT_VERSION" && \
+	echo "Next version: $$NEXT_VERSION" && \
+	TAG_NAME="app/v$$NEXT_VERSION" && \
+	$(call delete_tag_if_exists,$$TAG_NAME) && \
+	echo "Creating tag $$TAG_NAME..." && \
+	git tag "$$TAG_NAME" && \
+	git push origin "$$TAG_NAME" && \
+	echo "Tag $$TAG_NAME pushed. GitHub workflow will handle the release."
 
 release-app-bindings: ## Create and push tag for app-bindings package release
 	@echo "Preparing to release @bodhiapp/app-bindings package..."
 	$(call check_git_branch)
-	@CURRENT_VERSION=$$(npm view @bodhiapp/app-bindings version 2>/dev/null || echo "0.0.0") && \
-	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" && \
-	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
+	@CURRENT_VERSION=$$($(call get_npm_version,@bodhiapp/app-bindings)) && \
+	NEXT_VERSION=$$($(call increment_version,$$CURRENT_VERSION)) && \
 	echo "Current version on npmjs: $$CURRENT_VERSION" && \
 	echo "Next version to release: $$NEXT_VERSION" && \
 	TAG_NAME="bodhi-app-bindings/v$$NEXT_VERSION" && \
@@ -262,44 +222,6 @@ define create_docker_release_tag
 	echo "$(1) release tag $$TAG_NAME pushed. GitHub workflow will handle the Docker image build and publish."
 endef
 
-# Function to check git branch status
-define check_git_branch
-	@CURRENT_BRANCH=$$(git branch --show-current) && \
-	if [ "$$CURRENT_BRANCH" != "main" ]; then \
-		read -p "Warning: You are not on main branch (current: $$CURRENT_BRANCH). Continue? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi && \
-	echo "Fetching latest changes from remote..." && \
-	git fetch origin main && \
-	LOCAL_HEAD=$$(git rev-parse HEAD) && \
-	REMOTE_HEAD=$$(git rev-parse origin/main) && \
-	if [ "$$LOCAL_HEAD" != "$$REMOTE_HEAD" ]; then \
-		echo "Warning: Your local main branch is different from origin/main" && \
-		echo "Local:  $$LOCAL_HEAD" && \
-		echo "Remote: $$REMOTE_HEAD" && \
-		read -p "Continue anyway? [y/N] " confirm && \
-		if [ "$$confirm" != "y" ]; then \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi
-endef
-
-# Function to safely delete existing tag
-define delete_tag_if_exists
-	echo "Checking for existing tag $(1)..." && \
-	if git rev-parse "$(1)" >/dev/null 2>&1; then \
-		read -p "Tag $(1) already exists. Delete and recreate? [y/N] " confirm && \
-		if [ "$$confirm" = "y" ]; then \
-			echo "Deleting existing tag $(1)..." && \
-			git tag -d "$(1)" 2>/dev/null || true && \
-			git push --delete origin "$(1)" 2>/dev/null || true; \
-		else \
-			echo "Aborting release." && exit 1; \
-		fi \
-	fi
-endef
 
 release-docker: ## Create and push tag for production Docker image release
 	@echo "Preparing to release production Docker image..."
@@ -348,4 +270,4 @@ update-context-symlinks-dry-run: ## Preview changes that would be made to AI con
 	@echo "Previewing AI context symlinks changes..."
 	@python3 scripts/update_context_symlinks.py --dry-run --verbose
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run help
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run help
