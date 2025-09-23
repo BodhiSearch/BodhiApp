@@ -333,15 +333,31 @@ fn try_fetch_llama_server(
       Ok(resp) => {
         let status = resp.status();
         if attempts >= max_attempts {
-          bail!("Failed to download file after {} attempts: {} (status: {})", max_attempts, download_url, status);
+          bail!(
+            "Failed to download file after {} attempts: {} (status: {})",
+            max_attempts,
+            download_url,
+            status
+          );
         }
-        println!("cargo:warning=Download failed with status {} (attempt {}/{}), retrying in 5s...", status, attempts, max_attempts);
+        println!(
+          "cargo:warning=Download failed with status {} (attempt {}/{}), retrying in 5s...",
+          status, attempts, max_attempts
+        );
       }
       Err(e) => {
         if attempts >= max_attempts {
-          bail!("Failed to download file after {} attempts: {} (error: {})", max_attempts, download_url, e);
+          bail!(
+            "Failed to download file after {} attempts: {} (error: {})",
+            max_attempts,
+            download_url,
+            e
+          );
         }
-        println!("cargo:warning=Download failed with error: {} (attempt {}/{}), retrying in 5s...", e, attempts, max_attempts);
+        println!(
+          "cargo:warning=Download failed with error: {} (attempt {}/{}), retrying in 5s...",
+          e, attempts, max_attempts
+        );
       }
     }
 
