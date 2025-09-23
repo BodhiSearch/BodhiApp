@@ -27,8 +27,8 @@ env:
   CI_RELEASE: true
 
 jobs:
-  build:
-    if: inputs.draft == 'no-release'
+  build-and-sign:
+    if: inputs.draft != 'no-release'
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
@@ -36,13 +36,23 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-            artifact_path: target/release/bundle/dmg/*.dmg
+            artifact_path: crates/bodhi/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           # - platform: ubuntu-latest
           #   target: x86_64-unknown-linux-gnu
-          #   artifact_path: target/release/bundle/rpm/*.rpm
+          #   artifact_path: crates/bodhi/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
           # - platform: windows-latest
           #   target: x86_64-pc-windows-msvc
-          #   artifact_path: target/release/bundle/msi/*.msi
+          #   artifact_path: crates/bodhi/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Rewrite submodule URLs and checkout submodules
@@ -69,36 +79,6 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           platform: ${{ matrix.platform }}
-      - name: clean
-        shell: bash
-        run: |
-          make ci.clean
-      - name: Build Application
-        run: |
-          cargo tauri build --features native -- -vv
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-      - name: Archive Artifacts
-        run: |
-          mkdir -p artifacts
-          cp ${{ matrix.artifact_path }} artifacts/
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: artifacts-${{ matrix.platform }}-${{ matrix.target }}
-          path: artifacts/
-
-  create-release:
-    if: inputs.draft != 'no-release'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      VERSION: ${{ steps.get_version.outputs.version }}
-      TAG_BUILD: ${{ steps.get_version.outputs.tag_build }}
-      RELEASE_UPLOAD_ID: ${{ steps.create_release.outputs.id }}
-    steps:
-      - uses: actions/checkout@v4
       - name: Set VERSION environment variable
         id: get_version
         env:
@@ -106,7 +86,6 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" =~ ^refs/tags/app/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
-            echo "TAG_BUILD=true" >> $GITHUB_OUTPUT
           else
             # Use script to get latest version from GitHub releases
             CURRENT_VERSION=$(./scripts/get_github_release_version.js BodhiSearch/BodhiApp)
@@ -114,68 +93,18 @@ jobs:
             NEW_VERSION=$(echo ${CURRENT_VERSION} | awk -F. '{$3 = $3 + 1; print}' OFS=.)
             # Set the VERSION environment variable
             echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
-            echo "TAG_BUILD=false" >> $GITHUB_OUTPUT
           fi
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "app/v${{ steps.get_version.outputs.version }}"
-          name: "Bodhi v${{ steps.get_version.outputs.version }}"
-          body: "See the assets to download this version and install."
-          draft: ${{ inputs.draft }}
-          prerelease: ${{ inputs.prerelease }}
-
-  publish:
-    if: inputs.draft != 'no-release'
-    needs: create-release
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-    runs-on: ${{ matrix.platform }}
-    env:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-    steps:
-      - name: envs
-        run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
-          echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
-          echo VERSION=${{ needs.create-release.outputs.VERSION  }} >> $GITHUB_ENV
-          echo TAG_BUILD=${{ needs.create-release.outputs.TAG_BUILD  }} >> $GITHUB_ENV
-          echo RELEASE_UPLOAD_ID=${{ needs.create-release.outputs.RELEASE_UPLOAD_ID  }} >> $GITHUB_ENV
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-rust
-        with:
-          platform: ${{ matrix.platform }}
-          target: ${{ matrix.target }}
-      - uses: ./.github/actions/setup-node
-        with:
-          platform: ${{ matrix.platform }}
       - name: clean
+        shell: bash
         run: |
           make ci.clean
       - name: Update version in Cargo.toml files
         run: |
-          if ! make ci.update-version VERSION=${{ env.VERSION }}; then
+          if ! make ci.update-version VERSION=${{ steps.get_version.outputs.version }}; then
             echo "Failed to update version"
             exit 1
           fi
-      - name: tauri-action
-        id: tauri-action
+      - name: Build and Sign Application
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -192,6 +121,64 @@ jobs:
           projectPath: crates/bodhi
           appName: Bodhi App
           iconPath: src-tauri/icons
-          releaseId: ${{ env.RELEASE_UPLOAD_ID }}
           args: "--target ${{ matrix.target }} --features native,production"
+      - name: Archive Artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp ${{ matrix.artifact_path }} artifacts/
+      - name: Upload Built Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.platform }}-${{ matrix.target }}
+          path: artifacts/
+
+  create-release:
+    if: inputs.draft != 'no-release'
+    needs: build-and-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      VERSION: ${{ needs.build-and-sign.outputs.VERSION }}
+      RELEASE_UPLOAD_ID: ${{ steps.create_release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "app/v${{ needs.build-and-sign.outputs.VERSION }}"
+          name: "Bodhi v${{ needs.build-and-sign.outputs.VERSION }}"
+          body: "See the assets to download this version and install."
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+
+  upload-assets:
+    if: inputs.draft != 'no-release'
+    needs: [build-and-sign, create-release]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts-${{ matrix.platform }}-${{ matrix.target }}
+          path: ./artifacts
+      - name: Upload Assets to Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.app.tar.gz" -o -name "*.sig" \) -exec gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" {} \;
 
