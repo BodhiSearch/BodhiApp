@@ -36,13 +36,13 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-            artifact_path: target/release/bundle/dmg/*.dmg
+            artifact_path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           # - platform: ubuntu-latest
           #   target: x86_64-unknown-linux-gnu
-          #   artifact_path: target/release/bundle/rpm/*.rpm
+          #   artifact_path: target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
           # - platform: windows-latest
           #   target: x86_64-pc-windows-msvc
-          #   artifact_path: target/release/bundle/msi/*.msi
+          #   artifact_path: target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
     env:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
