@@ -119,15 +119,9 @@ ts-client: ## Build the TypeScript types package
 release-app: ## Create and push tag for native app release
 	@echo "Preparing to release native app..."
 	$(call check_git_branch)
-	@LATEST_TAG=$$($(call get_git_tag_version,app/v)) && \
-	if [ "$$LATEST_TAG" = "0.0.0" ]; then \
-		CURRENT_VERSION="0.0.0"; \
-		echo "No existing app releases found, starting with version 0.0.1"; \
-	else \
-		CURRENT_VERSION="$$LATEST_TAG"; \
-	fi && \
+	@CURRENT_VERSION=$$($(call get_app_version)) && \
 	NEXT_VERSION=$$($(call increment_version,$$CURRENT_VERSION)) && \
-	echo "Current version: $$CURRENT_VERSION" && \
+	echo "Current version from GitHub releases: $$CURRENT_VERSION" && \
 	echo "Next version: $$NEXT_VERSION" && \
 	TAG_NAME="app/v$$NEXT_VERSION" && \
 	$(call delete_tag_if_exists,$$TAG_NAME) && \
