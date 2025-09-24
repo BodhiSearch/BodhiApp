@@ -167,19 +167,14 @@ jobs:
     needs: [build-and-sign, create-release]
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            target: aarch64-apple-darwin
     runs-on: ubuntu-latest
     steps:
-      - name: Download Build Artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: artifacts-${{ matrix.platform }}-${{ matrix.target }}
+          pattern: artifacts-*
           path: ./artifacts
+          merge-multiple: true
       - name: Upload Assets to Release
         shell: bash
         env:
