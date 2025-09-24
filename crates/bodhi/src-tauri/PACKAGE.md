@@ -1,10 +1,12 @@
-# PACKAGE.md - bodhi/src-tauri
+# PACKAGE.md - crates/bodhi/src-tauri
 
-This document provides detailed technical information for the bodhi/src-tauri crate, focusing on BodhiApp-specific dual-mode application architecture patterns and deployment orchestration.
+See [crates/bodhi/src-tauri/CLAUDE.md](crates/bodhi/src-tauri/CLAUDE.md) for architectural guidance and design rationale.
+
+This document provides detailed technical information for the `crates/bodhi/src-tauri` crate, focusing on BodhiApp's unified application entry point with dual-mode deployment capabilities and sophisticated CLI orchestration.
 
 ## Architecture Position
 
-The bodhi/src-tauri crate serves as BodhiApp's application entry point orchestration layer, providing sophisticated dual-mode deployment capabilities through feature-based conditional compilation. It coordinates complete application embedding with lib_bodhiserver while supporting both native desktop and container deployment scenarios.
+The `crates/bodhi/src-tauri` crate serves as BodhiApp's unified application orchestration layer, providing sophisticated dual-mode deployment capabilities through feature-based conditional compilation. It coordinates complete application embedding with lib_bodhiserver while supporting both native Tauri desktop applications and headless container deployments.
 
 ## Implementation Architecture
 
@@ -12,7 +14,7 @@ The bodhi/src-tauri crate serves as BodhiApp's application entry point orchestra
 
 The crate implements sophisticated conditional compilation architecture enabling multiple deployment modes through feature flags:
 
-**Feature-Based Compilation Pattern** (see `crates/bodhi/src-tauri/src/lib.rs:1-8`):
+**Feature-Based Compilation Pattern** (`src/lib.rs`):
 
 ```rust
 #[cfg(feature = "native")]
@@ -23,10 +25,10 @@ mod server_init;
 
 The `native` feature flag controls compilation of different initialization modules, enabling the same codebase to produce either a Tauri desktop application or a headless server executable.
 
-**Unified CLI Interface** (see `crates/bodhi/src-tauri/src/app.rs:15-45`):
+**Unified CLI Interface** (`src/app.rs`):
 The application provides a unified command-line interface through clap integration with feature-conditional subcommand availability. The CLI adapts behavior based on compilation features while maintaining consistent user experience.
 
-**AppCommand Enum Pattern** (see `crates/bodhi/src-tauri/src/app.rs:8-12`):
+**AppCommand Enum Pattern** (`src/app.rs`):
 
 ```rust
 #[derive(Debug, Clone)]
@@ -40,10 +42,10 @@ The unified command representation supports both server deployment and native de
 
 ### Native Desktop Implementation
 
-**Tauri Framework Integration** (see `crates/bodhi/src-tauri/src/native_init.rs:45-120`):
+**Tauri Framework Integration** (`src/native_init.rs`):
 Native mode leverages Tauri framework for cross-platform desktop application functionality with system tray integration, menu management, and embedded web UI serving. The implementation coordinates embedded server lifecycle with automatic startup and graceful shutdown.
 
-**NativeCommand Structure** (see `crates/bodhi/src-tauri/src/native_init.rs:25-35`):
+**NativeCommand Structure** (`src/native_init.rs`):
 
 ```rust
 pub struct NativeCommand {
@@ -58,7 +60,7 @@ impl NativeCommand {
 }
 ```
 
-**System Tray Integration Pattern** (see `crates/bodhi/src-tauri/src/native_init.rs:95-110`):
+**System Tray Integration Pattern** (`src/native_init.rs`):
 
 ```rust
 let homepage = MenuItem::with_id(app, "homepage", "Open Homepage", true, None::<&str>)?;
@@ -83,10 +85,10 @@ TrayIconBuilder::new()
 
 ### Container Deployment Implementation
 
-**Headless Server Architecture** (see `crates/bodhi/src-tauri/src/server_init.rs:85-130`):
+**Headless Server Architecture** (`src/server_init.rs`):
 Container mode provides headless server deployment optimized for containerized environments with comprehensive file-based logging and configuration management. The implementation leverages lib_bodhiserver's ServeCommand for HTTP API serving.
 
-**Configuration Override Pattern** (see `crates/bodhi/src-tauri/src/server_init.rs:45-65`):
+**Configuration Override Pattern** (`src/server_init.rs`):
 
 ```rust
 if let AppCommand::Server(host, port) = command {
@@ -109,7 +111,7 @@ if let AppCommand::Server(host, port) = command {
 }
 ```
 
-**Logging Infrastructure Patterns** (see `crates/bodhi/src-tauri/src/server_init.rs:95-140`):
+**Logging Infrastructure Patterns** (`src/server_init.rs`):
 
 ```rust
 fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> WorkerGuard {
@@ -131,10 +133,10 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
 
 ### lib_bodhiserver Integration
 
-**Service Composition Coordination** (see `crates/bodhi/src-tauri/src/native_init.rs:130-150` and `crates/bodhi/src-tauri/src/server_init.rs:95-115`):
+**Service Composition Coordination** (`src/native_init.rs` and `src/server_init.rs`):
 Both deployment modes coordinate with lib_bodhiserver for complete application service composition through AppServiceBuilder pattern with dependency injection and error handling.
 
-**Configuration Management Integration** (see `crates/bodhi/src-tauri/src/common.rs:5-15`):
+**Configuration Management Integration** (`src/common.rs`):
 
 ```rust
 pub fn build_app_options(app_type: AppType) -> Result<AppOptions, ErrorMessage> {
@@ -151,7 +153,7 @@ pub fn build_app_options(app_type: AppType) -> Result<AppOptions, ErrorMessage> 
 }
 ```
 
-**Environment-Specific Configuration** (see `crates/bodhi/src-tauri/src/env.rs:5-25`):
+**Environment-Specific Configuration** (`src/env.rs`):
 
 ```rust
 #[cfg(feature = "production")]
@@ -169,7 +171,7 @@ mod env_config {
 }
 ```
 
-**UI Asset Integration** (see `crates/bodhi/src-tauri/src/ui.rs:1-5`):
+**UI Asset Integration** (`src/ui.rs`):
 
 ```rust
 // Re-export embedded UI assets from lib_bodhiserver
@@ -185,7 +187,7 @@ pub use lib_bodhiserver::EMBEDDED_UI_ASSETS as ASSETS;
 
 ### Error Handling Integration
 
-**Error Translation Patterns** (see `crates/bodhi/src-tauri/src/native_init.rs:15-25`):
+**Error Translation Patterns** (`src/native_init.rs`):
 The crate implements comprehensive error handling with errmeta_derive integration for consistent error metadata and localization support:
 
 ```rust
@@ -200,7 +202,7 @@ pub enum NativeError {
 }
 ```
 
-**Application Setup Error Handling** (see `crates/bodhi/src-tauri/src/error.rs:5-15`):
+**Application Setup Error Handling** (`src/error.rs`):
 
 ```rust
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -212,7 +214,7 @@ pub enum AppSetupError {
 }
 ```
 
-**Error Message Conversion Pattern** (see `crates/bodhi/src-tauri/src/error.rs:15-20`):
+**Error Message Conversion Pattern** (`src/error.rs`):
 
 ```rust
 impl From<AppSetupError> for ErrorMessage {
@@ -228,7 +230,7 @@ impl From<AppSetupError> for ErrorMessage {
 
 The crate implements comprehensive CLI testing with feature-conditional test scenarios:
 
-**Feature-Conditional Testing** (see `crates/bodhi/src-tauri/src/app.rs:85-150`):
+**Feature-Conditional Testing** (`src/app.rs`):
 
 ```rust
 #[cfg(not(feature = "native"))]
@@ -244,7 +246,7 @@ mod native_test {
 }
 ```
 
-**CLI Validation Testing** (see `crates/bodhi/src-tauri/src/app.rs:95-120`):
+**CLI Validation Testing** (`src/app.rs`):
 
 ```rust
 #[rstest]
@@ -260,7 +262,7 @@ fn test_cli_serve_valid(
 }
 ```
 
-**Error Scenario Testing** (see `crates/bodhi/src-tauri/src/error.rs:25-40`):
+**Error Scenario Testing** (`src/error_test.rs`):
 
 ```rust
 #[test]
@@ -274,7 +276,7 @@ fn test_app_setup_error_async_runtime_to_error_message() {
 
 ### Test Utils Architecture
 
-**Current Test Utils Structure** (see `crates/bodhi/src-tauri/src/test_utils/mod.rs`):
+**Current Test Utils Structure** (`src/test_utils/mod.rs`):
 The test_utils module is currently minimal, providing a foundation for future desktop application testing utilities. The module supports both feature-conditional compilation and test-only compilation patterns.
 
 **Testing Infrastructure Features**:
@@ -293,7 +295,7 @@ When implementing additional deployment scenarios:
 
 1. **Feature Flag Design**: Create new feature flags with appropriate conditional compilation patterns following the existing `native`/`not(native)` model
 2. **Initialization Module**: Implement new initialization modules following the pattern established by `native_init.rs` and `server_init.rs`
-3. **CLI Integration**: Extend the clap command structure in `crates/bodhi/src-tauri/src/app.rs` with new subcommands and parameter validation
+3. **CLI Integration**: Extend the clap command structure in `src/app.rs` with new subcommands and parameter validation
 4. **Configuration Coordination**: Coordinate with lib_bodhiserver's AppOptions pattern for new deployment-specific configuration
 
 ### Extending Native Desktop Features
@@ -333,6 +335,66 @@ For expanding the test_utils module:
 3. **Configuration Testing**: Design configuration testing patterns for both native and container deployment modes
 4. **Error Testing Infrastructure**: Expand error testing with comprehensive error message validation and recovery testing
 5. **Integration Testing Support**: Support integration testing with realistic service coordination and resource management
+
+## Core Implementation Files
+
+### Main Entry Points
+- `src/main.rs` - Application main entry point with CLI delegation
+- `src/lib.rs` - Library exports with feature-conditional module inclusion
+- `src/app.rs` - CLI interface definition and command parsing with feature-based subcommands
+
+### Deployment Mode Modules
+- `src/native_init.rs` - Native desktop initialization with Tauri framework integration
+- `src/server_init.rs` - Container/server initialization with headless deployment
+- `src/common.rs` - Shared configuration building with AppOptions construction
+- `src/env.rs` - Environment-specific configuration with development/production switching
+
+### Support Modules
+- `src/ui.rs` - UI asset embedding and integration
+- `src/error.rs` - Application error types with localization support
+- `src/error_test.rs` - Error handling test scenarios
+- `src/test_utils/mod.rs` - Testing utilities foundation
+- `build.rs` - Build-time configuration and asset preparation
+
+## Usage Examples
+
+### Native Desktop Mode
+
+```rust
+// Native desktop application initialization
+// Requires compilation with --features native
+use crate::native_init::initialize_and_execute;
+use crate::app::AppCommand;
+
+let command = AppCommand::Default;
+let result = initialize_and_execute(command);
+```
+
+### Container/Server Mode
+
+```rust
+// Container deployment initialization
+// Default compilation without native feature
+use crate::server_init::initialize_and_execute;
+use crate::app::AppCommand;
+
+let command = AppCommand::Server(
+  Some("0.0.0.0".to_string()),
+  Some(8080)
+);
+let result = initialize_and_execute(command);
+```
+
+### Configuration Management
+
+```rust
+// Environment-specific configuration
+use crate::common::build_app_options;
+use lib_bodhiserver::AppType;
+
+let options = build_app_options(AppType::Native)?;
+// AppOptions with environment detection and OAuth endpoints
+```
 
 ## Commands
 
@@ -375,6 +437,19 @@ cargo test -p bodhi -- test_cli_serve_valid
 
 # Test CLI error scenarios
 cargo test -p bodhi -- test_cli_serve_invalid_port
+```
+
+### Execution Examples
+
+```bash
+# Native desktop application (requires native feature)
+./target/release/bodhi
+
+# Container server mode with custom host/port
+./target/release/bodhi serve --host 0.0.0.0 --port 3000
+
+# Container server mode with default settings
+./target/release/bodhi serve
 ```
 
 ### Build Configuration

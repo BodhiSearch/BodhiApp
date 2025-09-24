@@ -1,6 +1,6 @@
 # CLAUDE.md - errmeta_derive
 
-See [PACKAGE.md](./PACKAGE.md) for implementation details and file references.
+See [crates/errmeta_derive/PACKAGE.md](crates/errmeta_derive/PACKAGE.md) for implementation details and file references.
 
 ## Architectural Purpose
 

@@ -1,12 +1,12 @@
-# PACKAGE.md
+# PACKAGE.md - crates/llama_server_proc
 
-See [CLAUDE.md](./CLAUDE.md) for architectural guidance and design rationale.
+See [crates/llama_server_proc/CLAUDE.md](crates/llama_server_proc/CLAUDE.md) for architectural guidance and design rationale.
 
 ## Core Components
 
 ### Server Trait and Implementation
 
-**Server Trait** (`crates/llama_server_proc/src/server.rs:83-101`)
+**Server Trait** (`src/server.rs`)
 ```rust
 #[async_trait::async_trait]
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -19,7 +19,7 @@ pub trait Server: std::fmt::Debug + Send + Sync {
 }
 ```
 
-**LlamaServer Implementation** (`crates/llama_server_proc/src/server.rs:103-133`)
+**LlamaServer Implementation** (`src/server.rs`)
 ```rust
 #[derive(Debug)]
 pub struct LlamaServer {
@@ -33,7 +33,7 @@ pub struct LlamaServer {
 
 ### Configuration Management
 
-**LlamaServerArgs Builder** (`crates/llama_server_proc/src/server.rs:18-31`)
+**LlamaServerArgs Builder** (`src/server.rs`)
 ```rust
 #[derive(Debug, Clone, Builder)]
 #[builder(pattern = "owned", setter(into, strip_option))]
@@ -46,7 +46,7 @@ pub struct LlamaServerArgs {
 }
 ```
 
-**Command Line Arguments** (`crates/llama_server_proc/src/server.rs:51-81`)
+**Command Line Arguments** (`src/server.rs`)
 ```rust
 pub fn to_args(&self) -> Vec<String> {
   let mut args = vec![
@@ -61,7 +61,7 @@ pub fn to_args(&self) -> Vec<String> {
 
 ### Process Lifecycle Management
 
-**Server Start with Health Check** (`crates/llama_server_proc/src/server.rs:212-227`)
+**Server Start with Health Check** (`src/server.rs`)
 ```rust
 async fn start(&self) -> Result<()> {
   let args = self.server_args.to_args();
@@ -76,7 +76,7 @@ async fn start(&self) -> Result<()> {
 }
 ```
 
-**Health Check Loop** (`crates/llama_server_proc/src/server.rs:162-186`)
+**Health Check Loop** (`src/server.rs`)
 ```rust
 async fn wait_for_server_ready(&self) -> Result<()> {
   let max_attempts = 300;
@@ -89,7 +89,7 @@ async fn wait_for_server_ready(&self) -> Result<()> {
 }
 ```
 
-**Process Cleanup** (`crates/llama_server_proc/src/server.rs:196-208`)
+**Process Cleanup** (`src/server.rs`)
 ```rust
 impl Drop for LlamaServer {
   fn drop(&mut self) {
@@ -104,7 +104,7 @@ impl Drop for LlamaServer {
 
 ### HTTP Proxy Operations
 
-**Request Proxying** (`crates/llama_server_proc/src/server.rs:188-193`)
+**Request Proxying** (`src/server.rs`)
 ```rust
 async fn proxy_request(&self, endpoint: &str, body: &Value) -> Result<Response> {
   let url = format!("{}{}", self.base_url, endpoint);
@@ -113,7 +113,7 @@ async fn proxy_request(&self, endpoint: &str, body: &Value) -> Result<Response> 
 }
 ```
 
-**OpenAI-Compatible Endpoints** (`crates/llama_server_proc/src/server.rs:251-266`)
+**OpenAI-Compatible Endpoints** (`src/server.rs`):
 - Chat completions: `/v1/chat/completions`
 - Embeddings: `/v1/embeddings`
 - Tokenize: `/v1/tokenize`
@@ -121,7 +121,7 @@ async fn proxy_request(&self, endpoint: &str, body: &Value) -> Result<Response> 
 
 ### Error Handling
 
-**ServerError Enum** (`crates/llama_server_proc/src/error.rs:5-27`)
+**ServerError Enum** (`src/error.rs`)
 ```rust
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum ServerError {
@@ -134,7 +134,7 @@ pub enum ServerError {
 }
 ```
 
-**Localized Error Messages** (`crates/llama_server_proc/src/resources/en-US/messages.ftl:1-5`)
+**Localized Error Messages** (`src/resources/en-US/messages.ftl`):
 - server_not_ready: "server not ready: the server process has not completed initialization"
 - startup_error: "failed to start server: {$var_0}"
 - health_check_error: "server health check failed: {$var_0}"
@@ -142,7 +142,7 @@ pub enum ServerError {
 
 ### Build System Architecture
 
-**Build Environment Constants** (`crates/llama_server_proc/src/build_envs.rs:1-10`)
+**Build Environment Constants** (`src/build_envs.rs`)
 ```rust
 pub static BUILD_TARGET: &str = env!("BUILD_TARGET");
 pub static ref BUILD_VARIANTS: Vec<String> = {
@@ -152,7 +152,7 @@ pub static DEFAULT_VARIANT: &str = env!("DEFAULT_VARIANT");
 pub static EXEC_NAME: &str = env!("EXEC_NAME");
 ```
 
-**Platform-Specific Build Configuration** (`crates/llama_server_proc/build.rs:20-43`)
+**Platform-Specific Build Configuration** (`build.rs`)
 ```rust
 static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   let mut set = HashSet::new();
@@ -164,15 +164,15 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
 });
 ```
 
-**GitHub Release Download** (`crates/llama_server_proc/build.rs:286-418`)
+**GitHub Release Download** (`build.rs`):
 - Asset filtering by platform and variant
 - ZIP file extraction handling
 - Executable permissions management
-- File locking for concurrent builds (`crates/llama_server_proc/build.rs:534-555`)
+- File locking for concurrent builds (`build.rs`)
 
 ### Test Utilities
 
-**Model Fixtures** (`crates/llama_server_proc/src/test_utils/mod.rs:7-21`)
+**Model Fixtures** (`src/test_utils/mod.rs`)
 ```rust
 #[fixture]
 pub fn llama2_7b() -> PathBuf {
@@ -183,7 +183,7 @@ pub fn llama2_7b() -> PathBuf {
 }
 ```
 
-**HTTP Response Mocking** (`crates/llama_server_proc/src/test_utils/mod.rs:23-28`)
+**HTTP Response Mocking** (`src/test_utils/mod.rs`)
 ```rust
 pub fn mock_response(body: impl Into<String>) -> Response {
   let url = Url::parse("http://127.0.0.1:8080").unwrap();
@@ -191,6 +191,20 @@ pub fn mock_response(body: impl Into<String>) -> Response {
   Response::from(hyper_response)
 }
 ```
+
+## Core Implementation Files
+
+### Main Components
+- `src/lib.rs` - Library exports and localization resources
+- `src/server.rs` - Server trait definition and LlamaServer implementation
+- `src/error.rs` - ServerError enum with localization support
+- `src/build_envs.rs` - Build environment constants and configuration
+- `src/test_utils/mod.rs` - Testing utilities and fixtures
+- `build.rs` - Build script for cross-platform binary management
+- `tests/test_server_proc.rs` - Integration tests with real server processes
+
+### Resource Files
+- `src/resources/en-US/messages.ftl` - Localized error messages
 
 ## Usage Examples
 

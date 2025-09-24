@@ -1,492 +1,423 @@
-# PACKAGE.md - lib_bodhiserver_napi
+# PACKAGE.md - lib_bodhiserver_napi Crate
 
-This document provides detailed technical information for the `lib_bodhiserver_napi` crate, focusing on BodhiApp's Node.js binding architecture, sophisticated NAPI integration patterns, and comprehensive cross-platform deployment coordination.
+*For architectural insights and design decisions, see [crates/lib_bodhiserver_napi/CLAUDE.md](crates/lib_bodhiserver_napi/CLAUDE.md)*
 
-## Node.js Binding Architecture
+## Implementation Index
 
-The `lib_bodhiserver_napi` crate serves as BodhiApp's **Node.js binding orchestration layer**, implementing advanced NAPI-based bindings for embedding complete BodhiApp server functionality into Node.js applications with sophisticated configuration management and cross-platform support.
+The `lib_bodhiserver_napi` crate provides sophisticated Node.js bindings for BodhiApp server functionality with comprehensive configuration management and cross-platform support.
 
-### NAPI Binding Implementation Architecture
+### Core NAPI Files
 
-Advanced Node.js integration with comprehensive server lifecycle management:
+**src/lib.rs**
+- Module structure and feature-gated test utilities
+- Public API exports for BodhiServer and configuration functions
+
+**src/config.rs**
+- NapiAppOptions configuration structure for Node.js integration
+- Multi-layer configuration with environment variables, app settings, system settings
+- OAuth2 client credentials management and validation
+- Constants export for safe JavaScript usage
+
+**src/server.rs**
+- BodhiServer class implementation with complete lifecycle management
+- Async server operations with Promise-based API
+- Health monitoring and state management
+- Logging integration with proper cleanup
+
+**build.rs**
+- NAPI build configuration for cross-platform compilation
+- Native module build coordination
+
+### NAPI Interface Examples
+
+#### Server Lifecycle Management
 
 ```rust
-// Core NAPI server wrapper (see src/server.rs:15-35 for complete implementation)
-#[napi]
-pub struct BodhiServer {
-  config: NapiAppOptions,
-  shutdown_handle: Arc<Mutex<Option<ServerShutdownHandle>>>,
-  temp_dir: Option<TempDir>,
-  log_guard: Option<WorkerGuard>,
-}
-
-#[napi]
-impl BodhiServer {
-  #[napi(constructor)]
-  pub fn new(config: NapiAppOptions) -> Result<Self> {
-    Ok(Self {
-      config,
-      shutdown_handle: Arc::new(Mutex::new(None)),
-      temp_dir: None,
-      log_guard: None,
-    })
+  #[napi]
+  pub struct BodhiServer {
+    config: NapiAppOptions,
+    shutdown_handle: Arc<Mutex<Option<ServerShutdownHandle>>>,
+    temp_dir: Option<TempDir>,
+    log_guard: Option<WorkerGuard>,
   }
 
   #[napi]
-  pub async unsafe fn start(&mut self) -> Result<()> {
-    // Configuration translation and validation
-    let builder = try_build_app_options_internal(self.config.clone())?;
-    let app_options = builder.build()?;
+  impl BodhiServer {
+    #[napi(constructor)]
+    pub fn new(config: NapiAppOptions) -> Result<Self> {
+      Ok(Self {
+        config,
+        shutdown_handle: Arc::new(Mutex::new(None)),
+        temp_dir: None,
+        log_guard: None,
+      })
+    }
 
-    // Service composition coordination
-    let setting_service = Arc::new(setup_app_dirs(&app_options)?);
-    let app_service: Arc<dyn AppService> = Arc::new(build_app_service(setting_service.clone()).await?);
+    #[napi]
+    pub async unsafe fn start(&mut self) -> Result<()> {
+      // Configuration translation and service composition
+      let builder = try_build_app_options_internal(self.config.clone())?;
+      let app_options = builder.build()?;
 
-    // Server lifecycle management
-    let serve_command = ServeCommand::ByParams { host: self.host(), port: self.port() };
-    let handle = serve_command.get_server_handle(app_service, Some(&EMBEDDED_UI_ASSETS)).await?;
+      // Complete application bootstrap
+      let setting_service = Arc::new(setup_app_dirs(&app_options)?);
+      let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
 
-    // State synchronization
-    let mut handle_guard = self.shutdown_handle.lock().await;
-    *handle_guard = Some(handle);
-    Ok(())
+      // HTTP server coordination
+      let serve_command = ServeCommand::ByParams {
+        host: self.host(),
+        port: self.port(),
+      };
+      let handle = serve_command
+        .get_server_handle(app_service, Some(&EMBEDDED_UI_ASSETS))
+        .await?;
+
+      // Thread-safe state management
+      let mut handle_guard = self.shutdown_handle.lock().await;
+      *handle_guard = Some(handle);
+      Ok(())
+    }
   }
-}
 ```
 
-### Configuration Management Implementation
-
-Sophisticated multi-layer configuration system bridging Node.js and Rust environments:
+#### Configuration Management
 
 ```rust
-// Flexible NAPI configuration structure (see src/config.rs:8-25 for complete implementation)
-#[napi(object)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NapiAppOptions {
-  pub env_vars: HashMap<String, String>,
-  pub app_settings: HashMap<String, String>,
-  pub system_settings: HashMap<String, String>,
-  pub client_id: Option<String>,
-  pub client_secret: Option<String>,
-  pub app_status: Option<String>,
-}
-
-// Configuration builder functions for JavaScript integration
-#[napi]
-pub fn create_napi_app_options() -> NapiAppOptions {
-  NapiAppOptions {
-    env_vars: HashMap::new(),
-    app_settings: HashMap::new(),
-    system_settings: HashMap::new(),
-    client_id: None,
-    client_secret: None,
-    app_status: None,
-  }
-}
-
-#[napi]
-pub fn set_env_var(mut config: NapiAppOptions, key: String, value: String) -> NapiAppOptions {
-  config.env_vars.insert(key, value);
-  config
-}
-
-// Internal configuration translation (see src/config.rs:85-125 for complete implementation)
-pub fn try_build_app_options_internal(config: NapiAppOptions) -> Result<AppOptionsBuilder, AppOptionsError> {
-  let mut builder = AppOptionsBuilder::default();
-
-  // Environment variable coordination
-  for (key, value) in config.env_vars {
-    builder = builder.set_env(&key, &value);
+  #[napi(object)]
+  #[derive(Debug, Clone, Serialize, Deserialize)]
+  pub struct NapiAppOptions {
+    pub env_vars: HashMap<String, String>,
+    pub app_settings: HashMap<String, String>,
+    pub system_settings: HashMap<String, String>,
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
+    pub app_status: Option<String>,
   }
 
-  // OAuth2 credentials management
-  if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
-    builder = builder.set_app_reg_info(&client_id, &client_secret);
-  }
-
-  Ok(builder)
-}
-```
-
-**Key Configuration Features**:
-
-- Multi-layer configuration with environment variables, app settings, and system settings coordination
-- OAuth2 client credentials management with secure storage and authentication flow support
-- Application status management with validation and state synchronization across language boundaries
-- Configuration validation with comprehensive error handling and recovery guidance for Node.js applications
-- Environment-specific configuration with development/production mode coordination and resource management
-
-## Cross-Platform Integration Architecture
-
-### Native Module Build System Implementation
-
-Advanced cross-platform compilation with automated build pipeline:
-
-```json
-// Cross-platform build configuration (see package.json:15-25 for complete configuration)
-{
-  "name": "@bodhiapp/app-bindings",
-  "napi": {
-    "name": "app-bindings",
-    "triples": {
-      "defaults": false,
-      "additional": ["aarch64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]
+  #[napi]
+  pub fn create_napi_app_options() -> NapiAppOptions {
+    NapiAppOptions {
+      env_vars: HashMap::new(),
+      app_settings: HashMap::new(),
+      system_settings: HashMap::new(),
+      client_id: None,
+      client_secret: None,
+      app_status: None,
     }
-  },
-  "scripts": {
-    "build": "napi build --platform",
-    "build:release": "napi build --platform --release",
-    "test": "npm run test:run && npm run test:playwright"
   }
-}
+
+  #[napi]
+  pub fn set_env_var(mut config: NapiAppOptions, key: String, value: String) -> NapiAppOptions {
+    config.env_vars.insert(key, value);
+    config
+  }
 ```
 
-### TypeScript Integration Implementation
+## TypeScript Integration
 
-Auto-generated type definitions with comprehensive interface coverage:
+### Auto-Generated Type Definitions
 
 ```typescript
-// Auto-generated TypeScript definitions (see index.d.ts:5-25 for complete interfaces)
-export interface NapiAppOptions {
-  envVars: Record<string, string>;
-  appSettings: Record<string, string>;
-  systemSettings: Record<string, string>;
-  clientId?: string;
-  clientSecret?: string;
-  appStatus?: string;
-}
+  export interface NapiAppOptions {
+    envVars: Record<string, string>;
+    appSettings: Record<string, string>;
+    systemSettings: Record<string, string>;
+    clientId?: string;
+    clientSecret?: string;
+    appStatus?: string;
+  }
 
-export declare class BodhiServer {
-  constructor(config: NapiAppOptions);
-  get config(): NapiAppOptions;
-  serverUrl(): string;
-  start(): Promise<void>;
-  stop(): Promise<void>;
-  isRunning(): Promise<boolean>;
-  ping(): Promise<boolean>;
-}
+  export declare class BodhiServer {
+    constructor(config: NapiAppOptions);
+    get config(): NapiAppOptions;
+    serverUrl(): string;
+    host(): string;
+    port(): number;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    isRunning(): Promise<boolean>;
+    ping(): Promise<boolean>;
+  }
 
-// Configuration constants for safe JavaScript usage
-export const BODHI_HOME: string;
-export const BODHI_HOST: string;
-export const BODHI_PORT: string;
-export const DEFAULT_HOST: string;
-export const DEFAULT_PORT: number;
+  export const BODHI_HOME: string;
+  export const BODHI_HOST: string;
+  export const BODHI_PORT: string;
+  export const DEFAULT_HOST: string;
+  export const DEFAULT_PORT: number;
 ```
 
-**Cross-Platform Integration Features**:
-
-- Native module compilation for Windows, macOS (Intel/ARM), and Linux with automated build pipeline
-- Auto-generated TypeScript definitions with comprehensive interface coverage and type validation
-- Cross-platform resource management with proper permissions and cleanup coordination
-- Platform-specific optimization with efficient native binary size and minimal JavaScript wrapper code
-
-## Server Lifecycle Management Architecture
-
-### Async Server Operations Implementation
-
-Advanced server lifecycle coordination with comprehensive state management:
-
-```rust
-// Server lifecycle management with async coordination (see src/server.rs:145-185 for complete implementation)
-impl BodhiServer {
-  pub async unsafe fn start(&mut self) -> Result<()> {
-    // State validation
-    let handle_guard = self.shutdown_handle.lock().await;
-    if handle_guard.is_some() {
-      return Err(Error::new(Status::InvalidArg, "Server is already running".to_string()));
-    }
-    drop(handle_guard);
-
-    // Configuration and service setup
-    let builder = try_build_app_options_internal(self.config.clone())?;
-    let app_options = builder.build()?;
-    let setting_service = Arc::new(setup_app_dirs(&app_options)?);
-
-    // Logging setup with proper cleanup
-    let log_guard = setup_logs(&setting_service);
-    self.log_guard = Some(log_guard);
-
-    // Complete service composition
-    let app_service: Arc<dyn AppService> = Arc::new(build_app_service(setting_service.clone()).await?);
-    update_with_option(&app_service, (&app_options).into())?;
-
-    // HTTP server coordination
-    let serve_command = ServeCommand::ByParams { host: self.host(), port: self.port() };
-    let handle = serve_command.get_server_handle(app_service, Some(&EMBEDDED_UI_ASSETS)).await?;
-
-    // Thread-safe state management
-    let mut handle_guard = self.shutdown_handle.lock().await;
-    *handle_guard = Some(handle);
-    Ok(())
-  }
-
-  pub async unsafe fn stop(&mut self) -> Result<()> {
-    // Graceful shutdown coordination
-    let handle = {
-      let mut handle_guard = self.shutdown_handle.lock().await;
-      handle_guard.take()
-    };
-
-    if let Some(handle) = handle {
-      handle.shutdown().await?;
-    }
-
-    // Resource cleanup
-    if let Some(guard) = self.log_guard.take() {
-      drop(guard);
-    }
-    Ok(())
-  }
-}
-```
-
-### Health Monitoring Implementation
-
-Advanced server health checking with HTTP validation:
-
-```rust
-// Server health monitoring (see src/server.rs:225-245 for complete implementation)
-pub async unsafe fn ping(&self) -> Result<bool> {
-  let is_running = {
-    let handle_guard = self.shutdown_handle.lock().await;
-    handle_guard.is_some()
-  };
-
-  if !is_running {
-    return Ok(false);
-  }
-
-  // HTTP health check coordination
-  let url = format!("{}/ping", self.server_url());
-  match reqwest::get(&url).await {
-    Ok(response) => Ok(response.status().is_success()),
-    Err(_) => Ok(false),
-  }
-}
-```
-
-**Server Lifecycle Features**:
-
-- Promise-based async operations with proper error handling and state management
-- Thread-safe server state management with Mutex coordination and concurrent access support
-- Comprehensive resource cleanup with Drop trait implementation and automatic garbage collection coordination
-- HTTP health monitoring with connection validation and server status checking
-- Graceful shutdown coordination with proper resource cleanup and error handling
-
-## Testing Infrastructure Architecture
-
-### Rust Test Utils Implementation
-
-Comprehensive testing infrastructure for NAPI binding validation:
-
-```rust
-// Test configuration fixtures (see src/test_utils/config.rs:15-45 for complete implementation)
-#[fixture]
-pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
-  let bodhi_home = temp_dir.path().to_string_lossy().to_string();
-  let port = rand::rng().random_range(20000..30000);
-
-  let mut config = create_napi_app_options();
-
-  // Basic configuration setup
-  config = set_env_var(config, BODHI_HOME.to_string(), bodhi_home);
-  config = set_env_var(config, BODHI_HOST.to_string(), "127.0.0.1".to_string());
-  config = set_env_var(config, BODHI_PORT.to_string(), port.to_string());
-
-  // System settings for complete app setup
-  config = set_system_setting(config, BODHI_ENV_TYPE.to_string(), "development".to_string());
-  config = set_system_setting(config, BODHI_APP_TYPE.to_string(), "container".to_string());
-  config = set_system_setting(config, BODHI_VERSION.to_string(), "1.0.0-test".to_string());
-
-  (config, temp_dir)
-}
-
-// Custom configuration testing
-pub fn test_config_with_settings(mut config: NapiAppOptions, settings: HashMap<String, String>) -> NapiAppOptions {
-  for (key, value) in settings {
-    match key.as_str() {
-      "host" => config = set_env_var(config, BODHI_HOST.to_string(), value),
-      "port" => config = set_env_var(config, BODHI_PORT.to_string(), value),
-      _ => config = set_env_var(config, key, value),
-    }
-  }
-  config
-}
-```
-
-### JavaScript Test Integration Implementation
-
-Advanced JavaScript testing with comprehensive NAPI validation:
+### JavaScript Usage Examples
 
 ```javascript
-// Test helper functions (see tests-js/test-helpers.mjs:15-45 for complete implementation)
-async function loadBindings() {
-  const appBindingsModule = await import('../index.js');
-  return appBindingsModule.default;
-}
+  import {
+    BodhiServer,
+    createNapiAppOptions,
+    setEnvVar,
+    setSystemSetting,
+    BODHI_HOME,
+    BODHI_HOST,
+    BODHI_PORT
+  } from '@bodhiapp/app-bindings';
 
-function createTestServer(bindings, options = {}) {
-  const config = createFullTestConfig(bindings, options);
-  const server = new bindings.BodhiServer(config);
-  return server;
-}
+  // Configuration setup
+  let config = createNapiAppOptions();
+  config = setEnvVar(config, BODHI_HOME, '/tmp/bodhi');
+  config = setEnvVar(config, BODHI_HOST, 'localhost');
+  config = setEnvVar(config, BODHI_PORT, '3000');
+  config = setSystemSetting(config, 'BODHI_ENV_TYPE', 'development');
 
-function createFullTestConfig(bindings, options = {}) {
-  const appHome = createTempDir();
-  const { host = 'localhost', port = randomPort() } = options;
+  // Server lifecycle
+  const server = new BodhiServer(config);
+  await server.start();
 
-  let config = bindings.createNapiAppOptions();
+  console.log(`Server running: ${await server.isRunning()}`);
+  console.log(`Server URL: ${server.serverUrl()}`);
+  console.log(`Health check: ${await server.ping()}`);
 
-  // Environment variable setup
-  config = bindings.setEnvVar(config, 'HOME', appHome);
-  config = bindings.setEnvVar(config, bindings.BODHI_HOST, host);
-  config = bindings.setEnvVar(config, bindings.BODHI_PORT, port.toString());
-
-  // System settings coordination
-  config = bindings.setSystemSetting(config, bindings.BODHI_ENV_TYPE, 'development');
-  config = bindings.setSystemSetting(config, bindings.BODHI_VERSION, '1.0.0-test');
-
-  return config;
-}
+  await server.stop();
 ```
 
-### Integration Test Implementation
+## Cross-Platform Build System
 
-Comprehensive integration testing with server lifecycle validation:
+### Package Configuration
 
-```javascript
-// Integration test patterns (see tests-js/integration.test.js:25-65 for complete tests)
-describe('Server Lifecycle and State Management', () => {
-  test('should initially report not running and maintain proper server state', async () => {
-    const server = createTestServer(bindings, { host: '127.0.0.1', port: 20001 });
-    runningServers.push(server);
-
-    // State validation
-    expect(await server.isRunning()).toBe(false);
-    expect(await server.isRunning()).toBe(false);
-  });
-
-  test('should contain all required configuration variables for complete setup', () => {
-    const server = createTestServer(bindings, { host: 'test-host', port: 12345 });
-    const serverConfig = server.config;
-
-    // Configuration validation
-    expect(serverConfig.envVars['HOME']).toBeDefined();
-    expect(serverConfig.envVars[bindings.BODHI_HOST]).toBeDefined();
-    expect(serverConfig.systemSettings[bindings.BODHI_ENV_TYPE]).toBeDefined();
-  });
-});
+```json
+  {
+    "name": "@bodhiapp/app-bindings",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "napi": {
+      "name": "app-bindings",
+      "triples": {
+        "defaults": false,
+        "additional": [
+          "aarch64-apple-darwin",
+          "x86_64-apple-darwin",
+          "x86_64-pc-windows-msvc",
+          "x86_64-unknown-linux-gnu"
+        ]
+      }
+    },
+    "scripts": {
+      "build": "napi build --platform",
+      "build:release": "napi build --platform --release",
+      "test": "npm run test:run && npm run test:playwright",
+      "test:run": "vitest run",
+      "test:playwright": "playwright test"
+    }
+  }
 ```
 
-**Testing Infrastructure Features**:
+### Build Commands
 
-- Comprehensive Rust test fixtures with temporary directory management and random port generation
-- JavaScript test helpers with dynamic binding loading and configuration management
-- Integration testing with server lifecycle validation and state management verification
-- Cross-platform testing support with automated build pipeline and platform-specific validation
-- Memory leak detection and performance benchmarking for NAPI binding optimization
+```bash
+# Development build
+npm run build
 
-## Error Handling Architecture
+# Release build for all platforms
+npm run build:release
 
-### Rust to JavaScript Error Translation Implementation
+# Run JavaScript tests
+npm run test:run
 
-Sophisticated error handling with proper context preservation:
+# Run Playwright integration tests
+npm run test:playwright
+
+# Test Rust NAPI bindings
+cargo test -p lib_bodhiserver_napi
+
+# Test with utilities
+cargo test -p lib_bodhiserver_napi --features test-utils
+```
+
+## Testing Infrastructure
+
+### Rust Test Utilities
 
 ```rust
-// Error translation patterns (see src/server.rs:95-115 for complete error handling)
-impl BodhiServer {
-  pub async unsafe fn start(&mut self) -> Result<()> {
-    let builder = try_build_app_options_internal(self.config.clone()).map_err(|e| {
-      Error::new(Status::GenericFailure, format!("Failed to build app options: {}", e))
-    })?;
+  #[fixture]
+  pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
+    let bodhi_home = temp_dir.path().to_string_lossy().to_string();
+    let port = rand::rng().random_range(20000..30000);
 
-    let setting_service = Arc::new(setup_app_dirs(&app_options).map_err(|e| {
-      Error::new(Status::GenericFailure, format!("Failed to setup app dirs: {}", e))
-    })?);
+    let mut config = create_napi_app_options();
+    config = set_env_var(config, BODHI_HOME.to_string(), bodhi_home);
+    config = set_env_var(config, BODHI_HOST.to_string(), "127.0.0.1".to_string());
+    config = set_env_var(config, BODHI_PORT.to_string(), port.to_string());
 
-    let handle = serve_command.get_server_handle(app_service, Some(&EMBEDDED_UI_ASSETS)).await.map_err(|e| {
-      let err: ApiError = e.into();
-      let err: OpenAIApiError = err.into();
-      Error::new(Status::GenericFailure, format!("Failed to start server: {}", err))
-    })?;
+    // System settings for complete setup
+    config = set_system_setting(config, BODHI_ENV_TYPE.to_string(), "development".to_string());
+    config = set_system_setting(config, BODHI_APP_TYPE.to_string(), "container".to_string());
+    config = set_system_setting(config, BODHI_VERSION.to_string(), "1.0.0-test".to_string());
 
-    Ok(())
+    (config, temp_dir)
   }
-}
 ```
 
-### JavaScript Error Handling Patterns
-
-Comprehensive error handling with proper stack traces and context:
+### JavaScript Test Helpers
 
 ```javascript
-// JavaScript error handling patterns (see tests-js/integration.test.js:85-105 for complete patterns)
-describe('Error Handling and Validation', () => {
-  test('should reject invalid app status', () => {
-    const config = bindings.createNapiAppOptions();
+  function createTestServer(bindings, options = {}) {
+    const config = createFullTestConfig(bindings, options);
+    const server = new bindings.BodhiServer(config);
+    return server;
+  }
 
-    expect(() => {
-      bindings.setAppStatus(config, 'invalid-status');
-    }).toThrow();
-  });
+  function createFullTestConfig(bindings, options = {}) {
+    const appHome = createTempDir();
+    const { host = 'localhost', port = randomPort() } = options;
 
-  test('should handle server startup errors gracefully', async () => {
-    const server = createTestServer(bindings, { host: 'invalid-host' });
+    let config = bindings.createNapiAppOptions();
+    config = bindings.setEnvVar(config, 'HOME', appHome);
+    config = bindings.setEnvVar(config, bindings.BODHI_HOST, host);
+    config = bindings.setEnvVar(config, bindings.BODHI_PORT, port.toString());
+    config = bindings.setSystemSetting(config, bindings.BODHI_ENV_TYPE, 'development');
 
-    try {
+    return config;
+  }
+```
+
+### Integration Test Examples
+
+```javascript
+  describe('Server Lifecycle', () => {
+    test('should manage server state correctly', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 20001 });
+
+      // Initial state
+      expect(await server.isRunning()).toBe(false);
+
+      // Start server
       await server.start();
-      expect(false).toBe(true); // Should not reach here
-    } catch (error) {
-      expect(error.message).toContain('Failed to start server');
-    }
+      expect(await server.isRunning()).toBe(true);
+
+      // Health check
+      expect(await server.ping()).toBe(true);
+
+      // Stop server
+      await server.stop();
+      expect(await server.isRunning()).toBe(false);
+    });
   });
-});
 ```
 
-**Error Handling Features**:
+## Configuration Management Patterns
 
-- Comprehensive error translation from Rust error types to JavaScript Error objects with proper stack traces
-- Context preservation with detailed error messages and recovery guidance for Node.js applications
-- Configuration validation errors with specific guidance for invalid settings and missing requirements
-- Server lifecycle error handling with graceful degradation and proper resource cleanup coordination
+### Multi-Layer Configuration
 
-## Extension Guidelines for NAPI Bindings
+```rust
+  pub fn try_build_app_options_internal(
+    config: NapiAppOptions,
+  ) -> Result<AppOptionsBuilder, AppOptionsError> {
+    let mut builder = AppOptionsBuilder::default();
 
-### Adding New NAPI Bindings
+    // Environment variables
+    for (key, value) in config.env_vars {
+      builder = builder.set_env(&key, &value);
+    }
 
-When creating new Node.js bindings for BodhiApp functionality:
+    // App settings
+    for (key, value) in config.app_settings {
+      builder = builder.set_app_setting(&key, &value);
+    }
 
-1. **NAPI Function Design**: Use proper NAPI annotations with async support and comprehensive error handling
-2. **Configuration Integration**: Extend NapiAppOptions with new configuration options and validation rules
-3. **Type Safety**: Update TypeScript definitions with new interfaces and comprehensive type coverage
-4. **Error Handling**: Create NAPI-specific errors that translate to JavaScript Error objects with context
-5. **Testing Infrastructure**: Use comprehensive JavaScript and Rust testing for isolated binding validation
+    // System settings
+    for (key, value) in config.system_settings {
+      builder = builder.set_system_setting(&key, &value)?;
+    }
 
-### Extending Configuration Management
+    // OAuth2 credentials
+    if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
+      builder = builder.set_app_reg_info(&client_id, &client_secret);
+    }
 
-For new configuration capabilities and Node.js integration patterns:
+    // App status validation
+    if let Some(status_str) = config.app_status {
+      let status = status_str.parse::<AppStatus>().map_err(|_| {
+        AppOptionsError::ValidationError(format!("Invalid app status: {}", status_str))
+      })?;
+      builder = builder.set_app_status(status);
+    }
 
-1. **Multi-Layer Configuration**: Extend configuration system with new environment variables and settings
-2. **Validation Integration**: Add comprehensive validation with error translation and recovery guidance
-3. **Cross-Platform Support**: Ensure new configuration works across all supported platforms
-4. **TypeScript Integration**: Update type definitions with new configuration options and interfaces
-5. **Configuration Testing**: Test configuration management with different Node.js scenarios and validation
+    Ok(builder)
+  }
+```
 
-### Cross-Application Integration Patterns
+## Error Handling Patterns
 
-For new Node.js embedding scenarios and application integration:
+### Rust to JavaScript Error Translation
 
-1. **Runtime Coordination**: Design async runtime coordination that integrates efficiently with Node.js event loop
-2. **Memory Management**: Implement proper resource lifecycle management between Rust and JavaScript
-3. **Error Boundaries**: Provide comprehensive error handling with proper isolation and recovery
-4. **Performance Optimization**: Optimize NAPI bindings and resource management for minimal overhead
-5. **Integration Testing**: Support comprehensive Node.js integration testing with realistic scenarios
+```rust
+  impl BodhiServer {
+    pub async unsafe fn start(&mut self) -> Result<()> {
+      let builder = try_build_app_options_internal(self.config.clone()).map_err(|e| {
+        Error::new(
+          Status::GenericFailure,
+          format!("Failed to build app options: {}", e),
+        )
+      })?;
 
-## Commands for NAPI Testing
+      let app_service = build_app_service(setting_service.clone())
+        .await
+        .map_err(|e| {
+          Error::new(
+            Status::GenericFailure,
+            format!("Failed to build app service: {}", e),
+          )
+        })?;
 
-**NAPI Integration Tests**: `cargo test -p lib_bodhiserver_napi` (includes Rust NAPI binding tests)  
-**JavaScript Tests**: `npm run test:run` (includes Vitest-based JavaScript integration tests)  
-**Playwright Tests**: `npm run test:playwright` (includes browser-based UI integration tests)  
-**Cross-Platform Build**: `npm run build:release` (includes native module compilation for all platforms)  
-**Test Utils Tests**: `cargo test -p lib_bodhiserver_napi --features test-utils` (includes comprehensive testing infrastructure)
+      Ok(())
+    }
+  }
+```
+
+### JavaScript Error Handling
+
+```javascript
+  try {
+    await server.start();
+  } catch (error) {
+    console.error('Server startup failed:', error.message);
+    // Error contains detailed context and stack trace
+  }
+```
+
+## Memory Management
+
+### Resource Cleanup Implementation
+
+```rust
+  impl Drop for BodhiServer {
+    fn drop(&mut self) {
+      // Cleanup temporary directories
+      if let Some(_temp_dir) = self.temp_dir.take() {
+        // temp_dir automatically cleaned up when dropped
+      }
+
+      // Cleanup logging resources
+      if let Some(_log_guard) = self.log_guard.take() {
+        // log_guard automatically cleaned up when dropped
+      }
+    }
+  }
+```
+
+## Recent Architecture Changes
+
+### Enhanced Configuration Management
+- Multi-layer configuration system with environment, app, and system settings
+- OAuth2 client credentials management with secure validation
+- Application status management with comprehensive validation
+- Constants export for safe JavaScript usage
+
+### Improved Error Handling
+- Comprehensive error translation from Rust to JavaScript
+- Context preservation with detailed error messages
+- Configuration validation with recovery guidance
+- Graceful degradation for server lifecycle errors
+
+### Cross-Platform Optimization
+- Native module compilation for multiple platforms
+- Auto-generated TypeScript definitions with type safety
+- Memory management optimization between Rust and JavaScript
+- Performance improvements for NAPI binding overhead

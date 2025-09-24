@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `auth_middleware` crate.
 
-*For detailed implementation examples and technical depth, see [PACKAGE.md](./PACKAGE.md)*
+See [crates/auth_middleware/PACKAGE.md](crates/auth_middleware/PACKAGE.md) for implementation details.
 
 ## Purpose
 

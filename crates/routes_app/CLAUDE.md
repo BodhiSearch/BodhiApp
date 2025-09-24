@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `routes_app` crate.
 
-*For detailed implementation examples and technical depth, see [PACKAGE.md](crates/routes_app/PACKAGE.md)*
+See [crates/routes_app/PACKAGE.md](crates/routes_app/PACKAGE.md) for implementation details.
 
 ## Purpose
 

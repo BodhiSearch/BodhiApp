@@ -10,7 +10,7 @@ The `ci_optims` crate is a build-time optimization dummy crate that pre-compiles
 
 ### Dependency Aggregation
 
-**crates/ci_optims/Cargo.toml:7-101**
+**crates/ci_optims/Cargo.toml**
 ```toml
   [dependencies]
   # Include all heavy dependencies from workspace to pre-compile them
@@ -20,7 +20,7 @@ The `ci_optims` crate is a build-time optimization dummy crate that pre-compiles
 ```
 Complete dependency registry covering all functional domains: security, networking, async runtime, serialization, AI/ML, and observability.
 
-**crates/ci_optims/src/lib.rs:1-46**
+**crates/ci_optims/src/lib.rs**
 ```rust
   // Dummy crate for pre-compiling dependencies in CI builds
   #![allow(unused_imports)]
@@ -42,7 +42,7 @@ Minimal implementation with unused imports that trigger dependency compilation d
 
 ### Workspace Filtering System
 
-**scripts/filter-cargo-toml.py:17-81**
+**scripts/filter-cargo-toml.py**
 ```python
   def filter_cargo_toml(input_file, output_file):
     """Filter Cargo.toml to create minimal workspace for dependency compilation."""
@@ -54,7 +54,7 @@ Python script that creates minimal workspace configuration for dependency-only c
 
 ### Docker Build Integration
 
-**devops/cpu.Dockerfile:48-62**
+**devops/cpu.Dockerfile**
 ```dockerfile
   COPY crates/ci_optims/ crates/ci_optims/
   RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml
