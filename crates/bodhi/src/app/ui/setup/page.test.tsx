@@ -224,7 +224,7 @@ describe('Setup Page', () => {
     expect(screen.getByText('Run AI Models Locally, Privately, and Completely Free')).toBeInTheDocument();
 
     // Check setup progress
-    expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 6')).toBeInTheDocument();
   });
 
   it('should disable form fields and button when loading', async () => {

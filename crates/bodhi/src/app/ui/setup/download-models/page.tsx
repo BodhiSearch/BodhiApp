@@ -3,6 +3,7 @@
 import { recommendedModels } from '@/app/ui/setup/download-models/data';
 import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
 import { ModelInfo } from '@/app/ui/setup/download-models/types';
+import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
 import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
@@ -58,7 +59,11 @@ export function ModelDownloadContent() {
         initial="hidden"
         animate="visible"
       >
-        <SetupProgress currentStep={3} totalSteps={4} />
+        <SetupProgress
+          currentStep={SETUP_STEPS.DOWNLOAD_MODELS}
+          totalSteps={SETUP_TOTAL_STEPS}
+          stepLabels={SETUP_STEP_LABELS}
+        />
         <BodhiLogo />
 
         <motion.div variants={itemVariants}>

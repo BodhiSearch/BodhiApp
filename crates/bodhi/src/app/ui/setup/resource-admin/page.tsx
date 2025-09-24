@@ -1,5 +1,6 @@
 'use client';
 
+import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
 import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
@@ -73,7 +74,11 @@ function ResourceAdminContent() {
         initial="hidden"
         animate="visible"
       >
-        <SetupProgress currentStep={2} totalSteps={4} />
+        <SetupProgress
+          currentStep={SETUP_STEPS.RESOURCE_ADMIN}
+          totalSteps={SETUP_TOTAL_STEPS}
+          stepLabels={SETUP_STEP_LABELS}
+        />
         <BodhiLogo />
 
         <motion.div variants={itemVariants}>
