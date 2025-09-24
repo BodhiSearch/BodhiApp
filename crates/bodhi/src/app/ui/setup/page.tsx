@@ -1,6 +1,7 @@
 'use client';
 
 import { BenefitCard } from '@/app/ui/setup/BenefitCard';
+import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
 import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import { WelcomeCard } from '@/app/ui/setup/WelcomeCard';
@@ -106,7 +107,11 @@ function SetupContent() {
         initial="hidden"
         animate="visible"
       >
-        <SetupProgress currentStep={1} totalSteps={4} />
+        <SetupProgress
+          currentStep={SETUP_STEPS.WELCOME}
+          totalSteps={SETUP_TOTAL_STEPS}
+          stepLabels={SETUP_STEP_LABELS}
+        />
         <WelcomeCard />
 
         <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants}>
