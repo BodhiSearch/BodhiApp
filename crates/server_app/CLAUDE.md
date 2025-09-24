@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `server_app` crate.
 
-*For detailed implementation examples and technical depth, see [crates/server_app/PACKAGE.md](crates/server_app/PACKAGE.md)*
+See [PACKAGE.md](./PACKAGE.md) for implementation details
 
 ## Purpose
 

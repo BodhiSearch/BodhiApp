@@ -8,7 +8,7 @@ This document provides detailed technical information for the `server_core/test_
 Comprehensive HTTP response testing utilities for server infrastructure validation:
 
 ```rust
-// Pattern structure (see src/test_utils/http.rs:10-25 for complete trait definition)
+// Implementation at crates/server_core/src/test_utils/http.rs:11-28
 #[async_trait::async_trait]
 pub trait ResponseTestExt {
   async fn json<T>(self) -> anyhow::Result<T> where T: DeserializeOwned;
@@ -28,7 +28,7 @@ pub trait RequestTestExt {
 Comprehensive HTTP infrastructure testing with service mock coordination:
 
 ```rust
-// Pattern structure (see src/test_utils/state.rs:8-15 for complete fixture)
+// Implementation at crates/server_core/src/test_utils/state.rs:10-17
 #[fixture]
 #[awt]
 pub async fn router_state_stub(#[future] app_service_stub: AppServiceStub) -> DefaultRouterState {
@@ -545,6 +545,22 @@ HTTP infrastructure testing must coordinate across multiple systems:
 
 ## Commands for HTTP Infrastructure Testing
 
-**HTTP Infrastructure Tests**: `cargo test -p server_core --features test-utils` (includes RouterState and SharedContext testing)  
-**SSE Streaming Tests**: `cargo test -p server_core sse` (includes DirectSSE and ForwardedSSE validation)  
-**Context Integration Tests**: `cargo test -p server_core context` (includes LLM server context coordination testing)
+## File Structure and Key Components
+
+**Test Utility Modules** (`crates/server_core/src/test_utils/`):
+- **mod.rs:1-8**: Module exports for http, server, and state utilities
+- **http.rs:11-112**: HTTP response/request testing extensions with SSE parsing
+- **state.rs:10-46**: RouterState fixtures and ServerFactory stub implementation  
+- **server.rs:7-27**: Mock server and binary path fixtures for LLM server testing
+
+**Integration Points**:
+- Uses `services::test_utils::AppServiceStub` for comprehensive service mocking
+- Integrates with `llama_server_proc::MockServer` for LLM server process testing
+- Coordinates with `objs::test_utils` for domain object testing utilities
+
+## Commands for HTTP Infrastructure Testing
+
+**HTTP Infrastructure Tests**: `cargo test -p server_core --features test-utils`
+**SSE Response Parsing Tests**: `cargo test -p server_core http::test`  
+**RouterState Integration Tests**: `cargo test -p server_core router_state::test`
+**SharedContext Tests**: `cargo test -p server_core shared_rw::test`

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `commands` crate.
 
-*For detailed implementation examples and technical depth, see [crates/commands/PACKAGE.md](crates/commands/PACKAGE.md)*
+See [PACKAGE.md](./PACKAGE.md) for implementation details and file references.
 
 ## Purpose
 
@@ -171,3 +171,26 @@ CLI command testing with service mock coordination:
 - **Error Scenario Testing**: Test error propagation and recovery across service boundaries
 - **Output Validation**: Test CLI-specific formatting and user experience patterns
 - **Integration Testing**: Validate complete command workflows with realistic service interactions
+
+## Recent Architecture Evolution
+
+### User Alias Refactoring
+Recent changes reflect improved alias type safety and domain specialization:
+- **UserAlias Domain Object**: Specialized user-created aliases with enhanced validation replacing generic `Alias`
+- **Alias Wrapper Types**: Commands now work with specific alias variants (`UserAlias`) for type safety
+- **Priority Resolution**: Find operations prioritize user aliases over model and API aliases with `find_user_alias()`
+- **Builder Specialization**: `UserAliasBuilder` provides user-specific construction patterns with CLI optimizations
+
+### Chat Template Simplification
+llama.cpp integration eliminated chat template complexity throughout commands:
+- **Template Handling Removed**: Chat template download and management removed from all command workflows
+- **Simplified Command Structure**: Commands focus purely on model file management without template coordination
+- **Builder Cleanup**: Command builders no longer handle chat template parameters or validation
+- **Test Simplification**: Testing scenarios simplified with template logic removal from all test cases
+
+### Context Parameters Evolution
+Enhanced context parameter handling for seamless llama.cpp integration:
+- **Parameter Coordination**: Context parameters integrated with OpenAI request parameters in command builders
+- **CLI Argument Mapping**: Command line arguments seamlessly mapped to llama.cpp context parameters
+- **Validation Pipeline**: Context parameters validated during command construction with detailed error reporting
+- **Service Integration**: Parameters passed through to llama server process management for execution

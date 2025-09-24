@@ -2,6 +2,24 @@
 
 This document provides detailed technical information for the `commands` crate, focusing on BodhiApp's CLI command orchestration architecture and sophisticated service coordination patterns.
 
+## File Structure
+
+```
+crates/commands/
+├── Cargo.toml                     # Dependencies: objs, services, derive-new, prettytable
+├── src/
+│   ├── lib.rs:1-18               # Module exports and localization resources
+│   ├── cmd_create.rs:1-235       # CreateCommand orchestration and testing
+│   ├── cmd_pull.rs:1-230         # PullCommand dual-mode operation
+│   ├── objs_ext.rs:1-112         # IntoRow trait for CLI formatting
+│   ├── test_utils/
+│   │   ├── mod.rs:1-2            # Test utility module
+│   │   └── create.rs:1-23        # CreateCommand test builders
+│   └── resources/
+│       └── en-US/messages.ftl    # Localization resources (placeholder)
+└── [CLAUDE.md, PACKAGE.md]       # Documentation files
+```
+
 ## CLI Command Orchestration Architecture
 
 The `commands` crate serves as BodhiApp's **CLI command orchestration layer**, implementing complex multi-service workflows with comprehensive error handling and CLI-optimized user experience.
@@ -13,7 +31,7 @@ Commands orchestrate multiple services through the `AppService` registry pattern
 impl CreateCommand {
     pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
         // Alias conflict detection with update mode support
-        if service.data_service().find_alias(&self.alias).is_some() {
+        if service.data_service().find_user_alias(&self.alias).is_some() {
             if !self.update {
                 return Err(AliasExistsError(self.alias.clone()).into());
             }
@@ -46,13 +64,12 @@ impl CreateCommand {
             }
         };
         
-        // Alias creation with metadata coordination
-        let alias = AliasBuilder::default()
+        // User alias creation with metadata coordination
+        let alias = UserAliasBuilder::default()
             .alias(self.alias)
             .repo(self.repo)
             .filename(self.filename)
             .snapshot(local_model_file.snapshot)
-            .source(AliasSource::User)
             .request_params(self.oai_request_params)
             .context_params(self.context_params)
             .build()?;
@@ -100,7 +117,7 @@ pub trait IntoRow {
     fn into_row(self) -> Row;
 }
 
-impl IntoRow for Alias {
+impl IntoRow for UserAlias {
     fn into_row(self) -> Row {
         Row::from(vec![
             Cell::new(&self.alias),
@@ -201,7 +218,7 @@ impl PullCommand {
         match self {
             PullCommand::ByAlias { alias } => {
                 // Prevent alias conflicts
-                if service.data_service().find_alias(&alias).is_some() {
+                if service.data_service().find_user_alias(&alias).is_some() {
                     return Err(AliasExistsError(alias.clone()).into());
                 }
                 
@@ -215,12 +232,11 @@ impl PullCommand {
                     .download(&model.repo, &model.filename, None, progress).await?;
                 
                 // Create local alias from remote metadata
-                let alias = AliasBuilder::default()
+                let alias = UserAliasBuilder::default()
                     .alias(model.alias)
                     .repo(model.repo)
                     .filename(model.filename)
                     .snapshot(local_model_file.snapshot)
-                    .source(AliasSource::User)
                     .request_params(model.request_params)
                     .context_params(model.context_params)
                     .build()?;
@@ -284,13 +300,12 @@ Commands extensively coordinate with objs crate for domain consistency:
 
 ```rust
 // Alias creation with parameter coordination
-let alias = AliasBuilder::default()
+let alias = UserAliasBuilder::default()
     .alias(command.alias)
     .repo(command.repo.clone())
     .filename(command.filename)
     .snapshot(hub_file.snapshot.clone())
-    .source(AliasSource::Model)
-    .oai_request_params(command.oai_request_params)
+    .request_params(command.oai_request_params)
     .context_params(command.context_params)
     .build()?;
 
@@ -353,7 +368,7 @@ CLI commands support multiple output formats for different use cases:
 
 ```rust
 // Pretty table output for interactive use
-pub fn format_aliases_table(aliases: Vec<Alias>) -> Table {
+pub fn format_aliases_table(aliases: Vec<UserAlias>) -> Table {
     let mut table = Table::new();
     table.set_titles(row!["Alias", "Repository", "Filename", "Snapshot"]);
     
@@ -365,7 +380,7 @@ pub fn format_aliases_table(aliases: Vec<Alias>) -> Table {
 }
 
 // JSON output for automation and scripting
-pub fn format_aliases_json(aliases: Vec<Alias>) -> serde_json::Value {
+pub fn format_aliases_json(aliases: Vec<UserAlias>) -> serde_json::Value {
     serde_json::to_value(aliases).unwrap_or_default()
 }
 ```
@@ -420,7 +435,7 @@ mod tests {
             
         mock_data_service
             .expect_save_alias()
-            .with(function(|alias: &Alias| alias.alias == "test-alias"))
+            .with(function(|alias: &UserAlias| alias.alias == "test-alias"))
             .returning(|_| Ok(()));
         
         mock_service

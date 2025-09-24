@@ -6,114 +6,151 @@ This file provides guidance to Claude Code when working with the `test_utils` mo
 
 ## Purpose
 
-The `test_utils` module provides specialized testing infrastructure for BodhiApp's CLI command orchestration layer, enabling comprehensive testing of multi-service workflows, CLI-specific user experience patterns, and command output validation.
+The `test_utils` module provides minimal testing utilities for BodhiApp's CLI commands crate, currently focused on command builder patterns for consistent test data creation. This module serves as a foundation for CLI command testing and provides extension points for more comprehensive testing infrastructure.
 
-## CLI Command Testing Architecture
+## Current Implementation Architecture
 
 ### Command Builder Testing Foundation
-Focused command construction testing for CLI workflows:
-- **CreateCommand::testalias()**: Pre-configured command using testalias repository for consistent testing
-- **CreateCommandBuilder::testalias()**: Builder pattern with CLI-optimized defaults (auto_download=true, update=false)
-- **Parameter Integration**: Default OAIRequestParams and empty context_params for baseline testing
-- **Service Mock Integration**: Command builders designed for service mocking with AppService registry
-- **Minimal Test Infrastructure**: Focused on essential command construction patterns
+Minimal command construction utilities for testing CLI workflows:
+- **CreateCommand::testalias()**: Pre-configured command instance using testalias repository for consistent testing
+- **CreateCommandBuilder::testalias()**: Builder pattern with sensible defaults for test scenarios
+- **Domain Object Integration**: Uses objs crate test utilities (`Repo::testalias()`, `Repo::testalias_model_q8()`)
+- **Parameter Defaults**: Provides default OAIRequestParams and empty context_params for baseline testing
+- **Service Integration Ready**: Designed to work with services crate test utilities for mocking
 
-### Multi-Service Mock Coordination
-Service orchestration testing patterns for CLI commands:
-- **AppService Mock Composition**: Central service registry mocking using AppServiceStubBuilder for command execution
-- **HubService + DataService Coordination**: Multi-service workflow testing with TestHfService and data service stubs
-- **Error Propagation Testing**: Service error coordination through CLI command error translation with transparent wrapping
-- **Progress Feedback Integration**: Optional progress reporting testing with services::Progress parameter
-- **Simplified Testing Infrastructure**: Focus on core command execution patterns with service mocking
-
-### CLI User Experience Testing
-Comprehensive user interface testing for command-line operations:
-- **Output Format Validation**: Pretty table formatting and JSON output testing
-- **Error Message Quality**: CLI-specific error message validation with actionable guidance
-- **Progress Feedback Testing**: Multi-stage operation progress validation
-- **Interactive Confirmation**: User prompt and confirmation testing for destructive operations
-- **Terminal Output Optimization**: Column layout and human-readable value testing
+### Testing Infrastructure Design
+Current minimal infrastructure with clear extension points:
+- **Builder Pattern Focus**: Emphasizes consistent test command creation over complex mocking
+- **Cross-Crate Coordination**: Leverages existing test utilities from objs and services crates
+- **Domain Object Consistency**: Uses standardized test data objects across command testing
+- **Service Mock Compatibility**: Compatible with AppServiceStubBuilder and TestHfService from services crate
 
 ## Cross-Crate Testing Integration
 
-### Objs Domain Object Testing
-Commands extensively test domain object integration:
-- **Alias Builder Coordination**: Command testing uses objs alias builders for consistency
-- **Repo and HubFile Integration**: Model management testing with domain object validation
-- **Error System Integration**: Command errors coordinate with objs error system for localization
-- **Parameter Object Testing**: OpenAI compatibility parameter validation across command and domain boundaries
+### Objs Domain Object Integration
+Commands test utilities coordinate with domain objects:
+- **Standardized Test Data**: Uses `Repo::testalias()` and related test factories from objs crate
+- **Domain Builder Coordination**: Command builders use objs builders for consistency
+- **Parameter Object Integration**: Default OAIRequestParams integration with command testing
+- **Error System Compatibility**: Command errors designed for objs error system integration
 
-### Services Layer Mock Coordination  
-CLI commands require sophisticated service mocking:
-- **Service Registry Mocking**: `AppService` trait mocking for comprehensive command testing
-- **Cross-Service Transaction Testing**: Multi-service operation testing with rollback validation
-- **Authentication Service Integration**: Credential management testing for CLI-specific flows
-- **Database Service Coordination**: Alias persistence testing with transaction boundaries
-
-### CLI-Specific Testing Patterns
-Command testing focuses on CLI domain concerns:
-- **Terminal Output Validation**: Pretty table formatting and human-readable value testing
-- **Command Line Integration**: CLI argument parsing and command execution coordination
-- **Batch Operation Testing**: Multiple command execution with consistent output formatting
-- **Automation Support Testing**: JSON output and quiet mode validation for scripting scenarios
+### Services Layer Compatibility
+CLI command test utilities work with services crate testing:
+- **Service Mock Integration**: Compatible with AppServiceStubBuilder from services crate
+- **Hub Service Testing**: Works with TestHfService for model download testing
+- **Data Service Coordination**: Compatible with data service mocks for alias persistence testing
+- **Multi-Service Workflows**: Test utilities support complex service interaction testing
 
 ## Architecture Position
 
-The `test_utils` module serves as:
-- **CLI Testing Foundation**: Provides specialized infrastructure for command-line interface testing
-- **Service Mock Orchestration**: Enables complex multi-service workflow testing for CLI operations
-- **User Experience Validation**: Tests CLI-specific concerns like output formatting and error messaging
-- **Integration Testing Hub**: Coordinates testing across domain objects, services, and CLI interfaces
+The `test_utils` module currently serves as:
+- **Minimal CLI Testing Foundation**: Provides basic command builder utilities for test data creation
+- **Cross-Crate Integration Point**: Coordinates with objs and services test utilities
+- **Extension Foundation**: Provides structure for future CLI testing infrastructure expansion
+- **Domain Object Bridge**: Connects CLI command testing with domain object test factories
 
-## Testing Infrastructure Patterns
+## Extension Architecture
 
-### Command Mock Composition
-Testing patterns for multi-service command workflows:
-- **Service Dependency Injection**: Mock services provided through `AppService` registry pattern
-- **Error Scenario Orchestration**: Coordinate service failure scenarios for CLI error testing
-- **Progress Feedback Validation**: Test multi-stage operation feedback with service coordination
-- **Output Format Testing**: Validate CLI-specific formatting across different command types
+### Current Extension Points
+Areas designed for future testing infrastructure expansion:
+- **Command Builder Expansion**: Additional command types can follow the CreateCommand::testalias() pattern
+- **Service Mock Integration**: Ready for integration with more sophisticated service mocking
+- **Output Testing Infrastructure**: Foundation for CLI-specific output validation
+- **Error Testing Patterns**: Compatible with comprehensive CLI error message testing
 
-### CLI Integration Testing Requirements
-Command testing must validate CLI-specific functionality:
-- **Terminal Output Standards**: Consistent formatting and layout across all command outputs  
-- **Error Message Quality**: CLI error messages must be actionable with specific resolution guidance
-- **User Experience Patterns**: Progress feedback and interactive confirmation testing
-- **Automation Compatibility**: JSON output and quiet modes for scripting integration
+### Future Testing Infrastructure Patterns
+Architecture supports future expansion into:
+- **Multi-Service Mock Coordination**: Service orchestration testing for complex CLI workflows
+- **CLI User Experience Testing**: Output format validation, error message quality, progress feedback
+- **Integration Testing Hub**: Comprehensive testing across domain objects, services, and CLI interfaces
+- **Cross-Command Testing Coordination**: Consistent testing patterns across different command types
 
-### Cross-Command Testing Coordination
-Testing patterns that span multiple CLI commands:
-- **Consistent Builder Patterns**: All commands provide test builders with similar patterns
-- **Service Mock Reuse**: Common service mocking patterns across different command tests
-- **Error Handling Consistency**: Similar error translation and formatting across all commands
-- **Output Format Standards**: Consistent table layouts and formatting across command types
+## Implementation Constraints
 
-## Important Constraints
-
-### Service Mock Requirements
-CLI command testing requires comprehensive service mocking:
-- **AppService Registry**: All commands must be tested with mocked `AppService` registry
-- **Multi-Service Coordination**: Tests must mock complex service interactions realistically
-- **Error Propagation**: Service error mocking must test CLI error translation properly
-- **Authentication Integration**: Credential management mocking for gated repository testing
-
-### CLI Testing Standards
-Command testing must validate CLI-specific concerns:
-- **Output Format Validation**: All CLI output must be tested for formatting consistency
-- **Error Message Quality**: CLI error messages must be tested for actionability and clarity
-- **Progress Feedback**: Long-running operations must test progress feedback properly
-- **Terminal Compatibility**: Output formatting must be tested for terminal display optimization
+### Current Implementation Scope
+The test_utils module has specific architectural constraints:
+- **Minimal Implementation**: Currently provides only essential command builder utilities
+- **Cross-Crate Dependencies**: Relies on objs and services crates for comprehensive testing infrastructure
+- **Test Data Focus**: Emphasizes consistent test data creation over complex testing scenarios
+- **Extension Ready**: Designed for future expansion without breaking existing patterns
 
 ### Domain Object Integration Requirements
-Command testing must coordinate with objs testing infrastructure:
-- **Domain Builder Integration**: Command tests must use objs domain builders for consistency
-- **Validation Testing**: Command validation must coordinate with domain object validation
-- **Error System Integration**: Command errors must integrate properly with objs error system
-- **Parameter Testing**: OpenAI compatibility parameters must be tested across command boundaries
+Command test utilities must coordinate with objs testing infrastructure:
+- **Standardized Test Data**: Must use objs test factories (`Repo::testalias()`, etc.) for consistency
+- **Builder Pattern Compatibility**: Command builders must integrate with objs domain builders
+- **Error System Coordination**: Command errors must work with objs error system and localization
+- **Parameter Object Integration**: OAIRequestParams and other domain objects must be consistent
 
-### Testing Coordination Requirements
-CLI command testing must coordinate across multiple testing systems:
-- **Cross-Crate Test Infrastructure**: Commands must coordinate with objs and services test utilities
-- **Service Mock Composition**: Command tests must compose multiple service mocks realistically
-- **Integration Test Patterns**: Command tests must validate end-to-end CLI workflows properly
-- **Output Validation Standards**: CLI output testing must maintain consistency across all command types
+### Cross-Crate Testing Coordination
+CLI command testing coordinates across multiple crates:
+- **Services Integration**: Command test utilities work with services crate AppServiceStubBuilder and TestHfService
+- **Test Infrastructure Reuse**: Leverages existing test utilities rather than duplicating functionality
+- **Consistent Patterns**: Maintains consistency with testing patterns across the workspace
+- **Future Expansion**: Ready for more sophisticated testing infrastructure as commands crate grows
+
+### Testing Implementation Guidelines
+When extending command test utilities:
+- **Follow Builder Pattern**: New command test utilities should follow CreateCommand::testalias() pattern
+- **Use Domain Factories**: Always use objs test factories for consistent test data
+- **Coordinate with Services**: Integrate with services crate test utilities for service mocking
+- **Maintain Simplicity**: Keep test utilities focused and avoid complex testing logic in builders
+
+## Usage Examples
+
+### Basic Command Testing
+Using test_utils for consistent command testing:
+```rust
+#[cfg(test)]
+mod tests {
+    use crate::CreateCommand;
+    use services::test_utils::AppServiceStubBuilder;
+    
+    #[tokio::test]
+    async fn test_create_command_execution() {
+        // Use test utility for consistent command creation
+        let command = CreateCommand::testalias();
+        
+        // Integrate with services test utilities for mocking
+        let service = Arc::new(
+            AppServiceStubBuilder::default()
+                .with_hub_service()
+                .with_data_service()
+                .await
+                .build()?
+        );
+        
+        let result = command.execute(service).await;
+        assert!(result.is_ok());
+    }
+}
+```
+
+### Extension Pattern
+Adding new command test utilities:
+```rust
+// Follow the established pattern for new commands
+impl PullCommand {
+    pub fn testalias() -> PullCommand {
+        PullCommand::ByAlias {
+            alias: "testalias:instruct".to_string(),
+        }
+    }
+}
+```
+
+## Important Design Decisions
+
+### Chat Template Evolution
+The commands crate test utilities reflect the architectural evolution of chat template handling:
+- **Legacy Removed**: Chat template parameters removed from command builders since llama.cpp now handles templates
+- **Simplified Testing**: Test builders focus on core command functionality without deprecated template parameters
+- **Future Compatibility**: Architecture supports future template-related testing if requirements change
+
+### Testing Philosophy
+Command test utilities follow specific testing philosophy:
+- **Minimal Viable Testing**: Provide essential utilities without over-engineering
+- **Cross-Crate Coordination**: Leverage existing test infrastructure rather than duplicating
+- **Extension Ready**: Design for future growth while maintaining current simplicity
+- **Domain Consistency**: Ensure test data consistency across the entire workspace
+
+This minimal approach allows the commands crate to focus on core CLI functionality while providing solid testing foundations that can grow with the crate's complexity.

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `routes_all` crate.
 
-*For detailed implementation examples and technical depth, see [crates/routes_all/PACKAGE.md](crates/routes_all/PACKAGE.md)*
+*For detailed implementation examples and technical depth, see [PACKAGE.md](./PACKAGE.md)*
 
 ## Purpose
 
@@ -12,26 +12,26 @@ The `routes_all` crate serves as BodhiApp's **HTTP route composition and middlew
 
 ### Route Composition and Unification System
 Sophisticated HTTP route orchestration with comprehensive middleware integration:
-- **Multi-Route Integration**: Combines routes_oai (OpenAI/Ollama compatibility) and routes_app (application management) with unified state management
-- **Hierarchical Authorization**: Role-based and scope-based access control with User/PowerUser/Admin hierarchy and TokenScope/UserScope validation
-- **Middleware Orchestration**: Layered middleware architecture with auth_middleware, session management, and canonical URL handling
-- **Development Mode Support**: Dynamic UI serving with proxy support for development and embedded assets for production
-- **Cross-Origin Resource Sharing**: Comprehensive CORS configuration for web client integration
+- **Multi-Route Integration**: Combines routes_oai (OpenAI/Ollama compatibility) and routes_app (application management) with unified RouterState dependency injection
+- **Hierarchical Authorization**: Five-tier authorization system (Public → Optional Auth → User → PowerUser/Admin → Manager) with role and scope-based access control
+- **Middleware Orchestration**: Layered middleware with auth_middleware, session management, canonical URL handling, and comprehensive tracing
+- **Development Mode Support**: Dynamic UI serving with environment-based configuration supporting proxy mode, embedded assets, and graceful fallbacks
+- **Cross-Origin Resource Sharing**: Permissive CORS configuration optimized for development workflows and web client integration
 
 ### Multi-Layer Authentication Architecture
 Advanced authentication system supporting multiple authentication flows:
-- **Dual Authentication Support**: Bearer token authentication for API access and session-based authentication for web interface
-- **Role-Based Authorization**: Hierarchical role system (Admin > Manager > PowerUser > User) with fine-grained endpoint protection
-- **Scope-Based Authorization**: Token scope validation (TokenScope::User/PowerUser) and user scope validation (UserScope::User/PowerUser)
-- **Session Integration**: Tower Sessions with secure cookie configuration and automatic session management
-- **API Token Management**: Database-backed API token validation with digest-based lookup and status tracking
+- **Dual Authentication Support**: Bearer token authentication for API endpoints and session-based authentication for web management interfaces
+- **Role-Based Authorization**: Hierarchical role system (Admin > Manager > PowerUser > User) with fine-grained endpoint protection and has_access_to() validation
+- **Scope-Based Authorization**: Dual scope system with TokenScope (API token capabilities) and UserScope (session user capabilities) validation
+- **Session Integration**: Tower Sessions with secure cookie configuration, CSRF protection, and automatic lifecycle management
+- **Optional Authentication Layer**: inject_optional_auth_info middleware for endpoints requiring conditional authentication
 
-### OpenAPI Documentation Generation System
-Comprehensive API specification with interactive documentation:
-- **Unified Documentation**: Combined OpenAPI specification from routes_oai and routes_app with environment-specific configuration
-- **Interactive Interface**: Swagger UI integration with authentication flow documentation and endpoint testing
-- **Environment Adaptation**: Dynamic server URL and security scheme configuration based on deployment environment
-- **Schema Integration**: Complete request/response object documentation with validation and examples
+### OpenAPI Documentation and UI Serving System
+Comprehensive API specification with interactive documentation and dynamic UI serving:
+- **Unified Documentation**: BodhiOpenAPIDoc combines specifications from routes_oai and routes_app with OpenAPIEnvModifier for environment adaptation
+- **Interactive Interface**: Swagger UI at /swagger-ui with /api-docs/openapi.json endpoint for comprehensive API exploration
+- **Dynamic UI Serving**: Environment-based UI serving with production embedded assets, development proxy to localhost:3000, and fallback handling
+- **Localization Resources**: L10N_RESOURCES with include_dir macro for embedded localization files supporting multi-language error messages
 
 ## Architecture Position
 
@@ -70,12 +70,14 @@ Sophisticated middleware orchestration across route boundaries:
 ### Multi-Layer Route Integration Architecture
 Sophisticated route composition with hierarchical authorization:
 
-1. **Public Route Layer**: Health checks, app info, and setup endpoints with no authentication requirements
-2. **Optional Authentication Layer**: User info and OAuth2 flows with session injection but no authorization requirements
-3. **User-Level API Layer**: OpenAI/Ollama endpoints and basic model operations with User role and scope requirements
-4. **PowerUser API Layer**: Model management operations with PowerUser role and scope requirements
-5. **Session-Only API Layer**: Token management operations requiring session-based authentication only
-6. **Admin API Layer**: Settings management with Admin role requirements and session-based authentication
+1. **Public Route Layer**: Health checks, app info, setup, and logout endpoints with no authentication requirements
+2. **Dev Route Layer**: Development-only endpoints (secrets, envs) conditionally added in non-production environments
+3. **Optional Authentication Layer**: User info, OAuth2 flows, and access request endpoints with inject_optional_auth_info middleware
+4. **User-Level API Layer**: OpenAI/Ollama endpoints and basic model operations requiring User role and scope authorization
+5. **PowerUser API Layer**: Model management, API model operations, and download handling requiring PowerUser role and scope
+6. **PowerUser Session Layer**: Token management operations requiring PowerUser role with session-only authentication
+7. **Admin Session Layer**: Settings management and user removal requiring Admin role with session-only authentication
+8. **Manager Session Layer**: Access request management and user role changes requiring Manager role with session-only authentication
 
 ### Authentication Flow Orchestration
 Complex authentication coordination across route boundaries:
@@ -93,11 +95,11 @@ Complex authentication coordination across route boundaries:
 4. **Role Extraction**: Role extraction from session data with consistent authorization validation
 
 ### UI Serving Orchestration
-Dynamic UI serving with environment-specific configuration:
-1. **Production Mode**: Embedded static assets serving with optimized performance
-2. **Development Proxy Mode**: Proxy requests to localhost:3000 for hot reload development
-3. **Development Static Mode**: Embedded assets serving in development for testing production builds
-4. **Fallback Handling**: Graceful degradation when UI assets are not available
+Dynamic UI serving with environment-specific configuration via apply_ui_router:
+1. **Production Mode**: Embedded static assets serving with optimized performance and proper caching headers
+2. **Development Proxy Mode**: BODHI_DEV_PROXY_UI=true enables proxy_router forwarding to localhost:3000 for hot reload
+3. **Development Static Mode**: BODHI_DEV_PROXY_UI=false serves embedded assets in development for production build testing
+4. **Fallback Handling**: Graceful degradation when static_router is None, maintaining API functionality without UI
 
 ## Important Constraints
 

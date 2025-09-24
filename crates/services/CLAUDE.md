@@ -2,29 +2,31 @@
 
 This file provides guidance to Claude Code when working with the `services` crate.
 
-*For detailed implementation examples and technical depth, see [crates/services/PACKAGE.md](crates/services/PACKAGE.md)*
+See [PACKAGE.md](crates/services/PACKAGE.md) for implementation details and technical depth.
 
 ## Purpose
 
-The `services` crate implements BodhiApp's business logic layer through a sophisticated service architecture that coordinates OAuth2 authentication, model management, data persistence, and multi-layer security.
+The `services` crate implements BodhiApp's business logic layer through a sophisticated service architecture that coordinates OAuth2 authentication, AI API integrations, model management, user access control, data persistence, and multi-layer security. This crate serves as the foundation layer that bridges domain objects from the `objs` crate with external systems and provides comprehensive service orchestration for the entire BodhiApp ecosystem.
 
 ## Key Domain Architecture
 
 ### Service Registry Pattern
 BodhiApp uses a sophisticated trait-based service registry with comprehensive dependency injection:
-- **AppService trait**: Central registry providing access to all 10 business services including localization and time services
-- **DefaultAppService**: Concrete implementation managing service composition with derive_new pattern
-- **Arc<dyn Trait> pattern**: Thread-safe shared ownership across async contexts with mockall integration
-- **Service interdependencies**: Complex coordination between authentication, data, hub, database, session, secret, cache, and time services
+- **AppService trait**: Central registry providing access to 11 business services including AI API service, localization, and time services
+- **DefaultAppService**: Concrete implementation managing service composition with derive_new pattern for dependency injection
+- **Arc<dyn Trait> pattern**: Thread-safe shared ownership across async contexts with comprehensive mockall integration for testing
+- **Service interdependencies**: Complex coordination between authentication, AI API, data, hub, database, session, secret, cache, setting, and time services
+- **Cross-service communication**: Services coordinate through well-defined interfaces with error propagation and transaction management
 
 ### Authentication Coordination System
 Multi-stage authentication flow with comprehensive service coordination:
-- **OAuth2 Client Registration**: Dynamic app registration with Keycloak identity provider using custom Bodhi API endpoints
-- **PKCE Authorization Flow**: Authorization code exchange with PKCE security and code verifier validation
-- **Token Management**: JWT access/refresh token lifecycle with automatic refresh and expiration handling
-- **Token Exchange Protocol**: RFC 8693 token exchange for service-to-service authentication with scope validation
-- **Session Integration**: SQLite-backed HTTP session management coordinated with JWT tokens and secure cookie configuration
-- **Resource Administration**: Dynamic resource admin assignment and access request management
+- **OAuth2 Client Registration**: Dynamic app registration with Keycloak identity provider using custom Bodhi API endpoints with version header propagation
+- **PKCE Authorization Flow**: Authorization code exchange with PKCE security, code verifier validation, and comprehensive error handling
+- **Token Management**: JWT access/refresh token lifecycle with automatic refresh, expiration handling, and database persistence
+- **Token Exchange Protocol**: RFC 8693 token exchange for service-to-service authentication with scope validation and app token specialization
+- **Session Integration**: SQLite-backed HTTP session management coordinated with JWT tokens, secure cookie configuration, and user session tracking
+- **User Access Control**: Advanced user access request management with status tracking, approval workflows, and resource administration
+- **Resource Administration**: Dynamic resource admin assignment with comprehensive access request lifecycle management
 
 ### Model Management Pipeline
 Integrated model discovery, download, and local management with sophisticated error handling:
@@ -34,6 +36,17 @@ Integrated model discovery, download, and local management with sophisticated er
 - **Remote Model Registry**: Centralized model metadata with version synchronization and cache invalidation
 - **Error Recovery**: Network failure handling with retry logic, partial download recovery, and detailed error categorization (gated access, not found, transport errors)
 - **Offline Testing**: OfflineHubService for testing without external dependencies using local test data
+
+### AI API Service Integration
+Comprehensive AI API coordination with multiple provider support and enhanced capabilities:
+- **Multi-Provider Support**: OpenAI-compatible API integration with provider abstraction, unified response handling, and streaming response support
+- **Model Testing**: Comprehensive model validation with configurable test prompts, response validation, API key verification, and prompt length validation
+- **Chat Completion Integration**: Full support for CreateChatCompletionRequest with streaming responses and proper error handling
+- **Rate Limiting**: Provider-specific rate limit handling with backoff strategies, request throttling, and comprehensive error recovery
+- **Error Classification**: Detailed error categorization (authentication, not found, rate limit, API errors, model not found) with localized error messages
+- **Timeout Management**: Configurable request timeouts (default 30s) with graceful degradation and comprehensive error recovery
+- **Database Integration**: API key management with encrypted storage, model registry synchronization, usage tracking, and API key validation
+- **Response Processing**: Axum response handling with proper streaming support and error transformation
 
 ### Multi-Layer Security Architecture
 Coordinated security services for comprehensive data protection with platform-specific implementations:

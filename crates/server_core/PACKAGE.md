@@ -36,39 +36,109 @@ impl DefaultRouterState {
 RouterState orchestrates complex service interactions for HTTP operations:
 
 ```rust
+// RouterState provides HTTP infrastructure coordination (see crates/server_core/src/router_state.rs:70-126)
 impl RouterState for DefaultRouterState {
-    fn app_service(&self) -> Arc<dyn AppService> {
-        self.app_service.clone()
-    }
-    
-    fn chat_completions(
-        &self,
-        request: CreateChatCompletionRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
-        Box::pin(async move {
-            // 1. Extract model alias from request
-            let model_alias = extract_alias_from_request(&request)?;
-            
-            // 2. Resolve alias via DataService
-            let data_service = self.app_service.data_service();
-            let alias = data_service.load_alias(&model_alias)
-                .map_err(RouterStateError::AliasNotFound)?;
-            
-            // 3. Route request through SharedContext
-            let response = self.ctx.chat_completions(request, alias).await
-                .map_err(RouterStateError::ContextError)?;
-            
-            Ok(response)
-        })
-    }
+  fn app_service(&self) -> Arc<dyn AppService> {
+    self.app_service.clone()
+  }
+  
+  fn chat_completions(
+    &self,
+    request: CreateChatCompletionRequest,
+  ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
+    Box::pin(async move {
+      // Use ModelRouter to determine routing destination
+      let destination = self.model_router().route_request(&request.model).await?;
+      
+      match destination {
+        RouteDestination::Local(alias) => {
+          // Route to local model via SharedContext (existing behavior)
+          let response = self.ctx.chat_completions(request, alias).await?;
+          Ok(response)
+        }
+        RouteDestination::Remote(api_alias) => {
+          // Route to remote API via AiApiService
+          let axum_response = self
+            .ai_api_service()
+            .forward_chat_completion(&api_alias.id, request)
+            .await?;
+          // Convert axum::Response to reqwest::Response while preserving streaming
+          Ok(reqwest::Response::from(axum_response))
+        }
+      }
+    })
+  }
 }
 ```
 
 **Key HTTP Coordination Features**:
 - Service registry access through `AppService` trait for business logic coordination
-- Model alias resolution via `DataService` for HTTP request processing
-- LLM server context coordination for request routing and processing
-- Comprehensive error handling with HTTP status code mapping
+- Intelligent request routing via `ModelRouter` with local vs remote API detection
+- Local model handling through `SharedContext` with LLM server coordination
+- Remote API proxying through `AiApiService` with response format conversion
+- Comprehensive error handling with HTTP status code mapping via RouterStateError
+
+## Model Request Routing Architecture
+
+### ModelRouter Implementation for Intelligent Request Routing
+Sophisticated routing system for local vs remote API model requests:
+
+```rust
+// ModelRouter trait for request routing (see crates/server_core/src/model_router.rs:29-38)
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait]
+pub trait ModelRouter: Send + Sync + std::fmt::Debug {
+  /// Route a model request to the appropriate destination
+  /// Resolution order: 1. User alias, 2. Model alias, 3. API models
+  async fn route_request(&self, model: &str) -> Result<RouteDestination>;
+}
+
+/// Represents the destination for a model request
+#[derive(Debug, Clone)]
+pub enum RouteDestination {
+  /// Route to local model via existing SharedContext
+  Local(Alias),
+  /// Route to remote API via AiApiService
+  Remote(ApiAlias),
+}
+
+// DefaultModelRouter using DataService for alias resolution (see crates/server_core/src/model_router.rs:42-68)
+#[derive(Debug, Clone)]
+pub struct DefaultModelRouter {
+  data_service: Arc<dyn DataService>,
+}
+
+impl DefaultModelRouter {
+  pub fn new(data_service: Arc<dyn DataService>) -> Self {
+    Self { data_service }
+  }
+}
+
+#[async_trait]
+impl ModelRouter for DefaultModelRouter {
+  async fn route_request(&self, model: &str) -> Result<RouteDestination> {
+    // Use unified DataService to find alias across all types
+    if let Some(alias) = self.data_service.find_alias(model).await {
+      match alias {
+        // Local models (User and Model aliases) route to SharedContext
+        Alias::User(_) | Alias::Model(_) => Ok(RouteDestination::Local(alias)),
+        // Remote API models route to AiApiService
+        Alias::Api(api_alias) => Ok(RouteDestination::Remote(api_alias)),
+      }
+    } else {
+      // If nothing found, return not found error
+      Err(ModelRouterError::ApiModelNotFound(model.to_string()))
+    }
+  }
+}
+```
+
+**ModelRouter Architecture Features**:
+- Unified alias resolution across User, Model, and API aliases via DataService integration
+- Intelligent routing decisions between local LLM servers and remote API services
+- Priority-based resolution: User aliases override Model aliases, Model aliases override API models
+- Comprehensive error handling with ModelRouterError for not found scenarios
+- Mockable trait design for comprehensive testing with different routing scenarios
 
 ## Server-Sent Events Streaming Architecture
 
@@ -375,6 +445,81 @@ impl ExecVariant {
 - Comprehensive error handling with context preservation and recovery
 - Execution variant management for different server configurations (CPU, CUDA, etc.)
 - Server args merging with setting-level, variant-level, and alias-level parameter coordination
+
+## Server Arguments Merging System
+
+### Advanced Server Configuration Merging
+Sophisticated argument merging system for LLM server configuration with precedence handling:
+
+```rust
+// Server args merging with precedence (see crates/server_core/src/server_args_merge.rs:3-36)
+pub fn merge_server_args(
+  setting_args: &[String],
+  setting_variant_args: &[String], 
+  alias_args: &[String],
+) -> Vec<String> {
+  let mut arg_map: HashMap<String, Option<String>> = HashMap::new();
+  
+  // Parse and add base args first (lowest precedence)
+  let parsed_setting_args = parse_args_from_strings(setting_args);
+  for (key, value) in parsed_setting_args {
+    arg_map.insert(key, value);
+  }
+  
+  // Parse and add variant-specific args (medium precedence)
+  let parsed_variant_args = parse_args_from_strings(setting_variant_args);
+  for (key, value) in parsed_variant_args {
+    arg_map.insert(key, value);
+  }
+  
+  // Parse and add alias args (highest precedence)
+  let parsed_alias_args = parse_args_from_strings(alias_args);
+  for (key, value) in parsed_alias_args {
+    arg_map.insert(key, value);
+  }
+  
+  // Convert back to Vec<String> maintaining flag format
+  arg_map
+    .into_iter()
+    .map(|(key, value)| match value {
+      Some(val) => format!("{} {}", key, val),
+      None => key,
+    })
+    .collect()
+}
+```
+
+### Advanced Argument Parsing System
+Sophisticated parsing for complex LLM server argument patterns:
+
+```rust
+// Flag detection with negative number handling (see crates/server_core/src/server_args_merge.rs:88-115)
+fn is_flag(token: &str) -> bool {
+  if !token.starts_with('-') {
+    return false;
+  }
+  
+  if token.len() == 1 || token.starts_with("--") {
+    return token.starts_with("--");
+  }
+  
+  // Single dash: distinguish flags from negative numbers
+  let second_char = token.chars().nth(1).unwrap();
+  if second_char.is_ascii_digit() {
+    let number_part = &token[1..];
+    number_part.parse::<i64>().is_err() && number_part.parse::<f64>().is_err()
+  } else {
+    true
+  }
+}
+```
+
+**Server Args Features**:
+- Three-tier precedence system: settings < variant < alias args with HashMap deduplication
+- Advanced flag parsing with negative number detection and complex value handling
+- Support for llama.cpp specific patterns: `--logit-bias 15043+1`, `--override-kv key=value`, `--lora-scaled file.bin 0.5`
+- Cross-string boundary parsing for arguments split across multiple configuration strings
+- Comprehensive test coverage for real-world server configuration scenarios
 
 ## HTTP Error Coordination Architecture
 

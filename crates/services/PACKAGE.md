@@ -5,13 +5,14 @@ This document provides detailed technical information for the `services` crate, 
 ## Service Registry Implementation
 
 ### AppService Pattern
-BodhiApp's comprehensive service registry provides centralized dependency injection for 10 services:
+BodhiApp's comprehensive service registry provides centralized dependency injection for 11 services:
 
 ```rust
-// Pattern structure (see src/app_service.rs:8-25 for complete trait definition)
+// Pattern structure (see crates/services/src/app_service.rs:8-32 for complete trait definition)
 #[cfg_attr(test, mockall::automock)]
 pub trait AppService: std::fmt::Debug + Send + Sync {
   fn setting_service(&self) -> Arc<dyn SettingService>;
+  fn data_service(&self) -> Arc<dyn DataService>;
   fn hub_service(&self) -> Arc<dyn HubService>;
   fn auth_service(&self) -> Arc<dyn AuthService>;
   fn db_service(&self) -> Arc<dyn DbService>;
@@ -20,10 +21,11 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn cache_service(&self) -> Arc<dyn CacheService>;
   fn localization_service(&self) -> Arc<dyn LocalizationService>;
   fn time_service(&self) -> Arc<dyn TimeService>;
-  // Complete service registry with all dependencies
+  fn ai_api_service(&self) -> Arc<dyn AiApiService>;
+  // Complete service registry with all 11 services
 }
 
-// Implementation with derive_new pattern (see src/app_service.rs:27-40)
+// Implementation with derive_new pattern (see crates/services/src/app_service.rs:35-48)
 #[derive(Clone, Debug, derive_new::new)]
 pub struct DefaultAppService {
   env_service: Arc<dyn SettingService>,
@@ -36,6 +38,7 @@ pub struct DefaultAppService {
   cache_service: Arc<dyn CacheService>,
   localization_service: Arc<dyn LocalizationService>,
   time_service: Arc<dyn TimeService>,
+  ai_api_service: Arc<dyn AiApiService>,
 }
 ```
 
@@ -51,7 +54,7 @@ pub struct DefaultAppService {
 BodhiApp implements complete OAuth2 authorization with PKCE security and Keycloak integration:
 
 ```rust
-// Core authentication patterns (see src/auth_service.rs:45-89 for complete trait)
+// Core authentication patterns (see crates/services/src/auth_service.rs:45-89 for complete trait)
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AuthService: Send + Sync + std::fmt::Debug {
@@ -63,7 +66,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
   async fn request_access(&self, client_id: &str, client_secret: &str, app_client_id: &str) -> Result<String>;
 }
 
-// Keycloak implementation with custom Bodhi endpoints (see src/auth_service.rs:91-156)
+// Keycloak implementation with custom Bodhi endpoints (see crates/services/src/auth_service.rs:91-156)
 #[derive(Debug)]
 pub struct KeycloakAuthService {
   app_version: String,
@@ -78,7 +81,7 @@ pub struct KeycloakAuthService {
 Service-to-service authentication through RFC 8693 token exchange:
 
 ```rust
-// Token exchange implementation (see src/auth_service.rs:289-325 for complete implementation)
+// Token exchange implementation (see crates/services/src/auth_service.rs:289-325 for complete implementation)
 async fn exchange_app_token(&self, client_id: &str, client_secret: &str, subject_token: &str, scopes: Vec<String>) -> Result<(String, Option<String>)> {
   let params = [
     ("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange"),
@@ -91,7 +94,7 @@ async fn exchange_app_token(&self, client_id: &str, client_secret: &str, subject
   // HTTP request with proper error handling and logging
 }
 
-// Resource administration (see src/auth_service.rs:401-445)
+// Resource administration (see crates/services/src/auth_service.rs:401-445)
 async fn make_resource_admin(&self, client_id: &str, client_secret: &str, email: &str) -> Result<()> {
   let access_token = self.get_client_access_token(client_id, client_secret).await?;
   // Custom Bodhi API endpoint for resource admin assignment
@@ -105,13 +108,68 @@ async fn make_resource_admin(&self, client_id: &str, client_secret: &str, email:
 - Integration with Keycloak OAuth2 provider using custom Bodhi API endpoints
 - Comprehensive error handling with localized messages and HTTP request logging
 
+## AI API Service Implementation
+
+### External AI Provider Integration
+Comprehensive AI API service with OpenAI-compatible interface and streaming support:
+
+```rust
+// Core AI API patterns (see crates/services/src/ai_api_service.rs:60-85 for complete trait)
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait]
+pub trait AiApiService: Send + Sync + std::fmt::Debug {
+  async fn test_api_key(&self, alias: &ApiAlias) -> Result<()>;
+  async fn test_model(&self, alias: &ApiAlias, model_name: &str) -> Result<()>;
+  async fn chat_completion(&self, alias: &ApiAlias, request: CreateChatCompletionRequest) -> Result<Response>;
+}
+
+// Implementation with configurable timeout (see crates/services/src/ai_api_service.rs:87-120)
+#[derive(Debug, new)]
+pub struct DefaultAiApiService {
+  db_service: Arc<dyn DbService>,
+  client: Client,
+  timeout: Duration,
+}
+```
+
+### Error Handling and Validation
+Comprehensive error categorization for external AI API integration:
+
+```rust
+// Error types (see crates/services/src/ai_api_service.rs:14-50 for complete definitions)
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+pub enum AiApiServiceError {
+  #[error("ai_api_service_unauthorized")]
+  Unauthorized(String),
+  
+  #[error("ai_api_service_not_found")]
+  NotFound(String),
+  
+  #[error("prompt_too_long")]
+  PromptTooLong { max_length: usize, actual_length: usize },
+  
+  #[error("model_not_found")]
+  ModelNotFound(String),
+  
+  #[error("api_key_not_found")]
+  ApiKeyNotFound(String),
+}
+```
+
+**Key Implementation Details**:
+- Default 30-second timeout for external API calls with configurable override
+- Comprehensive error mapping from HTTP status codes to domain-specific errors
+- API key validation with encrypted database storage and retrieval
+- Chat completion request validation including prompt length checks (max 30 chars for test prompts)
+- Axum response handling with proper streaming support for real-time responses
+
 ## Multi-Layer Security Implementation
 
 ### Secret Service Encryption
 AES-GCM encryption with secure key derivation and comprehensive error handling:
 
 ```rust
-// Core encryption pattern (see src/secret_service.rs:45-89 for complete implementation)
+// Core encryption pattern (see crates/services/src/secret_service.rs:45-89 for complete implementation)
 impl SecretService for DefaultSecretService {
   async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
     let mut salt = vec![0u8; SALT_SIZE];
@@ -161,7 +219,7 @@ impl KeyringService for DefaultKeyringService {
 Sophisticated Hugging Face Hub integration with comprehensive error recovery and offline testing:
 
 ```rust
-// Core hub service pattern (see src/hub_service.rs:45-89 for complete trait)
+// Core hub service pattern (see crates/services/src/hub_service.rs:45-89 for complete trait)
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait HubService: Send + Sync + std::fmt::Debug {
@@ -188,7 +246,7 @@ impl HubService for HfHubService {
   }
 }
 
-// Offline testing implementation (see src/test_utils/hf.rs:45-89)
+// Offline testing implementation (see crates/services/src/test_utils/hf.rs:45-89)
 #[derive(Debug, Default)]
 pub struct OfflineHubService {
   inner: HfHubService,
@@ -228,7 +286,7 @@ impl DataService for LocalDataService {
 Versioned database schema evolution with comprehensive migration support:
 
 ```rust
-// Migration pattern (see src/db/service.rs:45-67 for complete implementation)
+// Migration pattern (see crates/services/src/db/service.rs:45-67 for complete implementation)
 impl DbService for SqliteDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     sqlx::migrate!("./migrations").run(&self.pool).await?;
@@ -252,23 +310,76 @@ migrations/
 ```
 
 ### Transaction Coordination
-Cross-service transaction support:
+Cross-service transaction support with comprehensive download and access request management:
 
 ```rust
+// Download request management (see crates/services/src/db/service.rs:73-110)
 impl DbService for SqliteDbService {
   async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
     let mut tx = self.pool.begin().await?;
     
     query_as!(
       DownloadRequest,
-      "INSERT INTO download_requests (id, repo, filename, snapshot, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      request.id, request.repo.to_string(), request.filename, request.snapshot, 
-      request.status.to_string(), request.created_at
+      "INSERT INTO download_requests (id, repo, filename, status, created_at, updated_at, total_bytes, downloaded_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      request.id, request.repo, request.filename, request.status.to_string(), 
+      request.created_at, request.updated_at, request.total_bytes, request.downloaded_bytes
     ).execute(&mut *tx).await?;
     
     tx.commit().await?;
     Ok(())
   }
+  
+  async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
+    // Progress tracking with byte-level updates and status management
+  }
+}
+```
+
+### User Access Request Management
+Advanced user access control with comprehensive request lifecycle:
+
+```rust
+// User access request operations (see crates/services/src/db/service.rs:130-180)
+impl DbService for SqliteDbService {
+  async fn create_user_access_request(&self, request: &UserAccessRequest) -> Result<(), DbError> {
+    let mut tx = self.pool.begin().await?;
+    
+    query!(
+      "INSERT INTO user_access_requests (username, user_id, reason, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      request.username, request.user_id, request.reason, 
+      request.status.to_string(), request.created_at, request.updated_at
+    ).execute(&mut *tx).await?;
+    
+    tx.commit().await?;
+    Ok(())
+  }
+
+  async fn list_user_access_requests(&self) -> Result<Vec<UserAccessRequest>, DbError> {
+    // Retrieve all access requests with status filtering and comprehensive error handling
+  }
+
+  async fn update_user_access_request_status(&self, id: i64, status: UserAccessRequestStatus, updated_at: DateTime<Utc>) -> Result<(), DbError> {
+    // Status transition management with audit trail
+  }
+}
+```
+
+**Data Structure Definitions** (see crates/services/src/db/objs.rs:10-95):
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum DownloadStatus {
+  Pending,
+  Completed,
+  Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum UserAccessRequestStatus {
+  Pending,
+  Approved,
+  Denied,
 }
 ```
 
@@ -276,7 +387,7 @@ impl DbService for SqliteDbService {
 Testable time operations with deterministic testing and comprehensive time management:
 
 ```rust
-// Production time service (see src/db/service.rs:234-267 for complete implementation)
+// Production time service (see crates/services/src/db/service.rs:234-267 for complete implementation)
 pub struct DefaultTimeService;
 
 impl TimeService for DefaultTimeService {
@@ -290,7 +401,7 @@ impl TimeService for DefaultTimeService {
   }
 }
 
-// Test implementation with frozen time (see src/test_utils/db.rs:45-67)
+// Test implementation with frozen time (see crates/services/src/test_utils/db.rs:45-67)
 #[derive(Debug)]
 pub struct FrozenTimeService(DateTime<Utc>);
 
@@ -457,7 +568,7 @@ When integrating with external services:
 Complex service interactions require sophisticated test setup with comprehensive service coordination:
 
 ```rust
-// Service composition testing pattern (see src/test_utils/app.rs:23-45 for complete fixture)
+// Service composition testing pattern (see crates/services/src/test_utils/app.rs:23-45 for complete fixture)
 #[fixture]
 #[awt]
 pub async fn app_service_stub(#[future] app_service_stub_builder: AppServiceStubBuilder) -> AppServiceStub {

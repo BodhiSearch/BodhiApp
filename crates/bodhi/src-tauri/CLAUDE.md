@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code when working with the bodhi/src-tauri crate.
 
-_For detailed implementation examples and technical depth, see [crates/bodhi/src-tauri/PACKAGE.md](crates/bodhi/src-tauri/PACKAGE.md)_
+_For detailed implementation examples and technical depth, see [PACKAGE.md](./PACKAGE.md)_
 
 ## Purpose
 
-The `bodhi/src-tauri` crate serves as BodhiApp's **dual-mode application entry point**, providing both native desktop application functionality and container/server deployment capabilities through sophisticated conditional compilation and feature-based architecture switching. It coordinates complete application embedding with lib_bodhiserver while supporting cross-platform desktop deployment and headless server operation.
+The `crates/bodhi/src-tauri` crate serves as BodhiApp's **dual-mode application entry point**, providing both native desktop application functionality and container/server deployment capabilities through sophisticated conditional compilation and feature-based architecture switching. It coordinates complete application embedding with lib_bodhiserver while supporting cross-platform desktop deployment and headless server operation.
 
 ## Key Domain Architecture
 
@@ -59,7 +59,7 @@ Environment-specific configuration coordination across deployment modes:
 
 ## Architecture Position
 
-The `bodhi/src-tauri` crate serves as BodhiApp's **application entry point orchestration layer**:
+The `crates/bodhi/src-tauri` crate serves as BodhiApp's **application entry point orchestration layer**:
 
 - **Above lib_bodhiserver**: Coordinates complete application embedding with service composition and configuration management
 - **Below deployment infrastructure**: Provides executable entry points for both native desktop and container deployment scenarios

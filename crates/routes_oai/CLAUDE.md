@@ -1,8 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `routes_oai` crate.
-
-*For detailed implementation examples and technical depth, see [crates/routes_oai/PACKAGE.md](crates/routes_oai/PACKAGE.md)*
+See [PACKAGE.md](./PACKAGE.md) for implementation details and technical depth.
 
 ## Purpose
 
@@ -151,4 +149,3 @@ For features that span both API formats:
 3. **Response Transformation**: Implement efficient response transformation for different API formats
 4. **Error Coordination**: Ensure consistent error handling across different API format requirements
 5. **Performance Optimization**: Optimize for minimal overhead in format translation and processing
-
