@@ -81,6 +81,7 @@ jobs:
           platform: ${{ matrix.platform }}
       - name: Set VERSION environment variable
         id: get_version
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
