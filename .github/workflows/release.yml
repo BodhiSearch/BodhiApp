@@ -34,12 +34,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-            artifact_path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          # - platform: ubuntu-latest
-          #   target: x86_64-unknown-linux-gnu
-          #   artifact_path: target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+          # - platform: macos-latest
+          #   target: aarch64-apple-darwin
+          #   artifact_path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_path: target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
           # - platform: windows-latest
           #   target: x86_64-pc-windows-msvc
           #   artifact_path: target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
@@ -185,6 +185,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd artifacts
-          find . -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.app.tar.gz" -o -name "*.sig" \) -exec gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" {} \;
+          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/* --repo ${{ github.repository }}
 
