@@ -10,7 +10,7 @@ The `lib_bodhiserver` crate serves as BodhiApp's **embeddable server library orc
 Sophisticated service composition with automatic dependency resolution and comprehensive error handling:
 
 ```rust
-// Core service builder pattern (see crates/lib_bodhiserver/src/app_service_builder.rs:17-37 for complete implementation)
+// Core service builder pattern - see crates/lib_bodhiserver/src/app_service_builder.rs
 #[derive(Debug)]
 pub struct AppServiceBuilder {
   setting_service: Arc<dyn SettingService>,
@@ -53,7 +53,7 @@ impl AppServiceBuilder {
 Complete service registry initialization with sophisticated dependency management:
 
 ```rust
-// Automatic service resolution with dependency coordination (see crates/lib_bodhiserver/src/app_service_builder.rs:231-387 for complete implementations)
+// Automatic service resolution with dependency coordination - see crates/lib_bodhiserver/src/app_service_builder.rs
 fn get_or_build_hub_service(&mut self) -> Arc<dyn HubService> {
   if let Some(service) = self.hub_service.take() {
     return service;
@@ -98,7 +98,7 @@ async fn get_or_build_db_service(&mut self, time_service: Arc<dyn TimeService>, 
 Advanced filesystem orchestration with environment-specific configuration and error handling:
 
 ```rust
-// Primary directory setup orchestration (see crates/lib_bodhiserver/src/app_dirs_builder.rs:23-35 for complete implementation)
+// Primary directory setup orchestration - see crates/lib_bodhiserver/src/app_dirs_builder.rs
 pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, AppDirsBuilderError> {
   let file_defaults = load_defaults_yaml();
   let (bodhi_home, source) = create_bodhi_home(options.env_wrapper.clone(), &options.env_type, &file_defaults)?;
@@ -109,7 +109,7 @@ pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, App
   Ok(setting_service)
 }
 
-// BODHI_HOME creation with environment-specific paths (see crates/lib_bodhiserver/src/app_dirs_builder.rs:194-225 for complete implementation)
+// BODHI_HOME creation with environment-specific paths - see crates/lib_bodhiserver/src/app_dirs_builder.rs
 fn find_bodhi_home(
   env_wrapper: Arc<dyn EnvWrapper>,
   env_type: &EnvType,
@@ -144,7 +144,7 @@ fn find_bodhi_home(
 Sophisticated resource management with proper permissions and error handling:
 
 ```rust
-// Subdirectory creation with comprehensive error handling (see crates/lib_bodhiserver/src/app_dirs_builder.rs:228-251 for complete implementation)
+// Subdirectory creation with comprehensive error handling - see crates/lib_bodhiserver/src/app_dirs_builder.rs
 fn setup_bodhi_subdirs(setting_service: &dyn SettingService) -> Result<(), AppDirsBuilderError> {
   let alias_home = setting_service.aliases_dir();
   if !alias_home.exists() {
@@ -169,7 +169,7 @@ fn setup_bodhi_subdirs(setting_service: &dyn SettingService) -> Result<(), AppDi
   Ok(())
 }
 
-// HuggingFace cache setup with automatic configuration (see crates/lib_bodhiserver/src/app_dirs_builder.rs:254-274 for complete implementation)
+// HuggingFace cache setup with automatic configuration - see crates/lib_bodhiserver/src/app_dirs_builder.rs
 fn setup_hf_home(setting_service: &dyn SettingService) -> Result<PathBuf, AppDirsBuilderError> {
   let hf_home = match setting_service.get_setting(HF_HOME) {
     Some(hf_home) => PathBuf::from(hf_home),
@@ -206,7 +206,7 @@ fn setup_hf_home(setting_service: &dyn SettingService) -> Result<PathBuf, AppDir
 Flexible configuration system with comprehensive validation and environment integration:
 
 ```rust
-// Configuration builder with environment and settings management (see crates/lib_bodhiserver/src/app_options.rs:54-190 for complete implementation)
+// Configuration builder with environment and settings management - see crates/lib_bodhiserver/src/app_options.rs
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct AppOptionsBuilder {
   environment_vars: HashMap<String, String>,
@@ -256,7 +256,7 @@ impl AppOptionsBuilder {
 Advanced settings management with file-based configuration and environment overrides:
 
 ```rust
-// Settings service setup with comprehensive configuration management (see crates/lib_bodhiserver/src/app_dirs_builder.rs:55-96 for complete implementation)
+// Settings service setup with comprehensive configuration management - see crates/lib_bodhiserver/src/app_dirs_builder.rs
 fn setup_settings(
   options: &AppOptions,
   bodhi_home: PathBuf,
@@ -303,7 +303,7 @@ fn setup_settings(
 Comprehensive localization support with resource loading from all workspace crates:
 
 ```rust
-// Localization resource loading from all crates (see crates/lib_bodhiserver/src/app_service_builder.rs:391-409 for complete implementation)
+// Localization resource loading from all crates - see crates/lib_bodhiserver/src/app_service_builder.rs
 fn load_all_localization_resources(localization_service: &FluentLocalizationService) -> Result<(), ErrorMessage> {
   localization_service
     .load_resource(objs::l10n::L10N_RESOURCES)?
@@ -345,7 +345,7 @@ fn get_or_build_localization_service(&mut self) -> Result<Arc<dyn LocalizationSe
 Next.js frontend integration with embedded asset serving for complete application embedding:
 
 ```rust
-// Embedded UI assets for complete application integration (see crates/lib_bodhiserver/src/ui_assets.rs:3-11 for complete implementation)
+// Embedded UI assets for complete application integration - see crates/lib_bodhiserver/src/ui_assets.rs
 pub static EMBEDDED_UI_ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../bodhi/out");
 
 // Localization resources embedded at compile time
@@ -367,7 +367,7 @@ pub mod l10n {
 Sophisticated error handling with localized messages and recovery strategies:
 
 ```rust
-// Configuration error types with comprehensive handling (see crates/lib_bodhiserver/src/error.rs:4-16 for complete implementation)
+// Configuration error types with comprehensive handling - see crates/lib_bodhiserver/src/error.rs
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AppOptionsError {
@@ -414,7 +414,7 @@ pub enum AppDirsBuilderError {
 Complete service interface exposure for external application integration:
 
 ```rust
-// Service re-exports for external application access (see crates/lib_bodhiserver/src/lib.rs:19-62 for complete re-exports)
+// Service re-exports for external application access - see crates/lib_bodhiserver/src/lib.rs
 pub use services::{
   AppRegInfo, AppService, AppStatus, DefaultAppService, DefaultEnvWrapper,
   DefaultSecretService, DefaultSettingService, EnvWrapper, SecretServiceExt,

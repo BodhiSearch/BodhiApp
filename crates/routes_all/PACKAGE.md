@@ -10,7 +10,7 @@ The `routes_all` crate serves as BodhiApp's **HTTP route composition and middlew
 Sophisticated route integration with hierarchical authorization and middleware orchestration:
 
 ```rust
-// Pattern structure (see crates/routes_all/src/routes.rs:54-88 for complete implementation)
+// Pattern structure (see src/routes.rs for complete implementation)
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
@@ -69,7 +69,7 @@ pub fn build_routes(
 Advanced authentication architecture supporting multiple authentication flows:
 
 ```rust
-// Hierarchical authorization pattern (see crates/routes_all/src/routes.rs:127-177 for complete implementation)
+// Hierarchical authorization pattern (see src/routes.rs for complete implementation)
 let power_user_apis = Router::new()
   .route(ENDPOINT_MODELS, post(create_alias_handler))
   .route(&format!("{ENDPOINT_MODELS}/{{id}}"), put(update_alias_handler))
@@ -112,7 +112,7 @@ let power_user_session_apis = Router::new()
 Sophisticated UI serving coordination with development and production modes:
 
 ```rust
-// UI serving pattern (see crates/routes_all/src/routes.rs:281-314 for complete implementation)
+// UI serving pattern (see src/routes.rs for complete implementation)
 fn apply_ui_router(
   setting_service: &Arc<dyn SettingService>,
   router: Router,
@@ -159,7 +159,7 @@ fn apply_ui_router(
 HTTP proxy functionality for development workflows:
 
 ```rust
-// Proxy implementation pattern (see crates/routes_all/src/routes_proxy.rs:12-37 for complete implementation)
+// Proxy implementation pattern (see src/routes_proxy.rs for complete implementation)
 pub fn proxy_router(backend_url: String) -> Router {
   Router::new().fallback(move |req| proxy_handler(req, backend_url.clone()))
 }
@@ -200,7 +200,7 @@ async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> 
 Advanced middleware composition with proper ordering and configuration:
 
 ```rust
-// Middleware stack pattern (see crates/routes_all/src/routes.rs:234-278 for complete implementation)
+// Middleware stack pattern (see src/routes.rs for complete implementation)
 let protected_apis = Router::new()
   .merge(user_apis)
   .merge(power_user_apis)
@@ -249,7 +249,7 @@ router
 Comprehensive OpenAPI specification generation with environment-specific configuration:
 
 ```rust
-// OpenAPI integration pattern (see crates/routes_all/src/routes.rs:248-256)
+// OpenAPI integration pattern (see src/routes.rs)
 let mut openapi = BodhiOpenAPIDoc::openapi();
 OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);
 
@@ -267,7 +267,7 @@ let router = Router::<Arc<dyn RouterState>>::new()
 Embedded localization files for multi-language support:
 
 ```rust
-// Localization pattern (see crates/routes_all/src/lib.rs:12-16)
+// Localization pattern (see src/lib.rs)
 pub mod l10n {
   use include_dir::Dir;
   
@@ -285,7 +285,7 @@ pub mod l10n {
 Utility macro for consistent UI endpoint generation:
 
 ```rust
-// Macro definition (see crates/routes_all/src/routes.rs:1-6)
+// Macro definition (see src/routes.rs)
 #[macro_export]
 macro_rules! make_ui_endpoint {
   ($name:ident, $path:expr) => {
@@ -306,7 +306,7 @@ macro_rules! make_ui_endpoint {
 Route composition coordinates extensively with BodhiApp's HTTP layer:
 
 ```rust
-// RouterState integration for consistent service access (see crates/routes_all/src/routes.rs:59 for complete implementation)
+// RouterState integration for consistent service access (see src/routes.rs for complete implementation)
 let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(ctx, app_service.clone()));
 
 // All routes use consistent state management for service access
@@ -338,7 +338,7 @@ Route composition coordinates with BodhiApp's service layer through RouterState:
 Route composition requires comprehensive testing across route boundaries:
 
 ```rust
-// UI serving testing pattern (see crates/routes_all/src/routes.rs:390-480 for complete test implementation)
+// UI serving testing pattern (see src/routes.rs for complete test implementation)
 #[rstest]
 #[case::production_with_static(
   EnvConfig {
@@ -389,7 +389,7 @@ async fn test_ui_router_scenarios(
 Comprehensive proxy functionality testing:
 
 ```rust
-// Proxy testing pattern (see crates/routes_all/src/routes_proxy.rs:75-121 for complete test implementation)
+// Proxy testing pattern (see src/routes_proxy.rs for complete test implementation)
 #[rstest]
 #[awt]
 #[tokio::test]

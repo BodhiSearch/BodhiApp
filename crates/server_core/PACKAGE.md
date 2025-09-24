@@ -1,535 +1,481 @@
-# PACKAGE.md - server_core
+# PACKAGE.md - Server Core Crate
 
-This document provides detailed technical information for the `server_core` crate, focusing on BodhiApp's HTTP infrastructure orchestration architecture, sophisticated streaming capabilities, and LLM server context management patterns.
+*For architectural insights and design decisions, see [crates/server_core/CLAUDE.md](crates/server_core/CLAUDE.md)*
 
-## HTTP Infrastructure Orchestration Architecture
+## Implementation Index
 
-The `server_core` crate serves as BodhiApp's **HTTP infrastructure orchestration layer**, implementing advanced server-sent event streaming, LLM server context coordination, and HTTP route infrastructure with comprehensive async operations.
+The `server_core` crate provides BodhiApp's HTTP infrastructure orchestration layer with sophisticated streaming capabilities, LLM server context management, and intelligent request routing.
 
-### RouterState Dependency Injection Architecture
-Sophisticated state management for HTTP route handlers with service coordination:
+### Core Infrastructure Files
+
+**src/lib.rs**
+- Module structure and feature-gated test utilities
+- Public API exports for HTTP infrastructure components
+- L10n resources inclusion for error localization
+
+**src/router_state.rs**
+- RouterState trait and DefaultRouterState implementation
+- Service registry integration for HTTP route handlers
+- Model routing coordination with SharedContext and AiApiService
+- Error handling with RouterStateError mapping
+
+**src/shared_rw.rs**
+- SharedContext trait for LLM server lifecycle management
+- DefaultSharedContext implementation with state synchronization
+- ModelLoadStrategy for efficient model switching
+- Observer pattern for server state notifications
+
+**src/model_router.rs**
+- ModelRouter trait for intelligent request routing
+- DefaultModelRouter implementation with DataService integration
+- RouteDestination enum for local vs remote routing decisions
+- Priority-based alias resolution with comprehensive error handling
+
+**src/direct_sse.rs**
+- DirectSSE implementation for application-generated events
+- DirectEvent builder pattern with BytesMut optimization
+- KeepAlive mechanism for connection stability
+- High-performance streaming with memory efficiency
+
+**src/fwd_sse.rs**
+- RawSSE implementation for LLM server response proxying
+- Channel-based streaming with tokio integration
+- ForwardedSSE utilities for proxy streaming scenarios
+- Simplified streaming interface for external service integration
+
+**src/server_args_merge.rs**
+- Advanced server argument merging with three-tier precedence
+- Sophisticated flag parsing with negative number detection
+- HashMap-based deduplication for configuration coordination
+- Support for complex llama.cpp argument patterns
+
+### HTTP Infrastructure Examples
+
+#### RouterState Service Coordination
 
 ```rust
-pub trait RouterState: std::fmt::Debug + Send + Sync {
+  pub trait RouterState: std::fmt::Debug + Send + Sync {
     fn app_service(&self) -> Arc<dyn AppService>;
-    
-    fn chat_completions(
-        &self,
-        request: CreateChatCompletionRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>>;
-}
 
-#[derive(Debug, Clone)]
-pub struct DefaultRouterState {
+    fn chat_completions(
+      &self,
+      request: CreateChatCompletionRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>>;
+  }
+
+  #[derive(Debug, Clone)]
+  pub struct DefaultRouterState {
     pub(crate) ctx: Arc<dyn SharedContext>,
     pub(crate) app_service: Arc<dyn AppService>,
-}
-
-impl DefaultRouterState {
-    pub fn new(ctx: Arc<dyn SharedContext>, app_service: Arc<dyn AppService>) -> Self {
-        Self { ctx, app_service }
-    }
-}
-```
-
-### Cross-Service HTTP Coordination Implementation
-RouterState orchestrates complex service interactions for HTTP operations:
-
-```rust
-// RouterState provides HTTP infrastructure coordination (see crates/server_core/src/router_state.rs:70-126)
-impl RouterState for DefaultRouterState {
-  fn app_service(&self) -> Arc<dyn AppService> {
-    self.app_service.clone()
   }
-  
-  fn chat_completions(
-    &self,
-    request: CreateChatCompletionRequest,
-  ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
-    Box::pin(async move {
-      // Use ModelRouter to determine routing destination
-      let destination = self.model_router().route_request(&request.model).await?;
-      
-      match destination {
-        RouteDestination::Local(alias) => {
-          // Route to local model via SharedContext (existing behavior)
-          let response = self.ctx.chat_completions(request, alias).await?;
-          Ok(response)
+
+  impl RouterState for DefaultRouterState {
+    fn chat_completions(
+      &self,
+      request: CreateChatCompletionRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
+      Box::pin(async move {
+        // Use ModelRouter to determine routing destination
+        let destination = self.model_router().route_request(&request.model).await?;
+
+        match destination {
+          RouteDestination::Local(alias) => {
+            // Route to local model via SharedContext
+            let response = self.ctx.chat_completions(request, alias).await?;
+            Ok(response)
+          }
+          RouteDestination::Remote(api_alias) => {
+            // Route to remote API via AiApiService
+            let axum_response = self
+              .ai_api_service()
+              .forward_chat_completion(&api_alias.id, request)
+              .await?;
+            // Convert axum::Response to reqwest::Response
+            Ok(reqwest::Response::from(axum_response))
+          }
         }
-        RouteDestination::Remote(api_alias) => {
-          // Route to remote API via AiApiService
-          let axum_response = self
-            .ai_api_service()
-            .forward_chat_completion(&api_alias.id, request)
-            .await?;
-          // Convert axum::Response to reqwest::Response while preserving streaming
-          Ok(reqwest::Response::from(axum_response))
-        }
-      }
-    })
-  }
-}
-```
-
-**Key HTTP Coordination Features**:
-- Service registry access through `AppService` trait for business logic coordination
-- Intelligent request routing via `ModelRouter` with local vs remote API detection
-- Local model handling through `SharedContext` with LLM server coordination
-- Remote API proxying through `AiApiService` with response format conversion
-- Comprehensive error handling with HTTP status code mapping via RouterStateError
-
-## Model Request Routing Architecture
-
-### ModelRouter Implementation for Intelligent Request Routing
-Sophisticated routing system for local vs remote API model requests:
-
-```rust
-// ModelRouter trait for request routing (see crates/server_core/src/model_router.rs:29-38)
-#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-#[async_trait]
-pub trait ModelRouter: Send + Sync + std::fmt::Debug {
-  /// Route a model request to the appropriate destination
-  /// Resolution order: 1. User alias, 2. Model alias, 3. API models
-  async fn route_request(&self, model: &str) -> Result<RouteDestination>;
-}
-
-/// Represents the destination for a model request
-#[derive(Debug, Clone)]
-pub enum RouteDestination {
-  /// Route to local model via existing SharedContext
-  Local(Alias),
-  /// Route to remote API via AiApiService
-  Remote(ApiAlias),
-}
-
-// DefaultModelRouter using DataService for alias resolution (see crates/server_core/src/model_router.rs:42-68)
-#[derive(Debug, Clone)]
-pub struct DefaultModelRouter {
-  data_service: Arc<dyn DataService>,
-}
-
-impl DefaultModelRouter {
-  pub fn new(data_service: Arc<dyn DataService>) -> Self {
-    Self { data_service }
-  }
-}
-
-#[async_trait]
-impl ModelRouter for DefaultModelRouter {
-  async fn route_request(&self, model: &str) -> Result<RouteDestination> {
-    // Use unified DataService to find alias across all types
-    if let Some(alias) = self.data_service.find_alias(model).await {
-      match alias {
-        // Local models (User and Model aliases) route to SharedContext
-        Alias::User(_) | Alias::Model(_) => Ok(RouteDestination::Local(alias)),
-        // Remote API models route to AiApiService
-        Alias::Api(api_alias) => Ok(RouteDestination::Remote(api_alias)),
-      }
-    } else {
-      // If nothing found, return not found error
-      Err(ModelRouterError::ApiModelNotFound(model.to_string()))
+      })
     }
   }
-}
 ```
 
-**ModelRouter Architecture Features**:
-- Unified alias resolution across User, Model, and API aliases via DataService integration
-- Intelligent routing decisions between local LLM servers and remote API services
-- Priority-based resolution: User aliases override Model aliases, Model aliases override API models
-- Comprehensive error handling with ModelRouterError for not found scenarios
-- Mockable trait design for comprehensive testing with different routing scenarios
-
-## Server-Sent Events Streaming Architecture
-
-### DirectSSE Implementation for Application Events
-Advanced SSE implementation for application-generated event streaming:
+#### Model Request Routing
 
 ```rust
-#[derive(Debug, Clone, Default)]
-pub struct DirectEvent {
+  #[async_trait]
+  pub trait ModelRouter: Send + Sync + std::fmt::Debug {
+    /// Route a model request to the appropriate destination
+    /// Resolution order: 1. User alias, 2. Model alias, 3. API models
+    async fn route_request(&self, model: &str) -> Result<RouteDestination>;
+  }
+
+  /// Represents the destination for a model request
+  #[derive(Debug, Clone)]
+  pub enum RouteDestination {
+    /// Route to local model via existing SharedContext
+    Local(Alias),
+    /// Route to remote API via AiApiService
+    Remote(ApiAlias),
+  }
+
+  #[derive(Debug, Clone)]
+  pub struct DefaultModelRouter {
+    data_service: Arc<dyn DataService>,
+  }
+
+  #[async_trait]
+  impl ModelRouter for DefaultModelRouter {
+    async fn route_request(&self, model: &str) -> Result<RouteDestination> {
+      // Use unified DataService to find alias across all types
+      if let Some(alias) = self.data_service.find_alias(model).await {
+        match alias {
+          // Local models route to SharedContext
+          Alias::User(_) | Alias::Model(_) => Ok(RouteDestination::Local(alias)),
+          // Remote API models route to AiApiService
+          Alias::Api(api_alias) => Ok(RouteDestination::Remote(api_alias)),
+        }
+      } else {
+        Err(ModelRouterError::ApiModelNotFound(model.to_string()))
+      }
+    }
+  }
+```
+
+## Server-Sent Events Architecture
+
+### DirectSSE for Application Events
+
+```rust
+  #[derive(Debug, Clone, Default)]
+  pub struct DirectEvent {
     buffer: BytesMut,
-}
+  }
 
-impl DirectEvent {
+  impl DirectEvent {
     pub fn new() -> Self {
-        DirectEvent::default()
+      DirectEvent::default()
     }
-    
+
     pub fn data<T>(mut self, data: T) -> Self
     where
-        T: AsRef<str>,
+      T: AsRef<str>,
     {
-        for line in data.as_ref().split('\n') {
-            self.buffer.extend_from_slice(line.as_bytes());
-        }
-        self
+      for line in data.as_ref().split('\n') {
+        self.buffer.extend_from_slice(line.as_bytes());
+      }
+      self
     }
-    
-    pub fn finalize(mut self) -> Bytes {
-        self.buffer.put_u8(b'\n');
-        self.buffer.freeze()
-    }
-}
 
-#[derive(Clone)]
-#[must_use]
-pub struct DirectSse<S> {
+    pub fn finalize(mut self) -> Bytes {
+      self.buffer.put_u8(b'\n');
+      self.buffer.freeze()
+    }
+  }
+
+  #[derive(Clone)]
+  pub struct DirectSse<S> {
     stream: S,
     keep_alive: Option<KeepAlive>,
-}
+  }
 
-impl<S> DirectSse<S> {
+  impl<S> DirectSse<S> {
     pub fn new(stream: S) -> Self {
-        Self {
-            stream,
-            keep_alive: None,
-        }
+      Self {
+        stream,
+        keep_alive: None,
+      }
     }
-    
+
     pub fn keep_alive(mut self, keep_alive: KeepAlive) -> Self {
-        self.keep_alive = Some(keep_alive);
-        self
+      self.keep_alive = Some(keep_alive);
+      self
     }
-}
+  }
 ```
 
-### RawSSE for LLM Server Proxying
-Simplified proxy streaming for external LLM service integration:
+### RawSSE for Service Proxying
 
 ```rust
-// Pattern structure (see src/fwd_sse.rs:5-25 for complete implementation)
-pub struct RawSSE<S>(S);
+  pub struct RawSSE<S>(S);
 
-impl<S> RawSSE<S>
-where
-  S: Stream<Item = String> + Send + 'static,
-{
-  pub fn new(stream: S) -> Self {
-    RawSSE(stream)
+  impl<S> RawSSE<S>
+  where
+    S: Stream<Item = String> + Send + 'static,
+  {
+    pub fn new(stream: S) -> Self {
+      RawSSE(stream)
+    }
+
+    pub fn into_response(self) -> Response {
+      let body = Body::from_stream(self.0.map(Ok::<_, Infallible>));
+
+      Response::builder()
+        .header("Content-Type", "text/event-stream")
+        .header("Cache-Control", "no-cache")
+        .body(body)
+        .unwrap()
+    }
   }
 
-  pub fn into_response(self) -> Response {
-    let body = Body::from_stream(self.0.map(Ok::<_, Infallible>));
-
-    Response::builder()
-      .header("Content-Type", "text/event-stream")
-      .header("Cache-Control", "no-cache")
-      .body(body)
-      .unwrap()
+  // Convenience function for channel-based SSE streaming
+  pub fn fwd_sse(rx: Receiver<String>) -> Response {
+    let stream = ReceiverStream::new(rx);
+    RawSSE::new(stream).into_response()
   }
-}
-
-// Convenience function for channel-based SSE streaming
-pub fn fwd_sse(rx: Receiver<String>) -> Response {
-  let stream = ReceiverStream::new(rx);
-  RawSSE::new(stream).into_response()
-}
 ```
-
-**SSE Architecture Features**:
-- `DirectSSE`: Custom event formatting with BytesMut optimization and DirectEvent builder pattern for application events
-- `RawSSE`: Simplified proxy streaming with tokio channel integration for LLM server responses
-- Connection lifecycle management with automatic cleanup and keep-alive support via KeepAliveStream
-- Axum integration for native HTTP response streaming with proper MIME type and header management
 
 ## SharedContext LLM Server Management
 
-### LLM Server Lifecycle Coordination Architecture
-Advanced context management for LLM server instances with state synchronization:
+### Server Lifecycle Coordination
 
 ```rust
-#[derive(Debug, Clone)]
-pub enum ServerState {
+  #[derive(Debug, Clone)]
+  pub enum ServerState {
     Start,
     Stop,
     ChatCompletions { alias: String },
     Variant { variant: String },
-}
+  }
 
-#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-#[async_trait::async_trait]
-pub trait SharedContext: std::fmt::Debug + Send + Sync {
+  #[async_trait::async_trait]
+  pub trait SharedContext: std::fmt::Debug + Send + Sync {
     async fn set_exec_variant(&self, variant: &str) -> Result<()>;
     async fn reload(&self, server_args: Option<LlamaServerArgs>) -> Result<()>;
     async fn stop(&self) -> Result<()>;
     async fn is_loaded(&self) -> bool;
-    
+
     async fn chat_completions(
-        &self,
-        mut request: CreateChatCompletionRequest,
-        alias: Alias,
+      &self,
+      mut request: CreateChatCompletionRequest,
+      alias: Alias,
     ) -> Result<reqwest::Response>;
-    
+
     async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>);
     async fn notify_state_listeners(&self, state: ServerState);
-}
-
-#[async_trait::async_trait]
-#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-pub trait ServerStateListener: Debug + Send + Sync {
-    async fn on_state_change(&self, state: ServerState);
-}
+  }
 ```
 
-### LLM Server Context Implementation Pattern
-Sophisticated LLM server coordination with process management:
+### Model Load Strategy Implementation
 
 ```rust
-// Pattern structure (see src/shared_rw.rs:85-95 for complete implementation)
-pub struct DefaultSharedContext {
-  hub_service: Arc<dyn HubService>,
-  setting_service: Arc<dyn SettingService>,
-  factory: Box<dyn ServerFactory>,
-  exec_variant: ExecVariant,
-  server: RwLock<Option<Box<dyn Server>>>,
-  state_listeners: RwLock<Vec<Arc<dyn ServerStateListener>>>,
-}
-
-impl DefaultSharedContext {
-  pub fn new(hub_service: Arc<dyn HubService>, setting_service: Arc<dyn SettingService>) -> Self {
-    Self::with_args(hub_service, setting_service, Box::new(DefaultServerFactory))
+  #[derive(Debug, PartialEq)]
+  enum ModelLoadStrategy {
+    Continue,    // Same model already loaded - continue using existing server
+    DropAndLoad, // Different model - stop current server and load new model
+    Load,        // No server loaded - start new server with model
   }
 
-  pub fn with_args(
+  impl ModelLoadStrategy {
+    fn choose(loaded_alias: Option<String>, request_alias: &str) -> ModelLoadStrategy {
+      if let Some(loaded_model) = loaded_alias {
+        if loaded_model.eq(request_alias) {
+          ModelLoadStrategy::Continue
+        } else {
+          ModelLoadStrategy::DropAndLoad
+        }
+      } else {
+        ModelLoadStrategy::Load
+      }
+    }
+  }
+```
+
+### SharedContext Implementation
+
+```rust
+  pub struct DefaultSharedContext {
     hub_service: Arc<dyn HubService>,
     setting_service: Arc<dyn SettingService>,
     factory: Box<dyn ServerFactory>,
-  ) -> Self {
-    let exec_variant = setting_service.exec_variant();
-    Self {
-      hub_service,
-      setting_service,
-      factory,
-      exec_variant: ExecVariant::new(exec_variant),
-      server: RwLock::new(None),
-      state_listeners: RwLock::new(Vec::new()),
+    exec_variant: ExecVariant,
+    server: RwLock<Option<Box<dyn Server>>>,
+    state_listeners: RwLock<Vec<Arc<dyn ServerStateListener>>>,
+  }
+
+  #[async_trait::async_trait]
+  impl SharedContext for DefaultSharedContext {
+    async fn chat_completions(
+      &self,
+      mut request: CreateChatCompletionRequest,
+      alias: Alias,
+    ) -> Result<reqwest::Response> {
+      // Extract alias information and reject API aliases
+      let (alias_name, repo, filename, snapshot, context_params) = match &alias {
+        Alias::User(user_alias) => (
+          &user_alias.alias,
+          &user_alias.repo,
+          &user_alias.filename,
+          &user_alias.snapshot,
+          &user_alias.context_params,
+        ),
+        Alias::Model(model_alias) => (
+          &model_alias.alias,
+          &model_alias.repo,
+          &model_alias.filename,
+          &model_alias.snapshot,
+          &Vec::<String>::new(),
+        ),
+        Alias::Api(_) => {
+          return Err(ContextError::Unreachable(
+            "API aliases cannot be processed by SharedContext".to_string(),
+          ));
+        }
+      };
+
+      let lock = self.server.read().await;
+      let server = lock.as_ref();
+      let loaded_alias = server.map(|server| server.get_server_args().alias);
+
+      // Apply request parameters if this is a user alias
+      if let Alias::User(user_alias) = &alias {
+        user_alias.request_params.update(&mut request);
+      }
+
+      let result = match ModelLoadStrategy::choose(loaded_alias, alias_name) {
+        ModelLoadStrategy::Continue => {
+          let response = server
+            .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
+            .chat_completions(&serde_json::to_value(request)?)
+            .await?;
+          Ok(response)
+        }
+        ModelLoadStrategy::DropAndLoad | ModelLoadStrategy::Load => {
+          drop(lock);
+          let variant = self.exec_variant.get().await;
+          let setting_args = self.get_setting_args();
+          let setting_variant_args = self.get_setting_variant_args(&variant);
+          let merged_args = merge_server_args(&setting_args, &setting_variant_args, context_params);
+
+          let server_args = LlamaServerArgsBuilder::default()
+            .alias(alias_name.clone())
+            .model(model_file.to_string_lossy().to_string())
+            .server_args(merged_args)
+            .build()?;
+
+          self.reload(Some(server_args)).await?;
+          let lock = self.server.read().await;
+          let server = lock.as_ref();
+          let response = server
+            .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
+            .chat_completions(&serde_json::to_value(request)?)
+            .await?;
+          Ok(response)
+        }
+      };
+
+      self
+        .notify_state_listeners(ServerState::ChatCompletions {
+          alias: alias_name.clone(),
+        })
+        .await;
+      result
     }
   }
-}
-
-#[async_trait::async_trait]
-impl SharedContext for DefaultSharedContext {
-  async fn chat_completions(
-    &self,
-    mut request: CreateChatCompletionRequest,
-    alias: Alias,
-  ) -> Result<reqwest::Response> {
-    let lock = self.server.read().await;
-    let server = lock.as_ref();
-    let loaded_alias = server.map(|server| server.get_server_args().alias);
-    let request_alias = &alias.alias;
-    let model_file = self
-      .hub_service
-      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?
-      .path();
-    alias.request_params.update(&mut request);
-    let input_value = serde_json::to_value(request)?;
-    let alias_name = alias.alias.clone();
-    let setting_args = self.get_setting_args();
-    let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
-      ModelLoadStrategy::Continue => {
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
-        Ok(response)
-      }
-      ModelLoadStrategy::DropAndLoad => {
-        drop(lock);
-        let variant = self.exec_variant.get().await;
-        let setting_variant_args = self.get_setting_variant_args(&variant);
-        let merged_args =
-          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
-        let server_args = LlamaServerArgsBuilder::default()
-          .alias(alias.alias)
-          .model(model_file.to_string_lossy().to_string())
-          .server_args(merged_args)
-          .build()?;
-        self.reload(Some(server_args)).await?;
-        let lock = self.server.read().await;
-        let server = lock.as_ref();
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
-        Ok(response)
-      }
-      ModelLoadStrategy::Load => {
-        let variant = self.exec_variant.get().await;
-        let setting_variant_args = self.get_setting_variant_args(&variant);
-        let merged_args =
-          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
-        let server_args = LlamaServerArgsBuilder::default()
-          .alias(alias.alias)
-          .model(model_file.to_string_lossy().to_string())
-          .server_args(merged_args)
-          .build()?;
-        drop(lock);
-        self.reload(Some(server_args)).await?;
-        let lock = self.server.read().await;
-        let server = lock.as_ref();
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
-        Ok(response)
-      }
-    };
-    self
-      .notify_state_listeners(ServerState::ChatCompletions { alias: alias_name })
-      .await;
-    result
-  }
-}
 ```
-
-### ModelLoadStrategy Implementation
-Intelligent model switching strategy for efficient resource management:
-
-```rust
-// Pattern structure (see src/shared_rw.rs:280-295 for complete implementation)
-#[derive(Debug, PartialEq)]
-enum ModelLoadStrategy {
-  Continue,    // Same model already loaded - continue using existing server
-  DropAndLoad, // Different model - stop current server and load new model
-  Load,        // No server loaded - start new server with model
-}
-
-impl ModelLoadStrategy {
-  fn choose(loaded_alias: Option<String>, request_alias: &str) -> ModelLoadStrategy {
-    if let Some(loaded_model) = loaded_alias {
-      if loaded_model.eq(request_alias) {
-        ModelLoadStrategy::Continue
-      } else {
-        ModelLoadStrategy::DropAndLoad
-      }
-    } else {
-      ModelLoadStrategy::Load
-    }
-  }
-}
-```
-
-### ExecVariant Management
-Dynamic execution variant switching for different LLM server configurations:
-
-```rust
-// Pattern structure (see src/shared_rw.rs:305-325 for complete implementation)
-#[derive(Debug)]
-pub struct ExecVariant {
-  inner: RwLock<String>,
-}
-
-impl ExecVariant {
-  pub fn new(variant: String) -> Self {
-    Self {
-      inner: RwLock::new(variant),
-    }
-  }
-
-  pub async fn get(&self) -> String {
-    self.inner.read().await.clone()
-  }
-
-  pub async fn set(&self, variant: String) {
-    *self.inner.write().await = variant;
-  }
-}
-```
-
-**SharedContext Architecture Features**:
-- Thread-safe LLM server state management with RwLock coordination
-- Observer pattern implementation for server state change notifications with async broadcasting
-- Dynamic server configuration and reloading based on model aliases with ModelLoadStrategy optimization
-- Comprehensive error handling with context preservation and recovery
-- Execution variant management for different server configurations (CPU, CUDA, etc.)
-- Server args merging with setting-level, variant-level, and alias-level parameter coordination
 
 ## Server Arguments Merging System
 
-### Advanced Server Configuration Merging
-Sophisticated argument merging system for LLM server configuration with precedence handling:
+### Three-Tier Precedence Configuration
 
 ```rust
-// Server args merging with precedence (see crates/server_core/src/server_args_merge.rs:3-36)
-pub fn merge_server_args(
-  setting_args: &[String],
-  setting_variant_args: &[String], 
-  alias_args: &[String],
-) -> Vec<String> {
-  let mut arg_map: HashMap<String, Option<String>> = HashMap::new();
-  
-  // Parse and add base args first (lowest precedence)
-  let parsed_setting_args = parse_args_from_strings(setting_args);
-  for (key, value) in parsed_setting_args {
-    arg_map.insert(key, value);
+  pub fn merge_server_args(
+    setting_args: &[String],
+    setting_variant_args: &[String],
+    alias_args: &[String],
+  ) -> Vec<String> {
+    let mut arg_map: HashMap<String, Option<String>> = HashMap::new();
+
+    // Parse and add base args first (lowest precedence)
+    let parsed_setting_args = parse_args_from_strings(setting_args);
+    for (key, value) in parsed_setting_args {
+      arg_map.insert(key, value);
+    }
+
+    // Parse and add variant-specific args (medium precedence)
+    let parsed_variant_args = parse_args_from_strings(setting_variant_args);
+    for (key, value) in parsed_variant_args {
+      arg_map.insert(key, value);
+    }
+
+    // Parse and add alias args (highest precedence)
+    let parsed_alias_args = parse_args_from_strings(alias_args);
+    for (key, value) in parsed_alias_args {
+      arg_map.insert(key, value);
+    }
+
+    // Convert back to Vec<String> maintaining flag format
+    arg_map
+      .into_iter()
+      .map(|(key, value)| match value {
+        Some(val) => format!("{} {}", key, val),
+        None => key,
+      })
+      .collect()
   }
-  
-  // Parse and add variant-specific args (medium precedence)
-  let parsed_variant_args = parse_args_from_strings(setting_variant_args);
-  for (key, value) in parsed_variant_args {
-    arg_map.insert(key, value);
-  }
-  
-  // Parse and add alias args (highest precedence)
-  let parsed_alias_args = parse_args_from_strings(alias_args);
-  for (key, value) in parsed_alias_args {
-    arg_map.insert(key, value);
-  }
-  
-  // Convert back to Vec<String> maintaining flag format
-  arg_map
-    .into_iter()
-    .map(|(key, value)| match value {
-      Some(val) => format!("{} {}", key, val),
-      None => key,
-    })
-    .collect()
-}
 ```
 
-### Advanced Argument Parsing System
-Sophisticated parsing for complex LLM server argument patterns:
+### Advanced Flag Parsing
 
 ```rust
-// Flag detection with negative number handling (see crates/server_core/src/server_args_merge.rs:88-115)
-fn is_flag(token: &str) -> bool {
-  if !token.starts_with('-') {
-    return false;
+  fn is_flag(token: &str) -> bool {
+    if !token.starts_with('-') {
+      return false;
+    }
+
+    if token.len() == 1 || token.starts_with("--") {
+      return token.starts_with("--");
+    }
+
+    // Single dash: distinguish flags from negative numbers
+    let second_char = token.chars().nth(1).unwrap();
+    if second_char.is_ascii_digit() {
+      let number_part = &token[1..];
+      number_part.parse::<i64>().is_err() && number_part.parse::<f64>().is_err()
+    } else {
+      true
+    }
   }
-  
-  if token.len() == 1 || token.starts_with("--") {
-    return token.starts_with("--");
+
+  fn parse_args_from_strings(args: &[String]) -> Vec<(String, Option<String>)> {
+    let mut result = Vec::new();
+    let mut tokens = Vec::new();
+
+    // Flatten all argument strings into tokens
+    for arg_string in args {
+      tokens.extend(split_respecting_quotes(arg_string));
+    }
+
+    let mut i = 0;
+    while i < tokens.len() {
+      let token = &tokens[i];
+
+      if is_flag(token) {
+        if i + 1 < tokens.len() && !is_flag(&tokens[i + 1]) {
+          // Flag with value
+          result.push((token.clone(), Some(tokens[i + 1].clone())));
+          i += 2;
+        } else {
+          // Boolean flag
+          result.push((token.clone(), None));
+          i += 1;
+        }
+      } else {
+        i += 1;
+      }
+    }
+
+    result
   }
-  
-  // Single dash: distinguish flags from negative numbers
-  let second_char = token.chars().nth(1).unwrap();
-  if second_char.is_ascii_digit() {
-    let number_part = &token[1..];
-    number_part.parse::<i64>().is_err() && number_part.parse::<f64>().is_err()
-  } else {
-    true
-  }
-}
 ```
 
-**Server Args Features**:
-- Three-tier precedence system: settings < variant < alias args with HashMap deduplication
-- Advanced flag parsing with negative number detection and complex value handling
-- Support for llama.cpp specific patterns: `--logit-bias 15043+1`, `--override-kv key=value`, `--lora-scaled file.bin 0.5`
-- Cross-string boundary parsing for arguments split across multiple configuration strings
-- Comprehensive test coverage for real-world server configuration scenarios
+## Error Handling Architecture
 
-## HTTP Error Coordination Architecture
-
-### Service Error Translation to HTTP Responses
-Sophisticated error handling with HTTP status code mapping and localization:
+### HTTP Error Translation
 
 ```rust
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = objs::AppError)]
-pub enum RouterStateError {
+  #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+  #[error_meta(trait_to_impl = objs::AppError)]
+  pub enum RouterStateError {
     #[error(transparent)]
     ObjValidationError(#[from] ObjValidationError),
     #[error(transparent)]
@@ -538,255 +484,182 @@ pub enum RouterStateError {
     HubService(#[from] HubServiceError),
     #[error(transparent)]
     ContextError(#[from] ContextError),
-}
+    #[error(transparent)]
+    ModelRouter(#[from] ModelRouterError),
+    #[error(transparent)]
+    AiApiService(#[from] AiApiServiceError),
+  }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = objs::AppError)]
-pub enum ContextError {
+  #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+  #[error_meta(trait_to_impl = objs::AppError)]
+  pub enum ContextError {
     #[error("server_not_loaded")]
     #[error_meta(error_type = objs::ErrorType::InternalServerError)]
     ServerNotLoaded,
-    
-    #[error("server_startup_failed")]
+
+    #[error("executable_not_exists")]
     #[error_meta(error_type = objs::ErrorType::InternalServerError)]
-    ServerStartupFailed { details: String },
-    
-    #[error("server_communication_error")]
-    #[error_meta(error_type = objs::ErrorType::BadGateway)]
-    ServerError { source: Box<dyn std::error::Error + Send + Sync> },
-}
-```
+    ExecNotExists(String),
 
-### HTTP Response Error Integration
-Error translation maintains service context while providing appropriate HTTP responses:
+    #[error(transparent)]
+    Server(#[from] llama_server_proc::ServerError),
 
-```rust
-// Axum error handling integration
-impl IntoResponse for RouterStateError {
-    fn into_response(self) -> Response {
-        let api_error = objs::ApiError::from(self);
-        let status_code = match api_error.error_type {
-            objs::ErrorType::NotFound => StatusCode::NOT_FOUND,
-            objs::ErrorType::BadRequest => StatusCode::BAD_REQUEST,
-            objs::ErrorType::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
-            objs::ErrorType::BadGateway => StatusCode::BAD_GATEWAY,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        
-        let response_body = serde_json::to_string(&api_error)
-            .unwrap_or_else(|_| r#"{"error":"Failed to serialize error"}"#.to_string());
-        
-        (status_code, response_body).into_response()
-    }
-}
-```
+    #[error("json_error")]
+    #[error_meta(error_type = objs::ErrorType::InternalError)]
+    JsonError(#[from] serde_json::Error),
 
-**Error Coordination Features**:
-- Transparent error wrapping preserves original service error context
-- HTTP status code mapping coordinated with objs error system
-- Localized error messages via `errmeta_derive` integration
-- Comprehensive error boundaries for streaming and context operations
-
-## Cross-Crate Integration Implementation
-
-### Service Layer HTTP Integration
-HTTP infrastructure coordinates extensively with BodhiApp's service layer:
-
-```rust
-// RouterState provides HTTP handlers access to service registry (see src/router_state.rs:45-55)
-impl RouterState for DefaultRouterState {
-  fn app_service(&self) -> Arc<dyn AppService> {
-    self.app_service.clone()
+    #[error("unreachable_state")]
+    #[error_meta(error_type = objs::ErrorType::InternalError)]
+    Unreachable(String),
   }
-  
-  fn chat_completions(&self, request: CreateChatCompletionRequest) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
-    Box::pin(async move {
-      let alias = self
-        .app_service
-        .data_service()
-        .find_alias(&request.model)
-        .ok_or_else(|| AliasNotFoundError(request.model.clone()))?;
-      let response = self.ctx.chat_completions(request, alias).await?;
-      Ok(response)
-    })
+```
+
+## Testing Infrastructure
+
+### Service Mock Coordination
+
+```rust
+  #[rstest]
+  #[tokio::test]
+  async fn test_router_state_chat_completions_delegate_to_context_with_alias(
+    temp_dir: TempDir,
+  ) -> anyhow::Result<()> {
+    let mut mock_ctx = MockSharedContext::default();
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "testalias-exists:instruct",
+      "messages": [
+        {"role": "user", "content": "What day comes after Monday?"}
+      ]
+    }})?;
+
+    mock_ctx
+      .expect_chat_completions()
+      .with(
+        eq(request.clone()),
+        eq(Alias::User(UserAlias::testalias_exists())),
+      )
+      .times(1)
+      .return_once(|_, _| Ok(mock_response("")));
+
+    let service = AppServiceStubBuilder::default()
+      .with_temp_home_as(temp_dir)
+      .with_hub_service()
+      .with_data_service()
+      .await
+      .build()?;
+
+    let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
+    state.chat_completions(request).await?;
+    Ok(())
   }
-}
-```
 ```
 
-### LlamaServerProc Integration Architecture
-SharedContext coordinates with LLM server process management:
+### SharedContext Testing
 
 ```rust
-pub trait ServerFactory: std::fmt::Debug + Send + Sync {
-    fn create_server(
-        &self,
-        executable_path: &Path,
-        server_args: &LlamaServerArgs,
-    ) -> Result<Box<dyn Server>, ContextError>;
-}
+  #[rstest]
+  #[tokio::test]
+  async fn test_chat_completions_continue_strategy(
+    mut mock_server: MockServer,
+    mut app_service_stub_builder: AppServiceStubBuilder,
+    bin_path: TempDir,
+  ) -> anyhow::Result<()> {
+    let expected_input: Value = serde_json::from_str(
+      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct"}"#,
+    )?;
 
-// SharedContext uses ServerFactory for LLM server lifecycle management
-impl DefaultSharedContext {
-    async fn reload(&self, server_args: Option<LlamaServerArgs>) -> Result<()> {
-        // 1. Stop existing server instance
-        if let Some(server) = self.server_state.write().await.take() {
-            server.stop().await.map_err(ContextError::ServerError)?;
-        }
-        
-        // 2. Create new server instance via factory
-        let server_args = server_args.unwrap_or_else(|| self.default_server_args());
-        let executable_path = self.setting_service.llama_server_executable_path()?;
-        
-        let server = self.server_factory.create_server(&executable_path, &server_args)?;
-        server.start().await.map_err(ContextError::ServerStartupFailed)?;
-        
-        // 3. Update server state
-        *self.server_state.write().await = Some(server);
-        
-        // 4. Notify state listeners
-        self.notify_state_listeners(ServerState::Start).await;
-        
-        Ok(())
-    }
-}
+    mock_server
+      .expect_chat_completions()
+      .with(eq(expected_input))
+      .times(1)
+      .return_once(|_| async { Ok(mock_response("")) }.boxed());
+
+    let server_args = LlamaServerArgsBuilder::default()
+      .alias("testalias:instruct")
+      .model(model_file.path())
+      .build()?;
+
+    let shared_ctx = DefaultSharedContext::with_args(
+      app_service_stub.hub_service(),
+      app_service_stub.setting_service(),
+      Box::new(ServerFactoryStub::new(Box::new(mock_server))),
+    );
+
+    shared_ctx.reload(Some(server_args)).await?;
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "testalias:instruct",
+      "messages": [{"role": "user", "content": "What day comes after Monday?"}]
+    }})?;
+
+    shared_ctx
+      .chat_completions(request, Alias::User(UserAlias::testalias()))
+      .await?;
+
+    Ok(())
+  }
 ```
 
-## HTTP Streaming Performance Architecture
+## Build Commands
 
-### Memory-Efficient Event Processing
-DirectSSE uses optimized memory management for high-performance streaming:
+```bash
+# Test server_core crate
+cargo test -p server_core
 
-```rust
-// BytesMut-based event construction for efficient memory usage
-impl DirectEvent {
-    pub fn data<T>(mut self, data: T) -> Self
-    where
-        T: AsRef<str>,
-    {
-        // Direct byte buffer manipulation for performance
-        for line in data.as_ref().split('\n') {
-            self.buffer.extend_from_slice(line.as_bytes());
-        }
-        self
-    }
-    
-    pub fn finalize(mut self) -> Bytes {
-        self.buffer.put_u8(b'\n');
-        self.buffer.freeze() // Zero-copy conversion to immutable bytes
-    }
-}
+# Test with features
+cargo test -p server_core --features test-utils
 
-// Stream processing with minimal buffering
-impl<S, T, E> IntoResponse for DirectSse<S>
-where
-    S: TryStream<Ok = T, Error = E> + Send + 'static,
-    T: Into<DirectEvent>,
-    E: Into<BoxError>,
-{
-    fn into_response(self) -> Response {
-        let stream = self.stream.map_ok(Into::into).map_ok(DirectEvent::finalize);
-        
-        let body = Body::from_stream(stream);
-        
-        Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "text/event-stream")
-            .header(header::CACHE_CONTROL, "no-cache")
-            .header(header::CONNECTION, "keep-alive")
-            .body(body)
-            .unwrap()
-    }
-}
+# Build server_core crate
+cargo build -p server_core
+
+# Run clippy
+cargo clippy -p server_core
+
+# Format code
+cargo fmt -p server_core
 ```
 
-### Connection Lifecycle Management
-Sophisticated connection management with automatic cleanup and error recovery:
+## Extension Patterns
 
-```rust
-// Keep-alive mechanism for connection stability
-#[derive(Debug, Clone)]
-pub struct KeepAlive {
-    interval: Duration,
-    text: Cow<'static, str>,
-}
+### Adding New HTTP Streaming Capabilities
 
-impl KeepAlive {
-    pub fn new(interval: Duration, text: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            interval,
-            text: text.into(),
-        }
-    }
-}
+1. Choose appropriate SSE type (DirectSSE vs RawSSE) based on use case
+2. Implement proper connection lifecycle management with cleanup
+3. Use BytesMut for efficient memory management in DirectSSE
+4. Add comprehensive error handling with graceful degradation
+5. Test with realistic network conditions and client behavior
 
-// Automatic connection cleanup and error handling
-pin_project! {
-    pub struct SseKeepAlive<S> {
-        #[pin]
-        stream: S,
-        keep_alive: KeepAlive,
-        #[pin]
-        keep_alive_timer: Sleep,
-    }
-}
+### Extending SharedContext
 
-impl<S, T, E> Stream for SseKeepAlive<S>
-where
-    S: TryStream<Ok = T, Error = E>,
-    T: Into<DirectEvent>,
-    E: Into<BoxError>,
-{
-    type Item = Result<Bytes, BoxError>;
-    
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
-        
-        // Poll the underlying stream for events
-        match ready!(this.stream.try_poll_next(cx)) {
-            Some(Ok(event)) => {
-                // Reset keep-alive timer on successful event
-                this.keep_alive_timer.reset(Instant::now() + this.keep_alive.interval);
-                Poll::Ready(Some(Ok(event.into().finalize())))
-            }
-            Some(Err(err)) => Poll::Ready(Some(Err(err.into()))),
-            None => Poll::Ready(None),
-        }
-    }
-}
-```
+1. Design proper async lifecycle coordination for new operations
+2. Implement observer pattern for state change notifications
+3. Ensure thread-safe state management with RwLock coordination
+4. Add comprehensive error handling with context preservation
+5. Support comprehensive testing with server factory mocking
 
-## Extension Guidelines for HTTP Infrastructure
+### Router State Integration
 
-### Adding New Streaming Endpoints
-When creating new HTTP streaming functionality:
+1. Coordinate with AppService registry for business logic access
+2. Implement proper error translation to HTTP responses
+3. Design efficient request processing with service coordination
+4. Add dependency injection patterns for HTTP handlers
+5. Support comprehensive HTTP integration testing
 
-1. **SSE Type Selection**: Choose DirectSSE for application-generated events or ForwardedSSE for service proxying
-2. **Event Format Design**: Use BytesMut for efficient event construction and memory management
-3. **Connection Management**: Implement proper lifecycle management with automatic cleanup
-4. **Error Recovery**: Design comprehensive error handling with graceful degradation
-5. **Performance Testing**: Validate streaming performance under realistic load conditions
+## Recent Architecture Changes
 
-### SharedContext Extensions
-For new LLM server context management patterns:
+### Model Router Enhancement
+- Intelligent request routing with local vs remote API detection
+- Priority-based alias resolution (User > Model > API aliases)
+- Comprehensive error handling for routing failures
+- Support for unified alias resolution across all alias types
 
-1. **Lifecycle Coordination**: Design proper async startup/shutdown with state synchronization
-2. **Observer Pattern**: Implement state change notifications with proper listener management
-3. **Resource Management**: Ensure proper cleanup and resource lifecycle coordination
-4. **Error Boundaries**: Provide comprehensive error handling with context preservation
-5. **Testing Infrastructure**: Support comprehensive context testing with realistic server mocking
+### Server Arguments Evolution
+- Advanced three-tier precedence system for configuration merging
+- Sophisticated flag parsing with negative number detection
+- Support for complex llama.cpp argument patterns
+- Cross-string boundary parsing for flexible configuration
 
-### RouterState Integration Patterns
-For new HTTP infrastructure coordination:
-
-1. **Service Registry**: Coordinate with AppService for consistent business logic access
-2. **Dependency Injection**: Design proper service access patterns for HTTP handlers
-3. **Error Translation**: Convert service errors to appropriate HTTP responses with localization
-4. **Request Processing**: Implement efficient request processing with service coordination
-5. **Integration Testing**: Support HTTP infrastructure testing with comprehensive service mocking
-
-## Commands for HTTP Infrastructure Testing
-
-**HTTP Infrastructure Tests**: `cargo test -p server_core` (includes streaming and context testing)  
-**SSE Streaming Tests**: `cargo test -p server_core sse` (includes DirectSSE and ForwardedSSE testing)  
-**Context Management Tests**: `cargo test -p server_core context` (includes SharedContext lifecycle testing)
+### Enhanced Error Coordination
+- Comprehensive error translation from services to HTTP responses
+- Context-aware error handling with proper HTTP status mapping
+- Transparent error wrapping with service context preservation
+- Localized error messages with errmeta_derive integration

@@ -1,6 +1,6 @@
 # PACKAGE.md - objs
 
-This document serves as a rich index for the `objs` crate, guiding AI assistants to BodhiApp-specific implementation patterns and explaining why architectural decisions exist in the application's **universal foundation layer**.
+This document serves as a rich index and navigation aid for the `objs` crate, providing file references and implementation patterns for BodhiApp's **universal foundation layer**.
 
 ## BodhiApp Domain Architecture Position
 
@@ -233,7 +233,7 @@ CustomError { field: String, value: String },
 
 The `test_utils` module provides comprehensive testing support through rstest-based fixtures and domain-specific builders. All test utilities are conditionally compiled with the `test-utils` feature flag.
 
-#### **Module Organization**: `crates/objs/src/test_utils/mod.rs:1-26`
+#### **Module Organization**: `src/test_utils/mod.rs`
 ```rust
 // Core module exports with conditional compilation
 #[cfg(feature = "test-utils")]
@@ -246,9 +246,9 @@ pub mod test_utils;
 
 ### Domain Object Test Builders
 
-#### **Model Management Testing**: `crates/objs/src/test_utils/objs.rs:13-321`
+#### **Model Management Testing**: `src/test_utils/objs.rs`
 
-**Repository and Model Builders** (`crates/objs/src/test_utils/objs.rs:13-81`):
+**Repository and Model Builders**:
 ```rust
 impl Repo {
   pub const LLAMA3: &str = "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF";
@@ -260,7 +260,7 @@ impl Repo {
 }
 ```
 
-**HubFile Test Fixtures** (`crates/objs/src/test_utils/objs.rs:83-181`):
+**HubFile Test Fixtures**:
 ```rust
 impl HubFileBuilder {
   pub fn testalias() -> HubFileBuilder {
@@ -273,7 +273,7 @@ impl HubFileBuilder {
 }
 ```
 
-**Alias Configuration Builders** (`crates/objs/src/test_utils/objs.rs:207-320`):
+**Alias Configuration Builders**:
 ```rust
 impl AliasBuilder {
   pub fn testalias() -> AliasBuilder {
@@ -290,7 +290,7 @@ impl AliasBuilder {
 
 ### Environment and Fixture Management
 
-#### **Temporary Directory Fixtures**: `crates/objs/src/test_utils/bodhi.rs:1-27`
+#### **Temporary Directory Fixtures**: `src/test_utils/bodhi.rs`
 ```rust
 #[fixture]
 pub fn temp_bodhi_home(temp_dir: TempDir) -> TempDir {
@@ -309,7 +309,7 @@ pub fn empty_bodhi_home(temp_dir: TempDir) -> TempDir {
 
 **Why This Architecture**: Provides isolated test environments with realistic directory structures. The `copy_test_dir` function creates complete Bodhi home environments for comprehensive testing.
 
-#### **Hugging Face Cache Simulation**: `crates/objs/src/test_utils/hf.rs:1-18`
+#### **Hugging Face Cache Simulation**: `src/test_utils/hf.rs`
 ```rust
 #[fixture]
 pub fn temp_hf_home(temp_dir: TempDir) -> TempDir {
@@ -330,7 +330,7 @@ pub fn empty_hf_home(temp_dir: TempDir) -> TempDir {
 
 ### File System and IO Testing
 
-#### **Test Data Management**: `crates/objs/src/test_utils/io.rs:1-18`
+#### **Test Data Management**: `src/test_utils/io.rs`
 ```rust
 static COPY_OPTIONS: CopyOptions = CopyOptions {
   overwrite: true,
@@ -349,7 +349,7 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
 
 **Why This Architecture**: Provides reliable test data copying with consistent options. The function uses CARGO_MANIFEST_DIR for portable path resolution across different build environments.
 
-#### **HTTP Response Parsing**: `crates/objs/src/test_utils/http.rs:1-15`
+#### **HTTP Response Parsing**: `src/test_utils/http.rs`
 ```rust
 pub async fn parse<T: serde::de::DeserializeOwned>(response: Response<Body>) -> T {
   let bytes = response.into_body().collect().await.unwrap().to_bytes();
@@ -367,9 +367,9 @@ pub async fn parse_txt(response: Response<Body>) -> String {
 
 ### Localization Testing Support
 
-#### **Mock Localization Service**: `crates/objs/src/test_utils/l10n.rs:1-96`
+#### **Mock Localization Service**: `src/test_utils/l10n.rs`
 
-**Service Instance Management** (`crates/objs/src/test_utils/l10n.rs:5-37`):
+**Service Instance Management**:
 ```rust
 impl FluentLocalizationService {
   pub fn get_instance() -> Arc<FluentLocalizationService> {
@@ -388,7 +388,7 @@ pub fn set_mock_localization_service(service: Arc<FluentLocalizationService>) {
 }
 ```
 
-**Cross-Crate Resource Loading** (`crates/objs/src/test_utils/l10n.rs:39-95`):
+**Cross-Crate Resource Loading**:
 ```rust
 #[fixture]
 #[once]
@@ -404,7 +404,7 @@ pub fn setup_l10n(
 
 **Why This Architecture**: Provides comprehensive localization testing with all crate resources loaded. The mock service enables testing of localized error messages across the entire application ecosystem.
 
-#### **Error Message Testing**: `crates/objs/src/test_utils/error.rs:1-34`
+#### **Error Message Testing**: `src/test_utils/error.rs`
 ```rust
 pub fn assert_error_message(
   service: &Arc<FluentLocalizationService>,
@@ -427,9 +427,9 @@ pub fn assert_error_message(
 
 ### Data Generation and Python Integration
 
-#### **Python Script Execution**: `crates/objs/src/test_utils/test_data.rs:1-48`
+#### **Python Script Execution**: `src/test_utils/test_data.rs`
 
-**Script Execution Infrastructure** (`crates/objs/src/test_utils/test_data.rs:4-20`):
+**Script Execution Infrastructure**:
 ```rust
 pub fn exec_py_script(cwd: &str, script: &str) {
   let output = Command::new("python")
@@ -445,7 +445,7 @@ pub fn exec_py_script(cwd: &str, script: &str) {
 }
 ```
 
-**Test Data Generation Fixtures** (`crates/objs/src/test_utils/test_data.rs:22-47`):
+**Test Data Generation Fixtures**:
 ```rust
 #[fixture]
 #[once]
@@ -458,7 +458,7 @@ pub fn generate_test_data_gguf_metadata() -> () {
 
 ### Logging and Tracing Support
 
-#### **Test Logging Configuration**: `crates/objs/src/test_utils/logs.rs:1-14`
+#### **Test Logging Configuration**: `src/test_utils/logs.rs`
 ```rust
 #[fixture]
 #[once]
@@ -475,13 +475,13 @@ pub fn enable_tracing() -> () {
 
 ## Test Data Organization
 
-### **Python Generation Scripts**: `crates/objs/tests/scripts/`
+### **Python Generation Scripts**: `tests/scripts/`
 - **GGUF Metadata Generation**: `test_data_gguf_metadata.py` - Creates binary GGUF files with controlled metadata
 - **Chat Template Generation**: `test_data_chat_template.py` - Generates tokenizer configuration test data  
 - **GGUF File Generation**: `test_data_gguf_files.py` - Creates endian-specific binary test files
 - **Test Reader Utilities**: `test_reader.py` - Provides Python utilities for GGUF data validation
 
-### **Mock Data Structures**: `crates/objs/tests/data/`
+### **Mock Data Structures**: `tests/data/`
 - **Bodhi Configuration**: `tests/data/bodhi/` - Complete Bodhi home directory with aliases and models
 - **Hugging Face Cache**: `tests/data/huggingface/hub/` - Realistic HF cache structure with snapshots
 - **GGUF Test Files**: `tests/data/gguf/` - Binary format test files with endian variants

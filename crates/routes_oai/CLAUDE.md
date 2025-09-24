@@ -1,151 +1,162 @@
 # CLAUDE.md
 
-See [PACKAGE.md](./PACKAGE.md) for implementation details and technical depth.
+See [crates/routes_oai/PACKAGE.md](crates/routes_oai/PACKAGE.md) for implementation details and technical depth.
 
 ## Purpose
 
-The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility layer**, implementing comprehensive OpenAI-compatible endpoints with sophisticated streaming capabilities, Ollama ecosystem integration, and multi-format API support for broad ecosystem compatibility.
+The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility orchestration layer**, implementing comprehensive OpenAI-compatible endpoints with sophisticated streaming capabilities, Ollama ecosystem integration, and dual-format API support for maximum ecosystem compatibility and tool integration.
 
 ## Key Domain Architecture
 
-### OpenAI API Compatibility System
-Comprehensive OpenAI API implementation with full ecosystem compatibility:
-- **Chat Completions Endpoint**: `/v1/chat/completions` with streaming and non-streaming support
-- **Models API**: `/v1/models` and `/v1/models/{id}` for model discovery and metadata
-- **Request Validation**: Complete OpenAI parameter validation with range checking and format compliance
-- **Response Streaming**: Server-sent events with proper SSE formatting and connection management
-- **Error Handling**: OpenAI-compatible error responses with proper HTTP status codes and error types
+### OpenAI API Compatibility Architecture
+Comprehensive OpenAI API implementation ensuring full ecosystem compatibility:
 
-### Ollama Ecosystem Integration
-Dual API compatibility for broader ecosystem support:
-- **Ollama Models API**: `/api/tags` and `/api/show` endpoints with Ollama-specific response formats
-- **Ollama Chat Interface**: `/api/chat` endpoint with request/response format translation
-- **Cross-Format Translation**: Seamless conversion between OpenAI and Ollama request/response formats
-- **Parameter Mapping**: Intelligent parameter translation between different API specifications
-- **Ecosystem Compatibility**: Support for Ollama CLI tools and ecosystem integrations
+- **Chat Completions Orchestration**: `/v1/chat/completions` with streaming and non-streaming support, request validation, and response formatting
+- **Models Discovery API**: `/v1/models` and `/v1/models/{id}` endpoints with model alias resolution and metadata coordination
+- **Parameter Validation System**: Complete OpenAI parameter validation using async-openai types with range checking and format compliance
+- **Response Streaming Infrastructure**: Server-sent events with proper SSE formatting, connection management, and streaming response coordination
+- **Error Handling Integration**: OpenAI-compatible error responses with proper HTTP status codes, error types, and localization support
+
+### Ollama Ecosystem Integration Architecture
+Sophisticated dual API compatibility for broader ecosystem support:
+
+- **Ollama Models API**: `/api/tags` and `/api/show` endpoints with Ollama-specific response formats and model metadata conversion
+- **Ollama Chat Interface**: `/api/chat` endpoint with bidirectional request/response format translation and parameter mapping
+- **Cross-Format Translation System**: Seamless conversion between OpenAI and Ollama formats with semantic parameter preservation
+- **Parameter Mapping Intelligence**: Intelligent parameter translation between API specifications maintaining functionality and compatibility
+- **Tool Integration Support**: Full compatibility with Ollama CLI tools, ecosystem integrations, and third-party applications
 
 ### HTTP Route Orchestration Architecture
-Sophisticated HTTP request processing with service coordination:
-- **RouterState Integration**: Dependency injection providing access to AppService registry and SharedContext
-- **Model Alias Resolution**: DataService coordination for model alias lookup and validation
-- **Request Forwarding**: Intelligent request routing through SharedContext to LLM server instances
-- **Response Transformation**: Format-specific response processing for OpenAI and Ollama compatibility
-- **Error Translation**: Service errors converted to appropriate API-specific error responses with localization
+Advanced HTTP request processing with comprehensive service coordination:
+
+- **RouterState Integration**: Dependency injection providing unified access to AppService registry, SharedContext, and service composition
+- **Model Alias Resolution**: DataService coordination for model alias lookup, validation, and priority-based resolution
+- **Request Forwarding Infrastructure**: Intelligent request routing through SharedContext to LLM server instances with load balancing
+- **Response Transformation Pipeline**: Format-specific response processing for OpenAI and Ollama compatibility with streaming support
+- **Error Translation Coordination**: Service errors converted to appropriate API-specific error responses with localization and user guidance
 
 ## Architecture Position
 
 The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility orchestration layer**:
-- **Above server_core and services**: Coordinates HTTP infrastructure and business services for API operations
-- **Below client applications**: Provides OpenAI-compatible API surface for external tools and SDKs
-- **Parallel to routes_app**: Similar HTTP orchestration role but focused on OpenAI/Ollama compatibility instead of application management
-- **Integration with auth_middleware**: Leverages authentication middleware for API security and authorization
+
+- **Above server_core and services**: Coordinates HTTP infrastructure and business services for comprehensive API operations and service integration
+- **Below client applications**: Provides OpenAI-compatible API surface for external tools, SDKs, and ecosystem integrations
+- **Parallel to routes_app**: Similar HTTP orchestration role but specialized for OpenAI/Ollama compatibility rather than application management
+- **Integration with auth_middleware**: Comprehensive authentication middleware integration for API security, authorization, and access control
 
 ## Cross-Crate Integration Patterns
 
 ### Service Layer API Coordination
-Complex API operations coordinated across BodhiApp's service layer:
-- **RouterState Integration**: HTTP handlers access AppService registry for business logic operations
-- **DataService Coordination**: Model alias resolution, listing, and validation for API endpoints
-- **SharedContext Integration**: LLM server request routing and response streaming coordination
-- **Error Service Translation**: Service errors converted to OpenAI/Ollama-compatible API responses with localization
-- **Authentication Integration**: API security coordinated through auth_middleware with bearer token and session support
+Comprehensive API operations coordinated across BodhiApp's complete service architecture:
+
+- **RouterState Integration**: HTTP handlers access complete AppService registry for business logic operations with dependency injection
+- **DataService Coordination**: Model alias resolution, listing, validation, and priority-based selection for API endpoints
+- **SharedContext Integration**: LLM server request routing, response streaming coordination, and load balancing management
+- **Error Service Translation**: Service errors converted to OpenAI/Ollama-compatible API responses with localization and user guidance
+- **Authentication Integration**: Comprehensive API security through auth_middleware with bearer tokens, session management, and access control
 
 ### HTTP Infrastructure Integration
-API routes coordinate with HTTP infrastructure for request processing:
-- **Request Validation**: Comprehensive OpenAI parameter validation using async-openai types
-- **Response Streaming**: Server-sent events coordinated with server_core streaming infrastructure
-- **Error Handling**: HTTP error responses with proper status codes and API-specific error formats
-- **Content Negotiation**: Multi-format response handling for OpenAI and Ollama compatibility
-- **Route Composition Integration**: Coordinated with routes_all for unified route composition with hierarchical authorization and middleware orchestration
+Advanced API route coordination with comprehensive HTTP infrastructure:
+
+- **Request Validation Infrastructure**: Comprehensive OpenAI parameter validation using async-openai types with range checking and format compliance
+- **Response Streaming Coordination**: Server-sent events coordinated with server_core streaming infrastructure for real-time response delivery
+- **Error Handling System**: HTTP error responses with proper status codes, API-specific error formats, and localization support
+- **Content Negotiation**: Multi-format response handling for OpenAI and Ollama compatibility with automatic format detection
+- **Route Composition Integration**: Coordinated with routes_all for unified route composition, hierarchical authorization, and middleware orchestration
 
 ### Domain Object Integration
-Extensive use of objs crate for API operations:
-- **Alias Resolution**: Model alias lookup and validation using objs domain objects
-- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation
-- **Parameter Validation**: OpenAI parameter validation using objs validation rules and error handling
-- **Localization Support**: Multi-language error messages via objs LocalizationService integration
+Comprehensive integration with objs crate for consistent API operations:
+
+- **Alias Resolution System**: Model alias lookup, validation, and priority-based resolution using objs domain objects with comprehensive error handling
+- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation with status code mapping
+- **Parameter Validation Framework**: OpenAI parameter validation using objs validation rules, error handling, and user-actionable feedback
+- **Localization Support**: Multi-language error messages via objs LocalizationService integration with format-specific message formatting
 
 ## API Orchestration Workflows
 
 ### Multi-Service Chat Completion Coordination
-Complex request processing with service orchestration:
+Sophisticated request processing with comprehensive service orchestration:
 
-1. **Request Reception**: HTTP routes receive OpenAI-compatible requests with comprehensive validation
-2. **Model Alias Resolution**: DataService resolves model aliases for chat completion requests
-3. **Context Coordination**: SharedContext manages LLM server instances for request processing
-4. **Response Streaming**: Server-sent events handle real-time streaming responses with proper formatting
-5. **Error Translation**: Service errors converted to OpenAI-compatible HTTP responses with localization
+1. **Request Reception and Validation**: HTTP routes receive OpenAI-compatible requests with comprehensive parameter validation and format checking
+2. **Model Alias Resolution**: DataService resolves model aliases with priority-based selection and availability validation
+3. **Context Coordination**: SharedContext manages LLM server instances with load balancing and health monitoring for request processing
+4. **Response Streaming Orchestration**: Server-sent events handle real-time streaming responses with proper formatting and connection management
+5. **Error Translation and Recovery**: Service errors converted to OpenAI-compatible HTTP responses with localization and recovery guidance
 
 ### Dual-Format API Support Orchestration
-Sophisticated API compatibility coordination:
+Comprehensive API compatibility coordination with sophisticated format handling:
 
 **OpenAI API Workflow**:
-1. **Parameter Validation**: Complete OpenAI parameter validation using async-openai types
-2. **Request Processing**: Standard OpenAI request processing with model alias resolution
-3. **Response Formatting**: OpenAI-compatible response formatting with proper JSON structure
-4. **Streaming Support**: SSE streaming with OpenAI chunk format and connection management
+1. **Parameter Validation**: Complete OpenAI parameter validation using async-openai types with comprehensive error handling
+2. **Request Processing**: Standard OpenAI request processing with model alias resolution and service coordination
+3. **Response Formatting**: OpenAI-compatible response formatting with proper JSON structure and metadata
+4. **Streaming Support**: SSE streaming with OpenAI chunk format, connection management, and error recovery
 
 **Ollama API Workflow**:
-1. **Format Translation**: Ollama request format converted to OpenAI internal format
-2. **Parameter Mapping**: Ollama-specific parameters mapped to OpenAI equivalents
-3. **Response Conversion**: OpenAI responses converted to Ollama-compatible format
-4. **Ecosystem Integration**: Support for Ollama CLI tools and ecosystem compatibility
+1. **Format Translation**: Bidirectional Ollama request format conversion to OpenAI internal format with parameter preservation
+2. **Parameter Mapping**: Intelligent Ollama-specific parameter mapping to OpenAI equivalents with semantic preservation
+3. **Response Conversion**: OpenAI responses converted to Ollama-compatible format with proper field mapping
+4. **Ecosystem Integration**: Full support for Ollama CLI tools, ecosystem compatibility, and third-party integrations
 
 ### Cross-Format Error Coordination
-Error handling across different API formats:
-- **OpenAI Error Format**: Standard OpenAI error responses with proper error types and codes
-- **Ollama Error Format**: Ollama-compatible error responses with simplified error structure
-- **Service Error Translation**: Service errors converted to appropriate API-specific formats
-- **Localization Support**: Multi-language error messages coordinated with objs error system
+Sophisticated error handling across different API formats:
+
+- **OpenAI Error Format**: Standard OpenAI error responses with proper error types, codes, and detailed error information
+- **Ollama Error Format**: Ollama-compatible error responses with simplified error structure and appropriate formatting
+- **Service Error Translation**: Service errors converted to appropriate API-specific formats with consistent error handling
+- **Localization Support**: Multi-language error messages coordinated with objs error system and format-specific message formatting
 
 ## Important Constraints
 
 ### OpenAI API Compatibility Requirements
-- All endpoints must maintain strict OpenAI API specification compliance for ecosystem compatibility
-- Request validation must use async-openai types for parameter validation and format consistency
-- Response formats must match OpenAI specification exactly for SDK and tool compatibility
-- Error responses must follow OpenAI error format with proper error types and HTTP status codes
-- Streaming responses must use proper SSE formatting with OpenAI chunk structure
+
+- **Specification Compliance**: All endpoints must maintain strict OpenAI API specification compliance for ecosystem compatibility and tool integration
+- **Parameter Validation**: Request validation must use async-openai types for parameter validation, format consistency, and comprehensive error handling
+- **Response Format Compliance**: Response formats must match OpenAI specification exactly for SDK compatibility, tool integration, and ecosystem support
+- **Error Response Standards**: Error responses must follow OpenAI error format with proper error types, HTTP status codes, and detailed error information
+- **Streaming Response Requirements**: Streaming responses must use proper SSE formatting with OpenAI chunk structure and connection management
 
 ### Ollama Ecosystem Integration Standards
-- Ollama endpoints must support Ollama CLI tools and ecosystem integrations
-- Request/response format translation must be bidirectional and lossless where possible
-- Parameter mapping between Ollama and OpenAI formats must preserve semantic meaning
-- Error handling must provide Ollama-compatible error responses while maintaining internal consistency
-- Model metadata must be compatible with Ollama model discovery and management tools
+
+- **CLI Tool Compatibility**: Ollama endpoints must provide full support for Ollama CLI tools and ecosystem integrations with proper format handling
+- **Bidirectional Translation**: Request/response format translation must be bidirectional and lossless where possible with semantic preservation
+- **Parameter Mapping Standards**: Parameter mapping between Ollama and OpenAI formats must preserve semantic meaning and functionality
+- **Error Handling Consistency**: Error handling must provide Ollama-compatible error responses while maintaining internal consistency and proper error reporting
+- **Model Metadata Compatibility**: Model metadata must be compatible with Ollama model discovery, management tools, and ecosystem expectations
 
 ### HTTP Infrastructure Coordination Rules
-- All routes must use RouterState dependency injection for consistent service access
-- Model alias resolution must coordinate with DataService for consistent model discovery
-- Response streaming must integrate with server_core streaming infrastructure for performance
-- Error handling must translate service errors to appropriate API-specific formats with localization
-- Authentication must integrate with auth_middleware for consistent API security across endpoints
+
+- **RouterState Integration**: All routes must use RouterState dependency injection for consistent service access and comprehensive dependency management
+- **Model Resolution Coordination**: Model alias resolution must coordinate with DataService for consistent model discovery and priority-based selection
+- **Streaming Infrastructure Integration**: Response streaming must integrate with server_core streaming infrastructure for performance and connection management
+- **Error Translation Requirements**: Error handling must translate service errors to appropriate API-specific formats with localization and user guidance
+- **Authentication Integration Standards**: Authentication must integrate with auth_middleware for consistent API security, access control, and authorization across endpoints
 
 ## API Extension Patterns
 
 ### Adding New OpenAI Endpoints
 When implementing additional OpenAI API endpoints:
 
-1. **Specification Compliance**: Follow OpenAI API specification exactly for parameter validation and response formats
-2. **Service Coordination**: Use RouterState for consistent AppService access and business logic coordination
-3. **Error Handling**: Implement API-specific errors that convert to OpenAI-compatible responses
-4. **Documentation**: Add comprehensive OpenAPI documentation with examples and proper schemas
-5. **Testing Infrastructure**: Create comprehensive API compatibility tests with OpenAI SDK validation
+1. **Specification Compliance**: Follow OpenAI API specification exactly for parameter validation, response formats, and error handling
+2. **Service Coordination**: Use RouterState for consistent AppService access, business logic coordination, and dependency management
+3. **Error Handling Integration**: Implement API-specific errors that convert to OpenAI-compatible responses with proper localization
+4. **Documentation Standards**: Add comprehensive OpenAPI documentation with examples, proper schemas, and endpoint specifications
+5. **Testing Infrastructure**: Create comprehensive API compatibility tests with OpenAI SDK validation and ecosystem integration testing
 
 ### Extending Ollama Compatibility
 For new Ollama API endpoints and features:
 
-1. **Format Translation**: Design bidirectional translation between Ollama and OpenAI formats
-2. **Parameter Mapping**: Create semantic parameter mapping that preserves functionality
-3. **Ecosystem Testing**: Validate compatibility with Ollama CLI tools and ecosystem integrations
-4. **Error Consistency**: Provide Ollama-compatible error responses while maintaining internal error handling
-5. **Documentation**: Document Ollama-specific behavior and compatibility considerations
+1. **Format Translation Design**: Design comprehensive bidirectional translation between Ollama and OpenAI formats with semantic preservation
+2. **Parameter Mapping Intelligence**: Create intelligent parameter mapping that preserves functionality and maintains compatibility
+3. **Ecosystem Integration Testing**: Validate compatibility with Ollama CLI tools, ecosystem integrations, and third-party applications
+4. **Error Consistency Management**: Provide Ollama-compatible error responses while maintaining internal error handling and consistency
+5. **Documentation Standards**: Document Ollama-specific behavior, compatibility considerations, and ecosystem integration patterns
 
 ### Cross-Format Integration Patterns
 For features that span both API formats:
 
-1. **Unified Processing**: Design internal processing that supports both API formats efficiently
-2. **Format Abstraction**: Create abstraction layers that handle format-specific concerns
-3. **Response Transformation**: Implement efficient response transformation for different API formats
-4. **Error Coordination**: Ensure consistent error handling across different API format requirements
-5. **Performance Optimization**: Optimize for minimal overhead in format translation and processing
+1. **Unified Processing Architecture**: Design internal processing that supports both API formats efficiently with minimal overhead
+2. **Format Abstraction Layers**: Create sophisticated abstraction layers that handle format-specific concerns while maintaining consistency
+3. **Response Transformation Pipeline**: Implement efficient response transformation for different API formats with proper streaming support
+4. **Error Coordination System**: Ensure consistent error handling across different API format requirements with proper localization
+5. **Performance Optimization Strategy**: Optimize for minimal overhead in format translation, processing, and response generation

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `lib_bodhiserver` crate.
 
-*For detailed implementation examples and technical depth, see [crates/lib_bodhiserver/PACKAGE.md](crates/lib_bodhiserver/PACKAGE.md)*
+See [crates/lib_bodhiserver/PACKAGE.md](crates/lib_bodhiserver/PACKAGE.md) for implementation details.
 
 ## Purpose
 

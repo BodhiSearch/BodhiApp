@@ -2,7 +2,7 @@
 
 This document provides detailed technical information for the errmeta_derive crate, focusing on BodhiApp-specific procedural macro implementation patterns and error metadata generation.
 
-*For comprehensive architectural guidance, see [CLAUDE.md](./CLAUDE.md)*
+See [crates/errmeta_derive/CLAUDE.md](crates/errmeta_derive/CLAUDE.md) for architectural overview and design decisions.
 
 ## Architecture Position
 
@@ -20,7 +20,7 @@ Key architectural decisions:
 The main implementation generates three essential methods for error metadata extraction:
 
 ```rust
-// Pattern structure (see crates/errmeta_derive/src/lib.rs:10-15 for complete derive implementation)
+// Pattern structure (see crates/errmeta_derive/src/lib.rs for complete derive implementation)
 #[proc_macro_derive(ErrorMeta, attributes(error_meta))]
 pub fn derive_error_metadata(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
@@ -36,17 +36,17 @@ impl ErrorType {
 }
 ```
 
-**Implementation Details** (see crates/errmeta_derive/src/lib.rs:17-67):
+**Implementation Details** (see crates/errmeta_derive/src/lib.rs):
 - Handles both enum and struct error types with different generation strategies
 - Enum processing via `generate_attribute_method()` for error_type and code methods
 - Struct processing with required error_type validation and optional code defaults
-- Union type rejection with clear compilation errors at crates/errmeta_derive/src/lib.rs:65
+- Union type rejection with clear compilation errors
 
 ### Attribute Parsing Architecture
 Sophisticated attribute processing supports flexible error metadata customization:
 
 ```rust
-// Attribute parsing patterns (see crates/errmeta_derive/src/lib.rs:186-245 for complete implementations)
+// Attribute parsing patterns (see crates/errmeta_derive/src/lib.rs for complete implementations)
 #[derive(Debug, PartialEq)]
 struct EnumMetaAttrs {
   error_type: Option<syn::Expr>,
@@ -61,7 +61,7 @@ struct EnumMetaAttrs {
 #[error_meta(code = self.generate_code())]              // Method call
 ```
 
-**Key Implementation Features** (crates/errmeta_derive/src/lib.rs:193-233):
+**Key Implementation Features** (crates/errmeta_derive/src/lib.rs):
 - `syn::Expr` parsing enables arbitrary Rust expressions in attributes
 - Separate parsing for enum-level, variant-level, and struct-level attributes
 - Compile-time validation ensures required attributes are present
@@ -71,14 +71,14 @@ struct EnumMetaAttrs {
 Pattern matching generation handles all Rust field types with appropriate destructuring:
 
 ```rust
-// Field pattern generation (see crates/errmeta_derive/src/lib.rs:133-139 for complete implementation)
+// Field pattern generation (see crates/errmeta_derive/src/lib.rs for complete implementation)
 match fields {
   Fields::Named(_) => quote! { { .. } },     // Named fields: { field1, field2 }
   Fields::Unnamed(_) => quote! { (..) },     // Tuple fields: (var_0, var_1)
   Fields::Unit => quote! {},                 // Unit variants: no fields
 }
 
-// Args method generation for different field types (see crates/errmeta_derive/src/lib.rs:393-497)
+// Args method generation for different field types (see crates/errmeta_derive/src/lib.rs)
 Fields::Named(named_fields) => {
   // Generates: args["field_name"] = field_name.to_string()
 }
@@ -87,7 +87,7 @@ Fields::Unnamed(unnamed_fields) => {
 }
 ```
 
-**Pattern Generation Details** (crates/errmeta_derive/src/lib.rs:420-453):
+**Pattern Generation Details** (crates/errmeta_derive/src/lib.rs):
 - Named fields use actual field names as HashMap keys
 - Unnamed fields use "var_N" naming convention for tuple access
 - Unit variants generate empty HashMaps
@@ -99,14 +99,14 @@ Fields::Unnamed(unnamed_fields) => {
 Transparent error support enables clean error propagation while maintaining metadata:
 
 ```rust
-// Transparent error patterns (see crates/errmeta_derive/src/lib.rs:120-131 for detection logic)
+// Transparent error patterns (see crates/errmeta_derive/src/lib.rs for detection logic)
 fn is_transparent(variant: &Variant) -> bool {
   variant.attrs.iter().any(|attr| {
     // Detects #[error(transparent)] attributes
   })
 }
 
-// Delegation generation (see crates/errmeta_derive/src/lib.rs:335-360 for complete implementation)
+// Delegation generation (see crates/errmeta_derive/src/lib.rs for complete implementation)
 #[error(transparent)]
 DatabaseError(DatabaseError),  // Delegates all methods to wrapped error
 
@@ -115,9 +115,9 @@ DatabaseError(DatabaseError),  // Delegates all methods to wrapped error
 IoError(std::io::Error),       // Custom args() with error string
 ```
 
-**Delegation Behavior** (crates/errmeta_derive/src/lib.rs:377-391):
+**Delegation Behavior** (crates/errmeta_derive/src/lib.rs):
 - `error_type()` and `code()` automatically delegate to wrapped error
-- `args()` delegation configurable via `args_delegate` attribute at crates/errmeta_derive/src/lib.rs:403
+- `args()` delegation configurable via `args_delegate` attribute
 - `args_delegate = false` generates `{"error": err.to_string()}` instead
 - Transparent variants can override error_type and code while maintaining args delegation
 
@@ -125,7 +125,7 @@ IoError(std::io::Error),       // Custom args() with error string
 Support for mixed transparent and non-transparent variants in the same enum:
 
 ```rust
-// Mixed variant patterns (see crates/errmeta_derive/tests/test_error_metadata.rs:44-70 for examples)
+// Mixed variant patterns (see crates/errmeta_derive/tests/test_error_metadata.rs for examples)
 enum ServiceError {
   #[error_meta(error_type = "ValidationError", code = "invalid_input")]
   ValidationFailed { field: String, value: String },
@@ -162,7 +162,7 @@ fn compile_fail() {
 Parameterized testing with rstest for generated code validation:
 
 ```rust
-// Runtime test patterns (see crates/errmeta_derive/tests/test_error_metadata.rs:86-158 for complete examples)
+// Runtime test patterns (see crates/errmeta_derive/tests/test_error_metadata.rs for complete examples)
 #[rstest]
 #[case::with_fields(
   TestError::WithFields { field1: "value1".to_string(), field2: 200 },
@@ -181,7 +181,7 @@ fn test_error_metadata(#[case] error: TestError, #[case] expected: ErrorMetas) {
 }
 ```
 
-**Test Coverage Areas** (crates/errmeta_derive/tests/test_error_metadata.rs:14-158):
+**Test Coverage Areas** (crates/errmeta_derive/tests/test_error_metadata.rs):
 - All field patterns (named, unnamed, unit) for enums and structs
 - Transparent error delegation with and without args_delegate
 - Integration with thiserror and strum for real-world patterns  
@@ -192,7 +192,7 @@ fn test_error_metadata(#[case] error: TestError, #[case] expected: ErrorMetas) {
 Mock ErrorMetas struct mirrors objs crate interface for integration validation:
 
 ```rust
-// Integration test structure (see crates/errmeta_derive/tests/objs.rs:3-9 for complete definition)
+// Integration test structure (see crates/errmeta_derive/tests/objs.rs for complete definition)
 #[derive(Debug, PartialEq)]
 pub struct ErrorMetas {
   pub message: String,
@@ -201,7 +201,7 @@ pub struct ErrorMetas {
   pub args: HashMap<String, String>,
 }
 
-// Conversion pattern for integration testing (crates/errmeta_derive/tests/test_error_metadata.rs:72-84)
+// Conversion pattern for integration testing (crates/errmeta_derive/tests/test_error_metadata.rs)
 impl From<&TestError> for ErrorMetas {
   fn from(error: &TestError) -> Self {
     Self {
@@ -240,7 +240,7 @@ Service-specific error types derive ErrorMeta for consistent error reporting:
 Comprehensive unit tests validate the macro's internal workings:
 
 ```rust
-// Pattern testing (see crates/errmeta_derive/src/lib.rs:511-530 for is_transparent tests)
+// Pattern testing (see crates/errmeta_derive/src/lib.rs for is_transparent tests)
 #[rstest]
 #[case(
   parse_quote!(#[error(transparent)] TransparentError),
@@ -250,7 +250,7 @@ fn test_is_transparent(#[case] variant: Variant, #[case] expected: bool) {
   assert_eq!(expected, is_transparent(&variant));
 }
 
-// Attribute parsing tests (crates/errmeta_derive/src/lib.rs:532-572)
+// Attribute parsing tests (crates/errmeta_derive/src/lib.rs)
 #[case::all_provided(
   parse_quote!(#[error_meta(error_type = "TestError", code = "test_code")]),
   Some(EnumMetaAttrs { /* ... */ }),
@@ -265,7 +265,7 @@ fn test_parse_error_meta(#[case] attr: Attribute, #[case] expected: Option<EnumM
 Tests ensure generated code matches expected patterns:
 
 ```rust
-// Method generation tests (crates/errmeta_derive/src/lib.rs:619-651)
+// Method generation tests (crates/errmeta_derive/src/lib.rs)
 #[case("error_type", quote! {
   match self {
     TestEnum::Variant1 => <_ as AsRef<str>>::as_ref(&internal_server_error()).to_string(),
@@ -281,7 +281,7 @@ fn test_generate_attribute_method_for_enum(#[case] method: &str, #[case] expecte
 ## Extension Guidelines
 
 ### Adding New Attribute Support
-When extending the macro with new attributes (following patterns in crates/errmeta_derive/src/lib.rs:186-305):
+When extending the macro with new attributes (following patterns in crates/errmeta_derive/src/lib.rs):
 
 1. **Extend parsing structures** - Add new fields to EnumMetaAttrs/StructMetaAttrs
 2. **Update Parse implementations** - Handle new attribute syntax in parsing logic

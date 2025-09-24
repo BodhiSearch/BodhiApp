@@ -24,7 +24,7 @@ The `integration-tests` crate operates as BodhiApp's **highest-level testing val
 Core infrastructure for managing complete server lifecycle with authentication and resource management:
 
 ```rust
-// TestServerHandle structure (see crates/integration-tests/tests/utils/live_server_utils.rs:167-173)
+// TestServerHandle structure (see tests/utils/live_server_utils.rs)
 pub struct TestServerHandle {
   pub temp_cache_dir: TempDir,
   pub host: String,
@@ -33,7 +33,7 @@ pub struct TestServerHandle {
   pub app_service: Arc<dyn AppService>,
 }
 
-// Live server fixture with complete service setup (see crates/integration-tests/tests/utils/live_server_utils.rs:143-165)
+// Live server fixture with complete service setup (see tests/utils/live_server_utils.rs)
 #[fixture]
 #[awt]
 pub async fn live_server(
@@ -58,7 +58,7 @@ pub async fn live_server(
 Complete authentication flow testing with real OAuth2 tokens and session management:
 
 ```rust
-// OAuth2 token acquisition (see crates/integration-tests/tests/utils/live_server_utils.rs:175-217)
+// OAuth2 token acquisition (see tests/utils/live_server_utils.rs)
 pub async fn get_oauth_tokens(app_service: &dyn AppService) -> anyhow::Result<(String, String)> {
   let setting_service = app_service.setting_service();
   let auth_url = setting_service.auth_url();
@@ -78,7 +78,7 @@ pub async fn get_oauth_tokens(app_service: &dyn AppService) -> anyhow::Result<(S
   // Returns (access_token, refresh_token) for session creation
 }
 
-// Session creation with database-backed storage (see crates/integration-tests/tests/utils/live_server_utils.rs:219-244)
+// Session creation with database-backed storage (see tests/utils/live_server_utils.rs)
 pub async fn create_authenticated_session(
   app_service: &Arc<dyn AppService>,
   access_token: &str,
@@ -112,14 +112,14 @@ pub async fn create_authenticated_session(
 Complete hub cache structure simulation for realistic model management testing:
 
 ```rust
-// Test data copying with proper structure (see crates/integration-tests/tests/utils/live_server_utils.rs:37-40)
+// Test data copying with proper structure (see tests/utils/live_server_utils.rs)
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
   let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
   copy(src_path, dst_path, &COPY_OPTIONS).unwrap();
 }
 
-// HuggingFace cache structure (see crates/integration-tests/tests/data/live/huggingface/hub/)
-crates/integration-tests/tests/data/live/huggingface/hub/
+// HuggingFace cache structure (see tests/data/live/huggingface/hub/)
+tests/data/live/huggingface/hub/
 ├── models--afrideva--Llama-68M-Chat-v1-GGUF/
 │   ├── blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836
 │   ├── refs/main
@@ -134,13 +134,13 @@ crates/integration-tests/tests/data/live/huggingface/hub/
 Test-specific configuration with aliases and model definitions:
 
 ```rust
-// Bodhi configuration structure (see crates/integration-tests/tests/data/live/bodhi/)
-crates/integration-tests/tests/data/live/bodhi/
+// Bodhi configuration structure (see tests/data/live/bodhi/)
+tests/data/live/bodhi/
 ├── aliases/phi4--mini-instruct.yaml
 ├── logs/
 └── models.yaml
 
-// Environment configuration loading (see crates/integration-tests/tests/utils/live_server_utils.rs:47-52)
+// Environment configuration loading (see tests/utils/live_server_utils.rs)
 let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
   .join("tests").join("resources").join(".env.test");
 if env_test_path.exists() {
@@ -160,7 +160,7 @@ if env_test_path.exists() {
 Complete API testing with authentication and content validation:
 
 ```rust
-// Non-streaming API test pattern (see crates/integration-tests/tests/test_live_chat_completions_non_streamed.rs:12-70)
+// Non-streaming API test pattern (see tests/test_live_chat_completions_non_streamed.rs)
 #[rstest::rstest]
 #[awt]
 #[tokio::test]
@@ -199,7 +199,7 @@ async fn test_live_chat_completions_non_streamed(
 Server-sent events testing with streaming response validation:
 
 ```rust
-// Streaming API test pattern (see crates/integration-tests/tests/test_live_chat_completions_streamed.rs:12-91)
+// Streaming API test pattern (see tests/test_live_chat_completions_streamed.rs)
 async fn test_live_chat_completions_stream(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
@@ -245,7 +245,7 @@ async fn test_live_chat_completions_stream(
 Direct llama.cpp server testing with various model file formats:
 
 ```rust
-// Direct server testing pattern (see crates/integration-tests/tests/test_live_lib.rs:24-51)
+// Direct server testing pattern (see tests/test_live_lib.rs)
 #[rstest]
 #[tokio::test]
 async fn test_live_llama_server_load_exec_with_server(
@@ -261,7 +261,7 @@ async fn test_live_llama_server_load_exec_with_server(
   assert!(result.is_ok(), "server start failed with error: {:?}", result);
 }
 
-// Shared context testing with service coordination (see crates/integration-tests/tests/test_live_lib.rs:54-92)
+// Shared context testing with service coordination (see tests/test_live_lib.rs)
 async fn test_live_shared_rw_reload(lookup_path: PathBuf, tests_data: PathBuf) -> anyhow::Result<()> {
   let hub_service = OfflineHubService::new(HfHubService::new(
     tests_data.join("live/huggingface/hub"), false, None));
@@ -306,7 +306,7 @@ async fn test_function_name() {
 Test environment setup with OAuth2 server configuration:
 
 ```rust
-// Environment configuration (see crates/integration-tests/tests/resources/.env.test)
+// Environment configuration (see tests/resources/.env.test)
 INTEG_TEST_AUTH_URL=https://test-id.getbodhi.app
 INTEG_TEST_AUTH_REALM=bodhi
 INTEG_TEST_DEV_CONSOLE_CLIENT_ID=client-bodhi-dev-console
@@ -314,7 +314,7 @@ INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET=change-me
 INTEG_TEST_USERNAME=user@email.com
 INTEG_TEST_PASSWORD=pass
 
-// Environment loading in tests (see crates/integration-tests/tests/utils/live_server_utils.rs:47-52)
+// Environment loading in tests (see tests/utils/live_server_utils.rs)
 let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
   .join("tests").join("resources").join(".env.test");
 if env_test_path.exists() {
@@ -334,7 +334,7 @@ if env_test_path.exists() {
 Complete application service setup with dependency injection:
 
 ```rust
-// Complete service setup fixture (see crates/integration-tests/tests/utils/live_server_utils.rs:42-141)
+// Complete service setup fixture (see tests/utils/live_server_utils.rs)
 #[fixture]
 pub async fn llama2_7b_setup(
   #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,

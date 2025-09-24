@@ -1,33 +1,40 @@
-# PACKAGE.md - routes_oai
+# PACKAGE.md - crates/routes_oai
 
-This document provides detailed technical information for the `routes_oai` crate, focusing on BodhiApp's OpenAI API compatibility implementation patterns, sophisticated streaming capabilities, and dual-format API support architecture.
+See [crates/routes_oai/CLAUDE.md](crates/routes_oai/CLAUDE.md) for architectural guidance and design rationale.
 
-## Crate Structure
+This document provides detailed technical information for the `crates/routes_oai` crate, focusing on BodhiApp's OpenAI API compatibility implementation patterns, sophisticated streaming capabilities, and dual-format API support architecture.
 
-**Main Library**: `crates/routes_oai/src/lib.rs:1-25`
-- Module exports for chat, models, and Ollama routes
-- API endpoint constants for OpenAI and Ollama compatibility
-- Localization resources integration
+## Core Implementation Files
 
-**Core Route Modules**:
-- `crates/routes_oai/src/routes_chat.rs:1-303` - OpenAI chat completions endpoint with streaming
-- `crates/routes_oai/src/routes_oai_models.rs:1-427` - OpenAI models API with alias resolution
-- `crates/routes_oai/src/routes_ollama.rs:1-765` - Ollama compatibility layer with format translation
+### Main Components
+- `src/lib.rs` - Library exports with module re-exports and API endpoint constants
+- `src/routes_chat.rs` - OpenAI chat completions endpoint with streaming support
+- `src/routes_oai_models.rs` - OpenAI models API with comprehensive alias resolution
+- `src/routes_ollama.rs` - Ollama compatibility layer with bidirectional format translation
+- `src/test_utils/mod.rs` - Testing utilities and fixtures for route testing
 
-**Dependencies** (`crates/routes_oai/Cargo.toml:6-27`):
-- `async-openai` for OpenAI type compatibility
-- `server_core` for RouterState and HTTP infrastructure
-- `services` for business logic coordination
-- `objs` for domain objects and error handling
+### Resource Files
+- `src/resources/en-US/messages.ftl` - Localized error messages for HTTP errors
 
-## OpenAI API Compatibility Architecture
+### Dependencies
 
-### Chat Completions Implementation
+**Core Dependencies** (`Cargo.toml`):
+- `async-openai` for OpenAI type compatibility and parameter validation
+- `server_core` for RouterState and HTTP infrastructure coordination
+- `services` for business logic coordination and service access
+- `objs` for domain objects, error handling, and validation
+- `axum` and `axum-extra` for HTTP route handling and request extraction
+- `serde` and `serde_json` for JSON serialization and deserialization
+- `utoipa` for OpenAPI documentation generation
+
+## API Implementation Architecture
+
+### OpenAI Chat Completions Implementation
 
 Core chat completion handler with streaming support:
 
 ```rust
-// Chat completion endpoint (crates/routes_oai/src/routes_chat.rs:109-121)
+// Chat completion endpoint (src/routes_chat.rs)
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, ApiError>,
@@ -44,17 +51,17 @@ pub async fn chat_completions_handler(
 ```
 
 **Key Features**:
-- Complete OpenAI parameter validation using `async-openai` types (`crates/routes_oai/src/routes_chat.rs:111`)
+- Complete OpenAI parameter validation using `async-openai` types (`src/routes_chat.rs`)
 - Streaming and non-streaming response support with proper SSE formatting
-- Request forwarding through RouterState to SharedContext for LLM coordination (`crates/routes_oai/src/routes_chat.rs:113`)
-- Comprehensive OpenAPI documentation with examples (`crates/routes_oai/src/routes_chat.rs:18-108`)
+- Request forwarding through RouterState to SharedContext for LLM coordination (`src/routes_chat.rs`)
+- Comprehensive OpenAPI documentation with examples (`src/routes_chat.rs`)
 
 ### Models API Implementation
 
 OpenAI-compatible model discovery with alias resolution:
 
 ```rust
-// Model listing handler (crates/routes_oai/src/routes_oai_models.rs:127-170)
+// Model listing handler (src/routes_oai_models.rs)
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<OAIModelListResponse>, ApiError> {
@@ -88,9 +95,9 @@ pub async fn oai_models_handler(
 ```
 
 **Model Conversion Functions**:
-- User alias conversion: `crates/routes_oai/src/routes_oai_models.rs:239-249`
-- Model alias conversion: `crates/routes_oai/src/routes_oai_models.rs:251-267`  
-- API alias conversion: `crates/routes_oai/src/routes_oai_models.rs:269-277`
+- User alias conversion: `src/routes_oai_models.rs`
+- Model alias conversion: `src/routes_oai_models.rs`
+- API alias conversion: `src/routes_oai_models.rs`
 
 ## Ollama Ecosystem Integration Architecture
 
@@ -99,7 +106,7 @@ pub async fn oai_models_handler(
 Sophisticated bidirectional format conversion between Ollama and OpenAI:
 
 ```rust
-// Ollama to OpenAI request conversion (crates/routes_oai/src/routes_ollama.rs:345-368)
+// Ollama to OpenAI request conversion (src/routes_ollama.rs)
 impl From<ChatRequest> for CreateChatCompletionRequest {
   fn from(val: ChatRequest) -> Self {
     let options = val.options.unwrap_or_default();
@@ -127,7 +134,7 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
 OpenAI to Ollama response conversion with analytics placeholders:
 
 ```rust
-// OpenAI to Ollama response conversion (crates/routes_oai/src/routes_ollama.rs:387-412)
+// OpenAI to Ollama response conversion (src/routes_ollama.rs)
 impl From<CreateChatCompletionResponse> for ChatResponse {
   fn from(response: CreateChatCompletionResponse) -> Self {
     let first = response.choices.first();
@@ -159,7 +166,7 @@ impl From<CreateChatCompletionResponse> for ChatResponse {
 Model metadata conversion with filesystem integration:
 
 ```rust
-// User alias to Ollama model conversion (crates/routes_oai/src/routes_ollama.rs:123-146)
+// User alias to Ollama model conversion (src/routes_ollama.rs)
 fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
@@ -191,7 +198,7 @@ fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> 
 Comprehensive error handling with API-specific response formatting:
 
 ```rust
-// HTTP error types with localization (crates/routes_oai/src/routes_chat.rs:9-15)
+// HTTP error types with localization (src/routes_chat.rs)
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum HttpError {
@@ -201,7 +208,7 @@ pub enum HttpError {
 }
 ```
 
-**Error Resources**: `crates/routes_oai/src/resources/en-US/messages.ftl:1`
+**Error Resources**: `src/resources/en-US/messages.ftl`
 - Localized error messages for HTTP errors
 - Integration with objs error system for consistent responses
 
@@ -210,7 +217,7 @@ pub enum HttpError {
 Advanced streaming with format-specific transformation:
 
 ```rust
-// Ollama streaming transformation (crates/routes_oai/src/routes_ollama.rs:644-669)
+// Ollama streaming transformation (src/routes_ollama.rs)
 let stream = response.bytes_stream().map(move |chunk| {
   let chunk = chunk.map_err(|e| format!("error reading chunk: {e}"))?;
   let text = String::from_utf8_lossy(&chunk);
@@ -242,7 +249,7 @@ let stream = response.bytes_stream().map(move |chunk| {
 Routes coordinate extensively with BodhiApp's service architecture:
 
 ```rust
-// DataService integration for model operations (crates/routes_oai/src/routes_oai_models.rs:131-136)
+// DataService integration for model operations (src/routes_oai_models.rs)
 let aliases = state
   .app_service()
   .data_service()
@@ -250,7 +257,7 @@ let aliases = state
   .await
   .map_err(ApiError::from)?;
 
-// Model alias resolution with error handling (crates/routes_oai/src/routes_oai_models.rs:221)
+// Model alias resolution with error handling (src/routes_oai_models.rs)
 if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
   // Handle resolved alias
 } else {
@@ -263,10 +270,10 @@ if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
 Extensive use of objs crate throughout API operations:
 
 ```rust
-// Domain object imports (crates/routes_oai/src/routes_oai_models.rs:7)
+// Domain object imports (src/routes_oai_models.rs)
 use objs::{Alias, ApiAlias, ApiError, ModelAlias, UserAlias, OpenAIApiError};
 
-// Error system integration (crates/routes_oai/src/routes_chat.rs:5)
+// Error system integration (src/routes_chat.rs)
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
 ```
 
@@ -277,7 +284,7 @@ use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
 Comprehensive testing with OpenAI SDK validation:
 
 ```rust
-// Non-streaming chat completion test (crates/routes_oai/src/routes_chat.rs:166-211)
+// Non-streaming chat completion test (src/routes_chat.rs)
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -309,7 +316,7 @@ async fn test_routes_chat_completions_non_stream(
 Advanced streaming validation with SSE format testing:
 
 ```rust
-// Streaming response test (crates/routes_oai/src/routes_chat.rs:253-301)
+// Streaming response test (src/routes_chat.rs)
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -337,7 +344,7 @@ async fn test_routes_chat_completions_stream(
 Ollama compatibility validation:
 
 ```rust
-// Ollama model listing test (crates/routes_oai/src/routes_ollama.rs:699-723)
+// Ollama model listing test (src/routes_ollama.rs)
 #[rstest]
 #[awt]
 #[tokio::test]

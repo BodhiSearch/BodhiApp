@@ -35,7 +35,7 @@ The `llama_server_proc` crate occupies a foundational infrastructure position in
 - **HTTP Client Layer**: Uses reqwest for both API proxying to llama.cpp servers and GitHub release binary downloading
 - **Build System Integration**: Sophisticated build-time binary management with cross-platform executable downloading and local build orchestration
 
-## Cross-Crate Integration Patterns
+## Cross-Crate Coordination Patterns
 
 ### Integration with objs Crate
 
@@ -45,7 +45,7 @@ The crate deeply integrates with the objs crate's error handling infrastructure 
 
 Higher-level services integrate with this crate through the `Server` trait abstraction, enabling dependency injection patterns and comprehensive testing through mockall-generated mocks. The trait design supports both boxed trait objects for dynamic dispatch and direct implementation usage, providing flexibility for different service coordination patterns.
 
-### Build System Coordination
+## Build System Orchestration Patterns
 
 The build system coordinates with BodhiApp's overall build infrastructure through environment variable configuration and Makefile integration, supporting both CI/CD automated binary downloading and local development build workflows. The system uses file locking to coordinate concurrent builds and integrates with the project's cross-platform build strategy.
 

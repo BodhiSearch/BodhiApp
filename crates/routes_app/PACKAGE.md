@@ -10,7 +10,7 @@ The `routes_app` crate serves as BodhiApp's **application API orchestration laye
 Application API routes coordinate extensively with HTTP infrastructure:
 
 ```rust
-// Pattern structure (see src/routes_create.rs:45-67 for complete implementation)
+// Pattern structure - see crates/routes_app/src/routes_create.rs
 #[utoipa::path(
     post,
     path = ENDPOINT_MODELS,
@@ -56,7 +56,7 @@ pub async fn create_alias_handler(
 Direct integration with commands crate for complex operations:
 
 ```rust
-// Model pull orchestration (see crates/routes_app/src/routes_pull.rs:89-123 for complete implementation)
+// Model pull orchestration - see crates/routes_app/src/routes_pull.rs
 pub async fn create_pull_request_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     WithRejection(Json(request), _): WithRejection<Json<NewDownloadRequest>, ApiError>,
@@ -97,7 +97,7 @@ pub async fn create_pull_request_handler(
 Sophisticated OAuth2 flow implementation with comprehensive security:
 
 ```rust
-// OAuth initiation (see crates/routes_app/src/routes_login.rs:59-138 for complete implementation)
+// OAuth initiation - see crates/routes_app/src/routes_login.rs
 pub async fn auth_initiate_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     session: Session,
@@ -143,7 +143,7 @@ pub async fn auth_initiate_handler(
 HTTP session coordination with Tower Sessions:
 
 ```rust
-// OAuth callback processing (see crates/routes_app/src/routes_login.rs:179-348 for complete implementation)
+// OAuth callback processing - see crates/routes_app/src/routes_login.rs
 pub async fn auth_callback_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     Query(params): Query<HashMap<String, String>>,
@@ -211,7 +211,7 @@ pub async fn auth_callback_handler(
 Sophisticated API token management with database integration:
 
 ```rust
-// API token creation (see crates/routes_app/src/routes_api_token.rs:45-78 for complete implementation)
+// API token creation - see crates/routes_app/src/routes_api_token.rs
 pub async fn create_token_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     WithRejection(Json(request), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
@@ -263,7 +263,7 @@ pub async fn create_token_handler(
 Comprehensive token management with status tracking:
 
 ```rust
-// Token status update (see src/routes_api_token.rs:123-145 for complete implementation)
+// Token status update - see crates/routes_app/src/routes_api_token.rs
 pub async fn update_token_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     Path(token_id): Path<String>,
@@ -307,7 +307,7 @@ pub async fn update_token_handler(
 Sophisticated user access control with role-based authorization:
 
 ```rust
-// User access request (see crates/routes_app/src/routes_access_request.rs:117-182 for complete implementation)
+// User access request - see crates/routes_app/src/routes_access_request.rs
 pub async fn user_request_access_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
@@ -345,7 +345,7 @@ pub async fn user_request_access_handler(
 Role-based authorization with hierarchical access control:
 
 ```rust
-// Access request approval (see crates/routes_app/src/routes_access_request.rs:332-416 for complete implementation)
+// Access request approval - see crates/routes_app/src/routes_access_request.rs
 pub async fn approve_request_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
@@ -397,7 +397,7 @@ pub async fn approve_request_handler(
 Comprehensive OpenAPI specification generation with environment-specific configuration:
 
 ```rust
-// OpenAPI document configuration (see crates/routes_app/src/openapi.rs:88-285 for complete implementation)
+// OpenAPI document configuration - see crates/routes_app/src/openapi.rs
 #[derive(OpenApi)]
 #[openapi(
     info(
@@ -483,7 +483,7 @@ pub struct BodhiOpenAPIDoc;
 Dynamic OpenAPI configuration based on application environment:
 
 ```rust
-// Environment modifier (see src/openapi.rs:234-267 for complete implementation)
+// Environment modifier - see crates/routes_app/src/openapi.rs
 #[derive(Debug, derive_new::new)]
 pub struct OpenAPIEnvModifier {
     setting_service: Arc<dyn SettingService>,
@@ -537,7 +537,7 @@ impl Modify for OpenAPIEnvModifier {
 Application API routes coordinate extensively with BodhiApp's service layer:
 
 ```rust
-// Model listing with service coordination (see src/routes_models.rs:45-78 for complete implementation)
+// Model listing with service coordination - see crates/routes_app/src/routes_models.rs
 pub async fn list_local_aliases_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     Query(params): Query<PaginationSortParams>,
@@ -587,7 +587,7 @@ pub async fn list_local_aliases_handler(
 Comprehensive error handling with HTTP status code mapping:
 
 ```rust
-// Application-specific error types (see src/error.rs:15-45 for complete implementation)
+// Application-specific error types - see crates/routes_app/src/error.rs
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum LoginError {
@@ -631,7 +631,7 @@ pub enum LoginError {
 Sophisticated request/response objects with validation and OpenAPI integration:
 
 ```rust
-// Model creation request (see src/objs.rs:45-67 for complete implementation)
+// Model creation request - see crates/routes_app/src/api_dto.rs
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateAliasRequest {
     #[validate(length(min = 1, message = "Alias name cannot be empty"))]
@@ -648,7 +648,7 @@ pub struct CreateAliasRequest {
     context_params: Option<Vec<String>>,
 }
 
-// Paginated response wrapper (see src/objs.rs:89-123 for complete implementation)
+// Paginated response wrapper - see crates/routes_app/src/api_dto.rs
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedAliasResponse {
     pub data: Vec<AliasResponse>,
@@ -673,7 +673,7 @@ impl From<PaginatedResponse<AliasResponse>> for PaginatedAliasResponse {
 Comprehensive pagination and sorting infrastructure:
 
 ```rust
-// Pagination parameters (see src/objs.rs:15-35 for complete implementation)
+// Pagination parameters - see crates/routes_app/src/api_dto.rs
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct PaginationSortParams {
     /// Page number (1-based)
@@ -710,7 +710,7 @@ fn default_sort_order() -> String { "asc".to_string() }
 Comprehensive testing infrastructure for HTTP endpoints:
 
 ```rust
-// Test utilities (see src/test_utils/alias_response.rs:15-35 for complete implementation)
+// Test utilities - see crates/routes_app/src/test_utils/alias_response.rs
 impl AliasResponse {
     pub fn llama3() -> Self {
         AliasResponseBuilder::default()
@@ -736,7 +736,7 @@ impl AliasResponse {
     }
 }
 
-// Test event coordination macro (see src/test_utils/mod.rs:5-15 for complete implementation)
+// Test event coordination macro - see crates/routes_app/src/test_utils/mod.rs
 #[macro_export]
 macro_rules! wait_for_event {
     ($rx:expr, $event_name:expr, $timeout:expr) => {{
