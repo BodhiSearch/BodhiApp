@@ -1,128 +1,142 @@
-# CLAUDE.md
+# CLAUDE.md - errmeta_derive
 
-This file provides guidance to Claude Code when working with the errmeta_derive crate.
+See [PACKAGE.md](./PACKAGE.md) for implementation details and file references.
 
-## Purpose
+## Architectural Purpose
 
-The `errmeta_derive` crate is a procedural macro library that automatically implements error metadata functionality for Rust enums and structs in BodhiApp. It provides the foundation for structured error handling across all service layers by generating consistent metadata extraction methods.
+The `errmeta_derive` crate serves as BodhiApp's foundational procedural macro infrastructure for structured error handling. It transforms Rust error enums and structs into self-describing error objects that provide consistent metadata extraction across all application layers. This macro-driven approach ensures zero runtime overhead while enabling sophisticated error categorization, localization, and debugging capabilities throughout the system.
 
-Key capabilities:
-- The `#[derive(ErrorMeta)]` macro for automatic metadata generation
-- Support for custom error codes, types, and localization arguments  
-- Integration with transparent error wrapping via `#[error(transparent)]`
-- Compile-time validation of error metadata attributes
-- Flexible trait implementation via `trait_to_impl` parameter
+## Domain Architecture
 
-## Key Domain Architecture
+### Error Metadata Extraction System
 
-### Error Metadata Generation System
-The macro generates three core methods that provide structured error information:
-- `error_type()` - Returns categorized error type for service-level error handling
-- `code()` - Provides localization keys for user-facing error messages  
-- `args()` - Extracts structured data from error fields for message templating
+The crate implements a three-method contract for error introspection:
 
-### Attribute Processing Architecture
-- `#[error_meta(...)]` attributes for customizing error metadata behavior
-- Expression evaluation system supporting string literals, function calls, and enum variants
-- Transparent error delegation system with configurable argument handling
-- Compile-time validation ensuring required attributes are present
+- **Error Type Classification**: `error_type()` returns semantic error categories (ValidationError, DatabaseError, etc.) that enable service-level error routing and HTTP status code mapping
+- **Localization Key Generation**: `code()` provides stable identifiers for error message templates, supporting multi-language user interfaces
+- **Structured Argument Extraction**: `args()` captures error context as key-value pairs for message interpolation and debugging
 
-### Code Generation Patterns
-- Pattern matching generation for all Rust field types (named, unnamed, unit)
-- Automatic snake_case conversion for default error codes
-- Integration with `#[error(transparent)]` for error wrapping scenarios
-- Trait implementation flexibility via `trait_to_impl` parameter
+This triumvirate approach separates concerns between error semantics, user presentation, and diagnostic information, enabling clean error handling patterns across service boundaries.
 
-## Architecture Position
+### Compile-Time Code Generation Architecture
 
-The `errmeta_derive` crate operates at the foundational macro layer of BodhiApp's error handling architecture:
+The macro operates through a sophisticated token stream transformation pipeline:
 
-- **Foundation Layer**: Provides compile-time code generation for error metadata extraction
-- **Zero Runtime Cost**: All processing occurs at compile time with no runtime overhead
-- **Cross-Crate Integration**: Used by `objs` crate and service layers for consistent error handling
-- **Localization Foundation**: Generates structured data required for error message localization
+1. **Syntax Tree Analysis**: Parses Rust AST to identify error structure patterns and validate attribute specifications
+2. **Attribute Expression Evaluation**: Supports arbitrary Rust expressions in error metadata attributes, enabling dynamic error categorization
+3. **Pattern Matching Generation**: Creates exhaustive match statements that handle all field combinations while maintaining type safety
+4. **Trait Implementation Flexibility**: Supports both inherent method implementation and configurable trait implementation via `trait_to_impl`
+
+This design ensures that error metadata extraction integrates seamlessly with existing Rust error handling patterns while providing extensibility for future requirements.
+
+### Transparent Error Delegation Framework
+
+The crate's transparent error support enables error chain preservation while maintaining metadata consistency:
+
+- **Automatic Delegation**: `#[error(transparent)]` variants automatically forward metadata calls to wrapped errors
+- **Selective Override Capability**: Transparent variants can override `error_type` and `code` while preserving argument delegation
+- **Configurable Argument Handling**: `args_delegate = false` provides fine-grained control over argument extraction for wrapped errors
+
+This framework is crucial for BodhiApp's multi-layered architecture, where errors propagate through service boundaries while preserving both the original error context and service-specific metadata.
 
 ## Cross-Crate Integration Patterns
 
-### Integration with Object Layer (`objs`)
-- Error enums in the `objs` crate derive `ErrorMeta` for centralized error handling
-- Provides structured error data for HTTP status code mapping and API responses
-- Integrates with localization service for user-facing error message formatting
+### Foundation for Object Layer Error Handling
 
-### Service Layer Coordination
-- Service-specific error types derive `ErrorMeta` for consistent error reporting across business logic
-- Business logic errors include relevant context via automatic args extraction
-- Integration with tracing and logging systems via structured metadata
+The `objs` crate relies on `errmeta_derive` to implement the `AppError` trait across all domain error types. This integration provides:
 
-### Transparent Error Wrapping System
-- Supports `#[error(transparent)]` for delegating error metadata to wrapped errors
-- Configurable argument delegation via `args_delegate` attribute
-- Enables clean error propagation across service boundaries while maintaining metadata
+- **Consistent HTTP Response Generation**: Error metadata drives status code selection and response body formatting
+- **Localization Service Integration**: Error codes serve as keys for message template lookup and user language selection
+- **Structured Logging Integration**: Error arguments provide contextual information for observability and debugging
 
-## Important Constraints
+### Service Layer Error Coordination
+
+Service-specific error types derive `ErrorMeta` to ensure consistent error handling across business logic boundaries:
+
+- **Error Propagation Patterns**: Transparent error wrapping enables clean error forwarding while preserving service-specific context
+- **Tracing Integration**: Structured error metadata integrates with tracing spans for comprehensive request lifecycle visibility
+- **Business Logic Error Context**: Named fields in error variants automatically become structured logging attributes
+
+### API Layer Error Translation
+
+Route handlers leverage generated error metadata to transform internal errors into API responses:
+
+- **OpenAPI Documentation Generation**: Error metadata enables automatic API documentation of error response schemas
+- **Client Error Consistency**: Generated error codes provide stable identifiers for client-side error handling
+- **Debugging Information**: Structured arguments enable detailed error information in development environments while maintaining security in production
+
+## Technical Constraints and Design Decisions
 
 ### Compile-Time Validation Requirements
-- Enum variants without `#[error(transparent)]` must specify `error_type` attribute
-- Struct types must include `error_type` in their `#[error_meta(...)]` attribute
-- Union types are not supported and will cause compilation failure
-- Invalid expressions in attributes trigger compile-time errors
 
-### Attribute Expression Support
-- Supports string literals: `error_type = "ValidationError"`
-- Supports function calls: `error_type = get_error_type()`
-- Supports enum variants: `error_type = ErrorType::Validation`
-- Supports complex expressions: `code = self.generate_code()`
+The macro enforces strict compilation rules to ensure error handling consistency:
 
-### Transparent Error Delegation Rules
-- `#[error(transparent)]` variants automatically delegate to wrapped error's metadata methods
-- `args_delegate = false` overrides delegation for args(), using error string instead
-- Transparent variants can override `error_type` and `code` while maintaining args delegation
-- Mixed transparent and non-transparent variants are supported in the same enum
+- **Mandatory Error Type Specification**: Non-transparent enum variants must specify `error_type` to prevent runtime classification errors
+- **Expression Syntax Validation**: Attribute expressions undergo full Rust syntax validation during macro expansion
+- **Union Type Prohibition**: Union types are explicitly rejected due to undefined field access patterns
 
+These constraints prevent common error handling mistakes and ensure that all error types provide complete metadata.
 
-## Macro Testing Architecture
+### Expression Evaluation Flexibility
 
-### Compile-Time Validation Testing
-The crate uses `trybuild` for compile-time error validation, ensuring that invalid macro usage produces appropriate compiler errors:
-- Missing `error_type` attributes on enum variants trigger compilation failures
-- Union types are rejected with clear error messages  
-- Invalid attribute expressions are caught during macro expansion
+The attribute system supports sophisticated error metadata customization:
 
-### Runtime Behavior Testing
-Comprehensive test suite using `rstest` for parameterized testing of generated code:
-- Tests all field patterns (named, unnamed, unit) for both enums and structs
-- Validates transparent error delegation with and without `args_delegate`
-- Integration testing with `thiserror` and `strum` for real-world usage patterns
-- Verification of automatic snake_case code generation
+- **Runtime Expression Evaluation**: Attributes can contain complex expressions that evaluate to strings at runtime
+- **Context-Aware Error Generation**: Methods like `self.generate_code()` enable dynamic error codes based on error state
+- **Type System Integration**: Enum variants as error types leverage Rust's type system for categorization consistency
 
-### Test Data Structures
-The test suite includes a mock `ErrorMetas` struct that mirrors the expected interface for integration with the `objs` crate, enabling validation of the complete error metadata extraction workflow.
+This flexibility enables context-sensitive error handling while maintaining compile-time safety guarantees.
 
-## Procedural Macro Implementation Patterns
+### Memory and Performance Architecture
 
-### Token Stream Processing
-- Uses `syn` with full feature support for comprehensive Rust syntax parsing
-- `quote!` macro for generating clean, properly escaped Rust code
-- `proc-macro2::TokenStream` for internal token manipulation
+The macro's design prioritizes zero-runtime-cost abstractions:
 
-### Pattern Matching Code Generation
-- Generates match arms for all enum variants with appropriate field destructuring
-- Handles named fields with `{ field1, field2 }` patterns
-- Handles unnamed fields with `(var_0, var_1)` patterns  
-- Handles unit variants with empty patterns
+- **Compile-Time Code Generation**: All metadata extraction logic is generated at compile time, eliminating runtime reflection overhead
+- **Efficient Pattern Matching**: Generated match statements compile to optimal machine code without dynamic dispatch
+- **String Allocation Minimization**: Error codes and types use efficient string formatting with minimal allocations
 
-### Expression Evaluation System
-- Supports arbitrary Rust expressions in `error_type` and `code` attributes
-- Uses `syn::Expr` parsing for flexible attribute value handling
-- Generates code that evaluates expressions at runtime while maintaining compile-time validation
+This approach ensures that error handling remains performant even in high-throughput scenarios.
 
-## Integration with BodhiApp Error Handling
+## Error Handling Evolution Patterns
 
-### Foundation for Structured Errors
-The macro provides the foundation for BodhiApp's structured error handling by ensuring all error types can provide:
-- Categorized error types for service-level error routing
-- Localization keys for user-facing error messages
-- Structured arguments for error message templating
+### Extensibility Design
 
-### Service Boundary Error Propagation
-Transparent error support enables clean error propagation across service boundaries while maintaining error metadata, crucial for BodhiApp's multi-service architecture.
+The macro architecture supports evolutionary error handling requirements:
+
+- **Attribute Extension Points**: New attributes can be added without breaking existing error type definitions
+- **Backward Compatibility**: Existing error types continue to function when new features are added to the macro
+- **Migration Pathways**: Transparent error support enables gradual migration of error handling patterns across the codebase
+
+### Integration with External Error Libraries
+
+The macro integrates seamlessly with Rust's error handling ecosystem:
+
+- **thiserror Integration**: Generated code works naturally with `#[derive(thiserror::Error)]` for comprehensive error handling
+- **anyhow Compatibility**: Error metadata remains accessible when errors are wrapped in `anyhow::Error`
+- **Standard Library Coordination**: Transparent error delegation works with standard library error types
+
+## Domain-Specific Knowledge
+
+### BodhiApp Error Categorization System
+
+The error type classification aligns with BodhiApp's service architecture:
+
+- **Domain Error Types**: ValidationError, AuthenticationError, AuthorizationError map to business logic concerns
+- **Infrastructure Error Types**: DatabaseError, NetworkError, FileSystemError map to operational concerns
+- **Integration Error Types**: ExternalServiceError, HubApiError map to external dependency failures
+
+### Localization Architecture Integration
+
+Error code generation follows BodhiApp's internationalization patterns:
+
+- **Hierarchical Code Structure**: Error codes use `service_name-error_variant` format for namespace organization
+- **Template Parameter Extraction**: Field names become template parameters for message interpolation
+- **Cultural Context Preservation**: Error arguments preserve cultural formatting requirements for numbers, dates, and currencies
+
+### Security and Privacy Considerations
+
+The error metadata system balances debugging needs with security requirements:
+
+- **Sensitive Information Filtering**: Transparent errors can override argument delegation to prevent information leakage
+- **Production Error Sanitization**: Error codes provide stable identifiers while potentially sensitive error messages remain internal
+- **Audit Trail Integration**: Structured error arguments support compliance requirements for error tracking and investigation

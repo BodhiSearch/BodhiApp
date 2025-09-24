@@ -2,17 +2,24 @@
 
 This file provides guidance to Claude Code when working with the `test_utils` module for HTTP server infrastructure.
 
-*For implementation details and extension patterns, see [crates/server_core/src/test_utils/PACKAGE.md](crates/server_core/src/test_utils/PACKAGE.md)*
+*For implementation details and extension patterns, see [./PACKAGE.md](./PACKAGE.md)*
 
 ## Purpose
 
 The `test_utils` module provides specialized testing infrastructure for BodhiApp's HTTP server infrastructure layer, enabling comprehensive testing of server-sent event streaming, LLM server context management, and HTTP route coordination with sophisticated mock orchestration.
 
+**Key Test Utilities** (see `crates/server_core/src/test_utils/`):
+- **HTTP Response Extensions**: Advanced response parsing utilities for JSON, text, and SSE streams
+- **RouterState Testing**: Pre-configured RouterState fixtures with MockSharedContext integration  
+- **ServerFactory Mocking**: LLM server factory stubs for HTTP context testing
+- **Mock Server Integration**: rstest fixtures for LLM server process testing coordination
+
 ## HTTP Infrastructure Testing Architecture
 
 ### RouterState Testing Foundation
-Sophisticated HTTP infrastructure testing with service coordination:
+Sophisticated HTTP infrastructure testing with service coordination (`crates/server_core/src/test_utils/state.rs`):
 - **router_state_stub()**: Pre-configured RouterState with MockSharedContext and AppServiceStub integration
+- **ServerFactoryStub**: LLM server factory test implementation with configurable server instances
 - **Service Mock Coordination**: HTTP route testing with comprehensive service registry mocking
 - **Context Management Testing**: LLM server context testing with lifecycle and state management validation
 - **Error Propagation Testing**: HTTP error translation testing with service error coordination
@@ -26,12 +33,12 @@ Advanced LLM server context testing with process coordination:
 - **Observer Pattern Testing**: Server state listener testing with notification coordination
 - **Resource Lifecycle Testing**: LLM server startup/shutdown testing with proper cleanup validation
 
-### Server-Sent Events Testing Infrastructure
-Comprehensive SSE streaming testing for real-time communication:
-- **DirectSSE Testing**: Application event streaming testing with BytesMut optimization validation
-- **ForwardedSSE Testing**: LLM server proxy streaming testing with error handling validation
+### HTTP Response Testing Extensions
+Comprehensive HTTP response parsing utilities (`crates/server_core/src/test_utils/http.rs`):
+- **ResponseTestExt**: Trait extension for Axum Response with JSON, text, and SSE parsing
+- **RequestTestExt**: Trait extension for HTTP request builders with JSON serialization
+- **SSE Stream Parsing**: Specialized parsing for server-sent event streams with data extraction
 - **Connection Management Testing**: HTTP connection lifecycle testing with automatic cleanup
-- **Keep-Alive Testing**: Long-lived connection stability testing with timeout coordination
 - **Stream Error Testing**: Connection interruption and recovery testing with error propagation
 
 ## Cross-Crate Testing Integration

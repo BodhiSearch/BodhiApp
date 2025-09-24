@@ -10,7 +10,7 @@ The `server_app` crate serves as BodhiApp's **main HTTP server executable orches
 Advanced server lifecycle management with comprehensive coordination:
 
 ```rust
-// Pattern structure (see src/server.rs:15-35 for complete implementation)
+// Pattern structure (see crates/server_app/src/server.rs:14-42 for complete implementation)
 pub struct Server {
   host: String,
   port: u16,
@@ -36,7 +36,7 @@ pub fn build_server_handle(host: &str, port: u16) -> ServerHandle {
 Sophisticated shutdown coordination with resource cleanup:
 
 ```rust
-// Shutdown callback pattern (see src/serve.rs:45-55 for complete implementation)
+// Shutdown callback pattern (see crates/server_app/src/serve.rs:41-52 for complete implementation)
 #[async_trait::async_trait]
 pub trait ShutdownCallback: Send + Sync {
   async fn shutdown(&self);
@@ -69,7 +69,7 @@ impl ShutdownCallback for ShutdownContextCallback {
 Intelligent server lifecycle management with configurable keep-alive coordination:
 
 ```rust
-// Keep-alive pattern (see src/listener_keep_alive.rs:15-45 for complete implementation)
+// Keep-alive pattern (see crates/server_app/src/listener_keep_alive.rs:16-80 for complete implementation)
 #[derive(Debug)]
 pub struct ServerKeepAlive {
   keep_alive: RwLock<i64>,
@@ -101,7 +101,7 @@ impl ServerKeepAlive {
 Dynamic execution variant switching with SharedContext coordination:
 
 ```rust
-// Variant change pattern (see src/listener_variant.rs:8-25 for complete implementation)
+// Variant change pattern (see crates/server_app/src/listener_variant.rs:8-42 for complete implementation)
 #[derive(Debug, derive_new::new)]
 pub struct VariantChangeListener {
   ctx: Arc<dyn SharedContext>,
@@ -142,7 +142,7 @@ impl SettingsChangeListener for VariantChangeListener {
 Comprehensive service bootstrap with dependency injection and configuration validation:
 
 ```rust
-// Service bootstrap pattern (see src/serve.rs:89-145 for complete implementation)
+// Service bootstrap pattern (see crates/server_app/src/serve.rs:89-162 for complete implementation)
 impl ServeCommand {
   pub async fn get_server_handle(
     &self,
@@ -225,7 +225,7 @@ let app = build_routes(ctx.clone(), service, static_router);
 Comprehensive signal handling with cross-platform support:
 
 ```rust
-// Signal handling pattern (see src/shutdown.rs:3-35 for complete implementation)
+// Signal handling pattern (see crates/server_app/src/shutdown.rs:3-33 for complete implementation)
 pub async fn shutdown_signal() {
   let ctrl_c = async {
     signal::ctrl_c()
@@ -271,7 +271,7 @@ pub async fn shutdown_signal() {
 Comprehensive error handling with domain-specific error types:
 
 ```rust
-// Server error types (see src/error.rs:5-15 for complete implementation)
+// Server error types (see crates/server_app/src/error.rs:4-10 for TaskJoinError, crates/server_app/src/serve.rs:16-30 for ServeError)
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("task_join_error")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
@@ -338,7 +338,7 @@ For new configuration and settings management patterns:
 Comprehensive testing of server orchestration and lifecycle management:
 
 ```rust
-// Server testing pattern (see src/serve.rs:195-225 for complete test implementation)
+// Server testing pattern (see crates/server_app/src/serve.rs:175-207 for complete test implementation)
 #[rstest]
 #[tokio::test]
 async fn test_server_fails_when_port_already_in_use(temp_dir: TempDir) -> anyhow::Result<()> {

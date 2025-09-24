@@ -56,7 +56,7 @@ pub async fn create_alias_handler(
 Direct integration with commands crate for complex operations:
 
 ```rust
-// Model pull orchestration (see src/routes_pull.rs:89-123 for complete implementation)
+// Model pull orchestration (see crates/routes_app/src/routes_pull.rs:89-123 for complete implementation)
 pub async fn create_pull_request_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     WithRejection(Json(request), _): WithRejection<Json<NewDownloadRequest>, ApiError>,
@@ -97,7 +97,7 @@ pub async fn create_pull_request_handler(
 Sophisticated OAuth2 flow implementation with comprehensive security:
 
 ```rust
-// OAuth initiation (see src/routes_login.rs:67-89 for complete implementation)
+// OAuth initiation (see crates/routes_app/src/routes_login.rs:59-138 for complete implementation)
 pub async fn auth_initiate_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     session: Session,
@@ -143,7 +143,7 @@ pub async fn auth_initiate_handler(
 HTTP session coordination with Tower Sessions:
 
 ```rust
-// OAuth callback processing (see src/routes_login.rs:156-189 for complete implementation)
+// OAuth callback processing (see crates/routes_app/src/routes_login.rs:179-348 for complete implementation)
 pub async fn auth_callback_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     Query(params): Query<HashMap<String, String>>,
@@ -211,7 +211,7 @@ pub async fn auth_callback_handler(
 Sophisticated API token management with database integration:
 
 ```rust
-// API token creation (see src/routes_api_token.rs:45-78 for complete implementation)
+// API token creation (see crates/routes_app/src/routes_api_token.rs:45-78 for complete implementation)
 pub async fn create_token_handler(
     State(router_state): State<Arc<dyn RouterState>>,
     WithRejection(Json(request), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
@@ -301,13 +301,103 @@ pub async fn update_token_handler(
 - Token lifecycle management with activation, deactivation, and expiration
 - User-based token ownership with proper authorization checks
 
+## User Access Management Implementation
+
+### Access Request Workflow Architecture
+Sophisticated user access control with role-based authorization:
+
+```rust
+// User access request (see crates/routes_app/src/routes_access_request.rs:117-182 for complete implementation)
+pub async fn user_request_access_handler(
+  headers: HeaderMap,
+  State(state): State<Arc<dyn RouterState>>,
+) -> Result<(StatusCode, Json<EmptyResponse>), ApiError> {
+  // Extract username from authenticated headers
+  let username = headers.get(KEY_HEADER_BODHIAPP_USERNAME)
+    .ok_or_else(|| BadRequestError::new("User logged in information not present".to_string()))?
+    .to_str()
+    .map_err(|err| BadRequestError::new(err.to_string()))?;
+
+  // Check if user already has a role
+  if let Some(role_header) = headers.get(KEY_HEADER_BODHIAPP_ROLE) {
+    let role = role_header.to_str().map_err(|err| BadRequestError::new(err.to_string()))?;
+    if !role.is_empty() {
+      return Err(UnprocessableEntityError::new(
+        "User already has access".to_string(),
+      ))?;
+    }
+  }
+
+  let db_service = state.app_service().db_service();
+  
+  // Check for existing pending request
+  if db_service.get_pending_request(user_id.to_string()).await?.is_some() {
+    return Err(ConflictError::new("Access request already pending".to_string()))?;
+  }
+
+  // Create new access request
+  db_service.insert_pending_request(username.to_string(), user_id.to_string()).await?;
+  Ok((StatusCode::CREATED, Json(EmptyResponse {})))
+}
+```
+
+### Administrative Access Control
+Role-based authorization with hierarchical access control:
+
+```rust
+// Access request approval (see crates/routes_app/src/routes_access_request.rs:332-416 for complete implementation)
+pub async fn approve_request_handler(
+  headers: HeaderMap,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<i64>,
+  Json(request): Json<ApproveUserAccessRequest>,
+) -> Result<StatusCode, ApiError> {
+  // Extract approver's role and validate hierarchy
+  let approver_role_str = headers.get(KEY_HEADER_BODHIAPP_ROLE)
+    .ok_or_else(|| BadRequestError::new("No role header present".to_string()))?
+    .to_str().map_err(|err| BadRequestError::new(err.to_string()))?;
+    
+  let approver_role = approver_role_str.parse::<Role>()?;
+  
+  // Validate role hierarchy - users can only assign roles equal to or lower than their own
+  if !approver_role.has_access_to(&request.role) {
+    return Err(BadRequestError::new(
+      "Insufficient privileges to assign this role".to_string(),
+    ))?;
+  }
+
+  let db_service = state.app_service().db_service();
+  let access_request = db_service.get_request_by_id(id).await?
+    .ok_or_else(|| BadRequestError::new(format!("Access request {} not found", id)))?;
+
+  // Update request status and assign role through auth service
+  db_service.update_request_status(id, UserAccessRequestStatus::Approved, approver_username.to_string()).await?;
+  
+  let auth_service = state.app_service().auth_service();
+  auth_service.assign_user_role(token, &access_request.user_id, &request.role.to_string()).await?;
+
+  // Clear existing sessions to ensure new role takes effect immediately
+  let session_service = state.app_service().session_service();
+  let cleared_sessions = session_service.clear_sessions_for_user(&access_request.user_id).await?;
+  
+  Ok(StatusCode::OK)
+}
+```
+
+**User Access Management Features**:
+- Multi-step access request workflow with pending/approved/rejected status tracking
+- Hierarchical role-based authorization with admin/manager/power_user/user levels
+- Administrative review and approval processes with audit logging
+- Automatic session clearing on role changes for immediate privilege updates
+- Comprehensive user lifecycle management including role changes and access removal
+
 ## OpenAPI Documentation Generation
 
 ### Utoipa Integration Architecture
 Comprehensive OpenAPI specification generation with environment-specific configuration:
 
 ```rust
-// OpenAPI document configuration (see src/openapi.rs:89-156 for complete implementation)
+// OpenAPI document configuration (see crates/routes_app/src/openapi.rs:88-285 for complete implementation)
 #[derive(OpenApi)]
 #[openapi(
     info(

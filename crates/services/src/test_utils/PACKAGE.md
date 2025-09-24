@@ -1,14 +1,49 @@
 # PACKAGE.md - services/test_utils
 
-This document provides detailed technical information for the `services/test_utils` module, focusing on BodhiApp-specific service testing patterns and mock coordination implementation.
+This document provides detailed implementation information for the `services/test_utils` module, focusing on BodhiApp's service testing infrastructure with accurate file references and navigation aids.
 
-## Service Composition Testing Implementation
+## Module Organization
 
-### AppServiceStub Pattern
-BodhiApp's comprehensive service testing infrastructure with builder pattern and dependency management:
+### Core Module Structure
+Main entry point and module organization:
 
 ```rust
-// Core testing infrastructure (see app.rs:47-67 for complete struct)
+// Module registration (see crates/services/src/test_utils/mod.rs:1-22)
+mod app;
+mod auth;
+mod data;
+mod db;
+mod envs;
+mod hf;
+mod objs;
+mod secret;
+mod session;
+mod settings;
+
+pub use app::*;
+pub use auth::*;
+pub use data::*;
+pub use db::*;
+pub use envs::*;
+pub use hf::*;
+pub use objs::*;
+pub use secret::*;
+pub use session::*;
+pub use settings::*;
+```
+
+**Key Features**:
+- Centralized re-exports for all test utility components
+- Modular organization by service domain (auth, db, hf, etc.)
+- Feature-gated availability via `test-utils` feature in Cargo.toml
+
+## Service Composition Testing
+
+### AppServiceStub Architecture
+Complete service registry implementation for complex integration testing:
+
+```rust
+// Main service stub (see crates/services/src/test_utils/app.rs:45-65)
 #[derive(Debug, Default, Builder)]
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
@@ -30,20 +65,13 @@ pub struct AppServiceStub {
   #[builder(default = "self.default_time_service()")]
   pub time_service: Option<Arc<dyn TimeService>>,
 }
-
-// Implements AppService trait for seamless testing (see app.rs:156-189)
-impl AppService for AppServiceStub {
-  fn setting_service(&self) -> Arc<dyn SettingService> { self.setting_service.clone().unwrap() }
-  fn data_service(&self) -> Arc<dyn DataService> { self.data_service.clone().unwrap() }
-  // All service accessors with proper Arc cloning
-}
 ```
 
-### Service Builder Pattern Implementation
-Flexible service composition with sensible defaults and dependency management:
+### Builder Pattern Implementation
+Service composition with dependency management:
 
 ```rust
-// Builder implementation with dependency resolution (see app.rs:69-145)
+// Service defaults and composition (see crates/services/src/test_utils/app.rs:67-91)
 impl AppServiceStubBuilder {
   fn default_setting_service(&self) -> Option<Arc<dyn SettingService>> {
     Some(Arc::new(SettingServiceStub::default()))
@@ -53,90 +81,60 @@ impl AppServiceStubBuilder {
     Some(Arc::new(MockAuthService::default()))
   }
 
+  fn default_time_service(&self) -> Option<Arc<dyn TimeService>> {
+    Some(Arc::new(FrozenTimeService::default()))
+  }
+}
+
+// Service builder methods with test data setup
+impl AppServiceStubBuilder {
   pub fn with_hub_service(&mut self) -> &mut Self {
+    // Implementation at crates/services/src/test_utils/app.rs:135-155
     let temp_home = self.setup_temp_home();
     let hf_home = temp_home.path().join("huggingface");
     copy_test_dir("tests/data/huggingface", &hf_home);
-    let hf_cache = hf_home.join("hub");
-    let hub_service = OfflineHubService::new(HfHubService::new(hf_cache, false, None));
-    self.hub_service = Some(Some(Arc::new(hub_service)));
-    self
-  }
-
-  pub fn with_data_service(&mut self) -> &mut Self {
-    let temp_home = self.setup_temp_home();
-    let hub_service = self.with_hub_service().hub_service.clone().unwrap().unwrap().clone();
-    let bodhi_home = temp_home.path().join("bodhi");
-    copy_test_dir("tests/data/bodhi", &bodhi_home);
-    let data_service = LocalDataService::new(bodhi_home, hub_service);
-    self.data_service = Some(Some(Arc::new(data_service)));
-    self
-  }
-
-  pub async fn with_session_service(&mut self) -> &mut Self {
-    let temp_home = self.setup_temp_home();
-    let dbfile = temp_home.path().join("test.db");
-    self.build_session_service(dbfile).await;
-    self
-  }
-
-  pub fn with_secret_service(&mut self) -> &mut Self {
-    let secret_service = SecretServiceStub::default()
-      .with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
-    self.secret_service = Some(Some(Arc::new(secret_service)));
-    self
+    // Creates OfflineHubService with realistic test data
   }
 }
 ```
 
-**Key Implementation Details**:
-- Builder pattern with configurable service implementations and automatic dependency resolution
-- Automatic temp directory setup with realistic test data copying from tests/data/
-- Sensible defaults for testing scenarios with mock services where appropriate
-- Support for mixed real and mock service composition for targeted testing scenarios
-- Dependency ordering ensures services are initialized in correct sequence
+**Implementation Details**:
+- Builder pattern with configurable service implementations 
+- Automatic test data copying from `crates/services/tests/data/`
+- Dependency injection with proper Arc wrapping for shared ownership
+- Fixture integration with rstest for seamless test setup
 
 ## Database Testing Infrastructure
 
 ### TestDbService Implementation
-Sophisticated database testing with isolation, deterministic time, and event broadcasting:
+Advanced database testing with event broadcasting and temporal control:
 
 ```rust
-// Test database service with event broadcasting (see db.rs:23-45 for complete implementation)
+// Test database service (see crates/services/src/test_utils/db.rs:55-85)
 #[derive(Debug)]
 pub struct TestDbService {
-  _temp_dir: TempDir,
+  _temp_dir: Arc<TempDir>,
   inner: SqliteDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
 }
 
 impl TestDbService {
-  pub fn new(_temp_dir: TempDir, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
+  pub fn new(_temp_dir: Arc<TempDir>, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService { _temp_dir, inner, event_sender, now }
   }
   
-  pub fn event_receiver(&self) -> Receiver<String> {
-    self.event_sender.subscribe() // For reactive testing scenarios
-  }
-
-  pub fn pool(&self) -> &SqlitePool {
-    self.inner.pool() // Direct pool access for service coordination
+  pub fn subscribe(&self) -> Receiver<String> {
+    self.event_sender.subscribe()
   }
 }
 
-// Fixture for easy test setup (see db.rs:67-89)
+// Fixture for easy test setup (see crates/services/src/test_utils/db.rs:15-34)
 #[fixture]
 #[awt]
-pub async fn test_db_service(#[future] temp_dir: TempDir) -> TestDbService {
-  let db_path = temp_dir.path().join("test.db");
-  let pool = SqlitePool::connect(&format!("sqlite:{}", db_path.display())).await.unwrap();
-  sqlx::migrate!("./migrations").run(&pool).await.unwrap();
-  
-  let inner = SqliteDbService::new(pool);
-  let now = chrono::Utc::now().with_nanosecond(0).unwrap();
-  TestDbService::new(temp_dir, inner, now)
+pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
+  test_db_service_with_temp_dir(Arc::new(temp_dir)).await
 }
 ```
 
@@ -144,6 +142,7 @@ pub async fn test_db_service(#[future] temp_dir: TempDir) -> TestDbService {
 Deterministic time operations for reproducible testing:
 
 ```rust
+// Time service implementation (see crates/services/src/test_utils/db.rs:36-53)
 #[derive(Debug)]
 pub struct FrozenTimeService(DateTime<Utc>);
 
@@ -155,7 +154,7 @@ impl Default for FrozenTimeService {
 
 impl TimeService for FrozenTimeService {
   fn utc_now(&self) -> DateTime<Utc> {
-    self.0 // Always returns the same time
+    self.0 // Always returns the same frozen time
   }
 
   fn created_at(&self, _path: &Path) -> u32 {
@@ -165,213 +164,378 @@ impl TimeService for FrozenTimeService {
 ```
 
 **Database Testing Features**:
-- Isolated temporary SQLite databases for each test
-- Frozen time service for deterministic testing
-- Event broadcasting for reactive testing scenarios
-- Migration testing with realistic data preservation
+- Isolated SQLite databases in temporary directories
+- Event broadcasting system for reactive testing patterns
+- Automatic migration with rollback testing
+- Deterministic timestamp generation via `FrozenTimeService`
 
-## Authentication Testing Implementation
+## Authentication Testing Infrastructure
 
 ### OAuth2 Flow Simulation
-Comprehensive authentication flow testing:
+Comprehensive authentication testing with embedded keys:
 
 ```rust
-impl AppRegInfoBuilder {
-  pub fn mock_registration() -> Self {
-    Self::default()
-      .client_id("test_client_id".to_string())
-      .client_secret("test_client_secret".to_string())
-      .authorization_endpoint("http://localhost:8080/auth".to_string())
-      .token_endpoint("http://localhost:8080/token".to_string())
-      .redirect_uris(vec!["http://localhost:8080/callback".to_string()])
-  }
-}
+// Test constants and keys (see crates/services/src/test_utils/auth.rs:14-61)
+pub const TEST_CLIENT_ID: &str = "test-client";
+pub const TEST_CLIENT_SECRET: &str = "test-client-secret";
+pub const ISSUER: &str = "https://id.mydomain.com/realms/myapp";
+pub const TEST_KID: &str = "test-kid";
 
-// Mock auth service with configurable responses
-let mut mock_auth_service = MockAuthService::new();
-mock_auth_service
-  .expect_register_client()
-  .returning(|_name, _desc, _uris| {
-    Ok(AppRegInfoBuilder::mock_registration().build().unwrap())
-  });
-
-mock_auth_service
-  .expect_exchange_auth_code()
-  .returning(|_code, _client_id, _client_secret, _redirect_uri, _code_verifier| {
-    Ok((AccessToken::new("test_access_token".to_string()), RefreshToken::new("test_refresh_token".to_string())))
-  });
+static PUBLIC_KEY: Lazy<RsaPublicKey> = Lazy::new(|| {
+  RsaPublicKey::from_public_key_pem(include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/data/test_public_key.pem"
+  )))
+  .expect("Failed to parse public key")
+});
 ```
 
-### JWT Token Testing
-Token validation and lifecycle testing:
+### JWT Token Generation
+Token lifecycle testing with proper claims structure:
 
 ```rust
-#[rstest]
-async fn test_jwt_token_lifecycle(
-  #[future] app_service_stub: AppServiceStub
-) -> Result<(), Box<dyn std::error::Error>> {
-  let auth_service = app_service_stub.auth_service();
-  let db_service = app_service_stub.db_service();
-  
-  // Test token creation
-  let (access_token, refresh_token) = auth_service.exchange_auth_code(/* ... */).await?;
-  
-  // Validate token storage
-  let stored_token = db_service.get_api_token(&token_id).await?;
-  assert!(stored_token.is_some());
-  
-  // Test token refresh
-  let (new_access, new_refresh) = auth_service.refresh_token(
-    &client_id, &client_secret, refresh_token.secret()
-  ).await?;
-  
-  Ok(())
+// Token generation (see crates/services/src/test_utils/auth.rs:72-144)
+pub fn access_token_claims() -> Value {
+  access_token_with_exp(Utc::now().timestamp() + 3600)
+}
+
+pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
+  sign_token(&PRIVATE_KEY, &PUBLIC_KEY, &claims)
+}
+
+// Claims structure includes proper resource_access roles
+pub fn access_token_with_exp(exp: i64) -> Value {
+  json!({
+    "exp": exp,
+    "iss": "https://id.mydomain.com/realms/myapp",
+    "resource_access": {
+      TEST_CLIENT_ID: {
+        "roles": [
+          "resource_manager",
+          "resource_power_user", 
+          "resource_user",
+          "resource_admin"
+        ]
+      }
+    },
+    "preferred_username": "testuser@email.com",
+    "name": "Test User"
+  })
 }
 ```
 
-## Hub Service Testing Implementation
+**Authentication Testing Features**:
+- Embedded RSA key pairs for deterministic signing
+- Multi-token type support (Bearer, Offline, Refresh)
+- Comprehensive claims structure with resource access roles
+- Keycloak-specific OAuth2 flow simulation
 
-### OfflineHubService Pattern
-Local-only model management for testing without external dependencies using realistic test data:
+## Hub Service Testing
+
+### OfflineHubService Implementation
+Local-only model management without external dependencies:
 
 ```rust
-// Offline hub service for testing (see hf.rs:23-45 for complete implementation)
-#[derive(Debug)]
+// Offline hub service (see crates/services/src/test_utils/hf.rs:112-169)
+#[derive(Debug, new)]
 pub struct OfflineHubService {
   inner: HfHubService,
-  test_data: HashMap<String, Vec<HubFile>>,
 }
 
-impl OfflineHubService {
-  pub fn new(inner: HfHubService) -> Self {
-    Self { inner, test_data: HashMap::new() }
+#[async_trait::async_trait]
+impl HubService for OfflineHubService {
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+    progress: Option<Progress>,
+  ) -> Result<HubFile> {
+    if !self.inner.local_file_exists(repo, filename, snapshot.clone())? {
+      panic!("tried to download file in test");
+    }
+    self.inner.download(repo, filename, snapshot, progress).await
+  }
+}
+```
+
+### TestHfService Pattern  
+Hybrid service supporting both real and mock operations:
+
+```rust
+// Test HF service (see crates/services/src/test_utils/hf.rs:21-110)
+#[derive(Debug)]
+pub struct TestHfService {
+  _temp_dir: TempDir,
+  inner: HfHubService,
+  pub inner_mock: MockHubService,
+  allow_downloads: bool,
+}
+
+impl TestHfService {
+  pub fn hf_cache(&self) -> PathBuf {
+    self._temp_dir.path().join("huggingface").join("hub")
+  }
+}
+
+// Configurable download behavior
+#[async_trait::async_trait]
+impl HubService for TestHfService {
+  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>, progress: Option<Progress>) -> Result<HubFile> {
+    if self.allow_downloads {
+      self.inner.download(repo, filename, snapshot, progress).await
+    } else {
+      self.inner_mock.download(repo, filename, snapshot, progress).await
+    }
+  }
+}
+```
+
+**Hub Service Testing Features**:
+- Configurable real/mock operation modes
+- Automatic test data setup from `tests/data/huggingface/`
+- Network call prevention with realistic local file operations
+- MockAll integration for comprehensive API simulation
+
+## Secret Management Testing
+
+### SecretServiceStub Implementation
+In-memory secret storage with application status management:
+
+```rust
+// Secret service stub (see crates/services/src/test_utils/secret.rs:9-89)
+#[derive(Debug)]
+pub struct SecretServiceStub {
+  store: Mutex<HashMap<String, String>>,
+}
+
+impl SecretServiceStub {
+  pub fn with_app_status(self, status: &AppStatus) -> Self {
+    self.set_app_status(status).unwrap();
+    self
   }
 
-  pub fn with_test_model(mut self, repo: &str, files: Vec<HubFile>) -> Self {
-    self.test_data.insert(repo.to_string(), files);
+  pub fn with_app_reg_info(self, app_reg_info: &AppRegInfo) -> Self {
+    self.set_app_reg_info(app_reg_info).unwrap();
     self
   }
 }
 
-impl HubService for OfflineHubService {
-  async fn download_model(&self, repo: &Repo, snapshot: &str) -> Result<Vec<HubFile>, HubServiceError> {
-    // First try local test data, then fall back to real HF cache for realistic testing
-    if let Some(files) = self.test_data.get(&repo.to_string()) {
-      Ok(files.clone())
-    } else {
-      self.inner.download_model(repo, snapshot).await
-    }
-  }
-
-  async fn list_models(&self, query: &str) -> Result<Vec<String>, HubServiceError> {
-    let mut models = self.test_data.keys().cloned().collect::<Vec<_>>();
-    if let Ok(real_models) = self.inner.list_models(query).await {
-      models.extend(real_models);
-    }
-    Ok(models)
-  }
-}
-
-// Test data builders for realistic scenarios (see hf.rs:67-89)
-impl HubFileBuilder {
-  pub fn testalias() -> Self {
-    Self::default()
-      .repo(Repo::llama3())
-      .filename("model.gguf".to_string())
-      .snapshot("main".to_string())
-  }
-}
-```
-
-### Hub Service Mock Coordination
-Complex Hub API simulation with various scenarios:
-
-```rust
-let mut mock_hub_service = MockHubService::new();
-
-// Successful download scenario
-mock_hub_service
-  .expect_download_model()
-  .with(eq(Repo::llama3()), eq("main"))
-  .returning(|_repo, _snapshot| {
-    Ok(vec![HubFileBuilder::testalias().build().unwrap()])
-  });
-
-// Gated repository scenario
-mock_hub_service
-  .expect_download_model()
-  .with(eq(Repo::from_str("meta-llama/Llama-2-70b-chat-hf").unwrap()), any())
-  .returning(|repo, _snapshot| {
-    Err(HubApiError::new(
-      "Repository requires authentication".to_string(),
-      401,
-      repo.to_string(),
-      HubApiErrorKind::GatedAccess
-    ).into())
-  });
-
-// Network error scenario
-mock_hub_service
-  .expect_list_models()
-  .returning(|_query| {
-    Err(HubApiError::new(
-      "Network timeout".to_string(),
-      503,
-      "test-repo".to_string(),
-      HubApiErrorKind::Transport
-    ).into())
-  });
-```
-
-## Security Testing Infrastructure
-
-### SecretServiceStub Implementation
-Deterministic encryption testing without real cryptographic operations:
-
-```rust
-#[derive(Debug, Default)]
-pub struct SecretServiceStub {
-  secrets: std::sync::Mutex<HashMap<String, String>>,
-}
-
 impl SecretService for SecretServiceStub {
-  async fn store_secret(&self, key: &str, value: &str) -> Result<(), SecretServiceError> {
-    let mut secrets = self.secrets.lock().unwrap();
-    secrets.insert(key.to_string(), format!("encrypted_{}", value));
+  fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
+    let mut store = self.store.lock().unwrap();
+    store.insert(key.to_string(), value.to_string());
     Ok(())
   }
+}
+```
 
-  async fn retrieve_secret(&self, key: &str) -> Result<Option<String>, SecretServiceError> {
-    let secrets = self.secrets.lock().unwrap();
-    Ok(secrets.get(key).map(|v| v.strip_prefix("encrypted_").unwrap().to_string()))
+### KeyringStoreStub Pattern
+Cross-platform credential storage simulation:
+
+```rust
+// Keyring store stub (see crates/services/src/test_utils/secret.rs:91-133)
+#[derive(Debug)]
+pub struct KeyringStoreStub {
+  store: Mutex<HashMap<String, String>>,
+}
+
+impl KeyringStore for KeyringStoreStub {
+  fn set_password(&self, key: &str, value: &str) -> std::result::Result<(), KeyringError> {
+    let mut store = self.store.lock().unwrap();
+    store.insert(key.to_string(), value.to_string());
+    Ok(())
   }
 }
 ```
 
-### Session Security Testing
-HTTP session validation with secure cookie configuration:
+**Secret Management Features**:
+- In-memory storage for deterministic testing
+- Application status and registration management
+- Cross-platform keyring simulation without system dependencies
+- Configurable secret storage for various test scenarios
+
+## Session Management Testing
+
+### Session Testing Extensions
+HTTP session validation and lifecycle testing:
 
 ```rust
-#[rstest]
-async fn test_session_security_configuration(
-  #[future] app_service_stub: AppServiceStub
-) -> Result<(), Box<dyn std::error::Error>> {
-  let session_service = app_service_stub.session_service();
-  let session_layer = session_service.session_layer();
-  
-  // Validate session configuration
-  assert_eq!(session_layer.cookie_name(), "bodhiapp_session_id");
-  assert_eq!(session_layer.cookie_same_site(), Some(SameSite::Strict));
-  assert!(!session_layer.cookie_secure()); // TODO: Enable for HTTPS
-  
-  Ok(())
+// Session test extensions (see crates/services/src/test_utils/session.rs:24-45)
+#[async_trait::async_trait]
+pub trait SessionTestExt {
+  async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value>;
+  async fn get_session_record(&self, session_id: &str) -> Option<Record>;
+}
+
+#[async_trait::async_trait]
+impl SessionTestExt for SqliteSessionService {
+  async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value> {
+    let record = self.get_session_record(session_id).await.unwrap();
+    record.data.get(key).cloned()
+  }
+}
+
+// Session service builder (see crates/services/src/test_utils/session.rs:10-22)
+impl SqliteSessionService {
+  pub async fn build_session_service(dbfile: PathBuf) -> SqliteSessionService {
+    if !dbfile.exists() {
+      File::create(&dbfile).expect("Failed to create database file");
+    }
+    let pool = SqlitePool::connect(&format!("sqlite:{}", dbfile.display())).await.unwrap();
+    let session_service = SqliteSessionService::new(pool);
+    session_service.migrate().await.unwrap();
+    session_service
+  }
 }
 ```
 
-## Cross-Service Integration Testing
+## Data Service Testing
 
-### Multi-Service Flow Testing
-Complex scenarios involving multiple service coordination:
+### TestDataService Integration
+Data service testing with hub and database coordination:
+
+```rust
+// Test data service (see crates/services/src/test_utils/data.rs:11-92)
+#[derive(Debug)]
+pub struct TestDataService {
+  pub temp_bodhi_home: TempDir,
+  pub inner: LocalDataService,
+}
+
+impl TestDataService {
+  pub fn bodhi_home(&self) -> PathBuf {
+    self.temp_bodhi_home.path().join("bodhi")
+  }
+}
+
+// Fixture setup with service coordination (see crates/services/src/test_utils/data.rs:11-27)
+#[fixture]
+#[awt]
+pub async fn test_data_service(
+  temp_bodhi_home: TempDir,
+  test_hf_service: TestHfService,
+  #[future] test_db_service: TestDbService,
+) -> TestDataService {
+  let inner = LocalDataService::new(
+    temp_bodhi_home.path().join("bodhi"),
+    Arc::new(test_hf_service),
+    Arc::new(test_db_service),
+  );
+  TestDataService { temp_bodhi_home, inner }
+}
+```
+
+## Object Creation Utilities
+
+### Test Object Builders
+Domain object creation for testing scenarios:
+
+```rust
+// API alias creation utilities (see crates/services/src/test_utils/objs.rs:14-96)
+pub fn create_test_api_model_alias(
+  alias: &str,
+  models: Vec<String>,
+  created_at: DateTime<Utc>,
+) -> ApiAlias {
+  ApiAlias::new(
+    alias,
+    ApiFormat::OpenAI,
+    "https://api.openai.com/v1",
+    models,
+    None,
+    created_at,
+  )
+}
+
+// Database seeding with test data
+pub async fn seed_test_api_models(
+  db_service: &dyn crate::db::DbService,
+  base_time: DateTime<Utc>,
+) -> anyhow::Result<Vec<ApiAlias>> {
+  let aliases = vec![
+    create_test_api_model_alias("openai-gpt4", vec!["gpt-4".to_string()], base_time),
+    create_test_api_model_alias("azure-openai", vec!["gpt-4".to_string()], base_time - chrono::Duration::seconds(10)),
+    // Additional test models with incremental timestamps
+  ];
+
+  for alias in &aliases {
+    db_service.create_api_model_alias(alias, "sk-test-key-123456789").await?;
+  }
+
+  Ok(aliases)
+}
+```
+
+## Environment and Settings Testing
+
+### SettingServiceStub Implementation
+Configuration management testing with environment variables:
+
+```rust
+// Settings service stub (see crates/services/src/test_utils/envs.rs:38-150)
+#[derive(Debug, Clone)]
+pub struct SettingServiceStub {
+  settings: Arc<RwLock<HashMap<String, serde_yaml::Value>>>,
+  envs: HashMap<String, String>,
+  temp_dir: Arc<TempDir>,
+}
+
+// Test environment setup (see crates/services/src/test_utils/envs.rs:21-29)
+pub fn hf_test_token_allowed() -> Option<String> {
+  dotenv::from_filename(".env.test").ok();
+  Some(std::env::var("HF_TEST_TOKEN_ALLOWED").unwrap())
+}
+```
+
+### Test Constants
+Standard test configuration values:
+
+```rust
+// Test settings constants (see crates/services/src/test_utils/settings.rs:1-6)
+pub const TEST_LOGS_DIR: &str = "logs";
+pub const TEST_ALIASES_DIR: &str = "aliases";
+pub const TEST_PROD_DB: &str = "bodhi.sqlite";
+pub const TEST_SESSION_DB: &str = "session.sqlite";
+pub const TEST_SETTINGS_YAML: &str = "settings.yaml";
+```
+
+## Feature Configuration
+
+### Cargo.toml Test Features
+Test utilities are conditionally compiled via features:
+
+```toml
+# Feature configuration (see crates/services/Cargo.toml:94-106)
+[features]
+test-utils = [
+  "rstest",
+  "mockall", 
+  "once_cell",
+  "rsa",
+  "tap",
+  "tempfile",
+  "anyhow",
+  "objs/test-utils",
+  "tokio",
+]
+```
+
+### Library Integration  
+Test utilities are conditionally exposed:
+
+```rust
+// Library exposure (see crates/services/src/lib.rs:1-4)
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
+#[cfg(all(not(feature = "test-utils"), test))]
+pub mod test_utils;
+```
+
+## Usage Examples
+
+### Complete Integration Test
+Multi-service coordination example:
 
 ```rust
 #[rstest]
@@ -381,117 +545,46 @@ async fn test_complete_model_download_flow(
 ) -> Result<(), Box<dyn std::error::Error>> {
   let hub_service = app_service_stub.hub_service();
   let data_service = app_service_stub.data_service();
-  let auth_service = app_service_stub.auth_service();
-  let cache_service = app_service_stub.cache_service();
+  let db_service = app_service_stub.db_service();
   
-  // Step 1: Authenticate for gated repository
-  let (access_token, _) = auth_service.exchange_auth_code(/* ... */).await?;
+  // Test complete download lifecycle
+  let repo = Repo::from_str("microsoft/DialoGPT-medium")?;
+  let download_request = DownloadRequest::new(
+    "test-request".to_string(),
+    repo.clone(),
+    "pytorch_model.bin".to_string(),
+    "main".to_string(),
+    DownloadStatus::Pending,
+  );
   
-  // Step 2: Download model with authentication
-  let repo = Repo::from_str("meta-llama/Llama-2-7b-chat-hf")?;
-  let model_files = hub_service.download_model(&repo, "main").await?;
+  // Create download tracking
+  db_service.create_download_request(&download_request).await?;
   
-  // Step 3: Create local alias
-  let alias = AliasBuilder::default()
-    .alias("llama2-chat".to_string())
-    .repo(repo.clone())
-    .filename(model_files[0].filename.clone())
-    .snapshot("main".to_string())
-    .build()?;
+  // Attempt download (will use offline test data)
+  let hub_files = hub_service.download(&repo, "pytorch_model.bin", Some("main".to_string()), None).await?;
+  
+  // Create alias for downloaded model
+  let alias = UserAlias {
+    alias: "dialogpt-test".to_string(),
+    repo: repo.clone(),
+    filename: hub_files.filename,
+    snapshot: "main".to_string(),
+  };
   
   let alias_path = data_service.save_alias(&alias)?;
-  
-  // Step 4: Cache model metadata
-  cache_service.set(&format!("model:{}", repo), &serde_json::to_string(&model_files)?);
-  
-  // Step 5: Validate end-to-end flow
-  let cached_models = cache_service.get(&format!("model:{}", repo));
-  assert!(cached_models.is_some());
   assert!(alias_path.exists());
   
   Ok(())
 }
 ```
 
-### Error Propagation Testing
-Cross-service error handling and recovery:
-
-```rust
-#[rstest]
-#[awt]
-async fn test_error_recovery_across_services(
-  #[future] app_service_stub: AppServiceStub
-) -> Result<(), Box<dyn std::error::Error>> {
-  let hub_service = app_service_stub.hub_service();
-  let db_service = app_service_stub.db_service();
-  
-  // Create download request
-  let download_request = DownloadRequest::new(
-    "test-id".to_string(),
-    Repo::llama3(),
-    "model.gguf".to_string(),
-    "main".to_string(),
-    DownloadStatus::Pending,
-  );
-  
-  db_service.create_download_request(&download_request).await?;
-  
-  // Simulate network failure during download
-  let result = hub_service.download_model(&download_request.repo, &download_request.snapshot).await;
-  assert!(result.is_err());
-  
-  // Update request status to reflect failure
-  let mut updated_request = download_request;
-  updated_request.status = DownloadStatus::Failed;
-  db_service.update_download_request(&updated_request).await?;
-  
-  // Verify error state is properly recorded
-  let stored_request = db_service.get_download_request(&updated_request.id).await?;
-  assert_eq!(stored_request.unwrap().status, DownloadStatus::Failed);
-  
-  Ok(())
-}
-```
-
-## Extension Guidelines
-
-### Adding New Service Tests
-When creating tests for new services:
-
-1. **Add service to AppServiceStub**: Include in builder pattern with sensible defaults
-2. **Create mock service**: Use `#[mockall::automock]` with comprehensive expectation coverage
-3. **Implement stub version**: Create simplified implementation for offline testing
-4. **Add integration tests**: Test service interactions with other services
-5. **Validate error scenarios**: Test error propagation and recovery across service boundaries
-
-### Database Testing Patterns
-For services requiring database integration:
-
-1. **Use TestDbService**: Provides isolated database with event broadcasting
-2. **Use FrozenTimeService**: Ensures deterministic timestamps for testing
-3. **Test migrations**: Validate schema changes with realistic data
-4. **Test transactions**: Verify rollback scenarios and consistency
-5. **Test concurrent access**: Validate connection pooling and locking
-
-### Authentication Flow Testing
-For authentication-related services:
-
-1. **Mock OAuth providers**: Simulate various provider responses and errors
-2. **Test token lifecycle**: Creation, validation, refresh, and expiration
-3. **Test session coordination**: HTTP sessions synchronized with authentication state
-4. **Test security configuration**: Validate cookie settings and session isolation
-5. **Test cross-service auth**: Verify token exchange and service-to-service authentication
-
-### Performance Testing Utilities
-For performance and caching validation:
-
-1. **Use cache service stubs**: Test cache invalidation and consistency
-2. **Simulate load scenarios**: Test connection pooling and resource management
-3. **Test timeout handling**: Validate network timeout and retry logic
-4. **Test resource cleanup**: Verify proper resource lifecycle management
-
 ## Commands
 
-**Testing**: `cargo test -p services --features test-utils` (includes all service integration tests)  
-**Database Tests**: `cargo test -p services test_db` (database-specific tests)  
-**Auth Tests**: `cargo test -p services test_auth` (authentication flow tests)
+**Run All Service Tests**: `cargo test -p services --features test-utils`  
+**Database Tests Only**: `cargo test -p services test_db --features test-utils`  
+**Authentication Tests**: `cargo test -p services test_auth --features test-utils`  
+**Hub Service Tests**: `cargo test -p services test_hf --features test-utils`  
+**Integration Tests**: `cargo test -p services integration --features test-utils`  
+
+**Format Code**: `cargo fmt --manifest-path crates/services/Cargo.toml`  
+**Check Features**: `cargo check -p services --features test-utils`

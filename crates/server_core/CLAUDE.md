@@ -43,6 +43,22 @@ Advanced context coordination for LLM server instances:
 - **State Listeners**: Observer pattern for server state change notifications with async notification broadcasting
 - **Execution Variant Management**: Dynamic server variant switching with ExecVariant coordination
 
+### Model Request Routing Infrastructure
+Sophisticated model request routing system for local vs remote API coordination:
+- **ModelRouter Trait**: Interface for intelligent model request routing with RouteDestination determination
+- **Local vs Remote Routing**: Automatic detection and routing of User/Model aliases to SharedContext vs API aliases to AiApiService
+- **Precedence Resolution**: User aliases override Model aliases, Model aliases override API models for consistent request handling
+- **Response Format Conversion**: Seamless conversion between axum::Response and reqwest::Response for API compatibility
+- **Error Handling**: Comprehensive error handling with ModelRouterError for routing failures and not found scenarios
+
+### Server Configuration Merging System
+Advanced LLM server argument merging with hierarchical precedence:
+- **Three-Tier Precedence**: Setting-level, variant-level, and alias-level argument coordination with HashMap deduplication
+- **Advanced Flag Parsing**: Sophisticated argument parsing with negative number detection and complex value handling
+- **LLM-Specific Patterns**: Support for llama.cpp argument patterns including logit-bias, override-kv, and lora-scaled configurations
+- **Cross-String Parsing**: Robust parsing across configuration string boundaries for flexible argument specification
+- **Configuration Flexibility**: Dynamic server configuration with runtime argument override capabilities
+
 ## Architecture Position
 
 The `server_core` crate serves as BodhiApp's **HTTP infrastructure orchestration layer**:

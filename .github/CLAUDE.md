@@ -1,59 +1,239 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the GitHub CI/CD infrastructure for BodhiApp.
+See [PACKAGE.md](.github/PACKAGE.md) for implementation details and file references.
 
-## Purpose
+This file provides architectural guidance for the comprehensive GitHub CI/CD infrastructure that orchestrates the entire BodhiApp development, testing, and deployment lifecycle.
 
-The GitHub CI/CD system orchestrates automated build, test, and deployment workflows for the BodhiApp multi-crate workspace. It provides comprehensive automation for cross-platform builds, multi-variant Docker images, package publishing, and release management across Rust backend crates, Node.js bindings, TypeScript clients, and desktop applications.
+## Strategic Architecture Vision
 
-## Key CI/CD Architecture
+The `.github` infrastructure implements a sophisticated multi-dimensional CI/CD orchestration system designed around BodhiApp's unique architectural challenges: cross-platform desktop deployment, multi-variant GPU acceleration, complex workspace dependencies, and diverse package ecosystem publishing. This system transcends simple automation by implementing intelligent build matrices, artifact coordination pipelines, and release consistency guarantees across heterogeneous technology stacks.
 
-### Multi-Platform Build System
-The CI/CD pipeline supports comprehensive cross-platform builds with matrix strategies covering macOS (ARM64), Linux (x86_64), and Windows (x86_64) platforms. The build system uses sophisticated caching strategies with Rust cache, npm cache, and Docker layer caching to optimize build times across all platforms.
+### Architectural Philosophy
 
-### Automated Testing Infrastructure
-The testing architecture integrates multiple test layers including Rust unit tests, integration tests, frontend React tests, NAPI binding tests, and end-to-end Playwright tests. All test suites run in parallel across platforms with comprehensive coverage reporting via Codecov integration.
+The CI/CD design philosophy centers on three core principles:
 
-### Multi-Variant Docker Publishing
-The Docker publishing system builds and publishes multiple hardware-optimized variants (CPU, CUDA, ROCm, Vulkan) with multi-platform support for CPU images (AMD64 + ARM64). The system uses GitHub Container Registry (GHCR) with sophisticated tagging strategies for both production and development releases.
+1. **Workspace-Aware Intelligence**: The system understands BodhiApp's complex crate interdependencies and executes builds in optimal dependency order while enabling parallel execution where possible.
 
-### Package Publishing Automation
-The CI/CD system automates publishing for multiple package ecosystems including NPM packages for NAPI bindings (@bodhiapp/app-bindings), TypeScript client packages (@bodhiapp/ts-client), and desktop application releases with code signing and notarization for macOS.
+2. **Multi-Dimensional Scaling**: Rather than simple platform matrices, the system implements multi-variant builds (CPU/CUDA/ROCm/Vulkan) combined with multi-platform targets, creating a sophisticated build space that optimizes for both development velocity and deployment flexibility.
 
-### Release Management System
-The release system supports multiple release types including desktop application releases with Tauri, Docker image releases with multi-variant support, and NPM package releases with automatic version bumping and post-release development version updates.
+3. **Atomic Release Consistency**: All publishing operations are coordinated to ensure system-wide version consistency, preventing partial releases that could compromise the integrated application ecosystem.
 
-## Architecture Position
+## Core Architectural Systems
 
-The GitHub CI/CD system serves as the central automation hub for the entire BodhiApp development and deployment lifecycle. It integrates with the workspace's multi-crate architecture by understanding dependency relationships and building crates in the correct order. The system coordinates with external services including GitHub Container Registry, NPM registry, Apple Developer services for code signing, and Codecov for coverage reporting.
+### Intelligent Build Orchestration Framework
 
-## Cross-System Integration Patterns
+The build system implements a sophisticated dependency-aware orchestration that goes beyond simple matrix builds. It uses dynamic cargo metadata analysis to determine optimal build ordering while maximizing parallelization opportunities. The system distinguishes between fast-feedback builds (Linux-only for rapid iteration) and comprehensive multi-platform builds (for releases), optimizing developer experience without compromising release quality.
 
-### Workspace-Aware Build Orchestration
-The CI/CD system understands the BodhiApp workspace structure and builds components in dependency order. It uses cargo metadata to dynamically discover workspace packages and applies targeted builds based on changed files, optimizing build times while ensuring comprehensive testing.
+**Key Innovation**: The build system maintains separate artifact streams for different consumption patterns - NAPI bindings flow to Playwright tests, llama-server binaries coordinate across test phases, and UI builds integrate with both NAPI and desktop packaging workflows.
 
-### Artifact Coordination System
-The pipeline implements sophisticated artifact management where build outputs from one job become inputs for subsequent jobs. NAPI bindings built in the build phase are consumed by Playwright tests, llama-server binaries are shared across test phases, and Docker images coordinate with release processes.
+### Multi-Layered Testing Architecture
 
-### Multi-Registry Publishing Coordination
-The system coordinates publishing across multiple registries (NPM, GHCR, GitHub Releases) with consistent versioning strategies. It implements atomic release processes where all components of a release succeed or fail together, maintaining system consistency.
+The testing framework implements a hierarchical test execution strategy that coordinates five distinct testing domains:
 
-### External Service Integration
-The CI/CD system integrates with multiple external services including Apple Developer services for macOS code signing and notarization, Codecov for coverage reporting, and GitHub Container Registry for Docker image hosting. It manages authentication and credentials securely across all integrations.
+1. **Rust Unit/Integration Layer**: Workspace-aware test execution with coverage aggregation
+2. **Frontend Unit Testing**: React/TypeScript test suites with isolated coverage reporting  
+3. **NAPI Binding Validation**: Cross-language interface testing with binary dependency coordination
+4. **End-to-End Playwright Integration**: Full-stack behavior validation with authentication flow testing
+5. **Cross-Platform Consistency Testing**: Ensuring identical behavior across target platforms
 
-## Important Constraints
+**Critical Design**: The system implements conditional test execution based on coverage success, preventing expensive E2E tests when core functionality is broken.
 
-### Security and Credential Management
-All sensitive credentials are managed through GitHub Secrets with strict access controls. The system implements least-privilege access patterns and uses short-lived tokens where possible. Apple Developer credentials for code signing are handled with special security considerations including keychain management.
+### Multi-Variant Container Orchestration
 
-### Build Time and Resource Optimization
-The CI/CD system implements aggressive caching strategies to minimize build times while maintaining reliability. It uses GitHub Actions cache for Rust builds, npm dependencies, and Docker layers. Build matrices are optimized to run in parallel while respecting GitHub Actions concurrency limits.
+The Docker publishing system represents a unique architectural achievement in multi-variant container deployment. Rather than building separate images per variant, the system coordinates parallel builds across hardware acceleration types (CPU/CUDA/ROCm/Vulkan) while maintaining consistent base layers and optimized caching strategies.
 
-### Cross-Platform Compatibility Requirements
-All workflows must handle platform-specific differences in shell commands, file paths, and binary formats. The system uses conditional logic to handle Windows PowerShell vs Unix bash differences and manages platform-specific dependencies and build tools.
+**Advanced Features**:
+- Multi-platform CPU images (AMD64 + ARM64) with automatic platform detection
+- Hardware-specific optimization for GPU variants
+- Intelligent tagging strategies supporting both versioned and latest deployments
+- Development/production build variant coordination
 
-### Release Consistency and Atomicity
-Release processes implement consistency checks to ensure all components are released together with matching versions. The system includes rollback capabilities and prevents partial releases that could leave the system in an inconsistent state.
+### Cross-Ecosystem Package Publishing
 
-### Integration Test Environment Management
-The CI/CD system manages complex integration test environments including authentication servers, test databases, and external service mocking. It coordinates test data management and ensures test isolation across parallel builds.
+The publishing system coordinates releases across fundamentally different package ecosystems while maintaining version consistency and atomic release semantics. This includes NPM package publishing (@bodhiapp/app-bindings, @bodhiapp/ts-client), GitHub Container Registry coordination, and desktop application distribution with platform-specific code signing.
+
+## Strategic Integration Architecture
+
+### Workspace Coordination Intelligence
+
+The CI/CD system functions as the central nervous system for BodhiApp's distributed architecture, implementing deep workspace understanding that goes beyond simple dependency tracking. It maintains semantic understanding of crate roles (foundation, service, API, application) and coordinates build execution to optimize both development feedback loops and release consistency.
+
+**Integration Patterns**:
+- Dynamic workspace discovery using cargo metadata analysis
+- Selective rebuild triggers based on changed file patterns and dependency graphs
+- Coordinated artifact sharing between jobs with intelligent caching strategies
+- Cross-platform binary coordination for complex integration testing scenarios
+
+### External Service Ecosystem Integration
+
+The system implements sophisticated integration patterns with multiple external service providers, each requiring different authentication, API, and consistency patterns:
+
+**Authentication Services**: OAuth2 integration testing with Keycloak coordination, supporting both production (`id.getbodhi.app`) and development (`main-id.getbodhi.app`) authentication realms.
+
+**Container Registries**: GitHub Container Registry integration with advanced tagging strategies, multi-platform manifests, and automated cleanup policies.
+
+**Package Registries**: NPM publishing with scope-aware versioning (@bodhiapp namespace), automated post-release version bumping, and dependency consistency validation.
+
+**Code Signing Services**: Apple Developer Program integration for macOS app notarization, keychain management, and certificate lifecycle coordination.
+
+## Advanced Integration Patterns
+
+### Dependency-Aware Build Orchestration
+
+The system implements advanced build orchestration that combines workspace topology analysis with execution optimization. Rather than building all crates unconditionally, it performs intelligent change detection and builds only affected crates while ensuring dependency consistency.
+
+**Pattern Implementation**:
+- Cargo metadata parsing for dynamic workspace discovery
+- File change pattern analysis for selective build triggering
+- Cross-crate dependency validation ensuring build order correctness
+- Parallel execution optimization within dependency constraint boundaries
+
+### Artifact Flow Coordination Architecture
+
+The pipeline implements a sophisticated artifact flow system where build products become precisely coordinated inputs for downstream processes. This coordination extends beyond simple file passing to include metadata propagation, version consistency validation, and dependency resolution.
+
+**Critical Flows**:
+- NAPI bindings → Playwright test execution (with binary verification)
+- llama-server binaries → Integration test coordination (with platform-specific path resolution)
+- UI builds → Desktop application packaging (with embedded resource optimization)
+- Coverage reports → Aggregated reporting (with multi-language consolidation)
+
+### Multi-Registry Atomic Publishing
+
+The publishing system implements true atomic semantics across heterogeneous registry types, ensuring that partial publications cannot occur even in the presence of network failures or service outages.
+
+**Consistency Guarantees**:
+- Version propagation validation across NPM packages and Docker images
+- Release artifact coordination ensuring matching SHA commitments
+- Rollback capability implementation for failed multi-registry deployments
+- Post-release validation ensuring all published artifacts are accessible
+
+### Secure Credential Orchestration
+
+The system manages complex credential flows across multiple external services while maintaining security boundaries and implementing least-privilege access patterns.
+
+**Security Architecture**:
+- GitHub Secrets integration with role-based access control
+- Apple Developer credential lifecycle management (certificates, provisioning profiles, app-specific passwords)
+- NPM token management with scope-limited publishing permissions
+- Container registry authentication with temporary token generation
+
+## Critical Architectural Constraints
+
+### Security Architecture and Threat Model
+
+The CI/CD system operates under a comprehensive security model that recognizes the diverse attack surfaces present in multi-platform, multi-registry deployment scenarios. Security implementation goes beyond basic credential management to include supply chain integrity, artifact authenticity validation, and secure build environment isolation.
+
+**Security Implementation**:
+- Multi-layer credential isolation using GitHub Secrets with time-bounded access
+- Apple Developer credential security including keychain isolation and certificate validation
+- Supply chain security through dependency pinning and submodule verification
+- Build environment isolation preventing cross-contamination between matrix builds
+- Artifact integrity verification using cryptographic signatures and checksums
+
+### Resource Optimization and Concurrency Management
+
+The system implements sophisticated resource optimization that balances build speed, GitHub Actions quota consumption, and parallel execution efficiency. This includes intelligent caching hierarchies, build matrix optimization, and resource contention prevention.
+
+**Optimization Strategies**:
+- Multi-tier caching architecture (Rust compilation cache, npm cache, Docker layer cache)
+- Build matrix optimization reducing redundant work while maintaining platform coverage
+- Concurrency group management preventing resource conflicts during parallel execution
+- Selective execution based on change detection to minimize unnecessary resource consumption
+
+### Cross-Platform Consistency Requirements
+
+The system must maintain functional and behavioral consistency across fundamentally different operating systems while accommodating platform-specific requirements and constraints.
+
+**Consistency Challenges**:
+- Shell environment differences (bash vs PowerShell vs cmd)
+- File path handling (Unix vs Windows path separators)
+- Binary format compatibility and cross-compilation requirements
+- Platform-specific dependency management (apt vs homebrew vs chocolatey)
+- Code signing and notarization requirements varying by platform
+
+### Release Atomicity and Consistency Guarantees
+
+The release system implements distributed transaction semantics across multiple external services, ensuring that releases maintain system-wide consistency even in the presence of partial failures.
+
+**Consistency Implementation**:
+- Pre-flight validation ensuring all prerequisites are satisfied before beginning release processes
+- Atomic version propagation across all package ecosystems with validation checkpoints
+- Comprehensive rollback procedures for handling partial release failures
+- Post-release validation ensuring all published artifacts are accessible and functional
+- Dependency consistency validation preventing version mismatch scenarios
+
+### Integration Test Environment Complexity
+
+The system coordinates complex integration test environments that must replicate production-like conditions while maintaining test isolation and deterministic behavior across parallel execution contexts.
+
+**Environment Management**:
+- Multi-service orchestration including authentication servers, external API mocking, and database coordination
+- Test data lifecycle management ensuring isolation between concurrent test executions
+- Network isolation preventing cross-test contamination while enabling external service access
+- Resource cleanup ensuring integration tests don't leak resources or affect subsequent executions
+- Authentication flow testing requiring coordination with external OAuth2 providers in test mode
+
+## Extension and Maintenance Patterns
+
+### Adding New Build Variants
+
+When adding new hardware acceleration variants (e.g., Intel Arc, Apple Metal), the system architecture supports extension through the matrix build pattern in `.github/workflows/publish-docker.yml`. New variants require coordinated updates across Dockerfiles, build matrices, and documentation generation.
+
+**Extension Points**:
+- Matrix variant definition with platform-specific constraints
+- Dockerfile creation following naming conventions (`devops/{variant}.Dockerfile`)
+- Cache scope coordination to prevent cross-variant cache pollution
+- Documentation template updates for new hardware requirements
+
+### Platform Support Expansion
+
+Adding new target platforms requires coordinated updates across multiple workflow files and actions, with particular attention to cross-platform consistency requirements and artifact coordination.
+
+**Integration Requirements**:
+- Platform-specific setup actions (following `setup-{platform}` naming pattern)
+- Build matrix updates with appropriate target triple specifications
+- Artifact path coordination ensuring consistent file locations
+- Test execution adaptation for platform-specific requirements
+
+### Monitoring and Observability Integration
+
+The system architecture supports integration with external monitoring and observability platforms through structured output, metric emission, and failure notification patterns.
+
+**Observability Extensions**:
+- Structured logging with consistent formatting across all workflow steps
+- Metric emission for build times, test coverage, and deployment success rates
+- Integration points for external monitoring systems (Datadog, Prometheus, etc.)
+- Failure notification coordination with team communication platforms
+
+## Domain-Specific Implementation Guidance
+
+### Workflow Trigger Strategy
+
+The system implements sophisticated trigger strategies that balance responsive development feedback with resource conservation. Push events to main/working branches trigger fast Linux builds, while pull requests trigger comprehensive validation suites.
+
+**Trigger Design Rationale**:
+- Path-based filtering prevents unnecessary builds when only documentation changes
+- Manual workflow dispatch enables controlled testing of complex scenarios
+- Tag-based triggers coordinate release processes with semantic versioning
+- Concurrency group management prevents conflicting simultaneous builds
+
+### Build Matrix Optimization Philosophy
+
+Rather than exhaustive cross-platform testing for every change, the system implements tiered validation where fast feedback loops use Ubuntu-only builds, while comprehensive platform validation occurs during release processes.
+
+**Matrix Strategy**:
+- Development builds prioritize speed (Linux-only with comprehensive test suite)
+- Release builds prioritize coverage (multi-platform with reduced parallelization)
+- Docker builds implement variant-specific optimization (CPU multi-platform, GPU single-platform)
+- Artifact coordination ensures platform-specific binaries reach appropriate test environments
+
+### Dependency Management Strategy
+
+The system implements strict dependency management patterns that ensure reproducible builds while enabling security updates and feature integration.
+
+**Dependency Patterns**:
+- Submodule management with authenticated access using GitHub PAT
+- Python dependency pinning with specific requirements.txt files
+- Node.js dependency management with package-lock.json consistency
+- Rust dependency caching with cargo registry and git dependency coordination

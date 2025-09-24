@@ -2,7 +2,7 @@
 
 This document provides detailed technical information for the errmeta_derive crate, focusing on BodhiApp-specific procedural macro implementation patterns and error metadata generation.
 
-*For comprehensive architectural guidance, see [crates/errmeta_derive/CLAUDE.md]*
+*For comprehensive architectural guidance, see [CLAUDE.md](./CLAUDE.md)*
 
 ## Architecture Position
 
@@ -20,7 +20,7 @@ Key architectural decisions:
 The main implementation generates three essential methods for error metadata extraction:
 
 ```rust
-// Pattern structure (see src/lib.rs:15-45 for complete derive implementation)
+// Pattern structure (see crates/errmeta_derive/src/lib.rs:10-15 for complete derive implementation)
 #[proc_macro_derive(ErrorMeta, attributes(error_meta))]
 pub fn derive_error_metadata(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
@@ -36,17 +36,17 @@ impl ErrorType {
 }
 ```
 
-**Implementation Details** (see src/lib.rs:47-89):
+**Implementation Details** (see crates/errmeta_derive/src/lib.rs:17-67):
 - Handles both enum and struct error types with different generation strategies
 - Enum processing via `generate_attribute_method()` for error_type and code methods
 - Struct processing with required error_type validation and optional code defaults
-- Union type rejection with clear compilation errors
+- Union type rejection with clear compilation errors at crates/errmeta_derive/src/lib.rs:65
 
 ### Attribute Parsing Architecture
 Sophisticated attribute processing supports flexible error metadata customization:
 
 ```rust
-// Attribute parsing patterns (see src/lib.rs:156-234 for complete implementations)
+// Attribute parsing patterns (see crates/errmeta_derive/src/lib.rs:186-245 for complete implementations)
 #[derive(Debug, PartialEq)]
 struct EnumMetaAttrs {
   error_type: Option<syn::Expr>,
@@ -61,7 +61,7 @@ struct EnumMetaAttrs {
 #[error_meta(code = self.generate_code())]              // Method call
 ```
 
-**Key Implementation Features**:
+**Key Implementation Features** (crates/errmeta_derive/src/lib.rs:193-233):
 - `syn::Expr` parsing enables arbitrary Rust expressions in attributes
 - Separate parsing for enum-level, variant-level, and struct-level attributes
 - Compile-time validation ensures required attributes are present
@@ -71,14 +71,14 @@ struct EnumMetaAttrs {
 Pattern matching generation handles all Rust field types with appropriate destructuring:
 
 ```rust
-// Field pattern generation (see src/lib.rs:89-123 for complete implementation)
+// Field pattern generation (see crates/errmeta_derive/src/lib.rs:133-139 for complete implementation)
 match fields {
   Fields::Named(_) => quote! { { .. } },     // Named fields: { field1, field2 }
   Fields::Unnamed(_) => quote! { (..) },     // Tuple fields: (var_0, var_1)
   Fields::Unit => quote! {},                 // Unit variants: no fields
 }
 
-// Args method generation for different field types (see src/lib.rs:345-456)
+// Args method generation for different field types (see crates/errmeta_derive/src/lib.rs:393-497)
 Fields::Named(named_fields) => {
   // Generates: args["field_name"] = field_name.to_string()
 }
@@ -87,7 +87,7 @@ Fields::Unnamed(unnamed_fields) => {
 }
 ```
 
-**Pattern Generation Details**:
+**Pattern Generation Details** (crates/errmeta_derive/src/lib.rs:420-453):
 - Named fields use actual field names as HashMap keys
 - Unnamed fields use "var_N" naming convention for tuple access
 - Unit variants generate empty HashMaps
@@ -99,14 +99,14 @@ Fields::Unnamed(unnamed_fields) => {
 Transparent error support enables clean error propagation while maintaining metadata:
 
 ```rust
-// Transparent error patterns (see src/lib.rs:67-89 for detection logic)
+// Transparent error patterns (see crates/errmeta_derive/src/lib.rs:120-131 for detection logic)
 fn is_transparent(variant: &Variant) -> bool {
   variant.attrs.iter().any(|attr| {
     // Detects #[error(transparent)] attributes
   })
 }
 
-// Delegation generation (see src/lib.rs:234-289 for complete implementation)
+// Delegation generation (see crates/errmeta_derive/src/lib.rs:335-360 for complete implementation)
 #[error(transparent)]
 DatabaseError(DatabaseError),  // Delegates all methods to wrapped error
 
@@ -115,9 +115,9 @@ DatabaseError(DatabaseError),  // Delegates all methods to wrapped error
 IoError(std::io::Error),       // Custom args() with error string
 ```
 
-**Delegation Behavior**:
+**Delegation Behavior** (crates/errmeta_derive/src/lib.rs:377-391):
 - `error_type()` and `code()` automatically delegate to wrapped error
-- `args()` delegation configurable via `args_delegate` attribute
+- `args()` delegation configurable via `args_delegate` attribute at crates/errmeta_derive/src/lib.rs:403
 - `args_delegate = false` generates `{"error": err.to_string()}` instead
 - Transparent variants can override error_type and code while maintaining args delegation
 
@@ -125,7 +125,7 @@ IoError(std::io::Error),       // Custom args() with error string
 Support for mixed transparent and non-transparent variants in the same enum:
 
 ```rust
-// Mixed variant patterns (see tests/test_error_metadata.rs:45-89 for examples)
+// Mixed variant patterns (see crates/errmeta_derive/tests/test_error_metadata.rs:44-70 for examples)
 enum ServiceError {
   #[error_meta(error_type = "ValidationError", code = "invalid_input")]
   ValidationFailed { field: String, value: String },
@@ -145,7 +145,7 @@ enum ServiceError {
 Comprehensive compile-time error validation using trybuild:
 
 ```rust
-// Compile-time test pattern (see tests/trybuild.rs for complete setup)
+// Compile-time test pattern (see crates/errmeta_derive/tests/trybuild.rs for complete setup)
 #[test]
 fn compile_fail() {
   let t = trybuild::TestCases::new();
@@ -153,7 +153,7 @@ fn compile_fail() {
 }
 ```
 
-**Validation Test Cases** (see tests/fails/ directory):
+**Validation Test Cases** (see crates/errmeta_derive/tests/fails/ directory):
 - `missing_error_type.rs` - Ensures error_type required for enum variants
 - `invalid_error_type.rs` - Validates expression syntax in attributes  
 - `data_type_union.rs` - Confirms union type rejection with clear errors
@@ -162,7 +162,7 @@ fn compile_fail() {
 Parameterized testing with rstest for generated code validation:
 
 ```rust
-// Runtime test patterns (see tests/test_error_metadata.rs:67-156 for complete examples)
+// Runtime test patterns (see crates/errmeta_derive/tests/test_error_metadata.rs:86-158 for complete examples)
 #[rstest]
 #[case::with_fields(
   TestError::WithFields { field1: "value1".to_string(), field2: 200 },
@@ -181,10 +181,10 @@ fn test_error_metadata(#[case] error: TestError, #[case] expected: ErrorMetas) {
 }
 ```
 
-**Test Coverage Areas**:
+**Test Coverage Areas** (crates/errmeta_derive/tests/test_error_metadata.rs:14-158):
 - All field patterns (named, unnamed, unit) for enums and structs
 - Transparent error delegation with and without args_delegate
-- Integration with thiserror and strum for real-world patterns
+- Integration with thiserror and strum for real-world patterns  
 - Automatic snake_case code generation validation
 - Expression evaluation in error_type and code attributes
 
@@ -192,7 +192,7 @@ fn test_error_metadata(#[case] error: TestError, #[case] expected: ErrorMetas) {
 Mock ErrorMetas struct mirrors objs crate interface for integration validation:
 
 ```rust
-// Integration test structure (see tests/objs.rs for complete definition)
+// Integration test structure (see crates/errmeta_derive/tests/objs.rs:3-9 for complete definition)
 #[derive(Debug, PartialEq)]
 pub struct ErrorMetas {
   pub message: String,
@@ -201,7 +201,7 @@ pub struct ErrorMetas {
   pub args: HashMap<String, String>,
 }
 
-// Conversion pattern for integration testing
+// Conversion pattern for integration testing (crates/errmeta_derive/tests/test_error_metadata.rs:72-84)
 impl From<&TestError> for ErrorMetas {
   fn from(error: &TestError) -> Self {
     Self {
@@ -217,21 +217,10 @@ impl From<&TestError> for ErrorMetas {
 ## Cross-Crate Integration
 
 ### Integration with objs Crate
-The errmeta_derive macro provides the foundation for objs crate error handling:
-
-```rust
-// objs integration pattern (see crates/objs/src/error/objs.rs for usage examples)
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ServiceError {
-  #[error("model_not_found")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  ModelNotFound { model_name: String },
-}
-```
+The errmeta_derive macro provides the foundation for objs crate error handling patterns used throughout BodhiApp services.
 
 **Integration Features**:
-- `trait_to_impl` parameter enables AppError trait implementation
+- `trait_to_impl` parameter enables AppError trait implementation (crates/errmeta_derive/src/lib.rs:74-77)
 - Generated methods provide structured data for HTTP response generation
 - Error codes serve as localization keys for multi-language support
 - Args extraction enables message templating with user data
@@ -239,30 +228,60 @@ pub enum ServiceError {
 ### Service Layer Coordination
 Service-specific error types derive ErrorMeta for consistent error reporting:
 
-```rust
-// Service error integration patterns
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum HubServiceError {
-  #[error(transparent)]
-  HubApiError(#[from] HubApiError),
-  
-  #[error("hub_file_missing")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  HubFileNotFound(#[from] HubFileNotFoundError),
-}
-```
-
 **Service Integration Benefits**:
 - Consistent error metadata across all service boundaries
 - Automatic error propagation with preserved context
 - Integration with tracing and logging systems
 - Localized error messages for user-facing components
 
+## Unit Test Coverage
+
+### Core Macro Functionality Tests
+Comprehensive unit tests validate the macro's internal workings:
+
+```rust
+// Pattern testing (see crates/errmeta_derive/src/lib.rs:511-530 for is_transparent tests)
+#[rstest]
+#[case(
+  parse_quote!(#[error(transparent)] TransparentError),
+  true
+)]
+fn test_is_transparent(#[case] variant: Variant, #[case] expected: bool) {
+  assert_eq!(expected, is_transparent(&variant));
+}
+
+// Attribute parsing tests (crates/errmeta_derive/src/lib.rs:532-572)
+#[case::all_provided(
+  parse_quote!(#[error_meta(error_type = "TestError", code = "test_code")]),
+  Some(EnumMetaAttrs { /* ... */ }),
+)]
+fn test_parse_error_meta(#[case] attr: Attribute, #[case] expected: Option<EnumMetaAttrs>) {
+  let error_meta = parse_enum_meta_attrs(&[attr]);
+  assert_eq!(expected, error_meta);
+}
+```
+
+### Code Generation Validation
+Tests ensure generated code matches expected patterns:
+
+```rust
+// Method generation tests (crates/errmeta_derive/src/lib.rs:619-651)
+#[case("error_type", quote! {
+  match self {
+    TestEnum::Variant1 => <_ as AsRef<str>>::as_ref(&internal_server_error()).to_string(),
+    TestEnum::Variant2 => <_ as AsRef<str>>::as_ref(&"Error2").to_string(),
+    TestEnum::Variant3(err) => err.error_type(),
+  }
+})]
+fn test_generate_attribute_method_for_enum(#[case] method: &str, #[case] expected: TokenStream2) {
+  // Validates generated match statements for enum variants
+}
+```
+
 ## Extension Guidelines
 
 ### Adding New Attribute Support
-When extending the macro with new attributes:
+When extending the macro with new attributes (following patterns in crates/errmeta_derive/src/lib.rs:186-305):
 
 1. **Extend parsing structures** - Add new fields to EnumMetaAttrs/StructMetaAttrs
 2. **Update Parse implementations** - Handle new attribute syntax in parsing logic
@@ -278,10 +297,10 @@ For macro development and debugging:
 cargo expand --bin your_binary
 
 # Test macro compilation errors
-cargo test --test trybuild
+cargo test --test trybuild -p errmeta_derive
 
 # Validate integration with existing error libraries
-cargo test --test test_error_metadata
+cargo test --test test_error_metadata -p errmeta_derive
 ```
 
 **Development Guidelines**:
@@ -303,7 +322,7 @@ When adding new error handling patterns:
 ## Commands
 
 **Testing**: `cargo test -p errmeta_derive` (includes unit, integration, and compile-time tests)
-**Testing with trybuild**: `cargo test --test trybuild` (compile-time error validation)
+**Testing with trybuild**: `cargo test --test trybuild -p errmeta_derive` (compile-time error validation)
 **Building**: `cargo build -p errmeta_derive`
-**Expanding macros**: `cargo expand --test test_error_metadata` (debug generated code)
-**Integration testing**: `cargo test --test test_error_metadata` (runtime behavior validation)
+**Expanding macros**: `cargo expand --test test_error_metadata -p errmeta_derive` (debug generated code)
+**Integration testing**: `cargo test --test test_error_metadata -p errmeta_derive` (runtime behavior validation)

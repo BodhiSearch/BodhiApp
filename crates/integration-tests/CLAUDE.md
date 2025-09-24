@@ -1,5 +1,7 @@
 # CLAUDE.md - integration-tests
 
+See [PACKAGE.md](./PACKAGE.md) for implementation details and file references.
+
 This file provides guidance to Claude Code when working with the `integration-tests` crate, which provides end-to-end testing infrastructure for BodhiApp.
 
 ## Purpose

@@ -1,66 +1,146 @@
 # CLAUDE.md
 
+See [PACKAGE.md](./PACKAGE.md) for implementation details and file references.
+
 This file provides guidance to Claude Code when working with the `ci_optims` crate.
 
 ## Purpose
 
 The `ci_optims` crate serves as BodhiApp's **CI/CD optimization dummy crate**, designed specifically to enable Docker layer caching and build acceleration by pre-compiling all heavy workspace dependencies in a separate, cacheable Docker layer before the main application build.
 
+This crate implements a sophisticated dependency pre-compilation strategy that reduces CI build times from ~45 minutes to ~5-10 minutes on cache hits across CPU, CUDA, ROCm, and Vulkan build variants.
+
 ## Key Domain Architecture
 
-### Dependency Pre-Compilation System
-BodhiApp's build optimization strategy uses ci_optims as a compilation trigger:
-- **Comprehensive dependency inclusion**: Contains all 80+ heavy workspace dependencies from the root Cargo.toml workspace.dependencies section
-- **Dummy implementation pattern**: Minimal lib.rs with unused imports that trigger full dependency compilation without actual functionality
-- **Docker layer separation**: Enables Docker to cache the expensive dependency compilation step independently from application source changes
-- **Build variant consistency**: Supports both debug and release mode compilation matching the target application build configuration
+### Dependency Pre-Compilation Strategy
 
-### CI/CD Build Pipeline Integration
-Sophisticated multi-stage Docker build process leveraging ci_optims for optimization:
-- **Filtered workspace creation**: Python script (scripts/filter-cargo-toml.py) creates minimal workspace containing only ci_optims
-- **Dependency-only build stage**: First Docker stage compiles ci_optims dependencies in isolation, creating a cacheable layer
-- **Source code isolation**: Application source changes don't invalidate the expensive dependency compilation cache
-- **Multi-platform support**: Works across CPU, CUDA, ROCm, and Vulkan build variants with consistent caching behavior
-- **Build time reduction**: Reduces CI build times from ~45 minutes to ~5-10 minutes on cache hits
+BodhiApp's build optimization leverages Docker's layer caching mechanism through ci_optims:
 
-### Docker Layer Caching Architecture
-Strategic Docker layer organization for maximum cache efficiency:
-- **Layer 1**: System dependencies and Rust toolchain (rarely changes)
-- **Layer 2**: Workspace configuration and ci_optims dependency compilation (changes only when dependencies update)
-- **Layer 3**: TypeScript client build (changes when OpenAPI spec updates)
-- **Layer 4**: Application source and final binary compilation (changes with every code update)
-- **Cache invalidation strategy**: Only Layer 4 rebuilds on typical development changes, preserving expensive compilation work
+- **Comprehensive dependency aggregation**: Contains all 80+ heavy workspace dependencies, ensuring complete compilation coverage
+- **Dummy implementation pattern**: Minimal lib.rs with strategic unused imports that trigger full dependency compilation without runtime overhead
+- **Docker layer isolation**: Creates a separate, cacheable compilation layer that survives application source code changes
+- **Multi-variant support**: Consistent compilation across debug/release modes and CPU/GPU platform variants
+- **Workspace filtering integration**: Works with Python filtering scripts to create minimal compilation workspaces
 
-### Workspace Dependency Coordination
-Central registry of all heavy dependencies used across BodhiApp crates:
-- **Cryptographic libraries**: aes-gcm, pbkdf2, rsa, sha2 for security services
-- **HTTP/networking stack**: axum, hyper, reqwest, tower ecosystem for web services
-- **Async runtime**: tokio, futures ecosystem for concurrent operations
-- **Serialization**: serde, serde_json, serde_yaml for data interchange
-- **Database integration**: sqlx for persistence layer
-- **AI/ML libraries**: async-openai, hf-hub for model management
-- **Authentication**: oauth2, jsonwebtoken for security
-- **Observability**: tracing, tracing-subscriber for logging and monitoring
+### Multi-Stage Docker Build Architecture
 
-## Architecture Position
+Sophisticated Docker build pipeline optimized for dependency caching:
 
-The ci_optims crate occupies a unique position in BodhiApp's build architecture:
-- **Build-time only**: Never used at runtime, exists solely for compilation optimization
-- **Workspace dependency aggregator**: Centralizes all heavy dependencies to enable efficient pre-compilation
-- **CI/CD enabler**: Critical component of the Docker build strategy that makes multi-platform builds feasible
-- **Development acceleration**: Significantly improves developer experience by reducing build times in containerized environments
-- **Deployment optimization**: Enables faster CI/CD pipelines and more efficient container image builds
+**Stage 1: Filtered Workspace Preparation**
+- Python script creates minimal Cargo.toml containing only ci_optims crate
+- Removes all local workspace dependencies to avoid missing crate errors
+- Generates filtered lock file for isolated dependency resolution
+
+**Stage 2: Dependency Pre-Compilation**
+- Compiles ci_optims with all heavy dependencies in isolation
+- Creates cacheable Docker layer that persists across source code changes
+- Supports conditional debug/release compilation based on BUILD_VARIANT
+
+**Stage 3: TypeScript Client Build**
+- Independent layer for OpenAPI-generated TypeScript client
+- Cached separately from Rust dependencies and application source
+
+**Stage 4: Application Compilation**
+- Final stage that rebuilds only on source code changes
+- Benefits from pre-compiled dependencies in earlier cached layers
+
+### Cache Invalidation and Layer Strategy
+
+Strategically designed Docker layers for optimal cache hit ratios:
+
+**Layer Hierarchy:**
+1. **Base System Layer**: Rust toolchain, system dependencies (stable)
+2. **Dependency Compilation Layer**: ci_optims build output (invalidated only on dependency changes)
+3. **TypeScript Client Layer**: Generated API client (invalidated on OpenAPI spec changes)
+4. **Application Layer**: Final binary compilation (invalidated on source changes)
+
+**Cache Efficiency Patterns:**
+- Typical development changes only invalidate Layer 4
+- Dependency updates invalidate Layers 2-4
+- API changes invalidate Layers 3-4
+- System updates invalidate all layers
+
+This hierarchy ensures that expensive dependency compilation work is preserved across the majority of development iterations.
+
+### Dependency Domain Coverage
+
+Central registry categorized by functional domains:
+
+**Security & Cryptography:**
+- aes-gcm, pbkdf2, rsa, sha2: Core cryptographic operations
+- oauth2, jsonwebtoken: Authentication and authorization
+- keyring: Secure credential storage
+
+**Web Services & Networking:**
+- axum, tower, hyper: HTTP server infrastructure
+- reqwest: HTTP client operations
+- tower-sessions, cookie: Session management
+
+**Async Runtime & Concurrency:**
+- tokio, futures ecosystem: Asynchronous operation foundation
+- async-trait: Trait abstraction for async operations
+
+**Data Processing & Serialization:**
+- serde family: Universal data interchange
+- sqlx: Database abstraction and query compilation
+- validator: Input validation and sanitization
+
+**AI/ML Integration:**
+- async-openai: OpenAI API client
+- hf-hub: Hugging Face model repository integration
+
+**Observability & Debugging:**
+- tracing ecosystem: Structured logging and instrumentation
+- anyhow: Error handling and context propagation
+
+## Strategic Architecture Position
+
+The ci_optims crate serves a critical but invisible role in BodhiApp's build ecosystem:
+
+**Build Infrastructure Role:**
+- **Compilation catalyst**: Triggers dependency compilation without runtime footprint
+- **Cache layer coordinator**: Orchestrates Docker layer caching strategy
+- **Multi-platform enabler**: Supports consistent builds across CPU/GPU variants
+- **CI/CD accelerator**: Transforms infeasible 45-minute builds into practical 5-10 minute iterations
+
+**Developer Experience Impact:**
+- **Containerized development**: Makes Docker-based development workflows practical
+- **CI/CD reliability**: Reduces build failures from timeout issues
+- **Resource efficiency**: Minimizes compute costs in CI environments
+- **Cross-platform consistency**: Ensures identical dependency compilation across build variants
 
 ## Important Constraints
 
-### Build System Requirements
-- **Docker-specific optimization**: Only provides benefits in containerized build environments with layer caching
-- **Workspace dependency synchronization**: Must be manually updated when new heavy dependencies are added to other crates
-- **Build variant consistency**: Must be compiled with the same optimization level (debug/release) as the target application
-- **Platform independence**: Contains only platform-agnostic dependencies, platform-specific optimizations handled elsewhere
+### Build System Integration Requirements
 
-### Maintenance Considerations
-- **Dependency drift prevention**: Requires periodic synchronization with actual workspace dependencies
-- **Build script coordination**: Changes must be coordinated with scripts/filter-cargo-toml.py and Docker build stages
-- **Cache invalidation awareness**: Understanding of when Docker layer cache becomes invalid is critical for effective use
-- **Resource usage**: Pre-compilation consumes significant CPU and memory resources during the dependency build stage
+**Environment Dependencies:**
+- Docker with layer caching support (BuildKit recommended)
+- Python 3.x for workspace filtering scripts
+- Consistent Rust toolchain across build stages
+- Sufficient build resources for parallel dependency compilation
+
+**Synchronization Requirements:**
+- Manual dependency updates when workspace dependencies change
+- Coordination with filter-cargo-toml.py script modifications
+- Alignment with Dockerfile build stage definitions
+- Consistency across CPU/CUDA/ROCm/Vulkan build variants
+
+### Operational Constraints and Maintenance
+
+**Performance Trade-offs:**
+- High initial compilation cost for cache population
+- Memory-intensive dependency compilation phase
+- Cache invalidation cascades on dependency updates
+- Platform-specific compilation overhead for GPU variants
+
+**Maintenance Workflows:**
+- **Dependency auditing**: Periodic review of included dependencies vs. actual usage
+- **Cache optimization**: Monitoring cache hit rates and invalidation patterns
+- **Build variant testing**: Ensuring consistent behavior across all supported platforms
+- **Resource scaling**: Adjusting build resources based on dependency compilation requirements
+
+**Critical Failure Modes:**
+- Dependency version mismatches between filter script and actual workspace
+- Docker layer corruption requiring full cache invalidation
+- Platform-specific compilation failures in multi-variant builds
+- Resource exhaustion during heavy dependency compilation phases

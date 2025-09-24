@@ -10,7 +10,7 @@ The `routes_all` crate serves as BodhiApp's **HTTP route composition and middlew
 Sophisticated route integration with hierarchical authorization and middleware orchestration:
 
 ```rust
-// Pattern structure (see src/routes.rs:45-89 for complete implementation)
+// Pattern structure (see crates/routes_all/src/routes.rs:54-88 for complete implementation)
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
@@ -31,8 +31,10 @@ pub fn build_routes(
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
-    .route(ENDPOINT_AUTH_REQUEST_ACCESS, post(request_access_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
+    .route(ENDPOINT_APPS_REQUEST_ACCESS, post(request_access_handler))
+    .route(ENDPOINT_USER_REQUEST_ACCESS, post(user_request_access_handler))
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler))
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info));
 
   // User level APIs with role and scope authorization
   let user_apis = Router::new()
@@ -67,7 +69,7 @@ pub fn build_routes(
 Advanced authentication architecture supporting multiple authentication flows:
 
 ```rust
-// Hierarchical authorization pattern (see src/routes.rs:156-189 for complete implementation)
+// Hierarchical authorization pattern (see crates/routes_all/src/routes.rs:127-177 for complete implementation)
 let power_user_apis = Router::new()
   .route(ENDPOINT_MODELS, post(create_alias_handler))
   .route(&format!("{ENDPOINT_MODELS}/{{id}}"), put(update_alias_handler))
@@ -110,7 +112,7 @@ let power_user_session_apis = Router::new()
 Sophisticated UI serving coordination with development and production modes:
 
 ```rust
-// UI serving pattern (see src/routes.rs:267-295 for complete implementation)
+// UI serving pattern (see crates/routes_all/src/routes.rs:281-314 for complete implementation)
 fn apply_ui_router(
   setting_service: &Arc<dyn SettingService>,
   router: Router,
@@ -157,7 +159,7 @@ fn apply_ui_router(
 HTTP proxy functionality for development workflows:
 
 ```rust
-// Proxy implementation pattern (see src/routes_proxy.rs:15-35 for complete implementation)
+// Proxy implementation pattern (see crates/routes_all/src/routes_proxy.rs:12-37 for complete implementation)
 pub fn proxy_router(backend_url: String) -> Router {
   Router::new().fallback(move |req| proxy_handler(req, backend_url.clone()))
 }
@@ -198,7 +200,7 @@ async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> 
 Advanced middleware composition with proper ordering and configuration:
 
 ```rust
-// Middleware stack pattern (see src/routes.rs:223-245 for complete implementation)
+// Middleware stack pattern (see crates/routes_all/src/routes.rs:234-278 for complete implementation)
 let protected_apis = Router::new()
   .merge(user_apis)
   .merge(power_user_apis)
@@ -247,7 +249,7 @@ router
 Comprehensive OpenAPI specification generation with environment-specific configuration:
 
 ```rust
-// OpenAPI integration pattern (see src/routes.rs:245-255)
+// OpenAPI integration pattern (see crates/routes_all/src/routes.rs:248-256)
 let mut openapi = BodhiOpenAPIDoc::openapi();
 OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);
 
@@ -261,13 +263,50 @@ let router = Router::<Arc<dyn RouterState>>::new()
 - Interactive Swagger UI interface with authentication flow documentation and endpoint testing
 - Comprehensive schema definitions with validation and examples for all request/response types
 
+### Localization Resources
+Embedded localization files for multi-language support:
+
+```rust
+// Localization pattern (see crates/routes_all/src/lib.rs:12-16)
+pub mod l10n {
+  use include_dir::Dir;
+  
+  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+}
+```
+
+**Localization Features**:
+- Embedded localization resources using include_dir macro for compile-time resource inclusion
+- Support for multiple languages with fluent localization files (en-US/messages.ftl)
+- Runtime localization access for error messages and user-facing text across all route handlers
+- Integration with error handling system for localized error responses
+
+### UI Endpoint Macro
+Utility macro for consistent UI endpoint generation:
+
+```rust
+// Macro definition (see crates/routes_all/src/routes.rs:1-6)
+#[macro_export]
+macro_rules! make_ui_endpoint {
+  ($name:ident, $path:expr) => {
+    pub const $name: &str = concat!("/api/ui/", $path);
+  };
+}
+```
+
+**Macro Features**:
+- Consistent UI endpoint generation with /api/ui/ prefix for all UI-specific endpoints
+- Compile-time string concatenation for zero runtime overhead
+- Type-safe endpoint constants preventing typos in route definitions
+- Integration with route definition patterns for consistent API structure
+
 ## Cross-Crate Integration Implementation
 
 ### Route Layer Integration Architecture
 Route composition coordinates extensively with BodhiApp's HTTP layer:
 
 ```rust
-// RouterState integration for consistent service access (see src/routes.rs:35-45)
+// RouterState integration for consistent service access (see crates/routes_all/src/routes.rs:59 for complete implementation)
 let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(ctx, app_service.clone()));
 
 // All routes use consistent state management for service access
@@ -280,10 +319,10 @@ let user_apis = Router::new()
 
 **Cross-Crate Integration Features**:
 - RouterState dependency injection provides consistent AppService and SharedContext access
-- routes_oai integration for OpenAI and Ollama API endpoints with bearer token authentication
-- routes_app integration for application management endpoints with session-based authentication
-- auth_middleware coordination for multi-layer authentication and authorization enforcement
-- server_core integration for HTTP infrastructure and streaming capabilities
+- **routes_oai Integration**: OpenAI/Ollama API endpoints (chat completions, models, ollama tags/chat/show) with bearer token authentication
+- **routes_app Integration**: Application management endpoints (aliases, downloads, API models, tokens, settings, users, access requests) with session authentication  
+- **auth_middleware Coordination**: Multi-layer authentication with api_auth_middleware and auth_middleware for different authorization requirements
+- **server_core Integration**: DefaultRouterState providing unified AppService and SharedContext access across all route handlers
 
 ### Service Layer HTTP Coordination
 Route composition coordinates with BodhiApp's service layer through RouterState:
@@ -299,7 +338,7 @@ Route composition coordinates with BodhiApp's service layer through RouterState:
 Route composition requires comprehensive testing across route boundaries:
 
 ```rust
-// UI serving testing pattern (see src/routes.rs:345-395 for complete test implementation)
+// UI serving testing pattern (see crates/routes_all/src/routes.rs:390-480 for complete test implementation)
 #[rstest]
 #[case::production_with_static(
   EnvConfig {
@@ -350,7 +389,7 @@ async fn test_ui_router_scenarios(
 Comprehensive proxy functionality testing:
 
 ```rust
-// Proxy testing pattern (see src/routes_proxy.rs:45-89 for complete test implementation)
+// Proxy testing pattern (see crates/routes_all/src/routes_proxy.rs:75-121 for complete test implementation)
 #[rstest]
 #[awt]
 #[tokio::test]
@@ -408,11 +447,11 @@ For new authentication and authorization requirements:
 ### UI Serving Extensions
 For new UI serving capabilities and development workflows:
 
-1. **Environment Configuration**: Extend SettingService configuration for new UI serving modes and proxy configurations
-2. **Static Asset Integration**: Configure embedded asset serving for new UI components with proper caching strategies
-3. **Proxy Configuration**: Support new development proxy patterns for different frontend frameworks and build tools
-4. **Fallback Handling**: Implement graceful degradation for new UI serving scenarios with appropriate error responses
-5. **Performance Optimization**: Optimize static asset serving and proxy performance for production deployments
+1. **Environment Configuration**: Extend SettingService with new BODHI_DEV_* environment variables for additional UI serving modes
+2. **Static Asset Integration**: Configure new static_router patterns for different UI frameworks with proper asset bundling
+3. **Proxy Configuration**: Extend proxy_router to support different backend URLs and request transformation patterns
+4. **Fallback Handling**: Implement new fallback strategies in apply_ui_router for different deployment scenarios
+5. **Performance Optimization**: Add caching layers, asset compression, and CDN integration for production deployments
 
 ## Commands
 

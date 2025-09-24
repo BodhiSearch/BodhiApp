@@ -1,5 +1,7 @@
 # CLAUDE.md - bodhi/src
 
+> See [PACKAGE.md](./PACKAGE.md) for implementation details and file references
+
 This file provides guidance to Claude Code when working with the Next.js frontend application for BodhiApp.
 
 ## Purpose

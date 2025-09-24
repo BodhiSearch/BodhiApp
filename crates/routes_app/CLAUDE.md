@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working with the `routes_app` crate.
 
-*For detailed implementation examples and technical depth, see [crates/routes_app/PACKAGE.md](crates/routes_app/PACKAGE.md)*
+*For detailed implementation examples and technical depth, see [PACKAGE.md](crates/routes_app/PACKAGE.md)*
 
 ## Purpose
 
@@ -14,6 +14,7 @@ The `routes_app` crate serves as BodhiApp's **application API orchestration laye
 Comprehensive HTTP endpoint implementation with sophisticated service coordination:
 - **Model Management API**: Create, pull, and manage model aliases with command orchestration
 - **Authentication API**: OAuth2 flows, session management, and user profile operations
+- **User Management API**: Access request workflows, user role assignment, and administrative operations
 - **API Token Management**: JWT token generation, validation, and lifecycle management
 - **Application Configuration**: Settings management, setup flows, and system configuration
 - **OpenAPI Documentation**: Comprehensive API specification generation with Utoipa integration
@@ -102,6 +103,14 @@ Comprehensive application setup and configuration management:
 3. **System Status**: Application health and status monitoring with comprehensive diagnostics
 4. **Development Tools**: Debug endpoints for system introspection and troubleshooting
 
+### User Access Management Orchestration
+Sophisticated user access control with role-based authorization:
+1. **Access Request Workflow**: Users can request access with pending/approved/rejected status tracking
+2. **Administrative Review**: Managers and admins can approve/reject requests with role assignment
+3. **Role Management**: Hierarchical role system with user/power_user/manager/admin levels
+4. **Session Coordination**: User session clearing on role changes for immediate effect
+5. **User Lifecycle**: Complete user management including role changes and access removal
+
 ## Important Constraints
 
 ### API Compatibility Requirements
@@ -144,6 +153,15 @@ For new authentication and authorization patterns:
 3. **API Token Extensions**: Extend JWT token management with new scopes and authorization patterns
 4. **Authorization Middleware**: Coordinate with auth_middleware for consistent security across endpoints
 5. **User Management**: Design user profile and account management features with proper privacy controls
+
+### User Access Management Extensions
+For extending user management and access control features:
+
+1. **Role Hierarchy**: Follow established role precedence (admin > manager > power_user > user) for authorization checks
+2. **Access Request Workflows**: Implement multi-step approval processes with proper status tracking and notifications
+3. **Session Management**: Coordinate session clearing with role changes to ensure immediate privilege updates
+4. **Audit Logging**: Track administrative actions for security and compliance requirements
+5. **Authorization Context**: Use header-based authentication context for consistent user identification across endpoints
 
 ### Cross-Service Integration Patterns
 For features that require coordination across multiple services:

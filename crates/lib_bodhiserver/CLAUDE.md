@@ -140,11 +140,33 @@ For new configuration capabilities and embedded scenarios:
 4. **Environment Support**: Support new deployment environments with appropriate configuration defaults and resource management
 5. **Configuration Testing**: Test configuration management with different embedded scenarios and validation failures
 
-### Cross-Application Integration Patterns
-For new embedding scenarios and external application integration:
+### New Deployment Context Support
+When adding support for new deployment scenarios:
 
-1. **Service Composition**: Design service composition patterns that support different embedding scenarios (Tauri, NAPI, standalone)
-2. **Resource Management**: Implement resource lifecycle management that coordinates with external application lifecycle and cleanup
-3. **Error Boundaries**: Provide comprehensive error handling with proper isolation and recovery for embedded application integration
-4. **Performance Optimization**: Optimize service composition and resource management for embedded scenarios with minimal overhead
-5. **Integration Testing**: Support comprehensive embedding testing with realistic external application integration scenarios
+1. **Context Analysis**: Analyze resource constraints, security requirements, and lifecycle management needs for the new context
+2. **Adaptation Patterns**: Implement context-specific adaptations while maintaining core functionality consistency
+3. **Resource Coordination**: Design resource management strategies that work within the constraints of the new deployment context
+4. **Security Considerations**: Implement appropriate security measures for credential storage and data protection in the new context
+5. **Integration Testing**: Develop comprehensive testing strategies that validate functionality in realistic deployment scenarios
+6. **Performance Optimization**: Optimize resource usage and startup performance for the specific constraints of the new context
+
+## Performance and Scalability Considerations
+
+### Cold Start Optimization
+**Startup Performance**: The orchestration layer prioritizes fast cold starts through:
+- **Lazy Initialization**: Services are initialized only when needed
+- **Parallel Loading**: Independent services can be initialized concurrently
+- **Resource Pooling**: Database connections and caches are established early and reused
+- **Asset Optimization**: UI assets are pre-compressed and efficiently embedded
+
+### Memory Management
+**Resource Efficiency**: In embedded contexts, memory usage is carefully managed:
+- **Service Sharing**: Multiple components share singleton services where appropriate
+- **Cleanup Coordination**: Proper resource cleanup prevents memory leaks in long-running embedded scenarios
+- **Cache Management**: Intelligent cache eviction prevents unbounded memory growth
+
+### Extensibility Architecture
+**Future-Proof Design**: The orchestration layer is designed to accommodate:
+- **New Service Types**: Additional business services can be added without disrupting existing orchestration
+- **Alternative Implementations**: Services can be swapped with alternative implementations (e.g., different databases, auth providers)
+- **Context-Specific Optimizations**: New deployment contexts can implement context-specific optimizations while maintaining compatibility

@@ -10,18 +10,25 @@ The `auth_middleware` crate serves as BodhiApp's **HTTP security orchestration l
 Sophisticated middleware architecture supporting multiple authentication patterns:
 
 ```rust
-// Session-based authentication with same-origin validation (see src/auth_middleware.rs:85-145)
+// Session-based authentication with same-origin validation (see crates/auth_middleware/src/auth_middleware.rs:114-187)
 pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-  headers: HeaderMap,
+  _headers: HeaderMap,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
-  // Remove internal headers to prevent injection attacks
-  req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_RESOURCE_ROLE);
-  req.headers_mut().remove(KEY_RESOURCE_SCOPE);
+  remove_app_headers(&mut req);
+  
+  let app_service = state.app_service();
+  let secret_service = app_service.secret_service();
+  let token_service = DefaultTokenService::new(
+    app_service.auth_service(),
+    secret_service.clone(),
+    app_service.cache_service(),
+    app_service.db_service(),
+    app_service.setting_service(),
+  );
 
   let token_service = DefaultTokenService::new(/* service dependencies */);
   
@@ -41,15 +48,17 @@ pub async fn auth_middleware(
   Ok(next.run(req).await)
 }
 
-// Optional authentication injection for non-protected routes (see src/auth_middleware.rs:147-195)
-pub async fn inject_session_auth_info(
+// Optional authentication injection for non-protected routes (see crates/auth_middleware/src/auth_middleware.rs:189-272)
+pub async fn inject_optional_auth_info(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
+  remove_app_headers(&mut req);
   // Similar logic but continues on authentication failure
   // Enables optional authentication for routes that can work with or without auth
+  Ok(next.run(req).await)
 }
 ```
 
@@ -63,7 +72,7 @@ pub async fn inject_session_auth_info(
 Fine-grained authorization middleware with configurable role and scope requirements:
 
 ```rust
-// Role and scope-based authorization (see src/api_auth_middleware.rs:25-85)
+// Role and scope-based authorization (see crates/auth_middleware/src/api_auth_middleware.rs:46-127)
 pub async fn api_auth_middleware(
   required_role: Role,
   required_token_scope: Option<TokenScope>,
@@ -124,7 +133,7 @@ pub async fn api_auth_middleware(
 Comprehensive token management service coordinating multiple authentication flows:
 
 ```rust
-// Core token service architecture (see src/token_service.rs:35-85)
+// Core token service architecture (see crates/auth_middleware/src/token_service.rs:24-47)
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
   secret_service: Arc<dyn SecretService>,
@@ -156,7 +165,7 @@ impl DefaultTokenService {
 Sophisticated token validation with caching and external client support:
 
 ```rust
-// Internal API token handling with caching (see src/token_service.rs:125-175)
+// Internal API token handling with caching (see crates/auth_middleware/src/token_service.rs:49-157)
 async fn handle_internal_api_token(&self, bearer_token: &str, api_token: &ApiToken) -> Result<(String, ResourceScope)> {
   // Check cache for validated access token
   let cache_key = format!("token:{}", api_token.token_id);
@@ -188,7 +197,7 @@ async fn handle_internal_api_token(&self, bearer_token: &str, api_token: &ApiTok
   Ok((access_token, ResourceScope::Token(token_scope)))
 }
 
-// External client token exchange (see src/token_service.rs:185-235)
+// External client token exchange (see crates/auth_middleware/src/token_service.rs:160-215)
 async fn handle_external_client_token(&self, external_token: &str) -> Result<(String, ResourceScope)> {
   // Validate external token issuer and audience
   let claims = extract_claims::<ScopeClaims>(external_token)?;
@@ -233,7 +242,7 @@ async fn handle_external_client_token(&self, external_token: &str) -> Result<(St
 Sophisticated session-based authentication with automatic token refresh:
 
 ```rust
-// Session token validation and refresh (see src/token_service.rs:285-335)
+// Session token validation and refresh (see crates/auth_middleware/src/token_service.rs:264-352)
 pub async fn get_valid_session_token(&self, session: Session, access_token: String) -> Result<(String, Role)> {
   let claims = extract_claims::<Claims>(&access_token)?;
   let now = Utc::now().timestamp();
@@ -280,7 +289,7 @@ pub async fn get_valid_session_token(&self, session: Session, access_token: Stri
 Secure token storage and lookup using SHA-256 digests:
 
 ```rust
-// Token digest generation for secure storage (see src/token_service.rs:15-25)
+// Token digest generation for secure storage (see crates/auth_middleware/src/token_service.rs:18-22)
 pub fn create_token_digest(bearer_token: &str) -> String {
   let mut hasher = Sha256::new();
   hasher.update(bearer_token.as_bytes());
@@ -298,7 +307,7 @@ if let Ok(Some(api_token)) = self.db_service.get_api_token_by_token_id(bearer_to
 CSRF protection through security header validation:
 
 ```rust
-// Same-origin request validation (see src/auth_middleware.rs:25-45)
+// Same-origin request validation (see crates/auth_middleware/src/auth_middleware.rs:39-60)
 fn is_same_origin(headers: &HeaderMap) -> bool {
   let host = headers.get(axum::http::header::HOST).and_then(|v| v.to_str().ok());
   let sec_fetch_site = headers.get(SEC_FETCH_SITE_HEADER).and_then(|v| v.to_str().ok());
@@ -319,7 +328,7 @@ fn evaluate_same_origin(host: Option<&str>, sec_fetch_site: Option<&str>) -> boo
 SEO and security benefits through canonical URL redirection:
 
 ```rust
-// Canonical URL redirection middleware (see src/canonical_url_middleware.rs:25-75)
+// Canonical URL redirection middleware (see crates/auth_middleware/src/canonical_url_middleware.rs:23-92)
 pub async fn canonical_url_middleware(
   headers: HeaderMap,
   State(setting_service): State<Arc<dyn SettingService>>,
@@ -360,13 +369,75 @@ pub async fn canonical_url_middleware(
 - Canonical URL redirection improves SEO while providing consistent security boundaries
 - Comprehensive security header management with automatic injection and removal patterns
 
+## Localization Infrastructure
+
+### Error Message Localization
+Authentication and authorization errors support localization through Fluent resource files:
+
+```rust
+// Localization resource inclusion (see crates/auth_middleware/src/lib.rs:18-22)
+pub mod l10n {
+  use include_dir::Dir;
+  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+}
+
+// Error messages with localization support (see crates/auth_middleware/src/resources/en-US/messages.ftl:1-18)
+auth_error-invalid_access = access denied
+auth_error-refresh_token_not_found = refresh token not found in session, logout and login again to continue
+auth_error-tower_sessions = session is not available, please try again later, error: {$error}
+auth_error-token_inactive = API token is inactive
+auth_error-app_status_invalid = app status is invalid for this operation: {$var_0}
+api_auth_error-forbidden = insufficient privileges to access this resource
+api_auth_error-missing_auth = missing authentication header
+```
+
+**Localization Features**:
+- Fluent-based localization system with parameterized error messages
+- Embedded resource files using include_dir for deployment convenience
+- Consistent error message formatting across authentication and authorization failures
+- Support for dynamic error parameters with proper escaping and formatting
+
+## Utility Functions and Helpers
+
+### Authentication Utility Functions
+Core utility functions supporting authentication and security operations:
+
+```rust
+// App status retrieval with fallback (see crates/auth_middleware/src/utils.rs:22-24)
+pub fn app_status_or_default(secret_service: &Arc<dyn SecretService>) -> AppStatus {
+  secret_service.app_status().unwrap_or_default()
+}
+
+// Random string generation for security tokens (see crates/auth_middleware/src/utils.rs:11-20)
+pub fn generate_random_string(length: usize) -> String {
+  const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let mut rng = rand::rng();
+  (0..length).map(|_| {
+    let idx = rng.random_range(0..CHARSET.len());
+    CHARSET[idx] as char
+  }).collect()
+}
+
+// API error response structure (see crates/auth_middleware/src/utils.rs:6-9)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ApiErrorResponse {
+  error: String,
+}
+```
+
+**Utility Features**:
+- App status retrieval with graceful fallback to Setup status when not configured
+- Cryptographically secure random string generation for tokens and security identifiers
+- Consistent API error response structures for HTTP error handling
+- Integration with project-wide error handling patterns and localization system
+
 ## Cross-Crate Integration Implementation
 
 ### Service Layer Authentication Coordination
 Authentication middleware coordinates extensively with BodhiApp's service layer:
 
 ```rust
-// Service coordination through RouterState (see src/auth_middleware.rs:95-115)
+// Service coordination through RouterState (see crates/auth_middleware/src/auth_middleware.rs:123-131)
 let app_service = state.app_service();
 let token_service = DefaultTokenService::new(
   app_service.auth_service(),    // OAuth2 flows and token exchange
@@ -394,7 +465,7 @@ pub enum AuthError {
 Extensive coordination with objs crate for authentication and authorization:
 
 ```rust
-// Role and scope integration (see src/api_auth_middleware.rs:45-85)
+// Role and scope integration (see crates/auth_middleware/src/api_auth_middleware.rs:7-43)
 use objs::{Role, ResourceScope, TokenScope, UserScope, RoleError, TokenScopeError, UserScopeError};
 
 // Role hierarchy validation using objs domain logic
@@ -421,7 +492,7 @@ match resource_scope {
 Comprehensive testing infrastructure for authentication flows:
 
 ```rust
-// Service mock coordination for authentication testing (see src/auth_middleware.rs:450-550)
+// Service mock coordination for authentication testing (see crates/auth_middleware/src/auth_middleware.rs:558-652)
 #[rstest]
 #[tokio::test]
 async fn test_auth_middleware_with_expired_session_token(
@@ -458,11 +529,20 @@ async fn test_auth_middleware_with_expired_session_token(
 }
 ```
 
-### AuthServerTestClient for Integration Testing
-Sophisticated test client for OAuth2 integration testing:
+### OAuth2 Test Infrastructure
+The auth_middleware crate includes comprehensive OAuth2 testing infrastructure through the test_utils module:
 
 ```rust
-// OAuth2 integration test client (see src/test_utils/auth_server_test_client.rs:85-135)
+// OAuth2 test client configuration (see crates/auth_middleware/src/test_utils/auth_server_test_client.rs:8-16)
+#[derive(Debug, Clone, Builder)]
+pub struct AuthServerConfig {
+  pub auth_server_url: String,
+  pub realm: String,
+  pub dev_console_client_id: String,
+  pub dev_console_client_secret: String,
+}
+
+// OAuth2 integration test client (see crates/auth_middleware/src/test_utils/auth_server_test_client.rs:75-120)
 impl AuthServerTestClient {
   pub async fn setup_dynamic_clients(&self, username: &str, password: &str) -> Result<DynamicClients> {
     // Complete OAuth2 client setup workflow
@@ -477,6 +557,11 @@ impl AuthServerTestClient {
     
     Ok(DynamicClients { app_client, resource_client, resource_scope_name })
   }
+  
+  async fn get_dev_console_user_token(&self, username: &str, password: &str) -> Result<String>;
+  async fn create_app_client(&self, token: &str, name: &str) -> Result<ClientCreateResponse>;  
+  async fn create_resource_client(&self, name: &str) -> Result<ClientCreateResponse>;
+  async fn get_resource_service_token(&self, resource_client: &ClientCreateResponse) -> Result<String>;
 }
 ```
 
