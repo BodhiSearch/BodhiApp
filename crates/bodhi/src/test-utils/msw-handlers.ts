@@ -24,6 +24,12 @@ export interface HandlerOverrides {
   fetchModels?: unknown;
   createApiModel?: unknown;
   updateApiModel?: unknown;
+  existingModel?: unknown;
+  testConnectionError?: string;
+  fetchModelsError?: boolean;
+  createError?: string;
+  availableModels?: string[];
+  createdModel?: unknown;
 }
 
 export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) => [
@@ -228,22 +234,85 @@ export const createApiModelHandlers = (overrides: Partial<HandlerOverrides> = {}
 
   // API Models endpoints
   rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>
-    res(ctx.json(overrides.apiFormats || { data: ['openai'] }))
+    res(ctx.json(overrides.apiFormats || { data: ['openai', 'openai-compatible'] }))
   ),
 
-  rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) =>
-    res(ctx.json(overrides.testApiModel || { success: true, response: 'Test successful' }))
+  rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) => {
+    if (overrides.testConnectionError) {
+      return res(ctx.json({ success: false, error: overrides.testConnectionError }));
+    }
+    return res(ctx.json(overrides.testApiModel || { success: true, response: 'Connection successful' }));
+  }),
+
+  rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) => {
+    if (overrides.fetchModelsError) {
+      return res(
+        ctx.status(401),
+        ctx.json({
+          error: { type: 'authentication_error', message: 'Invalid API key' },
+        })
+      );
+    }
+    return res(
+      ctx.json({
+        models: overrides.availableModels || ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+      })
+    );
+  }),
+
+  rest.post('*/bodhi/v1/api-models', (_, res, ctx) => {
+    if (overrides.createError) {
+      return res(
+        ctx.status(400),
+        ctx.json({
+          error: { type: 'invalid_request_error', message: overrides.createError },
+        })
+      );
+    }
+    return res(
+      ctx.json(
+        overrides.createdModel || {
+          id: 'test-model-123',
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****key',
+          models: ['gpt-4'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      )
+    );
+  }),
+
+  rest.get('*/bodhi/v1/api-models/:id', (req, res, ctx) =>
+    res(
+      ctx.json(
+        overrides.existingModel || {
+          id: req.params.id,
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****123',
+          models: ['gpt-3.5-turbo'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      )
+    )
   ),
 
-  rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) =>
-    res(ctx.json(overrides.fetchModels || { models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] }))
-  ),
-
-  rest.post('*/bodhi/v1/api-models', (_, res, ctx) =>
-    res(ctx.json(overrides.createApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
-  ),
-
-  rest.put('*/bodhi/v1/api-models/:id', (_, res, ctx) =>
-    res(ctx.json(overrides.updateApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
+  rest.put('*/bodhi/v1/api-models/:id', (req, res, ctx) =>
+    res(
+      ctx.json(
+        overrides.updateApiModel || {
+          id: req.params.id,
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****key',
+          models: ['gpt-4'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      )
+    )
   ),
 ];

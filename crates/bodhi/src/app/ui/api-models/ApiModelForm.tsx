@@ -3,6 +3,8 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiModelResponse } from '@bodhiapp/ts-client';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 // Import shared components
 import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
@@ -19,10 +21,32 @@ interface ApiModelFormProps {
 }
 
 export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+
   // Use the centralized business logic hook
   const formLogic = useApiModelForm({
     mode: isEditMode ? 'edit' : 'create',
     initialData,
+    onSuccess: (data) => {
+      toast({
+        title: isEditMode ? 'API Model Updated' : 'API Model Created',
+        description: isEditMode
+          ? `Successfully updated ${initialData?.id}`
+          : `Successfully created API model: ${data.id}`,
+      });
+      router.push('/ui/models');
+    },
+    onError: (errorMessage) => {
+      toast({
+        title: isEditMode ? 'Failed to Update API Model' : 'Failed to Create API Model',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+    onCancel: () => {
+      router.push('/ui/models');
+    },
   });
 
   return (

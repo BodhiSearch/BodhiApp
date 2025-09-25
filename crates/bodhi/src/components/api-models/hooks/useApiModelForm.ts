@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 import {
   ApiModelFormData,
   UpdateApiModelFormData,
@@ -12,7 +11,6 @@ import {
   API_FORMAT_PRESETS,
 } from '@/schemas/apiModel';
 import { useCreateApiModel, useUpdateApiModel, useApiFormats } from '@/hooks/useApiModels';
-import { useToast } from '@/hooks/use-toast';
 import { ApiModelResponse } from '@bodhiapp/ts-client';
 import { ApiProvider, API_PROVIDERS } from '../providers/constants';
 import { useTestConnection } from './useTestConnection';
@@ -22,8 +20,8 @@ interface UseApiModelFormProps {
   mode: 'create' | 'edit' | 'setup';
   initialData?: ApiModelResponse;
   onSuccess?: (data: any) => void;
+  onError?: (error: string) => void;
   onCancel?: () => void;
-  redirectPath?: string;
   autoSelectCommon?: boolean;
 }
 
@@ -31,12 +29,10 @@ export function useApiModelForm({
   mode,
   initialData,
   onSuccess,
+  onError,
   onCancel,
-  redirectPath = '/ui/models',
   autoSelectCommon = false,
 }: UseApiModelFormProps) {
-  const router = useRouter();
-  const { toast, dismiss } = useToast();
 
   // Provider state
   const [selectedProvider, setSelectedProvider] = useState<ApiProvider | null>(null);
@@ -86,9 +82,40 @@ export function useApiModelForm({
 
   const watchedValues = watch();
 
-  // API mutations
-  const createMutation = useCreateApiModel();
-  const updateMutation = useUpdateApiModel();
+  // API mutations with callbacks
+  const createMutation = useCreateApiModel({
+    onSuccess: (response) => {
+      if (onSuccess) {
+        onSuccess(response.data);
+      }
+    },
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        error.message ||
+        'Failed to create API model';
+      if (onError) {
+        onError(errorMessage);
+      }
+    },
+  });
+
+  const updateMutation = useUpdateApiModel({
+    onSuccess: (response) => {
+      if (onSuccess) {
+        onSuccess(response.data);
+      }
+    },
+    onError: (error) => {
+      const errorMessage =
+        error.response?.data?.error?.message ||
+        error.message ||
+        'Failed to update API model';
+      if (onError) {
+        onError(errorMessage);
+      }
+    },
+  });
   const { data: apiFormatsData } = useApiFormats();
 
   // Business logic hooks
@@ -188,47 +215,15 @@ export function useApiModelForm({
 
   // Form submission
   const onSubmit = async (data: FormData) => {
-    dismiss();
-    try {
-      if (isEditMode && initialData) {
-        const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
-        const result = await updateMutation.mutateAsync({
-          id: initialData.id,
-          data: updateData,
-        });
-        toast({
-          title: 'API Model Updated',
-          description: `Successfully updated ${initialData.id}`,
-        });
-        if (onSuccess) {
-          onSuccess(result.data);
-        } else {
-          router.push(redirectPath);
-        }
-      } else {
-        const createData = convertFormToCreateRequest(data as ApiModelFormData);
-        const result = await createMutation.mutateAsync(createData);
-        toast({
-          title: 'API Model Created',
-          description: `Successfully created API model: ${result.data.id}`,
-        });
-        if (onSuccess) {
-          onSuccess(result.data);
-        } else {
-          router.push(redirectPath);
-        }
-      }
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'An unexpected error occurred';
-      toast({
-        title: isEditMode ? 'Failed to Update API Model' : 'Failed to Create API Model',
-        description: errorMessage,
-        variant: 'destructive',
+    if (isEditMode && initialData) {
+      const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
+      updateMutation.mutate({
+        id: initialData.id,
+        data: updateData,
       });
+    } else {
+      const createData = convertFormToCreateRequest(data as ApiModelFormData);
+      createMutation.mutate(createData);
     }
   };
 
@@ -236,8 +231,6 @@ export function useApiModelForm({
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
-    } else {
-      router.push(redirectPath);
     }
   };
 
