@@ -14,64 +14,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock framer-motion to avoid animation and browser API issues in tests
-vi.mock('framer-motion', async () => {
-  const React = await import('react');
-  return {
-    motion: {
-      div: ({ children, ...props }: any) => {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
-        // Filter out framer-motion specific props to avoid React warnings
-        const {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          animate,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          initial,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          exit,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          variants,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          transition,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          whileHover,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          whileTap,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          whileFocus,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          whileInView,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          drag,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          dragConstraints,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          dragElastic,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          dragMomentum,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          dragTransition,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          onDrag,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          onDragStart,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          onDragEnd,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          layout,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          layoutId,
-          ...filteredProps
-        } = props;
-        return React.createElement('div', filteredProps, children);
-      },
-    },
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
-    useAnimation: () => ({}),
-  };
-});
-
 vi.mock('@/hooks/use-media-query', () => ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useMediaQuery: (query: string) => {

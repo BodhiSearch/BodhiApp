@@ -339,17 +339,20 @@ For expanding the test_utils module:
 ## Core Implementation Files
 
 ### Main Entry Points
+
 - `src/main.rs` - Application main entry point with CLI delegation
 - `src/lib.rs` - Library exports with feature-conditional module inclusion
 - `src/app.rs` - CLI interface definition and command parsing with feature-based subcommands
 
 ### Deployment Mode Modules
+
 - `src/native_init.rs` - Native desktop initialization with Tauri framework integration
 - `src/server_init.rs` - Container/server initialization with headless deployment
 - `src/common.rs` - Shared configuration building with AppOptions construction
 - `src/env.rs` - Environment-specific configuration with development/production switching
 
 ### Support Modules
+
 - `src/ui.rs` - UI asset embedding and integration
 - `src/error.rs` - Application error types with localization support
 - `src/error_test.rs` - Error handling test scenarios

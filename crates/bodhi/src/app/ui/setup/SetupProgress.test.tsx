@@ -80,13 +80,7 @@ describe('SetupProgress', () => {
 
   describe('step labels', () => {
     it('displays step labels when provided', () => {
-      render(
-        <SetupProgress
-          currentStep={1}
-          totalSteps={6}
-          stepLabels={SETUP_STEP_LABELS}
-        />
-      );
+      render(<SetupProgress currentStep={1} totalSteps={6} stepLabels={SETUP_STEP_LABELS} />);
       expect(screen.getByText('Get Started')).toBeInTheDocument();
       expect(screen.getByText('Login & Setup')).toBeInTheDocument();
       expect(screen.getByText('Local Models')).toBeInTheDocument();
@@ -104,13 +98,7 @@ describe('SetupProgress', () => {
 
     it('handles mismatched label count gracefully', () => {
       const shortLabels = ['Step 1', 'Step 2'];
-      render(
-        <SetupProgress
-          currentStep={1}
-          totalSteps={6}
-          stepLabels={shortLabels}
-        />
-      );
+      render(<SetupProgress currentStep={1} totalSteps={6} stepLabels={shortLabels} />);
       expect(screen.getByText('Step 1')).toBeInTheDocument();
       expect(screen.getByText('Step 2')).toBeInTheDocument();
       expect(screen.queryByText('Step 3')).not.toBeInTheDocument();
@@ -119,38 +107,20 @@ describe('SetupProgress', () => {
 
   describe('skipped steps', () => {
     it('shows skipped indicator for specified steps', () => {
-      render(
-        <SetupProgress
-          currentStep={5}
-          totalSteps={6}
-          skippedSteps={[4]}
-        />
-      );
+      render(<SetupProgress currentStep={5} totalSteps={6} skippedSteps={[4]} />);
       const skippedStep = screen.getByTestId('step-indicator-4');
       expect(skippedStep).toHaveAttribute('data-skipped', 'true');
     });
 
     it('shows correct progress with skipped steps', () => {
-      render(
-        <SetupProgress
-          currentStep={5}
-          totalSteps={6}
-          skippedSteps={[4]}
-        />
-      );
+      render(<SetupProgress currentStep={5} totalSteps={6} skippedSteps={[4]} />);
       const progressBar = screen.getByTestId('progress-bar');
       // Progress should be (5/6) * 100 = 83.33%
       expect(progressBar).toHaveAttribute('data-progress-percent', '83.33333333333334');
     });
 
     it('handles multiple skipped steps', () => {
-      render(
-        <SetupProgress
-          currentStep={6}
-          totalSteps={6}
-          skippedSteps={[4, 5]}
-        />
-      );
+      render(<SetupProgress currentStep={6} totalSteps={6} skippedSteps={[4, 5]} />);
       const skippedStep1 = screen.getByTestId('step-indicator-4');
       const skippedStep2 = screen.getByTestId('step-indicator-5');
       expect(skippedStep1).toHaveAttribute('data-skipped', 'true');
@@ -175,13 +145,7 @@ describe('SetupProgress', () => {
     });
 
     it('has proper ARIA labels on step indicators', () => {
-      render(
-        <SetupProgress
-          currentStep={2}
-          totalSteps={6}
-          stepLabels={SETUP_STEP_LABELS}
-        />
-      );
+      render(<SetupProgress currentStep={2} totalSteps={6} stepLabels={SETUP_STEP_LABELS} />);
       const completedStep = screen.getByTestId('step-indicator-1');
       const currentStep = screen.getByTestId('step-indicator-2');
       const upcomingStep = screen.getByTestId('step-indicator-3');

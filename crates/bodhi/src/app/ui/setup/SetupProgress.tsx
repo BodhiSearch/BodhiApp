@@ -16,7 +16,7 @@ export function SetupProgress({
   totalSteps,
   stepLabels,
   skippedSteps = [],
-  compact = false
+  compact = false,
 }: SetupProgressProps) {
   const progressPercent = (currentStep / totalSteps) * 100;
 
@@ -119,17 +119,9 @@ export function SetupProgress({
                 const { isCurrent } = getStepStatus(index);
 
                 return (
-                  <div
-                    key={index}
-                    className="flex-1 text-center"
-                    style={{ maxWidth: `${100 / totalSteps}%` }}
-                  >
+                  <div key={index} className="flex-1 text-center" style={{ maxWidth: `${100 / totalSteps}%` }}>
                     <span
-                      className={`text-xs truncate ${
-                        isCurrent
-                          ? 'text-primary font-medium'
-                          : 'text-muted-foreground'
-                      }`}
+                      className={`text-xs truncate ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                       title={label}
                     >
                       {label}
@@ -143,12 +135,10 @@ export function SetupProgress({
 
         {/* Step counter */}
         <div className="mt-2 text-center text-sm text-muted-foreground">
-          <p>Step {currentStep} of {totalSteps}</p>
-          {stepLabels && compact && (
-            <p className="mt-1 font-medium text-foreground">
-              {stepLabels[currentStep - 1]}
-            </p>
-          )}
+          <p>
+            Step {currentStep} of {totalSteps}
+          </p>
+          {stepLabels && compact && <p className="mt-1 font-medium text-foreground">{stepLabels[currentStep - 1]}</p>}
         </div>
       </div>
     </div>

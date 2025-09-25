@@ -140,28 +140,31 @@ describe('useNavigation', () => {
     ['/ui/users/pending', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
     ['/ui/users/access-requests', 'Manage Users', '/ui/users/', 'Manage users and access control', 'Settings'],
     ['/docs/', 'App Guide', '/docs/', 'User guides and documentation', 'Documentation'],
-  ])('should return %s > %s for %s paths', (pathname, expectedItemTitle, expectedHref, expectedDescription, expectedParentTitle) => {
-    mockUsePathname.mockReturnValue(pathname);
+  ])(
+    'should return %s > %s for %s paths',
+    (pathname, expectedItemTitle, expectedHref, expectedDescription, expectedParentTitle) => {
+      mockUsePathname.mockReturnValue(pathname);
 
-    const { result } = renderHook(() => useNavigation(), {
-      wrapper: renderWithProvider,
-    });
+      const { result } = renderHook(() => useNavigation(), {
+        wrapper: renderWithProvider,
+      });
 
-    expect(result.current.currentItem.item).toEqual(
-      expect.objectContaining({
-        title: expectedItemTitle,
-        href: expectedHref,
-        description: expectedDescription,
-      })
-    );
+      expect(result.current.currentItem.item).toEqual(
+        expect.objectContaining({
+          title: expectedItemTitle,
+          href: expectedHref,
+          description: expectedDescription,
+        })
+      );
 
-    expect(result.current.currentItem.parent).toEqual(
-      expect.objectContaining({
-        title: expectedParentTitle,
-        items: expect.any(Array),
-      })
-    );
-  });
+      expect(result.current.currentItem.parent).toEqual(
+        expect.objectContaining({
+          title: expectedParentTitle,
+          items: expect.any(Array),
+        })
+      );
+    }
+  );
 
   it('should default to Home when no path matches', () => {
     mockUsePathname.mockReturnValue('/non/existent/path');

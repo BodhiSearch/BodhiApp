@@ -17,6 +17,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'framer-motion': path.resolve(__dirname, './src/tests/mocks/framer-motion.tsx'),
     },
     deps: {
       optimizer: {

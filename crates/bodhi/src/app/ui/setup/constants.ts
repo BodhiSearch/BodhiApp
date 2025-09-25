@@ -11,15 +11,8 @@ export const SETUP_STEPS = {
   COMPLETE: 6,
 } as const;
 
-export const SETUP_STEP_LABELS = [
-  'Get Started',
-  'Login & Setup',
-  'Local Models',
-  'Cloud AI',
-  'Extension',
-  'All Done!'
-];
+export const SETUP_STEP_LABELS = ['Get Started', 'Login & Setup', 'Local Models', 'Cloud AI', 'Extension', 'All Done!'];
 
 export const SETUP_TOTAL_STEPS = 6;
 
-export type SetupStep = typeof SETUP_STEPS[keyof typeof SETUP_STEPS];
+export type SetupStep = (typeof SETUP_STEPS)[keyof typeof SETUP_STEPS];
