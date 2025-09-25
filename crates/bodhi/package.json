@@ -48,6 +48,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.57.0",
+    "react-icons": "^5.5.0",
     "react-markdown": "^9.1.0",
     "react-query": "^3.39.3",
     "react-syntax-highlighter": "^15.6.1",
@@ -62,6 +63,7 @@
     "simple-icons": "^15.1.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "ua-parser-js": "^1.0.40",
     "unified": "^11.0.5",
     "vaul": "^1.1.2",
     "zod": "^3.23.8"
