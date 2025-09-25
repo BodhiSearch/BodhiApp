@@ -1,36 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TestTube, Eye, EyeOff } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import {
-  ApiModelFormData,
-  UpdateApiModelFormData,
-  createApiModelSchema,
-  updateApiModelSchema,
-  convertFormToCreateRequest,
-  convertFormToUpdateRequest,
-  API_FORMAT_PRESETS,
-  ApiFormatPreset,
-} from '@/schemas/apiModel';
-import {
-  useCreateApiModel,
-  useUpdateApiModel,
-  useTestApiModel,
-  useFetchApiModels,
-  useApiFormats,
-} from '@/hooks/useApiModels';
-import { ApiModelResponse, TestPromptRequest, FetchModelsRequest } from '@bodhiapp/ts-client';
-import { ModelSelector } from '@/components/ModelSelector';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ApiModelResponse } from '@bodhiapp/ts-client';
+
+// Import shared components
+import { useApiModelForm } from '@/components/api-models/hooks/useApiModelForm';
+import { ApiFormatSelector } from '@/components/api-models/form/ApiFormatSelector';
+import { BaseUrlInput } from '@/components/api-models/form/BaseUrlInput';
+import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
+import { PrefixInput } from '@/components/api-models/form/PrefixInput';
+import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
+import { FormActions } from '@/components/api-models/actions/FormActions';
 
 interface ApiModelFormProps {
   isEditMode: boolean;
@@ -38,386 +19,90 @@ interface ApiModelFormProps {
 }
 
 export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormProps) {
-  const router = useRouter();
-  const { toast, dismiss } = useToast();
-  const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormatPreset>('openai');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [fetchModelsState, setFetchModelsState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
-  const createMutation = useCreateApiModel();
-  const updateMutation = useUpdateApiModel();
-  const testMutation = useTestApiModel();
-  const fetchModelsMutation = useFetchApiModels();
-  const { data: apiFormatsData } = useApiFormats();
-
-  const schema = isEditMode ? updateApiModelSchema : createApiModelSchema;
-  type FormData = typeof isEditMode extends true ? UpdateApiModelFormData : ApiModelFormData;
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: isEditMode
-      ? {
-          api_format: initialData?.api_format || 'openai',
-          base_url: initialData?.base_url || 'https://api.openai.com/v1',
-          api_key: '',
-          models: initialData?.models || [],
-          prefix: initialData?.prefix || '',
-          usePrefix: Boolean(initialData?.prefix),
-        }
-      : {
-          api_format: 'openai',
-          base_url: 'https://api.openai.com/v1',
-          api_key: '',
-          models: [],
-          prefix: '',
-          usePrefix: false,
-        },
+  // Use the centralized business logic hook
+  const formLogic = useApiModelForm({
+    mode: isEditMode ? 'edit' : 'create',
+    initialData,
   });
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = form;
-  const watchedValues = watch();
-
-  useEffect(() => {
-    if (initialData) {
-      setSelectedApiFormat('openai');
-      // Do not pre-populate available models - user must fetch them
-    }
-  }, [initialData]);
-
-  const handleApiFormatChange = (apiFormat: ApiFormatPreset) => {
-    setSelectedApiFormat(apiFormat);
-    const preset = API_FORMAT_PRESETS[apiFormat];
-
-    setValue('api_format', apiFormat);
-    setValue('base_url', preset.baseUrl);
-    setValue('models', []); // Clear selected models
-    setValue('prefix', ''); // Clear prefix when API format changes
-    setValue('usePrefix', false); // Uncheck prefix checkbox
-    setAvailableModels([]); // Clear available models - user must fetch them
-  };
-
-  const handleModelSelect = (modelName: string) => {
-    if (!modelName.trim()) return;
-
-    const currentModels = watchedValues.models || [];
-    if (!currentModels.includes(modelName.trim())) {
-      setValue('models', [...currentModels, modelName.trim()]);
-    }
-  };
-
-  const handleModelRemove = (modelName: string) => {
-    const currentModels = watchedValues.models || [];
-    setValue(
-      'models',
-      currentModels.filter((m) => m !== modelName)
-    );
-  };
-
-  const handleModelsSelectAll = (allModels: string[]) => {
-    // Set all models at once to prevent multiple form updates
-    setValue('models', allModels);
-  };
-
-  const handleTestConnection = async () => {
-    dismiss();
-    const testData: TestPromptRequest = {
-      // In edit mode, use stored model ID if no API key provided
-      ...(watchedValues.api_key
-        ? { api_key: watchedValues.api_key }
-        : isEditMode && initialData?.id
-          ? { id: initialData.id }
-          : { api_key: watchedValues.api_key || '' }),
-      base_url: watchedValues.base_url || '',
-      model: watchedValues.models[0], // First selected model
-      prompt: 'Hello, how are you?', // Default prompt
-    };
-
-    try {
-      const response = await testMutation.mutateAsync(testData);
-      toast({
-        title: response.data.success ? 'Connection Test Successful' : 'Connection Test Failed',
-        description: response.data.response || response.data.error || 'Test completed',
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'Failed to test connection';
-      toast({
-        title: 'Connection Test Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleFetchModels = async () => {
-    dismiss();
-    const fetchData: FetchModelsRequest = {
-      // In edit mode, use stored model ID if no API key provided
-      ...(watchedValues.api_key
-        ? { api_key: watchedValues.api_key }
-        : isEditMode && initialData?.id
-          ? { id: initialData.id }
-          : { api_key: watchedValues.api_key || '' }),
-      base_url: watchedValues.base_url || '',
-    };
-
-    setFetchModelsState('loading');
-    try {
-      const response = await fetchModelsMutation.mutateAsync(fetchData);
-      const models = response.data.models;
-      setAvailableModels(models);
-      setFetchModelsState('success');
-      toast({
-        title: 'Models Fetched Successfully',
-        description: `Found ${models.length} available models`,
-      });
-    } catch (error: unknown) {
-      setFetchModelsState('error');
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'Failed to fetch models';
-      toast({
-        title: 'Failed to Fetch Models',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const onSubmit = async (data: FormData) => {
-    dismiss();
-    try {
-      if (isEditMode && initialData) {
-        const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
-        await updateMutation.mutateAsync({
-          id: initialData.id,
-          data: updateData,
-        });
-        toast({
-          title: 'API Model Updated',
-          description: `Successfully updated ${initialData.id}`,
-        });
-      } else {
-        const createData = convertFormToCreateRequest(data as ApiModelFormData);
-        const response = await createMutation.mutateAsync(createData);
-        toast({
-          title: 'API Model Created',
-          description: `Successfully created API model: ${response.data.id}`,
-        });
-      }
-      router.push('/ui/models');
-    } catch (error: unknown) {
-      const errorMessage =
-        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
-          ?.message ||
-        (error as { message?: string }).message ||
-        'An unexpected error occurred';
-      toast({
-        title: isEditMode ? 'Failed to Update API Model' : 'Failed to Create API Model',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const canTest = Boolean(
-    watchedValues.base_url &&
-      (watchedValues.api_key || (isEditMode && initialData?.id)) &&
-      watchedValues.models?.length > 0
-  );
-  const canFetch = Boolean(watchedValues.base_url && (watchedValues.api_key || (isEditMode && initialData?.id)));
-
-  // Get missing requirements for tooltip
-  const getMissingRequirements = () => {
-    const missing = [];
-    if (!watchedValues.base_url) missing.push('base URL');
-    if (!watchedValues.api_key && !(isEditMode && initialData?.id)) {
-      missing.push(isEditMode ? 'API key (or use stored credentials)' : 'API key');
-    }
-    if (!watchedValues.models?.length) missing.push('at least one model');
-    return `You need to add ${missing.join(', ')} to test connection`;
-  };
-
-  const getFetchDisabledReason = () => {
-    const missing = [];
-    if (!watchedValues.base_url) missing.push('base URL');
-    if (!watchedValues.api_key && !(isEditMode && initialData?.id)) {
-      missing.push(isEditMode ? 'API key (or use stored credentials)' : 'API key');
-    }
-    return missing.length > 0 ? `You need to add ${missing.join(', ')} to fetch models` : '';
-  };
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={formLogic.handleSubmit}
       className="space-y-8 mx-4 my-6"
-      data-testid={isEditMode ? 'edit-api-model-form' : 'create-api-model-form'}
+      data-testid={formLogic.isEditMode ? 'edit-api-model-form' : 'create-api-model-form'}
     >
       <Card>
         <CardHeader>
-          <CardTitle>{isEditMode ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
+          <CardTitle>{formLogic.isEditMode ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
           <CardDescription>
-            {isEditMode ? 'Update the configuration for your API model' : 'Configure a new external AI API model'}
+            {formLogic.isEditMode ? 'Update the configuration for your API model' : 'Configure a new external AI API model'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="api-format-preset">API Format</Label>
-            <Select value={selectedApiFormat} onValueChange={handleApiFormatChange}>
-              <SelectTrigger id="api-format-preset" data-testid="api-model-format">
-                <SelectValue placeholder="Select an API format" />
-              </SelectTrigger>
-              <SelectContent>
-                {(apiFormatsData?.data || ['openai']).map((format) => (
-                  <SelectItem key={format} value={format}>
-                    {format}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* API Format Selection */}
+          <ApiFormatSelector
+            value={formLogic.watchedValues.api_format}
+            options={formLogic.apiFormatsData}
+            onValueChange={formLogic.handleApiFormatChange}
+            data-testid="api-model-format"
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="base_url">Base URL</Label>
-            <Input
-              id="base_url"
-              data-testid="api-model-base-url"
-              {...register('base_url')}
-              placeholder="https://api.openai.com/v1"
-            />
-            {errors.base_url && <p className="text-sm text-destructive">{errors.base_url.message}</p>}
-          </div>
+          {/* Base URL Input */}
+          <BaseUrlInput
+            {...formLogic.register('base_url')}
+            error={formLogic.errors.base_url?.message}
+            data-testid="api-model-base-url"
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="api_key">API Key</Label>
-            <div className="relative">
-              <Input
-                id="api_key"
-                data-testid="api-model-api-key"
-                type={showApiKey ? 'text' : 'password'}
-                {...register('api_key')}
-                placeholder={isEditMode ? 'Leave empty to keep existing key' : 'Enter your API key'}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3"
-                data-testid="toggle-api-key-visibility"
-                onClick={() => setShowApiKey(!showApiKey)}
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            {errors.api_key && <p className="text-sm text-destructive">{errors.api_key.message}</p>}
-          </div>
+          {/* API Key Input */}
+          <ApiKeyInput
+            {...formLogic.register('api_key')}
+            mode={formLogic.mode}
+            error={formLogic.errors.api_key?.message}
+            data-testid="api-model-api-key"
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="prefix">Model Prefix</Label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="usePrefix"
-                data-testid="api-model-use-prefix"
-                {...register('usePrefix')}
-                className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
-              />
-              <Label htmlFor="usePrefix" className="text-sm text-muted-foreground">
-                Enable prefix
-              </Label>
-              <Input
-                id="prefix"
-                data-testid="api-model-prefix"
-                {...register('prefix')}
-                placeholder="e.g., 'azure/', 'openai:', 'my.custom_'"
-                disabled={!watchedValues.usePrefix}
-                className="flex-1"
-              />
-            </div>
-            {errors.prefix && <p className="text-sm text-destructive">{errors.prefix.message}</p>}
-          </div>
+          {/* Prefix Input */}
+          <PrefixInput
+            value={formLogic.watchedValues.prefix}
+            onChange={(value) => formLogic.setValue('prefix', value)}
+            enabled={formLogic.watchedValues.usePrefix}
+            onEnabledChange={(enabled) => formLogic.setValue('usePrefix', enabled)}
+            error={formLogic.errors.prefix?.message}
+            data-testid="api-model-prefix"
+          />
 
-          <div
-            data-testid="fetch-models-container"
-            data-fetch-state={fetchModelsState}
-            data-models-fetched={availableModels.length > 0}
-            data-can-fetch={canFetch}
-          >
-            <ModelSelector
-              selectedModels={watchedValues.models || []}
-              availableModels={availableModels}
-              onModelSelect={handleModelSelect}
-              onModelRemove={handleModelRemove}
-              onModelsSelectAll={handleModelsSelectAll}
-              onFetchModels={handleFetchModels}
-              isFetchingModels={fetchModelsMutation.isLoading}
-              canFetch={canFetch}
-              fetchDisabledReason={getFetchDisabledReason()}
-            />
-          </div>
-          {errors.models && <p className="text-sm text-destructive">{errors.models.message}</p>}
+          {/* Model Selection */}
+          <ModelSelectionSection
+            selectedModels={formLogic.watchedValues.models || []}
+            availableModels={formLogic.fetchModels.availableModels}
+            onModelSelect={formLogic.handleModelSelect}
+            onModelRemove={formLogic.handleModelRemove}
+            onModelsSelectAll={formLogic.handleModelsSelectAll}
+            onFetchModels={formLogic.fetchModels.onFetch}
+            isFetchingModels={formLogic.fetchModels.isLoading}
+            canFetch={formLogic.fetchModels.canFetch}
+            fetchDisabledReason={formLogic.fetchModels.disabledReason}
+            error={formLogic.errors.models?.message}
+            provider={formLogic.selectedProvider}
+          />
 
-          <div className="flex justify-between">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      data-testid="test-connection-button"
-                      onClick={handleTestConnection}
-                      disabled={!canTest || testMutation.isLoading}
-                    >
-                      <TestTube className="h-4 w-4 mr-2" />
-                      {testMutation.isLoading ? 'Testing...' : 'Test Connection'}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!canTest && !testMutation.isLoading && (
-                  <TooltipContent>
-                    <p>{getMissingRequirements()}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                data-testid="cancel-button"
-                onClick={() => router.push('/ui/models')}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                data-testid={isEditMode ? 'update-api-model-button' : 'create-api-model-button'}
-                disabled={isSubmitting || createMutation.isLoading || updateMutation.isLoading}
-              >
-                {isSubmitting || createMutation.isLoading || updateMutation.isLoading
-                  ? isEditMode
-                    ? 'Updating...'
-                    : 'Creating...'
-                  : isEditMode
-                    ? 'Update API Model'
-                    : 'Create API Model'}
-              </Button>
-            </div>
-          </div>
+          {/* Form Actions */}
+          <FormActions
+            primaryAction={{
+              label: formLogic.isEditMode ? 'Update API Model' : 'Create API Model',
+              type: 'submit',
+              disabled: formLogic.isLoading,
+              loading: formLogic.isLoading,
+              'data-testid': formLogic.isEditMode ? 'update-api-model-button' : 'create-api-model-button',
+            }}
+            secondaryAction={{
+              label: 'Cancel',
+              onClick: formLogic.handleCancel,
+              'data-testid': 'cancel-button',
+            }}
+            testConnection={formLogic.testConnection}
+          />
         </CardContent>
       </Card>
     </form>
