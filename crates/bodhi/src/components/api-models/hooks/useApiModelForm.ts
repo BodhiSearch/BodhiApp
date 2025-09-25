@@ -33,7 +33,6 @@ export function useApiModelForm({
   onCancel,
   autoSelectCommon = false,
 }: UseApiModelFormProps) {
-
   // Provider state
   const [selectedProvider, setSelectedProvider] = useState<ApiProvider | null>(null);
 
@@ -90,10 +89,7 @@ export function useApiModelForm({
       }
     },
     onError: (error) => {
-      const errorMessage =
-        error.response?.data?.error?.message ||
-        error.message ||
-        'Failed to create API model';
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to create API model';
       if (onError) {
         onError(errorMessage);
       }
@@ -107,10 +103,7 @@ export function useApiModelForm({
       }
     },
     onError: (error) => {
-      const errorMessage =
-        error.response?.data?.error?.message ||
-        error.message ||
-        'Failed to update API model';
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to update API model';
       if (onError) {
         onError(errorMessage);
       }

@@ -11,7 +11,14 @@ export const SETUP_STEPS = {
   COMPLETE: 6,
 } as const;
 
-export const SETUP_STEP_LABELS = ['Get Started', 'Login & Setup', 'Local Models', 'Cloud AI', 'Extension', 'All Done!'];
+export const SETUP_STEP_LABELS = [
+  'Get Started',
+  'Login & Setup',
+  'Local Models',
+  'API Models',
+  'Extension',
+  'All Done!',
+];
 
 export const SETUP_TOTAL_STEPS = 6;
 

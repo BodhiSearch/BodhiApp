@@ -201,14 +201,10 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         // App info and user info handlers
         rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-        rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-          res(ctx.json(createMockUserInfo('resource_user')))
-        ),
+        rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(createMockUserInfo('resource_user')))),
 
         // API model GET handler for initial load
-        rest.get('*/bodhi/v1/api-models/:id', (req, res, ctx) =>
-          res(ctx.json(testData.existingModel))
-        ),
+        rest.get('*/bodhi/v1/api-models/:id', (req, res, ctx) => res(ctx.json(testData.existingModel))),
 
         // API formats and other non-PUT handlers
         rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>

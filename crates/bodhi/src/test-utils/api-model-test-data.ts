@@ -136,7 +136,7 @@ export const mockApiModelResponses: Record<string, ApiModelResponse> = {
   },
   openaiCompatible: {
     id: 'compatible-test-model',
-    api_format: 'openai-compatible',
+    api_format: 'openai',
     base_url: 'https://api.custom-provider.com/v1',
     api_key_masked: '****key',
     models: ['custom-model-1'],
