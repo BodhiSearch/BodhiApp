@@ -202,7 +202,12 @@ test.describe('Enhanced Users Management Flow', () => {
 
     managerContext = await browser.newContext();
     const managerPageNew = await managerContext.newPage();
-    const managerLoginNew = new LoginPage(managerPageNew, baseUrl, authServerConfig, testUsers.manager);
+    const managerLoginNew = new LoginPage(
+      managerPageNew,
+      baseUrl,
+      authServerConfig,
+      testUsers.manager
+    );
     await managerLoginNew.performOAuthLogin();
 
     const managerUsersPageNew = new AllUsersPage(managerPageNew, baseUrl);
@@ -215,7 +220,9 @@ test.describe('Enhanced Users Management Flow', () => {
     await managerUsersPageNew.expectNoActionsForUser(testUsers.admin.username);
     await managerUsersPageNew.expectRestrictedUserIndicator(testUsers.admin.username);
 
-    const managerPowerUserRow = await managerUsersPageNew.findUserRowByUsername(testUsers.powerUser.username);
+    const managerPowerUserRow = await managerUsersPageNew.findUserRowByUsername(
+      testUsers.powerUser.username
+    );
     const managerPowerUserActions = managerPowerUserRow.locator('td:last-child');
     const managerPowerUserDropdown = managerPowerUserActions.locator('button[role="combobox"]');
     const managerPowerUserRemoveBtn = managerPowerUserActions.locator('button:has-text("Remove")');
@@ -298,7 +305,9 @@ test.describe('Enhanced Users Management Flow', () => {
     await adminUsersPage.navigateToUsers();
     await adminUsersPage.expectUsersPage();
 
-    const powerUserRemoveButton = adminPage.locator(`[data-testid="remove-user-btn-${testUsers.powerUser.username}"]`);
+    const powerUserRemoveButton = adminPage.locator(
+      `[data-testid="remove-user-btn-${testUsers.powerUser.username}"]`
+    );
     await expect(powerUserRemoveButton).toBeVisible();
 
     await adminUsersPage.removeUser(testUsers.powerUser.username);
@@ -306,7 +315,9 @@ test.describe('Enhanced Users Management Flow', () => {
 
     await adminUsersPage.expectUserNotExists(testUsers.powerUser.username);
 
-    const cancelTestRemoveBtn = adminPage.locator(`[data-testid="remove-user-btn-${testUsers.user.username}"]`);
+    const cancelTestRemoveBtn = adminPage.locator(
+      `[data-testid="remove-user-btn-${testUsers.user.username}"]`
+    );
     await cancelTestRemoveBtn.click();
     await adminUsersPage.expectRemoveUserDialog();
     await adminUsersPage.cancelRemoveUser();

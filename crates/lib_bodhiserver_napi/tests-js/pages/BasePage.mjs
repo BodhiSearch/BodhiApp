@@ -149,7 +149,9 @@ export class BasePage {
   async dismissAllToasts() {
     try {
       // Find all visible toasts and close buttons
-      const toastCloseButtons = await this.page.locator('[data-radix-toast-announce-exclude] button').all();
+      const toastCloseButtons = await this.page
+        .locator('[data-radix-toast-announce-exclude] button')
+        .all();
 
       // Click all close buttons to dismiss toasts
       for (const closeButton of toastCloseButtons) {

@@ -133,7 +133,7 @@ export class ChatPage extends BasePage {
   async waitForResponseComplete() {
     const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
     await expect(lastAssistantMessage).toBeVisible();
-    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible({ timeout: 20000 });  // wait longer for chat messages
+    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible({ timeout: 20000 }); // wait longer for chat messages
     const latestAiMessage = this.page.locator(this.selectors.latestAiMessage);
     await expect(latestAiMessage).toHaveClass(/message-completed/);
   }
