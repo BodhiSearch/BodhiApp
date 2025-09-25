@@ -35,7 +35,9 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         <CardHeader>
           <CardTitle>{formLogic.isEditMode ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
           <CardDescription>
-            {formLogic.isEditMode ? 'Update the configuration for your API model' : 'Configure a new external AI API model'}
+            {formLogic.isEditMode
+              ? 'Update the configuration for your API model'
+              : 'Configure a new external AI API model'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

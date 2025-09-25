@@ -32,11 +32,7 @@ export function ApiFormatSelector({
         {required && <Badge variant="secondary">Required</Badge>}
       </Label>
 
-      <Select
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-      >
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger id={testId} data-testid={testId}>
           <SelectValue placeholder="Select an API format" />
         </SelectTrigger>
@@ -56,9 +52,7 @@ export function ApiFormatSelector({
       )}
 
       {!error && options.length === 1 && (
-        <p className="text-xs text-muted-foreground">
-          Currently supporting OpenAI-compatible APIs
-        </p>
+        <p className="text-xs text-muted-foreground">Currently supporting OpenAI-compatible APIs</p>
       )}
     </div>
   );

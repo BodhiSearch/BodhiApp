@@ -20,7 +20,7 @@ export function ProviderInfo({
   isSelected,
   onSelect,
   variant = 'default',
-  showCategory = false
+  showCategory = false,
 }: ProviderInfoProps) {
   return (
     <motion.div
@@ -41,23 +41,14 @@ export function ProviderInfo({
         )}
       >
         <CardHeader className={cn(variant === 'compact' ? 'pb-2' : 'pb-3')}>
-          <CardTitle className={cn(
-            'flex items-center justify-between',
-            variant === 'compact' ? 'text-lg' : 'text-xl'
-          )}>
+          <CardTitle className={cn('flex items-center justify-between', variant === 'compact' ? 'text-lg' : 'text-xl')}>
             <div className="flex items-center gap-3">
               <span className="text-2xl" data-testid={`provider-icon-${provider.id}`}>
                 {provider.icon}
               </span>
               <div className="flex flex-col">
-                <span data-testid={`provider-name-${provider.id}`}>
-                  {provider.name}
-                </span>
-                {showCategory && (
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {provider.category}
-                  </span>
-                )}
+                <span data-testid={`provider-name-${provider.id}`}>{provider.name}</span>
+                {showCategory && <span className="text-xs text-muted-foreground capitalize">{provider.category}</span>}
               </div>
             </div>
             {isSelected && (

@@ -56,9 +56,7 @@ export function ModelSelectionSection({
       {provider && (
         <p className="text-sm text-muted-foreground">
           Select which {provider.name} models you'd like to use.
-          {autoSelectCommon && provider.commonModels.length > 0 && (
-            <span> Popular models will be auto-selected.</span>
-          )}
+          {autoSelectCommon && provider.commonModels.length > 0 && <span> Popular models will be auto-selected.</span>}
         </p>
       )}
 

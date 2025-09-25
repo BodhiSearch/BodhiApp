@@ -63,9 +63,7 @@ export const BaseUrlInput = forwardRef<HTMLInputElement, BaseUrlInputProps>(
         )}
 
         {!error && !helpText && (
-          <p className="text-xs text-muted-foreground">
-            Enter the complete API endpoint URL for your provider
-          </p>
+          <p className="text-xs text-muted-foreground">Enter the complete API endpoint URL for your provider</p>
         )}
       </div>
     );

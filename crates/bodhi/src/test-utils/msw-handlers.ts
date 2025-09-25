@@ -127,7 +127,10 @@ export const createErrorHandlers = () => [
   ),
 
   rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models request status' } }))
+    res(
+      ctx.status(500),
+      ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models request status' } })
+    )
   ),
 
   rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (_, res, ctx) =>
@@ -219,7 +222,9 @@ export const createRoleBasedHandlers = (userRole: string, shouldHaveAccess: bool
 export const createApiModelHandlers = (overrides: Partial<HandlerOverrides> = {}) => [
   // Standard app/user endpoints
   rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json(overrides.appInfo || { status: 'ready' }))),
-  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(overrides.userInfo || createMockUserInfo('resource_user')))),
+  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
+    res(ctx.json(overrides.userInfo || createMockUserInfo('resource_user')))
+  ),
 
   // API Models endpoints
   rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>

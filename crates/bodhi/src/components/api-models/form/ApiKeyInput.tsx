@@ -102,9 +102,7 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
             tabIndex={-1}
           >
             {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="sr-only">
-              {showApiKey ? 'Hide API key' : 'Show API key'}
-            </span>
+            <span className="sr-only">{showApiKey ? 'Hide API key' : 'Show API key'}</span>
           </Button>
         </div>
 

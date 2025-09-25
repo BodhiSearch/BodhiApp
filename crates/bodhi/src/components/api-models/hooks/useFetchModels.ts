@@ -31,10 +31,7 @@ export function useFetchModels({
   const { toast, dismiss } = useToast();
 
   const canFetch = (data: FetchModelsData) => {
-    return Boolean(
-      data.baseUrl &&
-      (data.apiKey || (mode === 'edit' && initialData?.id))
-    );
+    return Boolean(data.baseUrl && (data.apiKey || (mode === 'edit' && initialData?.id)));
   };
 
   const getFetchDisabledReason = (data: FetchModelsData) => {
