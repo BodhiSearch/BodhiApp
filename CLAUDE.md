@@ -241,3 +241,4 @@ The application embeds the UI build, so changes to React components won't be vis
 - Do not plan for backwards compatibility unless specifically mentioned - BodhiApp prioritizes architectural improvement over legacy support
 - Do not add timeouts for Playwright UI tests except on ChatPage which requires model warm-up time
 - if you make changes to @crates/bodhi/src/ you have to run `make rebuild.ui` in project root for playwright test to get the ui updates
+- do not add inline timeout in component test in crates/bodhi/src, instead rely on the default timeout, or modify the source/test for it so we do not have to override the default timeout
