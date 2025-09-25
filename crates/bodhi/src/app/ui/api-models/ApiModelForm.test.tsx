@@ -297,7 +297,7 @@ describe('ApiModelForm', () => {
       expect(apiKeyInput).toHaveAttribute('type', 'password');
 
       // Click the eye icon to show password
-      const toggleButton = screen.getByTestId('toggle-api-key-visibility');
+      const toggleButton = screen.getByTestId('api-model-api-key-visibility-toggle');
       await user.click(toggleButton);
 
       expect(apiKeyInput).toHaveAttribute('type', 'text');

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useDownloads, usePullModel } from '@/hooks/useQuery';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_COMPLETE } from '@/lib/constants';
+import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -97,7 +97,7 @@ export function ModelDownloadContent() {
         </motion.div>
 
         <motion.div variants={itemVariants} className="flex justify-end">
-          <Button variant="outline" onClick={() => router.push(ROUTE_SETUP_COMPLETE)}>
+          <Button variant="outline" onClick={() => router.push(ROUTE_SETUP_API_MODELS)}>
             Continue
           </Button>
         </motion.div>

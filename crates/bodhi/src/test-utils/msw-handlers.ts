@@ -19,6 +19,11 @@ export interface HandlerOverrides {
   submitRequest?: unknown;
   approveRequest?: unknown;
   rejectRequest?: unknown;
+  apiFormats?: unknown;
+  testApiModel?: unknown;
+  fetchModels?: unknown;
+  createApiModel?: unknown;
+  updateApiModel?: unknown;
 }
 
 export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) => [
@@ -86,22 +91,43 @@ export const createAccessRequestHandlers = (overrides: HandlerOverrides = {}) =>
 
   // Remove user
   rest.delete('*/bodhi/v1/users/:userId', (_, res, ctx) => res(ctx.json({}))),
+
+  // API Models endpoints
+  rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>
+    res(ctx.json(overrides.apiFormats || { data: ['openai'] }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) =>
+    res(ctx.json(overrides.testApiModel || { success: true, response: 'Test successful' }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) =>
+    res(ctx.json(overrides.fetchModels || { models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models', (_, res, ctx) =>
+    res(ctx.json(overrides.createApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
+  ),
+
+  rest.put('*/bodhi/v1/api-models/:id', (_, res, ctx) =>
+    res(ctx.json(overrides.updateApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
+  ),
 ];
 
 // Create handlers for error scenarios
 export const createErrorHandlers = () => [
   // App info endpoint error
   rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch app info' } }))
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models app info' } }))
   ),
 
   // User info endpoint error
   rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch user info' } }))
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models user info' } }))
   ),
 
   rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch request status' } }))
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models request status' } }))
   ),
 
   rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (_, res, ctx) =>
@@ -127,6 +153,27 @@ export const createErrorHandlers = () => [
   // Users endpoint error
   rest.get('*/bodhi/v1/users', (_, res, ctx) =>
     res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch users' } }))
+  ),
+
+  // API Models endpoints errors
+  rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>
+    res(ctx.status(500), ctx.json({ error: { type: 'internal_error', message: 'Failed to fetch-models API formats' } }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) =>
+    res(ctx.json({ success: false, error: 'Connection test failed' }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) =>
+    res(ctx.status(401), ctx.json({ error: { type: 'authentication_error', message: 'Invalid API key' } }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models', (_, res, ctx) =>
+    res(ctx.status(400), ctx.json({ error: { type: 'invalid_request_error', message: 'Invalid API model data' } }))
+  ),
+
+  rest.put('*/bodhi/v1/api-models/:id', (_, res, ctx) =>
+    res(ctx.status(404), ctx.json({ error: { type: 'not_found_error', message: 'API model not found' } }))
   ),
 ];
 
@@ -166,4 +213,32 @@ export const createRoleBasedHandlers = (userRole: string, shouldHaveAccess: bool
     }
     return res(ctx.json(mockSimpleUsersResponse));
   }),
+];
+
+// Create handlers specifically for API models testing
+export const createApiModelHandlers = (overrides: Partial<HandlerOverrides> = {}) => [
+  // Standard app/user endpoints
+  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json(overrides.appInfo || { status: 'ready' }))),
+  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(overrides.userInfo || createMockUserInfo('resource_user')))),
+
+  // API Models endpoints
+  rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>
+    res(ctx.json(overrides.apiFormats || { data: ['openai'] }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) =>
+    res(ctx.json(overrides.testApiModel || { success: true, response: 'Test successful' }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) =>
+    res(ctx.json(overrides.fetchModels || { models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] }))
+  ),
+
+  rest.post('*/bodhi/v1/api-models', (_, res, ctx) =>
+    res(ctx.json(overrides.createApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
+  ),
+
+  rest.put('*/bodhi/v1/api-models/:id', (_, res, ctx) =>
+    res(ctx.json(overrides.updateApiModel || { id: 'test-api-model-id', api_format: 'openai' }))
+  ),
 ];

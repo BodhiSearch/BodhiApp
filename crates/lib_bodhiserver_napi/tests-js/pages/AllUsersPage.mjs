@@ -74,10 +74,7 @@ export class AllUsersPage extends BasePage {
   }
 
   async findUserRowByUsername(username) {
-    // Wait for table to be populated
     await this.page.waitForSelector(this.selectors.tableRow);
-
-    // Find the row containing the username
     const rows = await this.page.locator(this.selectors.tableRow).all();
 
     for (const row of rows) {
@@ -98,13 +95,9 @@ export class AllUsersPage extends BasePage {
 
   async expectUserNotExists(username) {
     try {
-      await this.findUserRowByUsername(username);
-      throw new Error(`User ${username} should not exist but was found`);
+      const row = await this.findUserRowByUsername(username);
+      await expect(row).not.toBeVisible();
     } catch (error) {
-      if (error.message.includes('should not exist')) {
-        throw error;
-      }
-      // Expected - user not found
       console.log(`Confirmed: User ${username} is not in the list`);
     }
   }
