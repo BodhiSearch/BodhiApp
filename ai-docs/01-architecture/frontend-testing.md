@@ -7,18 +7,20 @@
 ### Framer Motion Components
 **IMPORTANT**: Components using `framer-motion` (motion.div, motion.button, etc.) require proper mocking to prevent test failures and React warnings.
 
-**Global Mock Available**: Framer Motion is globally mocked in `src/tests/setup.ts` and filters out animation props (`whileHover`, `whileTap`, `animate`, `initial`, etc.) to prevent React warnings.
+**Universal Mock Implementation**: Framer Motion is mocked using module aliasing in `vitest.config.ts` which provides a single, consistent mock across all tests.
 
-**If Tests Still Fail**: Some test files may need local mocks due to import order or specific test configurations. Add this mock at the top of your test file:
+**Mock Architecture**:
+- **Module Aliasing**: `framer-motion` is aliased to `/src/tests/mocks/framer-motion.tsx` in vitest configuration
+- **Intelligent Prop Filtering**: Only removes motion-specific props, preserves all HTML functionality (onClick, data-testid, etc.)
+- **Comprehensive Coverage**: Supports all common HTML elements and framer-motion hooks
 
-```typescript
-vi.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-    // Add other motion elements as needed (button, span, etc.)
-  },
-}));
-```
+**No Local Mocks Needed**: The module aliasing approach eliminates the need for individual test file mocks. All framer-motion imports are automatically resolved to the universal mock.
+
+**Mock Features**:
+- Preserves HTML event handlers (onClick, onSubmit, etc.)
+- Maintains accessibility attributes (data-testid, aria-*, etc.)
+- Supports CSS classes and styling
+- Includes mock implementations for framer-motion hooks (useAnimation, useMotionValue, etc.)
 
 **Symptoms of Missing Mock**:
 - React warnings about unrecognized props (`whileHover`, `whileTap`, etc.)
@@ -483,31 +485,8 @@ describe('OAuth Error Handling', () => {
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
-// Mock framer-motion to avoid animation issues in tests
-// IMPORTANT: This global mock filters out framer-motion props to prevent React warnings
-vi.mock('framer-motion', () => {
-  const React = require('react');
-  return {
-    motion: new Proxy({}, {
-      get: (target, prop) => {
-        return ({ children, ...rest }: { children?: React.ReactNode }) => {
-          // Filter out framer-motion specific props to avoid React warnings
-          const {
-            animate, initial, exit, variants, transition,
-            whileHover, whileTap, whileFocus, whileInView,
-            drag, dragConstraints, dragElastic, dragMomentum, dragTransition,
-            onDrag, onDragStart, onDragEnd, layout, layoutId,
-            ...filteredProps
-          } = rest;
-          return React.createElement('div', filteredProps, children);
-        };
-      }
-    }),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
-    useAnimation: () => ({}),
-  };
-});
+// Framer Motion is mocked via module aliasing in vitest.config.ts
+// No runtime mocking needed - the alias resolves 'framer-motion' imports to our mock module
 
 // Mock ResizeObserver
 global.ResizeObserver = class MockResizeObserver {
@@ -706,8 +685,8 @@ return useMutationQuery<AuthInitiateResponse, void>(
 ### Test Environment Issues
 
 #### Issue: Framer Motion Errors
-**Problem**: Animation library causing test failures
-**Solution**: Mock framer-motion in test setup
+**Problem**: Animation library causing test failures and React warnings
+**Solution**: Universal mock using module aliasing in vitest.config.ts - eliminates need for individual test file mocks
 
 #### Issue: ResizeObserver Errors
 **Problem**: Browser API not available in test environment
@@ -752,6 +731,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'framer-motion': path.resolve(__dirname, './src/tests/mocks/framer-motion.tsx'),
     },
   },
   test: {
@@ -777,6 +757,7 @@ export default defineConfig({
 - **Environment**: Using `jsdom` instead of `happy-dom` for better compatibility
 - **Setup Files**: Global test setup in `./src/tests/setup.ts`
 - **Alias Support**: `@/` imports work in tests
+- **Framer Motion Mock**: Module aliasing resolves `framer-motion` to universal mock
 - **Global APIs**: Vitest globals enabled for `describe`, `it`, `expect`
 
 ## Testing Best Practices Summary
@@ -811,7 +792,7 @@ export default defineConfig({
 
 #### 5. Test Environment Setup
 - **Mock browser APIs** (ResizeObserver, matchMedia) that aren't available in tests
-- **Mock animation libraries** (framer-motion) to prevent test failures
+- **Universal framer-motion mock** using module aliasing for consistent behavior across all tests
 - **Suppress expected console errors** to reduce noise in test output
 
 #### 6. OAuth Flow Testing Specifics
@@ -879,7 +860,8 @@ import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 - `crates/bodhi/src/hooks/useOAuth.ts:33-60` - OAuth hook using useMutationQuery pattern
 - `crates/bodhi/src/tests/setup.ts:1-77` - Global test environment setup
 - `crates/bodhi/src/tests/wrapper.tsx:1-43` - Standardized test utilities including mockWindowLocation
-- `crates/bodhi/vitest.config.ts:5-28` - Vitest configuration for frontend tests
+- `crates/bodhi/src/tests/mocks/framer-motion.tsx` - Universal framer-motion mock module
+- `crates/bodhi/vitest.config.ts:5-28` - Vitest configuration with module aliasing for framer-motion
 
 **Example Test Files**:
 - `crates/bodhi/src/app/ui/login/page.test.tsx` - AppInitializer page testing patterns
