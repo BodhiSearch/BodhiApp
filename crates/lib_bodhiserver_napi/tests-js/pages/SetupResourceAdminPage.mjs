@@ -25,6 +25,7 @@ export class SetupResourceAdminPage extends SetupBasePage {
   }
 
   async expectResourceAdminPage() {
+    await this.page.waitForURL((url) => url.pathname === '/ui/setup/resource-admin/');
     await this.expectVisible(this.selectors.adminSetupTitle);
     await this.expectStepIndicator(2);
     await this.expectVisible(this.selectors.continueWithLoginButton);

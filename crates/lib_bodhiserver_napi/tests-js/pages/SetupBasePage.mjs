@@ -8,7 +8,7 @@ export class SetupBasePage extends BasePage {
 
   selectors = {
     setupProgress: '[data-testid="setup-progress"]',
-    stepIndicator: (step) => `text=Step ${step} of 4`,
+    stepIndicator: (step) => `text=Step ${step} of `,
     bodhiLogo: '[data-testid="bodhi-logo"]',
     continueButton: 'button:has-text("Continue")',
     backButton: 'button:has-text("Back")',

@@ -27,6 +27,17 @@ export class SetupFixtures {
     };
   }
 
+  static getNetworkIPServerConfig(authServerConfig, port, host = '0.0.0.0') {
+    return {
+      appStatus: 'setup',
+      authUrl: authServerConfig.authUrl,
+      authRealm: authServerConfig.authRealm,
+      host, // Bind to all interfaces for network IP access
+      port,
+      logLevel: 'debug',
+    };
+  }
+
   // Test scenarios for different setup paths
   static scenarios = {
     FULL_SETUP: () => ({
@@ -49,6 +60,13 @@ export class SetupFixtures {
       serverName: `Minimal Test ${Date.now()}`,
       skipDownloads: true,
       completeFlow: true,
+    }),
+
+    NETWORK_IP_SETUP: () => ({
+      ...this.createSetupFlowData(),
+      serverName: `Network IP Test ${Date.now()}`,
+      skipDownloads: true,
+      useNetworkIP: true,
     }),
   };
 

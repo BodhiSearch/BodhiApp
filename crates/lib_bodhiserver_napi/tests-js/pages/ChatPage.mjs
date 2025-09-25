@@ -209,6 +209,11 @@ export class ChatPage extends BasePage {
     await this.waitForSPAReady();
   }
 
+  async expectChatPage() {
+    await this.page.waitForURL((url) => url.pathname === '/ui/chat/');
+    await this.waitForChatPageLoad();
+  }
+
   /**
    * Verify that chat is empty (shows empty state)
    */

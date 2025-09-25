@@ -25,12 +25,6 @@ export class SetupCompletePage extends SetupBasePage {
 
   async expectSetupCompletePage() {
     await this.expectVisible(this.selectors.setupCompleteTitle);
-    // Complete page might not show step indicator
-    try {
-      await this.expectStepIndicator(4);
-    } catch {
-      // Step indicator might not be shown on completion page
-    }
   }
 
   async expectCompletionMessage() {
