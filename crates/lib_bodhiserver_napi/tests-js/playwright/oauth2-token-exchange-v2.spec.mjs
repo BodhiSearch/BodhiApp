@@ -224,7 +224,9 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       expect(userInfoResponse.status).toBe(200);
       const userInfo = await userInfoResponse.json();
       expect(userInfo.auth_status).toBe('logged_out');
-      console.log(`✅ Error handling verified: Unauthenticated user gets auth_status: 'logged_out'`);
+      console.log(
+        `✅ Error handling verified: Unauthenticated user gets auth_status: 'logged_out'`
+      );
     } finally {
       await serverManager.stopServer();
     }

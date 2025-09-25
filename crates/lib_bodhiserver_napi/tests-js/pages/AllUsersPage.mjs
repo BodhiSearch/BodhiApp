@@ -517,7 +517,9 @@ export class AllUsersPage extends BasePage {
 
   async isUserInList(username) {
     try {
-      await this.page.waitForSelector(`tbody tr:has([data-testid="user-username"]:has-text("${username}"))`);
+      await this.page.waitForSelector(
+        `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`
+      );
       return true;
     } catch {
       return false;

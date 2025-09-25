@@ -153,7 +153,10 @@ export class ApiModelFormPage extends BasePage {
     // If we couldn't get ID from toast, get it from the latest model
     if (!generatedId) {
       console.log('Using fallback: getting ID from latest model in list');
-      const modelsPage = new (await import('./ModelsListPage.mjs')).ModelsListPage(this.page, this.baseUrl);
+      const modelsPage = new (await import('./ModelsListPage.mjs')).ModelsListPage(
+        this.page,
+        this.baseUrl
+      );
       const latestModel = await modelsPage.getLatestModel();
       generatedId = await modelsPage.getModelIdFromRow(latestModel);
     }

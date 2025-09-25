@@ -71,12 +71,12 @@ function createTestServer(bindings, options = {}) {
 
   const envVars = {
     ...options.envVars,
-    HF_HOME: hfHomePath
+    HF_HOME: hfHomePath,
   };
 
   const config = createFullTestConfig(bindings, {
     ...options,
-    envVars
+    envVars,
   });
 
   const server = new bindings.BodhiServer(config);
