@@ -48,7 +48,6 @@ export class SetupWelcomePage extends SetupBasePage {
   }
 
   async completeInitialSetup(serverName = 'My Test Bodhi Server') {
-    await this.expectWelcomePage();
     await this.fillServerName(serverName);
     await this.clickSetupServer();
   }

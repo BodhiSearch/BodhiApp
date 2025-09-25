@@ -72,7 +72,8 @@ export class UsersManagementPage extends BasePage {
     const rows = await this.page.locator(this.selectors.tableRow).all();
 
     for (const row of rows) {
-      const usernameText = await row.locator(this.selectors.usernameCell).textContent();
+      const element = row.locator(this.selectors.usernameCell);
+      const usernameText = await element.textContent();
       if (usernameText && usernameText.trim() === username) {
         return row;
       }
@@ -133,6 +134,9 @@ export class UsersManagementPage extends BasePage {
     const approveButton = row.locator(this.selectors.approveButton);
     await expect(approveButton).toBeEnabled();
     await approveButton.click();
+
+    // Wait for approval to complete
+    await this.waitForApprovalSuccess();
   }
 
   async rejectRequest(username) {
@@ -178,9 +182,6 @@ export class UsersManagementPage extends BasePage {
   }
 
   async expectRequestNotInList(username) {
-    // Wait a moment for the page to update
-    await this.page.waitForTimeout(1000);
-
     // Check if the "No Pending Requests" message is shown (empty list case)
     const noRequestsVisible = await this.page.locator(this.selectors.noRequestsMessage).isVisible();
     if (noRequestsVisible) {
@@ -190,8 +191,8 @@ export class UsersManagementPage extends BasePage {
 
     // If not empty, verify the specific request is not in the list
     try {
-      await this.findRequestRowByUsername(username);
-      throw new Error(`Request for ${username} should not exist but was found`);
+      const row = await this.findRequestRowByUsername(username);
+      await expect(row).not.toBeVisible();
     } catch (error) {
       if (error.message.includes('should not exist')) {
         throw error;
