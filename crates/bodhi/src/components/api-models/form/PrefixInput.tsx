@@ -41,10 +41,7 @@ export function PrefixInput({
           data-testid={`${testId}-checkbox`}
           className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
         />
-        <Label
-          htmlFor={`${testId}-enabled`}
-          className="text-sm text-muted-foreground cursor-pointer flex-shrink-0"
-        >
+        <Label htmlFor={`${testId}-enabled`} className="text-sm text-muted-foreground cursor-pointer flex-shrink-0">
           {enabledLabel}
         </Label>
         <Input

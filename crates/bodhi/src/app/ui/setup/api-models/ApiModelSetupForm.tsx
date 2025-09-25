@@ -61,11 +61,7 @@ export function ApiModelSetupForm({ onComplete, onSkip }: ApiModelSetupFormProps
 
       {/* Configuration Form */}
       {formLogic.selectedProvider && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

@@ -22,11 +22,7 @@ export function useTestConnection({ mode = 'create', initialData }: UseTestConne
   const { toast, dismiss } = useToast();
 
   const canTest = (data: TestConnectionData) => {
-    return Boolean(
-      data.baseUrl &&
-      (data.apiKey || (mode === 'edit' && initialData?.id)) &&
-      data.model
-    );
+    return Boolean(data.baseUrl && (data.apiKey || (mode === 'edit' && initialData?.id)) && data.model);
   };
 
   const getMissingRequirements = (data: TestConnectionData) => {

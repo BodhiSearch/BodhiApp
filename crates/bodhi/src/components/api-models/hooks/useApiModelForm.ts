@@ -58,22 +58,22 @@ export function useApiModelForm({
           usePrefix: Boolean(initialData?.prefix),
         }
       : mode === 'setup'
-      ? {
-          api_format: '',
-          base_url: '',
-          api_key: '',
-          models: [],
-          prefix: '',
-          usePrefix: false,
-        }
-      : {
-          api_format: 'openai',
-          base_url: 'https://api.openai.com/v1',
-          api_key: '',
-          models: [],
-          prefix: '',
-          usePrefix: false,
-        },
+        ? {
+            api_format: '',
+            base_url: '',
+            api_key: '',
+            models: [],
+            prefix: '',
+            usePrefix: false,
+          }
+        : {
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key: '',
+            models: [],
+            prefix: '',
+            usePrefix: false,
+          },
   });
 
   const {
@@ -105,7 +105,7 @@ export function useApiModelForm({
   useEffect(() => {
     if (watchedValues.api_format && !selectedProvider) {
       // Only auto-select provider if no provider is currently selected
-      const provider = API_PROVIDERS.find(p => p.format === watchedValues.api_format);
+      const provider = API_PROVIDERS.find((p) => p.format === watchedValues.api_format);
       if (provider) {
         setSelectedProvider(provider);
       }
@@ -155,7 +155,10 @@ export function useApiModelForm({
 
   const handleModelRemove = (modelName: string) => {
     const currentModels = watchedValues.models || [];
-    setValue('models', currentModels.filter((m) => m !== modelName));
+    setValue(
+      'models',
+      currentModels.filter((m) => m !== modelName)
+    );
   };
 
   const handleModelsSelectAll = (allModels: string[]) => {
@@ -241,14 +244,11 @@ export function useApiModelForm({
   // Computed values
   const canTest = Boolean(
     watchedValues.base_url &&
-    (watchedValues.api_key || (isEditMode && initialData?.id)) &&
-    watchedValues.models?.length > 0
+      (watchedValues.api_key || (isEditMode && initialData?.id)) &&
+      watchedValues.models?.length > 0
   );
 
-  const canFetch = Boolean(
-    watchedValues.base_url &&
-    (watchedValues.api_key || (isEditMode && initialData?.id))
-  );
+  const canFetch = Boolean(watchedValues.base_url && (watchedValues.api_key || (isEditMode && initialData?.id)));
 
   return {
     // Form state

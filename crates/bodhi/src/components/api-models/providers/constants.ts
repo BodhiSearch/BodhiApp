@@ -43,7 +43,7 @@ export const PROVIDER_BENEFITS = [
   {
     icon: '🚀',
     title: 'Latest Models',
-    description: 'Access cutting-edge AI models as soon as they\'re released',
+    description: "Access cutting-edge AI models as soon as they're released",
   },
   {
     icon: '⚡',
