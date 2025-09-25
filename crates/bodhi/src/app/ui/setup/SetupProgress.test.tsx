@@ -84,7 +84,7 @@ describe('SetupProgress', () => {
       expect(screen.getByText('Get Started')).toBeInTheDocument();
       expect(screen.getByText('Login & Setup')).toBeInTheDocument();
       expect(screen.getByText('Local Models')).toBeInTheDocument();
-      expect(screen.getByText('Cloud AI')).toBeInTheDocument();
+      expect(screen.getByText('API Models')).toBeInTheDocument();
       expect(screen.getByText('Extension')).toBeInTheDocument();
       expect(screen.getByText('All Done!')).toBeInTheDocument();
     });

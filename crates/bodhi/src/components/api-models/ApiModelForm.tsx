@@ -16,17 +16,28 @@ import { ModelSelectionSection } from '@/components/api-models/form/ModelSelecti
 import { FormActions } from '@/components/api-models/actions/FormActions';
 
 interface ApiModelFormProps {
-  isEditMode: boolean;
+  mode: 'create' | 'edit' | 'setup';
   initialData?: ApiModelResponse;
+  onSuccessRoute?: string;
+  onCancelRoute?: string;
 }
 
-export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormProps) {
+export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCancelRoute }: ApiModelFormProps) {
   const router = useRouter();
   const { toast } = useToast();
 
+  // Determine default routes based on mode
+  const defaultSuccessRoute = mode === 'setup' ? '/ui/setup/complete' : '/ui/models';
+  const defaultCancelRoute = mode === 'setup' ? '/ui/setup/complete' : '/ui/models';
+
+  const successRoute = onSuccessRoute || defaultSuccessRoute;
+  const cancelRoute = onCancelRoute || defaultCancelRoute;
+
+  const isEditMode = mode === 'edit';
+
   // Use the centralized business logic hook
   const formLogic = useApiModelForm({
-    mode: isEditMode ? 'edit' : 'create',
+    mode,
     initialData,
     onSuccess: (data) => {
       toast({
@@ -35,7 +46,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           ? `Successfully updated ${initialData?.id}`
           : `Successfully created API model: ${data.id}`,
       });
-      router.push('/ui/models');
+      router.push(successRoute);
     },
     onError: (errorMessage) => {
       toast({
@@ -45,7 +56,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
       });
     },
     onCancel: () => {
-      router.push('/ui/models');
+      router.push(cancelRoute);
     },
   });
 
@@ -53,15 +64,21 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
     <form
       onSubmit={formLogic.handleSubmit}
       className="space-y-8 mx-4 my-6"
-      data-testid={formLogic.isEditMode ? 'edit-api-model-form' : 'create-api-model-form'}
+      data-testid={
+        mode === 'edit' ? 'edit-api-model-form' : mode === 'setup' ? 'setup-api-model-form' : 'create-api-model-form'
+      }
     >
       <Card>
         <CardHeader>
-          <CardTitle>{formLogic.isEditMode ? 'Edit API Model' : 'Create New API Model'}</CardTitle>
+          <CardTitle>
+            {mode === 'edit' ? 'Edit API Model' : mode === 'setup' ? 'Setup API Models' : 'Create New API Model'}
+          </CardTitle>
           <CardDescription>
-            {formLogic.isEditMode
+            {mode === 'edit'
               ? 'Update the configuration for your API model'
-              : 'Configure a new external AI API model'}
+              : mode === 'setup'
+                ? 'Configure cloud-based AI models for your setup'
+                : 'Configure a new external AI API model'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -116,17 +133,21 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
           {/* Form Actions */}
           <FormActions
             primaryAction={{
-              label: formLogic.isEditMode ? 'Update API Model' : 'Create API Model',
+              label: mode === 'edit' ? 'Update API Model' : 'Create API Model',
               type: 'submit',
               disabled: formLogic.isLoading,
               loading: formLogic.isLoading,
-              'data-testid': formLogic.isEditMode ? 'update-api-model-button' : 'create-api-model-button',
+              'data-testid': mode === 'edit' ? 'update-api-model-button' : 'create-api-model-button',
             }}
-            secondaryAction={{
-              label: 'Cancel',
-              onClick: formLogic.handleCancel,
-              'data-testid': 'cancel-button',
-            }}
+            secondaryAction={
+              mode === 'setup'
+                ? undefined
+                : {
+                    label: 'Cancel',
+                    onClick: formLogic.handleCancel,
+                    'data-testid': 'cancel-button',
+                  }
+            }
             testConnection={formLogic.testConnection}
           />
         </CardContent>

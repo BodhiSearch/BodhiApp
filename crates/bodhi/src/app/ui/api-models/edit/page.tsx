@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
-import ApiModelForm from '@/app/ui/api-models/ApiModelForm';
+import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
 import { useApiModel } from '@/hooks/useApiModels';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -37,7 +37,7 @@ function EditApiModelContent() {
     return <ErrorPage message="API model not found" />;
   }
 
-  return <ApiModelForm isEditMode={true} initialData={apiModel} />;
+  return <ApiModelForm mode="edit" initialData={apiModel} />;
 }
 
 export default function EditApiModel() {

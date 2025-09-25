@@ -28,6 +28,112 @@ This document provides a comprehensive, phase-wise plan for implementing page-le
 
 ---
 
+## Architectural Approach and Testing Philosophy
+
+### Component Architecture Patterns
+
+#### Navigation and Side Effects
+- **Principle**: Pages control navigation, hooks provide data operations
+- **Pattern**: Hooks accept onSuccess/onError callbacks for flexible response handling
+- **Implementation**: Following AliasForm pattern throughout codebase for consistency
+- **Example**: `useApiModelForm` returns data operations, page handles `router.push()`
+
+**Code Pattern:**
+```typescript
+// Hook focuses on data operations
+const mutation = useMutation({
+  onSuccess: (data) => {
+    if (onSuccess) onSuccess(data);
+  },
+  onError: (error) => {
+    if (onError) onError(error.message);
+  },
+});
+
+// Page handles navigation and UI feedback
+const Page = () => {
+  const formLogic = useApiModelForm({
+    onSuccess: (data) => {
+      toast({ title: 'Success' });
+      router.push('/ui/models');
+    },
+    onError: (message) => {
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+      // Stay on current page for retry
+    },
+  });
+};
+```
+
+#### Error Handling Strategy
+- **Success Path**: Show success toast + navigate to listing page
+- **Error Path**: Show error toast + stay on current page for retry
+- **Form State**: Preserve user input on errors for recovery
+- **No Mid-Operation Navigation**: Navigation only occurs after definitive success
+
+### Testing Strategy
+
+#### Integration Over Unit Testing
+We prioritize **integration-level testing** over isolated unit tests:
+- **Test at page level** with real component interactions
+- **Mock only external dependencies** (API calls, router navigation)
+- **Verify complete user workflows**, not isolated function behaviors
+- **Use MSW for consistent API response mocking** across all scenarios
+
+#### Test Case Structure
+Our standard test organization follows this pattern:
+
+1. **Page Structure Tests**
+   - Authentication requirements and app status validation
+   - Initial render state and component presence
+   - Loading states during app initialization
+
+2. **Happy Path Tests**
+   - Complete successful user workflows from start to finish
+   - Form submission with successful API responses
+   - Proper toast notifications and navigation
+
+3. **Error/Validation Tests**
+   - Invalid inputs and form validation
+   - API errors and network failures
+   - Recovery scenarios and retry capabilities
+
+4. **What We Don't Test**
+   - Framework mechanics (Next.js page loading)
+   - Browser APIs we don't control
+   - Third-party library internals
+
+#### Test Organization Best Practices
+- **Separate describe blocks** for success and error scenarios
+- **Each block has isolated MSW handler setup** in beforeEach
+- **No mid-test handler manipulation** (avoid `server.resetHandlers()` in tests)
+- **Error handlers placed first** to override default success handlers
+- **Deterministic test structure** with predictable MSW responses
+
+**Example Test Structure:**
+```typescript
+describe('API Model Page Tests', () => {
+  describe('Success Cases', () => {
+    beforeEach(() => {
+      server.use(...createSuccessHandlers());
+    });
+    // Happy path tests here
+  });
+
+  describe('Error Cases', () => {
+    beforeEach(() => {
+      server.use(
+        rest.put('*/api-models/:id', errorHandler), // Error first
+        ...otherHandlers
+      );
+    });
+    // Error scenario tests here
+  });
+});
+```
+
+---
+
 ## Testing Philosophy
 
 ### Page-Level Integration Testing Principles
@@ -487,13 +593,27 @@ it('manages button states correctly during async operations', async () => {
 
 ### Phase 1 Progress Update (2025-09-25)
 
-#### ✅ COMPLETED: Infrastructure & OpenAI Happy Path Test
+#### ✅ COMPLETED: Infrastructure & Navigation Architecture Refactoring
 
 **Infrastructure Deliverables:**
 - ✅ Enhanced MSW handler system for API models (`createApiModelHandlers`)
 - ✅ Reusable test utility functions for common actions (`api-model-test-utils.ts`)
 - ✅ Test data factories for consistent test scenarios (`api-model-test-data.ts`)
 - ✅ TypeScript type safety for all test utilities
+
+**Navigation Architecture Refactoring:**
+- ✅ **Problem Identified and Fixed:** Navigation was occurring even on API errors (anti-pattern)
+- ✅ **Solution Implemented:** Refactored to callback-based pattern following AliasForm architecture
+- ✅ **Hook Refactoring:** `useApiModelForm` now accepts `onSuccess`/`onError` callbacks
+- ✅ **Page Responsibility:** Pages control navigation, hooks focus on data operations
+- ✅ **Error Handling:** Success shows toast + navigates, errors show toast + stay on page
+
+**Test Structure Improvements:**
+- ✅ **Separated Test Scenarios:** Split success and error tests into distinct describe blocks
+- ✅ **Isolated Handler Setup:** Each describe block has dedicated MSW setup in beforeEach
+- ✅ **Eliminated Handler Conflicts:** No more mid-test `server.resetHandlers()` calls
+- ✅ **Proper Error Testing:** Error handlers placed first to override defaults
+- ✅ **All Tests Passing:** 4/4 edit page tests now passing (was 3/4)
 
 **OpenAI Happy Path Workflow Test:**
 - ✅ Complete end-to-end test: Page load → API format selection → API key entry → Connection test → Model fetching → Model selection → Form submission
@@ -557,7 +677,7 @@ Step 7: + Form submission + assertions → ✅ PASS (after fixing toast message)
 - ✅ Edit API Model page has comprehensive loading and error handling coverage
 - ✅ All MSW handlers work correctly for API model endpoints
 - ✅ Test utilities cover all common user actions
-- ✅ 32/32 API model tests passing consistently without flakiness
+- ✅ 33/33 API model tests passing consistently without flakiness (was 32/32)
 - ✅ All tests run deterministically with proper state verification
 
 #### Qualitative Goals
@@ -566,6 +686,13 @@ Step 7: + Form submission + assertions → ✅ PASS (after fixing toast message)
 - ✅ Page-level orchestration testing between AppInitializer and ApiModelForm
 - ✅ Error scenario coverage with proper error state verification
 - ✅ Loading state and data fetching verification
+
+#### Architectural Goals - COMPLETED ✅
+- ✅ **Navigation controlled by pages, not hooks** - Following AliasForm pattern
+- ✅ **Consistent callback pattern for mutations** - onSuccess/onError throughout
+- ✅ **Error scenarios don't trigger navigation** - Users stay on page for retry
+- ✅ **Test structure with isolated describe blocks** - Success and error scenarios separated
+- ✅ **No handler conflicts or mid-test resets needed** - Clean MSW handler management
 
 ---
 
@@ -601,18 +728,22 @@ Step 7: + Form submission + assertions → ✅ PASS (after fixing toast message)
 **Status:** ALL PHASES COMPLETED SUCCESSFULLY
 
 ### Final Test Results
-- **Total Tests:** 35/35 passing (100% success rate)
+- **Total Tests:** 36/36 passing (100% success rate)
 - **Test Files:** 4 files covering all API models pages
-- **Coverage Areas:** Page state verification, error handling, loading states, authentication integration
+- **Coverage Areas:** Page state verification, error handling, loading states, authentication integration, navigation architecture
 
 ### Completed Components
-1. **New API Model Page** (`/ui/api-models/new/`) - 5 tests ✅
+1. **New API Model Page** (`/ui/api-models/new/`) - 7 tests ✅
    - Page structure and authentication requirements
    - Initial state verification and field validation
+   - Form submission and navigation workflows
+   - Error handling with proper toast notifications
 
-2. **Edit API Model Page** (`/ui/api-models/edit/`) - 5 tests ✅
+2. **Edit API Model Page** (`/ui/api-models/edit/`) - 4 tests ✅
    - Data loading and URL parameter handling
    - Error scenarios and loading states
+   - Success and error form submission workflows
+   - Navigation architecture compliance
 
 3. **Setup API Models Page** (`/ui/setup/api-models/`) - 3 tests ✅
    - Setup flow integration and progress indicators
@@ -628,12 +759,76 @@ Step 7: + Form submission + assertions → ✅ PASS (after fixing toast message)
 - **MSW Handler System:** Reliable API mocking with configurable scenarios
 - **Page State Verification:** Focus on user-visible outcomes rather than implementation details
 - **Test Utility Reuse:** Shared utilities across all test files for consistency
+- **Architectural Consistency:** Following established patterns (AliasForm) for maintainability
+- **Clean Test Organization:** Separated success and error scenarios for clarity
 
 ### Testing Infrastructure Created
 - Enhanced MSW handlers for API models endpoints
 - Reusable test utilities for common user interactions
 - Test data factories for consistent scenarios
 - TypeScript type safety throughout test code
+- Isolated test describe blocks with dedicated handler setups
+
+---
+
+## Key Lessons Learned
+
+### Architectural Patterns
+1. **Separation of Concerns**: Hooks should focus on data operations, not side effects like navigation
+   - **Anti-pattern**: Hooks calling `router.push()` directly
+   - **Best practice**: Hooks accept callbacks, pages handle navigation
+
+2. **Callback Pattern**: Use `onSuccess`/`onError` callbacks for flexible response handling
+   - Enables pages to control their own success/error behavior
+   - Maintains consistency with established patterns (AliasForm)
+   - Supports different success actions per context
+
+3. **Page Responsibility**: Pages orchestrate components and handle routing decisions
+   - Pages decide when and where to navigate
+   - Components and hooks remain reusable across contexts
+   - Clear separation between business logic and navigation logic
+
+4. **Error Handling Strategy**: Different paths for success vs. error scenarios
+   - Success: Show toast + navigate to listing
+   - Error: Show toast + stay on current page for retry
+   - Preserve form state on errors for better UX
+
+### Testing Best Practices
+1. **Isolated Test Scenarios**: Use separate describe blocks for different handler setups
+   - Success scenarios get success handlers in beforeEach
+   - Error scenarios get error handlers in beforeEach
+   - No mid-test handler manipulation needed
+
+2. **MSW Handler Priority**: Place specific handlers before general ones
+   - Error handlers first to override defaults
+   - Order matters for MSW handler resolution
+   - Use handler filtering or manual setup for complex scenarios
+
+3. **Avoid Mid-Test Changes**: Set up handlers in beforeEach, not during tests
+   - Eliminates need for `server.resetHandlers()` in tests
+   - More predictable test behavior
+   - Easier to debug handler conflicts
+
+4. **Test User Journeys**: Focus on complete workflows, not implementation details
+   - Test what users actually see and do
+   - Verify end-to-end scenarios from page load to completion
+   - Include error recovery paths in testing
+
+### Development Process Insights
+1. **Incremental Refactoring**: Make small changes and test frequently
+   - "5 lines at a time" approach reduces debugging complexity
+   - Each change can be verified independently
+   - Quick feedback loop catches issues early
+
+2. **Follow Established Patterns**: Use existing codebase patterns for consistency
+   - AliasForm provided the correct navigation pattern
+   - Consistency makes codebase more maintainable
+   - New developers can learn patterns more easily
+
+3. **Architecture Over Quick Fixes**: Address root causes, not symptoms
+   - The navigation bug revealed architectural issues
+   - Fixing the architecture improved multiple pages
+   - Better long-term maintainability than workarounds
 
 ---
 
@@ -684,6 +879,139 @@ Step 7: + Form submission + assertions → ✅ PASS (after fixing toast message)
 - Use TypeScript for test code to catch issues early
 - Regular test review and refactoring sessions
 - Comprehensive documentation of testing patterns
+
+---
+
+## Phase 4: Setup API Models Page Tests - PLANNED
+
+**Objective:** Add comprehensive page-level integration tests for the setup API models page
+**Duration:** 1 session
+**Priority:** P1 (Following completion of main API models pages)
+
+### Current Behavior Confirmation ✅
+
+The `/app/ui/setup/api-models/` page behavior has been verified:
+
+1. **✅ Optional Configuration**: Page includes "Skip for Now" button that navigates to `/ui/setup/complete`
+2. **✅ Single API Model**: Form configures one API model at a time (single provider with associated models)
+3. **✅ Navigation After Save**: Successfully saving navigates to `/ui/setup/complete` (setup completion page)
+4. **✅ Skip Functionality**: Users can skip without entering any data at any point in the form
+
+**No source code changes needed** - implementation already matches requirements.
+
+### Test Categories to Add
+
+#### 1. Skip Functionality Tests
+- Test skip button navigation to complete page
+- Verify user can skip without entering any data
+- Confirm skip is available at any point in the form
+- Verify skip button shows correct text and behavior
+
+#### 2. Complete Workflow Tests
+- **OpenAI Happy Path**: Provider selection → API key → Test → Fetch models → Select → Save → Navigate to complete
+- **OpenAI-Compatible Path**: Include base URL configuration with custom provider
+- Verify navigation to `/ui/setup/complete` after successful save (not `/ui/models`)
+- Test form completion flow with "Complete Setup" button
+
+#### 3. Error Handling Tests
+- Invalid API key with recovery workflow
+- Connection test failures and retry capability
+- Model fetch failures and error messaging
+- Form stays on page for retry (no navigation on errors)
+- Server errors during save operation
+
+#### 4. Form State & Behavior Tests
+- Progressive disclosure (fields appear based on provider selection)
+- Button state management during async operations
+- API key visibility toggle functionality
+- Auto-select common models in setup mode
+- Form validation and required field handling
+
+#### 5. Setup-Specific UI Tests
+- SetupProgress indicator shows step 4 of 6 (API_MODELS step)
+- Benefits grid displays PROVIDER_BENEFITS correctly
+- Help text about skipping is visible and accurate
+- "Complete Setup" button text (vs "Create" in regular mode)
+- Setup-specific styling and layout verification
+
+### Implementation Approach
+
+#### Test File Enhancement
+- **Target File**: `/crates/bodhi/src/app/ui/setup/api-models/page.test.tsx`
+- **Current State**: Basic 3 tests for page structure
+- **Enhancement**: Add comprehensive workflow and behavior tests
+
+#### Test Utilities Reuse
+- Leverage existing `api-model-test-utils.ts` functions
+- Add setup-specific utility functions as needed
+- Use established MSW handler patterns from main API models tests
+
+#### Setup-Specific Test Scenarios
+```typescript
+const SETUP_TEST_SCENARIOS = {
+  SKIP_WORKFLOW: {
+    description: 'User skips API model configuration',
+    expectedNavigation: '/ui/setup/complete'
+  },
+  OPENAI_COMPLETE_SETUP: {
+    description: 'Complete OpenAI setup and finish',
+    expectedNavigation: '/ui/setup/complete',
+    expectedToast: 'API Model Created Successfully'
+  },
+  OPENAI_COMPATIBLE_SETUP: {
+    description: 'Setup OpenAI-compatible provider',
+    requiresBaseUrl: true,
+    expectedNavigation: '/ui/setup/complete'
+  }
+};
+```
+
+### Key Differences from Regular API Models Tests
+
+#### Navigation Behavior
+- **Target Route**: `/ui/setup/complete` (not `/ui/models`)
+- **Skip Navigation**: Additional skip path testing required
+- **Button Text**: "Complete Setup" vs "Create API Model"
+
+#### Setup Context
+- **Progress Indicator**: Verify step 4 of 6 display
+- **Auto-selection**: Common models auto-selected in setup mode
+- **Benefits Display**: PROVIDER_BENEFITS grid verification
+- **Help Text**: Setup-specific skip instructions
+
+#### Form Behavior
+- **Single Model Focus**: Form optimized for configuring one API model
+- **Completion Flow**: Different success messaging and navigation
+- **Optional Nature**: Skip functionality must be thoroughly tested
+
+### Success Criteria
+
+#### Quantitative Goals
+- Setup API models page has comprehensive test coverage (15+ tests)
+- Skip functionality covered in 3+ test scenarios
+- Complete workflow tests for both OpenAI and OpenAI-compatible providers
+- Error handling and recovery testing for all major failure points
+- All tests run consistently without flakiness
+
+#### Qualitative Goals
+- Tests demonstrate complete user journeys through setup flow
+- Skip vs complete paths both thoroughly validated
+- Setup-specific UI elements and messaging verified
+- Error scenarios provide proper feedback without navigation
+- Tests read like user stories from setup perspective
+
+### Risk Assessment
+
+#### Low Risk
+- **Reusable Infrastructure**: Existing test utilities can be leveraged
+- **Known Patterns**: Following established testing patterns from main API models
+- **Simple Navigation**: Clear success/skip navigation paths
+
+#### Mitigation Strategies
+- Start with skip functionality tests (simplest workflow)
+- Incrementally add complete workflow tests
+- Use existing MSW handlers with setup-specific overrides
+- Focus on setup-specific navigation and messaging differences
 
 ---
 

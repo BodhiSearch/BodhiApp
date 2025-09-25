@@ -1,4 +1,4 @@
-import ApiModelForm from '@/app/ui/api-models/ApiModelForm';
+import ApiModelForm from '@/components/api-models/ApiModelForm';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
@@ -136,7 +136,7 @@ describe('ApiModelForm', () => {
   describe('Create mode', () => {
     it('renders all form elements for creating new API model', async () => {
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Form title
@@ -158,7 +158,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Try to submit without filling required fields
@@ -176,7 +176,7 @@ describe('ApiModelForm', () => {
     it('handles api_format preset selection', async () => {
       const user = userEvent.setup();
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
       expect(screen.getByTestId('api-model-base-url')).toHaveValue('https://api.openai.com/v1');
     });
@@ -194,7 +194,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill required fields for fetch
@@ -228,7 +228,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill required fields
@@ -262,7 +262,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill the form (no ID field - it's auto-generated)
@@ -290,7 +290,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       const apiKeyInput = screen.getByTestId('api-model-api-key');
@@ -311,7 +311,7 @@ describe('ApiModelForm', () => {
   describe('Edit mode', () => {
     it('renders form for editing existing API model', async () => {
       await act(async () => {
-        render(<ApiModelForm isEditMode={true} initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
           wrapper: createWrapper(),
         });
       });
@@ -355,7 +355,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={true} initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
           wrapper: createWrapper(),
         });
       });
@@ -415,7 +415,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={true} initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
           wrapper: createWrapper(),
         });
       });
@@ -455,7 +455,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={true} initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
           wrapper: createWrapper(),
         });
       });
@@ -482,7 +482,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Select a model
@@ -496,7 +496,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // First select a model
@@ -512,7 +512,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Select all models
@@ -526,7 +526,7 @@ describe('ApiModelForm', () => {
   describe('Button states', () => {
     it('disables fetch models button when required fields missing', async () => {
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       const fetchButton = screen.getByTestId('fetch-models-button');
@@ -535,7 +535,7 @@ describe('ApiModelForm', () => {
 
     it('disables test connection button when required fields missing', async () => {
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       const testButton = screen.getByTestId('test-connection-button');
@@ -546,7 +546,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill required fields
@@ -567,7 +567,7 @@ describe('ApiModelForm', () => {
 
     it('enables buttons in edit mode even without API key (uses stored credentials)', async () => {
       await act(async () => {
-        render(<ApiModelForm isEditMode={true} initialData={mockApiModelResponse} />, {
+        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
           wrapper: createWrapper(),
         });
       });
@@ -598,7 +598,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill required fields
@@ -632,7 +632,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill required fields and select model
@@ -667,7 +667,7 @@ describe('ApiModelForm', () => {
       );
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       // Fill the form (no ID field - it's auto-generated)
@@ -695,7 +695,7 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       await act(async () => {
-        render(<ApiModelForm isEditMode={false} />, { wrapper: createWrapper() });
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
       await user.click(screen.getByTestId('cancel-button'));
