@@ -97,6 +97,7 @@ export function BrowserSelector({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block text-sm text-primary hover:underline"
+                data-testid="install-extension-link"
               >
                 Install Bodhi Extension →
               </a>

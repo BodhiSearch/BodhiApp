@@ -19,13 +19,13 @@ export const BROWSER_CONFIG: Record<BrowserType, Omit<BrowserInfo, 'name'>> = {
   chrome: {
     type: 'chrome',
     supported: true,
-    extensionUrl: 'https://chrome.google.com/webstore/detail/bodhi-browser/[EXTENSION_ID]',
+    extensionUrl: 'https://chromewebstore.google.com/detail/bodhi-browser-extension/bjdjhiombmfbcoeojijpfckljjghmjbf',
     statusMessage: 'Extension available in Chrome Web Store',
   },
   edge: {
     type: 'edge',
     supported: true,
-    extensionUrl: 'https://chrome.google.com/webstore/detail/bodhi-browser/[EXTENSION_ID]',
+    extensionUrl: 'https://chromewebstore.google.com/detail/bodhi-browser-extension/bjdjhiombmfbcoeojijpfckljjghmjbf',
     statusMessage: 'Extension available in Chrome Web Store (Edge uses Chrome extensions)',
   },
   firefox: {
