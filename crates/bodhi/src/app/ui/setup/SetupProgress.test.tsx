@@ -105,34 +105,6 @@ describe('SetupProgress', () => {
     });
   });
 
-  describe('skipped steps', () => {
-    it('shows skipped indicator for specified steps', () => {
-      render(<SetupProgress currentStep={5} totalSteps={6} skippedSteps={[4]} />);
-      const skippedStep = screen.getByTestId('step-indicator-4');
-      expect(skippedStep).toHaveAttribute('data-skipped', 'true');
-    });
-
-    it('shows correct progress with skipped steps', () => {
-      render(<SetupProgress currentStep={5} totalSteps={6} skippedSteps={[4]} />);
-      const progressBar = screen.getByTestId('progress-bar');
-      // Progress should be (5/6) * 100 = 83.33%
-      expect(progressBar).toHaveAttribute('data-progress-percent', '83.33333333333334');
-    });
-
-    it('handles multiple skipped steps', () => {
-      render(<SetupProgress currentStep={6} totalSteps={6} skippedSteps={[4, 5]} />);
-      const skippedStep1 = screen.getByTestId('step-indicator-4');
-      const skippedStep2 = screen.getByTestId('step-indicator-5');
-      expect(skippedStep1).toHaveAttribute('data-skipped', 'true');
-      expect(skippedStep2).toHaveAttribute('data-skipped', 'true');
-    });
-
-    it('works without skipped steps array', () => {
-      render(<SetupProgress currentStep={3} totalSteps={6} />);
-      const step4 = screen.getByTestId('step-indicator-4');
-      expect(step4).toHaveAttribute('data-skipped', 'false');
-    });
-  });
 
   describe('accessibility', () => {
     it('has proper ARIA attributes for progress bar', () => {

@@ -80,10 +80,10 @@ test.describe('API Models Prefix Functionality', () => {
 
     // ===== SCENARIO A: Create basic model without prefix =====
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(testData.apiKey, baseNoPrefix.baseUrl);
-    await formPage.fetchAndSelectModels(['gpt-4']);
-    await formPage.testConnection();
+    await formPage.form.waitForFormReady();
+    await formPage.form.fillBasicInfo(testData.apiKey, baseNoPrefix.baseUrl);
+    await formPage.form.fetchAndSelectModels(['gpt-4']);
+    await formPage.form.testConnection();
 
     // Capture the generated ID when creating the model
     const baseNoPrefixId = await formPage.createModelAndCaptureId();
@@ -93,15 +93,15 @@ test.describe('API Models Prefix Functionality', () => {
 
     // ===== SCENARIO B: Create model with OpenRouter prefix =====
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
-    await formPage.fillBasicInfoWithPrefix(
+    await formPage.form.fillBasicInfoWithPrefix(
       testData.openrouterApiKey,
       'openrouter/',
       azureModel.baseUrl
     );
-    await formPage.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
-    await formPage.testConnection();
+    await formPage.form.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
+    await formPage.form.testConnection();
 
     // Capture the generated ID when creating the model with prefix
     const azureModelId = await formPage.createModelAndCaptureId();
@@ -121,13 +121,13 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== SCENARIO C: Edit existing model to add prefix =====
     await modelsPage.navigateToModels();
     await modelsPage.editModel(baseNoPrefixId);
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
     // Verify form is pre-filled without prefix
-    await formPage.verifyFormPreFilledWithPrefix('openai', baseNoPrefix.baseUrl, null);
+    await formPage.form.verifyFormPreFilledWithPrefix('openai', baseNoPrefix.baseUrl, null);
 
     // Add openai: prefix to existing model
-    await formPage.setPrefix('openai:');
+    await formPage.form.setPrefix('openai:');
     await formPage.updateModel();
 
     // Test chat with newly prefixed model
@@ -138,24 +138,24 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== SCENARIO D: Create third model with custom OpenRouter prefix =====
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
-    await formPage.fillBasicInfoWithPrefix(
+    await formPage.form.fillBasicInfoWithPrefix(
       testData.openrouterApiKey,
       'custom-',
       customModel.baseUrl
     );
-    await formPage.fetchAndSelectModels(['openai/gpt-4']);
+    await formPage.form.fetchAndSelectModels(['openai/gpt-4']);
 
     // Capture the generated ID when creating the custom model
     const customModelId = await formPage.createModelAndCaptureId();
 
     // ===== SCENARIO E: Edit OpenRouter model to remove prefix =====
     await modelsPage.editModel(azureModelId);
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
     // Remove the prefix
-    await formPage.disablePrefix();
+    await formPage.form.disablePrefix();
     await formPage.updateModel();
 
     // Test chat still works with unprefixed name
@@ -206,34 +206,38 @@ test.describe('API Models Prefix Functionality', () => {
 
     // ===== UI BEHAVIOR TESTING =====
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
     // Test initial state - prefix checkbox unchecked, input disabled
-    await expect(formPage.page.locator(formPage.selectors.usePrefixCheckbox)).not.toBeChecked();
-    await expect(formPage.page.locator(formPage.selectors.prefixInput)).toBeDisabled();
+    await expect(
+      formPage.page.locator(formPage.form.selectors.usePrefixCheckbox)
+    ).not.toBeChecked();
+    await expect(formPage.page.locator(formPage.form.selectors.prefixInput)).toBeDisabled();
 
     // Enable prefix and verify input becomes visible
-    await formPage.enablePrefix();
-    await expect(formPage.page.locator(formPage.selectors.usePrefixCheckbox)).toBeChecked();
-    await expect(formPage.page.locator(formPage.selectors.prefixInput)).toBeVisible();
+    await formPage.form.enablePrefix();
+    await expect(formPage.page.locator(formPage.form.selectors.usePrefixCheckbox)).toBeChecked();
+    await expect(formPage.page.locator(formPage.form.selectors.prefixInput)).toBeVisible();
 
     // Test prefix input validation with special characters
-    await formPage.page.fill(formPage.selectors.prefixInput, 'valid-prefix_123');
+    await formPage.page.fill(formPage.form.selectors.prefixInput, 'valid-prefix_123');
 
     // Disable prefix and verify input becomes disabled
-    await formPage.disablePrefix();
-    await expect(formPage.page.locator(formPage.selectors.usePrefixCheckbox)).not.toBeChecked();
-    await expect(formPage.page.locator(formPage.selectors.prefixInput)).toBeDisabled();
+    await formPage.form.disablePrefix();
+    await expect(
+      formPage.page.locator(formPage.form.selectors.usePrefixCheckbox)
+    ).not.toBeChecked();
+    await expect(formPage.page.locator(formPage.form.selectors.prefixInput)).toBeDisabled();
 
     // ===== PREFIX FUNCTIONALITY TESTING =====
 
     // Fill form with OpenRouter API key and URL
-    await formPage.fillBasicInfoWithPrefix(
+    await formPage.form.fillBasicInfoWithPrefix(
       testData.openrouterApiKey,
       'openai-new:',
       modelData.baseUrl
     );
-    await formPage.fetchAndSelectModels(['openai/gpt-4']);
+    await formPage.form.fetchAndSelectModels(['openai/gpt-4']);
 
     // Capture the generated ID when creating the model
     const createdModelId = await formPage.createModelAndCaptureId();
@@ -242,21 +246,21 @@ test.describe('API Models Prefix Functionality', () => {
 
     // Edit the created model and verify prefix persists correctly
     await modelsPage.editModel(createdModelId);
-    await formPage.waitForFormReady();
-    await formPage.verifyFormPreFilledWithPrefix(
+    await formPage.form.waitForFormReady();
+    await formPage.form.verifyFormPreFilledWithPrefix(
       'openai', // Shows OpenAI format even when using OpenRouter
       'https://openrouter.ai/api/v1', // OpenRouter URL
       'openai-new:'
     );
 
     // Modify prefix to test update functionality
-    await formPage.setPrefix('updated-prefix-');
+    await formPage.form.setPrefix('updated-prefix-');
     await formPage.updateModel();
 
     // Verify the update worked by editing again
     await modelsPage.editModel(createdModelId);
-    await formPage.waitForFormReady();
-    await formPage.verifyFormPreFilledWithPrefix(
+    await formPage.form.waitForFormReady();
+    await formPage.form.verifyFormPreFilledWithPrefix(
       'openai', // Shows OpenAI format even when using OpenRouter
       'https://openrouter.ai/api/v1',
       'updated-prefix-'
@@ -265,15 +269,15 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== EDGE CASE: Prefix with trailing slash and URL normalization =====
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
     // Use base URL with trailing slash and prefix with slash
-    await formPage.fillBasicInfoWithPrefix(
+    await formPage.form.fillBasicInfoWithPrefix(
       testData.openrouterApiKey,
       'test/',
       'https://openrouter.ai/api/v1/' // URL with trailing slash
     );
-    await formPage.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
+    await formPage.form.fetchAndSelectModels(['openai/gpt-3.5-turbo']);
 
     // Capture the generated ID for the edge case model
     const edgeCaseId = await formPage.createModelAndCaptureId();
@@ -286,14 +290,14 @@ test.describe('API Models Prefix Functionality', () => {
     // ===== EDGE CASE: Empty prefix =====
     await modelsPage.navigateToModels();
     await modelsPage.clickNewApiModel();
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
-    await formPage.fillBasicInfo(testData.apiKey);
+    await formPage.form.fillBasicInfo(testData.apiKey);
 
     // Enable prefix but leave it empty
-    await formPage.enablePrefix();
-    await formPage.page.fill(formPage.selectors.prefixInput, ''); // Empty prefix
-    await formPage.fetchAndSelectModels(['gpt-4']);
+    await formPage.form.enablePrefix();
+    await formPage.page.fill(formPage.form.selectors.prefixInput, ''); // Empty prefix
+    await formPage.form.fetchAndSelectModels(['gpt-4']);
 
     // Capture the generated ID for the empty prefix model
     const emptyPrefixId = await formPage.createModelAndCaptureId();

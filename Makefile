@@ -172,11 +172,14 @@ docker.list: ## List all locally built BodhiApp images
 docker.clean: ## Remove all locally built BodhiApp images
 	@$(MAKE) -C devops clean
 
-run.app: ## Run the BodhiApp
+app.clear:
+	rm -rf ~/.cache/bodhi-dev-makefile
+
+app.run: ## Run the BodhiApp
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
-		BODHI_HOME=~/.cache/bodhi-dev-20250820 \
+		BODHI_HOME=~/.cache/bodhi-dev-makefile \
 		cargo run --bin bodhi -- serve --port 1135
 
 # Note: CI/Release targets below are for CI pipeline use only

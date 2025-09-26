@@ -64,5 +64,8 @@ export class SetupResourceAdminPage extends SetupBasePage {
     await this.expectAuthServerLogin();
     await this.fillAuthCredentials();
     await this.submitLogin();
+    await this.page.waitForURL((url) => !url.pathname.includes('/ui/auth/callback/'), {
+      timeout: 60000,
+    });
   }
 }

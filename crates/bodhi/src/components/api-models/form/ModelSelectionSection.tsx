@@ -18,6 +18,7 @@ interface ModelSelectionSectionProps {
   error?: string;
   provider?: ApiProvider | null;
   autoSelectCommon?: boolean;
+  fetchStatus?: 'idle' | 'loading' | 'success' | 'error';
   'data-testid'?: string;
 }
 
@@ -34,6 +35,7 @@ export function ModelSelectionSection({
   error,
   provider,
   autoSelectCommon = false,
+  fetchStatus = 'idle',
   'data-testid': testId = 'model-selection-section',
 }: ModelSelectionSectionProps) {
   // Auto-select common models when they become available
@@ -64,6 +66,7 @@ export function ModelSelectionSection({
         data-testid="fetch-models-container"
         data-models-fetched={availableModels.length > 0}
         data-can-fetch={canFetch}
+        data-fetch-state={fetchStatus}
       >
         <ModelSelector
           selectedModels={selectedModels}

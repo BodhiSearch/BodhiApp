@@ -130,12 +130,33 @@ export class BasePage {
     return new URL(this.page.url()).pathname;
   }
 
+  async expectCurrentPath(pathname) {
+    const currentPath = await this.getCurrentPath();
+    expect(currentPath).toBe(pathname);
+  }
+
+  async expectToBeOnPage(pathname) {
+    await this.page.waitForURL((url) => url.pathname === pathname);
+    await this.expectCurrentPath(pathname);
+  }
+
+  async navigateAndWaitForPage(path) {
+    await this.page.goto(`${this.baseUrl}${path}`);
+    await this.page.waitForURL((url) => url.pathname === path);
+    await this.waitForSPAReady();
+  }
+
   async waitForUrl(pathOrPredicate) {
     if (typeof pathOrPredicate === 'string') {
       await this.page.waitForURL((url) => url.pathname === pathOrPredicate);
     } else {
       await this.page.waitForURL(pathOrPredicate);
     }
+  }
+
+  async waitForUrlAndExpect(pathname) {
+    await this.page.waitForURL((url) => url.pathname === pathname);
+    await this.expectCurrentPath(pathname);
   }
 
   async takeScreenshot(name) {

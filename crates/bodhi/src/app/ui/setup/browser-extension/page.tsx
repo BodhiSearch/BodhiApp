@@ -38,7 +38,7 @@ function BrowserExtensionSetupContent() {
     switch (extensionStatus) {
       case 'detecting':
         return (
-          <Card>
+          <Card data-testid="extension-detecting">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-3 text-2xl">
                 <RefreshCw className="h-8 w-8 animate-spin" />
@@ -53,7 +53,7 @@ function BrowserExtensionSetupContent() {
 
       case 'installed':
         return (
-          <Card className="border-green-200 dark:border-green-800">
+          <Card className="border-green-200 dark:border-green-800" data-testid="extension-found">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-3 text-2xl text-green-700 dark:text-green-400">
                 <Check className="h-8 w-8" />
@@ -79,7 +79,7 @@ function BrowserExtensionSetupContent() {
 
       case 'not-installed':
         return (
-          <Card>
+          <Card data-testid="extension-not-found">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-3 text-2xl">
                 <Download className="h-8 w-8" />
