@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Bodhi Browser Extension",
+  "version": "0.0.17",
+  "description": "Power Bodhi Platform Websites using your local Bodhi App AI Server, private, secure, and open source.",
+  "author": "Bodhi App",
+  "homepage_url": "https://getbodhi.app",
+  "icons": {
+    "16": "/icons/icon16.png",
+    "32": "/icons/icon32.png",
+    "48": "/icons/icon48.png",
+    "128": "/icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["<all_urls>"],
+  "permissions": ["storage"],
+  "web_accessible_resources": [
+    {
+      "resources": ["index.html", "inject.js"],
+      "matches": ["https://*/*", "http://*/*"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src *"
+  },
+  "externally_connectable": {
+    "matches": ["*://*/*"],
+    "accepts_tls_channel_id": false,
+    "ids": ["*"]
+  },
+  "action": {
+    "default_popup": "index.html"
+  }
+}

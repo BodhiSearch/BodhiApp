@@ -1,5 +1,5 @@
 # Node.js Bindings for BodhiServer
-.PHONY: help all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed test-playwright-ci clean format-js dev install-js
+.PHONY: help all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed test-playwright-ci clean format-js dev install-js download-extension
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
@@ -74,3 +74,6 @@ clean-rust: ## Clean Rust build artifacts
 
 clean-js: ## Clean JavaScript build artifacts and dependencies
 	rm -rf node_modules test-results playwright-report coverage .nyc_output app-bindings.*.node
+
+download-extension: ## Download Bodhi browser extension (use FORCE=1 to check for updates)
+	@node scripts/download-extension.mjs $(if $(FORCE),--force,)
