@@ -116,7 +116,7 @@ test.describe('Enhanced Users Management Flow', () => {
     await adminUsersPage.navigateToUsers();
     await adminUsersPage.expectUsersPage();
 
-    await adminPage.waitForSelector('tbody tr', { timeout: 10000 });
+    await adminPage.waitForSelector('tbody tr');
 
     const expectedOrder = [
       testUsers.admin.username,
@@ -268,15 +268,15 @@ test.describe('Enhanced Users Management Flow', () => {
 
     await managerUsersPageNew.changeUserRole(testUsers.powerUser.username, 'User');
     await managerUsersPageNew.waitForRoleChangeSuccess();
-
-    await managerUsersPageNew.changeUserRole(testUsers.user.username, 'Power User');
-    await managerUsersPageNew.waitForRoleChangeSuccess();
+    await managerUsersPageNew.expectUserRole(testUsers.powerUser.username, 'User');
 
     await managerUsersPageNew.navigateToPendingRequests();
     await managerUsersPageNew.navigateToUsers();
     await managerUsersPageNew.expectUsersPage();
-
     await managerUsersPageNew.expectUserRole(testUsers.powerUser.username, 'User');
+
+    await managerUsersPageNew.changeUserRole(testUsers.user.username, 'Power User');
+    await managerUsersPageNew.waitForRoleChangeSuccess();
     await managerUsersPageNew.expectUserRole(testUsers.user.username, 'Power User');
 
     await powerUserPage.goto(`${baseUrl}/ui/models`);
