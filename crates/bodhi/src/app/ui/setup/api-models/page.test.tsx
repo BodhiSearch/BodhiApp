@@ -129,14 +129,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       expect(screen.queryByTestId('cancel-button')).not.toBeInTheDocument();
 
       // Verify initial field states
-      const apiFormatSelect = screen.getByTestId('api-model-format');
+      const apiFormatSelect = screen.getByTestId('api-format-selector');
       expect(apiFormatSelect).toBeInTheDocument();
       expect(apiFormatSelect).toHaveTextContent('Select an API format'); // Empty in setup mode
 
-      const baseUrlInput = screen.getByTestId('api-model-base-url') as HTMLInputElement;
+      const baseUrlInput = screen.getByTestId('base-url-input') as HTMLInputElement;
       expect(baseUrlInput.value).toBe('');
 
-      const apiKeyInput = screen.getByTestId('api-model-api-key') as HTMLInputElement;
+      const apiKeyInput = screen.getByTestId('api-key-input') as HTMLInputElement;
       expect(apiKeyInput.value).toBe('');
 
       // Action buttons should be disabled initially
@@ -188,9 +188,9 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       });
 
       // Get form elements
-      const apiFormatSelector = screen.getByTestId('api-model-format');
-      const baseUrlInput = screen.getByTestId('api-model-base-url') as HTMLInputElement;
-      const apiKeyInput = screen.getByTestId('api-model-api-key') as HTMLInputElement;
+      const apiFormatSelector = screen.getByTestId('api-format-selector');
+      const baseUrlInput = screen.getByTestId('base-url-input') as HTMLInputElement;
+      const apiKeyInput = screen.getByTestId('api-key-input') as HTMLInputElement;
 
       // Verify setup mode specific initial values (empty, no pre-selection)
       expect(apiFormatSelector).toHaveTextContent('Select an API format'); // Empty selector

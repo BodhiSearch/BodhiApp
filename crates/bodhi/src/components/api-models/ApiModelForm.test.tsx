@@ -143,9 +143,9 @@ describe('ApiModelForm', () => {
       expect(screen.getByText('Create New API Model')).toBeInTheDocument();
 
       // Form fields (no ID field since it's auto-generated)
-      expect(screen.getByTestId('api-model-format')).toBeInTheDocument();
-      expect(screen.getByTestId('api-model-base-url')).toBeInTheDocument();
-      expect(screen.getByTestId('api-model-api-key')).toBeInTheDocument();
+      expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
+      expect(screen.getByTestId('base-url-input')).toBeInTheDocument();
+      expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
 
       // Buttons
       expect(screen.getByTestId('create-api-model-button')).toBeInTheDocument();
@@ -178,7 +178,7 @@ describe('ApiModelForm', () => {
       await act(async () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
-      expect(screen.getByTestId('api-model-base-url')).toHaveValue('https://api.openai.com/v1');
+      expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
     });
 
     it('handles fetch models functionality', async () => {
@@ -198,8 +198,8 @@ describe('ApiModelForm', () => {
       });
 
       // Fill required fields for fetch
-      await user.type(screen.getByTestId('api-model-base-url'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
+      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
       // Click fetch models
       await user.click(screen.getByTestId('fetch-models-button'));
@@ -232,8 +232,8 @@ describe('ApiModelForm', () => {
       });
 
       // Fill required fields
-      await user.type(screen.getByTestId('api-model-base-url'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
+      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
       // Select a model using the mock model selector
       await user.click(screen.getByText('Select gpt-4'));
@@ -267,7 +267,7 @@ describe('ApiModelForm', () => {
 
       // Fill the form (no ID field - it's auto-generated)
       // Api format and Base URL are pre-filled with OpenAI defaults
-      await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
       // Select models
       await user.click(screen.getByText('Select gpt-4'));
@@ -293,11 +293,11 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      const apiKeyInput = screen.getByTestId('api-model-api-key');
+      const apiKeyInput = screen.getByTestId('api-key-input');
       expect(apiKeyInput).toHaveAttribute('type', 'password');
 
       // Click the eye icon to show password
-      const toggleButton = screen.getByTestId('api-model-api-key-visibility-toggle');
+      const toggleButton = screen.getByTestId('api-key-input-visibility-toggle');
       await user.click(toggleButton);
 
       expect(apiKeyInput).toHaveAttribute('type', 'text');
@@ -322,10 +322,10 @@ describe('ApiModelForm', () => {
       // No ID field in edit mode since ID is auto-generated and immutable
 
       // Other fields should be populated with initial data
-      expect(screen.getByTestId('api-model-base-url')).toHaveValue('https://api.openai.com/v1');
+      expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
 
       // API key should be empty for security
-      expect(screen.getByTestId('api-model-api-key')).toHaveValue('');
+      expect(screen.getByTestId('api-key-input')).toHaveValue('');
 
       // Submit button should say Update
       expect(screen.getByTestId('update-api-model-button')).toBeInTheDocument();
@@ -550,8 +550,8 @@ describe('ApiModelForm', () => {
       });
 
       // Fill required fields
-      await user.type(screen.getByTestId('api-model-base-url'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
+      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
       // Fetch button should be enabled
       const fetchButton = screen.getByTestId('fetch-models-button');
@@ -602,8 +602,8 @@ describe('ApiModelForm', () => {
       });
 
       // Fill required fields
-      await user.type(screen.getByTestId('api-model-base-url'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-model-api-key'), 'invalid-key');
+      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+      await user.type(screen.getByTestId('api-key-input'), 'invalid-key');
 
       // Try to fetch models
       await user.click(screen.getByRole('button', { name: /Fetch Models/i }));
@@ -636,8 +636,8 @@ describe('ApiModelForm', () => {
       });
 
       // Fill required fields and select model
-      await user.type(screen.getByTestId('api-model-base-url'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-model-api-key'), 'invalid-key');
+      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+      await user.type(screen.getByTestId('api-key-input'), 'invalid-key');
       await user.click(screen.getByText('Select gpt-4'));
 
       // Try to test connection
@@ -671,7 +671,7 @@ describe('ApiModelForm', () => {
       });
 
       // Fill the form (no ID field - it's auto-generated)
-      await user.type(screen.getByTestId('api-model-api-key'), 'sk-test123');
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
       await user.click(screen.getByText('Select gpt-4'));
 
       // Submit form

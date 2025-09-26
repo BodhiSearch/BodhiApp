@@ -64,7 +64,10 @@ function BrowserExtensionSetupContent() {
                 {extensionId && (
                   <>
                     <br />
-                    Extension ID: <code className="text-sm" data-testid="extension-id-display">{extensionId}</code>
+                    Extension ID:{' '}
+                    <code className="text-sm" data-testid="extension-id-display">
+                      {extensionId}
+                    </code>
                   </>
                 )}
               </CardDescription>

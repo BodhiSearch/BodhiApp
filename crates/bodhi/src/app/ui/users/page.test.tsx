@@ -359,6 +359,14 @@ describe('UsersPage Error Handling', () => {
 
     await screen.findByTestId('users-page');
 
+    // Wait for loading skeletons to disappear
+    await waitForElementToBeRemoved(() =>
+      screen.queryAllByText((content, element) => {
+        const className = element?.className || '';
+        return typeof className === 'string' && className.includes('animate-pulse');
+      })
+    );
+
     // Should show error alert when users API fails
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();

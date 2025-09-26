@@ -10,12 +10,7 @@ interface SetupProgressProps {
   compact?: boolean;
 }
 
-export function SetupProgress({
-  currentStep,
-  totalSteps,
-  stepLabels,
-  compact = false,
-}: SetupProgressProps) {
+export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = false }: SetupProgressProps) {
   const progressPercent = (currentStep / totalSteps) * 100;
 
   const getStepStatus = (index: number) => {
@@ -25,20 +20,6 @@ export function SetupProgress({
     const isPending = stepNumber > currentStep;
 
     return { isCompleted, isCurrent, isPending };
-  };
-
-  const getStepAriaLabel = (index: number) => {
-    const stepNumber = index + 1;
-    const { isCompleted, isCurrent, isPending } = getStepStatus(index);
-    const label = stepLabels?.[index];
-
-    let status = 'upcoming';
-    if (isCompleted) status = 'completed';
-    else if (isCurrent) status = 'current';
-    else if (isPending) status = 'pending';
-
-    const labelText = label ? `: ${label}` : '';
-    return `Step ${stepNumber}${labelText}, ${status}`;
   };
 
   const getStepDataStatus = (index: number) => {
@@ -84,11 +65,8 @@ export function SetupProgress({
                   data-completed={isCompleted}
                   data-current={isCurrent}
                   data-status={getStepDataStatus(index)}
-                  aria-label={getStepAriaLabel(index)}
                   className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    isCompleted || isCurrent
-                      ? 'bg-primary'
-                      : 'bg-muted'
+                    isCompleted || isCurrent ? 'bg-primary' : 'bg-muted'
                   }`}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -97,13 +75,7 @@ export function SetupProgress({
                   {isCompleted ? (
                     <Check className="h-4 w-4 text-primary-foreground" />
                   ) : (
-                    <span
-                      className={`text-sm ${
-                        isCurrent
-                          ? 'text-primary-foreground'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
+                    <span className={`text-sm ${isCurrent ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
                       {index + 1}
                     </span>
                   )}
