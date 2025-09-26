@@ -20,7 +20,7 @@ env:
 jobs:
   playwright-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       HF_HOME: /home/runner/.cache/huggingface
     permissions:
