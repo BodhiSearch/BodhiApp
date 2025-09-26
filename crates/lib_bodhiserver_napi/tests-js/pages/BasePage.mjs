@@ -89,9 +89,7 @@ export class BasePage {
 
   async waitForToastOptional(message, options = {}) {
     try {
-      const timeout = process.env.CI ? 1000 : 5000;
-      const finalOptions = { timeout, ...options };
-
+      const finalOptions = { timeout: 15000, ...options }; // toasts take longer to show up
       if (message instanceof RegExp) {
         await expect(this.page.locator(this.baseSelectors.successToast)).toContainText(
           message,
