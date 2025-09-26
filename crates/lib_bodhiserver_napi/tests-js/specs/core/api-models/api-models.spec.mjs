@@ -77,10 +77,10 @@ test.describe('API Models Integration', () => {
     await modelsPage.clickNewApiModel();
 
     // Step 2: Create API model with validation testing - select only gpt-4 for chat testing
-    await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(testData.apiKey, modelData.baseUrl);
-    await formPage.fetchAndSelectModels(['gpt-4']); // Select only gpt-4 for chat integration
-    await formPage.testConnection();
+    await formPage.form.waitForFormReady();
+    await formPage.form.fillBasicInfo(testData.apiKey, modelData.baseUrl);
+    await formPage.form.fetchAndSelectModels(['gpt-4']); // Select only gpt-4 for chat integration
+    await formPage.form.testConnection();
 
     // Capture the generated ID when creating the model
     const createdModelId = await formPage.createModelAndCaptureId();
@@ -111,13 +111,13 @@ test.describe('API Models Integration', () => {
     // Step 5: Test edit functionality with captured ID
     await modelsPage.navigateToModels();
     await modelsPage.editModel(createdModelId);
-    await formPage.waitForFormReady();
+    await formPage.form.waitForFormReady();
 
     // Verify form is pre-filled correctly
-    await formPage.verifyFormPreFilled('openai', modelData.baseUrl);
+    await formPage.form.verifyFormPreFilled('openai', modelData.baseUrl);
 
     // Make a small change and update
-    await formPage.setPrefix('test:');
+    await formPage.form.setPrefix('test:');
     await formPage.updateModel();
 
     // Step 6: Clean up by deleting the model
@@ -133,10 +133,10 @@ test.describe('API Models Integration', () => {
     await modelsPage.clickNewApiModel();
 
     // Test step-by-step form validation
-    await formPage.waitForFormReady();
-    await formPage.fillBasicInfo(testData.apiKey, modelData.baseUrl);
-    await formPage.fetchAndSelectModels(['gpt-3.5-turbo']);
-    await formPage.testConnection();
+    await formPage.form.waitForFormReady();
+    await formPage.form.fillBasicInfo(testData.apiKey, modelData.baseUrl);
+    await formPage.form.fetchAndSelectModels(['gpt-3.5-turbo']);
+    await formPage.form.testConnection();
 
     // Capture the generated ID when creating the model
     const validationTestModelId = await formPage.createModelAndCaptureId();

@@ -7,7 +7,6 @@ interface SetupProgressProps {
   currentStep: number;
   totalSteps: number;
   stepLabels?: string[];
-  skippedSteps?: number[];
   compact?: boolean;
 }
 
@@ -15,7 +14,6 @@ export function SetupProgress({
   currentStep,
   totalSteps,
   stepLabels,
-  skippedSteps = [],
   compact = false,
 }: SetupProgressProps) {
   const progressPercent = (currentStep / totalSteps) * 100;
@@ -24,27 +22,36 @@ export function SetupProgress({
     const stepNumber = index + 1;
     const isCompleted = stepNumber < currentStep;
     const isCurrent = stepNumber === currentStep;
-    const isSkipped = skippedSteps.includes(stepNumber);
+    const isPending = stepNumber > currentStep;
 
-    return { isCompleted, isCurrent, isSkipped };
+    return { isCompleted, isCurrent, isPending };
   };
 
   const getStepAriaLabel = (index: number) => {
     const stepNumber = index + 1;
-    const { isCompleted, isCurrent, isSkipped } = getStepStatus(index);
+    const { isCompleted, isCurrent, isPending } = getStepStatus(index);
     const label = stepLabels?.[index];
 
     let status = 'upcoming';
-    if (isSkipped) status = 'skipped';
-    else if (isCompleted) status = 'completed';
+    if (isCompleted) status = 'completed';
     else if (isCurrent) status = 'current';
+    else if (isPending) status = 'pending';
 
     const labelText = label ? `: ${label}` : '';
     return `Step ${stepNumber}${labelText}, ${status}`;
   };
 
+  const getStepDataStatus = (index: number) => {
+    const { isCompleted, isCurrent, isPending } = getStepStatus(index);
+
+    if (isCompleted) return 'completed';
+    if (isCurrent) return 'current';
+    if (isPending) return 'pending';
+    return 'pending';
+  };
+
   return (
-    <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4">
+    <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4" data-testid="setup-progress">
       <div className="mx-auto max-w-2xl">
         {/* Progress bar */}
         <div className="relative">
@@ -68,7 +75,7 @@ export function SetupProgress({
           {/* Step indicators */}
           <div className="relative flex justify-between">
             {Array.from({ length: totalSteps }).map((_, index) => {
-              const { isCompleted, isCurrent, isSkipped } = getStepStatus(index);
+              const { isCompleted, isCurrent } = getStepStatus(index);
 
               return (
                 <motion.div
@@ -76,29 +83,25 @@ export function SetupProgress({
                   data-testid={`step-indicator-${index + 1}`}
                   data-completed={isCompleted}
                   data-current={isCurrent}
-                  data-skipped={isSkipped}
+                  data-status={getStepDataStatus(index)}
                   aria-label={getStepAriaLabel(index)}
                   className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    isSkipped
-                      ? 'bg-muted border-2 border-dashed border-muted-foreground/30'
-                      : isCompleted || isCurrent
-                        ? 'bg-primary'
-                        : 'bg-muted'
+                    isCompleted || isCurrent
+                      ? 'bg-primary'
+                      : 'bg-muted'
                   }`}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  {isCompleted && !isSkipped ? (
+                  {isCompleted ? (
                     <Check className="h-4 w-4 text-primary-foreground" />
                   ) : (
                     <span
                       className={`text-sm ${
-                        isSkipped
-                          ? 'text-muted-foreground/50'
-                          : isCurrent
-                            ? 'text-primary-foreground'
-                            : 'text-muted-foreground'
+                        isCurrent
+                          ? 'text-primary-foreground'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {index + 1}
@@ -121,6 +124,7 @@ export function SetupProgress({
                 return (
                   <div key={index} className="flex-1 text-center" style={{ maxWidth: `${100 / totalSteps}%` }}>
                     <span
+                      data-testid={`step-label-${index + 1}`}
                       className={`text-xs truncate ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                       title={label}
                     >
@@ -134,7 +138,7 @@ export function SetupProgress({
         )}
 
         {/* Step counter */}
-        <div className="mt-2 text-center text-sm text-muted-foreground">
+        <div className="mt-2 text-center text-sm text-muted-foreground" data-testid="step-counter">
           <p>
             Step {currentStep} of {totalSteps}
           </p>

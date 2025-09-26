@@ -68,6 +68,50 @@ export class SetupFixtures {
       skipDownloads: true,
       useNetworkIP: true,
     }),
+
+    // New scenarios for API Models and Browser Extension
+    SETUP_WITH_API_MODELS: () => ({
+      ...this.createSetupFlowData(),
+      skipDownloads: true,
+      apiModels: {
+        provider: 'openai',
+        apiKey: 'sk-test-key-123',
+        models: ['gpt-4'],
+      },
+      skipBrowserExtension: true,
+    }),
+
+    SETUP_WITH_BROWSER_EXTENSION: () => ({
+      ...this.createSetupFlowData(),
+      skipDownloads: true,
+      skipApiModels: true,
+      browserExtension: {
+        browser: 'chrome',
+        extensionInstalled: true,
+      },
+    }),
+
+    COMPLETE_SETUP_WITH_ALL_FEATURES: () => ({
+      ...this.createSetupFlowData(),
+      skipDownloads: false,
+      downloadModels: ['llama2:7b'],
+      apiModels: {
+        provider: 'openai',
+        apiKey: 'sk-test-key-123',
+        models: ['gpt-4'],
+      },
+      browserExtension: {
+        browser: 'chrome',
+        extensionInstalled: false, // Will skip extension
+      },
+    }),
+
+    SKIP_ALL_OPTIONAL_STEPS: () => ({
+      ...this.createSetupFlowData(),
+      skipDownloads: true,
+      skipApiModels: true,
+      skipBrowserExtension: true,
+    }),
   };
 
   // Validation helpers
@@ -129,6 +173,18 @@ export class SetupFixtures {
       },
       {
         step: 4,
+        path: '/ui/setup/api-models/',
+        title: 'API Models Setup',
+        description: 'Cloud AI models configuration',
+      },
+      {
+        step: 5,
+        path: '/ui/setup/browser-extension/',
+        title: 'Browser Extension Setup',
+        description: 'Browser extension installation',
+      },
+      {
+        step: 6,
         path: '/ui/setup/complete/',
         title: 'Setup Complete',
         description: 'Setup completion',
@@ -181,5 +237,100 @@ export class SetupFixtures {
 
   static getTestModel() {
     return this.getRecommendedModels()[0]; // Return first recommended model
+  }
+
+  // API Models test data
+  static getApiProviders() {
+    return [
+      {
+        name: 'OpenAI',
+        id: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+        testApiKey: 'sk-test-key-123',
+      },
+      {
+        name: 'Anthropic',
+        id: 'anthropic',
+        baseUrl: 'https://api.anthropic.com',
+        models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+        testApiKey: 'sk-ant-test-key-123',
+      },
+      {
+        name: 'Google',
+        id: 'google',
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        models: ['gemini-pro', 'gemini-pro-vision'],
+        testApiKey: 'AIza-test-key-123',
+      },
+    ];
+  }
+
+  static getTestApiProvider(providerId = 'openai') {
+    return this.getApiProviders().find((p) => p.id === providerId);
+  }
+
+  // Browser Extension test data
+  static getBrowserTypes() {
+    return [
+      {
+        name: 'Google Chrome',
+        id: 'chrome',
+        supported: true,
+        extensionUrl: 'https://chrome.google.com/webstore/detail/bodhi-browser/[EXTENSION_ID]',
+        statusMessage: 'Extension available in Chrome Web Store',
+      },
+      {
+        name: 'Microsoft Edge',
+        id: 'edge',
+        supported: true,
+        extensionUrl: 'https://chrome.google.com/webstore/detail/bodhi-browser/[EXTENSION_ID]',
+        statusMessage: 'Extension available in Chrome Web Store (Edge uses Chrome extensions)',
+      },
+      {
+        name: 'Mozilla Firefox',
+        id: 'firefox',
+        supported: false,
+        extensionUrl: null,
+        statusMessage: 'Firefox extension coming soon',
+      },
+      {
+        name: 'Safari',
+        id: 'safari',
+        supported: false,
+        extensionUrl: null,
+        statusMessage: 'Safari extension coming soon',
+      },
+    ];
+  }
+
+  static getTestBrowser(browserId = 'chrome') {
+    return this.getBrowserTypes().find((b) => b.id === browserId);
+  }
+
+  static getSupportedBrowsers() {
+    return this.getBrowserTypes().filter((b) => b.supported);
+  }
+
+  static getUnsupportedBrowsers() {
+    return this.getBrowserTypes().filter((b) => !b.supported);
+  }
+
+  // Extension detection states
+  static getExtensionStates() {
+    return {
+      DETECTING: 'detecting',
+      INSTALLED: 'installed',
+      NOT_INSTALLED: 'not-installed',
+    };
+  }
+
+  static createExtensionTestData(state = 'not-installed', extensionId = null) {
+    return {
+      status: state,
+      extensionId: extensionId,
+      refresh: () => {}, // Mock function
+      redetect: () => {}, // Mock function
+    };
   }
 }

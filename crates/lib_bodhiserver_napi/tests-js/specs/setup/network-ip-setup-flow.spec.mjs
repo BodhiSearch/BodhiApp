@@ -10,6 +10,8 @@ import { SetupWelcomePage } from '../../pages/SetupWelcomePage.mjs';
 import { SetupResourceAdminPage } from '../../pages/SetupResourceAdminPage.mjs';
 import { SetupDownloadModelsPage } from '../../pages/SetupDownloadModelsPage.mjs';
 import { SetupCompletePage } from '../../pages/SetupCompletePage.mjs';
+import { SetupApiModelsPage } from '../../pages/SetupApiModelsPage.mjs';
+import { SetupBrowserExtensionPage } from '../../pages/SetupBrowserExtensionPage.mjs';
 import { LoginPage } from '../../pages/LoginPage.mjs';
 import { ChatPage } from '../../pages/ChatPage.mjs';
 import { SetupFixtures } from '../../fixtures/setupFixtures.mjs';
@@ -56,6 +58,8 @@ test.describe('Network IP Authentication Setup Flow', () => {
         testCredentials
       );
       const downloadModelsPage = new SetupDownloadModelsPage(page, networkUrl);
+      const apiModelsPage = new SetupApiModelsPage(page, networkUrl);
+      const browserExtensionPage = new SetupBrowserExtensionPage(page, networkUrl);
       const completePage = new SetupCompletePage(page, networkUrl);
       const chatPage = new ChatPage(page);
 
@@ -76,8 +80,15 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await downloadModelsPage.expectDownloadModelsPage();
       await downloadModelsPage.skipDownloads();
 
-      // Step 4: Setup completion
-      await page.waitForURL((url) => url.pathname === '/ui/setup/complete/');
+      // Step 4: API Models page
+      await apiModelsPage.expectApiModelsPage();
+      await apiModelsPage.skipApiSetup();
+
+      // Step 5: Browser Extension page
+      await browserExtensionPage.expectBrowserExtensionPage();
+      await browserExtensionPage.clickSkip();
+
+      // Step 6: Setup completion
       await completePage.expectSetupCompletePage();
       await completePage.clickStartUsingApp();
 
@@ -140,6 +151,8 @@ test.describe('Network IP Authentication Setup Flow', () => {
         testCredentials
       );
       const downloadModelsPage = new SetupDownloadModelsPage(page, localhostUrl);
+      const apiModelsPage = new SetupApiModelsPage(page, localhostUrl);
+      const browserExtensionPage = new SetupBrowserExtensionPage(page, localhostUrl);
       const completePage = new SetupCompletePage(page, localhostUrl);
 
       // Navigate to localhost and complete setup flow
@@ -157,7 +170,13 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await page.waitForURL((url) => url.pathname === '/ui/setup/download-models/');
       await downloadModelsPage.skipDownloads();
 
-      await page.waitForURL((url) => url.pathname === '/ui/setup/complete/');
+      await apiModelsPage.expectApiModelsPage();
+      await apiModelsPage.skipApiSetup();
+
+      await browserExtensionPage.expectBrowserExtensionPage();
+      await browserExtensionPage.clickSkip();
+
+      await completePage.expectSetupCompletePage();
       await completePage.clickStartUsingApp();
 
       await page.waitForURL((url) => url.pathname === '/ui/chat/');

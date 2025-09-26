@@ -11,13 +11,13 @@ import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
+import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
 
 function ApiModelsSetupContent() {
   const router = useRouter();
 
   const handleSkip = () => {
-    router.push(ROUTE_SETUP_COMPLETE);
+    router.push(ROUTE_SETUP_BROWSER_EXTENSION);
   };
 
   return (
@@ -58,7 +58,11 @@ function ApiModelsSetupContent() {
 
         {/* Main API Model Form */}
         <motion.div variants={itemVariants}>
-          <ApiModelForm mode="setup" onSuccessRoute={ROUTE_SETUP_COMPLETE} onCancelRoute={ROUTE_SETUP_COMPLETE} />
+          <ApiModelForm
+            mode="setup"
+            onSuccessRoute={ROUTE_SETUP_BROWSER_EXTENSION}
+            onCancelRoute={ROUTE_SETUP_BROWSER_EXTENSION}
+          />
         </motion.div>
 
         {/* Skip Button */}

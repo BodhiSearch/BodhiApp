@@ -68,7 +68,7 @@ export function BrowserSelector({
           Browser
         </label>
         <Select value={currentBrowser?.type || ''} onValueChange={handleValueChange}>
-          <SelectTrigger id="browser-selector" className="w-full">
+          <SelectTrigger id="browser-selector" data-testid="browser-selector" className="w-full">
             <SelectValue>
               {currentBrowser ? (
                 renderBrowserOption(currentBrowser, detectedBrowser?.type === currentBrowser.type && !selectedBrowser)

@@ -87,22 +87,16 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             value={formLogic.watchedValues.api_format}
             options={formLogic.apiFormatsData}
             onValueChange={formLogic.handleApiFormatChange}
-            data-testid="api-model-format"
           />
 
           {/* Base URL Input */}
-          <BaseUrlInput
-            {...formLogic.register('base_url')}
-            error={formLogic.errors.base_url?.message}
-            data-testid="api-model-base-url"
-          />
+          <BaseUrlInput {...formLogic.register('base_url')} error={formLogic.errors.base_url?.message} />
 
           {/* API Key Input */}
           <ApiKeyInput
             {...formLogic.register('api_key')}
             mode={formLogic.mode}
             error={formLogic.errors.api_key?.message}
-            data-testid="api-model-api-key"
           />
 
           {/* Prefix Input */}
@@ -112,7 +106,6 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             enabled={formLogic.watchedValues.usePrefix}
             onEnabledChange={(enabled) => formLogic.setValue('usePrefix', enabled)}
             error={formLogic.errors.prefix?.message}
-            data-testid="api-model-prefix"
           />
 
           {/* Model Selection */}
@@ -128,6 +121,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             fetchDisabledReason={formLogic.fetchModels.disabledReason}
             error={formLogic.errors.models?.message}
             provider={formLogic.selectedProvider}
+            fetchStatus={formLogic.fetchModels.status}
           />
 
           {/* Form Actions */}

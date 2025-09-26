@@ -11,10 +11,9 @@ import { SetupResourceAdminPage } from '../../pages/SetupResourceAdminPage.mjs';
 import { SetupDownloadModelsPage } from '../../pages/SetupDownloadModelsPage.mjs';
 import { SetupApiModelsPage } from '../../pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '../../pages/SetupBrowserExtensionPage.mjs';
-import { SetupCompletePage } from '../../pages/SetupCompletePage.mjs';
 import { SetupFixtures } from '../../fixtures/setupFixtures.mjs';
 
-test.describe('First-Time Setup Flow Integration', () => {
+test.describe('Browser Extension Setup Integration', () => {
   let authServerConfig;
   let testCredentials;
   let serverManager;
@@ -26,18 +25,18 @@ test.describe('First-Time Setup Flow Integration', () => {
   let downloadModelsPage;
   let apiModelsPage;
   let browserExtensionPage;
-  let completePage;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
+  });
+
+  test.beforeEach(async ({ page }) => {
     const port = randomPort();
     const serverConfig = SetupFixtures.getServerManagerConfig(authServerConfig, port);
     serverManager = createServerManager(serverConfig);
     baseUrl = await serverManager.startServer();
-  });
 
-  test.beforeEach(async ({ page }) => {
     welcomePage = new SetupWelcomePage(page, baseUrl);
     resourceAdminPage = new SetupResourceAdminPage(
       page,
@@ -48,63 +47,84 @@ test.describe('First-Time Setup Flow Integration', () => {
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(page, baseUrl);
-    completePage = new SetupCompletePage(page, baseUrl);
   });
 
-  test.afterAll(async () => {
+  test.afterEach(async () => {
     if (serverManager) {
       await serverManager.stopServer();
     }
   });
 
-  test('comprehensive setup flow with multiple validations', async ({ page }) => {
-    const setupData = SetupFixtures.scenarios.QUICK_SETUP();
-
-    // Step 1: Navigate and verify initial setup page
+  async function navigateToBrowserExtensionPage(page) {
+    // Navigate through the setup flow to reach browser extension page
     await page.goto(baseUrl);
     await page.waitForURL((url) => url.pathname === '/ui/setup/');
-    expect(getCurrentPath(page)).toBe('/ui/setup/');
 
-    // Use page objects for structured interactions
-    await welcomePage.expectWelcomePage();
-    await welcomePage.expectBenefitsDisplayed();
-    await welcomePage.expectStepIndicator(1);
+    // Complete welcome page
+    const setupData = SetupFixtures.scenarios.SKIP_ALL_OPTIONAL_STEPS();
     await welcomePage.completeInitialSetup(setupData.serverName);
 
-    // Step 2: Resource admin page using page object
+    // Complete resource admin page
     await page.waitForURL((url) => url.pathname === '/ui/setup/resource-admin/');
-    await resourceAdminPage.expectResourceAdminPage();
-    await resourceAdminPage.expectStepIndicator(2);
     await resourceAdminPage.performCompleteLogin();
 
-    // Step 3: Models download page using page object
+    // Complete download models page (skip)
     await page.waitForURL((url) => url.pathname === '/ui/setup/download-models/');
-    await downloadModelsPage.expectDownloadModelsPage();
-    await downloadModelsPage.expectStepIndicator(3);
-    await downloadModelsPage.expectRecommendedModelsDisplayed();
     await downloadModelsPage.skipDownloads();
 
-    // Step 4: API Models setup using page object
+    // Complete API models page (skip)
     await page.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
-    await apiModelsPage.expectApiModelsPage();
-    await apiModelsPage.expectStepIndicator(4);
-    await apiModelsPage.expectInitialFormState();
     await apiModelsPage.skipApiSetup();
 
-    // Step 5: Browser Extension setup using page object
+    // Should now be at browser extension page
+    await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
+  }
+
+  test('Browser Extension Setup Flow - Complete Journey', async ({ page }) => {
+    // Phase 1: Navigate to browser extension page and verify structure
+    await navigateToBrowserExtensionPage(page);
+
+    // Verify we're on the browser extension page with correct step indicator
+    await browserExtensionPage.expectBrowserExtensionPage();
+    await browserExtensionPage.expectStepIndicator(5);
+
+    // Verify page structure elements are present
+    await browserExtensionPage.expectBrowserSelectorPresent();
+    await browserExtensionPage.expectHelpSection();
+
+    // Phase 2: Test Chrome browser with no extension installed
+    // Running on Chrome without extension - should show supported browser UI
+    await browserExtensionPage.expectSupportedBrowserUI();
+    await browserExtensionPage.expectExtensionNotFound();
+
+    // Phase 3: Test refresh functionality
+    await browserExtensionPage.clickRefresh();
+
+    // Should still be on browser extension page after refresh
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
     await browserExtensionPage.expectBrowserExtensionPage();
     await browserExtensionPage.expectStepIndicator(5);
-    await browserExtensionPage.expectBrowserSelectorPresent();
-    // Skip extension setup (will click skip or continue depending on browser support)
-    await browserExtensionPage.completeBrowserExtensionSetup({ skipExtension: true });
 
-    // Step 6: Setup completion using page object
+    // Should still show extension not found after refresh
+    await browserExtensionPage.expectExtensionNotFound();
+
+    // Phase 4: Skip extension installation
+    await browserExtensionPage.clickSkip();
+
+    // Phase 5: Verify navigation to completion
     await page.waitForURL((url) => url.pathname === '/ui/setup/complete/');
-    await completePage.expectSetupCompletePage();
-    await completePage.clickStartUsingApp();
+    expect(getCurrentPath(page)).toBe('/ui/setup/complete/');
 
-    // Verify final redirect to chat page
-    expect(getCurrentPath(page)).toBe('/ui/chat/');
+    // Phase 6: Test direct navigation to browser extension page
+    await page.goto(`${baseUrl}/ui/setup/browser-extension/`);
+    await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
+
+    // Should work since we're authenticated and can access setup pages
+    await browserExtensionPage.expectBrowserExtensionPage();
+    await browserExtensionPage.expectStepIndicator(5);
+
+    // Complete the test by skipping extension again
+    await browserExtensionPage.clickSkip();
+    await browserExtensionPage.expectNavigationToComplete();
   });
 });
