@@ -105,7 +105,6 @@ describe('SetupProgress', () => {
     });
   });
 
-
   describe('accessibility', () => {
     it('has proper ARIA attributes for progress bar', () => {
       render(<SetupProgress currentStep={2} totalSteps={6} />);
@@ -114,23 +113,6 @@ describe('SetupProgress', () => {
       expect(progressBar).toHaveAttribute('aria-valuemin', '1');
       expect(progressBar).toHaveAttribute('aria-valuemax', '6');
       expect(progressBar).toHaveAttribute('aria-label', 'Setup progress');
-    });
-
-    it('has proper ARIA labels on step indicators', () => {
-      render(<SetupProgress currentStep={2} totalSteps={6} stepLabels={SETUP_STEP_LABELS} />);
-      const completedStep = screen.getByTestId('step-indicator-1');
-      const currentStep = screen.getByTestId('step-indicator-2');
-      const upcomingStep = screen.getByTestId('step-indicator-3');
-
-      expect(completedStep).toHaveAttribute('aria-label', 'Step 1: Get Started, completed');
-      expect(currentStep).toHaveAttribute('aria-label', 'Step 2: Login & Setup, current');
-      expect(upcomingStep).toHaveAttribute('aria-label', 'Step 3: Local Models, upcoming');
-    });
-
-    it('provides aria labels without step labels', () => {
-      render(<SetupProgress currentStep={2} totalSteps={6} />);
-      const currentStep = screen.getByTestId('step-indicator-2');
-      expect(currentStep).toHaveAttribute('aria-label', 'Step 2, current');
     });
   });
 

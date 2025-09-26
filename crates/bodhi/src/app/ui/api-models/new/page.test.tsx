@@ -95,9 +95,9 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       render(<NewApiModel />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByTestId('api-model-format')).toBeInTheDocument();
-        expect(screen.getByTestId('api-model-api-key')).toBeInTheDocument();
-        expect(screen.getByTestId('api-model-base-url')).toBeInTheDocument();
+        expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
+        expect(screen.getByTestId('base-url-input')).toBeInTheDocument();
       });
     });
   });
@@ -115,9 +115,9 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify initial field states
-      const apiFormatSelector = screen.getByTestId('api-model-format');
-      const baseUrlInput = screen.getByTestId('api-model-base-url');
-      const apiKeyInput = screen.getByTestId('api-model-api-key');
+      const apiFormatSelector = screen.getByTestId('api-format-selector');
+      const baseUrlInput = screen.getByTestId('base-url-input');
+      const apiKeyInput = screen.getByTestId('api-key-input');
 
       expect(apiFormatSelector).toBeInTheDocument();
       expect(baseUrlInput).toHaveValue('https://api.openai.com/v1'); // Default OpenAI URL

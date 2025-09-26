@@ -104,9 +104,9 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify form fields are prefilled with existing data
-      const apiFormatSelector = screen.getByTestId('api-model-format');
-      const baseUrlInput = screen.getByTestId('api-model-base-url');
-      const apiKeyInput = screen.getByTestId('api-model-api-key');
+      const apiFormatSelector = screen.getByTestId('api-format-selector');
+      const baseUrlInput = screen.getByTestId('base-url-input');
+      const apiKeyInput = screen.getByTestId('api-key-input');
 
       expect(apiFormatSelector).toBeInTheDocument();
       expectApiFormatSelected('openai');
@@ -148,7 +148,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       });
 
       // Verify initial state - form should be prefilled
-      expect(screen.getByTestId('api-model-format')).toBeInTheDocument();
+      expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
       expectApiFormatSelected('openai');
 
       // Verify existing model is selected

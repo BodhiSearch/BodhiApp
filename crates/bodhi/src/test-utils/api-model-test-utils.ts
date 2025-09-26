@@ -4,7 +4,7 @@ import { expect } from 'vitest';
 
 // User interaction utilities for API Format (New/Edit pages)
 export async function selectApiFormat(user: ReturnType<typeof userEvent.setup>, formatId: string) {
-  const formatSelector = screen.getByTestId('api-model-format');
+  const formatSelector = screen.getByTestId('api-format-selector');
   await user.click(formatSelector);
 
   // Wait for dropdown to open and select the option
@@ -21,19 +21,19 @@ export async function selectProvider(user: ReturnType<typeof userEvent.setup>, p
 }
 
 export async function fillApiKey(user: ReturnType<typeof userEvent.setup>, apiKey: string) {
-  const apiKeyInput = screen.getByTestId('api-model-api-key');
+  const apiKeyInput = screen.getByTestId('api-key-input');
   await user.clear(apiKeyInput);
   await user.type(apiKeyInput, apiKey);
 }
 
 export async function fillBaseUrl(user: ReturnType<typeof userEvent.setup>, baseUrl: string) {
-  const baseUrlInput = screen.getByTestId('api-model-base-url');
+  const baseUrlInput = screen.getByTestId('base-url-input');
   await user.clear(baseUrlInput);
   await user.type(baseUrlInput, baseUrl);
 }
 
 export async function toggleApiKeyVisibility(user: ReturnType<typeof userEvent.setup>) {
-  const toggleButton = screen.getByTestId('api-model-api-key-visibility-toggle');
+  const toggleButton = screen.getByTestId('api-key-input-visibility-toggle');
   await user.click(toggleButton);
 }
 
@@ -81,7 +81,7 @@ export async function cancelForm(user: ReturnType<typeof userEvent.setup>) {
 
 // Assertion utilities for API Format (New/Edit pages)
 export function expectApiFormatSelected(formatId: string) {
-  const formatSelector = screen.getByTestId('api-model-format');
+  const formatSelector = screen.getByTestId('api-format-selector');
   expect(formatSelector).toHaveTextContent(formatId.toUpperCase());
 }
 
@@ -92,12 +92,12 @@ export function expectProviderSelected(providerId: string) {
 }
 
 export function expectApiKeyHidden() {
-  const apiKeyInput = screen.getByTestId('api-model-api-key');
+  const apiKeyInput = screen.getByTestId('api-key-input');
   expect(apiKeyInput).toHaveAttribute('type', 'password');
 }
 
 export function expectApiKeyVisible() {
-  const apiKeyInput = screen.getByTestId('api-model-api-key');
+  const apiKeyInput = screen.getByTestId('api-key-input');
   expect(apiKeyInput).toHaveAttribute('type', 'text');
 }
 
@@ -128,11 +128,11 @@ export function expectModelSelected(modelName: string) {
 }
 
 export function expectBaseUrlVisible() {
-  expect(screen.getByTestId('api-model-base-url')).toBeInTheDocument();
+  expect(screen.getByTestId('base-url-input')).toBeInTheDocument();
 }
 
 export function expectBaseUrlHidden() {
-  expect(screen.queryByTestId('api-model-base-url')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('base-url-input')).not.toBeInTheDocument();
 }
 
 export function expectFormSubmitDisabled() {
