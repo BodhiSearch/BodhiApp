@@ -3,16 +3,16 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
-import { randomPort, getCurrentPath } from '../../test-helpers.mjs';
-import { SetupWelcomePage } from '../../pages/SetupWelcomePage.mjs';
-import { SetupResourceAdminPage } from '../../pages/SetupResourceAdminPage.mjs';
-import { SetupDownloadModelsPage } from '../../pages/SetupDownloadModelsPage.mjs';
-import { SetupApiModelsPage } from '../../pages/SetupApiModelsPage.mjs';
-import { SetupBrowserExtensionPage } from '../../pages/SetupBrowserExtensionPage.mjs';
-import { SetupCompletePage } from '../../pages/SetupCompletePage.mjs';
-import { SetupFixtures } from '../../fixtures/setupFixtures.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort, getCurrentPath } from '@/test-helpers.mjs';
+import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
+import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
+import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
+import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
+import { SetupCompletePage } from '@/pages/SetupCompletePage.mjs';
+import { SetupFixtures } from '@/fixtures/setupFixtures.mjs';
 
 test.describe('First-Time Setup Flow Integration', () => {
   let authServerConfig;

@@ -1,4 +1,4 @@
-import { BasePage } from './BasePage.mjs';
+import { BasePage } from '@/pages/BasePage.mjs';
 
 export class OAuth2TestAppPage extends BasePage {
   constructor(page, testAppUrl) {

@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
  */
 async function loadBindings() {
   // Dynamic import of the local NAPI bindings during development
-  const appBindingsModule = await import('../index.js');
+  const appBindingsModule = await import('@/../index.js');
   // CommonJS modules are wrapped in a default export when dynamically imported
   return appBindingsModule.default;
 }

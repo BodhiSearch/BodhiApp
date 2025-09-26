@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { AllUsersPage } from '../../pages/AllUsersPage.mjs';
-import { LoginPage } from '../../pages/LoginPage.mjs';
+import { AllUsersPage } from '@/pages/AllUsersPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
-} from '../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
-import { randomPort } from '../../test-helpers.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 
 test.describe('Enhanced Users Management Flow', () => {
   let serverManager;

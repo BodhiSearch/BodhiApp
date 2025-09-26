@@ -3,14 +3,14 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
-import { randomPort } from '../../../test-helpers.mjs';
-import { LoginPage } from '../../../pages/LoginPage.mjs';
-import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '../../../pages/ApiModelFormPage.mjs';
-import { ChatPage } from '../../../pages/ChatPage.mjs';
-import { ApiModelFixtures } from '../../../fixtures/apiModelFixtures.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort } from '@/test-helpers.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
 
 test.describe('API Models Integration', () => {
   let serverManager;

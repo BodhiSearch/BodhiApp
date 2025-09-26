@@ -1,5 +1,5 @@
-import { BasePage } from './BasePage.mjs';
-import { ApiModelFormComponent } from './components/ApiModelFormComponent.mjs';
+import { BasePage } from '@/pages/BasePage.mjs';
+import { ApiModelFormComponent } from '@/pages/components/ApiModelFormComponent.mjs';
 
 /**
  * Page object for API Model form operations on /ui/models pages

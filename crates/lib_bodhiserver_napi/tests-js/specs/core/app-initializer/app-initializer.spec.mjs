@@ -3,10 +3,10 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
-import { randomPort, getCurrentPath, waitForSPAReady } from '../../../test-helpers.mjs';
-import { LoginPage } from '../../../pages/LoginPage.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort, getCurrentPath, waitForSPAReady } from '@/test-helpers.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
 
 test.describe('App Initializer Integration', () => {
   let authServerConfig;
