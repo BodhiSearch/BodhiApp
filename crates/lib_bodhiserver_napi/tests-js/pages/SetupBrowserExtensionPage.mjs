@@ -12,7 +12,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     setupProgress: '[data-testid="setup-progress"]',
     browserSelector: '[data-testid="browser-selector"]',
     browserInfoCard: '[data-testid="browser-info-card"]',
-    installExtensionButton: '[data-testid="install-extension-button"]',
+    installExtensionLink: '[data-testid="install-extension-link"]',
     refreshButton: '[data-testid="refresh-button"]',
     skipButton: '[data-testid="skip-button"]',
     nextButton: '[data-testid="next-button"]',
@@ -107,13 +107,6 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     await expect(
       this.page.locator('text=Perfect! The Bodhi Browser extension is installed')
     ).toBeVisible();
-  }
-
-  async clickInstallExtension() {
-    await this.expectVisible(this.selectors.installExtensionButton);
-    await this.page.click(this.selectors.installExtensionButton);
-
-    // Note: This opens in a new tab, so we don't need to wait for navigation
   }
 
   async clickRefresh() {
