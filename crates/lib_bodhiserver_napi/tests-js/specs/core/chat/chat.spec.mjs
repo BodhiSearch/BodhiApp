@@ -3,17 +3,17 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
-import { randomPort } from '../../../test-helpers.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 
-import { LoginPage } from '../../../pages/LoginPage.mjs';
-import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '../../../pages/ApiModelFormPage.mjs';
-import { ChatPage } from '../../../pages/ChatPage.mjs';
-import { ChatHistoryPage } from '../../../pages/ChatHistoryPage.mjs';
-import { ChatSettingsPage } from '../../../pages/ChatSettingsPage.mjs';
-import { ChatFixtures } from '../../../fixtures/ChatFixtures.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { ChatHistoryPage } from '@/pages/ChatHistoryPage.mjs';
+import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
+import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
 
 test.describe('Chat Interface - Core Functionality', () => {
   let authServerConfig;

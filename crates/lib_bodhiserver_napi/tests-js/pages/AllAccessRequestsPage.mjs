@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { UsersManagementPage } from './UsersManagementPage.mjs';
+import { UsersManagementPage } from '@/pages/UsersManagementPage.mjs';
 
 export class AllAccessRequestsPage extends UsersManagementPage {
   constructor(page, baseUrl) {

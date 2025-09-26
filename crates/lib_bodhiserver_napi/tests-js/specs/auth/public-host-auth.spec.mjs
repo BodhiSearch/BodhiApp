@@ -3,11 +3,11 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
-import { randomPort, getCurrentPath } from '../../test-helpers.mjs';
-import { LoginPage } from '../../pages/LoginPage.mjs';
-import { PublicHostFixtures } from '../../fixtures/publicHostFixtures.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { randomPort, getCurrentPath } from '@/test-helpers.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { PublicHostFixtures } from '@/fixtures/publicHostFixtures.mjs';
 
 test.describe('Public Host Configuration Authentication Tests', () => {
   let authServerConfig;

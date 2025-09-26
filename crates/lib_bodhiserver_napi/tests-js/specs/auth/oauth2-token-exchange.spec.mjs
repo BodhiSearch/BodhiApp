@@ -1,17 +1,17 @@
 import { expect, test } from '@playwright/test';
-import { randomPort } from '../../test-helpers.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
-import { createStaticServer } from '../../playwright/static-server.mjs';
-import { SetupWelcomePage } from '../../pages/SetupWelcomePage.mjs';
-import { SetupResourceAdminPage } from '../../pages/SetupResourceAdminPage.mjs';
-import { OAuth2TestAppPage } from '../../pages/OAuth2TestAppPage.mjs';
-import { OAuth2Fixtures } from '../../fixtures/oauth2Fixtures.mjs';
-import { OAuth2ApiHelper } from '../../helpers/OAuth2ApiHelper.mjs';
+} from '@/playwright/auth-server-client.mjs';
+import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { createStaticServer } from '@/playwright/static-server.mjs';
+import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
+import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
+import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
+import { OAuth2ApiHelper } from '@/helpers/OAuth2ApiHelper.mjs';
 
 test.describe('OAuth2 Token Exchange Integration Tests', () => {
   let authServerConfig;

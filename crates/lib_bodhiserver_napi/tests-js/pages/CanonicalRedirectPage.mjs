@@ -1,4 +1,4 @@
-import { BasePage } from './BasePage.mjs';
+import { BasePage } from '@/pages/BasePage.mjs';
 
 export class CanonicalRedirectPage extends BasePage {
   constructor(page, port) {
