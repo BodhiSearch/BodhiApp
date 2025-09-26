@@ -100,18 +100,13 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     await expect(this.page.locator('text=Install the extension to continue')).toBeVisible();
   }
 
-  async expectExtensionFound(extensionId = null) {
+  async expectExtensionFound() {
     await this.expectVisible(this.selectors.extensionFound);
     await this.expectVisible(this.selectors.nextButton);
 
-    // Should show success message
     await expect(
       this.page.locator('text=Perfect! The Bodhi Browser extension is installed')
     ).toBeVisible();
-
-    if (extensionId) {
-      await expect(this.page.locator(`text=${extensionId}`)).toBeVisible();
-    }
   }
 
   async clickInstallExtension() {

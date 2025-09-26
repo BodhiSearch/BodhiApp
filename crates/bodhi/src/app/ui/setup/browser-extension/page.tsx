@@ -64,7 +64,7 @@ function BrowserExtensionSetupContent() {
                 {extensionId && (
                   <>
                     <br />
-                    Extension ID: <code className="text-sm">{extensionId}</code>
+                    Extension ID: <code className="text-sm" data-testid="extension-id-display">{extensionId}</code>
                   </>
                 )}
               </CardDescription>
@@ -114,6 +114,7 @@ function BrowserExtensionSetupContent() {
         initial="hidden"
         animate="visible"
         data-testid="browser-extension-setup-page"
+        data-page-state={extensionStatus}
       >
         {/* Progress Header */}
         <SetupProgress
