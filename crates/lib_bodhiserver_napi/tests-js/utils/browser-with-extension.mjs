@@ -15,8 +15,9 @@ export class BrowserWithExtension {
     this.options = {
       headless: options.headless ?? (process.env.CI ? true : false),
       timeout: options.timeout ?? 30000,
-      extensionPath: options.extensionPath ?? join(__dirname, '..', 'extension', 'bodhi-browser-ext'),
-      ...options
+      extensionPath:
+        options.extensionPath ?? join(__dirname, '..', 'extension', 'bodhi-browser-ext'),
+      ...options,
     };
     this.context = null;
     this.browser = null;
@@ -49,22 +50,18 @@ export class BrowserWithExtension {
       '--disable-backgrounding-occluded-windows',
       '--disable-renderer-backgrounding',
       '--disable-background-timer-throttling',
-      '--mute-audio'
+      '--mute-audio',
     ];
 
     // Platform-specific args for CI
     if (process.env.CI) {
-      args.push(
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--disable-software-rasterizer'
-      );
+      args.push('--disable-gpu', '--disable-dev-shm-usage', '--disable-software-rasterizer');
     }
 
     const launchOptions = {
       headless: this.options.headless,
       args,
-      timeout: this.options.timeout
+      timeout: this.options.timeout,
     };
 
     try {
@@ -95,19 +92,18 @@ export class BrowserWithExtension {
     const page = await this.context.newPage();
 
     // Add error and console logging
-    page.on('console', msg => {
+    page.on('console', (msg) => {
       if (!process.env.CI || msg.type() === 'error') {
         console.log(`[BROWSER-${msg.type().toUpperCase()}]:`, msg.text());
       }
     });
 
-    page.on('pageerror', error => {
+    page.on('pageerror', (error) => {
       console.error('[BROWSER-PAGE-ERROR]:', error.message);
     });
 
     return page;
   }
-
 
   /**
    * Close the browser and clean up resources

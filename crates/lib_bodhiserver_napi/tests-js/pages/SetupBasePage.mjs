@@ -30,7 +30,6 @@ export class SetupBasePage extends BasePage {
     await expect(stepIndicator).toHaveAttribute('data-status', expectedStatus);
   }
 
-
   async expectBodhiLogo() {
     // Logo might not have data-testid, so check for common logo patterns
     const logoSelectors = ['[data-testid="bodhi-logo"]', 'img[alt*="Bodhi"]', 'svg[role="img"]'];

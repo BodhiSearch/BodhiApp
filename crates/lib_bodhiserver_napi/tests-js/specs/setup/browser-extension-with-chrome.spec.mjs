@@ -1,8 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '../../playwright/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '../../playwright/auth-server-client.mjs';
 import { createServerManager } from '../../playwright/bodhi-app-server.mjs';
 import { randomPort, getCurrentPath } from '../../test-helpers.mjs';
 import { SetupWelcomePage } from '../../pages/SetupWelcomePage.mjs';
@@ -36,7 +33,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
   test.beforeEach(async () => {
     browserWithExt = new BrowserWithExtension({
       headless: process.env.CI ? true : false,
-      timeout: 30000
+      timeout: 30000,
     });
 
     await browserWithExt.launch();
