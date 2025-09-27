@@ -4,17 +4,19 @@ import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { Chat, Message } from '@/types/chat';
 import { act, renderHook } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockChatCompletionsStreaming,
+  mockChatCompletionsError,
+  mockChatCompletionsNetworkError,
+  mockChatCompletionsStreamingWithError,
+} from '@/test-utils/msw-v2/handlers/chat-completions';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Setup MSW server
-const server = setupServer();
+// Setup MSW v2 server
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
 beforeEach(() => {
-  server.resetHandlers();
   vi.clearAllMocks();
 });
 
@@ -99,12 +101,8 @@ describe('useChat', () => {
       ];
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(chunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
-          );
+        ...mockChatCompletionsStreaming({
+          chunks,
         })
       );
 
@@ -147,13 +145,11 @@ describe('useChat', () => {
 
       let capturedRequest: any;
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, async (req, res, ctx) => {
-          capturedRequest = await req.json();
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body('data: {"choices":[{"delta":{"content":"Response"}}]}\n\ndata: [DONE]\n\n')
-          );
+        ...mockChatCompletionsStreaming({
+          chunks: ['{"choices":[{"delta":{"content":"Response"}}]}', '[DONE]'],
+          captureRequest: (req) => {
+            capturedRequest = req;
+          },
         })
       );
 
@@ -162,11 +158,7 @@ describe('useChat', () => {
       });
 
       await act(async () => {
-        await result.current.append({
-          id: '1',
-          role: 'user',
-          content: 'Hello',
-        });
+        await result.current.append('Hello');
       });
 
       expect(capturedRequest.messages[0]).toEqual({
@@ -188,16 +180,9 @@ describe('useChat', () => {
 
       // Mock API error response
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(500),
-            ctx.json({
-              error: {
-                message: 'Invalid API key provided',
-                type: 'invalid_request_error',
-              },
-            })
-          );
+        ...mockChatCompletionsError({
+          status: 500,
+          message: 'Invalid API key provided',
         })
       );
 
@@ -234,11 +219,7 @@ describe('useChat', () => {
       chatDB.setCurrentChat(initialChat);
 
       // Mock network error
-      server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res) => {
-          return res.networkError('Failed to connect');
-        })
-      );
+      server.use(...mockChatCompletionsNetworkError());
 
       const { result } = renderHook(() => useChat(), {
         wrapper: createWrapper(),
@@ -270,11 +251,7 @@ describe('useChat', () => {
       chatDB.setCurrentChat(initialChat);
 
       // Mock network error
-      server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res) => {
-          return res.networkError('Failed to connect');
-        })
-      );
+      server.use(...mockChatCompletionsNetworkError());
 
       const { result } = renderHook(() => useChat(), {
         wrapper: createWrapper(),
@@ -307,37 +284,10 @@ describe('useChat', () => {
       };
       chatDB.setCurrentChat(initialChat);
 
-      const formatSSEMessage = (data: any) => `data: ${JSON.stringify(data)}\n\n`;
-
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, async (req, res, ctx) => {
-          const responseText = [
-            formatSSEMessage({
-              choices: [
-                {
-                  delta: { content: 'Hello' },
-                  finish_reason: null,
-                },
-              ],
-            }),
-            formatSSEMessage({
-              error: {
-                message: 'Server error occurred',
-                type: 'server_error',
-              },
-            }),
-            'data: [DONE]\n\n',
-          ].join('');
-
-          return res(
-            ctx.status(200),
-            ctx.set({
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              Connection: 'keep-alive',
-            }),
-            ctx.body(responseText)
-          );
+        ...mockChatCompletionsStreamingWithError({
+          initialChunks: ['{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}'],
+          errorMessage: 'Server error occurred',
         })
       );
 

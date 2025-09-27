@@ -1,11 +1,17 @@
 import { LoginMenu } from '@/components/LoginMenu';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockAuthInitiate,
+  mockAuthInitiateError,
+  mockLogout,
+  mockLogoutError,
+} from '@/test-utils/msw-v2/handlers/auth';
+import { mockUserLoggedOut, mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
 
@@ -24,40 +30,22 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-const mockLoggedOutUser = createMockLoggedOutUser();
+// MSW v2 setup with default handlers
+setupMswV2();
 
-const mockLoggedInUser = createMockLoggedInUser({ role: 'resource_user' });
-
-const mockAppInfo = {
-  status: 'ready',
-};
-
-const server = setupServer(
-  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(mockLoggedOutUser));
-  }),
-  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(mockAppInfo));
-  }),
-  rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-    return res(
-      ctx.status(201), // 201 Created for new OAuth session
-      ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-    );
-  })
-);
-
-beforeAll(() => {
-  server.listen();
+// Set up default handlers using MSW v2 patterns
+beforeEach(() => {
+  server.use(
+    ...mockUserLoggedOut(),
+    ...mockAppInfo({ status: 'ready' }),
+    ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
+  );
 });
 
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/login');
-  server.resetHandlers();
   vi.clearAllMocks();
 });
-
-afterAll(() => server.close());
 
 describe('LoginMenu Component', () => {
   it('shows login button when logged out', async () => {
@@ -71,17 +59,13 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows logout button and email when logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockLoggedInUser));
-      })
-    );
+    server.use(...mockUserLoggedIn({ role: 'resource_user', username: 'test@example.com' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
-      expect(screen.getByText(`Logged in as ${mockLoggedInUser.username}`)).toBeInTheDocument();
+      expect(screen.getByText('Logged in as test@example.com')).toBeInTheDocument();
     });
   });
 
@@ -103,14 +87,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles OAuth initiation with same-origin redirect URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200), // 200 OK for already authenticated user
-          ctx.json({ location: 'http://localhost:3000/ui/chat' })
-        );
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -124,13 +101,7 @@ describe('LoginMenu Component', () => {
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201), // 201 Created for new OAuth session
-          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
+      ...mockAuthInitiate({ delay: 100, status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -153,18 +124,7 @@ describe('LoginMenu Component', () => {
 
   it('shows error message when OAuth initiation fails and re-enables button', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-              code: 'oauth_config_error',
-            },
-          })
-        );
-      })
+      ...mockAuthInitiateError({ status: 500, code: 'oauth_config_error', message: 'OAuth configuration error' })
     );
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -184,11 +144,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows error when response has no location field and re-enables button', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json({})); // No location field
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 201, noLocation: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -207,11 +163,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json({ location: 'invalid-url-format' }));
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 201, invalidUrl: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -231,12 +183,8 @@ describe('LoginMenu Component', () => {
 
   it('handles logout action with external redirect URL', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockLoggedInUser));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
-      })
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockLogout({ delay: 100, location: 'http://localhost:1135/ui/login' })
     );
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -252,14 +200,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles logout action with internal redirect URL', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockLoggedInUser));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: '/ui/login' }));
-      })
-    );
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout({ delay: 100, location: '/ui/login' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -275,12 +216,8 @@ describe('LoginMenu Component', () => {
 
   it('handles logout error', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockLoggedInUser));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Session deletion failed' } }));
-      })
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockLogoutError({ status: 500, message: 'Session deletion failed' })
     );
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -301,14 +238,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles logout with missing location field', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockLoggedInUser));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({})); // No location field
-      })
-    );
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout({ noLocation: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -321,11 +251,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows nothing during loading', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.json(mockLoggedInUser));
-      })
-    );
+    server.use(...mockUserLoggedIn({ role: 'resource_user', delay: 100 }));
 
     const { container } = render(<LoginMenu />, { wrapper: createWrapper() });
     expect(container).toBeEmptyDOMElement();

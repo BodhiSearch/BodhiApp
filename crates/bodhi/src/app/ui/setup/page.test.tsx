@@ -1,12 +1,17 @@
 import Setup from '@/app/ui/setup/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import {
+  mockSetupSuccess,
+  mockSetupSuccessWithDelay,
+  mockSetupResourceAdmin,
+  mockSetupError,
+} from '@/test-utils/msw-v2/handlers/setup';
 import { showErrorParams } from '@/lib/utils.test';
-import { createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockToast = vi.fn();
@@ -22,16 +27,14 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-const server = setupServer();
-
 beforeAll(() => server.listen());
+afterAll(() => server.close());
 afterEach(() => {
   server.resetHandlers();
   vi.clearAllMocks();
   pushMock.mockClear();
   mockToast.mockClear();
 });
-afterAll(() => server.close());
 
 describe('Setup Page', () => {
   beforeEach(() => {
@@ -46,17 +49,7 @@ describe('Setup Page', () => {
     });
 
     // Setup default handlers
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      }),
-      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfoSetup(), ...mockUserLoggedOut(), ...mockSetupSuccess());
   });
 
   it('should render setup form and handle successful submission with redirect to download models', async () => {
@@ -86,11 +79,7 @@ describe('Setup Page', () => {
   });
 
   it('should redirect to resource admin when setup returns resource-admin status', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      })
-    );
+    server.use(...mockSetupResourceAdmin());
 
     const user = userEvent.setup();
 
@@ -111,11 +100,7 @@ describe('Setup Page', () => {
   });
 
   it('should show error toast when setup fails', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-        return res(ctx.status(400), ctx.json({ error: { message: 'Setup failed' } }));
-      })
-    );
+    server.use(...mockSetupError({ status: 400, message: 'Setup failed' }));
 
     const user = userEvent.setup();
 
@@ -228,11 +213,7 @@ describe('Setup Page', () => {
   });
 
   it('should disable form fields and button when loading', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-        return res(ctx.delay(1000), ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockSetupSuccessWithDelay(1000));
 
     const user = userEvent.setup();
     await act(async () => {

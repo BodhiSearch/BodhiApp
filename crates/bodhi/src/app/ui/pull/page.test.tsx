@@ -1,12 +1,12 @@
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import PullPage from '@/app/ui/pull/page';
+import { server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockModelPullDownloadsDefault, mockModelPullDownloadsError } from '@/test-utils/msw-v2/handlers/modelfiles';
 
 vi.mock('@/app/ui/pull/PullForm', () => ({
   PullForm: () => <div data-testid="pull-form">Pull Form</div>,
@@ -19,49 +19,6 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-const mockDownloadsResponse = {
-  data: [
-    {
-      id: '1',
-      repo: 'test/repo1',
-      filename: 'model1.gguf',
-      status: 'pending',
-      error: null,
-      updated_at: '2024-01-01T00:00:00Z',
-      total_bytes: 1000000,
-      downloaded_bytes: 500000,
-      started_at: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '2',
-      repo: 'test/repo2',
-      filename: 'model2.gguf',
-      status: 'completed',
-      error: null,
-      updated_at: '2024-01-01T00:00:00Z',
-      total_bytes: 2000000,
-      downloaded_bytes: 2000000,
-      started_at: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '3',
-      repo: 'test/repo3',
-      filename: 'model3.gguf',
-      status: 'error',
-      error: 'Download failed',
-      updated_at: '2024-01-01T00:00:00Z',
-      total_bytes: 1500000,
-      downloaded_bytes: 750000,
-      started_at: '2024-01-01T00:00:00Z',
-    },
-  ],
-  total: 3,
-  page: 1,
-  page_size: 30,
-};
-
-const server = setupServer();
-
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
@@ -73,15 +30,9 @@ beforeEach(() => {
 describe('PullPage', () => {
   beforeEach(() => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      }),
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.json(mockDownloadsResponse));
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockModelPullDownloadsDefault()
     );
   });
 
@@ -141,11 +92,7 @@ describe('PullPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
-      })
-    );
+    server.use(...mockModelPullDownloadsError({ status: 500, message: 'Internal Server Error' }));
 
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
@@ -157,16 +104,7 @@ describe('PullPage', () => {
 
 describe('PullPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfoSetup(), ...mockUserLoggedIn({ role: 'resource_user' }));
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });
@@ -174,14 +112,7 @@ describe('PullPage access control', () => {
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });

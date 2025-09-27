@@ -1,21 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { ENDPOINT_LOGOUT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { mockLogout, mockLogoutError } from '@/test-utils/msw-v2/handlers/auth';
 import React from 'react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const server = setupServer();
-
-beforeAll(() => server.listen());
-afterAll(() => server.close());
-beforeEach(() => {
-  server.resetHandlers();
-});
+setupMswV2();
 
 // Simple component that uses the useLogoutHandler hook
 const LogoutButton: React.FC<{ onSuccess?: (response: any) => void; onError?: (message: string) => void }> = ({
@@ -35,11 +28,7 @@ describe('useLogoutHandler', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
-      })
-    );
+    server.use(...mockLogout({ location: 'http://localhost:1135/ui/login', delay: 100 }));
 
     render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
 
@@ -69,11 +58,7 @@ describe('useLogoutHandler', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
-      })
-    );
+    server.use(...mockLogoutError({ status: 500, message: 'Internal Server Error' }));
 
     render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
 
@@ -90,11 +75,7 @@ describe('useLogoutHandler', () => {
   });
 
   it('handles logout without callbacks', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
-      })
-    );
+    server.use(...mockLogout({ location: 'http://localhost:1135/ui/login' }));
 
     render(<LogoutButton />, { wrapper: createWrapper() });
 

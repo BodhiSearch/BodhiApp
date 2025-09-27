@@ -5,35 +5,28 @@ import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockCreateToken, mockCreateTokenError } from '@/test-utils/msw-v2/handlers/tokens';
 import { describe, expect, it, vi } from 'vitest';
 
 const mockToken: ApiTokenResponse = {
   offline_token: 'test-token-123',
 };
 
-const server = setupServer();
-
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
+setupMswV2();
+
 afterEach(() => {
-  server.resetHandlers();
   mockToast.mockClear();
 });
 
 describe('TokenForm', () => {
   beforeEach(() => {
-    server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json(mockToken));
-      })
-    );
+    server.use(...mockCreateToken({ offline_token: mockToken.offline_token }));
   });
 
   it('renders form fields correctly', () => {
@@ -92,12 +85,9 @@ describe('TokenDialog', () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
     server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201),
-          ctx.json({ message: 'Failed to generate token. Please try again.' })
-        );
+      ...mockCreateToken({
+        offline_token: 'test-token-123',
+        delay: 100,
       })
     );
 
@@ -124,13 +114,9 @@ describe('TokenDialog', () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
     server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: { message: 'Failed to generate token. Please try again.' },
-          })
-        );
+      ...mockCreateTokenError({
+        status: 400,
+        message: 'Failed to generate token. Please try again.',
       })
     );
     render(<TokenForm onTokenCreated={onTokenCreated} />, {

@@ -5,12 +5,21 @@ import ApiModelsSetupPage from '@/app/ui/setup/api-models/page';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { setupServer } from 'msw/node';
-import { rest } from 'msw';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+// Import MSW v2 setup and API model handlers
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import {
+  mockApiFormatsDefault,
+  mockTestApiModelSuccess,
+  mockFetchApiModelsSuccess,
+  mockCreateApiModelSuccess,
+  mockCreateApiModel,
+} from '@/test-utils/msw-v2/handlers/api-models';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+
 // Import API model test utilities
-import { createApiModelHandlers } from '@/test-utils/msw-handlers';
 import {
   fillApiKey,
   testConnection,
@@ -23,7 +32,6 @@ import {
   expectErrorToast,
   selectApiFormat,
 } from '@/test-utils/api-model-test-utils';
-import { TEST_SCENARIOS, createTestHandlers } from '@/test-utils/api-model-test-data';
 
 // Mock next/navigation router
 const mockPush = vi.fn();
@@ -55,19 +63,10 @@ vi.mock('@/app/ui/setup/BodhiLogo', () => ({
   BodhiLogo: () => <div data-testid="bodhi-logo">Bodhi Logo</div>,
 }));
 
-// Setup MSW server
-const server = setupServer();
-
-beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
-});
-
-afterAll(() => {
-  server.close();
-});
+// Setup MSW v2 server
+setupMswV2();
 
 afterEach(() => {
-  server.resetHandlers();
   vi.clearAllMocks();
 });
 
@@ -75,7 +74,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
   describe('Page Structure and Initial Render', () => {
     it('renders page with correct authentication and app status requirements', async () => {
       // Setup API handlers
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Render the setup page
       render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
@@ -98,7 +104,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
     it('displays complete setup page structure with form in setup mode', async () => {
       // Setup API handlers
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Render the setup page
       render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
@@ -148,7 +161,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
   describe('Skip Functionality', () => {
     it('navigates to setup complete when skip button is clicked', async () => {
       // Setup API handlers
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Create user event instance
       const user = userEvent.setup();
@@ -177,7 +197,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
   describe('Form Initial State Validation', () => {
     it('form shows correct initial field values and button states for setup mode', async () => {
       // Setup API handlers
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Render the setup page
       render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
@@ -216,7 +243,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
     it('successfully creates API model and redirects to setup complete', async () => {
       // Setup with happy path handlers
       const user = userEvent.setup();
-      server.use(...createApiModelHandlers(createTestHandlers.openaiHappyPath()));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Render the setup page
       render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
@@ -264,7 +298,14 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
     it('handles server error during API model creation and stays on setup page', async () => {
       // Setup with happy path for initial operations
       const user = userEvent.setup();
-      server.use(...createApiModelHandlers(createTestHandlers.openaiHappyPath()));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       // Render the setup page
       render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
@@ -293,16 +334,12 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
       // Override create handler to return 500 error
       server.use(
-        rest.post('*/bodhi/v1/api-models', (_, res, ctx) => {
-          return res(
-            ctx.status(500),
-            ctx.json({
-              error: {
-                message: 'Internal server error',
-                type: 'internal_server_error',
-              },
-            })
-          );
+        ...mockCreateApiModel({
+          error: {
+            status: 500,
+            code: 'internal_server_error',
+            message: 'Internal server error',
+          },
         })
       );
 

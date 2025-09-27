@@ -3,9 +3,10 @@ import { ENDPOINT_AUTH_CALLBACK } from '@/hooks/useOAuth';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupServer } from 'msw2/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockAuthCallback, mockAuthCallbackError } from '@/test-utils/msw-v2/handlers/auth';
+import { http, HttpResponse } from 'msw2';
 
 const pushMock = vi.fn();
 let mockSearchParams = new URLSearchParams('code=test-code&state=test-state');
@@ -41,15 +42,7 @@ beforeEach(() => {
 
 describe('AuthCallbackPage', () => {
   it('renders processing state initially', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100), // Delay to keep processing state
-          ctx.status(200),
-          ctx.json({ location: 'http://localhost:3000/ui/chat' })
-        );
-      })
-    );
+    server.use(...mockAuthCallback({ delay: 100, location: 'http://localhost:3000/ui/chat' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -59,11 +52,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles successful OAuth callback with same-origin URL redirect', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:3000/ui/chat' }));
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/chat' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -74,11 +63,7 @@ describe('AuthCallbackPage', () => {
 
   it('handles successful OAuth callback with external URL redirect', async () => {
     mockWindowLocation('https://external.example.com/dashboard');
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'https://external.example.com/dashboard' }));
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'https://external.example.com/dashboard' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -88,14 +73,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles same-origin URL with different path, query, and hash', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ location: 'http://localhost:3000/ui/setup/download-models?step=1#section' })
-        );
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/setup/download-models?step=1#section' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup/download-models?step=1#section');
@@ -103,11 +81,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles different port as external URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:8080/ui/chat' }));
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'http://localhost:8080/ui/chat' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(window.location.href).toBe('http://localhost:8080/ui/chat');
@@ -115,11 +89,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles different protocol as external URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'https://localhost:3000/ui/chat' }));
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'https://localhost:3000/ui/chat' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -136,9 +106,9 @@ describe('AuthCallbackPage', () => {
     let receivedParams: any = null;
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, async (req, res, ctx) => {
-        receivedParams = await req.json();
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:3000/ui/chat' }));
+      http.post(ENDPOINT_AUTH_CALLBACK, async ({ request }) => {
+        receivedParams = await request.json();
+        return HttpResponse.json({ location: 'http://localhost:3000/ui/chat' }, { status: 200 });
       })
     );
 
@@ -156,17 +126,11 @@ describe('AuthCallbackPage', () => {
 
   it('handles OAuth callback error and shows error state', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: {
-              message: 'Invalid state parameter',
-              type: 'invalid_request',
-              code: 'invalid_state',
-            },
-          })
-        );
+      ...mockAuthCallbackError({
+        status: 400,
+        code: 'invalid_state',
+        message: 'Invalid state parameter',
+        type: 'invalid_request',
       })
     );
 
@@ -180,11 +144,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles missing location in successful response', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({}));
-      })
-    );
+    server.use(...mockAuthCallback({ noLocation: true }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -195,20 +155,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles OAuth error parameters from provider', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: {
-              message: 'OAuth provider error: access_denied - User denied access',
-              type: 'oauth_error',
-              code: 'access_denied',
-            },
-          })
-        );
-      })
-    );
+    server.use(...mockAuthCallbackError({ message: 'OAuth provider error: access_denied - User denied access' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -219,31 +166,14 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles retry button click', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Internal server error',
-              type: 'internal_server_error',
-              code: 'server_error',
-            },
-          })
-        );
-      })
-    );
+    server.use(...mockAuthCallbackError({ status: 500, message: 'Internal server error' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText('Internal server error')).toBeInTheDocument();
     });
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:3000/ui/chat' }));
-      })
-    );
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/chat' }));
 
     const retryButton = screen.getByRole('button', { name: 'Try Again' });
     await userEvent.click(retryButton);
@@ -256,33 +186,14 @@ describe('AuthCallbackPage', () => {
   });
 
   it('disables retry button while loading', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Server error',
-              type: 'internal_server_error',
-              code: 'server_error',
-            },
-          })
-        );
-      })
-    );
+    server.use(...mockAuthCallbackError({ status: 500, message: 'Server error' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(screen.getByText('Server error')).toBeInTheDocument();
     });
     const retryButton = screen.getByRole('button', { name: 'Try Again' });
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(200), // Longer delay to test disabled state
-          ctx.status(200),
-          ctx.json({ location: 'http://localhost:3000/ui/chat' })
-        );
-      })
+      ...mockAuthCallback({ delay: 200, location: 'http://localhost:3000/ui/chat' }) // Longer delay to test disabled state
     );
     await userEvent.click(retryButton);
     expect(screen.getByText('Processing Login...')).toBeInTheDocument();
@@ -292,19 +203,11 @@ describe('AuthCallbackPage', () => {
   it('handles empty search parameters', async () => {
     mockSearchParams = new URLSearchParams('');
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, async (req, res, ctx) => {
-        const params = await req.json();
-        expect(params).toEqual({});
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: {
-              message: 'Missing required OAuth parameters',
-              type: 'invalid_request',
-              code: 'missing_parameters',
-            },
-          })
-        );
+      ...mockAuthCallbackError({
+        status: 400,
+        code: 'missing_parameters',
+        message: 'Missing required OAuth parameters',
+        type: 'invalid_request',
       })
     );
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
@@ -314,11 +217,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles invalid URL in response by treating as external', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'invalid-url-format' }));
-      })
-    );
+    server.use(...mockAuthCallback({ invalidUrl: true }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(window.location.href).toBe('invalid-url-format');

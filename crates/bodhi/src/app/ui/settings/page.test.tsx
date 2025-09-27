@@ -1,6 +1,11 @@
 import { act, render, screen } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '@/test-utils/msw-v2/setup';
+import {
+  mockSettings,
+  mockSettingsDefault,
+  mockSettingsEmpty,
+  mockSettingsError,
+} from '@/test-utils/msw-v2/handlers/settings';
 import { SettingsPageContent } from '@/app/ui/settings/page';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { SettingInfo } from '@bodhiapp/ts-client';
@@ -62,12 +67,6 @@ const mockSettingInfos: SettingInfo[] = [
   },
 ];
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettingInfos));
-  })
-);
-
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
@@ -118,29 +117,14 @@ const TEST_CONFIG = {
 
 describe('SettingsPageContent', () => {
   it('shows loading skeleton with correct groups', () => {
-    server.use(
-      rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json([]));
-      })
-    );
+    server.use(...mockSettingsEmpty());
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
     expect(screen.getAllByTestId('settings-skeleton')).toHaveLength(3);
   });
 
   it('shows error message', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Test error',
-            },
-          })
-        );
-      })
-    );
+    server.use(...mockSettingsError({ status: 500, message: 'Test error' }));
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
@@ -150,11 +134,7 @@ describe('SettingsPageContent', () => {
   });
 
   it('renders settings with test configuration', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json(mockSettingInfos));
-      })
-    );
+    server.use(...mockSettingsDefault());
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
@@ -166,6 +146,8 @@ describe('SettingsPageContent', () => {
 
 describe('SettingsPage', () => {
   it('shows loading skeleton initially', () => {
+    server.use(...mockSettingsEmpty());
+
     render(<SettingsPageContent config={TEST_CONFIG} />, {
       wrapper: createWrapper(),
     });
@@ -173,11 +155,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows error when api fails', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Failed to fetch settings' } }));
-      })
-    );
+    server.use(...mockSettingsError({ status: 500, message: 'Failed to fetch settings' }));
 
     render(<SettingsPageContent config={TEST_CONFIG} />, {
       wrapper: createWrapper(),
@@ -186,6 +164,8 @@ describe('SettingsPage', () => {
   });
 
   it('displays settings grouped by category', async () => {
+    server.use(...mockSettingsDefault());
+
     await act(async () => {
       render(<SettingsPageContent config={TEST_CONFIG} />, {
         wrapper: createWrapper(),
@@ -203,6 +183,8 @@ describe('SettingsPage', () => {
   });
 
   it('shows setting source badges', async () => {
+    server.use(...mockSettingsDefault());
+
     await act(async () => {
       render(<SettingsPageContent config={TEST_CONFIG} />, {
         wrapper: createWrapper(),
@@ -219,6 +201,8 @@ describe('SettingsPage', () => {
   });
 
   it('shows edit button only for BODHI_EXEC_VARIANT', async () => {
+    server.use(...mockSettingsDefault());
+
     render(<SettingsPageContent config={TEST_CONFIG} />, {
       wrapper: createWrapper(),
     });
@@ -231,6 +215,8 @@ describe('SettingsPage', () => {
   });
 
   it('opens and closes edit dialog', async () => {
+    server.use(...mockSettingsDefault());
+
     const user = userEvent.setup();
     render(<SettingsPageContent config={TEST_CONFIG} />, {
       wrapper: createWrapper(),

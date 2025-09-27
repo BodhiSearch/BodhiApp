@@ -1,12 +1,14 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockModels, mockGetModel, mockUpdateModel } from '@/test-utils/msw-v2/handlers/models';
+import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock useMediaQuery hook
@@ -53,36 +55,8 @@ vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
 
-const mockModelData = {
-  alias: 'test-alias',
-  repo: 'owner1/repo1',
-  filename: 'file1.gguf',
-  snapshot: 'main',
-  source: 'user',
-  model_params: {},
-  request_params: {
-    temperature: 0.7,
-    max_tokens: 1000,
-  },
-  context_params: ['--ctx-size 2048', '--parallel 4'],
-};
-
-const mockModelsResponse = {
-  data: [
-    { repo: 'owner1/repo1', filename: 'file1.gguf' },
-    { repo: 'owner1/repo1', filename: 'file2.gguf' },
-    { repo: 'owner2/repo2', filename: 'file3.gguf' },
-  ],
-};
-
-const server = setupServer();
-
-beforeAll(() => {
-  server.listen();
-});
-afterAll(() => server.close());
+setupMswV2();
 afterEach(() => {
-  server.resetHandlers();
   vi.clearAllMocks();
 });
 beforeEach(() => {
@@ -92,32 +66,50 @@ beforeEach(() => {
 describe('EditAliasPage', () => {
   beforeEach(() => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockGetModel({
+        alias: 'test-alias',
+        response: {
+          alias: 'test-alias',
+          repo: 'owner1/repo1',
+          filename: 'file1.gguf',
+          snapshot: 'main',
+          source: 'user',
+          model_params: {},
+          request_params: {
+            temperature: 0.7,
+            max_tokens: 1000,
+          },
+          context_params: ['--ctx-size 2048', '--parallel 4'],
+        },
       }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
+      ...mockModels({
+        data: [
+          { repo: 'owner1/repo1', filename: 'file1.gguf', source: 'model' },
+          { repo: 'owner1/repo1', filename: 'file2.gguf', source: 'model' },
+          { repo: 'owner2/repo2', filename: 'file3.gguf', source: 'model' },
+        ],
       }),
-      rest.get(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
-        return res(ctx.json(mockModelData));
+      ...mockModelFiles({
+        data: [
+          { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main', size: 1000000, model_params: {} },
+          { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main', size: 1000000, model_params: {} },
+          { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main', size: 1000000, model_params: {} },
+        ],
       }),
-      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-        return res(ctx.json(mockModelsResponse));
-      }),
-
-      rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            data: [
-              { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
-              { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
-              { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' },
-            ],
-          })
-        );
-      }),
-      rest.put(`*${ENDPOINT_MODELS}/test-alias`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ alias: 'test-alias' }));
+      ...mockUpdateModel({
+        alias: 'test-alias',
+        response: {
+          alias: 'test-alias',
+          repo: 'owner1/repo1',
+          filename: 'file1.gguf',
+          snapshot: 'main',
+          source: 'user',
+          model_params: {},
+          request_params: {},
+          context_params: [],
+        },
       })
     );
   });
@@ -243,8 +235,9 @@ describe('EditAliasPage', () => {
 
   it('displays error message when model data fails to load', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_MODELS}/:alias`, (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
+      ...mockGetModel({
+        alias: 'test-alias',
+        error: { status: 500, code: 'internal_error', message: 'Internal Server Error' },
       })
     );
 
@@ -258,16 +251,7 @@ describe('EditAliasPage', () => {
 
 describe('EditAliasPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfoSetup(), ...mockUserLoggedIn({ role: 'resource_user' }));
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
@@ -275,16 +259,7 @@ describe('EditAliasPage access control', () => {
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });

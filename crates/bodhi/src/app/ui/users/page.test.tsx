@@ -1,22 +1,20 @@
 import UsersPage from '@/app/ui/users/page';
-import { ADMIN_ROLES, BLOCKED_ROLES, createMockUserInfo } from '@/test-fixtures/access-requests';
-import {
-  mockSimpleUsersResponse,
-  mockUserInfoResponse1,
-  mockUserInfoResponse2,
-  mockManagerInfoResponse,
-  mockAdminInfoResponse,
-  mockSecondAdminInfoResponse,
-  mockSecondManagerInfoResponse,
-  mockMultipleAdminsResponse,
-  mockMultipleManagersResponse,
-} from '@/test-fixtures/users';
-import { createMockLoggedOutUser } from '@/test-utils/mock-user';
-import { createAccessRequestHandlers, createErrorHandlers, createRoleBasedHandlers } from '@/test-utils/msw-handlers';
+import { ADMIN_ROLES, BLOCKED_ROLES } from '@/test-fixtures/access-requests';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
-import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import {
+  mockUserLoggedIn,
+  mockUserLoggedOut,
+  mockUsersDefault,
+  mockUsersMultipleAdmins,
+  mockUsersMultipleManagers,
+  mockUsersEmpty,
+  mockUsersError,
+} from '@/test-utils/msw-v2/handlers/user';
+import { mockAccessRequestsDefault } from '@/test-utils/msw-v2/handlers/access-requests';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -41,12 +39,37 @@ vi.mock('@/hooks/use-toast-messages', () => ({
   }),
 }));
 
-const server = setupServer();
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
+// Helper function to create role-based handlers similar to MSW v1 pattern
+function createRoleBasedHandlersV2(role: string, shouldHaveAccess: boolean = true) {
+  const userRole =
+    role === 'admin'
+      ? 'resource_admin'
+      : role === 'manager'
+        ? 'resource_manager'
+        : role === 'power_user'
+          ? 'resource_power_user'
+          : 'resource_user';
+
+  if (shouldHaveAccess) {
+    return [
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: userRole }),
+      ...mockUsersDefault(),
+      ...mockAccessRequestsDefault(),
+    ];
+  } else {
+    return [
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: userRole }),
+      ...mockUsersError(),
+      ...mockAccessRequestsDefault(),
+    ];
+  }
+}
+
 afterEach(() => {
-  server.resetHandlers();
   pushMock.mockClear();
   mockShowSuccess.mockClear();
   mockShowError.mockClear();
@@ -58,7 +81,7 @@ describe('UsersPage Role-Based Access Control', () => {
   });
 
   it.each(ADMIN_ROLES)('allows access for %s role', async (role) => {
-    server.use(...createRoleBasedHandlers(role, true));
+    server.use(...createRoleBasedHandlersV2(role, true));
 
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
@@ -71,7 +94,7 @@ describe('UsersPage Role-Based Access Control', () => {
   });
 
   it.each(BLOCKED_ROLES)('blocks access for %s role', async (role) => {
-    server.use(...createRoleBasedHandlers(role, false));
+    server.use(...createRoleBasedHandlersV2(role, false));
 
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
@@ -86,9 +109,9 @@ describe('UsersPage Role-Based Access Control', () => {
 
   it('renders page container for unauthenticated users (redirect handled by AppInitializer)', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockLoggedOutUser(),
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedOut(),
+      ...mockUsersDefault() // Page might still try to load users even when logged out
     );
 
     await act(async () => {
@@ -104,10 +127,9 @@ describe('UsersPage Role-Based Access Control', () => {
 describe('UsersPage Data Display', () => {
   beforeEach(() => {
     server.use(
-      ...createAccessRequestHandlers({
-        users: mockSimpleUsersResponse,
-        userInfo: createMockUserInfo('resource_admin'),
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersDefault()
     );
   });
 
@@ -174,10 +196,13 @@ describe('UsersPage Data Display', () => {
 describe('UsersPage Role Hierarchy UI Enforcement', () => {
   it('admin user sees action buttons for all other users but not themselves', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        users: mockSimpleUsersResponse,
-        userInfo: createMockUserInfo('resource_admin', 'admin@example.com'), // Current user is admin
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        role: 'resource_admin',
+        username: 'admin@example.com',
+        user_id: 'admin-id',
+      }),
+      ...mockUsersDefault()
     );
 
     await act(async () => {
@@ -220,10 +245,13 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
 
   it('manager user sees action buttons appropriately based on hierarchy', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        users: mockSimpleUsersResponse,
-        userInfo: createMockUserInfo('resource_manager', 'manager@example.com'), // Current user is manager
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        role: 'resource_manager',
+        username: 'manager@example.com',
+        user_id: 'manager-id',
+      }),
+      ...mockUsersDefault()
     );
 
     await act(async () => {
@@ -256,10 +284,13 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
 
   it('admin can see action buttons for other admins', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        users: mockMultipleAdminsResponse,
-        userInfo: createMockUserInfo('resource_admin', 'admin@example.com'), // Current user is first admin
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        role: 'resource_admin',
+        username: 'admin@example.com',
+        user_id: 'admin-id',
+      }),
+      ...mockUsersMultipleAdmins()
     );
 
     await act(async () => {
@@ -290,10 +321,13 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
 
   it('manager can see action buttons for other managers', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        users: mockMultipleManagersResponse,
-        userInfo: createMockUserInfo('resource_manager', 'manager@example.com'), // Current user is first manager
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        role: 'resource_manager',
+        username: 'manager@example.com',
+        user_id: 'manager-id',
+      }),
+      ...mockUsersMultipleManagers()
     );
 
     await act(async () => {
@@ -331,10 +365,9 @@ describe('UsersPage Role Hierarchy UI Enforcement', () => {
 describe('UsersPage Error Handling', () => {
   it('renders page container even when APIs fail', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-        users: 'error', // This will trigger the error response in MSW handler
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersError()
     );
 
     await act(async () => {
@@ -347,10 +380,9 @@ describe('UsersPage Error Handling', () => {
 
   it('handles users API failure gracefully', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-        users: 'error', // This will trigger the error response in MSW handler
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersError()
     );
 
     await act(async () => {
@@ -376,9 +408,9 @@ describe('UsersPage Error Handling', () => {
 
   it('handles network failures gracefully', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersDefault()
     );
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
@@ -396,10 +428,9 @@ describe('UsersPage Error Handling', () => {
 describe('UsersPage Loading States', () => {
   it('shows page content after loading users', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-        users: mockSimpleUsersResponse,
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersDefault()
     );
     await act(async () => {
       render(<UsersPage />, { wrapper: createWrapper() });
@@ -419,10 +450,9 @@ describe('UsersPage Loading States', () => {
 
   it('handles page structure correctly', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-        users: mockSimpleUsersResponse,
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersDefault()
     );
 
     await act(async () => {
@@ -442,10 +472,9 @@ describe('UsersPage Loading States', () => {
 describe('UsersPage Empty State', () => {
   it('shows empty state when no users are returned', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo('resource_admin'),
-        users: { users: [], total: 0, page: 1, page_size: 10 },
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockUsersEmpty()
     );
 
     await act(async () => {

@@ -1,16 +1,21 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
+import { server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import {
+  mockAuthInitiate,
+  mockAuthInitiateError,
+  mockLogout,
+  mockLogoutError,
+} from '@/test-utils/msw-v2/handlers/auth';
 
 // Mock the hooks
-const server = setupServer();
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -36,14 +41,7 @@ describe('LoginContent loading states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     pushMock.mockClear();
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json(createMockLoggedOutUser()));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockUserLoggedOut(), ...mockAppInfo({ status: 'ready' }));
   });
 
   it('shows loading indicator while fetching data', async () => {
@@ -58,18 +56,10 @@ describe('LoginContent with user not Logged In', () => {
     vi.resetAllMocks();
     pushMock.mockClear();
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json(createMockLoggedOutUser()));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'OAuth configuration error' } }));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
-      })
+      ...mockUserLoggedOut(),
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockAuthInitiateError({ status: 500, message: 'OAuth configuration error' }),
+      ...mockLogout({ location: 'http://localhost:1135/ui/login' })
     );
   });
 
@@ -92,14 +82,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles OAuth initiation when login required and redirects to auth URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201), // 201 Created for new OAuth session
-          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
-    );
+    server.use(...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -120,15 +103,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201), // 201 Created for new OAuth session
-          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
-    );
+    server.use(...mockAuthInitiate({ delay: 100, location: 'https://oauth.example.com/auth?client_id=test' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -152,17 +127,10 @@ describe('LoginContent with user not Logged In', () => {
 
   it('displays error message when OAuth initiation fails and re-enables button', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-              code: 'oauth_config_error',
-            },
-          })
-        );
+      ...mockAuthInitiateError({
+        status: 500,
+        code: 'oauth_config_error',
+        message: 'OAuth configuration error',
       })
     );
 
@@ -185,11 +153,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
+    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -204,14 +168,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles already authenticated user with external redirect URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200), // 200 OK for already authenticated user
-          ctx.json({ location: 'https://external.example.com/dashboard' })
-        );
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 200, location: 'https://external.example.com/dashboard' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -226,11 +183,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('shows error when response has no location field and re-enables button', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json({})); // No location field
-      })
-    );
+    server.use(...mockAuthInitiate({ noLocation: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -251,11 +204,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json({ location: 'invalid-url-format' }));
-      })
-    );
+    server.use(...mockAuthInitiate({ invalidUrl: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -276,11 +225,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles already authenticated user with same-origin redirect URL', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:3000/ui/chat' }));
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -310,15 +255,9 @@ describe('LoginContent with user Logged In', () => {
     vi.resetAllMocks();
     pushMock.mockClear();
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json(createMockLoggedInUser()));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready' }));
-      }),
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
-      })
+      ...mockUserLoggedIn(),
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockLogout({ location: 'http://localhost:1135/ui/login' })
     );
   });
 
@@ -332,11 +271,7 @@ describe('LoginContent with user Logged In', () => {
   });
 
   it('calls logout function when logout button is clicked and redirects to external location', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/test/login' }));
-      })
-    );
+    server.use(...mockLogout({ location: 'http://localhost:1135/ui/test/login' }));
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
@@ -349,11 +284,7 @@ describe('LoginContent with user Logged In', () => {
   });
 
   it('calls logout function when logout button is clicked and redirects to internal location', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ location: '/ui/login' }));
-      })
-    );
+    server.use(...mockLogout({ location: '/ui/login' }));
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
@@ -366,11 +297,7 @@ describe('LoginContent with user Logged In', () => {
   });
 
   it('disables logout button and shows loading text when logging out', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/test/login' }));
-      })
-    );
+    server.use(...mockLogout({ delay: 100, location: 'http://localhost:1135/ui/test/login' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -393,11 +320,7 @@ describe('LoginContent with user Logged In', () => {
 
 describe('LoginContent access control', () => {
   it('redirects to setup when app is not setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'setup' }));
-      })
-    );
+    server.use(...mockAppInfoSetup());
     await act(async () => {
       render(<LoginPage />, { wrapper: createWrapper() });
     });

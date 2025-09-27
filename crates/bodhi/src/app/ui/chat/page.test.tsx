@@ -1,10 +1,9 @@
 import ChatPage from '@/app/ui/chat/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO, ENDPOINT_MODELS } from '@/hooks/useQuery';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfoSetup, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -32,12 +31,9 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-const server = setupServer();
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
 beforeEach(() => {
-  server.resetHandlers();
   pushMock.mockClear();
   toastMock.mockClear();
 });
@@ -47,16 +43,8 @@ afterEach(() => {
 
 describe('ChatPage', () => {
   it('redirects to /ui/setup if status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfoSetup());
+    server.use(...mockUserLoggedIn());
 
     await act(async () => {
       render(<ChatPage />, { wrapper: createWrapper() });
@@ -68,14 +56,7 @@ describe('ChatPage', () => {
   });
 
   it('redirects to /ui/login if user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
 
     render(<ChatPage />, { wrapper: createWrapper() });
 

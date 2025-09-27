@@ -9,7 +9,7 @@ import { HelpCircle } from 'lucide-react';
 
 interface SystemPromptProps {
   isLoading?: boolean;
-  tooltip: string;
+  tooltip?: string;
 }
 
 export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) {
@@ -23,16 +23,18 @@ export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor="system-prompt">System Prompt</Label>
-          <TooltipProvider>
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent sideOffset={8}>
-                <p className="max-w-xs text-sm">{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {tooltip && (
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>
+                  <p className="max-w-xs text-sm">{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <Switch
           id="system-prompt-toggle"
