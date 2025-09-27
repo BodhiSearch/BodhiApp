@@ -2,10 +2,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
-#[schema(example = json!({}))]
-pub struct EmptyResponse {}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[schema(example = json!({
     "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
 }))]

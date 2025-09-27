@@ -1,5 +1,5 @@
 /**
- * Type-safe MSW v2 handlers for API models endpoints using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for API models endpoints using openapi-msw
  */
 import {
   ENDPOINT_API_MODELS,
@@ -7,21 +7,22 @@ import {
   ENDPOINT_API_MODELS_FETCH,
   ENDPOINT_API_MODELS_FORMATS,
 } from '@/hooks/useApiModels';
-import { http, HttpResponse, type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
+import { type components } from '../setup';
 
 /**
  * Create type-safe MSW v2 handlers for API models list endpoint
  */
 export function mockApiModels(config: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
   return [
-    http.get(ENDPOINT_API_MODELS, () => {
+    typedHttp.get(ENDPOINT_API_MODELS, ({ response }) => {
       const responseData: components['schemas']['PaginatedApiModelResponse'] = {
         data: config.data || [],
         page: config.page || 1,
         page_size: config.page_size || 30,
         total: config.total || 0,
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -32,21 +33,26 @@ export function mockApiModels(config: Partial<components['schemas']['PaginatedAp
 export function mockCreateApiModel(
   config: {
     response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 400 | 500; code?: string; message?: string };
+    error?: { status?: 201 | 400 | 409 | 500; code?: string; message?: string; type?: string };
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_API_MODELS, () => {
+    typedHttp.post(ENDPOINT_API_MODELS, ({ response }) => {
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'internal_error',
-              message: config.error.message || 'Internal Server Error',
-            },
+        const errorType =
+          config.error.status === 400
+            ? 'invalid_request_error'
+            : config.error.status === 409
+              ? 'invalid_request_error'
+              : 'internal_server_error';
+
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || 'Internal Server Error',
+            type: config.error.type || errorType,
           },
-          { status: config.error.status || 500 }
-        );
+        });
       }
 
       const responseData: components['schemas']['ApiModelResponse'] = config.response || {
@@ -58,7 +64,7 @@ export function mockCreateApiModel(
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      return HttpResponse.json(responseData, { status: 201 });
+      return response(201).json(responseData);
     }),
   ];
 }
@@ -70,23 +76,23 @@ export function mockGetApiModel(
   config: {
     id: string;
     response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 404 | 500; code?: string; message?: string };
+    error?: { status?: 404 | 500; code?: string; message?: string; type?: string };
   } = { id: 'test-api-model' }
 ) {
   return [
-    http.get(`${ENDPOINT_API_MODELS}/:id`, ({ params }) => {
+    typedHttp.get('/bodhi/v1/api-models/{id}', ({ params, response }) => {
       const { id } = params;
 
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'not_found',
-              message: config.error.message || `API model ${id} not found`,
-            },
+        const errorType = config.error.status === 404 ? 'not_found_error' : 'internal_server_error';
+
+        return response(config.error.status || 404).json({
+          error: {
+            code: config.error.code || 'entity_not_found',
+            message: config.error.message || `API model ${id} not found`,
+            type: config.error.type || errorType,
           },
-          { status: config.error.status || 404 }
-        );
+        });
       }
 
       const responseData: components['schemas']['ApiModelResponse'] = config.response || {
@@ -98,7 +104,7 @@ export function mockGetApiModel(
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -110,27 +116,32 @@ export function mockUpdateApiModel(
   config: {
     id: string;
     response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 400 | 404 | 500; code?: string; message?: string };
+    error?: { status?: 400 | 404 | 500; code?: string; message?: string; type?: string };
   } = { id: 'test-api-model' }
 ) {
   return [
-    http.put(`${ENDPOINT_API_MODELS}/:id`, ({ params }) => {
-      const { id } = params;
+    typedHttp.put('/bodhi/v1/api-models/{alias}', ({ params, response }) => {
+      const { alias } = params;
 
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'internal_error',
-              message: config.error.message || `Failed to update API model ${id}`,
-            },
+        const errorType =
+          config.error.status === 400
+            ? 'invalid_request_error'
+            : config.error.status === 404
+              ? 'not_found_error'
+              : 'internal_server_error';
+
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || `Failed to update API model ${alias}`,
+            type: config.error.type || errorType,
           },
-          { status: config.error.status || 500 }
-        );
+        });
       }
 
       const responseData: components['schemas']['ApiModelResponse'] = config.response || {
-        id: id as string,
+        id: alias as string,
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
         api_key_masked: '****key',
@@ -138,7 +149,37 @@ export function mockUpdateApiModel(
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
+    }),
+  ];
+}
+
+/**
+ * Create type-safe MSW v2 handler for API model deletion endpoint
+ */
+export function mockDeleteApiModel(
+  config: {
+    id: string;
+    error?: { status?: 404 | 500; code?: string; message?: string; type?: string };
+  } = { id: 'test-api-model' }
+) {
+  return [
+    typedHttp.delete('/bodhi/v1/api-models/{alias}', ({ params, response }) => {
+      const { alias } = params;
+
+      if (config.error) {
+        const errorType = config.error.status === 404 ? 'not_found_error' : 'internal_server_error';
+
+        return response(config.error.status || 404).json({
+          error: {
+            code: config.error.code || 'entity_not_found',
+            message: config.error.message || `API model ${alias} not found`,
+            type: config.error.type || errorType,
+          },
+        });
+      }
+
+      return response(204).empty();
     }),
   ];
 }
@@ -148,27 +189,26 @@ export function mockUpdateApiModel(
  */
 export function mockApiFormats(
   config: {
-    data?: string[];
-    error?: { status?: 500; code?: string; message?: string };
+    data?: components['schemas']['ApiFormat'][];
+    error?: { status?: 500; code?: string; message?: string; type?: string };
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_API_MODELS_FORMATS, () => {
+    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, ({ response }) => {
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'internal_error',
-              message: config.error.message || 'Failed to fetch API formats',
-            },
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || 'Failed to fetch API formats',
+            type: config.error.type || 'internal_server_error',
           },
-          { status: config.error.status || 500 }
-        );
+        });
       }
 
-      return HttpResponse.json({
-        data: config.data || ['openai', 'openai-compatible'],
-      });
+      const responseData: components['schemas']['ApiFormatsResponse'] = {
+        data: config.data || ['openai', 'placeholder'],
+      };
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -180,19 +220,24 @@ export function mockTestApiModel(
   config: {
     success?: boolean;
     response?: string;
-    error?: string;
+    error?: { status?: 400 | 500; code?: string; message?: string; type?: string };
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_API_MODELS_TEST, () => {
+    typedHttp.post(ENDPOINT_API_MODELS_TEST, ({ response }) => {
       if (config.error) {
-        return HttpResponse.json({
-          success: false,
-          error: config.error,
+        const errorType = config.error.status === 400 ? 'invalid_request_error' : 'internal_server_error';
+
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || 'Test failed',
+            type: config.error.type || errorType,
+          },
         });
       }
 
-      return HttpResponse.json({
+      return response(200).json({
         success: config.success !== undefined ? config.success : true,
         response: config.response || 'Connection successful',
       });
@@ -206,24 +251,24 @@ export function mockTestApiModel(
 export function mockFetchApiModels(
   config: {
     models?: string[];
-    error?: { status?: 401 | 500; code?: string; message?: string };
+    error?: { status?: 400 | 500; code?: string; message?: string; type?: string };
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_API_MODELS_FETCH, () => {
+    typedHttp.post(ENDPOINT_API_MODELS_FETCH, ({ response }) => {
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'authentication_error',
-              message: config.error.message || 'Invalid API key',
-            },
+        const errorType = config.error.status === 400 ? 'invalid_request_error' : 'internal_server_error';
+
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'authentication_error',
+            message: config.error.message || 'Invalid API key',
+            type: config.error.type || errorType,
           },
-          { status: config.error.status || 401 }
-        );
+        });
       }
 
-      return HttpResponse.json({
+      return response(200).json({
         models: config.models || ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
       });
     }),
@@ -258,22 +303,21 @@ export function mockApiModelsEmpty() {
 
 export function mockApiModelsError(
   config: {
-    status?: 400 | 500;
+    status?: 500;
     code?: string;
     message?: string;
+    type?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_API_MODELS, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Internal Server Error',
-          },
+    typedHttp.get(ENDPOINT_API_MODELS, ({ response }) => {
+      return response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Internal Server Error',
+          type: config.type || 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -282,7 +326,7 @@ export function mockApiModelsError(
  * Convenience methods for common test scenarios
  */
 export function mockApiFormatsDefault() {
-  return mockApiFormats({ data: ['openai', 'openai-compatible'] });
+  return mockApiFormats({ data: ['openai', 'placeholder'] });
 }
 
 export function mockTestApiModelSuccess() {
@@ -290,7 +334,9 @@ export function mockTestApiModelSuccess() {
 }
 
 export function mockTestApiModelError() {
-  return mockTestApiModel({ error: 'Connection test failed' });
+  return mockTestApiModel({
+    error: { status: 400, code: 'connection_error', message: 'Connection test failed', type: 'invalid_request_error' },
+  });
 }
 
 export function mockFetchApiModelsSuccess() {
@@ -299,7 +345,7 @@ export function mockFetchApiModelsSuccess() {
 
 export function mockFetchApiModelsAuthError() {
   return mockFetchApiModels({
-    error: { status: 401, code: 'authentication_error', message: 'Invalid API key' },
+    error: { status: 400, code: 'authentication_error', message: 'Invalid API key', type: 'invalid_request_error' },
   });
 }
 
@@ -319,6 +365,22 @@ export function mockCreateApiModelSuccess() {
 
 export function mockCreateApiModelError() {
   return mockCreateApiModel({
-    error: { status: 400, code: 'invalid_request_error', message: 'Invalid API model data' },
+    error: {
+      status: 400,
+      code: 'invalid_request_error',
+      message: 'Invalid API model data',
+      type: 'invalid_request_error',
+    },
+  });
+}
+
+export function mockDeleteApiModelSuccess() {
+  return mockDeleteApiModel({ id: 'test-api-model' });
+}
+
+export function mockDeleteApiModelNotFound() {
+  return mockDeleteApiModel({
+    id: 'missing-model',
+    error: { status: 404, code: 'entity_not_found', message: 'API model not found', type: 'not_found_error' },
   });
 }

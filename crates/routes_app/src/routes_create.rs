@@ -87,7 +87,7 @@ pub async fn create_alias_handler(
 
 /// Update Alias
 #[utoipa::path(
-    post,
+    put,
     path = ENDPOINT_MODELS.to_owned() + "/{id}",
     tag = API_TAG_MODELS,
     params(
@@ -97,7 +97,7 @@ pub async fn create_alias_handler(
     operation_id = "updateAlias",
     request_body = UpdateAliasRequest,
     responses(
-      (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
+      (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
       (status = 400, description = "Invalid request", body = OpenAIApiError),
       (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),

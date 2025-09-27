@@ -8,7 +8,7 @@ import {
   mockAppInfoSetup,
   mockAppInfoReady,
 } from '@/test-utils/msw-v2/handlers/info';
-import { mockAuthInitiate, mockAuthInitiateError } from '@/test-utils/msw-v2/handlers/auth';
+import { mockAuthInitiate, mockAuthInitiateError, mockAuthInitiateInvalid } from '@/test-utils/msw-v2/handlers/auth';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 import { ROUTE_DEFAULT } from '@/lib/constants';
@@ -186,7 +186,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateError({ status: 500, empty: true }));
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ empty: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -199,7 +199,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles missing location in successful response and re-enables button', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ status: 201, noLocation: true }));
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -218,7 +218,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ status: 201, invalidUrl: true }));
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ status: 201, invalidUrl: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 

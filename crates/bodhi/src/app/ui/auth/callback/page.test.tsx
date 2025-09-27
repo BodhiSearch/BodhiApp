@@ -5,7 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockAuthCallback, mockAuthCallbackError } from '@/test-utils/msw-v2/handlers/auth';
+import { mockAuthCallback, mockAuthCallbackError, mockAuthCallbackInvalid } from '@/test-utils/msw-v2/handlers/auth';
 import { http, HttpResponse } from 'msw';
 
 const pushMock = vi.fn();
@@ -127,10 +127,10 @@ describe('AuthCallbackPage', () => {
   it('handles OAuth callback error and shows error state', async () => {
     server.use(
       ...mockAuthCallbackError({
-        status: 400,
+        status: 422,
         code: 'invalid_state',
         message: 'Invalid state parameter',
-        type: 'invalid_request',
+        type: 'invalid_request_error',
       })
     );
 
@@ -144,7 +144,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles missing location in successful response', async () => {
-    server.use(...mockAuthCallback({ noLocation: true }));
+    server.use(...mockAuthCallbackInvalid({ noLocation: true }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -204,10 +204,10 @@ describe('AuthCallbackPage', () => {
     mockSearchParams = new URLSearchParams('');
     server.use(
       ...mockAuthCallbackError({
-        status: 400,
+        status: 422,
         code: 'missing_parameters',
         message: 'Missing required OAuth parameters',
-        type: 'invalid_request',
+        type: 'invalid_request_error',
       })
     );
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
@@ -217,7 +217,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles invalid URL in response by treating as external', async () => {
-    server.use(...mockAuthCallback({ invalidUrl: true }));
+    server.use(...mockAuthCallbackInvalid({ invalidUrl: true }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(window.location.href).toBe('invalid-url-format');

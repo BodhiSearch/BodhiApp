@@ -1,5 +1,7 @@
 /**
- * Type-safe MSW v2 handlers for chat completions endpoint using patterns inspired by openapi-msw
+ * Manual MSW v2 handlers for chat completions endpoint
+ * Note: OpenAPI schema has incomplete response definitions (unknown/never types)
+ * Therefore using manual MSW for all handlers until schema is improved
  */
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
 import { http, HttpResponse } from '../setup';
@@ -91,7 +93,7 @@ export function mockChatCompletionsStreaming(
 }
 
 /**
- * Create non-streaming chat completion handler
+ * Create non-streaming chat completion handler (manual MSW)
  */
 export function mockChatCompletions(
   config: {
@@ -139,7 +141,7 @@ export function mockChatCompletions(
 }
 
 /**
- * Create error handler for chat completions endpoint
+ * Create error handler for chat completions endpoint (manual MSW)
  */
 export function mockChatCompletionsError(
   config: {

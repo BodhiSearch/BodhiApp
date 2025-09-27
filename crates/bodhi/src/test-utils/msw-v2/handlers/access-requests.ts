@@ -1,5 +1,5 @@
 /**
- * Type-safe MSW v2 handlers for access-requests endpoints using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for access-requests endpoints using openapi-msw
  */
 import {
   ENDPOINT_ACCESS_REQUESTS,
@@ -7,6 +7,7 @@ import {
   ENDPOINT_USER_REQUEST_STATUS,
   ENDPOINT_USER_REQUEST_ACCESS,
 } from '@/hooks/useAccessRequest';
+import { typedHttp } from '../openapi-msw-setup';
 import { http, HttpResponse, type components } from '../setup';
 
 /**
@@ -29,16 +30,18 @@ export function mockAccessRequests(
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_ACCESS_REQUESTS, () => {
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS, ({ response }) => {
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests: config.requests || [],
         total: config.total || config.requests?.length || 0,
         page: config.page || 1,
         page_size: config.page_size || 10,
       };
-      const response = HttpResponse.json(responseData);
+      const responseObj = response(200).json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay))
+        : responseObj;
     }),
   ];
 }
@@ -113,16 +116,18 @@ export function mockAccessRequestsPending(
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_ACCESS_REQUESTS_PENDING, () => {
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, ({ response }) => {
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests: config.requests || [],
         total: config.total || config.requests?.length || 0,
         page: config.page || 1,
         page_size: config.page_size || 10,
       };
-      const response = HttpResponse.json(responseData);
+      const responseObj = response(200).json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay))
+        : responseObj;
     }),
   ];
 }
@@ -173,26 +178,24 @@ export function mockAccessRequestApprove(
   } = {}
 ) {
   return [
-    http.post(`${ENDPOINT_ACCESS_REQUESTS}/:id/approve`, async ({ request }) => {
+    typedHttp.post('/bodhi/v1/access-requests/{id}/approve', async ({ request, response }) => {
       // Parse request body to validate it contains role
       const body = await request.json();
 
       if (config.success === false) {
-        const response = HttpResponse.json(
-          {
-            error: {
-              code: 'approval_failed',
-              message: 'Failed to approve access request',
-            },
+        const responseObj = response(404).json({
+          error: {
+            code: 'approval_failed',
+            message: 'Failed to approve access request',
+            type: 'not_found_error',
           },
-          { status: 500 }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
       }
 
       // Success response - no content expected
-      const response = HttpResponse.json({}, { status: 200 });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseObj = response(200).empty();
+      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
     }),
   ];
 }
@@ -211,23 +214,21 @@ export function mockAccessRequestReject(
   } = {}
 ) {
   return [
-    http.post(`${ENDPOINT_ACCESS_REQUESTS}/:id/reject`, () => {
+    typedHttp.post('/bodhi/v1/access-requests/{id}/reject', ({ response }) => {
       if (config.success === false) {
-        const response = HttpResponse.json(
-          {
-            error: {
-              code: 'rejection_failed',
-              message: 'Failed to reject access request',
-            },
+        const responseObj = response(404).json({
+          error: {
+            code: 'rejection_failed',
+            message: 'Failed to reject access request',
+            type: 'not_found_error',
           },
-          { status: 500 }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
       }
 
       // Success response - no content expected
-      const response = HttpResponse.json({}, { status: 200 });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseObj = response(200).empty();
+      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
     }),
   ];
 }
@@ -242,22 +243,21 @@ export function mockAccessRequestReject(
  */
 export function mockAccessRequestsError(
   config: {
-    status?: 401 | 403 | 500;
+    status?: 401 | 403;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_ACCESS_REQUESTS, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'server_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS, ({ response }) => {
+      const statusCode = config.status || 401;
+      return response(statusCode).json({
+        error: {
+          code: config.code || 'unauthorized_error',
+          message: config.message || 'Unauthorized',
+          type: statusCode === 401 ? 'unauthorized_error' : 'forbidden_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -286,22 +286,21 @@ export function mockAccessRequestRejectError() {
  */
 export function mockAccessRequestsPendingError(
   config: {
-    status?: 401 | 403 | 404 | 500;
+    status?: 401 | 403;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_ACCESS_REQUESTS_PENDING, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'not_found',
-            message: config.message || 'Not found',
-          },
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, ({ response }) => {
+      const statusCode = config.status || 401;
+      return response(statusCode).json({
+        error: {
+          code: config.code || 'unauthorized_error',
+          message: config.message || 'Unauthorized',
+          type: statusCode === 401 ? 'unauthorized_error' : 'forbidden_error',
         },
-        { status: config.status || 404 }
-      );
+      });
     }),
   ];
 }
@@ -326,16 +325,18 @@ export function mockUserRequestStatus(
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_USER_REQUEST_STATUS, () => {
+    typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, ({ response }) => {
       const responseData: components['schemas']['UserAccessStatusResponse'] = {
         status: config.status || 'pending',
         username: config.username || 'user@example.com',
         created_at: config.created_at || '2024-01-01T00:00:00Z',
         updated_at: config.updated_at || '2024-01-01T00:00:00Z',
       };
-      const response = HttpResponse.json(responseData);
+      const responseObj = response(200).json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay))
+        : responseObj;
     }),
   ];
 }
@@ -390,25 +391,31 @@ export function mockUserRequestStatusRejected(config: { username?: string; delay
  */
 export function mockUserRequestStatusError(
   config: {
-    status?: 401 | 403 | 404 | 500;
+    status?: 400 | 401 | 404;
     code?: string;
     message?: string;
     delay?: number;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_USER_REQUEST_STATUS, () => {
-      const response = HttpResponse.json(
-        {
-          error: {
-            type: config.status === 404 ? 'not_found_error' : 'internal_server_error',
-            message: config.message || 'pending access request for user not found',
-          },
-        },
-        { status: config.status || 404 }
-      );
+    typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, ({ response }) => {
+      const statusCode = config.status || 404;
+      let errorType: string;
+      if (statusCode === 400) errorType = 'invalid_request_error';
+      else if (statusCode === 401) errorType = 'unauthorized_error';
+      else errorType = 'not_found_error';
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseObj = response(statusCode).json({
+        error: {
+          code: config.code || (statusCode === 404 ? 'not_found' : 'error'),
+          message: config.message || 'pending access request for user not found',
+          type: errorType,
+        },
+      });
+
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay))
+        : responseObj;
     }),
   ];
 }
@@ -427,22 +434,21 @@ export function mockUserRequestAccess(
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
+    typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, ({ response }) => {
       if (config.success === false) {
-        const response = HttpResponse.json(
-          {
-            error: {
-              message: 'Request already exists',
-            },
+        const responseObj = response(409).json({
+          error: {
+            code: 'conflict',
+            message: 'Request already exists',
+            type: 'conflict_error',
           },
-          { status: 400 }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
       }
 
       // Success response - typically returns 201 with empty body for access requests
-      const response = HttpResponse.json({}, { status: 201 });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseObj = response(201).empty();
+      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay)) : responseObj;
     }),
   ];
 }
@@ -452,23 +458,30 @@ export function mockUserRequestAccess(
  */
 export function mockUserRequestAccessError(
   config: {
-    status?: 400 | 409 | 500;
+    status?: 401 | 409 | 422;
     message?: string;
     delay?: number;
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
-      const response = HttpResponse.json(
-        {
-          error: {
-            message: config.message || 'Request already exists',
-          },
-        },
-        { status: config.status || 400 }
-      );
+    typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, ({ response }) => {
+      const statusCode = config.status || 409;
+      let errorType: string;
+      if (statusCode === 401) errorType = 'unauthorized_error';
+      else if (statusCode === 409) errorType = 'conflict_error';
+      else errorType = 'unprocessable_entity_error';
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseObj = response(statusCode).json({
+        error: {
+          code: statusCode === 409 ? 'conflict' : 'error',
+          message: config.message || 'Request already exists',
+          type: errorType,
+        },
+      });
+
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseObj), config.delay))
+        : responseObj;
     }),
   ];
 }

@@ -582,7 +582,7 @@ describe('ApiModelForm', () => {
 
       server.use(
         ...mockTestApiModel({
-          error: 'Connection failed',
+          error: { status: 500, code: 'connection_error', message: 'Connection failed', type: 'internal_server_error' },
         })
       );
 

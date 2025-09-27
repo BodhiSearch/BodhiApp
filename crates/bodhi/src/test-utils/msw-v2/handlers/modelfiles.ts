@@ -1,8 +1,9 @@
 /**
- * Type-safe MSW v2 handlers for modelfiles endpoint using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for modelfiles endpoint using openapi-msw
  */
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
-import { http, HttpResponse, type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
+import type { components } from '../setup';
 
 /**
  * Create type-safe MSW v2 handlers for modelfiles endpoint
@@ -10,14 +11,14 @@ import { http, HttpResponse, type components } from '../setup';
  */
 export function mockModelFiles(config: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
   return [
-    http.get(ENDPOINT_MODEL_FILES, () => {
+    typedHttp.get(ENDPOINT_MODEL_FILES, ({ response }) => {
       const responseData: components['schemas']['PaginatedLocalModelResponse'] = {
         data: config.data || [],
         page: config.page || 1,
         page_size: config.page_size || 30,
         total: config.total || 0,
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -45,22 +46,20 @@ export function mockModelFilesEmpty() {
 
 export function mockModelFilesError(
   config: {
-    status?: 400 | 500;
+    status?: 500;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_MODEL_FILES, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Internal Server Error',
-          },
+    typedHttp.get(ENDPOINT_MODEL_FILES, ({ response }) => {
+      return response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Internal Server Error',
+          type: 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -71,14 +70,14 @@ export function mockModelFilesError(
  */
 export function mockModelPullDownloads(config: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
   return [
-    http.get(ENDPOINT_MODEL_FILES_PULL, () => {
+    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
       const responseData: components['schemas']['PaginatedDownloadResponse'] = {
         data: config.data || [],
         page: config.page || 1,
         page_size: config.page_size || 30,
         total: config.total || 0,
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -135,22 +134,20 @@ export function mockModelPullDownloadsEmpty() {
 
 export function mockModelPullDownloadsError(
   config: {
-    status?: 400 | 500;
+    status?: 500;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_MODEL_FILES_PULL, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Internal Server Error',
-          },
+    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
+      return response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Internal Server Error',
+          type: 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -161,7 +158,7 @@ export function mockModelPullDownloadsError(
  */
 export function mockModelPull(config: Partial<components['schemas']['DownloadRequest']> & { delay?: number } = {}) {
   return [
-    http.post(ENDPOINT_MODEL_FILES_PULL, () => {
+    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
       const responseData: components['schemas']['DownloadRequest'] = {
         id: config.id || '123',
         repo: config.repo || 'test/repo1',
@@ -174,9 +171,11 @@ export function mockModelPull(config: Partial<components['schemas']['DownloadReq
         downloaded_bytes: config.downloaded_bytes,
         started_at: config.started_at || new Date().toISOString(),
       };
-      const response = HttpResponse.json(responseData, { status: 201 });
+      const responseResult = response(201).json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
+        : responseResult;
     }),
   ];
 }
@@ -186,26 +185,25 @@ export function mockModelPull(config: Partial<components['schemas']['DownloadReq
  */
 export function mockModelPullError(
   config: {
-    status?: 400 | 422 | 500;
+    status?: 400 | 500;
     code?: string;
     message?: string;
     delay?: number;
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_MODEL_FILES_PULL, () => {
-      const response = HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'pull_error-file_already_exists',
-            message: config.message || 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-            type: 'invalid_request_error',
-          },
+    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
+      const responseResult = response(config.status || 400).json({
+        error: {
+          code: config.code || 'pull_error-file_already_exists',
+          message: config.message || 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
+          type: 'invalid_request_error',
         },
-        { status: config.status || 400 }
-      );
+      });
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
+        : responseResult;
     }),
   ];
 }

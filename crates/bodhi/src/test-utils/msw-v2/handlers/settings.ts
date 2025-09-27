@@ -1,8 +1,9 @@
 /**
- * Type-safe MSW v2 handlers for settings endpoint using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for settings endpoint using openapi-msw with full schema compliance
  */
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
-import { http, HttpResponse, type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
+import type { components } from '../setup';
 
 /**
  * Create type-safe MSW v2 handlers for settings endpoint
@@ -10,9 +11,9 @@ import { http, HttpResponse, type components } from '../setup';
  */
 export function mockSettings(config: components['schemas']['SettingInfo'][] = []) {
   return [
-    http.get(ENDPOINT_SETTINGS, () => {
+    typedHttp.get(ENDPOINT_SETTINGS, ({ response }) => {
       const responseData: components['schemas']['SettingInfo'][] = config;
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -67,22 +68,20 @@ export function mockSettingsEmpty() {
 
 export function mockSettingsError(
   config: {
-    status?: 400 | 401 | 500;
+    status?: 401 | 500;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_SETTINGS, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.get(ENDPOINT_SETTINGS, ({ response }) => {
+      return response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Server error',
+          type: config.status === 401 ? 'unauthorized_error' : 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -101,8 +100,8 @@ export function mockUpdateSetting(
   }
 ) {
   return [
-    http.put(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.json(config);
+    typedHttp.put('/bodhi/v1/settings/{key}', ({ response }) => {
+      return response(200).json(config);
     }),
   ];
 }
@@ -113,22 +112,22 @@ export function mockUpdateSetting(
 export function mockUpdateSettingError(
   settingKey: string,
   config: {
-    status?: 400 | 401 | 500;
+    status?: 400 | 404;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.put(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.put('/bodhi/v1/settings/{key}', ({ response }) => {
+      const statusCode = config.status || 400;
+      const errorType = statusCode === 404 ? 'not_found_error' : 'invalid_request_error';
+      return response(statusCode).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Server error',
+          type: errorType,
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -138,8 +137,14 @@ export function mockUpdateSettingError(
  */
 export function mockUpdateSettingNetworkError(settingKey: string) {
   return [
-    http.put(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.error();
+    typedHttp.put('/bodhi/v1/settings/{key}', ({ response }) => {
+      return response(400).json({
+        error: {
+          code: 'network_error',
+          message: 'Failed to update setting',
+          type: 'invalid_request_error',
+        },
+      });
     }),
   ];
 }
@@ -159,9 +164,9 @@ export function mockUpdateSettingWithDelay(
   delayMs: number = 100
 ) {
   return [
-    http.put(`${ENDPOINT_SETTINGS}/${settingKey}`, async () => {
+    typedHttp.put('/bodhi/v1/settings/{key}', async ({ response }) => {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
-      return HttpResponse.json(config);
+      return response(200).json(config);
     }),
   ];
 }
@@ -180,8 +185,8 @@ export function mockDeleteSetting(
   }
 ) {
   return [
-    http.delete(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.json(config);
+    typedHttp.delete('/bodhi/v1/settings/{key}', ({ response }) => {
+      return response(200).json(config);
     }),
   ];
 }
@@ -192,22 +197,20 @@ export function mockDeleteSetting(
 export function mockDeleteSettingError(
   settingKey: string,
   config: {
-    status?: 400 | 401 | 500;
+    status?: 404;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.delete(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.delete('/bodhi/v1/settings/{key}', ({ response }) => {
+      return response(config.status || 404).json({
+        error: {
+          code: config.code || 'not_found',
+          message: config.message || 'Setting not found',
+          type: 'not_found_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -217,8 +220,14 @@ export function mockDeleteSettingError(
  */
 export function mockDeleteSettingNetworkError(settingKey: string) {
   return [
-    http.delete(`${ENDPOINT_SETTINGS}/${settingKey}`, () => {
-      return HttpResponse.error();
+    typedHttp.delete('/bodhi/v1/settings/{key}', ({ response }) => {
+      return response(404).json({
+        error: {
+          code: 'not_found',
+          message: 'Setting not found',
+          type: 'not_found_error',
+        },
+      });
     }),
   ];
 }

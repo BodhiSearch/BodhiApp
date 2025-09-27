@@ -6,8 +6,10 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockAuthInitiate,
   mockAuthInitiateError,
+  mockAuthInitiateInvalid,
   mockAuthCallback,
   mockAuthCallbackError,
+  mockAuthCallbackInvalid,
 } from '@/test-utils/msw-v2/handlers/auth';
 
 setupMswV2();
@@ -139,7 +141,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
+    server.use(...mockAuthInitiateInvalid({ empty: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -159,7 +161,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiate({ status: 201, noLocation: true }));
+    server.use(...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -184,7 +186,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
+    server.use(...mockAuthInitiateInvalid({ empty: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -302,7 +304,7 @@ describe('useOAuthCallback', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthCallback({ status: 200, noLocation: true }));
+    server.use(...mockAuthCallbackInvalid({ status: 200, noLocation: true }));
 
     const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),

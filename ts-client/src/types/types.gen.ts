@@ -203,10 +203,6 @@ export type DownloadStatus = 'pending' | 'completed' | 'error';
 
 export type Duration = string;
 
-export type EmptyResponse = {
-    [key: string]: unknown;
-};
-
 export type ErrorBody = {
     /**
      * Specific error code for programmatic error handling
@@ -1774,9 +1770,9 @@ export type UpdateAliasError = UpdateAliasErrors[keyof UpdateAliasErrors];
 
 export type UpdateAliasResponses = {
     /**
-     * Alias created succesfully
+     * Alias updated succesfully
      */
-    201: UserAliasResponse;
+    200: UserAliasResponse;
 };
 
 export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
@@ -2086,10 +2082,8 @@ export type RequestUserAccessResponses = {
     /**
      * Access request created successfully
      */
-    201: EmptyResponse;
+    201: unknown;
 };
-
-export type RequestUserAccessResponse = RequestUserAccessResponses[keyof RequestUserAccessResponses];
 
 export type GetUserAccessStatusData = {
     body?: never;
