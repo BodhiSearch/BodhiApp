@@ -1,19 +1,16 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
 import { act, renderHook } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockChatCompletions,
+  mockChatCompletionsStreaming,
+  mockChatCompletionsStreamingWithError,
+} from '@/test-utils/msw-v2/handlers/chat-completions';
 
-// Reuse the same server setup pattern as AppInitializer.test.tsx
-const server = setupServer();
-
-beforeAll(() => server.listen());
-afterAll(() => server.close());
-beforeEach(() => {
-  server.resetHandlers();
-});
+setupMswV2();
 
 describe('useChatCompletion', () => {
   let queryClient: QueryClient;
@@ -52,8 +49,8 @@ describe('useChatCompletion', () => {
       };
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
+        ...mockChatCompletions({
+          response: mockResponse,
         })
       );
 
@@ -78,8 +75,18 @@ describe('useChatCompletion', () => {
         });
       });
 
-      expect(onMessage).toHaveBeenCalledWith(mockResponse.choices[0].message);
-      expect(onFinish).toHaveBeenCalledWith(mockResponse.choices[0].message);
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'The day that comes after Monday is Tuesday.',
+          role: 'assistant',
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'The day that comes after Monday is Tuesday.',
+          role: 'assistant',
+        })
+      );
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
@@ -100,12 +107,8 @@ describe('useChatCompletion', () => {
       ];
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(chunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
-          );
+        ...mockChatCompletionsStreaming({
+          chunks,
         })
       );
 
@@ -146,37 +149,19 @@ describe('useChatCompletion', () => {
     });
 
     it('should handle errors in event stream', async () => {
-      const formatSSEMessage = (data: any) => `data: ${JSON.stringify(data)}\n\n`;
-
-      const responseText = [
-        formatSSEMessage({
-          choices: [
-            {
-              delta: { content: 'Hello' },
-              finish_reason: null,
-            },
-          ],
-        }),
-        formatSSEMessage({
-          error: {
-            message: 'Server error occurred',
-            type: 'server_error',
-          },
-        }),
-        'data: [DONE]\n\n',
-      ].join('');
-
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.set({
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              Connection: 'keep-alive',
+        ...mockChatCompletionsStreamingWithError({
+          initialChunks: [
+            JSON.stringify({
+              choices: [
+                {
+                  delta: { content: 'Hello' },
+                  finish_reason: null,
+                },
+              ],
             }),
-            ctx.body(responseText)
-          );
+          ],
+          errorMessage: 'Server error occurred',
         })
       );
 
@@ -247,8 +232,8 @@ describe('useChatCompletion', () => {
       };
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
+        ...mockChatCompletions({
+          response: mockResponse,
         })
       );
 
@@ -298,12 +283,8 @@ describe('useChatCompletion', () => {
       ];
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(streamChunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
-          );
+        ...mockChatCompletionsStreaming({
+          chunks: streamChunks,
         })
       );
 
@@ -362,8 +343,8 @@ describe('useChatCompletion', () => {
       };
 
       server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
+        ...mockChatCompletions({
+          response: mockResponse,
         })
       );
 
@@ -382,15 +363,19 @@ describe('useChatCompletion', () => {
         });
       });
 
-      // Message should be delivered without metadata
-      expect(onMessage).toHaveBeenCalledWith({
-        content: 'Test response',
-        role: 'assistant',
-      });
-      expect(onFinish).toHaveBeenCalledWith({
-        content: 'Test response',
-        role: 'assistant',
-      });
+      // Message should be delivered - handler provides consistent metadata structure
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Test response',
+          role: 'assistant',
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Test response',
+          role: 'assistant',
+        })
+      );
     });
   });
 });

@@ -1,18 +1,17 @@
 'use client';
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import UiPage from '@/app/ui/page';
-import { createWrapper } from '@/tests/wrapper';
-import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 import {
   FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_DEFAULT,
   ROUTE_RESOURCE_ADMIN,
   ROUTE_SETUP_DOWNLOAD_MODELS,
 } from '@/lib/constants';
+import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { server } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
+import { render, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -38,13 +37,6 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Setup MSW server
-const server = setupServer(
-  rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-    return res(ctx.json({ status: 'setup' }));
-  })
-);
-
 // Add this configuration before starting the server
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -58,11 +50,7 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
+    server.use(...mockAppInfoSetup());
 
     render(<UiPage />, { wrapper: createWrapper() });
 
@@ -75,11 +63,7 @@ describe('UiPage', () => {
     // Set the localStorage flag
     localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
 
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfoReady());
 
     render(<UiPage />, { wrapper: createWrapper() });
 
@@ -89,11 +73,7 @@ describe('UiPage', () => {
   });
 
   it(`redirects to ${ROUTE_RESOURCE_ADMIN} when status is resource-admin`, async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      })
-    );
+    server.use(...mockAppInfoResourceAdmin());
 
     render(<UiPage />, { wrapper: createWrapper() });
 
@@ -106,11 +86,7 @@ describe('UiPage', () => {
     // Set the localStorage flag to false
     localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'false');
 
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfoReady());
 
     render(<UiPage />, { wrapper: createWrapper() });
     await waitFor(() => {

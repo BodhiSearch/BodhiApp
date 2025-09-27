@@ -6,6 +6,8 @@ dist/
 build/
 coverage/
 
+src/test-utils/generated/openapi-schema.ts
+
 # Generated files
 src-tauri/gen/
 src-tauri/target/

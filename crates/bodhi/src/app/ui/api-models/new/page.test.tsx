@@ -3,12 +3,19 @@ import EditApiModel from '@/app/ui/api-models/edit/page';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '@/test-utils/msw-v2/setup';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Test utilities and data
-import { createApiModelHandlers } from '@/test-utils/msw-handlers';
+import {
+  mockApiFormatsDefault,
+  mockTestApiModelSuccess,
+  mockFetchApiModelsSuccess,
+  mockCreateApiModelSuccess,
+  mockCreateApiModelError,
+} from '@/test-utils/msw-v2/handlers/api-models';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import {
   selectProvider,
   selectApiFormat,
@@ -35,14 +42,6 @@ import {
   expectErrorToast,
   expectNavigationCall,
 } from '@/test-utils/api-model-test-utils';
-import {
-  TEST_SCENARIOS,
-  createTestHandlers,
-  navigationPaths,
-  loadingStates,
-  toastMessages,
-  mockApiModelResponses,
-} from '@/test-utils/api-model-test-data';
 
 // Mock router
 const mockPush = vi.fn();
@@ -61,8 +60,6 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast, dismiss: () => {} }),
 }));
 
-const server = setupServer();
-
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
 });
@@ -79,7 +76,14 @@ afterEach(() => {
 describe('New API Model Page - Page-Level Integration Tests', () => {
   describe('Page Structure and Initial Render', () => {
     it('renders page with correct authentication and app status requirements', async () => {
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -90,7 +94,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
     });
 
     it('displays API format selector initially', async () => {
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -104,7 +115,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
 
   describe('Page State Verification', () => {
     it('New API Model page loads with correct initial state', async () => {
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -136,7 +154,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
     });
 
     it('Form shows correct initial field values and states', async () => {
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -150,7 +175,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
 
     it('Form validation prevents submission with empty required fields', async () => {
       const user = userEvent.setup();
-      server.use(...createApiModelHandlers());
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -176,7 +208,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
     it('successfully creates API model and redirects to models page', async () => {
       const user = userEvent.setup();
 
-      server.use(...createApiModelHandlers(createTestHandlers.openaiHappyPath()));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -216,7 +255,14 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       const user = userEvent.setup();
 
       // Use normal handlers for initial operations
-      server.use(...createApiModelHandlers(createTestHandlers.openaiHappyPath()));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess(),
+        ...mockCreateApiModelSuccess()
+      );
 
       render(<NewApiModel />, { wrapper: createWrapper() });
 
@@ -241,19 +287,7 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       await selectModels(user, ['gpt-4']);
 
       // Override the create handler to return server error
-      server.use(
-        rest.post('*/bodhi/v1/api-models', (_, res, ctx) => {
-          return res(
-            ctx.status(500),
-            ctx.json({
-              error: {
-                message: 'Internal server error',
-                type: 'internal_server_error',
-              },
-            })
-          );
-        })
-      );
+      server.use(...mockCreateApiModelError());
 
       // Submit the form (should fail with 500)
       await submitForm(user);

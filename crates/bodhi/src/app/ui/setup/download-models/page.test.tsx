@@ -1,11 +1,12 @@
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams } from '@/lib/utils.test';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo, mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockModelPullDownloads, mockModelPullDownloadsEmpty } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
@@ -15,10 +16,7 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-const server = setupServer();
-beforeAll(() => server.listen());
-afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
+setupMswV2();
 beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockClear();
@@ -41,44 +39,9 @@ vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-// Add mock models data after server setup
-const mockModels = [
-  {
-    id: 'meta-llama-3.1-8b-instruct',
-    repo: 'bartowski/Meta-Llama-3.1-8B-Instruct-GGUF',
-    filename: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf',
-    status: 'pending',
-  },
-  {
-    id: 'phi-3.5-mini-128k-instruct',
-    repo: 'bartowski/Phi-3.5-mini-instruct-GGUF',
-    filename: 'Phi-3.5-mini-instruct-Q8_0.gguf',
-    status: 'completed',
-  },
-];
-
 describe('ModelDownloadPage access control', () => {
   it('should redirect to /ui/setup if app status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            version: '0.1.0',
-            status: 'setup',
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            ...createMockLoggedOutUser(),
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      })
-    );
+    server.use(...mockAppInfoSetup(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
@@ -88,26 +51,9 @@ describe('ModelDownloadPage access control', () => {
 
   it('should render the page when app is ready and user is logged in', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            version: '0.1.0',
-            status: 'ready',
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            ...createMockLoggedInUser(),
-            username: 'user@email.com',
-            role: 'resource_user',
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      })
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ username: 'user@email.com', role: 'resource_user' }),
+      ...mockModelPullDownloadsEmpty()
     );
 
     await act(async () => {
@@ -118,26 +64,7 @@ describe('ModelDownloadPage access control', () => {
   });
 
   it('should redirect to /ui/login when app is ready but user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            version: '0.1.0',
-            status: 'ready',
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.json({
-            ...createMockLoggedOutUser(),
-          })
-        );
-      }),
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
@@ -150,8 +77,48 @@ describe('ModelDownloadPage render', () => {
   beforeEach(() => {
     mockToast.mockClear(); // Clear toast mock before each test
     server.use(
-      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(ctx.json({ data: mockModels, page: 1, page_size: 100 }));
+      ...mockModelPullDownloads({
+        data: [
+          {
+            id: 'deepseek-r1-distill-llama-8b',
+            repo: 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
+            filename: 'DeepSeek-R1-Distill-Llama-8B.gguf',
+            status: 'pending',
+            error: null,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            total_bytes: null,
+            downloaded_bytes: null,
+            started_at: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'meta-llama-3.1-8b-instruct',
+            repo: 'bartowski/Meta-Llama-3.1-8B-Instruct-GGUF',
+            filename: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf',
+            status: 'pending',
+            error: null,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            total_bytes: 2000000,
+            downloaded_bytes: 1000000,
+            started_at: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'phi-3.5-mini-128k-instruct',
+            repo: 'bartowski/Phi-3.5-mini-instruct-GGUF',
+            filename: 'Phi-3.5-mini-instruct-Q8_0.gguf',
+            status: 'completed',
+            error: null,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            total_bytes: 1500000,
+            downloaded_bytes: 1500000,
+            started_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        page: 1,
+        page_size: 100,
+        total: 3,
       })
     );
   });

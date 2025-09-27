@@ -12,18 +12,28 @@ import {
 } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
-import { ErrorBody, AppInfo, SettingInfo } from '@bodhiapp/ts-client';
+import { OpenAiApiError, AppInfo, SettingInfo } from '@bodhiapp/ts-client';
 
 // Type aliases for compatibility
-type ApiError = ErrorBody;
+type ApiError = OpenAiApiError;
 type Setting = SettingInfo;
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockSettings,
+  mockSettingsError,
+  mockUpdateSetting,
+  mockUpdateSettingError,
+  mockDeleteSetting,
+  mockDeleteSettingError,
+} from '@/test-utils/msw-v2/handlers/settings';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockSetup, mockSetupError } from '@/test-utils/msw-v2/handlers/setup';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-const mockSettings: Setting[] = [
+const mockSettingsData: Setting[] = [
   {
     key: 'BODHI_LOG_LEVEL',
     current_value: 'info',
@@ -41,48 +51,35 @@ const mockSettings: Setting[] = [
     source: 'default',
     metadata: {
       type: 'number',
-      range: {
-        min: 1025,
-        max: 65535,
-      },
+      min: 1025,
+      max: 65535,
     },
   },
 ];
 
-const mockAppInfo: AppInfo = {
+const mockAppInfoData: AppInfo = {
   version: '0.1.0',
   status: 'ready',
 };
 
-const mockUserInfo = {
+const mockUserInfoData = {
   ...createMockLoggedInUser(),
   role: 'resource_user',
 };
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettings));
-  }),
-  rest.put(`*${ENDPOINT_SETTINGS}/:key`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettings[0]));
-  }),
-  rest.delete(`*${ENDPOINT_SETTINGS}/:key`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettings[0]));
-  }),
-  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(mockAppInfo));
-  }),
-  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(mockUserInfo));
-  }),
-  rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-    return res(ctx.json({ ...mockAppInfo, status: 'ready' }));
-  })
-);
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
+// Setup default handlers
+beforeAll(() => {
+  server.use(
+    ...mockSettings(mockSettingsData),
+    ...mockUpdateSetting('BODHI_LOG_LEVEL', mockSettingsData[0]),
+    ...mockDeleteSetting('BODHI_LOG_LEVEL', mockSettingsData[0]),
+    ...mockAppInfo(mockAppInfoData),
+    ...mockUserLoggedIn(mockUserInfoData),
+    ...mockSetup({ ...mockAppInfoData, status: 'ready' })
+  );
+});
 
 describe('Settings Hooks', () => {
   describe('useSettings', () => {
@@ -95,15 +92,11 @@ describe('Settings Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toEqual(mockSettings);
+      expect(result.current.data).toEqual(mockSettingsData);
     });
 
     it('handles error response', async () => {
-      server.use(
-        rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-          return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
-        })
-      );
+      server.use(...mockSettingsError({ status: 500, message: 'Test Error' }));
 
       const { result } = renderHook(() => useSettings(), {
         wrapper: createWrapper(),
@@ -134,9 +127,8 @@ describe('Settings Hooks', () => {
 
     beforeEach(() => {
       server.use(
-        rest.put(`*${ENDPOINT_SETTINGS}/${updateData.key}`, (_, res, ctx) => {
-          return res(ctx.status(200), ctx.json(mockUpdatedSetting));
-        })
+        ...mockUpdateSetting(updateData.key, mockUpdatedSetting),
+        ...mockSettings(mockSettingsData) // For refetch after update
       );
     });
 
@@ -154,14 +146,9 @@ describe('Settings Hooks', () => {
 
     it('handles error response', async () => {
       server.use(
-        rest.put(`*${ENDPOINT_SETTINGS}/${updateData.key}`, (_, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({
-              error: 'Bad Request',
-              message: 'Invalid setting value',
-            })
-          );
+        ...mockUpdateSettingError(updateData.key, {
+          status: 400,
+          message: 'Invalid setting value',
         })
       );
 
@@ -177,7 +164,7 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe('Invalid setting value');
+          expect(axiosError.response?.data.error?.message).toBe('Invalid setting value');
         }
       });
     });
@@ -230,9 +217,8 @@ describe('Settings Hooks', () => {
 
     beforeEach(() => {
       server.use(
-        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
-          return res(ctx.status(200), ctx.json(mockDeletedSetting));
-        })
+        ...mockDeleteSetting(deleteData.key, mockDeletedSetting),
+        ...mockSettings(mockSettingsData) // For refetch after delete
       );
     });
 
@@ -250,14 +236,9 @@ describe('Settings Hooks', () => {
 
     it('handles error response', async () => {
       server.use(
-        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({
-              error: 'Bad Request',
-              message: 'Cannot delete required setting',
-            })
-          );
+        ...mockDeleteSettingError(deleteData.key, {
+          status: 400,
+          message: 'Cannot delete required setting',
         })
       );
 
@@ -273,7 +254,7 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe('Cannot delete required setting');
+          expect(axiosError.response?.data.error?.message).toBe('Cannot delete required setting');
         }
       });
     });
@@ -310,6 +291,14 @@ describe('Settings Hooks', () => {
 });
 
 describe('useSetupApp', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfo(mockAppInfoData),
+      ...mockUserLoggedIn(mockUserInfoData),
+      ...mockSetup({ ...mockAppInfoData, status: 'ready' })
+    );
+  });
+
   it('invalidates appInfo and user queries on successful setup', async () => {
     const wrapper = createWrapper();
 
@@ -335,7 +324,7 @@ describe('useSetupApp', () => {
     });
 
     await act(async () => {
-      await setupResult.current.mutateAsync({});
+      await setupResult.current.mutateAsync({ name: 'Test App' });
     });
 
     // Verify both queries were invalidated and refetched
@@ -352,29 +341,18 @@ describe('useSetupApp', () => {
     });
 
     await act(async () => {
-      await result.current.mutateAsync({});
+      await result.current.mutateAsync({ name: 'Test App' });
     });
 
     expect(onSuccess).toHaveBeenCalledWith({
-      ...mockAppInfo,
+      ...mockAppInfoData,
       status: 'ready',
     });
   });
 
   it('calls onError with error message on failure', async () => {
     const onError = vi.fn();
-    server.use(
-      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Setup failed',
-            },
-          })
-        );
-      })
-    );
+    server.use(...mockSetupError({ status: 500, message: 'Setup failed' }));
 
     const { result } = renderHook(() => useSetupApp({ onError }), {
       wrapper: createWrapper(),
@@ -382,7 +360,7 @@ describe('useSetupApp', () => {
 
     await act(async () => {
       try {
-        await result.current.mutateAsync({});
+        await result.current.mutateAsync({ name: 'Test App' });
       } catch (error) {
         // Expected error
       }

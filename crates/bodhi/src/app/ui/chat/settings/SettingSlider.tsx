@@ -9,7 +9,7 @@ import { HelpCircle } from 'lucide-react';
 
 interface SettingSliderProps {
   label: string;
-  tooltip: string;
+  tooltip?: string;
   value: number | undefined;
   enabled: boolean;
   onValueChange: (value: number) => void;
@@ -43,16 +43,18 @@ export function SettingSlider({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor={id}>{label}</Label>
-          <TooltipProvider>
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent sideOffset={8}>
-                <p className="max-w-xs text-sm">{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {tooltip && (
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>
+                  <p className="max-w-xs text-sm">{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className={cn('text-sm tabular-nums text-muted-foreground', isDisabled && 'opacity-50')}>

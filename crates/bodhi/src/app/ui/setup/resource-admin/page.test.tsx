@@ -1,11 +1,16 @@
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import {
+  mockAppInfo,
+  mockAppInfoResourceAdmin,
+  mockAppInfoSetup,
+  mockAppInfoReady,
+} from '@/test-utils/msw-v2/handlers/info';
+import { mockAuthInitiate, mockAuthInitiateError } from '@/test-utils/msw-v2/handlers/auth';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 
 const pushMock = vi.fn();
@@ -23,17 +28,7 @@ vi.mock('next/image', () => ({
   default: () => <img alt="mocked image" />,
 }));
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json({ status: 'resource-admin' }));
-  })
-);
-
-beforeAll(() => {
-  server.listen();
-});
-
-afterAll(() => server.close());
+setupMswV2();
 
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
@@ -44,11 +39,7 @@ beforeEach(() => {
 
 describe('ResourceAdminPage', () => {
   it('renders the resource admin page when status is resource-admin', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      })
-    );
+    server.use(...mockAppInfoResourceAdmin());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -59,11 +50,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
+    server.use(...mockAppInfoSetup());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -73,11 +60,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to download models when status is ready and models page not shown', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfoReady());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -103,11 +86,7 @@ describe('ResourceAdminPage', () => {
       writable: true,
     });
 
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfoReady());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -118,15 +97,8 @@ describe('ResourceAdminPage', () => {
 
   it('handles OAuth initiation with external OAuth provider URL', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201), // 201 Created for new OAuth session
-          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
+      ...mockAppInfoResourceAdmin(),
+      ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -147,15 +119,8 @@ describe('ResourceAdminPage', () => {
 
   it('handles OAuth initiation with same-origin redirect URL', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200), // 200 OK for already authenticated user
-          ctx.json({ location: 'http://localhost:3000/ui/chat' })
-        );
-      })
+      ...mockAppInfoResourceAdmin(),
+      ...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -176,16 +141,8 @@ describe('ResourceAdminPage', () => {
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201), // 201 Created for new OAuth session
-          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
+      ...mockAppInfoResourceAdmin(),
+      ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test', delay: 100 })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -208,21 +165,8 @@ describe('ResourceAdminPage', () => {
 
   it('displays error message when OAuth initiation fails and re-enables button', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-              code: 'oauth_config_error',
-            },
-          })
-        );
-      })
+      ...mockAppInfoResourceAdmin(),
+      ...mockAuthInitiateError({ status: 500, code: 'oauth_config_error', message: 'OAuth configuration error' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -242,14 +186,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateError({ status: 500, empty: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -262,17 +199,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles missing location in successful response and re-enables button', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.json({}) // No location field
-        );
-      })
-    );
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ status: 201, noLocation: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -291,14 +218,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      }),
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json({ location: 'invalid-url-format' }));
-      })
-    );
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ status: 201, invalidUrl: true }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 

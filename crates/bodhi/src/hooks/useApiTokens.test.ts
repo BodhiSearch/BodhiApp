@@ -1,15 +1,18 @@
 import { useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { ApiTokenResponse, PaginatedApiTokenResponse, ErrorBody } from '@bodhiapp/ts-client';
-
-// Type alias for compatibility
-type ApiError = ErrorBody;
+import { ApiTokenResponse, PaginatedApiTokenResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockListTokens,
+  mockCreateToken,
+  mockUpdateToken,
+  mockListTokensError,
+  mockCreateTokenError,
+  mockUpdateTokenError,
+} from '@/test-utils/msw-v2/handlers/tokens';
 
 const mockTokenResponse: ApiTokenResponse = {
   offline_token: 'test-token-123',
@@ -21,6 +24,9 @@ const mockListResponse: PaginatedApiTokenResponse = {
       id: 'token-1',
       name: 'Test Token 1',
       status: 'active',
+      token_hash: 'hash123',
+      token_id: 'jwt-token-id-1',
+      user_id: 'user-123',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
     },
@@ -34,37 +40,21 @@ const mockUpdatedToken = {
   id: 'token-1',
   name: 'Updated Token',
   status: 'inactive',
+  token_hash: 'hash123',
+  token_id: 'jwt-token-id-1',
+  user_id: 'user-123',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:01Z',
 };
 
-const server = setupServer(
-  rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-    return res(ctx.status(201), ctx.json(mockTokenResponse));
-  }),
-  rest.get(`*${API_TOKENS_ENDPOINT}`, (req, res, ctx) => {
-    const page = req.url.searchParams.get('page') || '1';
-    const pageSize = req.url.searchParams.get('page_size') || '10';
-    return res(
-      ctx.status(200),
-      ctx.json({
-        ...mockListResponse,
-        page: parseInt(page),
-        page_size: parseInt(pageSize),
-      })
-    );
-  }),
-  rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockUpdatedToken));
-  })
-);
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 
 describe('useListTokens', () => {
   it('fetches tokens with default pagination', async () => {
+    server.use(...mockListTokens(mockListResponse));
+
     const { result } = renderHook(() => useListTokens(), {
       wrapper: createWrapper(),
     });
@@ -77,6 +67,14 @@ describe('useListTokens', () => {
   });
 
   it('fetches tokens with custom pagination', async () => {
+    server.use(
+      ...mockListTokens({
+        ...mockListResponse,
+        page: 2,
+        page_size: 20,
+      })
+    );
+
     const { result } = renderHook(() => useListTokens(2, 20), {
       wrapper: createWrapper(),
     });
@@ -94,8 +92,9 @@ describe('useListTokens', () => {
 
   it('handles error response', async () => {
     server.use(
-      rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
+      ...mockListTokensError({
+        status: 500,
+        message: 'Test Error',
       })
     );
 
@@ -111,6 +110,8 @@ describe('useListTokens', () => {
 
 describe('useCreateToken', () => {
   it('creates a token successfully', async () => {
+    server.use(...mockCreateToken(mockTokenResponse));
+
     const { result } = renderHook(() => useCreateToken(), {
       wrapper: createWrapper(),
     });
@@ -122,6 +123,8 @@ describe('useCreateToken', () => {
   });
 
   it('creates a token without name', async () => {
+    server.use(...mockCreateToken(mockTokenResponse));
+
     const { result } = renderHook(() => useCreateToken(), {
       wrapper: createWrapper(),
     });
@@ -134,6 +137,9 @@ describe('useCreateToken', () => {
 
   it('invalidates tokens query on successful creation', async () => {
     const wrapper = createWrapper();
+
+    // Setup initial list tokens mock
+    server.use(...mockListTokens(mockListResponse));
 
     // Setup list tokens hook and wait for initial data
     const { result: listResult } = renderHook(() => useListTokens(), {
@@ -149,26 +155,27 @@ describe('useCreateToken', () => {
 
     // Update mock to return different data after token creation
     server.use(
-      rest.get(`*${API_TOKENS_ENDPOINT}`, (req, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({
-            ...mockListResponse,
-            data: [
-              ...mockListResponse.data,
-              {
-                id: 'new-token',
-                name: 'New Token',
-                status: 'active',
-                created_at: '2024-01-02T00:00:00Z',
-                updated_at: '2024-01-02T00:00:00Z',
-              },
-            ],
-            total: 2,
-          })
-        );
+      ...mockListTokens({
+        ...mockListResponse,
+        data: [
+          ...mockListResponse.data,
+          {
+            id: 'new-token',
+            name: 'New Token',
+            status: 'active',
+            token_hash: 'newhash456',
+            token_id: 'jwt-token-id-new',
+            user_id: 'user-123',
+            created_at: '2024-01-02T00:00:00Z',
+            updated_at: '2024-01-02T00:00:00Z',
+          },
+        ],
+        total: 2,
       })
     );
+
+    // Setup create token mock
+    server.use(...mockCreateToken(mockTokenResponse));
 
     // Create new token
     const { result: createResult } = renderHook(() => useCreateToken(), {
@@ -188,14 +195,10 @@ describe('useCreateToken', () => {
 
   it('handles error response', async () => {
     server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: 'Bad Request',
-            message: 'Invalid token name',
-          })
-        );
+      ...mockCreateTokenError({
+        status: 400,
+        code: 'validation_error',
+        message: 'Invalid token name',
       })
     );
 
@@ -207,9 +210,9 @@ describe('useCreateToken', () => {
       try {
         await result.current.mutateAsync({ name: 'Test Token' });
       } catch (error) {
-        const axiosError = error as AxiosError<ApiError>;
+        const axiosError = error as AxiosError<OpenAiApiError>;
         expect(axiosError.response?.status).toBe(400);
-        expect(axiosError.response?.data.message).toBe('Invalid token name');
+        expect(axiosError.response?.data.error?.message).toBe('Invalid token name');
       }
     });
   });
@@ -217,6 +220,8 @@ describe('useCreateToken', () => {
 
 describe('useUpdateToken', () => {
   it('updates a token successfully', async () => {
+    server.use(...mockUpdateToken('token-1', mockUpdatedToken));
+
     const { result } = renderHook(() => useUpdateToken(), {
       wrapper: createWrapper(),
     });
@@ -238,14 +243,10 @@ describe('useUpdateToken', () => {
 
   it('handles error response', async () => {
     server.use(
-      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: 'Bad Request',
-            message: 'Invalid token status',
-          })
-        );
+      ...mockUpdateTokenError('token-1', {
+        status: 400,
+        code: 'validation_error',
+        message: 'Invalid token status',
       })
     );
 
@@ -254,14 +255,14 @@ describe('useUpdateToken', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ id: 'token-1', status: 'inactive' });
+      result.current.mutate({ id: 'token-1', name: 'Test Token 1', status: 'inactive' });
     });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
 
-    const error = result.current.error as AxiosError<ApiError>;
-    expect(error.response?.data.message).toBe('Invalid token status');
+    const error = result.current.error as AxiosError<OpenAiApiError>;
+    expect(error.response?.data.error?.message).toBe('Invalid token status');
   });
 });

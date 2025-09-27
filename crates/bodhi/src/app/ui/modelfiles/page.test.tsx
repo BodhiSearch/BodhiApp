@@ -1,10 +1,12 @@
 import ModelFilesPage from '@/app/ui/modelfiles/page';
+import { server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockModelFilesDefault, mockModelFilesError } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/DataTable', () => ({
@@ -42,8 +44,6 @@ const mockModelFilesResponse = {
   page_size: 30,
 };
 
-const server = setupServer();
-
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
@@ -68,17 +68,7 @@ function mockMatchMedia(matches: boolean) {
 
 describe('ModelFilesPage', () => {
   beforeEach(() => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      }),
-      rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(ctx.json(mockModelFilesResponse));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelFilesDefault());
   });
 
   it('renders responsive layouts correctly', async () => {
@@ -111,11 +101,8 @@ describe('ModelFilesPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_MODEL_FILES}`, (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
-      })
-    );
+    server.use(...mockModelFilesError({ status: 500, message: 'Internal Server Error' }));
+
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
@@ -157,16 +144,7 @@ describe('ModelFilesPage', () => {
 
 describe('ModelFilesPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfoSetup(), ...mockUserLoggedIn());
 
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
@@ -175,14 +153,8 @@ describe('ModelFilesPage access control', () => {
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
+
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });

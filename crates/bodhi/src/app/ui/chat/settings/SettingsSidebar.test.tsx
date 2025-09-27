@@ -2,9 +2,9 @@ import { SettingsSidebar } from '@/app/ui/chat/settings/SettingsSidebar';
 import { ENDPOINT_MODELS } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockModels, mockModelsError, mockModelsEmpty } from '@/test-utils/msw-v2/handlers/models';
 
 // Mock the child components
 vi.mock('@/app/ui/chat/settings/AliasSelector', () => ({
@@ -89,27 +89,19 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-trigger">{children}</div>,
 }));
 
-// Setup MSW server
-const mockModels = [
-  { id: 1, name: 'Model 1', alias: 'model-1' },
-  { id: 2, name: 'Model 2', alias: 'model-2' },
-];
+// Setup MSW v2 server
+setupMswV2();
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
-    return res(
-      ctx.json({
-        data: mockModels,
-        total: mockModels.length,
-      })
-    );
-  })
-);
-
-beforeAll(() => server.listen());
-afterAll(() => server.close());
+// Default handler for models endpoint used by all tests
 beforeEach(() => {
-  server.resetHandlers();
+  server.use(
+    ...mockModels({
+      data: [],
+      total: 0,
+      page: 1,
+      page_size: 100,
+    })
+  );
 });
 
 describe('SettingsSidebar', () => {
@@ -158,6 +150,36 @@ describe('SettingsSidebar', () => {
   });
 
   it('passes models data to AliasSelector after loading', async () => {
+    server.use(
+      ...mockModels({
+        data: [
+          {
+            id: 1,
+            name: 'Model 1',
+            alias: 'model-1',
+            source: 'user',
+            repo: 'test-repo',
+            filename: 'test-file.bin',
+            snapshot: 'abc123',
+            request_params: {},
+            context_params: [],
+          },
+          {
+            id: 2,
+            name: 'Model 2',
+            alias: 'model-2',
+            source: 'user',
+            repo: 'test-repo',
+            filename: 'test-file.bin',
+            snapshot: 'abc123',
+            request_params: {},
+            context_params: [],
+          },
+        ],
+        total: 2,
+      })
+    );
+
     render(<SettingsSidebar />, {
       wrapper: createWrapper(),
     });
@@ -174,15 +196,9 @@ describe('SettingsSidebar', () => {
 
   it('handles API error gracefully', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Test error message',
-            },
-          })
-        );
+      ...mockModelsError({
+        status: 500,
+        message: 'Test error message',
       })
     );
 
@@ -199,16 +215,7 @@ describe('SettingsSidebar', () => {
   });
 
   it('handles empty models response', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
-        return res(
-          ctx.json({
-            data: [],
-            total: 0,
-          })
-        );
-      })
-    );
+    server.use(...mockModelsEmpty());
 
     render(<SettingsSidebar />, {
       wrapper: createWrapper(),

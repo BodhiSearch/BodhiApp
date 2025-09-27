@@ -4,52 +4,38 @@ import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockModelFiles, mockModelPull, mockModelPullError } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-const mockModelsResponse = {
-  data: [
-    { repo: 'test/repo1', filename: 'model1.gguf' },
-    { repo: 'test/repo1', filename: 'model2.gguf' },
-    { repo: 'test/repo2', filename: 'model3.gguf' },
-  ],
-  total: 3,
-  page: 1,
-  page_size: 100,
-};
+setupMswV2();
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-    return res(ctx.json(mockModelsResponse));
-  }),
-  rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-    return res(
-      ctx.status(201),
-      ctx.json({
-        id: '123',
-        repo: 'test/repo1',
-        filename: 'model1.gguf',
-        status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-    );
-  })
-);
-
-beforeAll(() => server.listen());
-afterAll(() => server.close());
 afterEach(() => {
-  server.resetHandlers();
   mockToast.mockClear();
 });
 
 describe('PullForm', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockModelFiles({
+        data: [
+          { repo: 'test/repo1', filename: 'model1.gguf', size: 1073741824, snapshot: 'abc123', model_params: {} },
+          { repo: 'test/repo1', filename: 'model2.gguf', size: 1073741824, snapshot: 'abc123', model_params: {} },
+          { repo: 'test/repo2', filename: 'model3.gguf', size: 1073741824, snapshot: 'abc123', model_params: {} },
+        ],
+        total: 3,
+        page: 1,
+        page_size: 100,
+      }),
+      ...mockModelPull()
+    );
+  });
+
   it('renders form fields', () => {
     render(<PullForm />, { wrapper: createWrapper() });
 
@@ -89,17 +75,10 @@ describe('PullForm', () => {
 
   it('handles API error and shows error message', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: {
-              message: 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-              type: 'invalid_request_error',
-              code: 'pull_error-file_already_exists',
-            },
-          })
-        );
+      ...mockModelPullError({
+        status: 400,
+        code: 'pull_error-file_already_exists',
+        message: 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
       })
     );
 
@@ -134,17 +113,10 @@ describe('PullForm', () => {
 
     // Submit with errors to show error state
     server.use(
-      rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(
-          ctx.status(400),
-          ctx.json({
-            error: {
-              message: 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"',
-              type: 'invalid_request_error',
-              code: 'pull_error-file_already_exists',
-            },
-          })
-        );
+      ...mockModelPullError({
+        status: 400,
+        code: 'pull_error-file_already_exists',
+        message: 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"',
       })
     );
     await userEvent.click(screen.getByRole('button', { name: /pull model/i }));

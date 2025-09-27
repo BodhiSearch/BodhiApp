@@ -6,10 +6,11 @@ import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOA
 import { createWrapper } from '@/tests/wrapper';
 import { createMockUserInfo } from '@/test-fixtures/access-requests';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { mockAppInfo, mockAppInfoError, mockAppInfoWithDelay } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut, mockUserError } from '@/test-utils/msw-v2/handlers/user';
 import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
@@ -22,12 +23,9 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-const server = setupServer();
+setupMswV2();
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
 beforeEach(() => {
-  server.resetHandlers();
   pushMock.mockClear();
 });
 
@@ -56,14 +54,7 @@ const renderWithSetup = async (ui: React.ReactElement) => {
 describe('AppInitializer loading and error handling', () => {
   // Test loading states
   it('shows loading state when endpoint is loading', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfoWithDelay({ status: 'ready', delay: 100 }), ...mockUserLoggedIn({ delay: 100 }));
 
     const wrapper = createWrapper();
     render(
@@ -82,26 +73,16 @@ describe('AppInitializer loading and error handling', () => {
   it.each([
     {
       scenario: 'app/info error',
-      setup: [
-        { endpoint: `*${ENDPOINT_APP_INFO}`, response: { error: { message: 'API Error' } }, status: 500 },
-        { endpoint: `*${ENDPOINT_USER_INFO}`, response: createMockLoggedInUser(), status: 200 },
-      ],
+      appInfoHandlers: () => mockAppInfoError({ status: 500, message: 'API Error' }),
+      userHandlers: () => mockUserLoggedIn(),
     },
     {
       scenario: 'app/info success, user error',
-      setup: [
-        { endpoint: `*${ENDPOINT_APP_INFO}`, response: { status: 'ready' }, status: 200 },
-        { endpoint: `*${ENDPOINT_USER_INFO}`, response: { error: { message: 'API Error' } }, status: 500 },
-      ],
+      appInfoHandlers: () => mockAppInfo({ status: 'ready' }),
+      userHandlers: () => mockUserError({ status: 500, message: 'API Error' }),
     },
-  ])('handles error $scenario', async ({ scenario, setup }) => {
-    server.use(
-      ...setup.map(({ endpoint, response, status }) =>
-        rest.get(endpoint, (req, res, ctx) => {
-          return res(ctx.status(status), ctx.json(response));
-        })
-      )
-    );
+  ])('handles error $scenario', async ({ scenario, appInfoHandlers, userHandlers }) => {
+    server.use(...appInfoHandlers(), ...userHandlers());
 
     await renderWithSetup(
       <AppInitializer allowedStatus="ready" authenticated={true}>
@@ -127,11 +108,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   it('redirects to download models page when status is ready and models page not shown', async () => {
     localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'false');
 
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }));
 
     await renderWithSetup(<AppInitializer />);
     expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_DOWNLOAD_MODELS);
@@ -141,11 +118,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   it(`redirects to ${ROUTE_DEFAULT} when status is ready and models page was shown`, async () => {
     localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
 
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }));
 
     await renderWithSetup(<AppInitializer />);
     expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
@@ -169,11 +142,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
         localStorageMock.setItem(key, value);
       });
 
-      server.use(
-        rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-          return res(ctx.json({ status }));
-        })
-      );
+      server.use(...mockAppInfo({ status: status as any }));
 
       await renderWithSetup(<AppInitializer />);
       expect(pushMock).toHaveBeenCalledWith(expectedPath);
@@ -228,11 +197,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
         localStorageMock.setItem(key, value as string);
       });
 
-      server.use(
-        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-          return res(ctx.json({ status: currentStatus }));
-        })
-      );
+      server.use(...mockAppInfo({ status: currentStatus as any }));
 
       await renderWithSetup(<AppInitializer allowedStatus={allowedStatus as AppStatus} />);
       expect(pushMock).toHaveBeenCalledWith(expectedPath);
@@ -247,11 +212,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   ])(
     'stays on page when currentStatus=$currentStatus matches allowedStatus=$allowedStatus',
     async ({ currentStatus, allowedStatus }) => {
-      server.use(
-        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-          return res(ctx.json({ status: currentStatus }));
-        })
-      );
+      server.use(...mockAppInfo({ status: currentStatus as any }));
 
       await renderWithSetup(<AppInitializer allowedStatus={allowedStatus as AppStatus} />);
       expect(pushMock).not.toHaveBeenCalled();
@@ -278,17 +239,10 @@ describe('AppInitializer role-based access control', () => {
     'handles minRole=$minRole with userRole=$userRole (allow=$shouldAllow)',
     async ({ userRole, minRole, shouldAllow }) => {
       server.use(
-        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-          return res(ctx.json({ status: 'ready' }));
-        }),
-        rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-          return res(
-            ctx.json({
-              ...createMockLoggedInUser(),
-              username: 'test@example.com',
-              role: `resource_${userRole}`,
-            })
-          );
+        ...mockAppInfo({ status: 'ready' }),
+        ...mockUserLoggedIn({
+          username: 'test@example.com',
+          role: `resource_${userRole}`,
         })
       );
 
@@ -309,17 +263,10 @@ describe('AppInitializer role-based access control', () => {
 
   it('allows access when no minRole is specified', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.json({
-            ...createMockLoggedInUser(),
-            email: 'test@example.com',
-            role: 'resource_user',
-          })
-        );
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: 'resource_user',
       })
     );
 
@@ -335,17 +282,10 @@ describe('AppInitializer role-based access control', () => {
 
   it('redirects to login when user has no roles', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.json({
-            ...createMockLoggedInUser(),
-            email: 'test@example.com',
-            role: null,
-          })
-        );
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: null,
       })
     );
 
@@ -360,11 +300,10 @@ describe('AppInitializer role-based access control', () => {
 
   it('redirects to login when user has undefined roles', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json(createMockUserInfo(undefined, 'test@example.com')));
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({
+        username: 'test@example.com',
+        role: undefined,
       })
     );
 
@@ -378,14 +317,7 @@ describe('AppInitializer role-based access control', () => {
   });
 
   it('prioritizes auth check over role check', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
 
     await renderWithSetup(
       <AppInitializer allowedStatus="ready" authenticated={true} minRole="admin">
@@ -404,14 +336,7 @@ describe('AppInitializer authentication behavior', () => {
     authenticated | loggedIn
     ${true}       | ${false}
   `('redirects to login when authenticated=$authenticated loggedIn=$loggedIn', async ({ authenticated, loggedIn }) => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.json(loggedIn ? createMockLoggedInUser() : createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }), ...(loggedIn ? mockUserLoggedIn() : mockUserLoggedOut()));
 
     await renderWithSetup(
       <AppInitializer allowedStatus="ready" authenticated={authenticated}>
@@ -432,21 +357,13 @@ describe('AppInitializer authentication behavior', () => {
     ${false}      | ${true}
   `('displays content when authenticated=$authenticated loggedIn=$loggedIn', async ({ authenticated, loggedIn }) => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.json(
-            loggedIn
-              ? createMockLoggedInUser({
-                  username: 'test@example.com',
-                  role: 'resource_user',
-                })
-              : createMockLoggedOutUser()
-          )
-        );
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...(loggedIn
+        ? mockUserLoggedIn({
+            username: 'test@example.com',
+            role: 'resource_user',
+          })
+        : mockUserLoggedOut())
     );
     await renderWithSetup(
       <AppInitializer allowedStatus="ready" authenticated={authenticated}>
@@ -459,11 +376,7 @@ describe('AppInitializer authentication behavior', () => {
 
   // Add new test for user endpoint call conditions
   it('user endpoint not called when authenticated=false', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'ready' }));
 
     await renderWithSetup(
       <AppInitializer allowedStatus="ready" authenticated={false}>

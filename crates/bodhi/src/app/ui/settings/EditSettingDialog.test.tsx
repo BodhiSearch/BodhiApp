@@ -1,13 +1,17 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
-import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { SettingInfo } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockUpdateSetting,
+  mockUpdateSettingError,
+  mockUpdateSettingNetworkError,
+  mockUpdateSettingWithDelay,
+} from '@/test-utils/msw-v2/handlers/settings';
 
 // Add PointerEvent mock
 function createMockPointerEvent(type: string, props: PointerEventInit = {}): PointerEvent {
@@ -74,12 +78,6 @@ const mockSettingInfos: Record<string, SettingInfo> = {
   },
 };
 
-const server = setupServer(
-  rest.put(`*${ENDPOINT_SETTINGS}/*`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettingInfos.string));
-  })
-);
-
 // Mock the useToast hook
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
@@ -88,10 +86,9 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-beforeAll(() => server.listen());
-afterAll(() => server.close());
+setupMswV2();
+
 afterEach(() => {
-  server.resetHandlers();
   mockOnOpenChange.mockClear();
   mockToast.mockClear();
 });
@@ -139,8 +136,9 @@ describe('EditSettingDialog', () => {
   it('updates string value correctly', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettingInfos.string, current_value: '/new/path' }));
+      ...mockUpdateSetting('BODHI_HOME', {
+        ...mockSettingInfos.string,
+        current_value: '/new/path',
       })
     );
 
@@ -163,8 +161,9 @@ describe('EditSettingDialog', () => {
   it('updates number value with validation', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_PORT`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettingInfos.number, current_value: 2000 }));
+      ...mockUpdateSetting('BODHI_PORT', {
+        ...mockSettingInfos.number,
+        current_value: 2000,
       })
     );
 
@@ -198,8 +197,9 @@ describe('EditSettingDialog', () => {
   it('updates option value correctly', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_LOG_LEVEL`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettingInfos.option, current_value: 'debug' }));
+      ...mockUpdateSetting('BODHI_LOG_LEVEL', {
+        ...mockSettingInfos.option,
+        current_value: 'debug',
       })
     );
 
@@ -228,8 +228,9 @@ describe('EditSettingDialog', () => {
   it('updates boolean value correctly', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_LOG_STDOUT`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettingInfos.boolean, current_value: false }));
+      ...mockUpdateSetting('BODHI_LOG_STDOUT', {
+        ...mockSettingInfos.boolean,
+        current_value: false,
       })
     );
 
@@ -247,15 +248,9 @@ describe('EditSettingDialog', () => {
   it('handles API error correctly', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'Server error',
-            },
-          })
-        );
+      ...mockUpdateSettingError('BODHI_HOME', {
+        status: 500,
+        message: 'Server error',
       })
     );
 
@@ -286,12 +281,7 @@ describe('EditSettingDialog', () => {
     const user = userEvent.setup();
 
     // Simulate a network error
-    server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res) => {
-        // Return error without response data to simulate network failure
-        return res.networkError('Failed to connect');
-      })
-    );
+    server.use(...mockUpdateSettingNetworkError('BODHI_HOME'));
 
     render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
@@ -314,9 +304,13 @@ describe('EditSettingDialog', () => {
 
     // Add artificial delay to the response
     server.use(
-      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, async (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.json(mockSettingInfos.string));
-      })
+      ...mockUpdateSettingWithDelay(
+        'BODHI_HOME',
+        {
+          ...mockSettingInfos.string,
+        },
+        100
+      )
     );
 
     render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {

@@ -6,9 +6,18 @@ import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mo
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupServer } from 'msw2/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  mockListTokens,
+  mockCreateToken,
+  mockUpdateToken,
+  mockCreateTokenWithResponse,
+  mockUpdateTokenStatus,
+  mockUpdateTokenError,
+} from '@/test-utils/msw-v2/handlers/tokens';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -47,17 +56,7 @@ const mockListResponse = {
   page_size: 10,
 };
 
-const server = setupServer(
-  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json({ status: 'ready' }));
-  }),
-  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(createMockLoggedInUser()));
-  }),
-  rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockListResponse));
-  })
-);
+const server = setupServer(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockListTokens());
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -69,11 +68,7 @@ beforeEach(() => {
 
 describe('TokenPageContent', () => {
   it('shows loading skeleton initially', async () => {
-    server.use(
-      rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json(mockListResponse));
-      })
-    );
+    server.use(...mockListTokens());
 
     render(<TokenPageContent />, { wrapper: createWrapper() });
 
@@ -84,25 +79,13 @@ describe('TokenPageContent', () => {
 describe('TokenPageContent', () => {
   beforeEach(() => {
     server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.json({
-            offline_token: 'test-token-123',
-          })
-        );
-      }),
-      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({
-            id: 'token-1',
-            name: 'Test Token 1',
-            status: 'inactive',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:01Z',
-          })
-        );
+      ...mockCreateToken({ offline_token: 'test-token-123' }),
+      ...mockUpdateToken('token-1', {
+        id: 'token-1',
+        name: 'Test Token 1',
+        status: 'inactive',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:01Z',
       })
     );
   });
@@ -128,11 +111,7 @@ describe('TokenPageContent', () => {
 
   it('handles complete token creation flow', async () => {
     const user = userEvent.setup();
-    server.use(
-      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.json(mockTokenResponse));
-      })
-    );
+    server.use(...mockCreateTokenWithResponse(mockTokenResponse));
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
@@ -153,14 +132,7 @@ describe('TokenPageContent', () => {
 
 describe('TokenPage', () => {
   it('redirects to login when not authenticated', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
@@ -172,20 +144,7 @@ describe('TokenPage', () => {
 
 describe('token status updates', () => {
   beforeEach(() => {
-    server.use(
-      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({
-            id: 'token-1',
-            name: 'Test Token 1',
-            status: 'inactive',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:01Z',
-          })
-        );
-      })
-    );
+    server.use(...mockUpdateTokenStatus('token-1', 'inactive'));
   });
 
   it('successfully updates token status', async () => {
@@ -209,8 +168,9 @@ describe('token status updates', () => {
 describe('token status update', () => {
   it('handles token status update error', async () => {
     server.use(
-      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
+      ...mockUpdateTokenError('token-1', {
+        status: 500,
+        message: 'Test Error',
       })
     );
 

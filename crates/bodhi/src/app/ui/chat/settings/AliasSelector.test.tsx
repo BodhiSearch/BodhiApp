@@ -39,10 +39,24 @@ vi.mock('@/hooks/use-chat-settings', () => ({
 
 const mockModels = [
   {
+    source: 'user' as const,
     alias: 'gpt-4',
+    repo: 'test/repo',
+    filename: 'model.gguf',
+    snapshot: 'abc123',
+    request_params: {},
+    context_params: [],
+    model_params: {},
   },
   {
+    source: 'user' as const,
     alias: 'tinyllama-chat',
+    repo: 'test/repo',
+    filename: 'model.gguf',
+    snapshot: 'def456',
+    request_params: {},
+    context_params: [],
+    model_params: {},
   },
 ];
 
@@ -52,24 +66,35 @@ const mockUnifiedModels = [
     alias: 'local-model-1',
     repo: 'user/repo1',
     filename: 'model1.gguf',
+    snapshot: 'abc123',
+    request_params: {},
+    context_params: [],
+    model_params: {},
   },
   {
     source: 'model' as const,
     alias: 'local-model-2',
     repo: 'user/repo2',
     filename: 'model2.gguf',
+    snapshot: 'def456',
   },
   {
     source: 'api' as const,
     id: 'openai-api',
-    api_format: 'openai',
+    api_format: 'openai' as const,
+    base_url: 'https://api.openai.com/v1',
     models: ['gpt-4', 'gpt-3.5-turbo'],
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
   {
     source: 'api' as const,
     id: 'anthropic-api',
-    api_format: 'openai',
+    api_format: 'openai' as const,
+    base_url: 'https://api.anthropic.com/v1',
     models: ['claude-3-opus', 'claude-3-sonnet'],
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   },
 ];
 
@@ -290,8 +315,11 @@ describe('AliasSelector', () => {
         {
           source: 'api' as const,
           id: 'empty-api',
-          api_format: 'openai',
+          api_format: 'openai' as const,
+          base_url: 'https://api.example.com/v1',
           models: [],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ];
 

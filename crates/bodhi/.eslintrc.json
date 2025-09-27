@@ -20,7 +20,8 @@
     "src/**/*.test.tsx",
     "tests/**/*.test.tsx",
     "src/components/ui/**/*",
-    "src/hooks/use-toast.ts"
+    "src/hooks/use-toast.ts",
+    "src/test-utils/generated/openapi-schema.ts"
   ],
   "overrides": [
     {

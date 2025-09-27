@@ -2,9 +2,17 @@ import ModelsPage from '@/app/ui/models/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { setupServer } from 'msw2/node';
+import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
+import { mockAppInfoReady, mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import {
+  mockModelsDefault,
+  mockModelsWithApiModel,
+  mockModelsWithSourceModel,
+  mockModelsError,
+} from '@/test-utils/msw-v2/handlers/models';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/DataTable', () => ({
@@ -70,17 +78,7 @@ function mockMatchMedia(matches: boolean) {
 
 describe('ModelsPage', () => {
   beforeEach(() => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      }),
-      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-        return res(ctx.json(mockModelsResponse));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
   });
 
   it('renders responsive layouts correctly', async () => {
@@ -132,11 +130,7 @@ describe('ModelsPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
-      })
-    );
+    server.use(...mockModelsError({ status: 500, message: 'Internal Server Error' }));
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
@@ -146,24 +140,7 @@ describe('ModelsPage', () => {
 
   describe('action buttons', () => {
     it('shows FilePlus2 button for model source type', async () => {
-      const modelData = {
-        ...mockModelsResponse,
-        data: [
-          {
-            source: 'model' as const,
-            alias: 'test-model',
-            repo: 'test-repo',
-            filename: 'test-file.bin',
-            snapshot: 'abc123',
-          },
-        ],
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(modelData));
-        })
-      );
+      server.use(...mockModelsWithSourceModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
@@ -180,37 +157,20 @@ describe('ModelsPage', () => {
     });
 
     it('shows edit button for non-model source type', async () => {
-      const modelData = {
-        ...mockModelsResponse,
-        data: [
-          {
-            source: 'user' as const,
-            alias: 'test-alias',
-            repo: 'test-repo',
-            filename: 'test-file.bin',
-            snapshot: 'abc123',
-          },
-        ],
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(modelData));
-        })
-      );
+      server.use(...mockModelsDefault());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const editButton = screen.getAllByTitle('Edit test-alias')[0];
+      const editButton = screen.getAllByTitle('Edit test-model')[0];
       expect(editButton).toBeInTheDocument();
 
       await act(async () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?alias=test-alias');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?alias=test-model');
     });
 
     it('shows chat and huggingface buttons for all models', async () => {
@@ -265,29 +225,7 @@ describe('ModelsPage', () => {
 
   describe('API model display and actions', () => {
     it('displays API models with correct information', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'test-api-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****key',
-            models: ['gpt-4', 'gpt-3.5-turbo'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
@@ -301,29 +239,7 @@ describe('ModelsPage', () => {
     });
 
     it('shows edit and delete buttons for API models', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'test-api-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****key',
-            models: ['gpt-4'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
@@ -340,29 +256,7 @@ describe('ModelsPage', () => {
     });
 
     it('shows chat button for API models with model identifier', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'test-api-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****key',
-            models: ['gpt-4'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
@@ -375,36 +269,14 @@ describe('ModelsPage', () => {
       expect(chatButton).toHaveAttribute('title', 'Chat with gpt-4');
 
       await act(async () => {
-        chatButton?.click();
+        fireEvent.click(chatButton!);
       });
 
       expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=gpt-4');
     });
 
     it('does not show HuggingFace button for API models', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'test-api-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****key',
-            models: ['gpt-4'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
@@ -416,36 +288,14 @@ describe('ModelsPage', () => {
     });
 
     it('navigates to edit page when edit button is clicked for API model', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'openai-config',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: 'sk-...abc123',
-            models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
       // Wait for data to load and verify API model is displayed (use getAllByText for responsive layouts)
-      await screen.findAllByText('openai-config');
+      await screen.findAllByText('test-api-model');
       expect(screen.getAllByText('openai')[0]).toBeInTheDocument();
       expect(screen.getAllByText('https://api.openai.com/v1')[0]).toBeInTheDocument();
 
@@ -456,7 +306,7 @@ describe('ModelsPage', () => {
       expect(modelsText.length).toBeGreaterThan(0);
 
       // Find and click the edit button
-      const editButton = screen.getAllByTitle('Edit API model openai-config')[0];
+      const editButton = screen.getAllByTitle('Edit API model test-api-model')[0];
       expect(editButton).toBeInTheDocument();
 
       await act(async () => {
@@ -464,51 +314,29 @@ describe('ModelsPage', () => {
       });
 
       // Verify navigation to edit page with correct ID
-      expect(pushMock).toHaveBeenCalledWith('/ui/api-models/edit?id=openai-config');
+      expect(pushMock).toHaveBeenCalledWith('/ui/api-models/edit?id=test-api-model');
     });
 
     it('navigates to chat page when clicking on API model for chat', async () => {
-      const apiModelData = {
-        data: [
-          {
-            source: 'api' as const,
-            id: 'my-openai',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: 'sk-...xyz789',
-            models: ['gpt-4', 'gpt-3.5-turbo'],
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-          },
-        ],
-        total: 1,
-        page: 1,
-        page_size: 30,
-      };
-
-      server.use(
-        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-          return res(ctx.json(apiModelData));
-        })
-      );
+      server.use(...mockModelsWithApiModel());
 
       await act(async () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
       // Wait for data to load (use findAllByText for responsive layouts)
-      await screen.findAllByText('my-openai');
+      await screen.findAllByText('test-api-model');
 
       // Find the API model row and then look for the chat button within it
-      const apiModelRow = screen.getByTestId('actions-cell-my-openai');
-      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-my-openai"]');
+      const apiModelRow = screen.getByTestId('actions-cell-test-api-model');
+      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
       expect(chatButton).not.toBeInTheDocument();
       const modelChatButton = apiModelRow.querySelector('[data-testid="model-chat-button-gpt-4"]');
       expect(modelChatButton).toBeInTheDocument();
       expect(modelChatButton).toHaveAttribute('title', 'Chat with gpt-4');
 
       await act(async () => {
-        modelChatButton?.click();
+        fireEvent.click(modelChatButton!);
       });
 
       // Verify navigation to chat page with the API model ID
@@ -517,11 +345,7 @@ describe('ModelsPage', () => {
   });
 
   it('displays error message when API call fails', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
-      })
-    );
+    server.use(...mockModelsError({ status: 500, message: 'Internal Server Error' }));
 
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
@@ -533,16 +357,7 @@ describe('ModelsPage', () => {
 
 describe('ModelsPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      })
-    );
+    server.use(...mockAppInfo({ status: 'setup' }), ...mockUserLoggedIn());
 
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
@@ -551,14 +366,7 @@ describe('ModelsPage access control', () => {
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedOutUser()));
-      })
-    );
+    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });

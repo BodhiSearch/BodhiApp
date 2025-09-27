@@ -7,13 +7,22 @@ import {
   mockUserAccessStatusPending,
   mockUserAccessStatusRejected,
 } from '@/test-fixtures/access-requests';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
-import { createAccessRequestHandlers, createErrorHandlers } from '@/test-utils/msw-handlers';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import {
+  mockUserRequestStatus,
+  mockUserRequestStatusPending,
+  mockUserRequestStatusApproved,
+  mockUserRequestStatusRejected,
+  mockUserRequestStatusError,
+  mockUserRequestAccess,
+  mockUserRequestAccessError,
+} from '@/test-utils/msw-v2/handlers/access-requests';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { http, HttpResponse } from 'msw2';
+import { setupServer } from 'msw2/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
@@ -45,10 +54,9 @@ describe('RequestAccessPage Display States', () => {
 
   it('displays pending status when user has pending request', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusPending,
-        userInfo: createMockUserInfo(undefined, 'user@example.com'), // No role
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 
     await act(async () => {
@@ -66,10 +74,9 @@ describe('RequestAccessPage Display States', () => {
 
   it('redirects users with approved status who already have roles', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusApproved,
-        userInfo: createMockUserInfo('user'), // User has a role, so will be redirected
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com', role: 'resource_user' }), // User has a role, so will be redirected
+      ...mockUserRequestStatusApproved({ username: 'approved@example.com' })
     );
 
     await act(async () => {
@@ -85,10 +92,9 @@ describe('RequestAccessPage Display States', () => {
 
   it('shows request access button when user has rejected request and no roles', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusRejected,
-        userInfo: createMockUserInfo(undefined, 'user@example.com'), // No role
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserRequestStatusRejected({ username: 'rejected@example.com' })
     );
 
     await act(async () => {
@@ -108,9 +114,8 @@ describe('RequestAccessPage Display States', () => {
 describe('RequestAccessPage Authentication and Access Control', () => {
   it('handles unauthenticated users by redirecting', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockLoggedOutUser(),
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }) // Note: This test relies on AppInitializer mocking for redirect logic
     );
 
     await act(async () => {
@@ -126,10 +131,9 @@ describe('RequestAccessPage Authentication and Access Control', () => {
 describe('RequestAccessPage Error Handling', () => {
   it('handles error state gracefully when API calls fail', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        userInfo: createMockUserInfo(undefined, 'user@example.com'),
-      }),
-      ...createErrorHandlers()
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({ status: 500 })
     );
 
     await act(async () => {
@@ -142,14 +146,10 @@ describe('RequestAccessPage Error Handling', () => {
 
   it('shows request form when there are API errors but user info loads', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json(createMockLoggedInUser({ username: 'user@example.com' })))
-      ),
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
       // Make request status API return 404 (no request exists)
-      rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-        res(ctx.status(404), ctx.json({ error: { type: 'not_found_error', message: 'No request found' } }))
-      )
+      ...mockUserRequestStatusError({ status: 404, message: 'No request found' })
     );
 
     await act(async () => {
@@ -167,10 +167,9 @@ describe('RequestAccessPage Error Handling', () => {
 describe('RequestAccessPage Loading States', () => {
   it('shows pending status for users without roles', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusPending,
-        userInfo: createMockUserInfo(null, 'user@example.com'), // No role (testing null)
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role (testing null)
+      ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 
     await act(async () => {
@@ -190,10 +189,9 @@ describe('RequestAccessPage UI Interactions', () => {
 
   it('allows requesting access when previous request was rejected', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusRejected,
-        userInfo: createMockUserInfo(undefined, 'user@example.com'), // No role (testing undefined)
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role (testing undefined)
+      ...mockUserRequestStatusRejected({ username: 'rejected@example.com' })
     );
 
     await act(async () => {
@@ -217,10 +215,9 @@ describe('RequestAccessPage UI Interactions', () => {
 
   it('shows formatted date for pending requests', async () => {
     server.use(
-      ...createAccessRequestHandlers({
-        requestStatus: mockUserAccessStatusPending,
-        userInfo: createMockUserInfo(undefined, 'user@example.com'), // No role
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }), // No role
+      ...mockUserRequestStatusPending({ username: 'user@example.com' })
     );
 
     await act(async () => {
@@ -238,28 +235,17 @@ describe('RequestAccessPage UI Interactions', () => {
 describe('RequestAccessPage - No Request Exists', () => {
   const user = userEvent.setup();
 
-  // Custom handler for 404 response when no request exists
+  // Custom handler for 404 response when no request exists using MSW v2
   const createNoRequestHandlers = (userInfo: any) => [
-    rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-    rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(userInfo))),
-    rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-      // Return 404 to simulate no request exists
-      res(
-        ctx.status(404),
-        ctx.json({
-          error: { message: 'pending access request for user not found' },
-        })
-      )
-    ),
-    rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (req, res, ctx) => {
-      return res(ctx.status(201), ctx.json({}));
-    }),
+    ...mockAppInfo({ status: 'ready' }),
+    ...mockUserLoggedIn(userInfo),
+    ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
+    ...mockUserRequestAccess(),
   ];
 
   it('displays request access form when user has no access request', async () => {
     server.use(
       ...createNoRequestHandlers({
-        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );
@@ -280,23 +266,14 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('successfully submits access request', async () => {
     let submitRequestCalled = false;
 
-    // Create handlers with tracking
+    // Create handlers with tracking using MSW v2
     const trackingHandlers = [
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json(createMockUserInfo(undefined, 'user@example.com')))
-      ),
-      rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-        res(
-          ctx.status(404),
-          ctx.json({
-            error: { message: 'pending access request for user not found' },
-          })
-        )
-      ),
-      rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (req, res, ctx) => {
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
+      http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
         submitRequestCalled = true;
-        return res(ctx.status(201), ctx.json({}));
+        return HttpResponse.json({}, { status: 201 });
       }),
     ];
 
@@ -322,7 +299,6 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('shows request button with correct initial state', async () => {
     server.use(
       ...createNoRequestHandlers({
-        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );
@@ -343,26 +319,10 @@ describe('RequestAccessPage - No Request Exists', () => {
 
   it('handles request submission failure', async () => {
     const errorHandlers = [
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json(createMockUserInfo(undefined, 'user@example.com')))
-      ),
-      rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-        res(
-          ctx.status(404),
-          ctx.json({
-            error: { message: 'pending access request for user not found' },
-          })
-        )
-      ),
-      rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (_, res, ctx) =>
-        res(
-          ctx.status(400),
-          ctx.json({
-            error: { message: 'Request already exists' },
-          })
-        )
-      ),
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
+      ...mockUserRequestAccessError({ status: 400, message: 'Request already exists' }),
     ];
 
     server.use(...errorHandlers);
@@ -383,21 +343,12 @@ describe('RequestAccessPage - No Request Exists', () => {
     let submitCount = 0;
 
     const countingHandlers = [
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) =>
-        res(ctx.json(createMockUserInfo(undefined, 'user@example.com')))
-      ),
-      rest.get(`*${ENDPOINT_USER_REQUEST_STATUS}`, (_, res, ctx) =>
-        res(
-          ctx.status(404),
-          ctx.json({
-            error: { message: 'pending access request for user not found' },
-          })
-        )
-      ),
-      rest.post(`*${ENDPOINT_USER_REQUEST_ACCESS}`, (_, res, ctx) => {
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
+      http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
         submitCount++;
-        return res(ctx.status(201), ctx.json({}));
+        return HttpResponse.json({}, { status: 201 });
       }),
     ];
 
@@ -424,7 +375,6 @@ describe('RequestAccessPage - No Request Exists', () => {
   it('shows request access button for users without roles', async () => {
     server.use(
       ...createNoRequestHandlers({
-        ...createMockLoggedInUser(),
         username: 'user@example.com',
       })
     );

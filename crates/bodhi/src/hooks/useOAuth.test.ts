@@ -1,15 +1,16 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
 import { extractOAuthParams, useOAuthCallback, useOAuthInitiate } from './useOAuth';
-import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE } from './useQuery';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockAuthInitiate,
+  mockAuthInitiateError,
+  mockAuthCallback,
+  mockAuthCallbackError,
+} from '@/test-utils/msw-v2/handlers/auth';
 
-const server = setupServer();
-
-beforeAll(() => server.listen());
-afterAll(() => server.close());
+setupMswV2();
 
 describe('extractOAuthParams', () => {
   it('extracts all query parameters without filtering', () => {
@@ -53,13 +54,9 @@ describe('useOAuthInitiate', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201), // 201 created - new OAuth session resources
-          ctx.json({
-            location: 'https://oauth.example.com/auth?client_id=test',
-          })
-        );
+      ...mockAuthInitiate({
+        status: 201,
+        location: 'https://oauth.example.com/auth?client_id=test',
       })
     );
 
@@ -87,13 +84,9 @@ describe('useOAuthInitiate', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200), // 200 OK - user already authenticated
-          ctx.json({
-            location: 'http://localhost:3000/ui/chat',
-          })
-        );
+      ...mockAuthInitiate({
+        status: 200,
+        location: 'http://localhost:3000/ui/chat',
       })
     );
 
@@ -121,17 +114,10 @@ describe('useOAuthInitiate', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-              code: 'oauth_config_error',
-            },
-          })
-        );
+      ...mockAuthInitiateError({
+        status: 500,
+        message: 'OAuth configuration error',
+        code: 'oauth_config_error',
       })
     );
 
@@ -153,11 +139,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
+    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -177,14 +159,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.json({}) // Empty JSON response without location
-        );
-      })
-    );
+    server.use(...mockAuthInitiate({ status: 201, noLocation: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -209,11 +184,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res) => {
-        return res.networkError('Network connection failed');
-      })
-    );
+    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -236,13 +207,9 @@ describe('useOAuthCallback', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({
-            location: 'http://localhost:3000/ui/chat',
-          })
-        );
+      ...mockAuthCallback({
+        status: 200,
+        location: 'http://localhost:3000/ui/chat',
       })
     );
 
@@ -275,17 +242,10 @@ describe('useOAuthCallback', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(422),
-          ctx.json({
-            error: {
-              message: 'Invalid authorization code',
-              type: 'invalid_request_error',
-              code: 'invalid_auth_code',
-            },
-          })
-        );
+      ...mockAuthCallbackError({
+        status: 422,
+        message: 'Invalid authorization code',
+        code: 'invalid_auth_code',
       })
     );
 
@@ -313,8 +273,9 @@ describe('useOAuthCallback', () => {
     const mockOnError = vi.fn();
 
     server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(500));
+      ...mockAuthCallbackError({
+        status: 500,
+        message: 'Failed to complete OAuth authentication',
       })
     );
 
@@ -341,11 +302,7 @@ describe('useOAuthCallback', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.set('Content-Length', '0'));
-      })
-    );
+    server.use(...mockAuthCallback({ status: 200, noLocation: true }));
 
     const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),

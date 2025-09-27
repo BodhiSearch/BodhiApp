@@ -2,14 +2,19 @@ import EditApiModel from '@/app/ui/api-models/edit/page';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Test utilities and data
-import { createApiModelHandlers } from '@/test-utils/msw-handlers';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { createMockUserInfo } from '@/test-fixtures/access-requests';
+import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
+import {
+  mockGetApiModel,
+  mockUpdateApiModel,
+  mockApiFormatsDefault,
+  mockTestApiModelSuccess,
+  mockFetchApiModelsSuccess,
+} from '@/test-utils/msw-v2/handlers/api-models';
 import {
   selectProvider,
   selectApiFormat,
@@ -37,14 +42,6 @@ import {
   expectErrorToast,
   expectNavigationCall,
 } from '@/test-utils/api-model-test-utils';
-import {
-  TEST_SCENARIOS,
-  createTestHandlers,
-  navigationPaths,
-  loadingStates,
-  toastMessages,
-  mockApiModelResponses,
-} from '@/test-utils/api-model-test-data';
 
 // Mock router
 const mockPush = vi.fn();
@@ -63,15 +60,8 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast, dismiss: () => {} }),
 }));
 
-const server = setupServer();
-
-beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
-});
-
-afterAll(() => {
-  server.close();
-});
+// Use MSW v2 setup
+setupMswV2();
 
 afterEach(() => {
   server.resetHandlers();
@@ -81,7 +71,25 @@ afterEach(() => {
 describe('Edit API Model Page - Page-Level Integration Tests', () => {
   describe('Page Structure and Initial Render', () => {
     it('renders page with correct authentication and app status requirements', async () => {
-      server.use(...createApiModelHandlers(createTestHandlers.openaiEditFlow()));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockGetApiModel({
+          id: 'test-model',
+          response: {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '****123',
+            models: ['gpt-3.5-turbo'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess()
+      );
 
       render(<EditApiModel />, { wrapper: createWrapper() });
 
@@ -92,8 +100,25 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
     });
 
     it('loads successfully with form elements prefilled with data retrieved from API', async () => {
-      const testData = createTestHandlers.openaiEditFlow();
-      server.use(...createApiModelHandlers(testData));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockGetApiModel({
+          id: 'test-model',
+          response: {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '****123',
+            models: ['gpt-3.5-turbo'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess()
+      );
 
       render(<EditApiModel />, { wrapper: createWrapper() });
 
@@ -133,8 +158,37 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
   describe('Form Update Flow - Success Cases', () => {
     beforeEach(() => {
       // Set up success handlers for all tests in this block
-      const testData = createTestHandlers.openaiEditFlow();
-      server.use(...createApiModelHandlers(testData));
+      server.use(
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockGetApiModel({
+          id: 'test-model',
+          response: {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '****123',
+            models: ['gpt-3.5-turbo'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        }),
+        ...mockUpdateApiModel({
+          id: 'test-model',
+          response: {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '****456',
+            models: ['gpt-4'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess()
+      );
     });
 
     it('successfully updates API model with different model selection', async () => {
@@ -195,40 +249,32 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
   describe('Form Update Flow - Error Cases', () => {
     beforeEach(() => {
       // Set up handlers with error response for PUT
-      const testData = createTestHandlers.openaiEditFlow();
-
-      // Create handlers with error PUT handler FIRST (MSW uses first match)
       server.use(
-        // App info and user info handlers
-        rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => res(ctx.json({ status: 'ready' }))),
-        rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => res(ctx.json(createMockUserInfo('resource_user')))),
-
-        // API model GET handler for initial load
-        rest.get('*/bodhi/v1/api-models/:id', (req, res, ctx) => res(ctx.json(testData.existingModel))),
-
-        // API formats and other non-PUT handlers
-        rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) =>
-          res(ctx.json(testData.apiFormats || { data: ['openai', 'openai-compatible'] }))
-        ),
-        rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) =>
-          res(ctx.json(testData.testApiModel || { success: true, response: 'Connection successful' }))
-        ),
-        rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) =>
-          res(ctx.json({ models: testData.availableModels || ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] }))
-        ),
-
-        // ERROR handler for PUT - LAST to ensure it takes precedence
-        rest.put('*/bodhi/v1/api-models/:id', (req, res, ctx) => {
-          return res(
-            ctx.status(500),
-            ctx.json({
-              error: {
-                message: 'Internal server error',
-                type: 'internal_server_error',
-              },
-            })
-          );
-        })
+        ...mockAppInfoReady(),
+        ...mockUserLoggedIn({ role: 'resource_user' }),
+        ...mockGetApiModel({
+          id: 'test-model',
+          response: {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '****123',
+            models: ['gpt-3.5-turbo'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        }),
+        ...mockUpdateApiModel({
+          id: 'test-model',
+          error: {
+            status: 500,
+            code: 'internal_server_error',
+            message: 'Internal server error',
+          },
+        }),
+        ...mockApiFormatsDefault(),
+        ...mockTestApiModelSuccess(),
+        ...mockFetchApiModelsSuccess()
       );
     });
 

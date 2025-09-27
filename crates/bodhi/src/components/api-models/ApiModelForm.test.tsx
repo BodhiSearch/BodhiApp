@@ -4,8 +4,16 @@ import { createWrapper } from '@/tests/wrapper';
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import {
+  mockApiFormats,
+  mockCreateApiModel,
+  mockUpdateApiModel,
+  mockFetchApiModels,
+  mockTestApiModel,
+} from '@/test-utils/msw-v2/handlers/api-models';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiModelResponse } from '@bodhiapp/ts-client';
 
@@ -72,19 +80,15 @@ Object.assign(window.HTMLElement.prototype, {
   }),
 });
 
-const server = setupServer();
+setupMswV2();
 
 beforeAll(() => {
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.setPointerCapture = vi.fn();
   Element.prototype.releasePointerCapture = vi.fn();
-  server.listen();
 });
 
-afterAll(() => server.close());
-
 afterEach(() => {
-  server.resetHandlers();
   vi.clearAllMocks();
 });
 
@@ -107,29 +111,13 @@ const mockApiModelResponse: ApiModelResponse = {
 describe('ApiModelForm', () => {
   beforeEach(() => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(createMockLoggedInUser()));
-      }),
-      // API format endpoint
-      rest.get('*/bodhi/v1/api-models/api-formats', (_, res, ctx) => {
-        return res(ctx.json(['openai']));
-      }),
-      // API model endpoints
-      rest.post('*/bodhi/v1/api-models', (_, res, ctx) => {
-        return res(ctx.json(mockApiModelResponse));
-      }),
-      rest.put('*/bodhi/v1/api-models/:id', (req, res, ctx) => {
-        return res(ctx.json({ ...mockApiModelResponse, id: req.params.id }));
-      }),
-      rest.post('*/bodhi/v1/api-models/fetch-models', (_, res, ctx) => {
-        return res(ctx.json({ models: ['gpt-4', 'gpt-3.5-turbo'] }));
-      }),
-      rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) => {
-        return res(ctx.json({ success: true, response: 'Test successful!' }));
-      })
+      ...mockAppInfo({ status: 'ready' }),
+      ...mockUserLoggedIn(createMockLoggedInUser()),
+      ...mockApiFormats({ data: ['openai'] }),
+      ...mockCreateApiModel({ response: mockApiModelResponse }),
+      ...mockUpdateApiModel({ id: 'test-api-model', response: mockApiModelResponse }),
+      ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo'] }),
+      ...mockTestApiModel({ success: true, response: 'Test successful!' })
     );
   });
 
@@ -184,12 +172,8 @@ describe('ApiModelForm', () => {
     it('handles fetch models functionality', async () => {
       const user = userEvent.setup();
       server.use(
-        rest.post('*/api-models/fetch-models', (_, res, ctx) => {
-          return res(
-            ctx.json({
-              models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'],
-            })
-          );
+        ...mockFetchApiModels({
+          models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'],
         })
       );
 
@@ -217,13 +201,9 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) => {
-          return res(
-            ctx.json({
-              success: true,
-              response: 'Connection successful',
-            })
-          );
+        ...mockTestApiModel({
+          success: true,
+          response: 'Connection successful',
         })
       );
 
@@ -255,11 +235,7 @@ describe('ApiModelForm', () => {
     it('creates API model successfully', async () => {
       const user = userEvent.setup();
 
-      server.use(
-        rest.post('*/api-models', (_, res, ctx) => {
-          return res(ctx.json(mockApiModelResponse));
-        })
-      );
+      server.use(...mockCreateApiModel({ response: mockApiModelResponse }));
 
       await act(async () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
@@ -336,21 +312,16 @@ describe('ApiModelForm', () => {
 
       server.use(
         // Mock fetch models to return additional models
-        rest.post('*/bodhi/v1/api-models/fetch-models', (req, res, ctx) => {
-          return res(
-            ctx.json({
-              models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo', 'claude-3-sonnet'],
-            })
-          );
+        ...mockFetchApiModels({
+          models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo', 'claude-3-sonnet'],
         }),
         // Mock the update endpoint
-        rest.put(`*/api-models/test-api-model`, (_, res, ctx) => {
-          return res(
-            ctx.json({
-              ...mockApiModelResponse,
-              models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'], // Updated models
-            })
-          );
+        ...mockUpdateApiModel({
+          id: 'test-api-model',
+          response: {
+            ...mockApiModelResponse,
+            models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'], // Updated models
+          },
         })
       );
 
@@ -404,13 +375,8 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/bodhi/v1/api-models/fetch-models', (req, res, ctx) => {
-          // Expect request to use id instead of api_key
-          return res(
-            ctx.json({
-              models: ['gpt-4', 'gpt-3.5-turbo', 'claude-3'],
-            })
-          );
+        ...mockFetchApiModels({
+          models: ['gpt-4', 'gpt-3.5-turbo', 'claude-3'],
         })
       );
 
@@ -443,14 +409,9 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/bodhi/v1/api-models/test', (req, res, ctx) => {
-          // Expect request to use id instead of api_key
-          return res(
-            ctx.json({
-              success: true,
-              response: 'Test successful with stored credentials',
-            })
-          );
+        ...mockTestApiModel({
+          success: true,
+          response: 'Test successful with stored credentials',
         })
       );
 
@@ -587,13 +548,12 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/api-models/fetch-models', (_, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({
-              error: { message: 'Invalid API key' },
-            })
-          );
+        ...mockFetchApiModels({
+          error: {
+            status: 400,
+            code: 'authentication_error',
+            message: 'Invalid API key',
+          },
         })
       );
 
@@ -621,13 +581,8 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/bodhi/v1/api-models/test', (_, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({
-              error: { message: 'Connection failed' },
-            })
-          );
+        ...mockTestApiModel({
+          error: 'Connection failed',
         })
       );
 
@@ -656,13 +611,12 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        rest.post('*/api-models', (_, res, ctx) => {
-          return res(
-            ctx.status(409),
-            ctx.json({
-              error: { message: 'API model with this ID already exists' },
-            })
-          );
+        ...mockCreateApiModel({
+          error: {
+            status: 409,
+            code: 'conflict_error',
+            message: 'API model with this ID already exists',
+          },
         })
       );
 
