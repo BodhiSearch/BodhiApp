@@ -487,9 +487,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
         /** Update Alias */
-        post: operations["updateAlias"];
+        put: operations["updateAlias"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1080,8 +1080,6 @@ export interface components {
         /** @enum {string} */
         DownloadStatus: "pending" | "completed" | "error";
         Duration: string;
-        /** @example {} */
-        EmptyResponse: Record<string, never>;
         /** @example {
          *       "code": "validation_error",
          *       "message": "Validation failed: name is required",
@@ -3380,8 +3378,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Alias created succesfully */
-            201: {
+            /** @description Alias updated succesfully */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3990,9 +3988,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["EmptyResponse"];
-                };
+                content?: never;
             };
             /** @description Not authenticated */
             401: {

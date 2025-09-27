@@ -11,6 +11,7 @@ import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handler
 import {
   mockAuthInitiate,
   mockAuthInitiateError,
+  mockAuthInitiateInvalid,
   mockLogout,
   mockLogoutError,
 } from '@/test-utils/msw-v2/handlers/auth';
@@ -153,7 +154,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(...mockAuthInitiateError({ status: 500, empty: true }));
+    server.use(...mockAuthInitiateInvalid({ empty: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -183,7 +184,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('shows error when response has no location field and re-enables button', async () => {
-    server.use(...mockAuthInitiate({ noLocation: true }));
+    server.use(...mockAuthInitiateInvalid({ noLocation: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -204,7 +205,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAuthInitiate({ invalidUrl: true }));
+    server.use(...mockAuthInitiateInvalid({ invalidUrl: true }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });

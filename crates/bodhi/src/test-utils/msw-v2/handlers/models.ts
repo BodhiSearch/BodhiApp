@@ -1,8 +1,9 @@
 /**
- * Type-safe MSW v2 handlers for models endpoint using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
 import { ENDPOINT_MODELS } from '@/hooks/useQuery';
-import { http, HttpResponse, type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
+import { type components } from '../setup';
 
 /**
  * Create type-safe MSW v2 handlers for models list endpoint
@@ -10,14 +11,14 @@ import { http, HttpResponse, type components } from '../setup';
  */
 export function mockModels(config: Partial<components['schemas']['PaginatedAliasResponse']> = {}) {
   return [
-    http.get(ENDPOINT_MODELS, () => {
+    typedHttp.get(ENDPOINT_MODELS, ({ response }) => {
       const responseData: components['schemas']['PaginatedAliasResponse'] = {
         data: config.data || [],
         page: config.page || 1,
         page_size: config.page_size || 30,
         total: config.total || 0,
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -32,17 +33,15 @@ export function mockCreateModel(
   } = {}
 ) {
   return [
-    http.post(ENDPOINT_MODELS, () => {
+    typedHttp.post(ENDPOINT_MODELS, ({ response }) => {
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'internal_error',
-              message: config.error.message || 'Internal Server Error',
-            },
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || 'Internal Server Error',
+            type: config.error.status === 400 ? 'invalid_request_error' : 'internal_server_error',
           },
-          { status: config.error.status || 500 }
-        );
+        });
       }
 
       const responseData: components['schemas']['UserAliasResponse'] = config.response || {
@@ -55,7 +54,7 @@ export function mockCreateModel(
         model_params: {},
         source: 'user',
       };
-      return HttpResponse.json(responseData);
+      return response(201).json(responseData);
     }),
   ];
 }
@@ -71,19 +70,17 @@ export function mockGetModel(
   } = { alias: 'test-model' }
 ) {
   return [
-    http.get(`${ENDPOINT_MODELS}/:alias`, ({ params }) => {
+    typedHttp.get('/bodhi/v1/models/{alias}', ({ response, params }) => {
       const { alias } = params;
 
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'not_found',
-              message: config.error.message || `Model ${alias} not found`,
-            },
+        return response(config.error.status || 404).json({
+          error: {
+            code: config.error.code || 'not_found',
+            message: config.error.message || `Model ${alias} not found`,
+            type: config.error.status === 404 ? 'not_found_error' : 'internal_server_error',
           },
-          { status: config.error.status || 404 }
-        );
+        });
       }
 
       const responseData: components['schemas']['UserAliasResponse'] = config.response || {
@@ -96,7 +93,7 @@ export function mockGetModel(
         model_params: {},
         source: 'user',
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -106,29 +103,30 @@ export function mockGetModel(
  */
 export function mockUpdateModel(
   config: {
-    alias: string;
+    id: string;
     response?: components['schemas']['UserAliasResponse'];
-    error?: { status?: 400 | 404 | 500; code?: string; message?: string };
-  } = { alias: 'test-model' }
+    error?: { status?: 400 | 500; code?: string; message?: string };
+  } = { id: 'test-model' }
 ) {
   return [
-    http.put(`${ENDPOINT_MODELS}/:alias`, ({ params }) => {
-      const { alias } = params;
+    typedHttp.put('/bodhi/v1/models/{id}', ({ response, params }) => {
+      const { id } = params;
 
       if (config.error) {
-        return HttpResponse.json(
-          {
-            error: {
-              code: config.error.code || 'internal_error',
-              message: config.error.message || `Failed to update model ${alias}`,
-            },
+        return response(config.error.status || 500).json({
+          error: {
+            code: config.error.code || 'internal_error',
+            message: config.error.message || `Failed to update model ${id}`,
+            type:
+              config.error.status === 400
+                ? 'invalid_request_error'
+                : 'internal_server_error',
           },
-          { status: config.error.status || 500 }
-        );
+        });
       }
 
       const responseData: components['schemas']['UserAliasResponse'] = config.response || {
-        alias: alias as string,
+        alias: id as string,
         repo: 'test-repo',
         filename: 'test-file.bin',
         snapshot: 'abc123',
@@ -137,7 +135,7 @@ export function mockUpdateModel(
         model_params: {},
         source: 'user',
       };
-      return HttpResponse.json(responseData);
+      return response(200).json(responseData);
     }),
   ];
 }
@@ -206,22 +204,20 @@ export function mockModelsEmpty() {
 
 export function mockModelsError(
   config: {
-    status?: 400 | 500;
+    status?: 500;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_MODELS, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Internal Server Error',
-          },
+    typedHttp.get(ENDPOINT_MODELS, ({ response }) => {
+      return response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Internal Server Error',
+          type: 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }

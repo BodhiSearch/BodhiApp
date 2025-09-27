@@ -1,6 +1,6 @@
 use crate::{
-  EmptyResponse, PaginationSortParams, ENDPOINT_ACCESS_REQUESTS_ALL,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  PaginationSortParams, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
+  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use auth_middleware::{
   KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME,
@@ -105,7 +105,7 @@ pub struct PaginatedUserAccessResponse {
     summary = "Request User Access",
     description = "Authenticated users without roles can request access to the system. Only one pending request is allowed per user.",
     responses(
-        (status = 201, description = "Access request created successfully", body = EmptyResponse),
+        (status = 201, description = "Access request created successfully"),
         (status = 409, description = "Pending request already exists", body = OpenAIApiError),
         (status = 422, description = "User already has role", body = OpenAIApiError),
         (status = 401, description = "Not authenticated", body = OpenAIApiError)
@@ -117,7 +117,7 @@ pub struct PaginatedUserAccessResponse {
 pub async fn user_request_access_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<(StatusCode, Json<EmptyResponse>), ApiError> {
+) -> Result<StatusCode, ApiError> {
   // Extract username from headers
   let Some(username) = headers.get(KEY_HEADER_BODHIAPP_USERNAME) else {
     return Err(BadRequestError::new(
@@ -178,7 +178,7 @@ pub async fn user_request_access_handler(
     .await?;
 
   debug!("Access request created for user {}", username);
-  Ok((StatusCode::CREATED, Json(EmptyResponse {})))
+  Ok(StatusCode::CREATED)
 }
 
 /// Check access request status

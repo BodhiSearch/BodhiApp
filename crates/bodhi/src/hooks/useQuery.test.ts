@@ -77,7 +77,7 @@ beforeAll(() => {
     ...mockDeleteSetting('BODHI_LOG_LEVEL', mockSettingsData[0]),
     ...mockAppInfo(mockAppInfoData),
     ...mockUserLoggedIn(mockUserInfoData),
-    ...mockSetup({ ...mockAppInfoData, status: 'ready' })
+    ...mockSetup({ status: 'ready' })
   );
 });
 
@@ -295,7 +295,7 @@ describe('useSetupApp', () => {
     server.use(
       ...mockAppInfo(mockAppInfoData),
       ...mockUserLoggedIn(mockUserInfoData),
-      ...mockSetup({ ...mockAppInfoData, status: 'ready' })
+      ...mockSetup({ status: 'ready' })
     );
   });
 
@@ -345,7 +345,6 @@ describe('useSetupApp', () => {
     });
 
     expect(onSuccess).toHaveBeenCalledWith({
-      ...mockAppInfoData,
       status: 'ready',
     });
   });

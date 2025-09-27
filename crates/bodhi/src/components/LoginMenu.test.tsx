@@ -7,8 +7,10 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockAuthInitiate,
   mockAuthInitiateError,
+  mockAuthInitiateInvalid,
   mockLogout,
   mockLogoutError,
+  mockLogoutInvalid,
 } from '@/test-utils/msw-v2/handlers/auth';
 import { mockUserLoggedOut, mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
@@ -144,7 +146,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows error when response has no location field and re-enables button', async () => {
-    server.use(...mockAuthInitiate({ status: 201, noLocation: true }));
+    server.use(...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -163,7 +165,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAuthInitiate({ status: 201, invalidUrl: true }));
+    server.use(...mockAuthInitiateInvalid({ status: 201, invalidUrl: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -238,7 +240,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles logout with missing location field', async () => {
-    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout({ noLocation: true }));
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogoutInvalid({ noLocation: true }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 

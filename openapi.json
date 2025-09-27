@@ -2182,7 +2182,7 @@
       }
     },
     "/bodhi/v1/models/{id}": {
-      "post": {
+      "put": {
         "tags": [
           "models"
         ],
@@ -2211,8 +2211,8 @@
           "required": true
         },
         "responses": {
-          "201": {
-            "description": "Alias created succesfully",
+          "200": {
+            "description": "Alias updated succesfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -2968,14 +2968,7 @@
         "operationId": "requestUserAccess",
         "responses": {
           "201": {
-            "description": "Access request created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmptyResponse"
-                }
-              }
-            }
+            "description": "Access request created successfully"
           },
           "401": {
             "description": "Not authenticated",
@@ -4340,10 +4333,6 @@
       },
       "Duration": {
         "type": "string"
-      },
-      "EmptyResponse": {
-        "type": "object",
-        "example": {}
       },
       "ErrorBody": {
         "type": "object",

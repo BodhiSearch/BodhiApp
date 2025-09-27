@@ -1,8 +1,16 @@
 /**
- * Type-safe MSW v2 handlers for user endpoints using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for user endpoints using openapi-msw
+ *
+ * This handler provides fully migrated openapi-msw mock implementations for user management endpoints:
+ * - GET /bodhi/v1/user - Current user information
+ * - GET /bodhi/v1/users - List all users (paginated)
+ * - PUT /bodhi/v1/users/{user_id}/role - Change user role
+ * - DELETE /bodhi/v1/users/{user_id} - Remove user access
+ *
+ * All endpoints use typedHttp for full OpenAPI schema compliance and type safety.
  */
-import { ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { http, HttpResponse, type components } from '../setup';
+import { type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
 import {
   mockSimpleUsersResponse,
   mockMultipleAdminsResponse,
@@ -15,11 +23,10 @@ import {
  */
 export function mockUserLoggedOut() {
   return [
-    http.get(ENDPOINT_USER_INFO, () => {
-      const responseData: components['schemas']['UserResponse'] = {
+    typedHttp.get('/bodhi/v1/user', ({ response }) => {
+      return response(200 as const).json({
         auth_status: 'logged_out',
-      };
-      return HttpResponse.json(responseData);
+      });
     }),
   ];
 }
@@ -29,40 +36,40 @@ export function mockUserLoggedOut() {
  */
 export function mockUserLoggedIn(config: Partial<components['schemas']['UserInfo']> & { delay?: number } = {}) {
   return [
-    http.get(ENDPOINT_USER_INFO, () => {
-      const responseData: components['schemas']['UserResponse'] = {
-        auth_status: 'logged_in',
+    typedHttp.get('/bodhi/v1/user', ({ response }) => {
+      const responseData = {
+        auth_status: 'logged_in' as const,
         user_id: config.user_id || '550e8400-e29b-41d4-a716-446655440000',
         username: config.username || 'test@example.com',
         first_name: config.first_name !== undefined ? config.first_name : null,
         last_name: config.last_name !== undefined ? config.last_name : null,
         role: config.role !== undefined ? config.role : null,
       };
-      const response = HttpResponse.json(responseData);
+      const httpResponse = response(200 as const).json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+        : httpResponse;
     }),
   ];
 }
 
 export function mockUserError(
   config: {
-    status?: 401 | 403 | 500;
+    status?: 500;
     code?: string;
     message?: string;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_USER_INFO, () => {
-      return HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.get('/bodhi/v1/user', ({ response }) => {
+      return response((config.status || 500) as 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Server error',
+          type: 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
     }),
   ];
 }
@@ -78,21 +85,21 @@ export function mockUsers(
   } = {}
 ) {
   return [
-    http.get('/bodhi/v1/users', ({ request }) => {
+    typedHttp.get('/bodhi/v1/users', ({ response }) => {
       if (config.error) {
-        const response = HttpResponse.json(
-          {
-            error: {
-              type: 'internal_error',
-              message: 'Failed to fetch users',
-            },
+        const httpResponse = response(500).json({
+          error: {
+            code: 'internal_error',
+            message: 'Failed to fetch users',
+            type: 'internal_server_error',
           },
-          { status: 500 }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay
+          ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+          : httpResponse;
       }
 
-      const responseData: components['schemas']['UserListResponse'] = {
+      const responseData = {
         client_id: 'resource-test-client',
         users: config.users?.users || mockSimpleUsersResponse.users,
         page: config.users?.page || 1,
@@ -103,8 +110,10 @@ export function mockUsers(
         has_previous: false,
       };
 
-      const response = HttpResponse.json(responseData);
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const httpResponse = response(200 as const).json(responseData);
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+        : httpResponse;
     }),
   ];
 }
@@ -137,44 +146,54 @@ export function mockUsersError() {
  */
 export function mockUserRoleChange(
   config: {
-    status?: 200 | 400 | 403 | 404 | 500;
+    status?: 200 | 400 | 401 | 403 | 404 | 500;
     error?: boolean;
     delay?: number;
   } = {}
 ) {
   return [
-    http.put('/bodhi/v1/users/:userId/role', () => {
+    typedHttp.put('/bodhi/v1/users/{user_id}/role', ({ response }) => {
       const status = config.status || 200;
 
       if (config.error || status !== 200) {
         let errorMessage = 'Server error';
         let errorCode = 'internal_error';
+        let errorType = 'internal_server_error';
 
         if (status === 400) {
           errorMessage = 'Invalid role specified';
           errorCode = 'validation_error';
+          errorType = 'invalid_request_error';
+        } else if (status === 401) {
+          errorMessage = 'Not authenticated';
+          errorCode = 'authentication_error';
+          errorType = 'unauthorized_error';
         } else if (status === 403) {
           errorMessage = 'Insufficient permissions';
           errorCode = 'authentication_error';
+          errorType = 'permission_denied_error';
         } else if (status === 404) {
           errorMessage = 'User not found';
           errorCode = 'not_found_error';
+          errorType = 'not_found_error';
         }
 
-        const response = HttpResponse.json(
-          {
-            error: {
-              code: errorCode,
-              message: errorMessage,
-            },
+        const httpResponse = response(status as 400 | 401 | 403 | 404 | 500).json({
+          error: {
+            code: errorCode,
+            message: errorMessage,
+            type: errorType,
           },
-          { status }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay
+          ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+          : httpResponse;
       }
 
-      const response = HttpResponse.json({});
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const httpResponse = response(200).empty();
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+        : httpResponse;
     }),
   ];
 }
@@ -186,7 +205,7 @@ export function mockUserRoleChangeSuccess() {
   return mockUserRoleChange();
 }
 
-export function mockUserRoleChangeError(status: 400 | 403 | 404 | 500 = 500) {
+export function mockUserRoleChangeError(status: 400 | 401 | 403 | 404 | 500 = 500) {
   return mockUserRoleChange({ error: true, status });
 }
 
@@ -195,41 +214,54 @@ export function mockUserRoleChangeError(status: 400 | 403 | 404 | 500 = 500) {
  */
 export function mockUserRemove(
   config: {
-    status?: 200 | 403 | 404 | 500;
+    status?: 200 | 400 | 401 | 403 | 404 | 500;
     error?: boolean;
     delay?: number;
   } = {}
 ) {
   return [
-    http.delete('/bodhi/v1/users/:userId', () => {
+    typedHttp.delete('/bodhi/v1/users/{user_id}', ({ response }) => {
       const status = config.status || 200;
 
       if (config.error || status !== 200) {
         let errorMessage = 'Server error';
         let errorCode = 'internal_error';
+        let errorType = 'internal_server_error';
 
-        if (status === 403) {
+        if (status === 400) {
+          errorMessage = 'Invalid request';
+          errorCode = 'validation_error';
+          errorType = 'invalid_request_error';
+        } else if (status === 401) {
+          errorMessage = 'Not authenticated';
+          errorCode = 'authentication_error';
+          errorType = 'unauthorized_error';
+        } else if (status === 403) {
           errorMessage = 'Insufficient permissions';
           errorCode = 'authentication_error';
+          errorType = 'permission_denied_error';
         } else if (status === 404) {
           errorMessage = 'User not found';
           errorCode = 'not_found_error';
+          errorType = 'not_found_error';
         }
 
-        const response = HttpResponse.json(
-          {
-            error: {
-              code: errorCode,
-              message: errorMessage,
-            },
+        const httpResponse = response(status as 400 | 401 | 403 | 404 | 500).json({
+          error: {
+            code: errorCode,
+            message: errorMessage,
+            type: errorType,
           },
-          { status }
-        );
-        return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+        });
+        return config.delay
+          ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+          : httpResponse;
       }
 
-      const response = HttpResponse.json({});
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const httpResponse = response(200).empty();
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(httpResponse), config.delay))
+        : httpResponse;
     }),
   ];
 }
@@ -241,6 +273,6 @@ export function mockUserRemoveSuccess() {
   return mockUserRemove();
 }
 
-export function mockUserRemoveError(status: 403 | 404 | 500 = 500) {
+export function mockUserRemoveError(status: 400 | 401 | 403 | 404 | 500 = 500) {
   return mockUserRemove({ error: true, status });
 }
