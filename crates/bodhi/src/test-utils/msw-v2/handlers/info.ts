@@ -1,21 +1,21 @@
 /**
- * Type-safe MSW v2 handlers for app info endpoint using patterns inspired by openapi-msw
+ * Type-safe MSW v2 handlers for app info endpoint using openapi-msw
  */
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
-import { http, HttpResponse, type components } from '../setup';
+import { typedHttp } from '../openapi-msw-setup';
+import type { components } from '../setup';
 
 /**
  * Create type-safe MSW v2 handlers for app info endpoint
- * Uses generated OpenAPI types directly
+ * Uses openapi-msw for full type safety with OpenAPI schema enforcement
  */
 export function mockAppInfo(config: Partial<components['schemas']['AppInfo']> = {}) {
   return [
-    http.get(ENDPOINT_APP_INFO, () => {
-      const responseData: components['schemas']['AppInfo'] = {
+    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
+      return response(200).json({
         status: config.status || 'ready',
         version: config.version || '0.1.0',
-      };
-      return HttpResponse.json(responseData);
+      });
     }),
   ];
 }
@@ -34,28 +34,29 @@ export function mockAppInfoResourceAdmin() {
 
 /**
  * Create error handler for app info endpoint
+ * Only supports status codes defined in OpenAPI schema (500)
  */
 export function mockAppInfoError(
   config: {
-    status?: 401 | 403 | 500;
+    status?: 500; // Only 500 is defined in OpenAPI schema for this endpoint
     code?: string;
     message?: string;
     delay?: number;
   } = {}
 ) {
   return [
-    http.get(ENDPOINT_APP_INFO, () => {
-      const response = HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Server error',
-          },
+    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
+      const errorResponse = response(config.status || 500).json({
+        error: {
+          code: config.code || 'internal_error',
+          message: config.message || 'Server error',
+          type: 'internal_server_error',
         },
-        { status: config.status || 500 }
-      );
+      });
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(errorResponse), config.delay))
+        : errorResponse;
     }),
   ];
 }
@@ -65,14 +66,15 @@ export function mockAppInfoError(
  */
 export function mockAppInfoWithDelay(config: Partial<components['schemas']['AppInfo']> & { delay?: number } = {}) {
   return [
-    http.get(ENDPOINT_APP_INFO, () => {
-      const responseData: components['schemas']['AppInfo'] = {
+    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
+      const successResponse = response(200).json({
         status: config.status || 'ready',
         version: config.version || '0.1.0',
-      };
-      const response = HttpResponse.json(responseData);
+      });
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return config.delay
+        ? new Promise((resolve) => setTimeout(() => resolve(successResponse), config.delay))
+        : successResponse;
     }),
   ];
 }
