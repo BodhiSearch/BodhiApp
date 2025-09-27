@@ -3,7 +3,7 @@ import { ENDPOINT_APP_INFO, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, fireEvent } from '@testing-library/react';
-import { setupServer } from 'msw2/node';
+import { setupServer } from 'msw/node';
 import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady, mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';

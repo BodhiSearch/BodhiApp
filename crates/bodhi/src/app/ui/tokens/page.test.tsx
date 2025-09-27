@@ -6,7 +6,7 @@ import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mo
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { setupServer } from 'msw2/node';
+import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   mockListTokens,

@@ -3,10 +3,10 @@ import { ENDPOINT_AUTH_CALLBACK } from '@/hooks/useOAuth';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { setupServer } from 'msw2/node';
+import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockAuthCallback, mockAuthCallbackError } from '@/test-utils/msw-v2/handlers/auth';
-import { http, HttpResponse } from 'msw2';
+import { http, HttpResponse } from 'msw';
 
 const pushMock = vi.fn();
 let mockSearchParams = new URLSearchParams('code=test-code&state=test-state');
