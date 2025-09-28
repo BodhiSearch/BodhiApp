@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  mockListTokens,
+  mockTokens,
   mockCreateToken,
   mockUpdateToken,
   mockCreateTokenWithResponse,
@@ -56,7 +56,7 @@ const mockListResponse = {
   page_size: 10,
 };
 
-const server = setupServer(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockListTokens());
+const server = setupServer(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockTokens());
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -68,7 +68,7 @@ beforeEach(() => {
 
 describe('TokenPageContent', () => {
   it('shows loading skeleton initially', async () => {
-    server.use(...mockListTokens());
+    server.use(...mockTokens());
 
     render(<TokenPageContent />, { wrapper: createWrapper() });
 

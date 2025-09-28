@@ -14,11 +14,11 @@ import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from 
  * Create type-safe MSW v2 handlers for settings endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockSettings(response: components['schemas']['SettingInfo'][] = []) {
+export function mockSettings(settings: components['schemas']['SettingInfo'][] = []) {
   return [
-    typedHttp.get(ENDPOINT_SETTINGS, async ({ response: resp }) => {
-      const responseData: components['schemas']['SettingInfo'][] = response;
-      return resp(200 as const).json(responseData);
+    typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
+      const responseData: components['schemas']['SettingInfo'][] = settings;
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -84,14 +84,14 @@ export function mockSettingsError({
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
   return [
-    typedHttp.get(ENDPOINT_SETTINGS, async ({ response: _response }) => {
+    typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
       const errorBody = {
         code,
         message,
         type,
         ...rest,
       };
-      return _response(status).json({ error: errorBody });
+      return response(status).json({ error: errorBody });
     }),
   ];
 }
@@ -166,7 +166,7 @@ export function mockUpdateSettingError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
 ) {
   return [
-    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
       // Only return error for matching key
       if (params.key === key) {
         const errorBody = {
@@ -175,7 +175,7 @@ export function mockUpdateSettingError(
           type,
           ...rest,
         };
-        return _response(status).json({ error: errorBody });
+        return response(status).json({ error: errorBody });
       }
 
       // Pass through to next handler for non-matching keys
@@ -209,7 +209,7 @@ export function mockUpdateSettingServerError(key: string) {
  */
 export function mockUpdateSettingNetworkError(key: string) {
   return [
-    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
       // Only return network error for matching key
       if (params.key === key) {
         return HttpResponse.error();
@@ -241,7 +241,7 @@ export function mockDeleteSetting(
   }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {}
 ) {
   return [
-    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
+    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
       // Only respond with success if key matches
       if (params.key === key) {
         const responseData: components['schemas']['SettingInfo'] = {
@@ -252,7 +252,7 @@ export function mockDeleteSetting(
           metadata,
           ...rest,
         };
-        return _response(200 as const).json(responseData);
+        return response(200 as const).json(responseData);
       }
 
       // Pass through to next handler for non-matching keys
@@ -277,7 +277,7 @@ export function mockDeleteSettingError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
   return [
-    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
+    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
       // Only return error for matching key
       if (params.key === key) {
         const errorBody = {
@@ -286,7 +286,7 @@ export function mockDeleteSettingError(
           type,
           ...rest,
         };
-        return _response(status).json({ error: errorBody });
+        return response(status).json({ error: errorBody });
       }
 
       // Pass through to next handler for non-matching keys
@@ -315,8 +315,8 @@ export function mockDeleteSettingNotFoundError(key: string) {
  */
 export function mockUpdateSettingNotFound() {
   return [
-    typedHttp.put('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
-      return _response(404 as const).json({
+    typedHttp.put('/bodhi/v1/settings/{key}', async ({ params, response }) => {
+      return response(404 as const).json({
         error: {
           code: 'not_found',
           message: `Setting ${params.key} not found`,
@@ -333,8 +333,8 @@ export function mockUpdateSettingNotFound() {
  */
 export function mockDeleteSettingNotFound() {
   return [
-    typedHttp.delete('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
-      return _response(404 as const).json({
+    typedHttp.delete('/bodhi/v1/settings/{key}', async ({ params, response }) => {
+      return response(404 as const).json({
         error: {
           code: 'not_found',
           message: `Setting ${params.key} not found`,

@@ -6,10 +6,10 @@ import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
-  mockListTokens,
+  mockTokens,
   mockCreateToken,
   mockUpdateToken,
-  mockListTokensError,
+  mockTokensError,
   mockCreateTokenError,
   mockUpdateTokenError,
 } from '@/test-utils/msw-v2/handlers/tokens';
@@ -53,7 +53,7 @@ afterEach(() => server.resetHandlers());
 
 describe('useListTokens', () => {
   it('fetches tokens with default pagination', async () => {
-    server.use(...mockListTokens(mockListResponse));
+    server.use(...mockTokens(mockListResponse));
 
     const { result } = renderHook(() => useListTokens(), {
       wrapper: createWrapper(),
@@ -68,7 +68,7 @@ describe('useListTokens', () => {
 
   it('fetches tokens with custom pagination', async () => {
     server.use(
-      ...mockListTokens({
+      ...mockTokens({
         ...mockListResponse,
         page: 2,
         page_size: 20,
@@ -92,7 +92,7 @@ describe('useListTokens', () => {
 
   it('handles error response', async () => {
     server.use(
-      ...mockListTokensError({
+      ...mockTokensError({
         message: 'Test Error',
         type: 'internal_server_error',
       })
@@ -139,7 +139,7 @@ describe('useCreateToken', () => {
     const wrapper = createWrapper();
 
     // Setup initial list tokens mock
-    server.use(...mockListTokens(mockListResponse));
+    server.use(...mockTokens(mockListResponse));
 
     // Setup list tokens hook and wait for initial data
     const { result: listResult } = renderHook(() => useListTokens(), {
@@ -155,7 +155,7 @@ describe('useCreateToken', () => {
 
     // Update mock to return different data after token creation
     server.use(
-      ...mockListTokens({
+      ...mockTokens({
         ...mockListResponse,
         data: [
           ...mockListResponse.data,

@@ -27,7 +27,7 @@ export function mockAccessRequests({
   ...rest
 }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response: resp }) => {
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response }) => {
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests,
         total: total || requests.length,
@@ -35,7 +35,7 @@ export function mockAccessRequests({
         page_size,
         ...rest,
       };
-      return resp(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -71,7 +71,7 @@ export function mockAccessRequestsPending({
   ...rest
 }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response: resp }) => {
+    typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response }) => {
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests,
         total: total || requests.length,
@@ -79,7 +79,7 @@ export function mockAccessRequestsPending({
         page_size,
         ...rest,
       };
-      return resp(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -206,7 +206,7 @@ export function mockUserRequestStatus({
   ...rest
 }: Partial<components['schemas']['UserAccessStatusResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response: resp }) => {
+    typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response }) => {
       const responseData: components['schemas']['UserAccessStatusResponse'] = {
         status,
         username,
@@ -214,7 +214,7 @@ export function mockUserRequestStatus({
         updated_at,
         ...rest,
       };
-      return resp(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }

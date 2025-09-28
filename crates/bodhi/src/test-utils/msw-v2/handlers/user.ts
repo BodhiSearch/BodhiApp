@@ -19,8 +19,13 @@ import {
   mockEmptyUsersResponse,
 } from '@/test-fixtures/users';
 
+// ============================================================================
+// User Info Endpoint (GET /bodhi/v1/user)
+// ============================================================================
+
 /**
- * Mock handler for logged out user
+ * Mock handler for user info endpoint - logged out state
+ * Uses generated OpenAPI types directly
  */
 export function mockUserLoggedOut() {
   return [
@@ -33,7 +38,8 @@ export function mockUserLoggedOut() {
 }
 
 /**
- * Mock handler for logged in user with configurable fields
+ * Mock handler for user info endpoint - logged in state with configurable fields
+ * Uses generated OpenAPI types directly
  */
 export function mockUserLoggedIn(
   {
@@ -47,7 +53,7 @@ export function mockUserLoggedIn(
   delayMs?: number
 ) {
   return [
-    typedHttp.get(ENDPOINT_USER_INFO, async ({ response: httpResponse }) => {
+    typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
       if (delayMs) {
         await delay(delayMs);
       }
@@ -60,12 +66,16 @@ export function mockUserLoggedIn(
         role,
         ...rest,
       };
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
-export function mockUserError({
+/**
+ * Mock handler for user info endpoint error responses
+ * Uses generated OpenAPI types directly
+ */
+export function mockUserInfoError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
   type = INTERNAL_SERVER_ERROR.type,
@@ -85,8 +95,13 @@ export function mockUserError({
   ];
 }
 
+// ============================================================================
+// Users List Endpoint (GET /bodhi/v1/users)
+// ============================================================================
+
 /**
  * Mock handler for users list endpoint with configurable response data
+ * Uses generated OpenAPI types directly
  */
 export function mockUsers({
   client_id = 'resource-test-client',
@@ -100,7 +115,7 @@ export function mockUsers({
   ...rest
 }: Partial<components['schemas']['UserListResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_USERS, async ({ response: httpResponse }) => {
+    typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       const responseData = {
         client_id,
         users,
@@ -112,13 +127,14 @@ export function mockUsers({
         has_previous,
         ...rest,
       };
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
 /**
  * Mock handler for users list endpoint error responses
+ * Uses generated OpenAPI types directly
  */
 export function mockUsersError({
   code = INTERNAL_SERVER_ERROR.code,
@@ -140,6 +156,10 @@ export function mockUsersError({
   ];
 }
 
+// ============================================================================
+// Convenience Methods for Users List
+// ============================================================================
+
 /**
  * Convenience methods for common user list scenarios
  */
@@ -159,8 +179,13 @@ export function mockUsersEmpty() {
   return mockUsers({ users: mockEmptyUsersResponse.users, total_users: mockEmptyUsersResponse.total });
 }
 
+// ============================================================================
+// User Role Change Endpoint (PUT /bodhi/v1/users/{user_id}/role)
+// ============================================================================
+
 /**
  * Mock handler for user role change endpoint
+ * Uses generated OpenAPI types directly
  */
 export function mockUserRoleChange(user_id: string) {
   return [
@@ -176,6 +201,7 @@ export function mockUserRoleChange(user_id: string) {
 
 /**
  * Mock handler for user role change endpoint error responses
+ * Uses generated OpenAPI types directly
  */
 export function mockUserRoleChangeError(
   user_id: string,
@@ -204,8 +230,13 @@ export function mockUserRoleChangeError(
   ];
 }
 
+// ============================================================================
+// User Removal Endpoint (DELETE /bodhi/v1/users/{user_id})
+// ============================================================================
+
 /**
  * Mock handler for user removal endpoint
+ * Uses generated OpenAPI types directly
  */
 export function mockUserRemove(user_id: string) {
   return [
@@ -221,6 +252,7 @@ export function mockUserRemove(user_id: string) {
 
 /**
  * Mock handler for user removal endpoint error responses
+ * Uses generated OpenAPI types directly
  */
 export function mockUserRemoveError(
   user_id: string,
