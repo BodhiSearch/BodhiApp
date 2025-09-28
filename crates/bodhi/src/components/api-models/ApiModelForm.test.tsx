@@ -118,7 +118,7 @@ describe('ApiModelForm', () => {
       ...mockUserLoggedIn(createMockLoggedInUser()),
       ...mockApiFormats({ data: ['openai'] }),
       ...mockCreateApiModel({ response: mockApiModelResponse }),
-      ...mockUpdateApiModel({ id: 'test-api-model', response: mockApiModelResponse }),
+      ...mockUpdateApiModel('test-api-model', mockApiModelResponse),
       ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo'] }),
       ...mockTestApiModel({ success: true, response: 'Test successful!' })
     );
@@ -319,12 +319,9 @@ describe('ApiModelForm', () => {
           models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo', 'claude-3-sonnet'],
         }),
         // Mock the update endpoint
-        ...mockUpdateApiModel({
-          id: 'test-api-model',
-          response: {
-            ...mockApiModelResponse,
-            models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'], // Updated models
-          },
+        ...mockUpdateApiModel('test-api-model', {
+          ...mockApiModelResponse,
+          models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'], // Updated models
         })
       );
 

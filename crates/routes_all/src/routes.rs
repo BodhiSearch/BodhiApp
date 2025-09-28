@@ -151,15 +151,15 @@ pub fn build_routes(
     .route(ENDPOINT_API_MODELS_TEST, post(test_api_model_handler))
     .route(ENDPOINT_API_MODELS_FETCH_MODELS, post(fetch_models_handler))
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{alias}}"),
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
       get(get_api_model_handler),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{alias}}"),
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
       put(update_api_model_handler),
     )
     .route(
-      &format!("{ENDPOINT_API_MODELS}/{{alias}}"),
+      &format!("{ENDPOINT_API_MODELS}/{{id}}"),
       delete(delete_api_model_handler),
     )
     .route_layer(from_fn_with_state(
