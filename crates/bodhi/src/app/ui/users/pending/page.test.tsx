@@ -318,7 +318,7 @@ describe('PendingRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestReject()
+      ...mockAccessRequestReject(1)
     );
 
     await act(async () => {
@@ -351,6 +351,7 @@ describe('PendingRequestsPage Error Handling', () => {
         last_name: 'User',
         role: 'resource_admin',
       }),
+      ...mockAccessRequestsPendingError({ status: 404, message: 'Not found' }),
       ...mockAccessRequestsPendingError({ status: 404, message: 'Not found' })
     );
 
@@ -383,7 +384,7 @@ describe('PendingRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApproveError()
+      ...mockAccessRequestApproveError(1)
     );
 
     await act(async () => {
@@ -422,7 +423,7 @@ describe('PendingRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestRejectError()
+      ...mockAccessRequestRejectError(1)
     );
 
     await act(async () => {
@@ -562,7 +563,7 @@ describe('PendingRequestsPage UI Interactions', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove()
+      ...mockAccessRequestApprove(1)
     );
 
     await act(async () => {

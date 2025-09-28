@@ -235,6 +235,12 @@ describe('RequestAccessPage - No Request Exists', () => {
       type: 'not_found_error',
       status: 404,
     }),
+    ...mockUserRequestStatusError({
+      code: 'not_found',
+      message: 'pending access request for user not found',
+      type: 'not_found_error',
+      status: 404,
+    }),
     ...mockUserRequestAccess(),
   ];
 
@@ -262,6 +268,12 @@ describe('RequestAccessPage - No Request Exists', () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({
+        code: 'not_found',
+        message: 'pending access request for user not found',
+        type: 'not_found_error',
+        status: 404,
+      }),
       ...mockUserRequestStatusError({
         code: 'not_found',
         message: 'pending access request for user not found',
@@ -310,6 +322,12 @@ describe('RequestAccessPage - No Request Exists', () => {
     const errorHandlers = [
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ username: 'user@example.com' }),
+      ...mockUserRequestStatusError({
+        code: 'not_found',
+        message: 'pending access request for user not found',
+        type: 'not_found_error',
+        status: 404,
+      }),
       ...mockUserRequestStatusError({
         code: 'not_found',
         message: 'pending access request for user not found',

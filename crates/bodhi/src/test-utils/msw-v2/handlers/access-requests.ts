@@ -26,8 +26,13 @@ export function mockAccessRequests({
   page_size = 10,
   ...rest
 }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests,
         total: total || requests.length,
@@ -47,8 +52,13 @@ export function mockAccessRequestsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -70,8 +80,13 @@ export function mockAccessRequestsPending({
   page_size = 10,
   ...rest
 }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
         requests,
         total: total || requests.length,
@@ -91,8 +106,13 @@ export function mockAccessRequestsPendingError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -109,12 +129,15 @@ export function mockAccessRequestsPendingError({
  * Only responds to the specified ID, returns 404 for others
  */
 export function mockAccessRequestApprove(id: number) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
-      if (params.id === id.toString()) {
-        return response(200 as const).empty();
-      }
-      return;
+      if (params.id !== id.toString()) return;
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      return response(200 as const).empty();
     }),
   ];
 }
@@ -129,21 +152,22 @@ export function mockAccessRequestApproveError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
       // Only return error for matching ID
-      if (params.id === id.toString()) {
-        const errorData = {
-          code,
-          message,
-          type,
-          ...rest,
-        };
-        return response(status).json({ error: errorData });
-      }
+      if (params.id !== id.toString()) return;
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
-      // Pass through to next handler for non-matching IDs
-      return;
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
@@ -153,15 +177,16 @@ export function mockAccessRequestApproveError(
  * Only responds to the specified ID, returns 404 for others
  */
 export function mockAccessRequestReject(id: number) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only respond with success if ID matches
-      if (params.id === id.toString()) {
-        return response(200 as const).empty();
-      }
+      if (params.id !== id.toString()) return;
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
-      // Pass through to next handler for non-matching IDs
-      return;
+      return response(200 as const).empty();
     }),
   ];
 }
@@ -176,21 +201,22 @@ export function mockAccessRequestRejectError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only return error for matching ID
-      if (params.id === id.toString()) {
-        const errorData = {
-          code,
-          message,
-          type,
-          ...rest,
-        };
-        return response(status).json({ error: errorData });
-      }
+      if (params.id !== id.toString()) return;
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
-      // Pass through to next handler for non-matching IDs
-      return;
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
@@ -205,8 +231,13 @@ export function mockUserRequestStatus({
   updated_at = '2024-01-01T00:00:00Z',
   ...rest
 }: Partial<components['schemas']['UserAccessStatusResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['UserAccessStatusResponse'] = {
         status,
         username,
@@ -226,8 +257,13 @@ export function mockUserRequestStatusError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -243,8 +279,13 @@ export function mockUserRequestStatusError({
  * Mock handler for creating user access request - success case
  */
 export function mockUserRequestAccess(delayMs?: number) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       if (delayMs) {
         await delay(delayMs);
       }
@@ -261,8 +302,13 @@ export function mockUserRequestAccessError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 409 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -282,39 +328,39 @@ export function mockUserRequestAccessError({
  * Mock handler for all access requests with default data
  */
 export function mockAccessRequestsDefault() {
-  const defaultRequests: components['schemas']['UserAccessRequest'][] = [
-    {
-      id: 1,
-      user_id: '550e8400-e29b-41d4-a716-446655440001',
-      username: 'user@example.com',
-      status: 'pending',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-      reviewer: null,
-    },
-    {
-      id: 2,
-      user_id: '550e8400-e29b-41d4-a716-446655440002',
-      username: 'approved@example.com',
-      status: 'approved',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-02T00:00:00Z',
-      reviewer: 'admin@example.com',
-    },
-    {
-      id: 3,
-      user_id: '550e8400-e29b-41d4-a716-446655440003',
-      username: 'rejected@example.com',
-      status: 'rejected',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-02T00:00:00Z',
-      reviewer: 'admin@example.com',
-    },
-  ];
-
   return mockAccessRequests({
-    requests: defaultRequests,
-    total: defaultRequests.length,
+    requests: [
+      {
+        id: 1,
+        user_id: '550e8400-e29b-41d4-a716-446655440001',
+        username: 'user@example.com',
+        status: 'pending',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        reviewer: null,
+      },
+      {
+        id: 2,
+        user_id: '550e8400-e29b-41d4-a716-446655440002',
+        username: 'approved@example.com',
+        status: 'approved',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-02T00:00:00Z',
+        reviewer: 'admin@example.com',
+      },
+      {
+        id: 3,
+        user_id: '550e8400-e29b-41d4-a716-446655440003',
+        username: 'rejected@example.com',
+        status: 'rejected',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-02T00:00:00Z',
+        reviewer: 'admin@example.com',
+      },
+    ],
+    total: 3,
+    page: 1,
+    page_size: 10,
   });
 }
 
@@ -325,6 +371,8 @@ export function mockAccessRequestsEmpty() {
   return mockAccessRequests({
     requests: [],
     total: 0,
+    page: 1,
+    page_size: 10,
   });
 }
 
@@ -332,21 +380,21 @@ export function mockAccessRequestsEmpty() {
  * Mock handler for pending access requests with default data (only pending status)
  */
 export function mockAccessRequestsPendingDefault() {
-  const pendingRequests: components['schemas']['UserAccessRequest'][] = [
-    {
-      id: 1,
-      user_id: '550e8400-e29b-41d4-a716-446655440001',
-      username: 'user@example.com',
-      status: 'pending',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-      reviewer: null,
-    },
-  ];
-
   return mockAccessRequestsPending({
-    requests: pendingRequests,
-    total: pendingRequests.length,
+    requests: [
+      {
+        id: 1,
+        user_id: '550e8400-e29b-41d4-a716-446655440001',
+        username: 'user@example.com',
+        status: 'pending',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        reviewer: null,
+      },
+    ],
+    total: 1,
+    page: 1,
+    page_size: 10,
   });
 }
 
@@ -357,6 +405,8 @@ export function mockAccessRequestsPendingEmpty() {
   return mockAccessRequestsPending({
     requests: [],
     total: 0,
+    page: 1,
+    page_size: 10,
   });
 }
 

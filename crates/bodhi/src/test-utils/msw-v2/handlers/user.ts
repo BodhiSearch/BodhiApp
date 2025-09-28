@@ -20,6 +20,63 @@ import {
 } from '@/test-fixtures/users';
 
 // ============================================================================
+// Stub Handlers (No closure state - for tests requiring multiple responses)
+// ============================================================================
+
+/**
+ * Core response logic for user logged in endpoint (shared by mock and stub handlers)
+ * @private
+ */
+async function createUserLoggedInResponse(
+  {
+    user_id = '550e8400-e29b-41d4-a716-446655440000',
+    username = 'test@example.com',
+    first_name = null,
+    last_name = null,
+    role = null,
+    ...rest
+  }: Partial<components['schemas']['UserInfo']> = {},
+  delayMs: number | undefined,
+  response: any
+) {
+  if (delayMs) {
+    await delay(delayMs);
+  }
+  const responseData = {
+    auth_status: 'logged_in' as const,
+    user_id,
+    username,
+    first_name,
+    last_name,
+    role,
+    ...rest,
+  };
+  return response(200 as const).json(responseData);
+}
+
+/**
+ * Stub handler for user info endpoint that responds every time (no closure state)
+ * Use this for tests that require multiple API calls to the same endpoint
+ */
+export function stubUserLoggedIn(
+  {
+    user_id = '550e8400-e29b-41d4-a716-446655440000',
+    username = 'test@example.com',
+    first_name = null,
+    last_name = null,
+    role = null,
+    ...rest
+  }: Partial<components['schemas']['UserInfo']> = {},
+  delayMs?: number
+) {
+  return [
+    typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
+      return createUserLoggedInResponse({ user_id, username, first_name, last_name, role, ...rest }, delayMs, response);
+    }),
+  ];
+}
+
+// ============================================================================
 // User Info Endpoint (GET /bodhi/v1/user)
 // ============================================================================
 
@@ -28,8 +85,11 @@ import {
  * Uses generated OpenAPI types directly
  */
 export function mockUserLoggedOut() {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       return response(200 as const).json({
         auth_status: 'logged_out',
       });
@@ -52,21 +112,12 @@ export function mockUserLoggedIn(
   }: Partial<components['schemas']['UserInfo']> = {},
   delayMs?: number
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
-      if (delayMs) {
-        await delay(delayMs);
-      }
-      const responseData = {
-        auth_status: 'logged_in' as const,
-        user_id,
-        username,
-        first_name,
-        last_name,
-        role,
-        ...rest,
-      };
-      return response(200 as const).json(responseData);
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+      return createUserLoggedInResponse({ user_id, username, first_name, last_name, role, ...rest }, delayMs, response);
     }),
   ];
 }
@@ -82,8 +133,11 @@ export function mockUserInfoError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -114,8 +168,11 @@ export function mockUsers({
   has_previous = false,
   ...rest
 }: Partial<components['schemas']['UserListResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData = {
         client_id,
         users,
@@ -143,8 +200,11 @@ export function mockUsersError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -188,12 +248,15 @@ export function mockUsersEmpty() {
  * Uses generated OpenAPI types directly
  */
 export function mockUserRoleChange(user_id: string) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       return response(200).empty();
     }),
   ];
@@ -213,12 +276,15 @@ export function mockUserRoleChangeError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -239,12 +305,15 @@ export function mockUserRoleChangeError(
  * Uses generated OpenAPI types directly
  */
 export function mockUserRemove(user_id: string) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       return response(200).empty();
     }),
   ];
@@ -264,12 +333,15 @@ export function mockUserRemoveError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,

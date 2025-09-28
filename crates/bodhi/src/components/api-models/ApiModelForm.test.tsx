@@ -615,6 +615,11 @@ describe('ApiModelForm', () => {
           code: 'conflict_error',
           message: 'API model with this ID already exists',
           type: 'invalid_request_error',
+        }),
+        ...mockCreateApiModelError({
+          code: 'conflict_error',
+          message: 'API model with this ID already exists',
+          type: 'invalid_request_error',
         })
       );
 

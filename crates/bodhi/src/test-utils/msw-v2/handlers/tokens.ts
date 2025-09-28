@@ -31,8 +31,12 @@ export function mockTokens({
   page_size = 10,
   ...rest
 }: Partial<components['schemas']['PaginatedApiTokenResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(API_TOKENS_ENDPOINT, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedApiTokenResponse'] = {
         data,
         total,
@@ -54,8 +58,12 @@ export function mockCreateToken(
   { offline_token = 'test-token-123', ...rest }: Partial<components['schemas']['ApiTokenResponse']> = {},
   delayMs?: number
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(API_TOKENS_ENDPOINT, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       if (delayMs) {
         await delay(delayMs);
       }
@@ -87,12 +95,16 @@ export function mockUpdateToken(
     ...rest
   }: Partial<components['schemas']['ApiToken']> = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
       // Only respond if id matches
       if (params.id !== tokenId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const responseData: components['schemas']['ApiToken'] = {
         id,
@@ -165,8 +177,12 @@ export function mockTokensError({
   status = 401,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(API_TOKENS_ENDPOINT, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -189,8 +205,12 @@ export function mockCreateTokenError({
   status = 400,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(API_TOKENS_ENDPOINT, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -216,12 +236,16 @@ export function mockUpdateTokenError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
       // Only respond if id matches
       if (params.id !== tokenId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorData = {
         code,

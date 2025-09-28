@@ -6,6 +6,46 @@ import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
 // ============================================================================
+// Stub Handlers (No closure state - for tests requiring multiple responses)
+// ============================================================================
+
+/**
+ * Core response logic for app info endpoint (shared by mock and stub handlers)
+ * @private
+ */
+async function createAppInfoResponse(
+  { status = 'ready', version = '0.1.0', ...rest }: Partial<components['schemas']['AppInfo']> = {},
+  delayMs: number | undefined,
+  response: any
+) {
+  if (delayMs) {
+    await delay(delayMs);
+  }
+  const responseData: components['schemas']['AppInfo'] = {
+    status,
+    version,
+    ...rest,
+  };
+
+  return response(200 as const).json(responseData);
+}
+
+/**
+ * Stub handler for app info endpoint that responds every time (no closure state)
+ * Use this for tests that require multiple API calls to the same endpoint
+ */
+export function stubAppInfo(
+  { status = 'ready', version = '0.1.0', ...rest }: Partial<components['schemas']['AppInfo']> = {},
+  delayMs?: number
+) {
+  return [
+    typedHttp.get(ENDPOINT_APP_INFO, async ({ response }) => {
+      return createAppInfoResponse({ status, version, ...rest }, delayMs, response);
+    }),
+  ];
+}
+
+// ============================================================================
 // Success Handlers
 // ============================================================================
 
@@ -17,18 +57,13 @@ export function mockAppInfo(
   { status = 'ready', version = '0.1.0', ...rest }: Partial<components['schemas']['AppInfo']> = {},
   delayMs?: number
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_APP_INFO, async ({ response }) => {
-      if (delayMs) {
-        await delay(delayMs);
-      }
-      const responseData: components['schemas']['AppInfo'] = {
-        status,
-        version,
-        ...rest,
-      };
-
-      return response(200 as const).json(responseData);
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+      return createAppInfoResponse({ status, version, ...rest }, delayMs, response);
     }),
   ];
 }
@@ -76,8 +111,13 @@ export function mockAppInfoError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_APP_INFO, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
