@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for settings endpoint using openapi-msw with full schema compliance
  */
-import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
+import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useQuery';
 import { delay } from 'msw';
 import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
 
@@ -127,7 +127,7 @@ export function mockUpdateSetting(
   delayMs?: number
 ) {
   return [
-    typedHttp.put('/bodhi/v1/settings/{key}', async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
       // Only respond with success if key matches
       if (params.key === key) {
         if (delayMs) {
@@ -166,7 +166,7 @@ export function mockUpdateSettingError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
       // Only return error for matching key
       if (params.key === key) {
         const errorBody = {
@@ -209,7 +209,7 @@ export function mockUpdateSettingServerError(key: string) {
  */
 export function mockUpdateSettingNetworkError(key: string) {
   return [
-    typedHttp.put('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
       // Only return network error for matching key
       if (params.key === key) {
         return HttpResponse.error();
@@ -241,7 +241,7 @@ export function mockDeleteSetting(
   }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {}
 ) {
   return [
-    typedHttp.delete('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
+    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
       // Only respond with success if key matches
       if (params.key === key) {
         const responseData: components['schemas']['SettingInfo'] = {
@@ -277,7 +277,7 @@ export function mockDeleteSettingError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
   return [
-    typedHttp.delete('/bodhi/v1/settings/{key}', async ({ params, response: _response }) => {
+    typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
       // Only return error for matching key
       if (params.key === key) {
         const errorBody = {

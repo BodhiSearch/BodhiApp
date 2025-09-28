@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for API tokens endpoints using openapi-msw
  */
-import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
+import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useQuery';
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
@@ -84,7 +84,7 @@ export function mockUpdateToken(
   }: Partial<components['schemas']['ApiToken']> = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ params, response: httpResponse }) => {
+    typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response: httpResponse }) => {
       // Only respond if id matches
       if (params.id !== tokenId) {
         return; // Pass through to next handler
@@ -205,7 +205,7 @@ export function mockUpdateTokenError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 404 | 500 } = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
       // Only respond if id matches
       if (params.id !== tokenId) {
         return; // Pass through to next handler

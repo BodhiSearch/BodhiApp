@@ -49,6 +49,21 @@ export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
 export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
 export const ENDPOINT_SETTINGS = `${BODHI_API_BASE}/settings`;
 
+// User endpoints
+export const ENDPOINT_USERS = `${BODHI_API_BASE}/users`;
+export const ENDPOINT_USER_ROLE = `${BODHI_API_BASE}/users/{user_id}/role`;
+export const ENDPOINT_USER_ID = `${BODHI_API_BASE}/users/{user_id}`;
+
+// Model endpoints
+export const ENDPOINT_MODEL_ALIAS = `${BODHI_API_BASE}/models/{alias}`;
+export const ENDPOINT_MODEL_ID = `${BODHI_API_BASE}/models/{id}`;
+
+// Token endpoints
+export const ENDPOINT_TOKEN_ID = `${BODHI_API_BASE}/tokens/{id}`;
+
+// Settings endpoints
+export const ENDPOINT_SETTING_KEY = `${BODHI_API_BASE}/settings/{key}`;
+
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
 
 export function useQuery<T>(
