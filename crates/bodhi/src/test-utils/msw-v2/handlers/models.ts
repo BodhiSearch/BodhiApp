@@ -22,7 +22,7 @@ export function mockModels({
   ...rest
 }: Partial<components['schemas']['PaginatedAliasResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_MODELS, async ({ response: httpResponse }) => {
+    typedHttp.get(ENDPOINT_MODELS, async ({ response }) => {
       const responseData: components['schemas']['PaginatedAliasResponse'] = {
         data,
         page,
@@ -30,7 +30,7 @@ export function mockModels({
         total,
         ...rest,
       };
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -59,6 +59,10 @@ export function mockModelsDefault() {
   });
 }
 
+/**
+ * Mock handler for models list with API model data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelsWithApiModel() {
   return mockModels({
     data: [
@@ -78,6 +82,10 @@ export function mockModelsWithApiModel() {
   });
 }
 
+/**
+ * Mock handler for models list with source model data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelsWithSourceModel() {
   return mockModels({
     data: [
@@ -95,12 +103,20 @@ export function mockModelsWithSourceModel() {
   });
 }
 
+/**
+ * Mock handler for empty models list
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelsEmpty() {
   return mockModels({ data: [], total: 0 });
 }
 
 // Error Handlers
 
+/**
+ * Mock handler for models list error endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelsError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
@@ -123,6 +139,10 @@ export function mockModelsError({
 
 // Error Handler Variants
 
+/**
+ * Mock handler for models list internal server error
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelsInternalError(config: { message?: string } = {}) {
   const { message = 'Internal server error' } = config;
   return mockModelsError({
@@ -154,7 +174,7 @@ export function mockCreateModel({
   ...rest
 }: Partial<components['schemas']['UserAliasResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_MODELS, async ({ response: httpResponse }) => {
+    typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias,
         repo,
@@ -166,13 +186,17 @@ export function mockCreateModel({
         source,
         ...rest,
       };
-      return httpResponse(201 as const).json(responseData);
+      return response(201 as const).json(responseData);
     }),
   ];
 }
 
 // Error Handlers
 
+/**
+ * Mock handler for model creation error endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockCreateModelError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
@@ -195,6 +219,10 @@ export function mockCreateModelError({
 
 // Error Handler Variants
 
+/**
+ * Mock handler for model creation internal server error
+ * Uses generated OpenAPI types directly
+ */
 export function mockCreateModelInternalError(config: {} = {}) {
   return mockCreateModelError({
     code: 'internal_server_error',
@@ -204,6 +232,10 @@ export function mockCreateModelInternalError(config: {} = {}) {
   });
 }
 
+/**
+ * Mock handler for model creation bad request error
+ * Uses generated OpenAPI types directly
+ */
 export function mockCreateModelBadRequestError(config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;
   return mockCreateModelError({
@@ -237,7 +269,7 @@ export function mockGetModel(
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
   return [
-    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response: httpResponse, params }) => {
+    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
       const { alias: paramAlias } = params;
 
       // Only respond if alias matches
@@ -256,13 +288,17 @@ export function mockGetModel(
         source,
         ...rest,
       };
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
 // Error Handlers
 
+/**
+ * Mock handler for individual model retrieval error
+ * Uses generated OpenAPI types directly
+ */
 export function mockGetModelError(
   alias: string,
   {
@@ -295,6 +331,10 @@ export function mockGetModelError(
 
 // Error Handler Variants
 
+/**
+ * Mock handler for model not found error
+ * Uses generated OpenAPI types directly
+ */
 export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
   return mockGetModelError(alias, {
     code: 'not_found',
@@ -303,6 +343,10 @@ export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
   });
 }
 
+/**
+ * Mock handler for individual model retrieval internal server error
+ * Uses generated OpenAPI types directly
+ */
 export function mockGetModelInternalError(alias: string, config: {} = {}) {
   return mockGetModelError(alias, {
     code: 'internal_error',
@@ -335,7 +379,7 @@ export function mockUpdateModel(
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
   return [
-    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response: httpResponse, params }) => {
+    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
@@ -354,13 +398,17 @@ export function mockUpdateModel(
         source,
         ...rest,
       };
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
 // Error Handlers
 
+/**
+ * Mock handler for model update error endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockUpdateModelError(
   id: string,
   {
@@ -393,6 +441,10 @@ export function mockUpdateModelError(
 
 // Error Handler Variants
 
+/**
+ * Mock handler for model update internal server error
+ * Uses generated OpenAPI types directly
+ */
 export function mockUpdateModelInternalError(id: string, config: {} = {}) {
   return mockUpdateModelError(id, {
     code: 'internal_server_error',
@@ -402,6 +454,10 @@ export function mockUpdateModelInternalError(id: string, config: {} = {}) {
   });
 }
 
+/**
+ * Mock handler for model update bad request error
+ * Uses generated OpenAPI types directly
+ */
 export function mockUpdateModelBadRequestError(id: string, config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;
   return mockUpdateModelError(id, {

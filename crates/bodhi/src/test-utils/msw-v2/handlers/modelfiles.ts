@@ -22,7 +22,7 @@ export function mockModelFiles({
   ...rest
 }: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response: res }) => {
+    typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
       const responseData: components['schemas']['PaginatedLocalModelResponse'] = {
         data,
         page,
@@ -31,11 +31,15 @@ export function mockModelFiles({
         ...rest,
       };
 
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
+/**
+ * Mock handler for model files error endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelFilesError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
@@ -59,6 +63,10 @@ export function mockModelFilesError({
 
 // Success Handler Variants
 
+/**
+ * Mock handler for model files default data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelFilesDefault() {
   return mockModelFiles({
     data: [
@@ -76,6 +84,10 @@ export function mockModelFilesDefault() {
   });
 }
 
+/**
+ * Mock handler for model files empty data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelFilesEmpty() {
   return mockModelFiles({ data: [], total: 0 });
 }
@@ -98,7 +110,7 @@ export function mockModelPullDownloads({
   ...rest
 }: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response: res }) => {
+    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
       const responseData: components['schemas']['PaginatedDownloadResponse'] = {
         data,
         page,
@@ -107,11 +119,15 @@ export function mockModelPullDownloads({
         ...rest,
       };
 
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
 
+/**
+ * Mock handler for model pull downloads error endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelPullDownloadsError({
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
@@ -135,6 +151,10 @@ export function mockModelPullDownloadsError({
 
 // Success Handler Variants
 
+/**
+ * Mock handler for model pull downloads default data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelPullDownloadsDefault() {
   return mockModelPullDownloads({
     data: [
@@ -181,6 +201,10 @@ export function mockModelPullDownloadsDefault() {
   });
 }
 
+/**
+ * Mock handler for model pull downloads empty data
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelPullDownloadsEmpty() {
   return mockModelPullDownloads({ data: [], total: 0 });
 }
@@ -209,6 +233,10 @@ export function mockModelPullDownloadsInternalError() {
  * Create type-safe MSW v2 handlers for model pull POST endpoint
  * Uses generated OpenAPI types directly
  */
+/**
+ * Mock handler for model pull POST endpoint
+ * Uses generated OpenAPI types directly
+ */
 export function mockModelPull({
   id = '123',
   repo = 'test/repo1',
@@ -223,7 +251,7 @@ export function mockModelPull({
   ...rest
 }: Partial<components['schemas']['DownloadRequest']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response: res }) => {
+    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
       const responseData: components['schemas']['DownloadRequest'] = {
         id,
         repo,
@@ -238,7 +266,7 @@ export function mockModelPull({
         ...rest,
       };
 
-      return res(201 as const).json(responseData);
+      return response(201 as const).json(responseData);
     }),
   ];
 }
@@ -246,7 +274,8 @@ export function mockModelPull({
 // Error Handlers
 
 /**
- * Error handler for model pull POST endpoint
+ * Mock handler for model pull error endpoint
+ * Uses generated OpenAPI types directly
  */
 export function mockModelPullError({
   code = 'pull_error-file_already_exists',

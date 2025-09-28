@@ -18,7 +18,7 @@ export function mockAppInfo(
   delayMs?: number
 ) {
   return [
-    typedHttp.get(ENDPOINT_APP_INFO, async ({ response: res }) => {
+    typedHttp.get(ENDPOINT_APP_INFO, async ({ response }) => {
       if (delayMs) {
         await delay(delayMs);
       }
@@ -28,7 +28,7 @@ export function mockAppInfo(
         ...rest,
       };
 
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -37,14 +37,26 @@ export function mockAppInfo(
 // Success Handler Variants
 // ============================================================================
 
+/**
+ * Mock handler for app info endpoint with ready status
+ * Uses generated OpenAPI types directly
+ */
 export function mockAppInfoReady() {
   return mockAppInfo({ status: 'ready' });
 }
 
+/**
+ * Mock handler for app info endpoint with setup status
+ * Uses generated OpenAPI types directly
+ */
 export function mockAppInfoSetup() {
   return mockAppInfo({ status: 'setup' });
 }
 
+/**
+ * Mock handler for app info endpoint with resource-admin status
+ * Uses generated OpenAPI types directly
+ */
 export function mockAppInfoResourceAdmin() {
   return mockAppInfo({ status: 'resource-admin' });
 }
@@ -82,6 +94,10 @@ export function mockAppInfoError({
 // Error Handler Variants
 // ============================================================================
 
+/**
+ * Mock handler for app info endpoint internal server error
+ * Uses generated OpenAPI types directly
+ */
 export function mockAppInfoInternalError() {
   return mockAppInfoError({
     code: 'internal_server_error',

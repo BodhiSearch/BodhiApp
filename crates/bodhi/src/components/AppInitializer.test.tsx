@@ -7,7 +7,7 @@ import { createMockUserInfo } from '@/test-fixtures/access-requests';
 import { createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfo, mockAppInfoInternalError } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn, mockUserLoggedOut, mockUserError } from '@/test-utils/msw-v2/handlers/user';
+import { mockUserLoggedIn, mockUserLoggedOut, mockUserInfoError } from '@/test-utils/msw-v2/handlers/user';
 import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,7 +79,7 @@ describe('AppInitializer loading and error handling', () => {
     {
       scenario: 'app/info success, user error',
       appInfoHandlers: () => mockAppInfo({ status: 'ready' }),
-      userHandlers: () => mockUserError({ message: 'API Error', type: 'internal_server_error' }),
+      userHandlers: () => mockUserInfoError({ message: 'API Error', type: 'internal_server_error' }),
     },
   ])('handles error $scenario', async ({ scenario, appInfoHandlers, userHandlers }) => {
     server.use(...appInfoHandlers(), ...userHandlers());

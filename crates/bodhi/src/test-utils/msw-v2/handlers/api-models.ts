@@ -25,7 +25,7 @@ export function mockApiModels({
   ...rest
 }: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_API_MODELS, async ({ response: res }) => {
+    typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
       const responseData: components['schemas']['PaginatedApiModelResponse'] = {
         data,
         page,
@@ -33,7 +33,7 @@ export function mockApiModels({
         total,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -73,7 +73,7 @@ export function mockCreateApiModel({
   ...rest
 }: Partial<components['schemas']['ApiModelResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS, async ({ response: res }) => {
+    typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
       const responseData: components['schemas']['ApiModelResponse'] = {
         id,
         api_format,
@@ -85,7 +85,7 @@ export function mockCreateApiModel({
         updated_at,
         ...rest,
       };
-      return res(201 as const).json(responseData);
+      return response(201 as const).json(responseData);
     }),
   ];
 }
@@ -128,7 +128,7 @@ export function mockGetApiModel(
   }: Partial<components['schemas']['ApiModelResponse']> = {}
 ) {
   return [
-    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
+    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
@@ -147,7 +147,7 @@ export function mockGetApiModel(
         updated_at,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -200,7 +200,7 @@ export function mockUpdateApiModel(
   }: Partial<components['schemas']['ApiModelResponse']> = {}
 ) {
   return [
-    typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
+    typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
@@ -219,7 +219,7 @@ export function mockUpdateApiModel(
         updated_at,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -310,12 +310,12 @@ export function mockApiFormats({
   ...rest
 }: Partial<components['schemas']['ApiFormatsResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response: res }) => {
+    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
       const responseData: components['schemas']['ApiFormatsResponse'] = {
         data,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -345,17 +345,17 @@ export function mockApiFormatsError({
  */
 export function mockTestApiModel({
   success = true,
-  response = 'Connection successful',
+  response: responseMessage = 'Connection successful',
   ...rest
 }: Partial<components['schemas']['TestPromptResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response: res }) => {
+    typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
       const responseData: components['schemas']['TestPromptResponse'] = {
         success,
-        response,
+        response: responseMessage,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -388,12 +388,12 @@ export function mockFetchApiModels({
   ...rest
 }: Partial<components['schemas']['FetchModelsResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response: res }) => {
+    typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
       const responseData: components['schemas']['FetchModelsResponse'] = {
         models,
         ...rest,
       };
-      return res(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }

@@ -5,6 +5,10 @@ import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useQuery';
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
+// ============================================================================
+// API Tokens - Success Handlers
+// ============================================================================
+
 /**
  * Create type-safe MSW v2 handlers for list tokens endpoint
  * Uses generated OpenAPI types directly
@@ -28,7 +32,7 @@ export function mockTokens({
   ...rest
 }: Partial<components['schemas']['PaginatedApiTokenResponse']> = {}) {
   return [
-    typedHttp.get(API_TOKENS_ENDPOINT, async ({ response: httpResponse }) => {
+    typedHttp.get(API_TOKENS_ENDPOINT, async ({ response }) => {
       const responseData: components['schemas']['PaginatedApiTokenResponse'] = {
         data,
         total,
@@ -37,7 +41,7 @@ export function mockTokens({
         ...rest,
       };
 
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -51,7 +55,7 @@ export function mockCreateToken(
   delayMs?: number
 ) {
   return [
-    typedHttp.post(API_TOKENS_ENDPOINT, async ({ response: httpResponse }) => {
+    typedHttp.post(API_TOKENS_ENDPOINT, async ({ response }) => {
       if (delayMs) {
         await delay(delayMs);
       }
@@ -60,7 +64,7 @@ export function mockCreateToken(
         ...rest,
       };
 
-      return httpResponse(201 as const).json(responseData);
+      return response(201 as const).json(responseData);
     }),
   ];
 }
@@ -84,7 +88,7 @@ export function mockUpdateToken(
   }: Partial<components['schemas']['ApiToken']> = {}
 ) {
   return [
-    typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response: httpResponse }) => {
+    typedHttp.put(ENDPOINT_TOKEN_ID, async ({ params, response }) => {
       // Only respond if id matches
       if (params.id !== tokenId) {
         return; // Pass through to next handler
@@ -102,10 +106,14 @@ export function mockUpdateToken(
         ...rest,
       };
 
-      return httpResponse(200 as const).json(responseData);
+      return response(200 as const).json(responseData);
     }),
   ];
 }
+
+// ============================================================================
+// API Tokens - Convenience Methods
+// ============================================================================
 
 /**
  * Convenience method for tokens with default test data
@@ -142,6 +150,10 @@ export function mockUpdateTokenStatus(tokenId: string, status: 'active' | 'inact
     updated_at: new Date().toISOString(),
   });
 }
+
+// ============================================================================
+// API Tokens - Error Handlers
+// ============================================================================
 
 /**
  * Error handler for list tokens endpoint
@@ -244,7 +256,3 @@ export function mockTokenAccessDenied() {
     type: 'invalid_request_error',
   });
 }
-
-// Backward compatibility aliases
-export const mockListTokens = mockTokens;
-export const mockListTokensError = mockTokensError;
