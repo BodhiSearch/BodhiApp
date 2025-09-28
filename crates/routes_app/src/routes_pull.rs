@@ -87,14 +87,6 @@ pub enum PullError {
              "page_size": 10
          })
         ),
-        (status = 500, description = "Internal server error during download list retrieval", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Database connection failed",
-                 "type": "internal_server_error",
-                 "code": "database_error"
-             }
-         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -156,22 +148,6 @@ pub async fn list_downloads_handler(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-11-10T04:52:06.786Z"
          })),
-        (status = 400, description = "File already exists or invalid input", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "file 'mistral-7b-instruct-v0.1.Q8_0.gguf' already exists in repo 'TheBloke/Mistral-7B-Instruct-v0.1-GGUF' with snapshot 'main'",
-                 "type": "invalid_request_error",
-                 "code": "pull_error-file_already_exists"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Internal server error occurred",
-                 "type": "internal_server_error",
-                 "code": "internal_error"
-             }
-         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -288,22 +264,6 @@ pub async fn create_pull_request_handler(
                  "code": "remote_model_not_found_error"
              }
          })),
-        (status = 400, description = "File already exists", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "file 'llama-2-7b-chat.Q8_0.gguf' already exists in repo 'TheBloke/Llama-2-7B-Chat-GGUF' with snapshot 'main'",
-                 "type": "invalid_request_error",
-                 "code": "pull_error-file_already_exists"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Internal server error occurred",
-                 "type": "internal_server_error",
-                 "code": "internal_error"
-             }
-         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -409,14 +369,6 @@ pub async fn pull_by_alias_handler(
                  "code": "item_not_found"
              }
          })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Internal server error occurred",
-                 "type": "internal_server_error",
-                 "code": "internal_error"
-             }
-         }))
     ),
     security(
       ("bearer_auth" = []),

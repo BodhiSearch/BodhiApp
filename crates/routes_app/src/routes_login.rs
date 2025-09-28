@@ -46,14 +46,6 @@ use utoipa::ToSchema;
          example = json!({
              "location": "https://app.example.com/dashboard"
          })),
-        (status = 500, description = "Internal server error during OAuth initialization", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Application not registered with auth server",
-                 "type": "internal_server_error",
-                 "code": "app_reg_info_missing"
-             }
-         }))
     )
 )]
 pub async fn auth_initiate_handler(
@@ -166,14 +158,6 @@ pub async fn auth_initiate_handler(
                  "code": "oauth_state_mismatch"
              }
          })),
-        (status = 500, description = "Internal server error during token exchange", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to exchange authorization code for tokens",
-                 "type": "internal_server_error",
-                 "code": "oauth_token_exchange_error"
-             }
-         }))
     )
 )]
 pub async fn auth_callback_handler(
@@ -375,14 +359,6 @@ pub enum LogoutError {
          example = json!({
              "location": "https://app.example.com/login"
          })),
-        (status = 500, description = "Session deletion failed", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to delete user session",
-                 "type": "internal_server_error",
-                 "code": "session_delete_error"
-             }
-         }))
     )
 )]
 pub async fn logout_handler(
@@ -414,22 +390,6 @@ pub async fn logout_handler(
          example = json!({
              "scope": "scope_resource_bodhi-server"
          })),
-        (status = 400, description = "Invalid request, application not registered, or incorrect app status", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Application registration information not found",
-                 "type": "invalid_app_state",
-                 "code": "app_reg_info_not_found"
-             }
-         })),
-        (status = 500, description = "Internal server error during access request", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to communicate with authorization server",
-                 "type": "internal_server_error",
-                 "code": "auth_service_error"
-             }
-         }))
     )
 )]
 pub async fn request_access_handler(

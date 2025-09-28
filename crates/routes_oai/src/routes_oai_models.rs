@@ -110,15 +110,6 @@ impl utoipa::ToSchema for ListModelResponse {}
                  }
              ]
          })),
-        (status = 401, description = "Invalid authentication", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Invalid authentication token",
-                 "type": "invalid_request_error",
-                 "code": "invalid_api_key"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),
@@ -199,15 +190,6 @@ pub async fn oai_models_handler(
                  "code": "model_not_found"
              }
          })),
-        (status = 401, description = "Invalid authentication", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Invalid authentication token",
-                 "type": "invalid_request_error",
-                 "code": "invalid_api_key"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),

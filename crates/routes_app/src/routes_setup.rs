@@ -8,7 +8,7 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_SETUP, API_TAG_SYSTEM};
+use objs::{ApiError, AppError, ErrorType, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -59,14 +59,6 @@ pub struct AppInfo {
              "version": "0.1.0",
              "status": "ready"
          })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to retrieve application status",
-                 "type": "internal_server_error",
-                 "code": "system_error"
-             }
-         }))
     )
 )]
 pub async fn app_info_handler(
@@ -133,22 +125,6 @@ impl IntoResponse for SetupResponse {
          example = json!({
              "status": "resource-admin"
          })),
-        (status = 400, description = "Invalid request or application already setup", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Server name must be at least 10 characters long",
-                 "type": "invalid_request_error",
-                 "code": "validation_error"
-             }
-         })),
-        (status = 500, description = "Internal server error during setup", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to register with auth server",
-                 "type": "internal_server_error",
-                 "code": "auth_service_error"
-             }
-         }))
     )
 )]
 pub async fn setup_handler(
