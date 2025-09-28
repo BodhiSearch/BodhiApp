@@ -7,7 +7,12 @@ import userEvent from '@testing-library/user-event';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
-import { mockModels, mockGetModel, mockUpdateModel } from '@/test-utils/msw-v2/handlers/models';
+import {
+  mockModels,
+  mockGetModel,
+  mockGetModelInternalError,
+  mockUpdateModel,
+} from '@/test-utils/msw-v2/handlers/models';
 import { mockModelFiles } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,21 +73,18 @@ describe('EditAliasPage', () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockGetModel({
+      ...mockGetModel('test-alias', {
         alias: 'test-alias',
-        response: {
-          alias: 'test-alias',
-          repo: 'owner1/repo1',
-          filename: 'file1.gguf',
-          snapshot: 'main',
-          source: 'user',
-          model_params: {},
-          request_params: {
-            temperature: 0.7,
-            max_tokens: 1000,
-          },
-          context_params: ['--ctx-size 2048', '--parallel 4'],
+        repo: 'owner1/repo1',
+        filename: 'file1.gguf',
+        snapshot: 'main',
+        source: 'user',
+        model_params: {},
+        request_params: {
+          temperature: 0.7,
+          max_tokens: 1000,
         },
+        context_params: ['--ctx-size 2048', '--parallel 4'],
       }),
       ...mockModels({
         data: [
@@ -98,18 +100,15 @@ describe('EditAliasPage', () => {
           { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main', size: 1000000, model_params: {} },
         ],
       }),
-      ...mockUpdateModel({
+      ...mockUpdateModel('test-alias', {
         alias: 'test-alias',
-        response: {
-          alias: 'test-alias',
-          repo: 'owner1/repo1',
-          filename: 'file1.gguf',
-          snapshot: 'main',
-          source: 'user',
-          model_params: {},
-          request_params: {},
-          context_params: [],
-        },
+        repo: 'owner1/repo1',
+        filename: 'file1.gguf',
+        snapshot: 'main',
+        source: 'user',
+        model_params: {},
+        request_params: {},
+        context_params: [],
       })
     );
   });
@@ -234,12 +233,7 @@ describe('EditAliasPage', () => {
   });
 
   it('displays error message when model data fails to load', async () => {
-    server.use(
-      ...mockGetModel({
-        alias: 'test-alias',
-        error: { status: 500, code: 'internal_error', message: 'Internal Server Error' },
-      })
-    );
+    server.use(...mockGetModelInternalError('test-alias'));
 
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });

@@ -219,24 +219,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/api-models/{alias}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update an existing API model configuration */
-        put: operations["updateApiModel"];
-        post?: never;
-        /** Delete an API model configuration */
-        delete: operations["deleteApiModel"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bodhi/v1/api-models/{id}": {
         parameters: {
             query?: never;
@@ -249,9 +231,11 @@ export interface paths {
          * @description Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.
          */
         get: operations["getApiModel"];
-        put?: never;
+        /** Update an existing API model configuration */
+        put: operations["updateApiModel"];
         post?: never;
-        delete?: never;
+        /** Delete an API model configuration */
+        delete: operations["deleteApiModel"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1797,16 +1781,31 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": "invalid request parameters"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
             /** @description Model not found */
@@ -1827,10 +1826,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": "chat completion error: failed to process request"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
         };
@@ -1877,6 +1873,33 @@ export interface operations {
                     "application/json": components["schemas"]["ShowResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Model not found */
             404: {
                 headers: {
@@ -1895,10 +1918,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": "Failed to get model details"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
         };
@@ -1939,16 +1959,40 @@ export interface operations {
                     "application/json": components["schemas"]["ModelsResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": "Failed to list models"
-                     *     } */
-                    "application/json": components["schemas"]["OllamaError"];
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
         };
@@ -1980,6 +2024,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedUserAccessResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -1991,6 +2044,15 @@ export interface operations {
             };
             /** @description Insufficient permissions */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2027,6 +2089,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedUserAccessResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -2038,6 +2109,15 @@ export interface operations {
             };
             /** @description Insufficient permissions */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2071,6 +2151,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -2091,6 +2180,15 @@ export interface operations {
             };
             /** @description Request not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2119,6 +2217,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Not authenticated */
             401: {
                 headers: {
@@ -2139,6 +2246,15 @@ export interface operations {
             };
             /** @description Request not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2188,19 +2304,39 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApiModelResponse"];
                 };
             };
-            /** @description Internal server error during API model retrieval */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "database_error",
-                     *         "message": "Database connection failed",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2228,8 +2364,26 @@ export interface operations {
                     "application/json": components["schemas"]["ApiModelResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2280,19 +2434,39 @@ export interface operations {
                     "application/json": components["schemas"]["ApiFormatsResponse"];
                 };
             };
-            /** @description Internal server error during API format retrieval */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "service_error",
-                     *         "message": "Service unavailable",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2320,8 +2494,26 @@ export interface operations {
                     "application/json": components["schemas"]["FetchModelsResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2362,7 +2554,7 @@ export interface operations {
                     "application/json": components["schemas"]["TestPromptResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2371,8 +2563,8 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error */
-            500: {
+            /** @description Not authenticated */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2380,83 +2572,8 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-        };
-    };
-    updateApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description API model alias */
-                alias: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateApiModelRequest"];
-            };
-        };
-        responses: {
-            /** @description API model updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiModelResponse"];
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description API model not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    deleteApiModel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description API model alias */
-                alias: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description API model deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description API model not found */
-            404: {
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2506,6 +2623,33 @@ export interface operations {
                     "application/json": components["schemas"]["ApiModelResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description API model with specified ID not found */
             404: {
                 headers: {
@@ -2522,19 +2666,150 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error during model retrieval */
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "database_error",
-                     *         "message": "Database query failed",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description API model ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateApiModelRequest"];
+            };
+        };
+        responses: {
+            /** @description API model updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiModelResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteApiModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description API model ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description API model deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2569,35 +2844,39 @@ export interface operations {
                     "application/json": components["schemas"]["AppAccessResponse"];
                 };
             };
-            /** @description Invalid request, application not registered, or incorrect app status */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "app_reg_info_not_found",
-                     *         "message": "Application registration information not found",
-                     *         "type": "invalid_app_state"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error during access request */
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "auth_service_error",
-                     *         "message": "Failed to communicate with authorization server",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2633,6 +2912,33 @@ export interface operations {
                     "application/json": components["schemas"]["RedirectResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description OAuth error, invalid request parameters, or state mismatch */
             422: {
                 headers: {
@@ -2649,19 +2955,12 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error during token exchange */
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "oauth_token_exchange_error",
-                     *         "message": "Failed to exchange authorization code for tokens",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2704,19 +3003,39 @@ export interface operations {
                     "application/json": components["schemas"]["RedirectResponse"];
                 };
             };
-            /** @description Internal server error during OAuth initialization */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "app_reg_info_missing",
-                     *         "message": "Application not registered with auth server",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2744,19 +3063,21 @@ export interface operations {
                     "application/json": components["schemas"]["AppInfo"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "system_error",
-                     *         "message": "Failed to retrieve application status",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2783,19 +3104,39 @@ export interface operations {
                     "application/json": components["schemas"]["RedirectResponse"];
                 };
             };
-            /** @description Session deletion failed */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "session_delete_error",
-                     *         "message": "Failed to delete user session",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2839,6 +3180,33 @@ export interface operations {
                      *       "total": 1
                      *     } */
                     "application/json": components["schemas"]["PaginatedLocalModelResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
             /** @description Internal server error */
@@ -2895,19 +3263,39 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedDownloadResponse"];
                 };
             };
-            /** @description Internal server error during download list retrieval */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "database_error",
-                     *         "message": "Database connection failed",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2967,19 +3355,30 @@ export interface operations {
                     "application/json": components["schemas"]["DownloadRequest"];
                 };
             };
-            /** @description File already exists or invalid input */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "pull_error-file_already_exists",
-                     *         "message": "file 'mistral-7b-instruct-v0.1.Q8_0.gguf' already exists in repo 'TheBloke/Mistral-7B-Instruct-v0.1-GGUF' with snapshot 'main'",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -2989,13 +3388,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "internal_error",
-                     *         "message": "Internal server error occurred",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3052,19 +3444,30 @@ export interface operations {
                     "application/json": components["schemas"]["DownloadRequest"];
                 };
             };
-            /** @description File already exists */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "pull_error-file_already_exists",
-                     *         "message": "file 'llama-2-7b-chat.Q8_0.gguf' already exists in repo 'TheBloke/Llama-2-7B-Chat-GGUF' with snapshot 'main'",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3090,13 +3493,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "internal_error",
-                     *         "message": "Internal server error occurred",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3135,6 +3531,33 @@ export interface operations {
                     "application/json": components["schemas"]["DownloadRequest"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Download request not found */
             404: {
                 headers: {
@@ -3157,13 +3580,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "internal_error",
-                     *         "message": "Internal server error occurred",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3237,6 +3653,33 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedAliasResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Internal server error */
             500: {
                 headers: {
@@ -3270,8 +3713,26 @@ export interface operations {
                     "application/json": components["schemas"]["UserAliasResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3332,6 +3793,33 @@ export interface operations {
                     "application/json": components["schemas"]["UserAliasResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Alias not found */
             404: {
                 headers: {
@@ -3387,8 +3875,26 @@ export interface operations {
                     "application/json": components["schemas"]["UserAliasResponse"];
                 };
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3454,19 +3960,30 @@ export interface operations {
                     "application/json": components["schemas"]["SettingInfo"][];
                 };
             };
-            /** @description Unauthorized - User is not an admin */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "settings_error-unauthorized",
-                     *         "message": "Only administrators can view settings",
-                     *         "type": "unauthorized_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3532,19 +4049,30 @@ export interface operations {
                     "application/json": components["schemas"]["SettingInfo"];
                 };
             };
-            /** @description Invalid setting or value */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "settings_error-validation_error",
-                     *         "message": "Invalid value for setting: value out of range",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3561,6 +4089,15 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3606,6 +4143,33 @@ export interface operations {
                     "application/json": components["schemas"]["SettingInfo"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Setting not found */
             404: {
                 headers: {
@@ -3619,6 +4183,15 @@ export interface operations {
                      *         "type": "not_found_error"
                      *       }
                      *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3654,35 +4227,21 @@ export interface operations {
                     "application/json": components["schemas"]["SetupResponse"];
                 };
             };
-            /** @description Invalid request or application already setup */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "validation_error",
-                     *         "message": "Server name must be at least 10 characters long",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error during setup */
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "auth_service_error",
-                     *         "message": "Failed to register with auth server",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3740,19 +4299,30 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApiTokenResponse"];
                 };
             };
-            /** @description Unauthorized - Token missing or invalid */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "api_token_error-token_missing",
-                     *         "message": "access token is not present in request",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3762,13 +4332,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "internal_error",
-                     *         "message": "Internal server error occurred",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3806,35 +4369,39 @@ export interface operations {
                     "application/json": components["schemas"]["ApiTokenResponse"];
                 };
             };
-            /** @description Invalid request parameters or token name already exists */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "validation_error",
-                     *         "message": "Token name must be at least 3 characters long",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Internal server error during token creation */
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "token_generation_error",
-                     *         "message": "Failed to generate secure token",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3882,19 +4449,30 @@ export interface operations {
                     "application/json": components["schemas"]["ApiToken"];
                 };
             };
-            /** @description Unauthorized - Token missing or invalid */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "api_token_error-token_missing",
-                     *         "message": "access token is not present in request",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3920,13 +4498,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "internal_error",
-                     *         "message": "Internal server error occurred",
-                     *         "type": "internal_server_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3956,19 +4527,39 @@ export interface operations {
                     "application/json": components["schemas"]["UserResponse"];
                 };
             };
-            /** @description Authentication error or invalid token */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "token_error-invalid_token",
-                     *         "message": "token is invalid",
-                     *         "type": "authentication_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -3990,8 +4581,26 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Not authenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4010,6 +4619,15 @@ export interface operations {
             };
             /** @description User already has role */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4037,7 +4655,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserAccessStatusResponse"];
                 };
             };
-            /** @description Bad Request */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4055,8 +4673,26 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
             /** @description Request not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4152,7 +4788,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4222,7 +4858,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid request */
+            /** @description Invalid request parameters */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4290,6 +4926,24 @@ export interface operations {
                     "application/json": components["schemas"]["PingResponse"];
                 };
             };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
         };
     };
     pingServer: {
@@ -4311,6 +4965,24 @@ export interface operations {
                      *       "message": "pong"
                      *     } */
                     "application/json": components["schemas"]["PingResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
         };
@@ -4406,29 +5078,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "model_not_found",
-                     *         "message": "Invalid model specified",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Invalid authentication */
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "invalid_api_key",
-                     *         "message": "Invalid authentication token",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -4478,19 +5145,30 @@ export interface operations {
                     "application/json": components["schemas"]["ListModelResponse"];
                 };
             };
-            /** @description Invalid authentication */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "invalid_api_key",
-                     *         "message": "Invalid authentication token",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
@@ -4535,19 +5213,30 @@ export interface operations {
                     "application/json": components["schemas"]["ModelResponse"];
                 };
             };
-            /** @description Invalid authentication */
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "invalid_api_key",
-                     *         "message": "Invalid authentication token",
-                     *         "type": "invalid_request_error"
-                     *       }
-                     *     } */
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };

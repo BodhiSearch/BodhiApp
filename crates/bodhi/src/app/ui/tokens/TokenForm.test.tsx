@@ -1,6 +1,5 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
 import { ApiTokenResponse } from '@bodhiapp/ts-client';
-import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -84,12 +83,7 @@ describe('TokenDialog', () => {
   it('disables form during submission', async () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
-    server.use(
-      ...mockCreateToken({
-        offline_token: 'test-token-123',
-        delay: 100,
-      })
-    );
+    server.use(...mockCreateToken({ offline_token: 'test-token-123' }, 100));
 
     await act(async () => {
       render(<TokenForm onTokenCreated={onTokenCreated} />, {
@@ -115,8 +109,8 @@ describe('TokenDialog', () => {
     const onTokenCreated = vi.fn();
     server.use(
       ...mockCreateTokenError({
-        status: 400,
         message: 'Failed to generate token. Please try again.',
+        type: 'invalid_request_error',
       })
     );
     render(<TokenForm onTokenCreated={onTokenCreated} />, {

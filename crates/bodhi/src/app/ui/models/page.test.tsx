@@ -1,18 +1,15 @@
 import ModelsPage from '@/app/ui/models/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
-import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, fireEvent } from '@testing-library/react';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from '@/test-utils/msw-v2/setup';
-import { mockAppInfoReady, mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockAppInfo, mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockModelsDefault,
+  mockModelsInternalError,
   mockModelsWithApiModel,
   mockModelsWithSourceModel,
-  mockModelsError,
 } from '@/test-utils/msw-v2/handlers/models';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { createWrapper } from '@/tests/wrapper';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/DataTable', () => ({
@@ -130,12 +127,12 @@ describe('ModelsPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(...mockModelsError({ status: 500, message: 'Internal Server Error' }));
+    server.use(...mockModelsInternalError());
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByText('Internal Server Error')).toBeInTheDocument();
+    expect(screen.getByText('Internal server error')).toBeInTheDocument();
   });
 
   describe('action buttons', () => {
@@ -345,13 +342,13 @@ describe('ModelsPage', () => {
   });
 
   it('displays error message when API call fails', async () => {
-    server.use(...mockModelsError({ status: 500, message: 'Internal Server Error' }));
+    server.use(...mockModelsInternalError());
 
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Internal Server Error');
+    expect(screen.getByRole('alert')).toHaveTextContent('Internal server error');
   });
 });
 

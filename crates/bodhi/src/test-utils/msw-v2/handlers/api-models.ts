@@ -3,277 +3,372 @@
  */
 import {
   ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODELS_FETCH,
   ENDPOINT_API_MODELS_FORMATS,
+  ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_API_MODEL_ID,
 } from '@/hooks/useApiModels';
-import { typedHttp } from '../openapi-msw-setup';
-import { type components } from '../setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
+
+// =============================================================================
+// CORE TYPED HTTP METHODS (Success cases + Error handlers)
+// =============================================================================
 
 /**
- * Create type-safe MSW v2 handlers for API models list endpoint
+ * Mock handler for API models list endpoint with configurable responses
  */
-export function mockApiModels(config: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
+export function mockApiModels({
+  data = [],
+  page = 1,
+  page_size = 30,
+  total = 0,
+  ...rest
+}: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_API_MODELS, ({ response }) => {
+    typedHttp.get(ENDPOINT_API_MODELS, async ({ response: res }) => {
       const responseData: components['schemas']['PaginatedApiModelResponse'] = {
-        data: config.data || [],
-        page: config.page || 1,
-        page_size: config.page_size || 30,
-        total: config.total || 0,
+        data,
+        page,
+        page_size,
+        total,
+        ...rest,
       };
-      return response(200).json(responseData);
+      return res(200 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockApiModelsError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API model creation endpoint
+ * Mock handler for API model creation endpoint with configurable responses
  */
-export function mockCreateApiModel(
-  config: {
-    response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 201 | 400 | 409 | 500; code?: string; message?: string; type?: string };
-  } = {}
-) {
+export function mockCreateApiModel({
+  id = 'test-api-model-123',
+  api_format = 'openai',
+  base_url = 'https://api.openai.com/v1',
+  api_key_masked = '****key',
+  models = ['gpt-4'],
+  prefix = null,
+  created_at = new Date().toISOString(),
+  updated_at = new Date().toISOString(),
+  ...rest
+}: Partial<components['schemas']['ApiModelResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS, ({ response }) => {
-      if (config.error) {
-        const errorType =
-          config.error.status === 400
-            ? 'invalid_request_error'
-            : config.error.status === 409
-              ? 'invalid_request_error'
-              : 'internal_server_error';
-
-        return response(config.error.status || 500).json({
-          error: {
-            code: config.error.code || 'internal_error',
-            message: config.error.message || 'Internal Server Error',
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      const responseData: components['schemas']['ApiModelResponse'] = config.response || {
-        id: 'test-api-model-123',
-        api_format: 'openai',
-        base_url: 'https://api.openai.com/v1',
-        api_key_masked: '****key',
-        models: ['gpt-4'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    typedHttp.post(ENDPOINT_API_MODELS, async ({ response: res }) => {
+      const responseData: components['schemas']['ApiModelResponse'] = {
+        id,
+        api_format,
+        base_url,
+        api_key_masked,
+        models,
+        prefix,
+        created_at,
+        updated_at,
+        ...rest,
       };
-      return response(201).json(responseData);
+      return res(201 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockCreateApiModelError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for individual API model retrieval
+ * Mock handler for individual API model retrieval with configurable responses
  */
-export function mockGetApiModel(
-  config: {
-    id: string;
-    response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 404 | 500; code?: string; message?: string; type?: string };
-  } = { id: 'test-api-model' }
-) {
+export function mockGetApiModel({
+  id = '',
+  api_format = 'openai',
+  base_url = 'https://api.openai.com/v1',
+  api_key_masked = '****123',
+  models = ['gpt-3.5-turbo'],
+  prefix = null,
+  created_at = new Date().toISOString(),
+  updated_at = new Date().toISOString(),
+  ...rest
+}: Partial<components['schemas']['ApiModelResponse']> = {}) {
   return [
-    typedHttp.get('/bodhi/v1/api-models/{id}', ({ params, response }) => {
+    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
+      const { id: paramId } = params;
+      const responseData: components['schemas']['ApiModelResponse'] = {
+        id: id || (paramId as string),
+        api_format,
+        base_url,
+        api_key_masked,
+        models,
+        prefix,
+        created_at,
+        updated_at,
+        ...rest,
+      };
+      return res(200 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockGetApiModelError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
-
-      if (config.error) {
-        const errorType = config.error.status === 404 ? 'not_found_error' : 'internal_server_error';
-
-        return response(config.error.status || 404).json({
-          error: {
-            code: config.error.code || 'entity_not_found',
-            message: config.error.message || `API model ${id} not found`,
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      const responseData: components['schemas']['ApiModelResponse'] = config.response || {
-        id: id as string,
-        api_format: 'openai',
-        base_url: 'https://api.openai.com/v1',
-        api_key_masked: '****123',
-        models: ['gpt-3.5-turbo'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+      const errorData = {
+        code,
+        message: message || `API model ${id} not found`,
+        type,
+        ...rest,
       };
-      return response(200).json(responseData);
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API model update endpoint
+ * Mock handler for API model update endpoint with configurable responses
  */
-export function mockUpdateApiModel(
-  config: {
-    id: string;
-    response?: components['schemas']['ApiModelResponse'];
-    error?: { status?: 400 | 404 | 500; code?: string; message?: string; type?: string };
-  } = { id: 'test-api-model' }
-) {
+export function mockUpdateApiModel({
+  id = '',
+  api_format = 'openai',
+  base_url = 'https://api.openai.com/v1',
+  api_key_masked = '****key',
+  models = ['gpt-4'],
+  prefix = null,
+  created_at = new Date().toISOString(),
+  updated_at = new Date().toISOString(),
+  ...rest
+}: Partial<components['schemas']['ApiModelResponse']> = {}) {
   return [
-    typedHttp.put('/bodhi/v1/api-models/{alias}', ({ params, response }) => {
-      const { alias } = params;
-
-      if (config.error) {
-        const errorType =
-          config.error.status === 400
-            ? 'invalid_request_error'
-            : config.error.status === 404
-              ? 'not_found_error'
-              : 'internal_server_error';
-
-        return response(config.error.status || 500).json({
-          error: {
-            code: config.error.code || 'internal_error',
-            message: config.error.message || `Failed to update API model ${alias}`,
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      const responseData: components['schemas']['ApiModelResponse'] = config.response || {
-        id: alias as string,
-        api_format: 'openai',
-        base_url: 'https://api.openai.com/v1',
-        api_key_masked: '****key',
-        models: ['gpt-4'],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
+      const { id } = params;
+      const responseData: components['schemas']['ApiModelResponse'] = {
+        id: id || (id as string),
+        api_format,
+        base_url,
+        api_key_masked,
+        models,
+        prefix,
+        created_at,
+        updated_at,
+        ...rest,
       };
-      return response(200).json(responseData);
+      return res(200 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockUpdateApiModelError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+  return [
+    typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
+      const { id } = params;
+      const errorData = {
+        code,
+        message: message || `Failed to update API model ${id}`,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API model deletion endpoint
+ * Mock handler for API model deletion endpoint with configurable responses
  */
-export function mockDeleteApiModel(
-  config: {
-    id: string;
-    error?: { status?: 404 | 500; code?: string; message?: string; type?: string };
-  } = { id: 'test-api-model' }
-) {
+export function mockDeleteApiModel() {
   return [
-    typedHttp.delete('/bodhi/v1/api-models/{alias}', ({ params, response }) => {
-      const { alias } = params;
+    typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ response }) => {
+      return response(204 as const).empty();
+    }),
+  ];
+}
 
-      if (config.error) {
-        const errorType = config.error.status === 404 ? 'not_found_error' : 'internal_server_error';
-
-        return response(config.error.status || 404).json({
-          error: {
-            code: config.error.code || 'entity_not_found',
-            message: config.error.message || `API model ${alias} not found`,
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      return response(204).empty();
+export function mockDeleteApiModelError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+  return [
+    typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
+      const { id } = params;
+      const errorData = {
+        code,
+        message: message || `API model ${id} not found`,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API formats endpoint
+ * Mock handler for API formats endpoint with configurable responses
  */
-export function mockApiFormats(
-  config: {
-    data?: components['schemas']['ApiFormat'][];
-    error?: { status?: 500; code?: string; message?: string; type?: string };
-  } = {}
-) {
+export function mockApiFormats({
+  data = ['openai', 'placeholder'],
+  ...rest
+}: Partial<components['schemas']['ApiFormatsResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, ({ response }) => {
-      if (config.error) {
-        return response(config.error.status || 500).json({
-          error: {
-            code: config.error.code || 'internal_error',
-            message: config.error.message || 'Failed to fetch API formats',
-            type: config.error.type || 'internal_server_error',
-          },
-        });
-      }
-
+    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response: res }) => {
       const responseData: components['schemas']['ApiFormatsResponse'] = {
-        data: config.data || ['openai', 'placeholder'],
+        data,
+        ...rest,
       };
-      return response(200).json(responseData);
+      return res(200 as const).json(responseData);
+    }),
+  ];
+}
+
+export function mockApiFormatsError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API model test connection endpoint
+ * Mock handler for API model test connection endpoint with configurable responses
  */
-export function mockTestApiModel(
-  config: {
-    success?: boolean;
-    response?: string;
-    error?: { status?: 400 | 500; code?: string; message?: string; type?: string };
-  } = {}
-) {
+export function mockTestApiModel({
+  success = true,
+  response = 'Connection successful',
+  ...rest
+}: Partial<components['schemas']['TestPromptResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS_TEST, ({ response }) => {
-      if (config.error) {
-        const errorType = config.error.status === 400 ? 'invalid_request_error' : 'internal_server_error';
+    typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response: res }) => {
+      const responseData: components['schemas']['TestPromptResponse'] = {
+        success,
+        response,
+        ...rest,
+      };
+      return res(200 as const).json(responseData);
+    }),
+  ];
+}
 
-        return response(config.error.status || 500).json({
-          error: {
-            code: config.error.code || 'internal_error',
-            message: config.error.message || 'Test failed',
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      return response(200).json({
-        success: config.success !== undefined ? config.success : true,
-        response: config.response || 'Connection successful',
-      });
+export function mockTestApiModelError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Create type-safe MSW v2 handler for API model fetch models endpoint
+ * Mock handler for API model fetch models endpoint with configurable responses
  */
-export function mockFetchApiModels(
-  config: {
-    models?: string[];
-    error?: { status?: 400 | 500; code?: string; message?: string; type?: string };
-  } = {}
-) {
+export function mockFetchApiModels({
+  models = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+  ...rest
+}: Partial<components['schemas']['FetchModelsResponse']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_API_MODELS_FETCH, ({ response }) => {
-      if (config.error) {
-        const errorType = config.error.status === 400 ? 'invalid_request_error' : 'internal_server_error';
-
-        return response(config.error.status || 500).json({
-          error: {
-            code: config.error.code || 'authentication_error',
-            message: config.error.message || 'Invalid API key',
-            type: config.error.type || errorType,
-          },
-        });
-      }
-
-      return response(200).json({
-        models: config.models || ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
-      });
+    typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response: res }) => {
+      const responseData: components['schemas']['FetchModelsResponse'] = {
+        models,
+        ...rest,
+      };
+      return res(200 as const).json(responseData);
     }),
   ];
 }
+
+export function mockFetchApiModelsError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
+    }),
+  ];
+}
+
+// =============================================================================
+// VARIANT METHODS (Using core methods above)
+// =============================================================================
 
 /**
  * Predefined mock configurations for common use cases
@@ -301,27 +396,6 @@ export function mockApiModelsEmpty() {
   return mockApiModels({ data: [], total: 0 });
 }
 
-export function mockApiModelsError(
-  config: {
-    status?: 500;
-    code?: string;
-    message?: string;
-    type?: string;
-  } = {}
-) {
-  return [
-    typedHttp.get(ENDPOINT_API_MODELS, ({ response }) => {
-      return response(config.status || 500).json({
-        error: {
-          code: config.code || 'internal_error',
-          message: config.message || 'Internal Server Error',
-          type: config.type || 'internal_server_error',
-        },
-      });
-    }),
-  ];
-}
-
 /**
  * Convenience methods for common test scenarios
  */
@@ -333,54 +407,38 @@ export function mockTestApiModelSuccess() {
   return mockTestApiModel({ success: true, response: 'Connection successful' });
 }
 
-export function mockTestApiModelError() {
-  return mockTestApiModel({
-    error: { status: 400, code: 'connection_error', message: 'Connection test failed', type: 'invalid_request_error' },
-  });
-}
-
 export function mockFetchApiModelsSuccess() {
   return mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] });
 }
 
 export function mockFetchApiModelsAuthError() {
-  return mockFetchApiModels({
-    error: { status: 400, code: 'authentication_error', message: 'Invalid API key', type: 'invalid_request_error' },
+  return mockFetchApiModelsError({
+    code: 'authentication_error',
+    message: 'Invalid API key',
+    type: 'invalid_request_error',
   });
 }
 
 export function mockCreateApiModelSuccess() {
   return mockCreateApiModel({
-    response: {
-      id: 'test-model-123',
-      api_format: 'openai',
-      base_url: 'https://api.openai.com/v1',
-      api_key_masked: '****key',
-      models: ['gpt-4'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  });
-}
-
-export function mockCreateApiModelError() {
-  return mockCreateApiModel({
-    error: {
-      status: 400,
-      code: 'invalid_request_error',
-      message: 'Invalid API model data',
-      type: 'invalid_request_error',
-    },
+    id: 'test-model-123',
+    api_format: 'openai',
+    base_url: 'https://api.openai.com/v1',
+    api_key_masked: '****key',
+    models: ['gpt-4'],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   });
 }
 
 export function mockDeleteApiModelSuccess() {
-  return mockDeleteApiModel({ id: 'test-api-model' });
+  return mockDeleteApiModel();
 }
 
 export function mockDeleteApiModelNotFound() {
-  return mockDeleteApiModel({
-    id: 'missing-model',
-    error: { status: 404, code: 'entity_not_found', message: 'API model not found', type: 'not_found_error' },
+  return mockDeleteApiModelError({
+    code: 'entity_not_found',
+    message: 'API model not found',
+    type: 'not_found_error',
   });
 }

@@ -21,6 +21,8 @@ export const ENDPOINT_USER_REQUEST_STATUS = `${BODHI_API_BASE}/user/request-stat
 export const ENDPOINT_USER_REQUEST_ACCESS = `${BODHI_API_BASE}/user/request-access`;
 export const ENDPOINT_ACCESS_REQUESTS_PENDING = `${BODHI_API_BASE}/access-requests/pending`;
 export const ENDPOINT_ACCESS_REQUESTS = `${BODHI_API_BASE}/access-requests`;
+export const ENDPOINT_ACCESS_REQUEST_APPROVE = '/bodhi/v1/access-requests/{id}/approve';
+export const ENDPOINT_ACCESS_REQUEST_REJECT = '/bodhi/v1/access-requests/{id}/reject';
 
 const queryKeys = {
   requestStatus: ['access-request', 'status'],

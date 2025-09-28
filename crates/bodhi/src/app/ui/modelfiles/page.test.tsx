@@ -101,13 +101,13 @@ describe('ModelFilesPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(...mockModelFilesError({ status: 500, message: 'Internal Server Error' }));
+    server.use(...mockModelFilesError());
 
     await act(async () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByText('Internal Server Error')).toBeInTheDocument();
+    expect(screen.getByText('Internal server error')).toBeInTheDocument();
   });
 
   describe('action buttons', () => {

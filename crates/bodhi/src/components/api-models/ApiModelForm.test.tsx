@@ -8,9 +8,12 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockApiFormats,
   mockCreateApiModel,
+  mockCreateApiModelError,
   mockUpdateApiModel,
   mockFetchApiModels,
+  mockFetchApiModelsError,
   mockTestApiModel,
+  mockTestApiModelError,
 } from '@/test-utils/msw-v2/handlers/api-models';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
@@ -548,12 +551,10 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        ...mockFetchApiModels({
-          error: {
-            status: 400,
-            code: 'authentication_error',
-            message: 'Invalid API key',
-          },
+        ...mockFetchApiModelsError({
+          code: 'authentication_error',
+          message: 'Invalid API key',
+          type: 'invalid_request_error',
         })
       );
 
@@ -581,8 +582,10 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        ...mockTestApiModel({
-          error: { status: 500, code: 'connection_error', message: 'Connection failed', type: 'internal_server_error' },
+        ...mockTestApiModelError({
+          code: 'connection_error',
+          message: 'Connection failed',
+          type: 'internal_server_error',
         })
       );
 
@@ -611,12 +614,10 @@ describe('ApiModelForm', () => {
       const user = userEvent.setup();
 
       server.use(
-        ...mockCreateApiModel({
-          error: {
-            status: 409,
-            code: 'conflict_error',
-            message: 'API model with this ID already exists',
-          },
+        ...mockCreateApiModelError({
+          code: 'conflict_error',
+          message: 'API model with this ID already exists',
+          type: 'invalid_request_error',
         })
       );
 

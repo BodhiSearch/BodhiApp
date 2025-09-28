@@ -279,12 +279,7 @@ describe('PendingRequestsPage Request Management', () => {
     );
 
     // Override the approve handler to track if it was called
-    server.use(
-      ...mockAccessRequestApprove({
-        success: true,
-        delay: 0,
-      })
-    );
+    server.use(...mockAccessRequestApprove(0));
 
     await act(async () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });

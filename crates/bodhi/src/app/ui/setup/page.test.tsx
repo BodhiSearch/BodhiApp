@@ -4,9 +4,9 @@ import { mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import {
   mockSetupSuccess,
-  mockSetupSuccessWithDelay,
   mockSetupResourceAdmin,
   mockSetupError,
+  mockSetupSuccessWithDelay,
 } from '@/test-utils/msw-v2/handlers/setup';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
@@ -100,7 +100,7 @@ describe('Setup Page', () => {
   });
 
   it('should show error toast when setup fails', async () => {
-    server.use(...mockSetupError({ status: 400, message: 'Setup failed' }));
+    server.use(...mockSetupError({ message: 'Setup failed', type: 'invalid_request_error' }));
 
     const user = userEvent.setup();
 
@@ -213,6 +213,7 @@ describe('Setup Page', () => {
   });
 
   it('should disable form fields and button when loading', async () => {
+    // Use the cleaner mockSetupSuccessWithDelay helper for testing loading states
     server.use(...mockSetupSuccessWithDelay(1000));
 
     const user = userEvent.setup();

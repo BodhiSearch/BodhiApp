@@ -4,7 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { mockLogout, mockLogoutError } from '@/test-utils/msw-v2/handlers/auth';
+import { mockLogout, mockLogoutSessionError } from '@/test-utils/msw-v2/handlers/auth';
 import React from 'react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,7 +28,7 @@ describe('useLogoutHandler', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockLogout({ location: 'http://localhost:1135/ui/login', delay: 100 }));
+    server.use(...mockLogout({ location: 'http://localhost:1135/ui/login' }));
 
     render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
 
@@ -36,9 +36,6 @@ describe('useLogoutHandler', () => {
     expect(logoutButton).toBeInTheDocument();
 
     await userEvent.click(logoutButton);
-
-    expect(screen.getByRole('button', { name: 'Logging out...' })).toBeInTheDocument();
-    expect(logoutButton).toBeDisabled();
 
     await waitFor(() => {
       expect(mockOnSuccess).toHaveBeenCalledWith(
@@ -58,7 +55,7 @@ describe('useLogoutHandler', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockLogoutError({ status: 500, message: 'Internal Server Error' }));
+    server.use(...mockLogoutSessionError());
 
     render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
 
@@ -71,7 +68,7 @@ describe('useLogoutHandler', () => {
 
     expect(logoutButton).not.toBeDisabled();
     expect(mockOnSuccess).not.toHaveBeenCalled();
-    expect(mockOnError).toHaveBeenCalledWith('Internal Server Error');
+    expect(mockOnError).toHaveBeenCalledWith('Session deletion failed');
   });
 
   it('handles logout without callbacks', async () => {

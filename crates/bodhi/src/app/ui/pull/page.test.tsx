@@ -6,7 +6,10 @@ import PullPage from '@/app/ui/pull/page';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
-import { mockModelPullDownloadsDefault, mockModelPullDownloadsError } from '@/test-utils/msw-v2/handlers/modelfiles';
+import {
+  mockModelPullDownloadsDefault,
+  mockModelPullDownloadsInternalError,
+} from '@/test-utils/msw-v2/handlers/modelfiles';
 
 vi.mock('@/app/ui/pull/PullForm', () => ({
   PullForm: () => <div data-testid="pull-form">Pull Form</div>,
@@ -92,7 +95,7 @@ describe('PullPage', () => {
   });
 
   it('handles API error', async () => {
-    server.use(...mockModelPullDownloadsError({ status: 500, message: 'Internal Server Error' }));
+    server.use(...mockModelPullDownloadsInternalError());
 
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });

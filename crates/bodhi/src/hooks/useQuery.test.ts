@@ -22,11 +22,11 @@ import { AxiosError } from 'axios';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockSettings,
-  mockSettingsError,
+  mockSettingsInternalError,
   mockUpdateSetting,
-  mockUpdateSettingError,
+  mockUpdateSettingInvalidError,
   mockDeleteSetting,
-  mockDeleteSettingError,
+  mockDeleteSettingNotFoundError,
 } from '@/test-utils/msw-v2/handlers/settings';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockSetup, mockSetupError } from '@/test-utils/msw-v2/handlers/setup';
@@ -73,8 +73,24 @@ setupMswV2();
 beforeAll(() => {
   server.use(
     ...mockSettings(mockSettingsData),
-    ...mockUpdateSetting('BODHI_LOG_LEVEL', mockSettingsData[0]),
-    ...mockDeleteSetting('BODHI_LOG_LEVEL', mockSettingsData[0]),
+    ...mockUpdateSetting('BODHI_LOG_LEVEL', {
+      current_value: 'info',
+      default_value: 'warn',
+      source: 'settings_file',
+      metadata: {
+        type: 'option',
+        options: ['error', 'warn', 'info', 'debug', 'trace'],
+      },
+    }),
+    ...mockDeleteSetting('BODHI_LOG_LEVEL', {
+      current_value: 'warn',
+      default_value: 'warn',
+      source: 'default',
+      metadata: {
+        type: 'option',
+        options: ['error', 'warn', 'info', 'debug', 'trace'],
+      },
+    }),
     ...mockAppInfo(mockAppInfoData),
     ...mockUserLoggedIn(mockUserInfoData),
     ...mockSetup({ status: 'ready' })
@@ -96,7 +112,7 @@ describe('Settings Hooks', () => {
     });
 
     it('handles error response', async () => {
-      server.use(...mockSettingsError({ status: 500, message: 'Test Error' }));
+      server.use(...mockSettingsInternalError());
 
       const { result } = renderHook(() => useSettings(), {
         wrapper: createWrapper(),
@@ -127,7 +143,15 @@ describe('Settings Hooks', () => {
 
     beforeEach(() => {
       server.use(
-        ...mockUpdateSetting(updateData.key, mockUpdatedSetting),
+        ...mockUpdateSetting('BODHI_LOG_LEVEL', {
+          current_value: 'debug',
+          default_value: 'warn',
+          source: 'settings_file',
+          metadata: {
+            type: 'option',
+            options: ['error', 'warn', 'info', 'debug', 'trace'],
+          },
+        }),
         ...mockSettings(mockSettingsData) // For refetch after update
       );
     });
@@ -145,12 +169,7 @@ describe('Settings Hooks', () => {
     });
 
     it('handles error response', async () => {
-      server.use(
-        ...mockUpdateSettingError(updateData.key, {
-          status: 400,
-          message: 'Invalid setting value',
-        })
-      );
+      server.use(...mockUpdateSettingInvalidError('BODHI_LOG_LEVEL'));
 
       const { result } = renderHook(() => useUpdateSetting(), {
         wrapper: createWrapper(),
@@ -217,7 +236,15 @@ describe('Settings Hooks', () => {
 
     beforeEach(() => {
       server.use(
-        ...mockDeleteSetting(deleteData.key, mockDeletedSetting),
+        ...mockDeleteSetting('BODHI_LOG_LEVEL', {
+          current_value: 'warn', // Reset to default value
+          default_value: 'warn',
+          source: 'default',
+          metadata: {
+            type: 'option',
+            options: ['error', 'warn', 'info', 'debug', 'trace'],
+          },
+        }),
         ...mockSettings(mockSettingsData) // For refetch after delete
       );
     });
@@ -235,12 +262,7 @@ describe('Settings Hooks', () => {
     });
 
     it('handles error response', async () => {
-      server.use(
-        ...mockDeleteSettingError(deleteData.key, {
-          status: 400,
-          message: 'Cannot delete required setting',
-        })
-      );
+      server.use(...mockDeleteSettingNotFoundError('BODHI_LOG_LEVEL'));
 
       const { result } = renderHook(() => useDeleteSetting(), {
         wrapper: createWrapper(),
@@ -253,7 +275,7 @@ describe('Settings Hooks', () => {
           expect(false).toBe(true);
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
-          expect(axiosError.response?.status).toBe(400);
+          expect(axiosError.response?.status).toBe(404);
           expect(axiosError.response?.data.error?.message).toBe('Cannot delete required setting');
         }
       });
@@ -351,7 +373,7 @@ describe('useSetupApp', () => {
 
   it('calls onError with error message on failure', async () => {
     const onError = vi.fn();
-    server.use(...mockSetupError({ status: 500, message: 'Setup failed' }));
+    server.use(...mockSetupError({ code: 'internal_error', message: 'Setup failed', type: 'internal_server_error' }));
 
     const { result } = renderHook(() => useSetupApp({ onError }), {
       wrapper: createWrapper(),

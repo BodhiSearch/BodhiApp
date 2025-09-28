@@ -4,7 +4,7 @@ import {
   mockSettings,
   mockSettingsDefault,
   mockSettingsEmpty,
-  mockSettingsError,
+  mockSettingsInternalError,
 } from '@/test-utils/msw-v2/handlers/settings';
 import { SettingsPageContent } from '@/app/ui/settings/page';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
@@ -124,12 +124,12 @@ describe('SettingsPageContent', () => {
   });
 
   it('shows error message', async () => {
-    server.use(...mockSettingsError({ status: 500, message: 'Test error' }));
+    server.use(...mockSettingsInternalError());
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     // Wait for the error message to appear
-    const errorMessage = await screen.findByText('Test error');
+    const errorMessage = await screen.findByText('Test Error');
     expect(errorMessage).toBeInTheDocument();
   });
 
@@ -155,12 +155,12 @@ describe('SettingsPage', () => {
   });
 
   it('shows error when api fails', async () => {
-    server.use(...mockSettingsError({ status: 500, message: 'Failed to fetch settings' }));
+    server.use(...mockSettingsInternalError());
 
     render(<SettingsPageContent config={TEST_CONFIG} />, {
       wrapper: createWrapper(),
     });
-    expect(await screen.findByText(/Failed to fetch settings/)).toBeInTheDocument();
+    expect(await screen.findByText(/Test Error/)).toBeInTheDocument();
   });
 
   it('displays settings grouped by category', async () => {

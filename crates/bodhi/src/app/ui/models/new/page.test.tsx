@@ -150,16 +150,14 @@ describe('CreateAliasPage', () => {
         page_size: 30,
       }),
       ...mockCreateModel({
-        response: {
-          alias: 'test-alias',
-          repo: 'test-repo',
-          filename: 'test-file.bin',
-          snapshot: 'main',
-          request_params: {},
-          context_params: [],
-          model_params: {},
-          source: 'user',
-        },
+        alias: 'test-alias',
+        repo: 'test-repo',
+        filename: 'test-file.bin',
+        snapshot: 'main',
+        request_params: {},
+        context_params: [],
+        model_params: {},
+        source: 'user',
       })
     );
   });

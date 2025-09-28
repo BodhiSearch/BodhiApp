@@ -1,47 +1,31 @@
 import EditApiModel from '@/app/ui/api-models/edit/page';
-import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createWrapper } from '@/tests/wrapper';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Test utilities and data
+import {
+  expectApiFormatSelected,
+  expectErrorToast,
+  expectModelsLoaded,
+  expectSuccessToast,
+  fetchModels,
+  removeSelectedModel,
+  selectModels,
+  submitForm,
+} from '@/test-utils/api-model-test-utils';
+import {
+  mockApiFormatsDefault,
+  mockFetchApiModelsSuccess,
+  mockGetApiModel,
+  mockTestApiModelSuccess,
+  mockUpdateApiModel,
+  mockUpdateApiModelError,
+} from '@/test-utils/msw-v2/handlers/api-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import {
-  mockGetApiModel,
-  mockUpdateApiModel,
-  mockApiFormatsDefault,
-  mockTestApiModelSuccess,
-  mockFetchApiModelsSuccess,
-} from '@/test-utils/msw-v2/handlers/api-models';
-import {
-  selectProvider,
-  selectApiFormat,
-  fillApiKey,
-  fillBaseUrl,
-  testConnection,
-  fetchModels,
-  selectModels,
-  removeSelectedModel,
-  submitForm,
-  expectProviderSelected,
-  expectApiFormatSelected,
-  expectConnectionSuccess,
-  expectModelsLoaded,
-  expectModelSelected,
-  expectBaseUrlVisible,
-  expectBaseUrlHidden,
-  expectApiKeyHidden,
-  expectApiKeyVisible,
-  toggleApiKeyVisibility,
-  expectLoadingState,
-  waitForNoLoadingState,
-  completeFullWorkflow,
-  expectSuccessToast,
-  expectErrorToast,
-  expectNavigationCall,
-} from '@/test-utils/api-model-test-utils';
 
 // Mock router
 const mockPush = vi.fn();
@@ -264,14 +248,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
             updated_at: new Date().toISOString(),
           },
         }),
-        ...mockUpdateApiModel({
-          id: 'test-model',
-          error: {
-            status: 500,
-            code: 'internal_server_error',
-            message: 'Internal server error',
-          },
-        }),
+        ...mockUpdateApiModelError(),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
         ...mockFetchApiModelsSuccess()

@@ -1,333 +1,246 @@
 /**
  * Type-safe MSW v2 handlers for authentication endpoints using openapi-msw
  */
-import { ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useQuery';
 import { ENDPOINT_AUTH_CALLBACK } from '@/hooks/useOAuth';
-import { typedHttp } from '../openapi-msw-setup';
-import { http, HttpResponse, type components } from '../setup';
+import { ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useQuery';
+import { delay } from 'msw';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+
+// =============================================================================
+// CORE TYPED HTTP METHODS (Success cases + Error handlers)
+// =============================================================================
 
 /**
- * Unified handler for OAuth initiate endpoint with pure openapi-msw
- * For edge cases that don't conform to schema, use mockAuthInitiateInvalid
+ * Mock handler for OAuth initiate endpoint with configurable responses
  *
- * @param config Configuration options
- * @param config.location - Redirect location URL (defaults to OAuth URL for status 201, chat for status 200)
- * @param config.status - HTTP status: 200 = already authenticated, 201 = OAuth redirect needed (default: 201)
- * @param config.delay - Add delay in milliseconds for testing loading states
+ * @param response - Partial RedirectResponse data to override defaults
  */
 export function mockAuthInitiate(
-  config: {
-    location?: string;
-    status?: 200 | 201;
-    delay?: number;
-  } = {}
+  {
+    location = 'https://oauth.example.com/auth?client_id=test',
+    ...rest
+  }: Partial<components['schemas']['RedirectResponse']> = {},
+  delayMs?: number
 ) {
   return [
-    typedHttp.post(ENDPOINT_AUTH_INITIATE, ({ response }) => {
-      const status = config.status || 201;
+    typedHttp.post(ENDPOINT_AUTH_INITIATE, async ({ response: httpResponse }) => {
+      if (delayMs) {
+        await delay(delayMs);
+      }
+      const responseData: components['schemas']['RedirectResponse'] = {
+        location,
+        ...rest,
+      };
+      return httpResponse(201).json(responseData);
+    }),
+  ];
+}
 
-      let location = config.location;
-      if (!location) {
-        if (status === 200) {
-          location = 'http://localhost:3000/ui/chat'; // Already authenticated
-        } else {
-          location = 'https://oauth.example.com/auth?client_id=test'; // OAuth redirect
+export function mockAuthInitiateError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.post(ENDPOINT_AUTH_INITIATE, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
+    }),
+  ];
+}
+
+/**
+ * Mock handler for OAuth callback endpoint with configurable responses
+ *
+ * @param response - Partial RedirectResponse data to override defaults
+ * @param body - Partial AuthCallbackRequest to match against request body
+ */
+export function mockAuthCallback(
+  { location = 'http://localhost:3000/ui/chat', ...rest }: Partial<components['schemas']['RedirectResponse']> = {},
+  body?: Partial<components['schemas']['AuthCallbackRequest']>,
+  delayMs?: number
+) {
+  return [
+    typedHttp.post(ENDPOINT_AUTH_CALLBACK, async ({ request, response: httpResponse }) => {
+      // If body is provided, validate it
+      if (body) {
+        const requestBody = (await request.json()) as components['schemas']['AuthCallbackRequest'];
+        for (const [key, expectedValue] of Object.entries(body)) {
+          if (requestBody[key] !== expectedValue) {
+            // Body fields don't match, don't handle this request
+            return;
+          }
         }
       }
 
-      const responseData: components['schemas']['RedirectResponse'] = { location };
-      const responseResult = response(status as 200 | 201 | 500).json(responseData);
-
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
-        : responseResult;
-    }),
-  ];
-}
-
-/**
- * Invalid handler for OAuth initiate endpoint edge cases using manual MSW
- * Handles cases that don't conform to OpenAPI schema requirements
- *
- * @param config Configuration options
- * @param config.status - HTTP status (default: depends on scenario)
- * @param config.delay - Add delay in milliseconds for testing loading states
- * @param config.noLocation - Return empty object without location field (successful response)
- * @param config.empty - Return empty response (error scenario with 500 status)
- * @param config.invalidUrl - Return invalid URL format for testing URL validation
- */
-export function mockAuthInitiateInvalid(
-  config: {
-    status?: number;
-    delay?: number;
-    noLocation?: boolean;
-    empty?: boolean;
-    invalidUrl?: boolean;
-  } = {}
-) {
-  return [
-    http.post(ENDPOINT_AUTH_INITIATE, () => {
-      let status: number;
-      let responseData: any = {};
-
-      if (config.empty) {
-        // Error scenario - return 500 with empty response
-        status = config.status || 500;
-        responseData = {};
-      } else if (config.noLocation) {
-        // Success scenario but missing required location field
-        status = config.status || 201;
-        responseData = {};
-      } else if (config.invalidUrl) {
-        // Success scenario but with invalid URL format
-        status = config.status || 201;
-        responseData = { location: 'invalid-url-format' };
-      } else {
-        // Default case
-        status = config.status || 201;
-        responseData = {};
+      if (delayMs) {
+        await delay(delayMs);
       }
-
-      const response = HttpResponse.json(responseData, { status });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      const responseData: components['schemas']['RedirectResponse'] = {
+        location,
+        ...rest,
+      };
+      return httpResponse(200).json(responseData);
     }),
   ];
 }
 
-/**
- * Error handler for OAuth initiate endpoint with pure openapi-msw
- * For edge cases that don't conform to schema, use mockAuthInitiateInvalid
- *
- * @param config Error configuration
- * @param config.status - HTTP status code (default: 500)
- * @param config.code - Error code (default: 'internal_error')
- * @param config.message - Error message (default: 'OAuth configuration error')
- * @param config.delay - Add delay in milliseconds for testing loading states
- */
-export function mockAuthInitiateError(
-  config: {
-    status?: 500;
-    code?: string;
-    message?: string;
-    delay?: number;
-  } = {}
-) {
+export function mockAuthCallbackError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 422 | 500 } = {}) {
   return [
-    typedHttp.post(ENDPOINT_AUTH_INITIATE, ({ response }) => {
-      const responseData = response(config.status || 500).json({
-        error: {
-          code: config.code || 'internal_error',
-          message: config.message || 'OAuth configuration error',
-          type: 'internal_server_error',
-        },
-      });
-
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseData), config.delay))
-        : responseData;
+    typedHttp.post(ENDPOINT_AUTH_CALLBACK, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
 /**
- * Unified handler for logout endpoint with pure openapi-msw
- * For edge cases that don't conform to schema, use mockLogoutInvalid
+ * Mock handler for logout endpoint with configurable responses
  *
- * @param config Configuration options
- * @param config.location - Redirect location URL (default: 'http://localhost:1135/ui/login')
- * @param config.delay - Add delay in milliseconds for testing loading states
+ * @param response - Partial RedirectResponse data to override defaults
  */
 export function mockLogout(
-  config: {
-    location?: string;
-    delay?: number;
-  } = {}
+  { location = 'http://localhost:1135/ui/login', ...rest }: Partial<components['schemas']['RedirectResponse']> = {},
+  delayMs?: number
 ) {
   return [
-    typedHttp.post(ENDPOINT_LOGOUT, ({ response }) => {
+    typedHttp.post(ENDPOINT_LOGOUT, async ({ response: httpResponse }) => {
+      if (delayMs) {
+        await delay(delayMs);
+      }
       const responseData: components['schemas']['RedirectResponse'] = {
-        location: config.location || 'http://localhost:1135/ui/login',
+        location,
+        ...rest,
       };
-      const responseResult = response(200 as 200 | 500).json(responseData);
-
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
-        : responseResult;
+      return httpResponse(200).json(responseData);
     }),
   ];
 }
 
-/**
- * Invalid handler for logout endpoint edge cases using manual MSW
- * Handles cases that don't conform to OpenAPI schema requirements
- *
- * @param config Configuration options
- * @param config.delay - Add delay in milliseconds for testing loading states
- * @param config.noLocation - Return empty object without location field
- * @param config.empty - Return empty response
- */
-export function mockLogoutInvalid(
-  config: {
-    delay?: number;
-    noLocation?: boolean;
-    empty?: boolean;
-  } = {}
-) {
+export function mockLogoutError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
   return [
-    http.post(ENDPOINT_LOGOUT, () => {
-      let responseData: any = {};
-
-      if (config.empty || config.noLocation) {
-        responseData = {};
-      }
-
-      const response = HttpResponse.json(responseData, { status: 200 });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+    typedHttp.post(ENDPOINT_LOGOUT, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
+// =============================================================================
+// VARIANT METHODS (Using core methods above)
+// =============================================================================
+
 /**
- * Error handler for logout endpoint
- *
- * @param config Error configuration
- * @param config.status - HTTP status code (default: 500)
- * @param config.code - Error code (default: 'session_error')
- * @param config.message - Error message (default: 'Session deletion failed')
+ * Mock handler for OAuth initiate when user is already authenticated
+ * Returns 200 with home page URL
  */
-export function mockLogoutError(
-  config: {
-    status?: 500;
-    code?: string;
-    message?: string;
-  } = {}
-) {
-  return [
-    typedHttp.post(ENDPOINT_LOGOUT, ({ response }) => {
-      return response(config.status || 500).json({
-        error: {
-          code: config.code || 'session_error',
-          message: config.message || 'Session deletion failed',
-          type: 'internal_server_error',
-        },
-      });
-    }),
-  ];
+export function mockAuthInitiateAlreadyAuthenticated(config: { location?: string } = {}) {
+  return mockAuthInitiate({
+    location: config.location || 'http://localhost:3000/ui/chat',
+  });
 }
 
 /**
- * Unified handler for OAuth callback endpoint with pure openapi-msw
- * For edge cases that don't conform to schema, use mockAuthCallbackInvalid
- *
- * @param config Configuration options
- * @param config.location - Redirect location URL (default: 'http://localhost:3000/ui/chat')
- * @param config.status - HTTP status code (default: 200)
- * @param config.delay - Add delay in milliseconds for testing loading states
+ * Mock handler for OAuth initiate when user is not authenticated
+ * Returns 201 with OAuth authorization URL
  */
-export function mockAuthCallback(
-  config: {
-    location?: string;
-    status?: number;
-    delay?: number;
-  } = {}
-) {
-  return [
-    typedHttp.post(ENDPOINT_AUTH_CALLBACK, ({ response }) => {
-      const status = config.status || 200;
-
-      const location = config.location || 'http://localhost:3000/ui/chat';
-
-      const responseData: components['schemas']['RedirectResponse'] = { location };
-      const responseResult = response(status as 200 | 422 | 500).json(responseData);
-
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
-        : responseResult;
-    }),
-  ];
+export function mockAuthInitiateUnauthenticated(config: { location?: string } = {}) {
+  return mockAuthInitiate({
+    location: config.location || 'https://oauth.example.com/auth?client_id=test',
+  });
 }
 
 /**
- * Invalid handler for OAuth callback endpoint edge cases using manual MSW
- * Handles cases that don't conform to OpenAPI schema requirements
- *
- * @param config Configuration options
- * @param config.status - HTTP status code (default: depends on scenario)
- * @param config.delay - Add delay in milliseconds for testing loading states
- * @param config.noLocation - Return empty object without location field (successful response)
- * @param config.empty - Return empty response (error scenario)
- * @param config.invalidUrl - Return invalid URL format for testing URL validation
+ * Mock handler for OAuth configuration error during initiate
  */
-export function mockAuthCallbackInvalid(
-  config: {
-    status?: number;
-    delay?: number;
-    noLocation?: boolean;
-    empty?: boolean;
-    invalidUrl?: boolean;
-  } = {}
-) {
-  return [
-    http.post(ENDPOINT_AUTH_CALLBACK, () => {
-      let status: number;
-      let responseData: any = {};
-
-      if (config.empty) {
-        // Error scenario - return error status with empty response
-        status = config.status || 500;
-        responseData = {};
-      } else if (config.noLocation) {
-        // Success scenario but missing required location field
-        status = config.status || 200;
-        responseData = {};
-      } else if (config.invalidUrl) {
-        // Success scenario but with invalid URL format
-        status = config.status || 200;
-        responseData = { location: 'invalid-url-format' };
-      } else {
-        // Default case
-        status = config.status || 200;
-        responseData = {};
-      }
-
-      const response = HttpResponse.json(responseData, { status });
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
-    }),
-  ];
+export function mockAuthInitiateConfigError() {
+  return mockAuthInitiateError({
+    code: 'oauth_config_error',
+    message: 'OAuth configuration error',
+    type: 'invalid_request_error',
+    status: 500,
+  });
 }
 
 /**
- * Error handler for OAuth callback endpoint
- *
- * @param config Error configuration
- * @param config.status - HTTP status code (default: 400)
- * @param config.code - Error code (default: 'invalid_state')
- * @param config.message - Error message (default: 'Invalid state parameter')
- * @param config.type - Error type (default: 'invalid_request' for 400, 'internal_server_error' for 500)
- * @param config.delay - Add delay in milliseconds for testing loading states
+ * Mock handler for successful OAuth callback completion
  */
-export function mockAuthCallbackError(
-  config: {
-    status?: 422 | 500;
-    code?: string;
-    message?: string;
-    type?: string;
-    delay?: number;
-  } = {}
-) {
-  return [
-    typedHttp.post(ENDPOINT_AUTH_CALLBACK, ({ response }) => {
-      const responseData = response(config.status || 422).json({
-        error: {
-          code: config.code || 'invalid_state',
-          message: config.message || 'Invalid state parameter',
-          type: config.type || (config.status === 422 ? 'invalid_request_error' : 'internal_server_error'),
-        },
-      });
+export function mockAuthCallbackSuccess(config: { location?: string } = {}) {
+  return mockAuthCallback({
+    location: config.location || 'http://localhost:3000/ui/chat',
+  });
+}
 
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseData), config.delay))
-        : responseData;
-    }),
-  ];
+/**
+ * Mock handler for OAuth callback state mismatch error
+ */
+export function mockAuthCallbackStateError() {
+  return mockAuthCallbackError({
+    code: 'oauth_state_mismatch',
+    message: 'Invalid state parameter',
+    type: 'invalid_request_error',
+    status: 422,
+  });
+}
+
+/**
+ * Mock handler for invalid authorization code during callback
+ */
+export function mockAuthCallbackInvalidCode() {
+  return mockAuthCallbackError({
+    code: 'invalid_auth_code',
+    message: 'Invalid authorization code',
+    type: 'invalid_request_error',
+    status: 422,
+  });
+}
+
+/**
+ * Mock handler for successful logout
+ */
+export function mockLogoutSuccess(config: { location?: string } = {}) {
+  return mockLogout({
+    location: config.location || 'http://localhost:1135/ui/login',
+  });
+}
+
+/**
+ * Mock handler for logout session deletion failure
+ */
+export function mockLogoutSessionError() {
+  return mockLogoutError({
+    code: 'session_error',
+    message: 'Session deletion failed',
+    type: 'internal_server_error',
+    status: 500,
+  });
 }

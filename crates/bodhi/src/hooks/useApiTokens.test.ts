@@ -93,8 +93,8 @@ describe('useListTokens', () => {
   it('handles error response', async () => {
     server.use(
       ...mockListTokensError({
-        status: 500,
         message: 'Test Error',
+        type: 'internal_server_error',
       })
     );
 
@@ -196,9 +196,9 @@ describe('useCreateToken', () => {
   it('handles error response', async () => {
     server.use(
       ...mockCreateTokenError({
-        status: 400,
         code: 'validation_error',
         message: 'Invalid token name',
+        type: 'invalid_request_error',
       })
     );
 
@@ -244,9 +244,9 @@ describe('useUpdateToken', () => {
   it('handles error response', async () => {
     server.use(
       ...mockUpdateTokenError('token-1', {
-        status: 400,
         code: 'validation_error',
         message: 'Invalid token status',
+        type: 'invalid_request_error',
       })
     );
 

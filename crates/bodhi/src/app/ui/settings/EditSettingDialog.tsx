@@ -29,7 +29,7 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
 
   const updateSetting = useUpdateSetting({
     onSuccess: () => {
-      showSuccess('Success', 'Setting updated successfully');
+      showSuccess('Success', `Setting ${setting.key} updated successfully`);
       onOpenChange(false);
     },
     onError: (message) => {

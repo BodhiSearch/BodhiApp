@@ -330,9 +330,7 @@ describe('AllRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove({
-        success: true,
-      })
+      ...mockAccessRequestApprove()
     );
 
     await act(async () => {
@@ -363,11 +361,7 @@ describe('AllRequestsPage Request Management', () => {
   });
 
   it('successfully rejects request when reject button clicked', async () => {
-    server.use(
-      ...mockAccessRequestReject({
-        success: true,
-      })
-    );
+    server.use(...mockAccessRequestReject());
 
     await act(async () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });

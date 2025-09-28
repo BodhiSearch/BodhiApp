@@ -2,19 +2,27 @@
  * Type-safe MSW v2 handlers for setup endpoint using openapi-msw
  */
 import { ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
-import { typedHttp } from '../openapi-msw-setup';
-import type { components } from '../setup';
+import { delay } from 'msw';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
 /**
  * Create type-safe MSW v2 handlers for setup endpoint
  * Uses openapi-msw for full type safety with OpenAPI schema enforcement
  */
-export function mockSetup(config: Partial<components['schemas']['SetupResponse']> = {}) {
+export function mockSetup(
+  { status = 'ready', ...rest }: Partial<components['schemas']['SetupResponse']> = {},
+  delayMs?: number
+) {
   return [
-    typedHttp.post(ENDPOINT_APP_SETUP, ({ response }) => {
-      return response(200).json({
-        status: config.status || 'ready',
-      });
+    typedHttp.post(ENDPOINT_APP_SETUP, async ({ response: responseFn }) => {
+      if (delayMs) {
+        await delay(delayMs);
+      }
+      const responseData: components['schemas']['SetupResponse'] = {
+        status,
+        ...rest,
+      };
+      return responseFn(200 as const).json(responseData);
     }),
   ];
 }
@@ -24,14 +32,7 @@ export function mockSetupSuccess() {
 }
 
 export function mockSetupSuccessWithDelay(delayMs: number = 1000) {
-  return [
-    typedHttp.post(ENDPOINT_APP_SETUP, async ({ response }) => {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      return response(200).json({
-        status: 'ready',
-      });
-    }),
-  ];
+  return mockSetup({ status: 'ready' }, delayMs);
 }
 
 export function mockSetupResourceAdmin() {
@@ -42,22 +43,22 @@ export function mockSetupResourceAdmin() {
  * Create error handler for setup endpoint
  * Supports status codes defined in OpenAPI schema (400, 500)
  */
-export function mockSetupError(
-  config: {
-    status?: 400 | 500;
-    code?: string;
-    message?: string;
-  } = {}
-) {
+export function mockSetupError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = 400,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {}) {
   return [
-    typedHttp.post(ENDPOINT_APP_SETUP, ({ response }) => {
-      return response(config.status || 400).json({
-        error: {
-          code: config.code || 'validation_error',
-          message: config.message || 'Setup failed',
-          type: config.status === 500 ? 'internal_server_error' : 'invalid_request_error',
-        },
-      });
+    typedHttp.post(ENDPOINT_APP_SETUP, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
     }),
   ];
 }
