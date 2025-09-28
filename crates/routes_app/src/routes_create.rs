@@ -2,7 +2,7 @@ use crate::{UserAliasResponse, ENDPOINT_MODELS};
 use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
-use objs::{ApiError, AppError, ErrorType, OAIRequestParams, OpenAIApiError, Repo, API_TAG_MODELS};
+use objs::{ApiError, AppError, ErrorType, OAIRequestParams, Repo, API_TAG_MODELS};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::AliasNotFoundError;
@@ -55,8 +55,6 @@ pub enum CreateAliasError {
     request_body = CreateAliasRequest,
     responses(
       (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
-      (status = 400, description = "Invalid request", body = OpenAIApiError),
-      (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),
@@ -98,8 +96,6 @@ pub async fn create_alias_handler(
     request_body = UpdateAliasRequest,
     responses(
       (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
-      (status = 400, description = "Invalid request", body = OpenAIApiError),
-      (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),

@@ -2,7 +2,7 @@ use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
 use async_openai::types::CreateChatCompletionRequest;
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_OPENAI};
+use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};
 use server_core::RouterState;
 use std::sync::Arc;
 
@@ -84,23 +84,6 @@ pub enum HttpError {
              }]
          })
         ),
-        (status = 400, description = "Invalid request parameters", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Invalid model specified",
-                 "type": "invalid_request_error",
-                 "code": "model_not_found"
-             }
-         })),
-        (status = 401, description = "Invalid authentication", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Invalid authentication token",
-                 "type": "invalid_request_error",
-                 "code": "invalid_api_key"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),

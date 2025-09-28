@@ -337,6 +337,107 @@ impl Modify for OpenAPIEnvModifier {
   }
 }
 
+/// Modifies OpenAPI documentation to add common error responses to all endpoints
+#[derive(Debug)]
+pub struct GlobalErrorResponses;
+
+impl Modify for GlobalErrorResponses {
+  fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    use utoipa::openapi::{ContentBuilder, Ref, RefOr, ResponseBuilder};
+
+    // Define public endpoints that don't require authentication
+    let public_endpoints = [
+      ENDPOINT_PING,
+      ENDPOINT_HEALTH,
+      ENDPOINT_APP_INFO,
+      ENDPOINT_APP_SETUP,
+    ];
+
+    for (path, path_item) in openapi.paths.paths.iter_mut() {
+      // Check if this is a public endpoint
+      let is_public = public_endpoints.iter().any(|&public| path == public);
+
+      // Add errors to all operations (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+      let operations = [
+        &mut path_item.get,
+        &mut path_item.post,
+        &mut path_item.put,
+        &mut path_item.delete,
+        &mut path_item.patch,
+        &mut path_item.head,
+        &mut path_item.options,
+      ];
+
+      for operation in operations.into_iter().flatten() {
+        // Add 400 Bad Request to all endpoints
+        operation.responses.responses.insert(
+          "400".to_string(),
+          RefOr::T(
+            ResponseBuilder::new()
+              .description("Invalid request parameters")
+              .content(
+                "application/json",
+                ContentBuilder::new()
+                  .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                  .build(),
+              )
+              .build(),
+          ),
+        );
+
+        // Add 401 and 403 only to non-public endpoints
+        if !is_public {
+          operation.responses.responses.insert(
+            "401".to_string(),
+            RefOr::T(
+              ResponseBuilder::new()
+                .description("Not authenticated")
+                .content(
+                  "application/json",
+                  ContentBuilder::new()
+                    .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                    .build(),
+                )
+                .build(),
+            ),
+          );
+
+          operation.responses.responses.insert(
+            "403".to_string(),
+            RefOr::T(
+              ResponseBuilder::new()
+                .description("Insufficient permissions")
+                .content(
+                  "application/json",
+                  ContentBuilder::new()
+                    .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                    .build(),
+                )
+                .build(),
+            ),
+          );
+        }
+
+        // Add 500 Internal Server Error to all endpoints
+        operation.responses.responses.insert(
+          "500".to_string(),
+          RefOr::T(
+            ResponseBuilder::new()
+              .description("Internal server error")
+              .content(
+                "application/json",
+                ContentBuilder::new()
+                  .schema(Some(Ref::from_schema_name("OpenAIApiError")))
+                  .build(),
+              )
+              .build(),
+          ),
+        );
+      }
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use crate::{

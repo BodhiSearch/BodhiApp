@@ -43,10 +43,6 @@ pub struct ChangeRoleRequest {
     ),
     responses(
         (status = 200, description = "Users retrieved successfully", body = UserListResponse),
-        (status = 400, description = "Invalid request parameters", body = OpenAIApiError),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = ["role:manager", "role:admin"])
@@ -92,11 +88,7 @@ pub async fn list_users_handler(
     request_body = ChangeRoleRequest,
     responses(
         (status = 200, description = "Role changed successfully"),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError),
         (status = 404, description = "User not found", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = ["role:manager", "role:admin"])
@@ -164,11 +156,7 @@ pub async fn change_user_role_handler(
     ),
     responses(
         (status = 200, description = "User removed successfully"),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError),
         (status = 404, description = "User not found", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = ["role:admin"])

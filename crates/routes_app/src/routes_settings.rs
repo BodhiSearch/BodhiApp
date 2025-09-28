@@ -72,15 +72,6 @@ pub struct UpdateSettingRequest {
                  }
              }
          ])),
-        (status = 401, description = "Unauthorized - User is not an admin", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Only administrators can view settings",
-                 "type": "unauthorized_error",
-                 "code": "settings_error-unauthorized"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = [])
@@ -122,14 +113,6 @@ pub async fn list_settings_handler(
              "metadata": {
                  "type": "option",
                  "options": ["error", "warn", "info", "debug", "trace"]
-             }
-         })),
-        (status = 400, description = "Invalid setting or value", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Invalid value for setting: value out of range",
-                 "type": "invalid_request_error",
-                 "code": "settings_error-validation_error"
              }
          })),
         (status = 404, description = "Setting not found", body = OpenAIApiError,

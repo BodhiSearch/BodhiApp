@@ -44,14 +44,6 @@ use validator::Validate;
              "page": 1,
              "page_size": 10
          })),
-        (status = 500, description = "Internal server error during API model retrieval", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Database connection failed",
-                 "type": "internal_server_error",
-                 "code": "database_error"
-             }
-         }))
     ),
     security(
         ("bearer_auth" = []),
@@ -116,14 +108,6 @@ pub async fn list_api_models_handler(
                  "code": "entity_not_found"
              }
          })),
-        (status = 500, description = "Internal server error during model retrieval", body = objs::OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Database query failed",
-                 "type": "internal_server_error",
-                 "code": "database_error"
-             }
-         }))
     ),
     security(
         ("bearer_auth" = []),
@@ -155,9 +139,7 @@ pub async fn get_api_model_handler(
     request_body = CreateApiModelRequest,
     responses(
         (status = 201, description = "API model created", body = ApiModelResponse),
-        (status = 400, description = "Invalid request", body = objs::OpenAIApiError),
         (status = 409, description = "Alias already exists", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -204,18 +186,16 @@ pub async fn create_api_model_handler(
 /// Update an existing API model configuration
 #[utoipa::path(
     put,
-    path = ENDPOINT_API_MODELS.to_owned() + "/{alias}",
+    path = ENDPOINT_API_MODELS.to_owned() + "/{id}",
     tag = API_TAG_API_MODELS,
     operation_id = "updateApiModel",
     params(
-        ("alias" = String, Path, description = "API model alias")
+        ("id" = String, Path, description = "API model ID")
     ),
     request_body = UpdateApiModelRequest,
     responses(
         (status = 200, description = "API model updated", body = ApiModelResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
         (status = 404, description = "API model not found", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -270,16 +250,15 @@ pub async fn update_api_model_handler(
 /// Delete an API model configuration
 #[utoipa::path(
     delete,
-    path = ENDPOINT_API_MODELS.to_owned() + "/{alias}",
+    path = ENDPOINT_API_MODELS.to_owned() + "/{id}",
     tag = API_TAG_API_MODELS,
     operation_id = "deleteApiModel",
     params(
-        ("alias" = String, Path, description = "API model alias")
+        ("id" = String, Path, description = "API model ID")
     ),
     responses(
         (status = 204, description = "API model deleted"),
         (status = 404, description = "API model not found", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -316,7 +295,6 @@ pub async fn delete_api_model_handler(
     responses(
         (status = 200, description = "Test result", body = TestPromptResponse),
         (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -392,7 +370,6 @@ pub async fn test_api_model_handler(
     responses(
         (status = 200, description = "Available models", body = FetchModelsResponse),
         (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -464,14 +441,6 @@ pub async fn fetch_models_handler(
          example = json!({
              "data": ["openai"]
          })),
-        (status = 500, description = "Internal server error during API format retrieval", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Service unavailable",
-                 "type": "internal_server_error",
-                 "code": "service_error"
-             }
-         }))
     )
 )]
 pub async fn get_api_formats_handler() -> Result<Json<ApiFormatsResponse>, ApiError> {

@@ -84,14 +84,31 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OllamaError"
-                },
-                "example": {
-                  "error": "invalid request parameters"
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -114,10 +131,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OllamaError"
-                },
-                "example": {
-                  "error": "chat completion error: failed to process request"
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -179,6 +193,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Model not found",
             "content": {
@@ -197,10 +241,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OllamaError"
-                },
-                "example": {
-                  "error": "Failed to get model details"
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -250,15 +291,42 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OllamaError"
-                },
-                "example": {
-                  "error": "Failed to list models"
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -330,6 +398,16 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
             "content": {
@@ -342,6 +420,16 @@
           },
           "403": {
             "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -420,6 +508,16 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
             "content": {
@@ -432,6 +530,16 @@
           },
           "403": {
             "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -486,6 +594,16 @@
           "200": {
             "description": "Request approved successfully"
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
             "content": {
@@ -508,6 +626,16 @@
           },
           "404": {
             "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -551,6 +679,16 @@
           "200": {
             "description": "Request rejected successfully"
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
             "content": {
@@ -573,6 +711,16 @@
           },
           "404": {
             "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -664,19 +812,42 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error during API model retrieval",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "database_error",
-                    "message": "Database connection failed",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -719,7 +890,27 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -783,19 +974,42 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error during API format retrieval",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "service_error",
-                    "message": "Service unavailable",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -832,7 +1046,27 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -891,7 +1125,7 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
@@ -900,68 +1134,8 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          },
-          {
-            "session_auth": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/api-models/{alias}": {
-      "put": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Update an existing API model configuration",
-        "operationId": "updateApiModel",
-        "parameters": [
-          {
-            "name": "alias",
-            "in": "path",
-            "description": "API model alias",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateApiModelRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "API model updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiModelResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
+          "401": {
+            "description": "Not authenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -970,59 +1144,8 @@
               }
             }
           },
-          "404": {
-            "description": "API model not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          },
-          {
-            "session_auth": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "api-models"
-        ],
-        "summary": "Delete an API model configuration",
-        "operationId": "deleteApiModel",
-        "parameters": [
-          {
-            "name": "alias",
-            "in": "path",
-            "description": "API model alias",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "API model deleted"
-          },
-          "404": {
-            "description": "API model not found",
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1090,6 +1213,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "API model with specified ID not found",
             "content": {
@@ -1108,18 +1261,190 @@
             }
           },
           "500": {
-            "description": "Internal server error during model retrieval",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "database_error",
-                    "message": "Database query failed",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Update an existing API model configuration",
+        "operationId": "updateApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API model ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApiModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "API model updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiModelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Delete an API model configuration",
+        "operationId": "deleteApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API model ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API model deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1172,35 +1497,41 @@
             }
           },
           "400": {
-            "description": "Invalid request, application not registered, or incorrect app status",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "app_reg_info_not_found",
-                    "message": "Application registration information not found",
-                    "type": "invalid_app_state"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error during access request",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "auth_service_error",
-                    "message": "Failed to communicate with authorization server",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -1245,6 +1576,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "422": {
             "description": "OAuth error, invalid request parameters, or state mismatch",
             "content": {
@@ -1263,18 +1624,11 @@
             }
           },
           "500": {
-            "description": "Internal server error during token exchange",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "oauth_token_exchange_error",
-                    "message": "Failed to exchange authorization code for tokens",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -1327,19 +1681,42 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error during OAuth initialization",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "app_reg_info_missing",
-                    "message": "Application not registered with auth server",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1370,19 +1747,22 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "system_error",
-                    "message": "Failed to retrieve application status",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -1412,19 +1792,42 @@
               }
             }
           },
-          "500": {
-            "description": "Session deletion failed",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "session_delete_error",
-                    "message": "Failed to delete user session",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1500,6 +1903,36 @@
                   "page": 1,
                   "page_size": 10,
                   "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1597,19 +2030,42 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error during download list retrieval",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "database_error",
-                    "message": "Database connection failed",
-                    "type": "internal_server_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1683,18 +2139,31 @@
             }
           },
           "400": {
-            "description": "File already exists or invalid input",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "pull_error-file_already_exists",
-                    "message": "file 'mistral-7b-instruct-v0.1.Q8_0.gguf' already exists in repo 'TheBloke/Mistral-7B-Instruct-v0.1-GGUF' with snapshot 'main'",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1705,13 +2174,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Internal server error occurred",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -1784,18 +2246,31 @@
             }
           },
           "400": {
-            "description": "File already exists",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "pull_error-file_already_exists",
-                    "message": "file 'llama-2-7b-chat.Q8_0.gguf' already exists in repo 'TheBloke/Llama-2-7B-Chat-GGUF' with snapshot 'main'",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1823,13 +2298,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Internal server error occurred",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -1882,6 +2350,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Download request not found",
             "content": {
@@ -1905,13 +2403,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Internal server error occurred",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -2024,6 +2515,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -2069,7 +2590,27 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -2142,6 +2683,36 @@
                   },
                   "snapshot": "sha256:abc123",
                   "source": "config"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2222,7 +2793,27 @@
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -2300,19 +2891,32 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - User is not an admin",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "settings_error-unauthorized",
-                    "message": "Only administrators can view settings",
-                    "type": "unauthorized_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2409,18 +3013,31 @@
             }
           },
           "400": {
-            "description": "Invalid setting or value",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "settings_error-validation_error",
-                    "message": "Invalid value for setting: value out of range",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2438,6 +3055,16 @@
                     "message": "Setting not found: INVALID_KEY",
                     "type": "not_found_error"
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2495,6 +3122,36 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Setting not found",
             "content": {
@@ -2508,6 +3165,16 @@
                     "message": "Setting not found: INVALID_KEY",
                     "type": "not_found_error"
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2558,35 +3225,21 @@
             }
           },
           "400": {
-            "description": "Invalid request or application already setup",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "validation_error",
-                    "message": "Server name must be at least 10 characters long",
-                    "type": "invalid_request_error"
-                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error during setup",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "auth_service_error",
-                    "message": "Failed to register with auth server",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -2678,19 +3331,32 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - Token missing or invalid",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "api_token_error-token_missing",
-                    "message": "access token is not present in request",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2701,13 +3367,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Internal server error occurred",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -2758,35 +3417,41 @@
             }
           },
           "400": {
-            "description": "Invalid request parameters or token name already exists",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "validation_error",
-                    "message": "Token name must be at least 3 characters long",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error during token creation",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "token_generation_error",
-                    "message": "Failed to generate secure token",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -2854,19 +3519,32 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - Token missing or invalid",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "api_token_error-token_missing",
-                    "message": "access token is not present in request",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2894,13 +3572,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "internal_error",
-                    "message": "Internal server error occurred",
-                    "type": "internal_server_error"
-                  }
                 }
               }
             }
@@ -2938,19 +3609,42 @@
               }
             }
           },
-          "500": {
-            "description": "Authentication error or invalid token",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "token_error-invalid_token",
-                    "message": "token is invalid",
-                    "type": "authentication_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -2970,8 +3664,28 @@
           "201": {
             "description": "Access request created successfully"
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -2992,6 +3706,16 @@
           },
           "422": {
             "description": "User already has role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3028,7 +3752,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
@@ -3047,8 +3771,28 @@
               }
             }
           },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3185,7 +3929,7 @@
             "description": "User removed successfully"
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
@@ -3278,7 +4022,7 @@
             "description": "Role changed successfully"
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
@@ -3359,6 +4103,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -3381,6 +4145,26 @@
                 },
                 "example": {
                   "message": "pong"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -3487,30 +4271,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "model_not_found",
-                    "message": "Invalid model specified",
-                    "type": "invalid_request_error"
-                  }
                 }
               }
             }
           },
           "401": {
-            "description": "Invalid authentication",
+            "description": "Not authenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_api_key",
-                    "message": "Invalid authentication token",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -3569,19 +4349,32 @@
               }
             }
           },
-          "401": {
-            "description": "Invalid authentication",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_api_key",
-                    "message": "Invalid authentication token",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -3641,19 +4434,32 @@
               }
             }
           },
-          "401": {
-            "description": "Invalid authentication",
+          "400": {
+            "description": "Invalid request parameters",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
-                },
-                "example": {
-                  "error": {
-                    "code": "invalid_api_key",
-                    "message": "Invalid authentication token",
-                    "type": "invalid_request_error"
-                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }

@@ -3,9 +3,7 @@ use auth_middleware::{
   KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
 };
 use axum::{http::header::HeaderMap, Json};
-use objs::{
-  ApiError, AppRole, BadRequestError, OpenAIApiError, ResourceScope, Role, UserInfo, API_TAG_AUTH,
-};
+use objs::{ApiError, AppRole, BadRequestError, ResourceScope, Role, UserInfo, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
 use tracing::debug;
@@ -66,14 +64,6 @@ pub enum UserResponse {
              "user_id": "550e8400-e29b-41d4-a716-446655440000",
              "username": "user@example.com",
              "role": "resource_admin"
-         })),
-        (status = 500, description = "Authentication error or invalid token", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "token is invalid",
-                 "type": "authentication_error",
-                 "code": "token_error-invalid_token"
-             }
          }))
     )
 )]

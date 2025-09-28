@@ -59,7 +59,6 @@ use std::sync::Arc;
              "page_size": 10
          })
         ),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -115,7 +114,6 @@ pub async fn list_aliases_handler(
              "page_size": 10
          })
         ),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
       ("bearer_auth" = []),
@@ -267,7 +265,6 @@ fn get_alias_source(alias: &Alias) -> &str {
                  "code": "alias_not_found"
              }
          })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),

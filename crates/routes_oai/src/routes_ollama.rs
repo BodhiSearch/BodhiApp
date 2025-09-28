@@ -82,10 +82,6 @@ pub struct OllamaError {
                  }
              ]
          })),
-        (status = 500, description = "Internal server error", body = OllamaError,
-         example = json!({
-             "error": "Failed to list models"
-         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -241,10 +237,6 @@ pub struct ShowResponse {
          example = json!({
              "error": "model not found"
          })),
-        (status = 500, description = "Internal server error", body = OllamaError,
-         example = json!({
-             "error": "Failed to get model details"
-         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -589,14 +581,6 @@ pub struct Options {
          example = json!({
              "error": "model not found"
          })),
-        (status = 400, description = "Invalid request", body = OllamaError,
-         example = json!({
-             "error": "invalid request parameters"
-         })),
-        (status = 500, description = "Internal server error", body = OllamaError,
-         example = json!({
-             "error": "chat completion error: failed to process request"
-         }))
     ),
     security(
       ("bearer_auth" = []),

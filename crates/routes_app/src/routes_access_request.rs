@@ -108,7 +108,6 @@ pub struct PaginatedUserAccessResponse {
         (status = 201, description = "Access request created successfully"),
         (status = 409, description = "Pending request already exists", body = OpenAIApiError),
         (status = 422, description = "User already has role", body = OpenAIApiError),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = [])
@@ -191,8 +190,6 @@ pub async fn user_request_access_handler(
     description = "Check the status of the current user's access request.",
     responses(
         (status = 200, description = "Request status retrieved", body = UserAccessStatusResponse),
-        (status = 400, description = "Bad Request", body = OpenAIApiError),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
         (status = 404, description = "Request not found", body = OpenAIApiError),
     ),
     security(
@@ -233,8 +230,6 @@ pub async fn request_status_handler(
     params(PaginationSortParams),
     responses(
         (status = 200, description = "Pending requests retrieved", body = PaginatedUserAccessResponse),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = ["role:manager", "role:admin"])
@@ -277,8 +272,6 @@ pub async fn list_pending_requests_handler(
     params(PaginationSortParams),
     responses(
         (status = 200, description = "All requests retrieved", body = PaginatedUserAccessResponse),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError)
     ),
     security(
         ("session_auth" = ["role:manager", "role:admin"])
@@ -321,9 +314,7 @@ pub async fn list_all_requests_handler(
     ),
     responses(
         (status = 200, description = "Request approved successfully"),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError),
-        (status = 404, description = "Request not found", body = OpenAIApiError)
+        (status = 404, description = "Request not found", body = OpenAIApiError),
     ),
     security(
         ("session_auth" = ["role:manager", "role:admin"])
@@ -428,8 +419,6 @@ pub async fn approve_request_handler(
     ),
     responses(
         (status = 200, description = "Request rejected successfully"),
-        (status = 401, description = "Not authenticated", body = OpenAIApiError),
-        (status = 403, description = "Insufficient permissions", body = OpenAIApiError),
         (status = 404, description = "Request not found", body = OpenAIApiError)
     ),
     security(

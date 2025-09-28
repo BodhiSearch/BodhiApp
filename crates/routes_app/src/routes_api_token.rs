@@ -95,22 +95,6 @@ pub enum ApiTokenError {
          example = json!({
              "offline_token": "bapp_1234567890abcdef"
          })),
-        (status = 400, description = "Invalid request parameters or token name already exists", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Token name must be at least 3 characters long",
-                 "type": "invalid_request_error",
-                 "code": "validation_error"
-             }
-         })),
-        (status = 500, description = "Internal server error during token creation", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Failed to generate secure token",
-                 "type": "internal_server_error",
-                 "code": "token_generation_error"
-             }
-         }))
     ),
     security(
         ("session_auth" = [])
@@ -158,14 +142,6 @@ pub async fn create_token_handler(
              "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-11-10T04:52:06.786Z"
          })),
-        (status = 401, description = "Unauthorized - Token missing or invalid", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "access token is not present in request",
-                 "type": "invalid_request_error",
-                 "code": "api_token_error-token_missing"
-             }
-         })),
         (status = 404, description = "Token not found", body = OpenAIApiError,
          example = json!({
              "error": {
@@ -174,14 +150,6 @@ pub async fn create_token_handler(
                  "code": "entity_error-not_found"
              }
          })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Internal server error occurred",
-                 "type": "internal_server_error",
-                 "code": "internal_error"
-             }
-         }))
     ),
     security(
         ("session_auth" = [])
@@ -255,22 +223,6 @@ pub async fn update_token_handler(
              "page": 1,
              "page_size": 10
          })),
-        (status = 401, description = "Unauthorized - Token missing or invalid", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "access token is not present in request",
-                 "type": "invalid_request_error",
-                 "code": "api_token_error-token_missing"
-             }
-         })),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "Internal server error occurred",
-                 "type": "internal_server_error",
-                 "code": "internal_error"
-             }
-         }))
     ),
     security(
         ("session_auth" = [])

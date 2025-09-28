@@ -26,13 +26,13 @@ use routes_app::{
   logout_handler, ping_handler, pull_by_alias_handler, reject_request_handler, remove_user_handler,
   request_access_handler, request_status_handler, setup_handler, test_api_model_handler,
   update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
-  user_info_handler, user_request_access_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier,
-  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
-  ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
-  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH,
-  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USERS, ENDPOINT_USER_INFO,
+  user_info_handler, user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses,
+  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
+  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
+  ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
+  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
+  ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USERS, ENDPOINT_USER_INFO,
   ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
@@ -250,6 +250,7 @@ pub fn build_routes(
 
   let mut openapi = BodhiOpenAPIDoc::openapi();
   OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);
+  GlobalErrorResponses.modify(&mut openapi);
 
   // Build final router
   let router = Router::<Arc<dyn RouterState>>::new()

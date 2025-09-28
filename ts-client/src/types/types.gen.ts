@@ -789,9 +789,17 @@ export type ChatOllamaModelData = {
 
 export type ChatOllamaModelErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
-    400: OllamaError;
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Model not found
      */
@@ -799,7 +807,7 @@ export type ChatOllamaModelErrors = {
     /**
      * Internal server error
      */
-    500: OllamaError;
+    500: OpenAiApiError;
 };
 
 export type ChatOllamaModelError = ChatOllamaModelErrors[keyof ChatOllamaModelErrors];
@@ -823,13 +831,25 @@ export type ShowOllamaModelData = {
 
 export type ShowOllamaModelErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * Model not found
      */
     404: OllamaError;
     /**
      * Internal server error
      */
-    500: OllamaError;
+    500: OpenAiApiError;
 };
 
 export type ShowOllamaModelError = ShowOllamaModelErrors[keyof ShowOllamaModelErrors];
@@ -852,9 +872,21 @@ export type ListOllamaModelsData = {
 
 export type ListOllamaModelsErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * Internal server error
      */
-    500: OllamaError;
+    500: OpenAiApiError;
 };
 
 export type ListOllamaModelsError = ListOllamaModelsErrors[keyof ListOllamaModelsErrors];
@@ -894,6 +926,10 @@ export type ListAllAccessRequestsData = {
 
 export type ListAllAccessRequestsErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Not authenticated
      */
     401: OpenAiApiError;
@@ -901,6 +937,10 @@ export type ListAllAccessRequestsErrors = {
      * Insufficient permissions
      */
     403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type ListAllAccessRequestsError = ListAllAccessRequestsErrors[keyof ListAllAccessRequestsErrors];
@@ -940,6 +980,10 @@ export type ListPendingAccessRequestsData = {
 
 export type ListPendingAccessRequestsErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Not authenticated
      */
     401: OpenAiApiError;
@@ -947,6 +991,10 @@ export type ListPendingAccessRequestsErrors = {
      * Insufficient permissions
      */
     403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type ListPendingAccessRequestsError = ListPendingAccessRequestsErrors[keyof ListPendingAccessRequestsErrors];
@@ -977,6 +1025,10 @@ export type ApproveAccessRequestData = {
 
 export type ApproveAccessRequestErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Not authenticated
      */
     401: OpenAiApiError;
@@ -988,6 +1040,10 @@ export type ApproveAccessRequestErrors = {
      * Request not found
      */
     404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type ApproveAccessRequestError = ApproveAccessRequestErrors[keyof ApproveAccessRequestErrors];
@@ -1013,6 +1069,10 @@ export type RejectAccessRequestData = {
 
 export type RejectAccessRequestErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Not authenticated
      */
     401: OpenAiApiError;
@@ -1024,6 +1084,10 @@ export type RejectAccessRequestErrors = {
      * Request not found
      */
     404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type RejectAccessRequestError = RejectAccessRequestErrors[keyof RejectAccessRequestErrors];
@@ -1061,7 +1125,19 @@ export type ListApiModelsData = {
 
 export type ListApiModelsErrors = {
     /**
-     * Internal server error during API model retrieval
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1086,9 +1162,17 @@ export type CreateApiModelData = {
 
 export type CreateApiModelErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Alias already exists
      */
@@ -1119,7 +1203,19 @@ export type GetApiFormatsData = {
 
 export type GetApiFormatsErrors = {
     /**
-     * Internal server error during API format retrieval
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1144,9 +1240,17 @@ export type FetchApiModelsData = {
 
 export type FetchApiModelsErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1173,9 +1277,17 @@ export type TestApiModelData = {
 
 export type TestApiModelErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1197,15 +1309,27 @@ export type DeleteApiModelData = {
     body?: never;
     path: {
         /**
-         * API model alias
+         * API model ID
          */
-        alias: string;
+        id: string;
     };
     query?: never;
-    url: '/bodhi/v1/api-models/{alias}';
+    url: '/bodhi/v1/api-models/{id}';
 };
 
 export type DeleteApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * API model not found
      */
@@ -1227,23 +1351,77 @@ export type DeleteApiModelResponses = {
 
 export type DeleteApiModelResponse = DeleteApiModelResponses[keyof DeleteApiModelResponses];
 
+export type GetApiModelData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier for the API model alias
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/api-models/{id}';
+};
+
+export type GetApiModelErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model with specified ID not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
+
+export type GetApiModelResponses = {
+    /**
+     * API model configuration retrieved successfully
+     */
+    200: ApiModelResponse;
+};
+
+export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
+
 export type UpdateApiModelData = {
     body: UpdateApiModelRequest;
     path: {
         /**
-         * API model alias
+         * API model ID
          */
-        alias: string;
+        id: string;
     };
     query?: never;
-    url: '/bodhi/v1/api-models/{alias}';
+    url: '/bodhi/v1/api-models/{id}';
 };
 
 export type UpdateApiModelErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * API model not found
      */
@@ -1265,40 +1443,6 @@ export type UpdateApiModelResponses = {
 
 export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
 
-export type GetApiModelData = {
-    body?: never;
-    path: {
-        /**
-         * Unique identifier for the API model alias
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/api-models/{id}';
-};
-
-export type GetApiModelErrors = {
-    /**
-     * API model with specified ID not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error during model retrieval
-     */
-    500: OpenAiApiError;
-};
-
-export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
-
-export type GetApiModelResponses = {
-    /**
-     * API model configuration retrieved successfully
-     */
-    200: ApiModelResponse;
-};
-
-export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
-
 export type RequestAccessData = {
     /**
      * Application client requesting access
@@ -1311,11 +1455,19 @@ export type RequestAccessData = {
 
 export type RequestAccessErrors = {
     /**
-     * Invalid request, application not registered, or incorrect app status
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
-     * Internal server error during access request
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1343,11 +1495,23 @@ export type CompleteOAuthFlowData = {
 
 export type CompleteOAuthFlowErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * OAuth error, invalid request parameters, or state mismatch
      */
     422: OpenAiApiError;
     /**
-     * Internal server error during token exchange
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1372,7 +1536,19 @@ export type InitiateOAuthFlowData = {
 
 export type InitiateOAuthFlowErrors = {
     /**
-     * Internal server error during OAuth initialization
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1401,6 +1577,10 @@ export type GetAppInfoData = {
 
 export type GetAppInfoErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Internal server error
      */
     500: OpenAiApiError;
@@ -1426,7 +1606,19 @@ export type LogoutUserData = {
 
 export type LogoutUserErrors = {
     /**
-     * Session deletion failed
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1467,6 +1659,18 @@ export type ListModelFilesData = {
 };
 
 export type ListModelFilesErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1510,7 +1714,19 @@ export type ListDownloadsData = {
 
 export type ListDownloadsErrors = {
     /**
-     * Internal server error during download list retrieval
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1538,9 +1754,17 @@ export type PullModelFileData = {
 
 export type PullModelFileErrors = {
     /**
-     * File already exists or invalid input
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1576,9 +1800,17 @@ export type PullModelByAliasData = {
 
 export type PullModelByAliasErrors = {
     /**
-     * File already exists
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Alias not found
      */
@@ -1617,6 +1849,18 @@ export type GetDownloadStatusData = {
 };
 
 export type GetDownloadStatusErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Download request not found
      */
@@ -1664,6 +1908,18 @@ export type ListAllModelsData = {
 
 export type ListAllModelsErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * Internal server error
      */
     500: OpenAiApiError;
@@ -1689,9 +1945,17 @@ export type CreateAliasData = {
 
 export type CreateAliasErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1722,6 +1986,18 @@ export type GetAliasData = {
 };
 
 export type GetAliasErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Alias not found
      */
@@ -1757,9 +2033,17 @@ export type UpdateAliasData = {
 
 export type UpdateAliasErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1786,9 +2070,17 @@ export type ListSettingsData = {
 
 export type ListSettingsErrors = {
     /**
-     * Unauthorized - User is not an admin
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1820,9 +2112,25 @@ export type DeleteSettingData = {
 
 export type DeleteSettingErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * Setting not found
      */
     404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type DeleteSettingError = DeleteSettingErrors[keyof DeleteSettingErrors];
@@ -1858,13 +2166,25 @@ export type UpdateSettingData = {
 
 export type UpdateSettingErrors = {
     /**
-     * Invalid setting or value
+     * Invalid request parameters
      */
     400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Setting not found
      */
     404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type UpdateSettingError = UpdateSettingErrors[keyof UpdateSettingErrors];
@@ -1890,11 +2210,11 @@ export type SetupAppData = {
 
 export type SetupAppErrors = {
     /**
-     * Invalid request or application already setup
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
-     * Internal server error during setup
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -1936,9 +2256,17 @@ export type ListApiTokensData = {
 
 export type ListApiTokensErrors = {
     /**
-     * Unauthorized - Token missing or invalid
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -1968,11 +2296,19 @@ export type CreateApiTokenData = {
 
 export type CreateApiTokenErrors = {
     /**
-     * Invalid request parameters or token name already exists
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
-     * Internal server error during token creation
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -2005,9 +2341,17 @@ export type UpdateApiTokenData = {
 
 export type UpdateApiTokenErrors = {
     /**
-     * Unauthorized - Token missing or invalid
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Token not found
      */
@@ -2038,7 +2382,19 @@ export type GetCurrentUserData = {
 
 export type GetCurrentUserErrors = {
     /**
-     * Authentication error or invalid token
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
      */
     500: OpenAiApiError;
 };
@@ -2063,9 +2419,17 @@ export type RequestUserAccessData = {
 
 export type RequestUserAccessErrors = {
     /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
      * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Pending request already exists
      */
@@ -2074,6 +2438,10 @@ export type RequestUserAccessErrors = {
      * User already has role
      */
     422: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type RequestUserAccessError = RequestUserAccessErrors[keyof RequestUserAccessErrors];
@@ -2094,7 +2462,7 @@ export type GetUserAccessStatusData = {
 
 export type GetUserAccessStatusErrors = {
     /**
-     * Bad Request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
@@ -2102,9 +2470,17 @@ export type GetUserAccessStatusErrors = {
      */
     401: OpenAiApiError;
     /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
      * Request not found
      */
     404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
 };
 
 export type GetUserAccessStatusError = GetUserAccessStatusErrors[keyof GetUserAccessStatusErrors];
@@ -2178,7 +2554,7 @@ export type RemoveUserData = {
 
 export type RemoveUserErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
@@ -2222,7 +2598,7 @@ export type ChangeUserRoleData = {
 
 export type ChangeUserRoleErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters
      */
     400: OpenAiApiError;
     /**
@@ -2259,6 +2635,19 @@ export type HealthCheckData = {
     url: '/health';
 };
 
+export type HealthCheckErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type HealthCheckError = HealthCheckErrors[keyof HealthCheckErrors];
+
 export type HealthCheckResponses = {
     /**
      * Application is healthy and fully operational
@@ -2274,6 +2663,19 @@ export type PingServerData = {
     query?: never;
     url: '/ping';
 };
+
+export type PingServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type PingServerError = PingServerErrors[keyof PingServerErrors];
 
 export type PingServerResponses = {
     /**
@@ -2297,9 +2699,13 @@ export type CreateChatCompletionErrors = {
      */
     400: OpenAiApiError;
     /**
-     * Invalid authentication
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -2328,9 +2734,17 @@ export type ListModelsData = {
 
 export type ListModelsErrors = {
     /**
-     * Invalid authentication
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Internal server error
      */
@@ -2362,9 +2776,17 @@ export type GetModelData = {
 
 export type GetModelErrors = {
     /**
-     * Invalid authentication
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
      */
     401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
     /**
      * Model not found
      */
