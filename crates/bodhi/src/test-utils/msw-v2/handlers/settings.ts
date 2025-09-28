@@ -15,8 +15,11 @@ import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from 
  * Uses generated OpenAPI types directly
  */
 export function mockSettings(settings: components['schemas']['SettingInfo'][] = []) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['SettingInfo'][] = settings;
       return response(200 as const).json(responseData);
     }),
@@ -83,8 +86,11 @@ export function mockSettingsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorBody = {
         code,
         message,
@@ -126,26 +132,28 @@ export function mockUpdateSetting(
   }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {},
   delayMs?: number
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Only respond with success if key matches
-      if (params.key === key) {
-        if (delayMs) {
-          await delay(delayMs);
-        }
-        const responseData: components['schemas']['SettingInfo'] = {
-          key: params.key as string,
-          current_value,
-          default_value,
-          source,
-          metadata,
-          ...rest,
-        };
-        return response(200 as const).json(responseData);
-      }
+      // Parameter check FIRST
+      if (params.key !== key) return;
 
-      // Pass through to next handler for non-matching keys
-      return;
+      // THEN closure check
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      if (delayMs) {
+        await delay(delayMs);
+      }
+      const responseData: components['schemas']['SettingInfo'] = {
+        key: params.key as string,
+        current_value,
+        default_value,
+        source,
+        metadata,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -165,21 +173,23 @@ export function mockUpdateSettingError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Only return error for matching key
-      if (params.key === key) {
-        const errorBody = {
-          code,
-          message,
-          type,
-          ...rest,
-        };
-        return response(status).json({ error: errorBody });
-      }
+      // Parameter check FIRST
+      if (params.key !== key) return;
 
-      // Pass through to next handler for non-matching keys
-      return;
+      // THEN closure check
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      const errorBody = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorBody });
     }),
   ];
 }
@@ -208,15 +218,17 @@ export function mockUpdateSettingServerError(key: string) {
  * Only returns network error for the specified key
  */
 export function mockUpdateSettingNetworkError(key: string) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Only return network error for matching key
-      if (params.key === key) {
-        return HttpResponse.error();
-      }
+      // Parameter check FIRST
+      if (params.key !== key) return;
 
-      // Pass through to next handler for non-matching keys
-      return;
+      // THEN closure check
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      return HttpResponse.error();
     }),
   ];
 }
@@ -240,23 +252,25 @@ export function mockDeleteSetting(
     ...rest
   }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Only respond with success if key matches
-      if (params.key === key) {
-        const responseData: components['schemas']['SettingInfo'] = {
-          key: params.key as string,
-          current_value, // Reset to default after delete
-          default_value,
-          source,
-          metadata,
-          ...rest,
-        };
-        return response(200 as const).json(responseData);
-      }
+      // Parameter check FIRST
+      if (params.key !== key) return;
 
-      // Pass through to next handler for non-matching keys
-      return;
+      // THEN closure check
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      const responseData: components['schemas']['SettingInfo'] = {
+        key: params.key as string,
+        current_value, // Reset to default after delete
+        default_value,
+        source,
+        metadata,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -276,21 +290,23 @@ export function mockDeleteSettingError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
-      // Only return error for matching key
-      if (params.key === key) {
-        const errorBody = {
-          code,
-          message,
-          type,
-          ...rest,
-        };
-        return response(status).json({ error: errorBody });
-      }
+      // Parameter check FIRST
+      if (params.key !== key) return;
 
-      // Pass through to next handler for non-matching keys
-      return;
+      // THEN closure check
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
+      const errorBody = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorBody });
     }),
   ];
 }

@@ -330,7 +330,7 @@ describe('AllRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove()
+      ...mockAccessRequestApprove(1)
     );
 
     await act(async () => {
@@ -361,7 +361,7 @@ describe('AllRequestsPage Request Management', () => {
   });
 
   it('successfully rejects request when reject button clicked', async () => {
-    server.use(...mockAccessRequestReject());
+    server.use(...mockAccessRequestReject(1));
 
     await act(async () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
@@ -386,6 +386,11 @@ describe('AllRequestsPage Error Handling', () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...mockAccessRequestsError({
+        status: 500,
+        code: 'internal_error',
+        message: 'Internal server error',
+      }),
       ...mockAccessRequestsError({
         status: 500,
         code: 'internal_error',
@@ -416,7 +421,7 @@ describe('AllRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApproveError()
+      ...mockAccessRequestApproveError(1)
     );
 
     await act(async () => {
@@ -449,7 +454,7 @@ describe('AllRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestRejectError()
+      ...mockAccessRequestRejectError(1)
     );
 
     await act(async () => {

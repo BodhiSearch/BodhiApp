@@ -152,6 +152,7 @@ describe('Settings Hooks', () => {
             options: ['error', 'warn', 'info', 'debug', 'trace'],
           },
         }),
+        ...mockSettings(mockSettingsData), // For initial load
         ...mockSettings(mockSettingsData) // For refetch after update
       );
     });
@@ -245,6 +246,7 @@ describe('Settings Hooks', () => {
             options: ['error', 'warn', 'info', 'debug', 'trace'],
           },
         }),
+        ...mockSettings(mockSettingsData), // For initial load
         ...mockSettings(mockSettingsData) // For refetch after delete
       );
     });
@@ -317,7 +319,10 @@ describe('useSetupApp', () => {
     server.use(
       ...mockAppInfo(mockAppInfoData),
       ...mockUserLoggedIn(mockUserInfoData),
-      ...mockSetup({ status: 'ready' })
+      ...mockSetup({ status: 'ready' }),
+      // Additional mocks for query invalidation refetches
+      ...mockAppInfo(mockAppInfoData),
+      ...mockUserLoggedIn(mockUserInfoData)
     );
   });
 

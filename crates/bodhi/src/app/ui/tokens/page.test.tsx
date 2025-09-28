@@ -1,23 +1,20 @@
 import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
-import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
+import { stubAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import {
+  mockCreateToken,
+  mockCreateTokenWithResponse,
+  mockTokens,
+  mockUpdateToken,
+  mockUpdateTokenError,
+  mockUpdateTokenStatus,
+} from '@/test-utils/msw-v2/handlers/tokens';
+import { stubUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  mockTokens,
-  mockCreateToken,
-  mockUpdateToken,
-  mockCreateTokenWithResponse,
-  mockUpdateTokenStatus,
-  mockUpdateTokenError,
-} from '@/test-utils/msw-v2/handlers/tokens';
-import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -56,7 +53,7 @@ const mockListResponse = {
   page_size: 10,
 };
 
-const server = setupServer(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockTokens());
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -64,12 +61,12 @@ afterEach(() => server.resetHandlers());
 beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockClear();
+  server.resetHandlers();
+  server.use(...stubAppInfo({ status: 'ready' }), ...stubUserLoggedIn(), ...mockTokens());
 });
 
 describe('TokenPageContent', () => {
   it('shows loading skeleton initially', async () => {
-    server.use(...mockTokens());
-
     render(<TokenPageContent />, { wrapper: createWrapper() });
 
     expect(screen.getByTestId('token-page-loading')).toBeInTheDocument();
@@ -94,6 +91,9 @@ describe('TokenPageContent', () => {
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
     });
+    await waitFor(() => {
+      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
+    });
 
     // Check title and description
     expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
@@ -116,6 +116,9 @@ describe('TokenPageContent', () => {
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
     });
+    await waitFor(() => {
+      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
+    });
 
     // Fill and submit form
     await user.type(screen.getByLabelText('Token Name (Optional)'), 'Test Token');
@@ -132,7 +135,7 @@ describe('TokenPageContent', () => {
 
 describe('TokenPage', () => {
   it('redirects to login when not authenticated', async () => {
-    server.use(...mockAppInfoReady(), ...mockUserLoggedOut());
+    server.use(...stubAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
@@ -152,6 +155,9 @@ describe('token status updates', () => {
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
     });
 
     const switchElement = screen.getByRole('switch');
@@ -178,6 +184,9 @@ describe('token status update', () => {
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
     });
 
     const switchElement = screen.getByRole('switch');

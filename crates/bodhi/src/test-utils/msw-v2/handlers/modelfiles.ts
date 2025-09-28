@@ -21,8 +21,13 @@ export function mockModelFiles({
   total = 0,
   ...rest
 }: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedLocalModelResponse'] = {
         data,
         page,
@@ -47,8 +52,13 @@ export function mockModelFilesError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -89,7 +99,12 @@ export function mockModelFilesDefault() {
  * Uses generated OpenAPI types directly
  */
 export function mockModelFilesEmpty() {
-  return mockModelFiles({ data: [], total: 0 });
+  return mockModelFiles({
+    data: [],
+    page: 1,
+    page_size: 30,
+    total: 0,
+  });
 }
 
 // ============================================================================
@@ -109,8 +124,13 @@ export function mockModelPullDownloads({
   total = 0,
   ...rest
 }: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedDownloadResponse'] = {
         data,
         page,
@@ -135,8 +155,13 @@ export function mockModelPullDownloadsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,
@@ -206,7 +231,12 @@ export function mockModelPullDownloadsDefault() {
  * Uses generated OpenAPI types directly
  */
 export function mockModelPullDownloadsEmpty() {
-  return mockModelPullDownloads({ data: [], total: 0 });
+  return mockModelPullDownloads({
+    data: [],
+    page: 1,
+    page_size: 30,
+    total: 0,
+  });
 }
 
 // Error Handler Variants
@@ -250,8 +280,13 @@ export function mockModelPull({
   started_at = new Date().toISOString(),
   ...rest
 }: Partial<components['schemas']['DownloadRequest']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['DownloadRequest'] = {
         id,
         repo,
@@ -284,8 +319,13 @@ export function mockModelPullError({
   status = 400,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorData = {
         code,
         message,

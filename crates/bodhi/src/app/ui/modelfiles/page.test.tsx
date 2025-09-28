@@ -90,6 +90,9 @@ describe('ModelFilesPage', () => {
     // Test desktop view (>= sm)
     mockMatchMedia(true);
 
+    // Add fresh mocks for second render
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelFilesDefault());
+
     render(<ModelFilesPage />, { wrapper: createWrapper() });
     await screen.findByTestId('repo-cell');
 

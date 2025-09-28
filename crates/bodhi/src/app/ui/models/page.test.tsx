@@ -92,6 +92,9 @@ describe('ModelsPage', () => {
 
     unmount();
 
+    // Add fresh mocks for second render
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
+
     // Test tablet view (sm to lg)
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('sm') && !query.includes('lg'),
@@ -112,6 +115,9 @@ describe('ModelsPage', () => {
     expect(screen.getByTestId('repo-filename-cell-test-model')).toBeVisible();
 
     unmount();
+
+    // Add fresh mocks for third render
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
 
     // Test desktop view (>= lg)
     mockMatchMedia(true);

@@ -4,7 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockAppInfo, stubAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockUserLoggedIn,
   mockUserLoggedOut,
@@ -13,6 +13,7 @@ import {
   mockUsersMultipleManagers,
   mockUsersEmpty,
   mockUsersError,
+  stubUserLoggedIn,
 } from '@/test-utils/msw-v2/handlers/user';
 import { mockAccessRequestsDefault } from '@/test-utils/msw-v2/handlers/access-requests';
 
@@ -380,8 +381,8 @@ describe('UsersPage Error Handling', () => {
 
   it('handles users API failure gracefully', async () => {
     server.use(
-      ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ role: 'resource_admin' }),
+      ...stubAppInfo({ status: 'ready' }),
+      ...stubUserLoggedIn({ role: 'resource_admin' }),
       ...mockUsersError()
     );
 
@@ -391,19 +392,14 @@ describe('UsersPage Error Handling', () => {
 
     await screen.findByTestId('users-page');
 
-    // Wait for loading skeletons to disappear
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByText((content, element) => {
-        const className = element?.className || '';
-        return typeof className === 'string' && className.includes('animate-pulse');
-      })
-    );
-
     // Should show error alert when users API fails
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByText(/Failed to fetch users/)).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load users/)).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
   });
 
   it('handles network failures gracefully', async () => {

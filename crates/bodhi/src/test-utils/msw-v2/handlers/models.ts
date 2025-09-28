@@ -21,8 +21,13 @@ export function mockModels({
   total = 0,
   ...rest
 }: Partial<components['schemas']['PaginatedAliasResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['PaginatedAliasResponse'] = {
         data,
         page,
@@ -61,7 +66,7 @@ export function mockModelsDefault() {
 
 /**
  * Mock handler for models list with API model data
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockModelsWithApiModel() {
   return mockModels({
@@ -84,7 +89,7 @@ export function mockModelsWithApiModel() {
 
 /**
  * Mock handler for models list with source model data
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockModelsWithSourceModel() {
   return mockModels({
@@ -105,10 +110,15 @@ export function mockModelsWithSourceModel() {
 
 /**
  * Mock handler for empty models list
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockModelsEmpty() {
-  return mockModels({ data: [], total: 0 });
+  return mockModels({
+    data: [],
+    total: 0,
+    page: 1,
+    page_size: 30,
+  });
 }
 
 // Error Handlers
@@ -124,8 +134,13 @@ export function mockModelsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorBody = {
         code,
         message,
@@ -141,7 +156,7 @@ export function mockModelsError({
 
 /**
  * Mock handler for models list internal server error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockModelsInternalError(config: { message?: string } = {}) {
   const { message = 'Internal server error' } = config;
@@ -173,8 +188,13 @@ export function mockCreateModel({
   source = 'user',
   ...rest
 }: Partial<components['schemas']['UserAliasResponse']> = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias,
         repo,
@@ -204,8 +224,13 @@ export function mockCreateModelError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
+
       const errorBody = {
         code,
         message,
@@ -221,7 +246,7 @@ export function mockCreateModelError({
 
 /**
  * Mock handler for model creation internal server error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockCreateModelInternalError(config: {} = {}) {
   return mockCreateModelError({
@@ -234,7 +259,7 @@ export function mockCreateModelInternalError(config: {} = {}) {
 
 /**
  * Mock handler for model creation bad request error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockCreateModelBadRequestError(config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;
@@ -268,6 +293,8 @@ export function mockGetModel(
     ...rest
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
       const { alias: paramAlias } = params;
@@ -276,6 +303,9 @@ export function mockGetModel(
       if (paramAlias !== alias) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias: paramAlias as string,
@@ -309,6 +339,8 @@ export function mockGetModelError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
       const { alias: paramAlias } = params;
@@ -317,6 +349,9 @@ export function mockGetModelError(
       if (paramAlias !== alias) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorBody = {
         code,
@@ -333,11 +368,12 @@ export function mockGetModelError(
 
 /**
  * Mock handler for model not found error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
   return mockGetModelError(alias, {
     code: 'not_found',
+    message: `Model ${alias} not found`,
     type: 'not_found_error',
     status: 404,
   });
@@ -345,7 +381,7 @@ export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
 
 /**
  * Mock handler for individual model retrieval internal server error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockGetModelInternalError(alias: string, config: {} = {}) {
   return mockGetModelError(alias, {
@@ -378,6 +414,8 @@ export function mockUpdateModel(
     ...rest
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
@@ -386,6 +424,9 @@ export function mockUpdateModel(
       if (paramId !== id) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias: paramId as string,
@@ -419,6 +460,8 @@ export function mockUpdateModelError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
+
   return [
     typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
@@ -427,6 +470,9 @@ export function mockUpdateModelError(
       if (paramId !== id) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorBody = {
         code,
@@ -443,7 +489,7 @@ export function mockUpdateModelError(
 
 /**
  * Mock handler for model update internal server error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockUpdateModelInternalError(id: string, config: {} = {}) {
   return mockUpdateModelError(id, {
@@ -456,7 +502,7 @@ export function mockUpdateModelInternalError(id: string, config: {} = {}) {
 
 /**
  * Mock handler for model update bad request error
- * Uses generated OpenAPI types directly
+ * Uses delegation pattern
  */
 export function mockUpdateModelBadRequestError(id: string, config: { message?: string } = {}) {
   const { message = 'Invalid request data' } = config;

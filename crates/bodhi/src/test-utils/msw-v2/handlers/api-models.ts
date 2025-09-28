@@ -24,8 +24,11 @@ export function mockApiModels({
   total = 0,
   ...rest
 }: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['PaginatedApiModelResponse'] = {
         data,
         page,
@@ -45,8 +48,11 @@ export function mockApiModelsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -72,8 +78,11 @@ export function mockCreateApiModel({
   updated_at = new Date().toISOString(),
   ...rest
 }: Partial<components['schemas']['ApiModelResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['ApiModelResponse'] = {
         id,
         api_format,
@@ -97,8 +106,11 @@ export function mockCreateApiModelError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -127,6 +139,7 @@ export function mockGetApiModel(
     ...rest
   }: Partial<components['schemas']['ApiModelResponse']> = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
@@ -135,6 +148,9 @@ export function mockGetApiModel(
       if (paramId !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const responseData: components['schemas']['ApiModelResponse'] = {
         id: id || (paramId as string),
@@ -162,6 +178,7 @@ export function mockGetApiModelError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -170,6 +187,9 @@ export function mockGetApiModelError(
       if (id !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorData = {
         code,
@@ -199,6 +219,7 @@ export function mockUpdateApiModel(
     ...rest
   }: Partial<components['schemas']['ApiModelResponse']> = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id: paramId } = params;
@@ -207,6 +228,9 @@ export function mockUpdateApiModel(
       if (paramId !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const responseData: components['schemas']['ApiModelResponse'] = {
         id: id || (paramId as string),
@@ -234,6 +258,7 @@ export function mockUpdateApiModelError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -242,6 +267,9 @@ export function mockUpdateApiModelError(
       if (id !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorData = {
         code,
@@ -258,6 +286,7 @@ export function mockUpdateApiModelError(
  * Mock handler for API model deletion endpoint with configurable responses
  */
 export function mockDeleteApiModel(expectedId: string) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -266,6 +295,9 @@ export function mockDeleteApiModel(expectedId: string) {
       if (id !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       return response(204 as const).empty();
     }),
@@ -282,6 +314,7 @@ export function mockDeleteApiModelError(
     ...rest
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
+  let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -290,6 +323,9 @@ export function mockDeleteApiModelError(
       if (id !== expectedId) {
         return; // Pass through to next handler
       }
+
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
 
       const errorData = {
         code,
@@ -309,8 +345,11 @@ export function mockApiFormats({
   data = ['openai', 'placeholder'],
   ...rest
 }: Partial<components['schemas']['ApiFormatsResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['ApiFormatsResponse'] = {
         data,
         ...rest,
@@ -327,8 +366,11 @@ export function mockApiFormatsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -348,8 +390,11 @@ export function mockTestApiModel({
   response: responseMessage = 'Connection successful',
   ...rest
 }: Partial<components['schemas']['TestPromptResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['TestPromptResponse'] = {
         success,
         response: responseMessage,
@@ -367,8 +412,11 @@ export function mockTestApiModelError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -387,8 +435,11 @@ export function mockFetchApiModels({
   models = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
   ...rest
 }: Partial<components['schemas']['FetchModelsResponse']> = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const responseData: components['schemas']['FetchModelsResponse'] = {
         models,
         ...rest,
@@ -405,8 +456,11 @@ export function mockFetchApiModelsError({
   status = INTERNAL_SERVER_ERROR.status,
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
+      if (hasBeenCalled) return;
+      hasBeenCalled = true;
       const errorData = {
         code,
         message,
@@ -434,6 +488,7 @@ export function mockApiModelsDefault() {
         base_url: 'https://api.openai.com/v1',
         api_key_masked: '****123',
         models: ['gpt-4', 'gpt-3.5-turbo'],
+        prefix: null,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       },
@@ -445,22 +500,34 @@ export function mockApiModelsDefault() {
 }
 
 export function mockApiModelsEmpty() {
-  return mockApiModels({ data: [], total: 0 });
+  return mockApiModels({
+    data: [],
+    total: 0,
+    page: 1,
+    page_size: 30,
+  });
 }
 
 /**
  * Convenience methods for common test scenarios
  */
 export function mockApiFormatsDefault() {
-  return mockApiFormats({ data: ['openai', 'placeholder'] });
+  return mockApiFormats({
+    data: ['openai', 'placeholder'],
+  });
 }
 
 export function mockTestApiModelSuccess() {
-  return mockTestApiModel({ success: true, response: 'Connection successful' });
+  return mockTestApiModel({
+    success: true,
+    response: 'Connection successful',
+  });
 }
 
 export function mockFetchApiModelsSuccess() {
-  return mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'] });
+  return mockFetchApiModels({
+    models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+  });
 }
 
 export function mockFetchApiModelsAuthError() {
@@ -468,6 +535,7 @@ export function mockFetchApiModelsAuthError() {
     code: 'authentication_error',
     message: 'Invalid API key',
     type: 'invalid_request_error',
+    status: 500,
   });
 }
 
@@ -478,6 +546,7 @@ export function mockCreateApiModelSuccess() {
     base_url: 'https://api.openai.com/v1',
     api_key_masked: '****key',
     models: ['gpt-4'],
+    prefix: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });
@@ -492,5 +561,6 @@ export function mockDeleteApiModelNotFound(expectedId: string) {
     code: 'entity_not_found',
     message: 'API model not found',
     type: 'not_found_error',
+    status: 500,
   });
 }
