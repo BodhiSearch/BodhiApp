@@ -15,6 +15,7 @@ import {
   mockFetchApiModelsSuccess,
   mockCreateApiModelSuccess,
   mockCreateApiModel,
+  mockCreateApiModelError,
 } from '@/test-utils/msw-v2/handlers/api-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
@@ -334,12 +335,10 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
       // Override create handler to return 500 error
       server.use(
-        ...mockCreateApiModel({
-          error: {
-            status: 500,
-            code: 'internal_server_error',
-            message: 'Internal server error',
-          },
+        ...mockCreateApiModelError({
+          code: 'internal_server_error',
+          message: 'Internal server error',
+          type: 'internal_server_error',
         })
       );
 

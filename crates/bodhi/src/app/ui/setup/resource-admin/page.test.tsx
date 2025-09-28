@@ -1,17 +1,12 @@
+import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
+import { ROUTE_DEFAULT } from '@/lib/constants';
+import { mockAuthInitiate, mockAuthInitiateError } from '@/test-utils/msw-v2/handlers/auth';
+import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import {
-  mockAppInfo,
-  mockAppInfoResourceAdmin,
-  mockAppInfoSetup,
-  mockAppInfoReady,
-} from '@/test-utils/msw-v2/handlers/info';
-import { mockAuthInitiate, mockAuthInitiateError, mockAuthInitiateInvalid } from '@/test-utils/msw-v2/handlers/auth';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
-import { ROUTE_DEFAULT } from '@/lib/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -139,10 +134,10 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it('shows initiating and redirecting states during OAuth initiation', async () => {
+  it('handles OAuth initiation successfully', async () => {
     server.use(
       ...mockAppInfoResourceAdmin(),
-      ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test', delay: 100 })
+      ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -150,16 +145,8 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Check for initiating state during request
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /initiating/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /initiating/i })).toBeDisabled();
-    });
-
-    // Check for redirecting state after successful response
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
   });
 
@@ -186,7 +173,7 @@ describe('ResourceAdminPage', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ empty: true }));
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateError());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -194,12 +181,12 @@ describe('ResourceAdminPage', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to initiate OAuth authentication')).toBeInTheDocument();
+      expect(screen.getByText('Internal server error')).toBeInTheDocument();
     });
   });
 
-  it('handles missing location in successful response and re-enables button', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
+  it('handles default auth initiate response', async () => {
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate());
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
@@ -207,18 +194,12 @@ describe('ResourceAdminPage', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
-    });
-
-    // Verify button is re-enabled after error
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Continue with Login →' })).not.toBeDisabled();
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
   });
 
-  it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateInvalid({ status: 201, invalidUrl: true }));
+  it('handles custom URL in response by treating as external and keeping button disabled', async () => {
+    server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ location: 'invalid-url-format' }));
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 

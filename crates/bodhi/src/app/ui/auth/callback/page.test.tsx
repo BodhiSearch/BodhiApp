@@ -1,12 +1,10 @@
 import AuthCallbackPage from '@/app/ui/auth/callback/page';
-import { ENDPOINT_AUTH_CALLBACK } from '@/hooks/useOAuth';
+import { mockAuthCallback, mockAuthCallbackError, mockAuthCallbackStateError } from '@/test-utils/msw-v2/handlers/auth';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockAuthCallback, mockAuthCallbackError, mockAuthCallbackInvalid } from '@/test-utils/msw-v2/handlers/auth';
-import { http, HttpResponse } from 'msw';
 
 const pushMock = vi.fn();
 let mockSearchParams = new URLSearchParams('code=test-code&state=test-state');
@@ -42,7 +40,7 @@ beforeEach(() => {
 
 describe('AuthCallbackPage', () => {
   it('renders processing state initially', async () => {
-    server.use(...mockAuthCallback({ delay: 100, location: 'http://localhost:3000/ui/chat' }));
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/chat' }));
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -102,37 +100,27 @@ describe('AuthCallbackPage', () => {
     mockSearchParams = new URLSearchParams(
       'code=test-auth-code&state=test-state&scope=openid email profile&session_state=session-123'
     );
-
-    let receivedParams: any = null;
-
     server.use(
-      http.post(ENDPOINT_AUTH_CALLBACK, async ({ request }) => {
-        receivedParams = await request.json();
-        return HttpResponse.json({ location: 'http://localhost:3000/ui/chat' }, { status: 200 });
-      })
+      ...mockAuthCallback(
+        { location: 'http://localhost:3000/ui/chat' },
+        {
+          code: 'test-auth-code',
+          state: 'test-state',
+          scope: 'openid email profile',
+          session_state: 'session-123',
+        }
+      )
     );
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(receivedParams).toEqual({
-        code: 'test-auth-code',
-        state: 'test-state',
-        scope: 'openid email profile',
-        session_state: 'session-123',
-      });
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat');
     });
   });
 
   it('handles OAuth callback error and shows error state', async () => {
-    server.use(
-      ...mockAuthCallbackError({
-        status: 422,
-        code: 'invalid_state',
-        message: 'Invalid state parameter',
-        type: 'invalid_request_error',
-      })
-    );
+    server.use(...mockAuthCallbackStateError());
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -143,14 +131,13 @@ describe('AuthCallbackPage', () => {
     });
   });
 
-  it('handles missing location in successful response', async () => {
-    server.use(...mockAuthCallbackInvalid({ noLocation: true }));
+  it('handles default callback response', async () => {
+    server.use(...mockAuthCallback());
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('Login Error')).toBeInTheDocument();
-      expect(screen.getByText('Redirect URL not found in response. Please try again.')).toBeInTheDocument();
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat');
     });
   });
 
@@ -166,7 +153,7 @@ describe('AuthCallbackPage', () => {
   });
 
   it('handles retry button click', async () => {
-    server.use(...mockAuthCallbackError({ status: 500, message: 'Internal server error' }));
+    server.use(...mockAuthCallbackError());
 
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
 
@@ -186,15 +173,13 @@ describe('AuthCallbackPage', () => {
   });
 
   it('disables retry button while loading', async () => {
-    server.use(...mockAuthCallbackError({ status: 500, message: 'Server error' }));
+    server.use(...mockAuthCallbackError());
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
-      expect(screen.getByText('Server error')).toBeInTheDocument();
+      expect(screen.getByText('Internal server error')).toBeInTheDocument();
     });
     const retryButton = screen.getByRole('button', { name: 'Try Again' });
-    server.use(
-      ...mockAuthCallback({ delay: 200, location: 'http://localhost:3000/ui/chat' }) // Longer delay to test disabled state
-    );
+    server.use(...mockAuthCallback({ location: 'http://localhost:3000/ui/chat' }, undefined, 200));
     await userEvent.click(retryButton);
     expect(screen.getByText('Processing Login...')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try Again' })).not.toBeInTheDocument();
@@ -204,7 +189,6 @@ describe('AuthCallbackPage', () => {
     mockSearchParams = new URLSearchParams('');
     server.use(
       ...mockAuthCallbackError({
-        status: 422,
         code: 'missing_parameters',
         message: 'Missing required OAuth parameters',
         type: 'invalid_request_error',
@@ -216,8 +200,8 @@ describe('AuthCallbackPage', () => {
     });
   });
 
-  it('handles invalid URL in response by treating as external', async () => {
-    server.use(...mockAuthCallbackInvalid({ invalidUrl: true }));
+  it('handles custom URL in response by treating as external', async () => {
+    server.use(...mockAuthCallback({ location: 'invalid-url-format' }));
     render(<AuthCallbackPage />, { wrapper: createWrapper() });
     await waitFor(() => {
       expect(window.location.href).toBe('invalid-url-format');

@@ -26,10 +26,10 @@ type ErrorResponse = OpenAiApiError;
 
 // API endpoints
 export const ENDPOINT_API_MODELS = '/bodhi/v1/api-models';
+export const ENDPOINT_API_MODEL_ID = '/bodhi/v1/api-models/{id}';
 export const ENDPOINT_API_MODELS_TEST = '/bodhi/v1/api-models/test';
 export const ENDPOINT_API_MODELS_FETCH = '/bodhi/v1/api-models/fetch-models';
 export const ENDPOINT_API_MODELS_FORMATS = '/bodhi/v1/api-models/api-formats';
-
 /**
  * Hook to fetch a single API model by id
  */

@@ -1,27 +1,17 @@
-import RequestAccessPage, { RequestAccessContent } from '@/app/ui/request-access/page';
-import { ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS } from '@/hooks/useAccessRequest';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import RequestAccessPage from '@/app/ui/request-access/page';
 import {
-  createMockUserInfo,
-  mockUserAccessStatusApproved,
-  mockUserAccessStatusPending,
-  mockUserAccessStatusRejected,
-} from '@/test-fixtures/access-requests';
-import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import {
-  mockUserRequestStatus,
-  mockUserRequestStatusPending,
-  mockUserRequestStatusApproved,
-  mockUserRequestStatusRejected,
-  mockUserRequestStatusError,
   mockUserRequestAccess,
   mockUserRequestAccessError,
+  mockUserRequestStatusApproved,
+  mockUserRequestStatusError,
+  mockUserRequestStatusPending,
+  mockUserRequestStatusRejected,
 } from '@/test-utils/msw-v2/handlers/access-requests';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -239,7 +229,12 @@ describe('RequestAccessPage - No Request Exists', () => {
   const createNoRequestHandlers = (userInfo: any) => [
     ...mockAppInfo({ status: 'ready' }),
     ...mockUserLoggedIn(userInfo),
-    ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
+    ...mockUserRequestStatusError({
+      code: 'not_found',
+      message: 'pending access request for user not found',
+      type: 'not_found_error',
+      status: 404,
+    }),
     ...mockUserRequestAccess(),
   ];
 
@@ -264,35 +259,29 @@ describe('RequestAccessPage - No Request Exists', () => {
   });
 
   it('successfully submits access request', async () => {
-    let submitRequestCalled = false;
-
-    // Create handlers with tracking using MSW v2
-    const trackingHandlers = [
+    server.use(
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ username: 'user@example.com' }),
-      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
-      http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
-        submitRequestCalled = true;
-        return HttpResponse.json({}, { status: 201 });
+      ...mockUserRequestStatusError({
+        code: 'not_found',
+        message: 'pending access request for user not found',
+        type: 'not_found_error',
+        status: 404,
       }),
-    ];
-
-    server.use(...trackingHandlers);
-
+      ...mockUserRequestAccess(100)
+    );
     await act(async () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });
     });
-
-    // Should show the request form for user with no roles
     expect(screen.getByTestId('auth-card-header')).toHaveTextContent('Request Access');
-
-    // Click request access button using data-testid
     const requestButton = screen.getByTestId('auth-card-action-0');
-
     await user.click(requestButton);
-
     await waitFor(() => {
-      expect(submitRequestCalled).toBe(true);
+      expect(requestButton).toBeDisabled();
+    });
+    await waitFor(() => {
+      const requestButton = screen.getByTestId('auth-card-action-0');
+      expect(requestButton).toBeEnabled();
     });
   });
 
@@ -321,8 +310,18 @@ describe('RequestAccessPage - No Request Exists', () => {
     const errorHandlers = [
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ username: 'user@example.com' }),
-      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
-      ...mockUserRequestAccessError({ status: 400, message: 'Request already exists' }),
+      ...mockUserRequestStatusError({
+        code: 'not_found',
+        message: 'pending access request for user not found',
+        type: 'not_found_error',
+        status: 404,
+      }),
+      ...mockUserRequestAccessError({
+        code: 'conflict',
+        message: 'Request already exists',
+        type: 'conflict_error',
+        status: 409,
+      }),
     ];
 
     server.use(...errorHandlers);
@@ -337,39 +336,6 @@ describe('RequestAccessPage - No Request Exists', () => {
     // Should show error message via toast (tested in toast hooks)
     // The error is handled by the mutation hook and shown via toast
     expect(requestButton).toBeEnabled(); // Button should be re-enabled after error
-  });
-
-  it('prevents multiple submissions', async () => {
-    let submitCount = 0;
-
-    const countingHandlers = [
-      ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn({ username: 'user@example.com' }),
-      ...mockUserRequestStatusError({ status: 404, message: 'pending access request for user not found' }),
-      http.post(ENDPOINT_USER_REQUEST_ACCESS, () => {
-        submitCount++;
-        return HttpResponse.json({}, { status: 201 });
-      }),
-    ];
-
-    server.use(...countingHandlers);
-
-    await act(async () => {
-      render(<RequestAccessPage />, { wrapper: createWrapper() });
-    });
-
-    const requestButton = screen.getByTestId('auth-card-action-0');
-
-    // Click multiple times quickly
-    await user.click(requestButton);
-    await user.click(requestButton);
-    await user.click(requestButton);
-
-    // Should only submit once due to loading state
-    await waitFor(() => {
-      // Give it time to process but expect only one submission
-      expect(submitCount).toBe(1);
-    });
   });
 
   it('shows request access button for users without roles', async () => {

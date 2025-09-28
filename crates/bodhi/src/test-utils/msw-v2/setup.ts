@@ -27,11 +27,11 @@
  * }
  * ```
  */
-import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 
 // Export types from generated schema for use in tests
-export type { paths, components } from '../generated/openapi-schema';
+export type { components, paths } from '../generated/openapi-schema';
 
 // Re-export MSW v2 http and HttpResponse for convenience
 export { http, HttpResponse };

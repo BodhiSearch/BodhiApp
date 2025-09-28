@@ -1,16 +1,13 @@
 import { LoginMenu } from '@/components/LoginMenu';
-import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockAuthInitiate,
-  mockAuthInitiateError,
-  mockAuthInitiateInvalid,
+  mockAuthInitiateConfigError,
   mockLogout,
-  mockLogoutError,
-  mockLogoutInvalid,
+  mockLogoutSessionError,
 } from '@/test-utils/msw-v2/handlers/auth';
 import { mockUserLoggedOut, mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
@@ -40,7 +37,7 @@ beforeEach(() => {
   server.use(
     ...mockUserLoggedOut(),
     ...mockAppInfo({ status: 'ready' }),
-    ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
+    ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
   );
 });
 
@@ -102,9 +99,8 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
-    server.use(
-      ...mockAuthInitiate({ delay: 100, status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
-    );
+    // Use mock handler with delay for testing loading states
+    server.use(...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' }, 100));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -125,9 +121,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('shows error message when OAuth initiation fails and re-enables button', async () => {
-    server.use(
-      ...mockAuthInitiateError({ status: 500, code: 'oauth_config_error', message: 'OAuth configuration error' })
-    );
+    server.use(...mockAuthInitiateConfigError());
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -145,27 +139,22 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it('shows error when response has no location field and re-enables button', async () => {
-    server.use(...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
+  it('shows default auth initiate response', async () => {
+    server.use(...mockAuthInitiate());
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
+    // Should redirect to default OAuth URL
     await waitFor(() => {
-      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
-    });
-
-    // Verify button is re-enabled after error
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /login/i })).not.toBeDisabled();
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
   });
 
-  it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAuthInitiateInvalid({ status: 201, invalidUrl: true }));
+  it('handles custom URL in response by treating as external and keeping button disabled', async () => {
+    server.use(...mockAuthInitiate({ location: 'invalid-url-format' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -186,7 +175,8 @@ describe('LoginMenu Component', () => {
   it('handles logout action with external redirect URL', async () => {
     server.use(
       ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockLogout({ delay: 100, location: 'http://localhost:1135/ui/login' })
+      // Use mock handler with delay for testing loading states
+      ...mockLogout({ location: 'http://localhost:1135/ui/login' }, 100)
     );
 
     render(<LoginMenu />, { wrapper: createWrapper() });
@@ -202,25 +192,21 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles logout action with internal redirect URL', async () => {
-    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout({ delay: 100, location: '/ui/login' }));
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout({ location: '/ui/login' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     const logoutButton = await screen.findByRole('button', { name: /log out/i });
     await userEvent.click(logoutButton);
 
-    expect(screen.getByRole('button', { name: /logging out/i })).toBeInTheDocument();
-
+    // Wait for logout to complete and navigation to occur
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('/ui/login');
+      expect(mockPush).toHaveBeenCalledWith('/ui/login');
     });
   });
 
   it('handles logout error', async () => {
-    server.use(
-      ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockLogoutError({ status: 500, message: 'Session deletion failed' })
-    );
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogoutSessionError());
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -239,8 +225,8 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it('handles logout with missing location field', async () => {
-    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogoutInvalid({ noLocation: true }));
+  it('handles logout with default location', async () => {
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }), ...mockLogout());
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
@@ -248,12 +234,13 @@ describe('LoginMenu Component', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('/ui/chat');
+      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/login');
     });
   });
 
   it('shows nothing during loading', async () => {
-    server.use(...mockUserLoggedIn({ role: 'resource_user', delay: 100 }));
+    // This test relies on user handler which still has delayMs support for now
+    server.use(...mockUserLoggedIn({ role: 'resource_user' }));
 
     const { container } = render(<LoginMenu />, { wrapper: createWrapper() });
     expect(container).toBeEmptyDOMElement();

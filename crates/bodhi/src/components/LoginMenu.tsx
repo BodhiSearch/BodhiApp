@@ -20,7 +20,14 @@ export function LoginMenu() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.data?.location || ROUTE_DEFAULT;
-      redirect(redirectUrl);
+
+      // Check if URL is internal (starts with '/') or same origin
+      if (redirectUrl.startsWith('/')) {
+        router.push(redirectUrl);
+      } else {
+        // For external URLs, use redirect
+        redirect(redirectUrl);
+      }
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure

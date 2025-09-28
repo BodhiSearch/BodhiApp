@@ -17,6 +17,12 @@ export const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
  * @param router - Next.js router instance from useRouter()
  */
 export function handleSmartRedirect(location: string, router: { push: (href: string) => void }): void {
+  // Handle relative URLs that start with '/'
+  if (location.startsWith('/')) {
+    router.push(location);
+    return;
+  }
+
   try {
     const redirectUrl = new URL(location);
     const currentUrl = new URL(window.location.href);

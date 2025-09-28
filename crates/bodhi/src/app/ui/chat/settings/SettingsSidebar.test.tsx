@@ -4,7 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
-import { mockModels, mockModelsError, mockModelsEmpty } from '@/test-utils/msw-v2/handlers/models';
+import { mockModels, mockModelsInternalError, mockModelsEmpty } from '@/test-utils/msw-v2/handlers/models';
 
 // Mock the child components
 vi.mock('@/app/ui/chat/settings/AliasSelector', () => ({
@@ -195,12 +195,7 @@ describe('SettingsSidebar', () => {
   });
 
   it('handles API error gracefully', async () => {
-    server.use(
-      ...mockModelsError({
-        status: 500,
-        message: 'Test error message',
-      })
-    );
+    server.use(...mockModelsInternalError({ message: 'Test error message' }));
 
     render(<SettingsSidebar />, {
       wrapper: createWrapper(),

@@ -6,10 +6,10 @@ import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockAuthInitiate,
   mockAuthInitiateError,
-  mockAuthInitiateInvalid,
+  mockAuthInitiateConfigError,
   mockAuthCallback,
   mockAuthCallbackError,
-  mockAuthCallbackInvalid,
+  mockAuthCallbackInvalidCode,
 } from '@/test-utils/msw-v2/handlers/auth';
 
 setupMswV2();
@@ -57,7 +57,6 @@ describe('useOAuthInitiate', () => {
 
     server.use(
       ...mockAuthInitiate({
-        status: 201,
         location: 'https://oauth.example.com/auth?client_id=test',
       })
     );
@@ -87,7 +86,6 @@ describe('useOAuthInitiate', () => {
 
     server.use(
       ...mockAuthInitiate({
-        status: 200,
         location: 'http://localhost:3000/ui/chat',
       })
     );
@@ -104,7 +102,7 @@ describe('useOAuthInitiate', () => {
 
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 200,
+        status: 201,
         data: { location: 'http://localhost:3000/ui/chat' },
       })
     );
@@ -115,13 +113,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      ...mockAuthInitiateError({
-        status: 500,
-        message: 'OAuth configuration error',
-        code: 'oauth_config_error',
-      })
-    );
+    server.use(...mockAuthInitiateConfigError());
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -141,7 +133,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiateInvalid({ empty: true }));
+    server.use(...mockAuthInitiateError());
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -153,15 +145,15 @@ describe('useOAuthInitiate', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(mockOnError).toHaveBeenCalledWith('Failed to initiate OAuth authentication');
+    expect(mockOnError).toHaveBeenCalledWith('Internal server error');
     expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
-  it('handles response without location in JSON', async () => {
+  it('handles response with default location', async () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiateInvalid({ status: 201, noLocation: true }));
+    server.use(...mockAuthInitiate());
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -176,7 +168,7 @@ describe('useOAuthInitiate', () => {
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 201,
-        data: {},
+        data: { location: 'https://oauth.example.com/auth?client_id=test' },
       })
     );
     expect(mockOnError).not.toHaveBeenCalled();
@@ -186,7 +178,7 @@ describe('useOAuthInitiate', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthInitiateInvalid({ empty: true }));
+    server.use(...mockAuthInitiateError());
 
     const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -198,7 +190,7 @@ describe('useOAuthInitiate', () => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(mockOnError).toHaveBeenCalledWith('Failed to initiate OAuth authentication');
+    expect(mockOnError).toHaveBeenCalledWith('Internal server error');
     expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 });
@@ -210,7 +202,6 @@ describe('useOAuthCallback', () => {
 
     server.use(
       ...mockAuthCallback({
-        status: 200,
         location: 'http://localhost:3000/ui/chat',
       })
     );
@@ -243,13 +234,7 @@ describe('useOAuthCallback', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(
-      ...mockAuthCallbackError({
-        status: 422,
-        message: 'Invalid authorization code',
-        code: 'invalid_auth_code',
-      })
-    );
+    server.use(...mockAuthCallbackInvalidCode());
 
     const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),
@@ -276,7 +261,6 @@ describe('useOAuthCallback', () => {
 
     server.use(
       ...mockAuthCallbackError({
-        status: 500,
         message: 'Failed to complete OAuth authentication',
       })
     );
@@ -304,7 +288,7 @@ describe('useOAuthCallback', () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
-    server.use(...mockAuthCallbackInvalid({ status: 200, noLocation: true }));
+    server.use(...mockAuthCallback());
 
     const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
       wrapper: createWrapper(),

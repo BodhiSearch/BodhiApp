@@ -4,7 +4,8 @@
  * Therefore using manual MSW for all handlers until schema is improved
  */
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
-import { http, HttpResponse } from '../setup';
+import { http, HttpResponse } from 'msw';
+import { INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
 /**
  * Chat completion message interface for handler responses
@@ -54,13 +55,14 @@ interface ChatCompletionResponse {
 /**
  * Create streaming chat completion handler with configurable response
  */
-export function mockChatCompletionsStreaming(
-  config: {
-    chunks?: string[];
-    delay?: number;
-    captureRequest?: (req: ChatCompletionRequest) => void;
-  } = {}
-) {
+export function mockChatCompletionsStreaming({
+  chunks,
+  captureRequest,
+  ...rest
+}: {
+  chunks?: string[];
+  captureRequest?: (req: ChatCompletionRequest) => void;
+} = {}) {
   const defaultChunks = [
     '{"choices":[{"delta":{"content":" Hello"}}]}',
     '{"choices":[{"delta":{"content":" world"}}]}',
@@ -71,12 +73,12 @@ export function mockChatCompletionsStreaming(
     http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
       const requestData = (await request.json()) as ChatCompletionRequest;
 
-      if (config.captureRequest) {
-        config.captureRequest(requestData);
+      if (captureRequest) {
+        captureRequest(requestData);
       }
 
-      const chunks = config.chunks || defaultChunks;
-      const responseBody = chunks.map((chunk) => `data: ${chunk}\n\n`).join('');
+      const chunksToUse = chunks || defaultChunks;
+      const responseBody = chunksToUse.map((chunk) => `data: ${chunk}\n\n`).join('');
 
       const response = new Response(responseBody, {
         status: 200,
@@ -87,7 +89,7 @@ export function mockChatCompletionsStreaming(
         },
       });
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return response;
     }),
   ];
 }
@@ -95,19 +97,20 @@ export function mockChatCompletionsStreaming(
 /**
  * Create non-streaming chat completion handler (manual MSW)
  */
-export function mockChatCompletions(
-  config: {
-    response?: Partial<ChatCompletionResponse>;
-    delay?: number;
-    captureRequest?: (req: ChatCompletionRequest) => void;
-  } = {}
-) {
+export function mockChatCompletions({
+  response: responseConfig,
+  captureRequest,
+  ...rest
+}: {
+  response?: Partial<ChatCompletionResponse>;
+  captureRequest?: (req: ChatCompletionRequest) => void;
+} = {}) {
   return [
     http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
       const requestData = (await request.json()) as ChatCompletionRequest;
 
-      if (config.captureRequest) {
-        config.captureRequest(requestData);
+      if (captureRequest) {
+        captureRequest(requestData);
       }
 
       const responseData: ChatCompletionResponse = {
@@ -130,12 +133,12 @@ export function mockChatCompletions(
           completion_tokens: 5,
           total_tokens: 15,
         },
-        ...config.response,
+        ...responseConfig,
       };
 
       const response = HttpResponse.json(responseData);
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return response;
     }),
   ];
 }
@@ -143,28 +146,26 @@ export function mockChatCompletions(
 /**
  * Create error handler for chat completions endpoint (manual MSW)
  */
-export function mockChatCompletionsError(
-  config: {
-    status?: 400 | 401 | 403 | 500;
-    code?: string;
-    message?: string;
-    delay?: number;
-  } = {}
-) {
+export function mockChatCompletionsError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  status = 400,
+  ...rest
+}: {
+  status?: 400 | 401 | 403 | 500;
+  code?: string;
+  message?: string;
+} = {}) {
   return [
-    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, () => {
-      const response = HttpResponse.json(
-        {
-          error: {
-            code: config.code || 'internal_error',
-            message: config.message || 'Invalid API key provided',
-            type: 'invalid_request_error',
-          },
-        },
-        { status: config.status || 500 }
-      );
+    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async () => {
+      const errorData = {
+        code,
+        message,
+        type: 'invalid_request_error',
+        ...rest,
+      };
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return HttpResponse.json({ error: errorData }, { status });
     }),
   ];
 }
@@ -172,12 +173,10 @@ export function mockChatCompletionsError(
 /**
  * Create network error handler for chat completions endpoint
  */
-export function mockChatCompletionsNetworkError(config: { delay?: number } = {}) {
+export function mockChatCompletionsNetworkError() {
   return [
-    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, () => {
-      const response = HttpResponse.error();
-
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async () => {
+      return HttpResponse.error();
     }),
   ];
 }
@@ -185,25 +184,26 @@ export function mockChatCompletionsNetworkError(config: { delay?: number } = {})
 /**
  * Create handler for streaming response with error in stream
  */
-export function mockChatCompletionsStreamingWithError(
-  config: {
-    initialChunks?: string[];
-    errorMessage?: string;
-    delay?: number;
-  } = {}
-) {
+export function mockChatCompletionsStreamingWithError({
+  initialChunks,
+  errorMessage = 'Server error occurred',
+  ...rest
+}: {
+  initialChunks?: string[];
+  errorMessage?: string;
+} = {}) {
   const defaultInitialChunks = ['{"choices":[{"delta":{"content":"Hello"}}]}'];
 
   const errorChunk = JSON.stringify({
     error: {
-      message: config.errorMessage || 'Server error occurred',
+      message: errorMessage,
       type: 'server_error',
     },
   });
 
   return [
-    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, () => {
-      const chunks = [...(config.initialChunks || defaultInitialChunks), errorChunk, '[DONE]'];
+    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async () => {
+      const chunks = [...(initialChunks || defaultInitialChunks), errorChunk, '[DONE]'];
 
       const responseBody = chunks.map((chunk) => `data: ${chunk}\n\n`).join('');
 
@@ -216,7 +216,7 @@ export function mockChatCompletionsStreamingWithError(
         },
       });
 
-      return config.delay ? new Promise((resolve) => setTimeout(() => resolve(response), config.delay)) : response;
+      return response;
     }),
   ];
 }

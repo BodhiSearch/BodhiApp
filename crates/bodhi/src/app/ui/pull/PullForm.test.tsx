@@ -5,7 +5,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
-import { mockModelFiles, mockModelPull, mockModelPullError } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockModelFiles, mockModelPull, mockModelPullFileExistsError } from '@/test-utils/msw-v2/handlers/modelfiles';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mockToast = vi.fn();
@@ -74,13 +74,7 @@ describe('PullForm', () => {
   });
 
   it('handles API error and shows error message', async () => {
-    server.use(
-      ...mockModelPullError({
-        status: 400,
-        code: 'pull_error-file_already_exists',
-        message: 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-      })
-    );
+    server.use(...mockModelPullFileExistsError({ repo: 'test/repo', filename: 'model.gguf' }));
 
     render(<PullForm />, { wrapper: createWrapper() });
 
@@ -112,13 +106,7 @@ describe('PullForm', () => {
     await userEvent.type(screen.getByLabelText(/filename/i), 'model1.gguf');
 
     // Submit with errors to show error state
-    server.use(
-      ...mockModelPullError({
-        status: 400,
-        code: 'pull_error-file_already_exists',
-        message: 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"',
-      })
-    );
+    server.use(...mockModelPullFileExistsError({ repo: 'test/repo1', filename: 'model1.gguf' }));
     await userEvent.click(screen.getByRole('button', { name: /pull model/i }));
 
     // Wait for error message in toast

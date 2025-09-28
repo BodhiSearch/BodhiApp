@@ -9,6 +9,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "test:typecheck": "tsc --noEmit",
+    "test:all": "vitest run && npm run test:typecheck",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write .",

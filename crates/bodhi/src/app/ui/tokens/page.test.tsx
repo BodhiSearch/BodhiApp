@@ -169,8 +169,8 @@ describe('token status update', () => {
   it('handles token status update error', async () => {
     server.use(
       ...mockUpdateTokenError('token-1', {
-        status: 500,
         message: 'Test Error',
+        type: 'internal_server_error',
       })
     );
 

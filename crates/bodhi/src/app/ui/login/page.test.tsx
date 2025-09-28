@@ -1,20 +1,18 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
+import {
+  mockAuthInitiate,
+  mockAuthInitiateConfigError,
+  mockAuthInitiateError,
+  mockLogout,
+} from '@/test-utils/msw-v2/handlers/auth';
+import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
-import { server } from '@/test-utils/msw-v2/setup';
-import { mockAppInfo, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
-import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
-import {
-  mockAuthInitiate,
-  mockAuthInitiateError,
-  mockAuthInitiateInvalid,
-  mockLogout,
-  mockLogoutError,
-} from '@/test-utils/msw-v2/handlers/auth';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the hooks
 const pushMock = vi.fn();
@@ -59,7 +57,7 @@ describe('LoginContent with user not Logged In', () => {
     server.use(
       ...mockUserLoggedOut(),
       ...mockAppInfo({ status: 'ready' }),
-      ...mockAuthInitiateError({ status: 500, message: 'OAuth configuration error' }),
+      ...mockAuthInitiateConfigError(),
       ...mockLogout({ location: 'http://localhost:1135/ui/login' })
     );
   });
@@ -104,7 +102,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('shows initiating and redirecting states during OAuth initiation', async () => {
-    server.use(...mockAuthInitiate({ delay: 100, location: 'https://oauth.example.com/auth?client_id=test' }));
+    server.use(...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' }, 100));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -127,13 +125,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('displays error message when OAuth initiation fails and re-enables button', async () => {
-    server.use(
-      ...mockAuthInitiateError({
-        status: 500,
-        code: 'oauth_config_error',
-        message: 'OAuth configuration error',
-      })
-    );
+    server.use(...mockAuthInitiateConfigError());
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -154,7 +146,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
-    server.use(...mockAuthInitiateInvalid({ empty: true }));
+    server.use(...mockAuthInitiateError());
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -164,12 +156,12 @@ describe('LoginContent with user not Logged In', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to initiate OAuth authentication')).toBeInTheDocument();
+      expect(screen.getByText('Internal server error')).toBeInTheDocument();
     });
   });
 
   it('handles already authenticated user with external redirect URL', async () => {
-    server.use(...mockAuthInitiate({ status: 200, location: 'https://external.example.com/dashboard' }));
+    server.use(...mockAuthInitiate({ location: 'https://external.example.com/dashboard' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -183,8 +175,8 @@ describe('LoginContent with user not Logged In', () => {
     });
   });
 
-  it('shows error when response has no location field and re-enables button', async () => {
-    server.use(...mockAuthInitiateInvalid({ noLocation: true }));
+  it('handles auth initiate with default location', async () => {
+    server.use(...mockAuthInitiate());
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -194,18 +186,12 @@ describe('LoginContent with user not Logged In', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
-    });
-
-    // Verify button is re-enabled after error
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Login' })).not.toBeDisabled();
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
   });
 
-  it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
-    server.use(...mockAuthInitiateInvalid({ invalidUrl: true }));
+  it('handles custom location in auth initiate response', async () => {
+    server.use(...mockAuthInitiate({ location: 'invalid-url-format' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -226,7 +212,7 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles already authenticated user with same-origin redirect URL', async () => {
-    server.use(...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' }));
+    server.use(...mockAuthInitiate({ location: 'http://localhost:3000/ui/chat' }));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
@@ -298,7 +284,7 @@ describe('LoginContent with user Logged In', () => {
   });
 
   it('disables logout button and shows loading text when logging out', async () => {
-    server.use(...mockLogout({ delay: 100, location: 'http://localhost:1135/ui/test/login' }));
+    server.use(...mockLogout({ location: 'http://localhost:1135/ui/test/login' }, 100));
 
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });

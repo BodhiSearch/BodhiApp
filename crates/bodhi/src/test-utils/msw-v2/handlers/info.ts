@@ -2,23 +2,40 @@
  * Type-safe MSW v2 handlers for app info endpoint using openapi-msw
  */
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
-import { typedHttp } from '../openapi-msw-setup';
-import type { components } from '../setup';
+import { delay } from 'msw';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+
+// ============================================================================
+// Success Handlers
+// ============================================================================
 
 /**
  * Create type-safe MSW v2 handlers for app info endpoint
  * Uses openapi-msw for full type safety with OpenAPI schema enforcement
  */
-export function mockAppInfo(config: Partial<components['schemas']['AppInfo']> = {}) {
+export function mockAppInfo(
+  { status = 'ready', version = '0.1.0', ...rest }: Partial<components['schemas']['AppInfo']> = {},
+  delayMs?: number
+) {
   return [
-    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
-      return response(200).json({
-        status: config.status || 'ready',
-        version: config.version || '0.1.0',
-      });
+    typedHttp.get(ENDPOINT_APP_INFO, async ({ response: res }) => {
+      if (delayMs) {
+        await delay(delayMs);
+      }
+      const responseData: components['schemas']['AppInfo'] = {
+        status,
+        version,
+        ...rest,
+      };
+
+      return res(200 as const).json(responseData);
     }),
   ];
 }
+
+// ============================================================================
+// Success Handler Variants
+// ============================================================================
 
 export function mockAppInfoReady() {
   return mockAppInfo({ status: 'ready' });
@@ -32,49 +49,44 @@ export function mockAppInfoResourceAdmin() {
   return mockAppInfo({ status: 'resource-admin' });
 }
 
+// ============================================================================
+// Error Handlers
+// ============================================================================
+
 /**
  * Create error handler for app info endpoint
- * Only supports status codes defined in OpenAPI schema (500)
+ * Supports common HTTP status codes: 400, 401, 403, 500
  */
-export function mockAppInfoError(
-  config: {
-    status?: 500; // Only 500 is defined in OpenAPI schema for this endpoint
-    code?: string;
-    message?: string;
-    delay?: number;
-  } = {}
-) {
+export function mockAppInfoError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {}) {
   return [
-    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
-      const errorResponse = response(config.status || 500).json({
-        error: {
-          code: config.code || 'internal_error',
-          message: config.message || 'Server error',
-          type: 'internal_server_error',
-        },
-      });
+    typedHttp.get(ENDPOINT_APP_INFO, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
 
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(errorResponse), config.delay))
-        : errorResponse;
+      return response(status).json({ error: errorData });
     }),
   ];
 }
 
-/**
- * Create app info handler with delay support for loading state testing
- */
-export function mockAppInfoWithDelay(config: Partial<components['schemas']['AppInfo']> & { delay?: number } = {}) {
-  return [
-    typedHttp.get(ENDPOINT_APP_INFO, ({ response }) => {
-      const successResponse = response(200).json({
-        status: config.status || 'ready',
-        version: config.version || '0.1.0',
-      });
+// ============================================================================
+// Error Handler Variants
+// ============================================================================
 
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(successResponse), config.delay))
-        : successResponse;
-    }),
-  ];
+export function mockAppInfoInternalError() {
+  return mockAppInfoError({
+    code: 'internal_server_error',
+    message: 'API Error',
+    type: 'internal_server_error',
+    status: 500,
+  });
 }

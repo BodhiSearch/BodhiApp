@@ -2,26 +2,62 @@
  * Type-safe MSW v2 handlers for modelfiles endpoint using openapi-msw
  */
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
-import { typedHttp } from '../openapi-msw-setup';
-import type { components } from '../setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+
+// ============================================================================
+// Model Files Endpoint (/bodhi/v1/modelfiles)
+// ============================================================================
+
+// Success Handlers
 
 /**
  * Create type-safe MSW v2 handlers for modelfiles endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelFiles(config: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
+export function mockModelFiles({
+  data = [],
+  page = 1,
+  page_size = 30,
+  total = 0,
+  ...rest
+}: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_MODEL_FILES, ({ response }) => {
+    typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response: res }) => {
       const responseData: components['schemas']['PaginatedLocalModelResponse'] = {
-        data: config.data || [],
-        page: config.page || 1,
-        page_size: config.page_size || 30,
-        total: config.total || 0,
+        data,
+        page,
+        page_size,
+        total,
+        ...rest,
       };
-      return response(200).json(responseData);
+
+      return res(200 as const).json(responseData);
     }),
   ];
 }
+
+export function mockModelFilesError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+
+      return response(status).json({ error: errorData });
+    }),
+  ];
+}
+
+// Success Handler Variants
 
 export function mockModelFilesDefault() {
   return mockModelFiles({
@@ -44,43 +80,60 @@ export function mockModelFilesEmpty() {
   return mockModelFiles({ data: [], total: 0 });
 }
 
-export function mockModelFilesError(
-  config: {
-    status?: 500;
-    code?: string;
-    message?: string;
-  } = {}
-) {
-  return [
-    typedHttp.get(ENDPOINT_MODEL_FILES, ({ response }) => {
-      return response(config.status || 500).json({
-        error: {
-          code: config.code || 'internal_error',
-          message: config.message || 'Internal Server Error',
-          type: 'internal_server_error',
-        },
-      });
-    }),
-  ];
-}
+// ============================================================================
+// Model Pull Downloads Endpoint (/bodhi/v1/modelfiles/pull GET)
+// ============================================================================
+
+// Success Handlers
 
 /**
  * Create type-safe MSW v2 handlers for model pull downloads endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPullDownloads(config: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
+export function mockModelPullDownloads({
+  data = [],
+  page = 1,
+  page_size = 30,
+  total = 0,
+  ...rest
+}: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
   return [
-    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
+    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response: res }) => {
       const responseData: components['schemas']['PaginatedDownloadResponse'] = {
-        data: config.data || [],
-        page: config.page || 1,
-        page_size: config.page_size || 30,
-        total: config.total || 0,
+        data,
+        page,
+        page_size,
+        total,
+        ...rest,
       };
-      return response(200).json(responseData);
+
+      return res(200 as const).json(responseData);
     }),
   ];
 }
+
+export function mockModelPullDownloadsError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = INTERNAL_SERVER_ERROR.message,
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+
+      return response(status).json({ error: errorData });
+    }),
+  ];
+}
+
+// Success Handler Variants
 
 export function mockModelPullDownloadsDefault() {
   return mockModelPullDownloads({
@@ -132,78 +185,113 @@ export function mockModelPullDownloadsEmpty() {
   return mockModelPullDownloads({ data: [], total: 0 });
 }
 
-export function mockModelPullDownloadsError(
-  config: {
-    status?: 500;
-    code?: string;
-    message?: string;
-  } = {}
-) {
-  return [
-    typedHttp.get(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
-      return response(config.status || 500).json({
-        error: {
-          code: config.code || 'internal_error',
-          message: config.message || 'Internal Server Error',
-          type: 'internal_server_error',
-        },
-      });
-    }),
-  ];
+// Error Handler Variants
+
+/**
+ * Mock handler for model pull downloads internal server error
+ */
+export function mockModelPullDownloadsInternalError() {
+  return mockModelPullDownloadsError({
+    code: 'internal_server_error',
+    message: 'Internal Server Error',
+    type: 'internal_server_error',
+    status: 500,
+  });
 }
+
+// ============================================================================
+// Model Pull POST Endpoint (/bodhi/v1/modelfiles/pull POST)
+// ============================================================================
+
+// Success Handlers
 
 /**
  * Create type-safe MSW v2 handlers for model pull POST endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPull(config: Partial<components['schemas']['DownloadRequest']> & { delay?: number } = {}) {
+export function mockModelPull({
+  id = '123',
+  repo = 'test/repo1',
+  filename = 'model1.gguf',
+  status = 'pending',
+  error = null,
+  created_at = new Date().toISOString(),
+  updated_at = new Date().toISOString(),
+  total_bytes = null,
+  downloaded_bytes,
+  started_at = new Date().toISOString(),
+  ...rest
+}: Partial<components['schemas']['DownloadRequest']> = {}) {
   return [
-    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
+    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response: res }) => {
       const responseData: components['schemas']['DownloadRequest'] = {
-        id: config.id || '123',
-        repo: config.repo || 'test/repo1',
-        filename: config.filename || 'model1.gguf',
-        status: config.status || 'pending',
-        error: config.error || null,
-        created_at: config.created_at || new Date().toISOString(),
-        updated_at: config.updated_at || new Date().toISOString(),
-        total_bytes: config.total_bytes || null,
-        downloaded_bytes: config.downloaded_bytes,
-        started_at: config.started_at || new Date().toISOString(),
+        id,
+        repo,
+        filename,
+        status,
+        error,
+        created_at,
+        updated_at,
+        total_bytes,
+        downloaded_bytes,
+        started_at,
+        ...rest,
       };
-      const responseResult = response(201).json(responseData);
 
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
-        : responseResult;
+      return res(201 as const).json(responseData);
     }),
   ];
 }
 
+// Error Handlers
+
 /**
  * Error handler for model pull POST endpoint
  */
-export function mockModelPullError(
-  config: {
-    status?: 400 | 500;
-    code?: string;
-    message?: string;
-    delay?: number;
-  } = {}
-) {
+export function mockModelPullError({
+  code = 'pull_error-file_already_exists',
+  message = 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
+  type = 'invalid_request_error',
+  status = 400,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
   return [
-    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, ({ response }) => {
-      const responseResult = response(config.status || 400).json({
-        error: {
-          code: config.code || 'pull_error-file_already_exists',
-          message: config.message || 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-          type: 'invalid_request_error',
-        },
-      });
+    typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
 
-      return config.delay
-        ? new Promise((resolve) => setTimeout(() => resolve(responseResult), config.delay))
-        : responseResult;
+      return response(status).json({ error: errorData });
     }),
   ];
+}
+
+// Error Handler Variants
+
+/**
+ * Mock handler for model pull file already exists error
+ */
+export function mockModelPullFileExistsError(config: { repo?: string; filename?: string } = {}) {
+  const { repo = 'test/repo', filename = 'model.gguf' } = config;
+  return mockModelPullError({
+    code: 'pull_error-file_already_exists',
+    message: `file "${filename}" already exists in repo "${repo}" with snapshot "main"`,
+    type: 'invalid_request_error',
+    status: 400,
+  });
+}
+
+/**
+ * Mock handler for model pull internal server error
+ */
+export function mockModelPullInternalError() {
+  return mockModelPullError({
+    code: 'internal_server_error',
+    message: 'Internal Server Error',
+    type: 'internal_server_error',
+    status: 500,
+  });
 }

@@ -1,13 +1,12 @@
 'use client';
 
 import AppInitializer from '@/components/AppInitializer';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockUserInfo } from '@/test-fixtures/access-requests';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
+import { createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
-import { mockAppInfo, mockAppInfoError, mockAppInfoWithDelay } from '@/test-utils/msw-v2/handlers/info';
+import { mockAppInfo, mockAppInfoInternalError } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut, mockUserError } from '@/test-utils/msw-v2/handlers/user';
 import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
@@ -54,7 +53,8 @@ const renderWithSetup = async (ui: React.ReactElement) => {
 describe('AppInitializer loading and error handling', () => {
   // Test loading states
   it('shows loading state when endpoint is loading', async () => {
-    server.use(...mockAppInfoWithDelay({ status: 'ready', delay: 100 }), ...mockUserLoggedIn({ delay: 100 }));
+    // Use mock handlers with delay
+    server.use(...mockAppInfo({ status: 'ready' }, 100), ...mockUserLoggedIn(undefined, 100));
 
     const wrapper = createWrapper();
     render(
@@ -73,13 +73,13 @@ describe('AppInitializer loading and error handling', () => {
   it.each([
     {
       scenario: 'app/info error',
-      appInfoHandlers: () => mockAppInfoError({ status: 500, message: 'API Error' }),
+      appInfoHandlers: () => mockAppInfoInternalError(),
       userHandlers: () => mockUserLoggedIn(),
     },
     {
       scenario: 'app/info success, user error',
       appInfoHandlers: () => mockAppInfo({ status: 'ready' }),
-      userHandlers: () => mockUserError({ status: 500, message: 'API Error' }),
+      userHandlers: () => mockUserError({ message: 'API Error', type: 'internal_server_error' }),
     },
   ])('handles error $scenario', async ({ scenario, appInfoHandlers, userHandlers }) => {
     server.use(...appInfoHandlers(), ...userHandlers());
