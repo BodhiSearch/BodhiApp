@@ -11,6 +11,7 @@
  */
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/useQuery';
 import {
   mockSimpleUsersResponse,
   mockMultipleAdminsResponse,
@@ -23,7 +24,7 @@ import {
  */
 export function mockUserLoggedOut() {
   return [
-    typedHttp.get('/bodhi/v1/user', ({ response }) => {
+    typedHttp.get(ENDPOINT_USER_INFO, ({ response }) => {
       return response(200 as const).json({
         auth_status: 'logged_out',
       });
@@ -46,7 +47,7 @@ export function mockUserLoggedIn(
   delayMs?: number
 ) {
   return [
-    typedHttp.get('/bodhi/v1/user', async ({ response: httpResponse }) => {
+    typedHttp.get(ENDPOINT_USER_INFO, async ({ response: httpResponse }) => {
       if (delayMs) {
         await delay(delayMs);
       }
@@ -72,7 +73,7 @@ export function mockUserError({
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
   return [
-    typedHttp.get('/bodhi/v1/user', async ({ response }) => {
+    typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
       const errorData = {
         code,
         message,
@@ -99,7 +100,7 @@ export function mockUsers({
   ...rest
 }: Partial<components['schemas']['UserListResponse']> = {}) {
   return [
-    typedHttp.get('/bodhi/v1/users', async ({ response: httpResponse }) => {
+    typedHttp.get(ENDPOINT_USERS, async ({ response: httpResponse }) => {
       const responseData = {
         client_id,
         users,
@@ -127,7 +128,7 @@ export function mockUsersError({
   ...rest
 }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
   return [
-    typedHttp.get('/bodhi/v1/users', async ({ response }) => {
+    typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       const errorData = {
         code,
         message,
@@ -163,7 +164,7 @@ export function mockUsersEmpty() {
  */
 export function mockUserRoleChange(user_id: string) {
   return [
-    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
@@ -187,7 +188,7 @@ export function mockUserRoleChangeError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
@@ -204,18 +205,11 @@ export function mockUserRoleChangeError(
 }
 
 /**
- * Convenience methods for role change scenarios
- */
-export function mockUserRoleChangeSuccess(user_id: string) {
-  return mockUserRoleChange(user_id);
-}
-
-/**
  * Mock handler for user removal endpoint
  */
 export function mockUserRemove(user_id: string) {
   return [
-    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ params, response }) => {
+    typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
@@ -239,7 +233,7 @@ export function mockUserRemoveError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
 ) {
   return [
-    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ params, response }) => {
+    typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
       // Only respond if user_id matches
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
@@ -253,11 +247,4 @@ export function mockUserRemoveError(
       return response(status).json({ error: errorData });
     }),
   ];
-}
-
-/**
- * Convenience methods for user removal scenarios
- */
-export function mockUserRemoveSuccess(user_id: string) {
-  return mockUserRemove(user_id);
 }

@@ -113,17 +113,20 @@ export function mockCreateApiModelError({
 /**
  * Mock handler for individual API model retrieval with configurable responses
  */
-export function mockGetApiModel(expectedId: string, {
-  id = '',
-  api_format = 'openai',
-  base_url = 'https://api.openai.com/v1',
-  api_key_masked = '****123',
-  models = ['gpt-3.5-turbo'],
-  prefix = null,
-  created_at = new Date().toISOString(),
-  updated_at = new Date().toISOString(),
-  ...rest
-}: Partial<components['schemas']['ApiModelResponse']> = {}) {
+export function mockGetApiModel(
+  expectedId: string,
+  {
+    id = '',
+    api_format = 'openai',
+    base_url = 'https://api.openai.com/v1',
+    api_key_masked = '****123',
+    models = ['gpt-3.5-turbo'],
+    prefix = null,
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
+    ...rest
+  }: Partial<components['schemas']['ApiModelResponse']> = {}
+) {
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
       const { id: paramId } = params;
@@ -149,13 +152,16 @@ export function mockGetApiModel(expectedId: string, {
   ];
 }
 
-export function mockGetApiModelError(expectedId: string, {
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+export function mockGetApiModelError(
+  expectedId: string,
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+) {
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -179,17 +185,20 @@ export function mockGetApiModelError(expectedId: string, {
 /**
  * Mock handler for API model update endpoint with configurable responses
  */
-export function mockUpdateApiModel(expectedId: string, {
-  id = '',
-  api_format = 'openai',
-  base_url = 'https://api.openai.com/v1',
-  api_key_masked = '****key',
-  models = ['gpt-4'],
-  prefix = null,
-  created_at = new Date().toISOString(),
-  updated_at = new Date().toISOString(),
-  ...rest
-}: Partial<components['schemas']['ApiModelResponse']> = {}) {
+export function mockUpdateApiModel(
+  expectedId: string,
+  {
+    id = '',
+    api_format = 'openai',
+    base_url = 'https://api.openai.com/v1',
+    api_key_masked = '****key',
+    models = ['gpt-4'],
+    prefix = null,
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
+    ...rest
+  }: Partial<components['schemas']['ApiModelResponse']> = {}
+) {
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
       const { id: paramId } = params;
@@ -215,13 +224,16 @@ export function mockUpdateApiModel(expectedId: string, {
   ];
 }
 
-export function mockUpdateApiModelError(expectedId: string, {
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+export function mockUpdateApiModelError(
+  expectedId: string,
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+) {
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
@@ -260,13 +272,16 @@ export function mockDeleteApiModel(expectedId: string) {
   ];
 }
 
-export function mockDeleteApiModelError(expectedId: string, {
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+export function mockDeleteApiModelError(
+  expectedId: string,
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+) {
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;

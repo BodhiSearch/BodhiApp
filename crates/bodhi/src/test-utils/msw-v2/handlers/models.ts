@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
-import { ENDPOINT_MODELS } from '@/hooks/useQuery';
+import { ENDPOINT_MODELS, ENDPOINT_MODEL_ALIAS, ENDPOINT_MODEL_ID } from '@/hooks/useQuery';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
 // ============================================================================
@@ -237,7 +237,7 @@ export function mockGetModel(
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
   return [
-    typedHttp.get('/bodhi/v1/models/{alias}', async ({ response: httpResponse, params }) => {
+    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response: httpResponse, params }) => {
       const { alias: paramAlias } = params;
 
       // Only respond if alias matches
@@ -274,7 +274,7 @@ export function mockGetModelError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
 ) {
   return [
-    typedHttp.get('/bodhi/v1/models/{alias}', async ({ response, params }) => {
+    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
       const { alias: paramAlias } = params;
 
       // Only respond if alias matches
@@ -335,7 +335,7 @@ export function mockUpdateModel(
   }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/models/{id}', async ({ response: httpResponse, params }) => {
+    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response: httpResponse, params }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
@@ -372,7 +372,7 @@ export function mockUpdateModelError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/models/{id}', async ({ response, params }) => {
+    typedHttp.put(ENDPOINT_MODEL_ID, async ({ response, params }) => {
       const { id: paramId } = params;
 
       // Only respond if id matches
