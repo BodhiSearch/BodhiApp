@@ -111,12 +111,9 @@ export function mockAccessRequestsPendingError({
 export function mockAccessRequestApprove(id: number) {
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
-      // Only respond with success if ID matches
       if (params.id === id.toString()) {
         return response(200 as const).empty();
       }
-
-      // Pass through to next handler for non-matching IDs
       return;
     }),
   ];

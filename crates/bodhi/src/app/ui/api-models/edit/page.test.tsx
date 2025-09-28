@@ -58,17 +58,14 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel({
+        ...mockGetApiModel('test-model', {
           id: 'test-model',
-          response: {
-            id: 'test-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****123',
-            models: ['gpt-3.5-turbo'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****123',
+          models: ['gpt-3.5-turbo'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
@@ -87,17 +84,14 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel({
+        ...mockGetApiModel('test-model', {
           id: 'test-model',
-          response: {
-            id: 'test-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****123',
-            models: ['gpt-3.5-turbo'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****123',
+          models: ['gpt-3.5-turbo'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
@@ -145,29 +139,23 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel({
+        ...mockGetApiModel('test-model', {
           id: 'test-model',
-          response: {
-            id: 'test-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****123',
-            models: ['gpt-3.5-turbo'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****123',
+          models: ['gpt-3.5-turbo'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
-        ...mockUpdateApiModel({
+        ...mockUpdateApiModel('test-model', {
           id: 'test-model',
-          response: {
-            id: 'test-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****456',
-            models: ['gpt-4'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****456',
+          models: ['gpt-4'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
@@ -236,19 +224,16 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel({
+        ...mockGetApiModel('test-model', {
           id: 'test-model',
-          response: {
-            id: 'test-model',
-            api_format: 'openai',
-            base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****123',
-            models: ['gpt-3.5-turbo'],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
+          api_format: 'openai',
+          base_url: 'https://api.openai.com/v1',
+          api_key_masked: '****123',
+          models: ['gpt-3.5-turbo'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
-        ...mockUpdateApiModelError(),
+        ...mockUpdateApiModelError('test-model'),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
         ...mockFetchApiModelsSuccess()

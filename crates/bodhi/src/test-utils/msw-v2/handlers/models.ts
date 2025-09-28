@@ -224,7 +224,7 @@ export function mockCreateModelBadRequestError(config: { message?: string } = {}
  * Create type-safe MSW v2 handler for individual model retrieval
  */
 export function mockGetModel(
-  _alias: string,
+  alias: string,
   {
     repo = 'test-repo',
     filename = 'test-file.bin',
@@ -239,6 +239,11 @@ export function mockGetModel(
   return [
     typedHttp.get('/bodhi/v1/models/{alias}', async ({ response: httpResponse, params }) => {
       const { alias: paramAlias } = params;
+
+      // Only respond if alias matches
+      if (paramAlias !== alias) {
+        return; // Pass through to next handler
+      }
 
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias: paramAlias as string,
@@ -259,7 +264,7 @@ export function mockGetModel(
 // Error Handlers
 
 export function mockGetModelError(
-  _alias: string,
+  alias: string,
   {
     code = 'not_found',
     message,
@@ -271,6 +276,11 @@ export function mockGetModelError(
   return [
     typedHttp.get('/bodhi/v1/models/{alias}', async ({ response, params }) => {
       const { alias: paramAlias } = params;
+
+      // Only respond if alias matches
+      if (paramAlias !== alias) {
+        return; // Pass through to next handler
+      }
 
       const errorBody = {
         code,
@@ -312,7 +322,7 @@ export function mockGetModelInternalError(alias: string, config: {} = {}) {
  * Create type-safe MSW v2 handler for model update endpoint
  */
 export function mockUpdateModel(
-  _id: string,
+  id: string,
   {
     repo = 'test-repo',
     filename = 'test-file.bin',
@@ -327,6 +337,11 @@ export function mockUpdateModel(
   return [
     typedHttp.put('/bodhi/v1/models/{id}', async ({ response: httpResponse, params }) => {
       const { id: paramId } = params;
+
+      // Only respond if id matches
+      if (paramId !== id) {
+        return; // Pass through to next handler
+      }
 
       const responseData: components['schemas']['UserAliasResponse'] = {
         alias: paramId as string,
@@ -347,7 +362,7 @@ export function mockUpdateModel(
 // Error Handlers
 
 export function mockUpdateModelError(
-  _id: string,
+  id: string,
   {
     code = INTERNAL_SERVER_ERROR.code,
     message,
@@ -359,6 +374,11 @@ export function mockUpdateModelError(
   return [
     typedHttp.put('/bodhi/v1/models/{id}', async ({ response, params }) => {
       const { id: paramId } = params;
+
+      // Only respond if id matches
+      if (paramId !== id) {
+        return; // Pass through to next handler
+      }
 
       const errorBody = {
         code,

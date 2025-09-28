@@ -3,7 +3,7 @@ use crate::{
   UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
-  extract::{Query, State},
+  extract::{Path, Query, State},
   Json,
 };
 use objs::{Alias, ApiError, HubFile, OpenAIApiError, API_TAG_MODELS};
@@ -272,14 +272,14 @@ fn get_alias_source(alias: &Alias) -> &str {
 )]
 pub async fn get_user_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
-  axum::extract::Path(id): axum::extract::Path<String>,
+  Path(alias): Path<String>,
 ) -> Result<Json<UserAliasResponse>, ApiError> {
-  let alias = state
+  let user_alias = state
     .app_service()
     .data_service()
-    .find_user_alias(&id)
-    .ok_or(AliasNotFoundError(id))?;
-  Ok(Json(UserAliasResponse::from(alias)))
+    .find_user_alias(&alias)
+    .ok_or(AliasNotFoundError(alias))?;
+  Ok(Json(UserAliasResponse::from(user_alias)))
 }
 
 #[cfg(test)]

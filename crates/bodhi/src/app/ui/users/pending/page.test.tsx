@@ -259,7 +259,6 @@ describe('PendingRequestsPage Request Management', () => {
   });
 
   it('successfully approves request when approve button clicked', async () => {
-    let approveRequestCalled = false;
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({
@@ -275,12 +274,8 @@ describe('PendingRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove()
+      ...mockAccessRequestApprove(mockPendingRequest.id)
     );
-
-    // Override the approve handler to track if it was called
-    server.use(...mockAccessRequestApprove(0));
-
     await act(async () => {
       render(<PendingRequestsPage />, { wrapper: createWrapper() });
     });
@@ -291,8 +286,6 @@ describe('PendingRequestsPage Request Management', () => {
     const approveButton = screen.getByText('Approve');
     await user.click(approveButton);
 
-    // Since we can't easily track the specific request call in MSW v2,
-    // we verify that the action was successful (no errors thrown)
     await waitFor(() => {
       expect(approveButton).toBeInTheDocument();
     });

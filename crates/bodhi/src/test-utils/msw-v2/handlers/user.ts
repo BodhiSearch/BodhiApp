@@ -161,9 +161,13 @@ export function mockUsersEmpty() {
 /**
  * Mock handler for user role change endpoint
  */
-export function mockUserRoleChange() {
+export function mockUserRoleChange(user_id: string) {
   return [
-    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ response }) => {
+    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ params, response }) => {
+      // Only respond if user_id matches
+      if (params.user_id !== user_id) {
+        return; // Pass through to next handler
+      }
       return response(200).empty();
     }),
   ];
@@ -172,15 +176,22 @@ export function mockUserRoleChange() {
 /**
  * Mock handler for user role change endpoint error responses
  */
-export function mockUserRoleChangeError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+export function mockUserRoleChangeError(
+  user_id: string,
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
+) {
   return [
-    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ response }) => {
+    typedHttp.put('/bodhi/v1/users/{user_id}/role', async ({ params, response }) => {
+      // Only respond if user_id matches
+      if (params.user_id !== user_id) {
+        return; // Pass through to next handler
+      }
       const errorData = {
         code,
         message,
@@ -195,16 +206,20 @@ export function mockUserRoleChangeError({
 /**
  * Convenience methods for role change scenarios
  */
-export function mockUserRoleChangeSuccess() {
-  return mockUserRoleChange();
+export function mockUserRoleChangeSuccess(user_id: string) {
+  return mockUserRoleChange(user_id);
 }
 
 /**
  * Mock handler for user removal endpoint
  */
-export function mockUserRemove() {
+export function mockUserRemove(user_id: string) {
   return [
-    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ response }) => {
+    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ params, response }) => {
+      // Only respond if user_id matches
+      if (params.user_id !== user_id) {
+        return; // Pass through to next handler
+      }
       return response(200).empty();
     }),
   ];
@@ -213,15 +228,22 @@ export function mockUserRemove() {
 /**
  * Mock handler for user removal endpoint error responses
  */
-export function mockUserRemoveError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+export function mockUserRemoveError(
+  user_id: string,
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
+) {
   return [
-    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ response }) => {
+    typedHttp.delete('/bodhi/v1/users/{user_id}', async ({ params, response }) => {
+      // Only respond if user_id matches
+      if (params.user_id !== user_id) {
+        return; // Pass through to next handler
+      }
       const errorData = {
         code,
         message,
@@ -236,6 +258,6 @@ export function mockUserRemoveError({
 /**
  * Convenience methods for user removal scenarios
  */
-export function mockUserRemoveSuccess() {
-  return mockUserRemove();
+export function mockUserRemoveSuccess(user_id: string) {
+  return mockUserRemove(user_id);
 }

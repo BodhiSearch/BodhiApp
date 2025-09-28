@@ -113,7 +113,7 @@ export function mockCreateApiModelError({
 /**
  * Mock handler for individual API model retrieval with configurable responses
  */
-export function mockGetApiModel({
+export function mockGetApiModel(expectedId: string, {
   id = '',
   api_format = 'openai',
   base_url = 'https://api.openai.com/v1',
@@ -127,6 +127,12 @@ export function mockGetApiModel({
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
       const { id: paramId } = params;
+
+      // Only respond if id matches
+      if (paramId !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       const responseData: components['schemas']['ApiModelResponse'] = {
         id: id || (paramId as string),
         api_format,
@@ -143,7 +149,7 @@ export function mockGetApiModel({
   ];
 }
 
-export function mockGetApiModelError({
+export function mockGetApiModelError(expectedId: string, {
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
   type = INTERNAL_SERVER_ERROR.type,
@@ -153,6 +159,12 @@ export function mockGetApiModelError({
   return [
     typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
+
+      // Only respond if id matches
+      if (id !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       const errorData = {
         code,
         message: message || `API model ${id} not found`,
@@ -167,7 +179,7 @@ export function mockGetApiModelError({
 /**
  * Mock handler for API model update endpoint with configurable responses
  */
-export function mockUpdateApiModel({
+export function mockUpdateApiModel(expectedId: string, {
   id = '',
   api_format = 'openai',
   base_url = 'https://api.openai.com/v1',
@@ -180,9 +192,15 @@ export function mockUpdateApiModel({
 }: Partial<components['schemas']['ApiModelResponse']> = {}) {
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response: res }) => {
-      const { id } = params;
+      const { id: paramId } = params;
+
+      // Only respond if id matches
+      if (paramId !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       const responseData: components['schemas']['ApiModelResponse'] = {
-        id: id || (id as string),
+        id: id || (paramId as string),
         api_format,
         base_url,
         api_key_masked,
@@ -197,7 +215,7 @@ export function mockUpdateApiModel({
   ];
 }
 
-export function mockUpdateApiModelError({
+export function mockUpdateApiModelError(expectedId: string, {
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
   type = INTERNAL_SERVER_ERROR.type,
@@ -207,6 +225,12 @@ export function mockUpdateApiModelError({
   return [
     typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
+
+      // Only respond if id matches
+      if (id !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       const errorData = {
         code,
         message: message || `Failed to update API model ${id}`,
@@ -221,15 +245,22 @@ export function mockUpdateApiModelError({
 /**
  * Mock handler for API model deletion endpoint with configurable responses
  */
-export function mockDeleteApiModel() {
+export function mockDeleteApiModel(expectedId: string) {
   return [
-    typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ response }) => {
+    typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
+      const { id } = params;
+
+      // Only respond if id matches
+      if (id !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       return response(204 as const).empty();
     }),
   ];
 }
 
-export function mockDeleteApiModelError({
+export function mockDeleteApiModelError(expectedId: string, {
   code = INTERNAL_SERVER_ERROR.code,
   message = INTERNAL_SERVER_ERROR.message,
   type = INTERNAL_SERVER_ERROR.type,
@@ -239,6 +270,12 @@ export function mockDeleteApiModelError({
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
       const { id } = params;
+
+      // Only respond if id matches
+      if (id !== expectedId) {
+        return; // Pass through to next handler
+      }
+
       const errorData = {
         code,
         message: message || `API model ${id} not found`,
@@ -431,12 +468,12 @@ export function mockCreateApiModelSuccess() {
   });
 }
 
-export function mockDeleteApiModelSuccess() {
-  return mockDeleteApiModel();
+export function mockDeleteApiModelSuccess(expectedId: string) {
+  return mockDeleteApiModel(expectedId);
 }
 
-export function mockDeleteApiModelNotFound() {
-  return mockDeleteApiModelError({
+export function mockDeleteApiModelNotFound(expectedId: string) {
+  return mockDeleteApiModelError(expectedId, {
     code: 'entity_not_found',
     message: 'API model not found',
     type: 'not_found_error',

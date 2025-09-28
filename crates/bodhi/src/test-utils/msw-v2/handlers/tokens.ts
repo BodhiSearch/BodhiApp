@@ -84,7 +84,12 @@ export function mockUpdateToken(
   }: Partial<components['schemas']['ApiToken']> = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ response: httpResponse }) => {
+    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ params, response: httpResponse }) => {
+      // Only respond if id matches
+      if (params.id !== tokenId) {
+        return; // Pass through to next handler
+      }
+
       const responseData: components['schemas']['ApiToken'] = {
         id,
         name,
@@ -200,7 +205,12 @@ export function mockUpdateTokenError(
   }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 404 | 500 } = {}
 ) {
   return [
-    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ response }) => {
+    typedHttp.put('/bodhi/v1/tokens/{id}', async ({ params, response }) => {
+      // Only respond if id matches
+      if (params.id !== tokenId) {
+        return; // Pass through to next handler
+      }
+
       const errorData = {
         code,
         message,
