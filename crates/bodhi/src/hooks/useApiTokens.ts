@@ -1,6 +1,6 @@
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { AxiosResponse, AxiosError } from 'axios';
-import { UseMutationResult } from 'react-query';
+import { UseMutationResult } from '@/hooks/useQuery';
 import {
   ApiToken,
   ApiTokenResponse,

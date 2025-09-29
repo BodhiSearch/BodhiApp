@@ -1,4 +1,4 @@
-import { useMutation } from 'react-query';
+import { useMutation } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
 import apiClient from '@/lib/apiClient';
 import { Message, MessageMetadata } from '@/types/chat';

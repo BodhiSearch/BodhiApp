@@ -1,5 +1,5 @@
 // External imports
-import { UseMutationResult } from 'react-query';
+import { UseMutationResult } from '@/hooks/useQuery';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useCallback } from 'react';
 

@@ -1,5 +1,5 @@
 // External imports
-import { UseQueryResult, UseMutationResult } from 'react-query';
+import { UseQueryResult, UseMutationResult } from '@/hooks/useQuery';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';

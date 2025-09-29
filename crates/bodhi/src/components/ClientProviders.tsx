@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@/hooks/useQuery';
 
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());

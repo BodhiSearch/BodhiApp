@@ -9,6 +9,8 @@ import {
   UseQueryOptions,
   UseQueryResult,
   useQuery as useReactQuery,
+  QueryClient,
+  QueryClientProvider,
 } from 'react-query';
 
 // Type alias for compatibility
@@ -99,6 +101,15 @@ export function useMutationQuery<T, V>(
     }
   );
 }
+
+// Re-export types for other hooks
+export type { UseMutationResult, UseQueryResult, UseMutationOptions, UseQueryOptions } from 'react-query';
+
+// Re-export components for ClientProviders and tests
+export { QueryClient, QueryClientProvider } from 'react-query';
+
+// Re-export hooks for other use cases
+export { useMutation } from 'react-query';
 
 // Export useQueryClient for consistency
 export { useQueryClient } from 'react-query';

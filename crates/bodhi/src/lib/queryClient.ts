@@ -1,4 +1,4 @@
-import { QueryClient } from 'react-query';
+import { QueryClient } from '@/hooks/useQuery';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
