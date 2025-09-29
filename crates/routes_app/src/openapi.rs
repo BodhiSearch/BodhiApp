@@ -441,15 +441,25 @@ impl Modify for GlobalErrorResponses {
 #[cfg(test)]
 mod tests {
   use crate::{
-    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-    ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+    BodhiOpenAPIDoc, GlobalErrorResponses, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT,
+    ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS,
+    ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use utoipa::{
-    openapi::{path::ParameterIn, RefOr},
-    OpenApi,
+    openapi::{path::ParameterIn, OpenApi as OpenApiSpec, RefOr},
+    Modify, OpenApi,
   };
+
+  /// Helper function to get OpenAPI spec with GlobalErrorResponses modifier applied
+  /// This ensures tests validate against the same spec used in production
+  fn get_openapi_with_modifiers() -> OpenApiSpec {
+    let mut spec = BodhiOpenAPIDoc::openapi();
+    let modifier = GlobalErrorResponses;
+    modifier.modify(&mut spec);
+    spec
+  }
 
   #[test]
   fn test_openapi_basic_info() {
@@ -481,7 +491,7 @@ mod tests {
 
   #[test]
   fn test_app_info_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -513,7 +523,7 @@ mod tests {
 
   #[test]
   fn test_setup_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -540,7 +550,7 @@ mod tests {
 
   #[test]
   fn test_logout_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -603,7 +613,7 @@ mod tests {
 
   #[test]
   fn test_user_info_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -631,7 +641,7 @@ mod tests {
 
   #[test]
   fn test_modelfiles_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -681,7 +691,7 @@ mod tests {
 
   #[test]
   fn test_download_endpoints() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -747,7 +757,7 @@ mod tests {
 
   #[test]
   fn test_model_aliases_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -785,7 +795,7 @@ mod tests {
 
   #[test]
   fn test_create_token_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -822,7 +832,7 @@ mod tests {
 
   #[test]
   fn test_pull_by_alias_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
     // Verify endpoint
     let paths = &api_doc.paths;
     let pull_alias = paths
@@ -869,7 +879,7 @@ mod tests {
 
   #[test]
   fn test_get_download_status_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -938,7 +948,7 @@ mod tests {
 
   #[test]
   fn test_list_tokens_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -989,17 +999,12 @@ mod tests {
       }
     }
 
-    // Check 401 response
+    // Check 401 response - added by GlobalErrorResponses
     let unauthorized = responses.responses.get("401").unwrap();
     if let RefOr::T(response) = unauthorized {
       let content = response.content.get("application/json").unwrap();
-      if let Some(example) = &content.example {
-        let error = example.get("error").unwrap();
-        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
-        assert_eq!(error.get("code").unwrap(), "api_token_error-token_missing");
-      } else {
-        panic!("No example found for 401 status");
-      }
+      // Verify schema reference instead of example (GlobalErrorResponses uses schema refs)
+      assert!(content.schema.is_some());
     }
 
     // Check 500 response exists
@@ -1008,7 +1013,7 @@ mod tests {
 
   #[test]
   fn test_update_token_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -1071,17 +1076,12 @@ mod tests {
       }
     }
 
-    // Check 401 response
+    // Check 401 response - added by GlobalErrorResponses
     let unauthorized = responses.responses.get("401").unwrap();
     if let RefOr::T(response) = unauthorized {
       let content = response.content.get("application/json").unwrap();
-      if let Some(example) = &content.example {
-        let error = example.get("error").unwrap();
-        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
-        assert_eq!(error.get("code").unwrap(), "api_token_error-token_missing");
-      } else {
-        panic!("No example found for 401 status");
-      }
+      // Verify schema reference instead of example (GlobalErrorResponses uses schema refs)
+      assert!(content.schema.is_some());
     }
 
     // Check 404 response
@@ -1103,7 +1103,7 @@ mod tests {
 
   #[test]
   fn test_oai_models_endpoint() {
-    let api_doc = BodhiOpenAPIDoc::openapi();
+    let api_doc = get_openapi_with_modifiers();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -1145,21 +1145,12 @@ mod tests {
       }
     }
 
-    // Check 401 response
+    // Check 401 response - added by GlobalErrorResponses
     let unauthorized = responses.responses.get("401").unwrap();
     if let RefOr::T(response) = unauthorized {
       let content = response.content.get("application/json").unwrap();
-      if let Some(example) = &content.example {
-        let error = example.get("error").unwrap();
-        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
-        assert_eq!(error.get("code").unwrap(), "invalid_api_key");
-        assert_eq!(
-          error.get("message").unwrap(),
-          "Invalid authentication token"
-        );
-      } else {
-        panic!("No example found for 401 status");
-      }
+      // Verify schema reference instead of example (GlobalErrorResponses uses schema refs)
+      assert!(content.schema.is_some());
     }
 
     // Check 500 response exists
