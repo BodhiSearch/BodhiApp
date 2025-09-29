@@ -1,0 +1,462 @@
+# CI Integration Guidelines for OpenAI Types
+
+This document provides guidelines and recommendations for integrating OpenAI types generation into Continuous Integration (CI) pipelines.
+
+## Overview
+
+The OpenAI types generation system should be integrated into CI to ensure:
+- Generated types remain synchronized with OpenAI's API
+- Breaking changes are detected early
+- Type generation doesn't break the build
+- Documentation stays current
+
+## Integration Strategies
+
+### 1. Validation-Only Approach (Recommended)
+
+Validate that generated types are current without automatic regeneration:
+
+```yaml
+name: Validate OpenAI Types
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-openai-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install OpenAPI Generator CLI
+        run: npm install -g @openapitools/openapi-generator-cli@^7.14.0
+
+      - name: Validate OpenAI Types
+        run: |
+          # Check if types compile
+          cargo build -p openai_types
+
+          # Run tests
+          cargo test -p openai_types
+
+          # Verify utoipa integration
+          cargo run --package xtask openapi
+
+          # Check TypeScript generation
+          cd ts-client && npm install && npm run generate && npm run build
+
+      - name: Check for Specification Updates
+        run: |
+          # Download current OpenAI spec
+          curl -o /tmp/openai-current.yml \
+            https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml
+
+          # Compare with stored version
+          if ! cmp -s ai-docs/specs/20250929-openai-rs/specs/openai-full.yml /tmp/openai-current.yml; then
+            echo "::warning::OpenAI specification has been updated. Consider regenerating types with 'cargo xtask generate-openai-types'"
+            echo "::notice::Current spec size: $(stat -c%s ai-docs/specs/20250929-openai-rs/specs/openai-full.yml) bytes"
+            echo "::notice::Latest spec size: $(stat -c%s /tmp/openai-current.yml) bytes"
+          else
+            echo "✅ OpenAI specification is current"
+          fi
+```
+
+### 2. Automatic Regeneration (Advanced)
+
+For more advanced setups that automatically regenerate types:
+
+```yaml
+name: Auto-Update OpenAI Types
+
+on:
+  schedule:
+    # Check daily at 02:00 UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-openai-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Environment
+        run: |
+          # Setup Rust, Node.js, Python as above
+
+      - name: Check for Updates
+        id: check-updates
+        run: |
+          curl -o /tmp/openai-latest.yml \
+            https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml
+
+          if ! cmp -s ai-docs/specs/20250929-openai-rs/specs/openai-full.yml /tmp/openai-latest.yml; then
+            echo "updates=true" >> $GITHUB_OUTPUT
+            echo "New OpenAI specification detected"
+          else
+            echo "updates=false" >> $GITHUB_OUTPUT
+            echo "No updates found"
+          fi
+
+      - name: Regenerate Types
+        if: steps.check-updates.outputs.updates == 'true'
+        run: |
+          # Regenerate types
+          cargo xtask generate-openai-types
+
+          # Verify build still works
+          cargo build --workspace
+          cargo test -p openai_types
+          cargo test -p routes_app
+
+          # Update TypeScript client
+          cd ts-client && npm run generate && npm run build
+
+      - name: Create Pull Request
+        if: steps.check-updates.outputs.updates == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update OpenAI types from latest specification"
+          title: "🤖 Auto-update OpenAI types"
+          body: |
+            ## OpenAI Types Update
+
+            This PR automatically updates OpenAI types from the latest specification.
+
+            ### Changes
+            - Updated `openai_types` crate with latest OpenAI API definitions
+            - Regenerated OpenAPI documentation
+            - Updated TypeScript client types
+
+            ### Validation
+            - ✅ All tests pass
+            - ✅ Workspace builds successfully
+            - ✅ TypeScript client generation succeeds
+
+            ### Review Checklist
+            - [ ] Verify no breaking changes to existing APIs
+            - [ ] Check that new types are properly documented
+            - [ ] Ensure utoipa integration still works
+            - [ ] Test TypeScript types in frontend
+
+            Generated by automated OpenAI types update workflow.
+          branch: auto/update-openai-types
+          delete-branch: true
+```
+
+### 3. Release Validation
+
+Validate types before releases:
+
+```yaml
+name: Pre-Release Validation
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Full Type Validation
+        run: |
+          # Comprehensive validation
+          cargo build --workspace
+          cargo test --workspace
+
+          # OpenAI types specific checks
+          cargo build -p openai_types
+          cargo test -p openai_types --doc
+
+          # OpenAPI documentation generation
+          cargo run --package xtask openapi
+
+          # TypeScript client validation
+          cd ts-client
+          npm install
+          npm run generate
+          npm run build
+          npm test
+
+      - name: Verify Type Coverage
+        run: |
+          # Check that key OpenAI types are present in documentation
+          generated_spec="crates/routes_app/src/openapi.rs"
+
+          key_types=("CreateChatCompletionRequest" "CreateChatCompletionResponse" "ChatCompletionRequestMessage")
+
+          for type in "${key_types[@]}"; do
+            if ! grep -q "$type" "$generated_spec"; then
+              echo "❌ Missing type: $type"
+              exit 1
+            else
+              echo "✅ Found type: $type"
+            fi
+          done
+
+      - name: Generate Release Artifacts
+        run: |
+          # Generate documentation for release
+          cargo doc --package openai_types --no-deps
+
+          # Package TypeScript types
+          cd ts-client && npm pack
+```
+
+## Environment Requirements
+
+### Required Tools
+```yaml
+- name: Setup Build Environment
+  run: |
+    # Rust toolchain
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    source ~/.cargo/env
+
+    # Node.js and npm
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+
+    # OpenAPI Generator CLI
+    npm install -g @openapitools/openapi-generator-cli@^7.14.0
+
+    # Python (for specification processing)
+    sudo apt-get install -y python3 python3-pip
+    pip3 install pyyaml requests
+```
+
+### Caching Strategy
+```yaml
+- name: Cache Dependencies
+  uses: actions/cache@v3
+  with:
+    path: |
+      ~/.cargo/registry
+      ~/.cargo/git
+      ~/.npm
+      node_modules
+      target
+    key: ${{ runner.os }}-deps-${{ hashFiles('**/Cargo.lock', '**/package-lock.json') }}
+    restore-keys: |
+      ${{ runner.os }}-deps-
+```
+
+## Monitoring and Alerts
+
+### 1. Specification Change Detection
+
+```yaml
+- name: Monitor OpenAI Specification
+  run: |
+    # Calculate checksums for comparison
+    current_checksum=$(sha256sum ai-docs/specs/20250929-openai-rs/specs/openai-full.yml | cut -d' ' -f1)
+
+    curl -s https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml | \
+      sha256sum | cut -d' ' -f1 > /tmp/latest_checksum
+
+    latest_checksum=$(cat /tmp/latest_checksum)
+
+    if [ "$current_checksum" != "$latest_checksum" ]; then
+      echo "::warning::OpenAI specification checksum changed"
+      echo "::notice::Current: $current_checksum"
+      echo "::notice::Latest: $latest_checksum"
+
+      # Optional: Create issue or send notification
+      # gh issue create --title "OpenAI Specification Updated" --body "..."
+    fi
+```
+
+### 2. Build Health Monitoring
+
+```yaml
+- name: Health Check
+  run: |
+    # Verify generation command works
+    if ! cargo xtask generate-openai-types --dry-run; then
+      echo "::error::OpenAI types generation command failed"
+      exit 1
+    fi
+
+    # Check for compilation warnings
+    if cargo build -p openai_types 2>&1 | grep -i warning; then
+      echo "::warning::Compilation warnings detected in openai_types"
+    fi
+
+    # Verify template integrity
+    if [ ! -f "ai-docs/specs/20250929-openai-rs/templates/rust/model.mustache" ]; then
+      echo "::error::Custom template missing"
+      exit 1
+    fi
+```
+
+## Performance Considerations
+
+### 1. Selective Testing
+
+Only run OpenAI types tests when relevant files change:
+
+```yaml
+- name: Check for OpenAI Changes
+  id: changes
+  run: |
+    if git diff --name-only HEAD~1 HEAD | grep -E "(openai_types|xtask.*openai|ai-docs/specs/20250929-openai-rs)"; then
+      echo "openai-changed=true" >> $GITHUB_OUTPUT
+    else
+      echo "openai-changed=false" >> $GITHUB_OUTPUT
+    fi
+
+- name: Test OpenAI Types
+  if: steps.changes.outputs.openai-changed == 'true'
+  run: cargo test -p openai_types
+```
+
+### 2. Parallel Execution
+
+```yaml
+- name: Parallel Validation
+  run: |
+    # Run tests in parallel
+    cargo test -p openai_types &
+    OPENAI_PID=$!
+
+    # Build TypeScript client in parallel
+    (cd ts-client && npm install && npm run generate && npm run build) &
+    TS_PID=$!
+
+    # Wait for both to complete
+    wait $OPENAI_PID && wait $TS_PID
+```
+
+## Security Considerations
+
+### 1. Dependency Validation
+
+```yaml
+- name: Validate Dependencies
+  run: |
+    # Check for known vulnerabilities
+    cargo audit
+    npm audit --audit-level moderate
+
+    # Verify OpenAPI Generator version
+    openapi_version=$(openapi-generator-cli version | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+    if [ "$openapi_version" != "7.14.0" ]; then
+      echo "::warning::Unexpected OpenAPI Generator version: $openapi_version"
+    fi
+```
+
+### 2. Supply Chain Security
+
+```yaml
+- name: Verify External Dependencies
+  run: |
+    # Verify OpenAI specification source
+    curl -I https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml | \
+      grep -E "(HTTP/[0-9.]+ 200|content-type: application/.*yaml)"
+
+    # Check file size (should be ~2MB)
+    spec_size=$(curl -sI https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml | \
+      grep -i content-length | cut -d' ' -f2 | tr -d '\r')
+
+    if [ "$spec_size" -lt 1000000 ] || [ "$spec_size" -gt 5000000 ]; then
+      echo "::warning::Unusual specification size: $spec_size bytes"
+    fi
+```
+
+## Error Handling
+
+### 1. Graceful Degradation
+
+```yaml
+- name: Generate Types with Fallback
+  run: |
+    # Try primary source
+    if ! cargo xtask generate-openai-types; then
+      echo "::warning::Primary generation failed, trying manual approach"
+
+      # Fallback to manual generation
+      curl -o /tmp/openai-fallback.yml \
+        https://raw.githubusercontent.com/openai/openai-openapi/manual_spec/openapi.yaml
+
+      # Use fallback spec if different
+      if [ -f "/tmp/openai-fallback.yml" ]; then
+        echo "Using fallback specification"
+        # Continue with manual generation steps...
+      else
+        echo "::error::All specification sources failed"
+        exit 1
+      fi
+    fi
+```
+
+### 2. Rollback Strategy
+
+```yaml
+- name: Validate and Rollback
+  run: |
+    # Create backup
+    cp -r crates/openai_types /tmp/openai_types_backup
+
+    # Try regeneration
+    if ! cargo xtask generate-openai-types; then
+      echo "::error::Generation failed, rolling back"
+      rm -rf crates/openai_types
+      cp -r /tmp/openai_types_backup crates/openai_types
+      exit 1
+    fi
+
+    # Validate build
+    if ! cargo build -p openai_types; then
+      echo "::error::Build failed after regeneration, rolling back"
+      rm -rf crates/openai_types
+      cp -r /tmp/openai_types_backup crates/openai_types
+      exit 1
+    fi
+```
+
+## Best Practices
+
+### 1. Fail Fast
+- Run type compilation first to catch obvious errors
+- Validate critical types are present before full test suite
+- Use timeouts for external dependency downloads
+
+### 2. Clear Reporting
+- Use GitHub Actions annotations for warnings and errors
+- Include file sizes and type counts in output
+- Log generation timing for performance monitoring
+
+### 3. Minimize External Dependencies
+- Pin OpenAPI Generator CLI version
+- Cache downloaded specifications when possible
+- Include fallback sources for specifications
+
+### 4. Documentation Integration
+- Update documentation when types change
+- Include type generation status in release notes
+- Maintain this CI integration guide
+
+---
+
+**Last Updated**: 2025-09-29
+**CI Integration Version**: 1.0
