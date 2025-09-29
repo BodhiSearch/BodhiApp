@@ -1,7 +1,7 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { act, renderHook } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@/hooks/useQuery';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {

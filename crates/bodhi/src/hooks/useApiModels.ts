@@ -11,7 +11,7 @@ import {
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
-import { UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from 'react-query';
+import { UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@/hooks/useQuery';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;

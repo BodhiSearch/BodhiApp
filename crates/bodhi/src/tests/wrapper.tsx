@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@/hooks/useQuery';
 
 export const createWrapper = () => {
   const queryClient = new QueryClient({

@@ -1,7 +1,7 @@
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { OpenAiApiError, PaginatedUserAccessResponse, Role, UserAccessStatusResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
-import { UseMutationResult, UseQueryResult } from 'react-query';
+import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
