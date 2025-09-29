@@ -10,7 +10,7 @@
  * All endpoints use typedHttp for full OpenAPI schema compliance and type safety.
  */
 import { delay } from 'msw';
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/useUsers';
 import {
   mockSimpleUsersResponse,

@@ -3,7 +3,7 @@
  */
 import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useAuth';
 import { delay } from 'msw';
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 // =============================================================================
 // CORE TYPED HTTP METHODS (Success cases + Error handlers)

@@ -3,7 +3,7 @@
  */
 import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useSettings';
 import { delay } from 'msw';
-import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
+import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
 // ============================================================================
 // Settings List Endpoint (GET /bodhi/v1/settings)

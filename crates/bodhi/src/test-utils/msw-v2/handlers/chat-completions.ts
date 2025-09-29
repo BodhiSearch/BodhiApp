@@ -5,7 +5,7 @@
  */
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { http, HttpResponse } from 'msw';
-import { INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+import { INTERNAL_SERVER_ERROR } from '../setup';
 
 /**
  * Chat completion message interface for handler responses
