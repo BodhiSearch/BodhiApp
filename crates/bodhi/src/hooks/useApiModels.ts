@@ -1,5 +1,4 @@
-import { useQuery, useMutationQuery } from '@/hooks/useQuery';
-import apiClient from '@/lib/apiClient';
+import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import {
   ApiModelResponse,
   CreateApiModelRequest,
@@ -12,14 +11,7 @@ import {
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
-import {
-  useMutation,
-  UseMutationOptions,
-  UseMutationResult,
-  useQueryClient,
-  UseQueryOptions,
-  UseQueryResult,
-} from 'react-query';
+import { UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from 'react-query';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
@@ -86,28 +78,21 @@ export function useUpdateApiModel(
 > {
   const queryClient = useQueryClient();
 
-  // Using traditional useMutation for complex case with path variables and body transformation
-  // Variables: { id: string; data: UpdateApiModelRequest } need to be split into URL path and request body
-  return useMutation<
-    AxiosResponse<ApiModelResponse>,
-    AxiosError<ErrorResponse>,
-    { id: string; data: UpdateApiModelRequest }
-  >(
-    async ({ id, data }) => {
-      const response = await apiClient.put<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${id}`, data);
-      return response;
-    },
+  // Transform from: {id: string; data: UpdateApiModelRequest} → endpoint: /api-models/${id}, body: data
+  return useMutationQuery<ApiModelResponse, { id: string; data: UpdateApiModelRequest }>(
+    ({ id }) => `${ENDPOINT_API_MODELS}/${id}`,
+    'put',
     {
       ...options,
       onSuccess: (data, variables, context) => {
-        // Invalidate and refetch API models list
         queryClient.invalidateQueries(['api-models']);
-        // Invalidate specific API model
         queryClient.invalidateQueries(['api-models', variables.id]);
-        // Also invalidate models list
         queryClient.invalidateQueries(['models']);
         options?.onSuccess?.(data, variables, context);
       },
+    },
+    {
+      transformBody: ({ data }) => data,
     }
   );
 }
@@ -120,24 +105,21 @@ export function useDeleteApiModel(
 ): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
   const queryClient = useQueryClient();
 
-  // Using traditional useMutation for DELETE with path variable and no request body
-  // Variable is just the ID string which needs to be in the URL path, not request body
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
-    async (id) => {
-      const response = await apiClient.delete<void>(`${ENDPOINT_API_MODELS}/${id}`);
-      return response;
-    },
+  // DELETE with path variables and no body
+  return useMutationQuery<void, string>(
+    (id) => `${ENDPOINT_API_MODELS}/${id}`,
+    'delete',
     {
       ...options,
       onSuccess: (data, variables, context) => {
-        // Invalidate and refetch API models list
         queryClient.invalidateQueries(['api-models']);
-        // Remove specific API model from cache
         queryClient.removeQueries(['api-models', variables]);
-        // Also invalidate models list
         queryClient.invalidateQueries(['models']);
         options?.onSuccess?.(data, variables, context);
       },
+    },
+    {
+      noBody: true,
     }
   );
 }

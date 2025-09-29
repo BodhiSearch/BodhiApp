@@ -1,5 +1,5 @@
 // External imports
-import { useQueryClient, UseQueryResult, UseMutationResult, useMutation } from 'react-query';
+import { UseQueryResult, UseMutationResult } from 'react-query';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -8,8 +8,7 @@ import { useEffect } from 'react';
 import { UserInfo, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 
 // Internal imports
-import { useQuery, useMutationQuery } from '@/hooks/useQuery';
-import apiClient from '@/lib/apiClient';
+import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { ROUTE_LOGIN } from '@/lib/constants';
 
 // Constants at top
@@ -74,20 +73,10 @@ export function useChangeUserRole(options?: {
 }): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }> {
   const queryClient = useQueryClient();
 
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }>(
-    async ({ userId, newRole }) => {
-      // We need to use the traditional mutation approach here since useMutationQuery
-      // doesn't support variables in the endpoint path directly and body transformation
-      return await apiClient.put(
-        `${ENDPOINT_USERS}/${userId}/role`,
-        { role: newRole },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    },
+  // Transform from: {userId: string; newRole: string} → endpoint: /users/${userId}/role, body: {role: newRole}
+  return useMutationQuery<void, { userId: string; newRole: string }>(
+    ({ userId }) => `${ENDPOINT_USERS}/${userId}/role`,
+    'put',
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['users']);
@@ -97,6 +86,9 @@ export function useChangeUserRole(options?: {
         const message = error?.response?.data?.error?.message || 'Failed to change user role';
         options?.onError?.(message);
       },
+    },
+    {
+      transformBody: ({ newRole }) => ({ role: newRole }),
     }
   );
 }
@@ -108,16 +100,10 @@ export function useRemoveUser(options?: {
 }): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
   const queryClient = useQueryClient();
 
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
-    async (userId: string) => {
-      // We need to use the traditional mutation approach here since useMutationQuery
-      // doesn't support variables in the endpoint path directly
-      return await apiClient.delete(`${ENDPOINT_USERS}/${userId}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    },
+  // DELETE with path variables and no body
+  return useMutationQuery<void, string>(
+    (userId: string) => `${ENDPOINT_USERS}/${userId}`,
+    'delete',
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['users']);
@@ -127,6 +113,9 @@ export function useRemoveUser(options?: {
         const message = error?.response?.data?.error?.message || 'Failed to remove user';
         options?.onError?.(message);
       },
+    },
+    {
+      noBody: true,
     }
   );
 }

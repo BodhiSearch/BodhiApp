@@ -1,5 +1,5 @@
 // External imports
-import { useQueryClient, UseMutationResult } from 'react-query';
+import { UseMutationResult } from 'react-query';
 import { AxiosError, AxiosResponse } from 'axios';
 
 // Type imports
@@ -16,7 +16,7 @@ import {
 } from '@bodhiapp/ts-client';
 
 // Internal imports
-import { useQuery, useMutationQuery } from '@/hooks/useQuery';
+import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import apiClient from '@/lib/apiClient';
 
 // Constants at top

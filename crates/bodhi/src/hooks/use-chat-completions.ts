@@ -7,6 +7,9 @@ import { OpenAiApiError } from '@bodhiapp/ts-client';
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
+// Constants
+export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
+
 interface ChatCompletionRequest {
   messages: Message[];
   stream?: boolean;
@@ -64,7 +67,7 @@ export function useChatCompletion() {
       apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
 
     try {
-      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      const response = await fetch(`${baseUrl}${ENDPOINT_OAI_CHAT_COMPLETIONS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

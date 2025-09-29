@@ -1,5 +1,5 @@
 // External imports
-import { UseMutationResult, useQueryClient } from 'react-query';
+import { UseMutationResult } from 'react-query';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useCallback } from 'react';
 
@@ -7,10 +7,11 @@ import { useCallback } from 'react';
 import { AuthCallbackRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 
 // Internal imports
-import { useMutationQuery } from './useQuery';
+import { useMutationQuery, useQueryClient } from './useQuery';
 import apiClient from '@/lib/apiClient';
 
 // Constants
+export const ENDPOINT_UI_LOGIN = '/ui/login';
 export const ENDPOINT_AUTH_INITIATE = '/bodhi/v1/auth/initiate';
 export const ENDPOINT_AUTH_CALLBACK = '/bodhi/v1/auth/callback';
 export const ENDPOINT_LOGOUT = '/bodhi/v1/logout';

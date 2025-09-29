@@ -1,8 +1,6 @@
-import { API_TOKENS_ENDPOINT, useMutationQuery, useQuery } from '@/hooks/useQuery';
-import { useQueryClient, useMutation } from 'react-query';
+import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { AxiosResponse, AxiosError } from 'axios';
 import { UseMutationResult } from 'react-query';
-import apiClient from '@/lib/apiClient';
 import {
   ApiToken,
   ApiTokenResponse,
@@ -14,6 +12,10 @@ import {
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
+
+// Constants
+export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
+export const ENDPOINT_TOKEN_ID = `${BODHI_API_BASE}/tokens/{id}`;
 
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
@@ -54,17 +56,9 @@ export function useUpdateToken(options?: {
 }): UseMutationResult<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId> {
   const queryClient = useQueryClient();
 
-  return useMutation<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId>(
-    async (variables) => {
-      // Extract id from variables and create request body without id
-      const { id, ...requestBody } = variables;
-      const response = await apiClient.put<ApiToken>(`${API_TOKENS_ENDPOINT}/${id}`, requestBody, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return response;
-    },
+  return useMutationQuery<ApiToken, UpdateTokenRequestWithId>(
+    ({ id }) => `${API_TOKENS_ENDPOINT}/${id}`,
+    'put',
     {
       onSuccess: (response) => {
         queryClient.invalidateQueries(['tokens']);
@@ -74,6 +68,9 @@ export function useUpdateToken(options?: {
         const message = error?.response?.data?.error?.message || 'Failed to update token';
         options?.onError?.(message);
       },
+    },
+    {
+      transformBody: ({ id, ...requestBody }) => requestBody,
     }
   );
 }

@@ -234,22 +234,66 @@ export function useCreateExample() {
 }
 ```
 
-**3. Complex Mutation Pattern (Path Variables/Body Transformation):**
+**3. Enhanced Mutation Pattern (Path Variables with Body Transformation):**
+```typescript
+import { useMutationQuery } from '@/hooks/useQuery';
+
+export function useComplexExample() {
+  // Enhanced useMutationQuery now supports complex cases:
+  // - Path variables: /api/example/{id}
+  // - Body transformation: {id, data} → {transformed: data}
+  return useMutationQuery<ResponseType, { id: string; data: any }>(
+    (vars) => `/api/example/${vars.id}`,
+    'put',
+    options,
+    {
+      transformBody: ({ data }) => ({ transformed: data })
+    }
+  );
+}
+```
+
+**4. Enhanced DELETE Pattern (Path Variables with No Body):**
+```typescript
+import { useMutationQuery } from '@/hooks/useQuery';
+
+export function useDeleteExample() {
+  // Enhanced useMutationQuery now supports DELETE with no body:
+  // - Path variables: /api/example/{id}
+  // - No request body sent
+  return useMutationQuery<void, { id: string }>(
+    (vars) => `/api/example/${vars.id}`,
+    'delete',
+    options,
+    {
+      noBody: true
+    }
+  );
+}
+```
+
+**5. Traditional Complex Mutation Pattern (When Enhanced Pattern Insufficient):**
 ```typescript
 import { useMutation } from 'react-query';
 import apiClient from '@/lib/apiClient';
 
-export function useComplexExample() {
-  // Use traditional useMutation for complex cases requiring:
-  // - Path variables: /api/example/{id}
-  // - Body transformation: {id, data} → {transformed: data}
+export function useVeryComplexExample() {
+  // Use traditional useMutation only for cases that enhanced useMutationQuery cannot handle:
+  // - Multiple API calls in sequence
+  // - Complex conditional logic during mutation
+  // - Custom error handling that requires access to intermediate states
   return useMutation(async ({ id, data }) => {
-    return await apiClient.put(`/api/example/${id}`, { transformed: data });
+    const firstResponse = await apiClient.get(`/api/validate/${id}`);
+    if (firstResponse.data.isValid) {
+      return await apiClient.put(`/api/example/${id}`, { transformed: data });
+    } else {
+      throw new Error('Validation failed');
+    }
   });
 }
 ```
 
-**4. Acceptable Direct react-query Imports:**
+**6. Acceptable Direct react-query Imports:**
 - `useQueryClient` - For cache management
 - `UseMutationResult`, `UseQueryResult` - For type definitions only
 - `useMutation` - For complex cases with explanatory comments
@@ -257,6 +301,32 @@ export function useComplexExample() {
 **NEVER import directly:**
 - `useQuery` - Use centralized wrapper instead
 - `useMutation` without explanation - Use `useMutationQuery` for simple cases
+
+### Enhanced useMutationQuery Capabilities (2025-09-29)
+
+The centralized `useMutationQuery` function has been enhanced to handle complex mutation patterns that previously required direct `useMutation` usage:
+
+**New Parameters:**
+- `transformBody?: (variables: V) => any` - Transform variables to request body
+- `noBody?: boolean` - For DELETE requests with no body
+
+**Enhanced Patterns Now Supported:**
+1. **Path Variables with Body Transformation**: `/users/${userId}/role` with `{userId, newRole}` → `{role: newRole}`
+2. **DELETE with Path Variables and No Body**: `/users/${userId}` with no request body
+3. **Complex Endpoint Construction**: Dynamic endpoints with variable substitution
+
+**Implementation Success (useUsers.ts):**
+- ✅ **useChangeUserRole**: Successfully migrated from traditional `useMutation` to enhanced `useMutationQuery` with `transformBody`
+- ✅ **useRemoveUser**: Successfully migrated from traditional `useMutation` to enhanced `useMutationQuery` with `noBody`
+- ✅ **Type Safety**: Fixed return types to match `UseMutationResult<AxiosResponse<T>, ...>` signature
+- ✅ **All Tests Passing**: 20/20 useUsers tests passing, full test suite 633/633 passing
+
+**Benefits:**
+- **Reduced Traditional useMutation Usage**: Complex cases now use centralized wrapper (demonstrated in useUsers.ts)
+- **Maintained Monitoring**: All enhanced patterns benefit from centralized cache invalidation
+- **Consistent Error Handling**: Unified error handling across all mutation types
+- **Backward Compatibility**: All existing usage continues to work unchanged
+- **Developer Experience**: Enhanced patterns provide simpler implementation for complex mutations
 
 ### Architecture Success Metrics
 - ✅ 633/633 tests passing
@@ -266,6 +336,7 @@ export function useComplexExample() {
 - ✅ Zero code duplication in query implementations
 - ✅ Centralized monitoring restored
 - ✅ Domain-based organization achieved
+- ✅ Centralized useQueryClient imports completed (2025-09-29)
 
 ## Agent Guidelines
 1. Read this context file before starting
