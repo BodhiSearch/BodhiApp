@@ -1,37 +1,59 @@
 /**
- * MSW v2 server setup and configuration with type-safe patterns inspired by openapi-msw
+ * MSW v2 server setup and configuration with type-safe patterns using openapi-msw
  *
  * This setup provides:
- * - Dual MSW v1/v2 compatibility (uses MSW v2 via 'msw2' alias)
+ * - OpenAPI MSW typed HTTP handlers for full type safety
+ * - MSW v2 server setup and configuration
  * - Type-safe mocking using generated OpenAPI types
- * - Clean handler creation patterns inspired by openapi-msw library
+ * - Clean handler creation patterns for both typed and standard handlers
  *
  * Key patterns:
- * 1. Use generated types from openapi-schema.ts as single source of truth
- * 2. Create handlers with explicit TypeScript types for responses
- * 3. Use createTypedResponse helper for consistent response creation
+ * 1. Use typedHttp for type-safe OpenAPI-based handlers
+ * 2. Use standard http for general MSW handlers
+ * 3. Use generated types from @bodhiapp/ts-client as single source of truth
+ * 4. Use createTypedResponse helper for consistent response creation
  *
  * Example usage in handlers:
  * ```typescript
- * import { http, type components } from '../setup';
+ * import { typedHttp, http, type components } from '../setup';
  *
- * export function createTypedHandlers(config: Partial<components['schemas']['YourType']> = {}) {
+ * // OpenAPI typed handler (preferred)
+ * export function createTypedHandlers() {
  *   return [
- *     http.get('/your/endpoint', () => {
- *       const responseData: components['schemas']['YourType'] = {
- *         field: config.field || 'default'
- *       };
+ *     typedHttp.get('/api/endpoint', ({ response }) => {
+ *       const responseData: components['schemas']['YourType'] = { ... };
+ *       return response(200).json(responseData);
+ *     })
+ *   ];
+ * }
+ *
+ * // Standard MSW handler
+ * export function createStandardHandlers() {
+ *   return [
+ *     http.get('/api/endpoint', () => {
  *       return HttpResponse.json(responseData);
  *     })
  *   ];
  * }
  * ```
  */
+import { createOpenApiHttp } from 'openapi-msw';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
 // Export types from ts-client for use in tests
 export type { components, paths } from '@bodhiapp/ts-client';
+
+// Default internal server error values for error handlers
+export const INTERNAL_SERVER_ERROR = {
+  code: 'internal_error',
+  message: 'Internal server error',
+  type: 'internal_server_error',
+  status: 500,
+} as const;
+
+// Create typed HTTP handler using OpenAPI schema
+export const typedHttp = createOpenApiHttp<import('@bodhiapp/ts-client').paths>();
 
 // Re-export MSW v2 http and HttpResponse for convenience
 export { http, HttpResponse };

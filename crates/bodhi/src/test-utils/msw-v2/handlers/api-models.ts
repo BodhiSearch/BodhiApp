@@ -8,7 +8,7 @@ import {
   ENDPOINT_API_MODELS_TEST,
   ENDPOINT_API_MODEL_ID,
 } from '@/hooks/useApiModels';
-import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
+import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
 // =============================================================================
 // CORE TYPED HTTP METHODS (Success cases + Error handlers)

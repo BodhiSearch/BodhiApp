@@ -3,7 +3,7 @@
  */
 import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useApiTokens';
 import { delay } from 'msw';
-import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
+import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 // ============================================================================
 // API Tokens - Success Handlers
