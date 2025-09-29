@@ -39,7 +39,7 @@ const mockListResponse: PaginatedApiTokenResponse = {
 const mockUpdatedToken = {
   id: 'token-1',
   name: 'Updated Token',
-  status: 'inactive',
+  status: 'inactive' as const,
   token_hash: 'hash123',
   token_id: 'jwt-token-id-1',
   user_id: 'user-123',

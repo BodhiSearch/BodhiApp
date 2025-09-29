@@ -38,14 +38,14 @@ describe('useChatCompletion', () => {
             index: 0,
             message: {
               content: 'The day that comes after Monday is Tuesday.',
-              role: 'assistant',
+              role: 'assistant' as const,
             },
           },
         ],
         created: 1736234478,
         model: 'llama2-7B-chat',
         id: 'chatcmpl-test',
-        object: 'chat.completion',
+        object: 'chat.completion' as const,
       };
 
       server.use(
@@ -212,7 +212,7 @@ describe('useChatCompletion', () => {
             index: 0,
             message: {
               content: 'Test response',
-              role: 'assistant',
+              role: 'assistant' as const,
             },
           },
         ],
@@ -228,7 +228,7 @@ describe('useChatCompletion', () => {
           predicted_per_second: 31.04,
         },
         id: 'chatcmpl-test',
-        object: 'chat.completion',
+        object: 'chat.completion' as const,
       };
 
       server.use(
@@ -332,14 +332,14 @@ describe('useChatCompletion', () => {
             index: 0,
             message: {
               content: 'Test response',
-              role: 'assistant',
+              role: 'assistant' as const,
             },
           },
         ],
         model: 'test-model',
         // No usage or timings data
         id: 'chatcmpl-test',
-        object: 'chat.completion',
+        object: 'chat.completion' as const,
       };
 
       server.use(

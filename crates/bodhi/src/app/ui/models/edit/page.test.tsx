@@ -1,5 +1,7 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODELS } from '@/hooks/useModels';
+import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
@@ -74,7 +76,6 @@ describe('EditAliasPage', () => {
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ role: 'resource_user' }),
       ...mockGetModel('test-alias', {
-        alias: 'test-alias',
         repo: 'owner1/repo1',
         filename: 'file1.gguf',
         snapshot: 'main',
@@ -88,9 +89,27 @@ describe('EditAliasPage', () => {
       }),
       ...mockModels({
         data: [
-          { repo: 'owner1/repo1', filename: 'file1.gguf', source: 'model' },
-          { repo: 'owner1/repo1', filename: 'file2.gguf', source: 'model' },
-          { repo: 'owner2/repo2', filename: 'file3.gguf', source: 'model' },
+          {
+            repo: 'owner1/repo1',
+            filename: 'file1.gguf',
+            alias: 'owner1/repo1:file1.gguf',
+            snapshot: 'main',
+            source: 'model',
+          },
+          {
+            repo: 'owner1/repo1',
+            filename: 'file2.gguf',
+            alias: 'owner1/repo1:file2.gguf',
+            snapshot: 'main',
+            source: 'model',
+          },
+          {
+            repo: 'owner2/repo2',
+            filename: 'file3.gguf',
+            alias: 'owner2/repo2:file3.gguf',
+            snapshot: 'main',
+            source: 'model',
+          },
         ],
       }),
       ...mockModelFiles({
@@ -101,7 +120,6 @@ describe('EditAliasPage', () => {
         ],
       }),
       ...mockUpdateModel('test-alias', {
-        alias: 'test-alias',
         repo: 'owner1/repo1',
         filename: 'file1.gguf',
         snapshot: 'main',

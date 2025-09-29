@@ -90,7 +90,7 @@ export function mockUserInfoError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -163,7 +163,7 @@ export function mockUsersError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -240,7 +240,7 @@ export function mockUserRoleChangeError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -298,7 +298,7 @@ export function mockUserRemoveError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;

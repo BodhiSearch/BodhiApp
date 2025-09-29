@@ -1,5 +1,7 @@
 import CreateAliasPage from '@/app/ui/models/new/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODELS } from '@/hooks/useModels';
+import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';

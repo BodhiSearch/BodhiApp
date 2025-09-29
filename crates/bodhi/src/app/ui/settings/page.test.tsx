@@ -7,7 +7,7 @@ import {
   mockSettingsInternalError,
 } from '@/test-utils/msw-v2/handlers/settings';
 import { SettingsPageContent } from '@/app/ui/settings/page';
-import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
+import { ENDPOINT_SETTINGS } from '@/hooks/useSettings';
 import { SettingInfo } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';

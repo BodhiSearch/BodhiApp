@@ -54,7 +54,7 @@ describe('AppInitializer loading and error handling', () => {
   // Test loading states
   it('shows loading state when endpoint is loading', async () => {
     // Use mock handlers with delay
-    server.use(...mockAppInfo({ status: 'ready' }, 100), ...mockUserLoggedIn(undefined, 100));
+    server.use(...mockAppInfo({ status: 'ready' }, { delayMs: 100 }), ...mockUserLoggedIn(undefined, { delayMs: 100 }));
 
     const wrapper = createWrapper();
     render(
@@ -242,7 +242,7 @@ describe('AppInitializer role-based access control', () => {
         ...mockAppInfo({ status: 'ready' }),
         ...mockUserLoggedIn({
           username: 'test@example.com',
-          role: `resource_${userRole}`,
+          role: `resource_${userRole}` as any,
         })
       );
 

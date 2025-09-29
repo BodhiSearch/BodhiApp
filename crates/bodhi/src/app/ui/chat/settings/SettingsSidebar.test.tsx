@@ -1,5 +1,5 @@
 import { SettingsSidebar } from '@/app/ui/chat/settings/SettingsSidebar';
-import { ENDPOINT_MODELS } from '@/hooks/useQuery';
+import { ENDPOINT_MODELS } from '@/hooks/useModels';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -154,8 +154,6 @@ describe('SettingsSidebar', () => {
       ...mockModels({
         data: [
           {
-            id: 1,
-            name: 'Model 1',
             alias: 'model-1',
             source: 'user',
             repo: 'test-repo',
@@ -165,8 +163,6 @@ describe('SettingsSidebar', () => {
             context_params: [],
           },
           {
-            id: 2,
-            name: 'Model 2',
             alias: 'model-2',
             source: 'user',
             repo: 'test-repo',

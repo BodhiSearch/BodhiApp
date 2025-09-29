@@ -351,8 +351,8 @@ describe('PendingRequestsPage Error Handling', () => {
         last_name: 'User',
         role: 'resource_admin',
       }),
-      ...mockAccessRequestsPendingError({ status: 404, message: 'Not found' }),
-      ...mockAccessRequestsPendingError({ status: 404, message: 'Not found' })
+      ...mockAccessRequestsPendingError({ status: 403, message: 'Forbidden' }),
+      ...mockAccessRequestsPendingError({ status: 500, message: 'Internal Server Error' })
     );
 
     await act(async () => {
