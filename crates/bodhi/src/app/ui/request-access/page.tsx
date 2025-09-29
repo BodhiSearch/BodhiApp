@@ -2,11 +2,11 @@
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
-import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessRequest';
+import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessRequests';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useAuthenticatedUser } from '@/hooks/useUsers';
 
 export function RequestAccessContent() {
   const router = useRouter();

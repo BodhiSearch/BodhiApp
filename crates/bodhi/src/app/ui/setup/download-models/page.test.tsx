@@ -1,5 +1,5 @@
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';

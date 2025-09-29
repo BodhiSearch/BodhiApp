@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useUpdateSetting } from '@/hooks/useQuery';
+import { useUpdateSetting } from '@/hooks/useSettings';
 import { SettingInfo } from '@bodhiapp/ts-client';
 import { useState } from 'react';
 import { useToastMessages } from '@/hooks/use-toast-messages';

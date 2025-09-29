@@ -18,7 +18,7 @@ import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteApiModel } from '@/hooks/useApiModels';
-import { useModels } from '@/hooks/useQuery';
+import { useModels } from '@/hooks/useModels';
 import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 import { SortState } from '@/types/models';
 import { Alias } from '@bodhiapp/ts-client';

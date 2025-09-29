@@ -1,8 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for authentication endpoints using openapi-msw
  */
-import { ENDPOINT_AUTH_CALLBACK } from '@/hooks/useOAuth';
-import { ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useQuery';
+import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT } from '@/hooks/useAuth';
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 

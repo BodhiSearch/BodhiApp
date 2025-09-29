@@ -8,7 +8,7 @@ import {
   ENDPOINT_ACCESS_REQUESTS_PENDING,
   ENDPOINT_USER_REQUEST_ACCESS,
   ENDPOINT_USER_REQUEST_STATUS,
-} from '@/hooks/useAccessRequest';
+} from '@/hooks/useAccessRequests';
 import { delay } from 'msw';
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
 

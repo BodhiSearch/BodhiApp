@@ -1,5 +1,5 @@
 import ApiModelForm from '@/components/api-models/ApiModelForm';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { act, render, screen, waitFor } from '@testing-library/react';

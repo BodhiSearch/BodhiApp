@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useQuery';
+import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useModels';
 import {
   AliasFormData,
   createAliasFormSchema,

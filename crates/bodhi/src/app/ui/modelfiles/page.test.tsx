@@ -3,7 +3,7 @@ import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { mockModelFilesDefault, mockModelFilesError } from '@/test-utils/msw-v2/handlers/modelfiles';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';

@@ -5,7 +5,7 @@ import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { LocalModelResponse } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
-import { useModelFiles } from '@/hooks/useQuery';
+import { useModelFiles } from '@/hooks/useModels';
 import AppInitializer from '@/components/AppInitializer';
 import { ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

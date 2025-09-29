@@ -14,8 +14,8 @@ import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock } from 'lucide-react';
 import { getAvailableRoles } from '@/lib/roles';
 import { SortState } from '@/types/models';
-import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequest';
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequests';
+import { useAuthenticatedUser } from '@/hooks/useUsers';
 import { useState } from 'react';
 
 function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {

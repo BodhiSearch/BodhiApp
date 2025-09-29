@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { ApiToken, ApiTokenResponse } from '@bodhiapp/ts-client';
-import { useAppInfo } from '@/hooks/useQuery';
+import { useAppInfo } from '@/hooks/useInfo';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';

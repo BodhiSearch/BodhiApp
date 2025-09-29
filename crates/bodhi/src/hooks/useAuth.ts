@@ -1,15 +1,24 @@
-import { UseMutationResult } from 'react-query';
-import { AxiosResponse, AxiosError } from 'axios';
-import { useMutationQuery } from '@/hooks/useQuery';
+// External imports
+import { UseMutationResult, useQueryClient } from 'react-query';
+import { AxiosError, AxiosResponse } from 'axios';
 import { useCallback } from 'react';
+
+// Type imports
 import { AuthCallbackRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 
-// Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+// Internal imports
+import { useMutationQuery } from './useQuery';
+import apiClient from '@/lib/apiClient';
 
+// Constants
 export const ENDPOINT_AUTH_INITIATE = '/bodhi/v1/auth/initiate';
 export const ENDPOINT_AUTH_CALLBACK = '/bodhi/v1/auth/callback';
+export const ENDPOINT_LOGOUT = '/bodhi/v1/logout';
 
+// Type alias
+type ErrorResponse = OpenAiApiError;
+
+// OAuth Initiate Hook
 interface UseOAuthInitiateOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
@@ -66,12 +75,12 @@ export function extractOAuthParams(url: string): AuthCallbackRequest {
   }
 }
 
+// OAuth Callback Hook
 interface UseOAuthCallbackOptions {
   onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
 }
 
-// OAuth callback hook
 export function useOAuthCallback(
   options?: UseOAuthCallbackOptions
 ): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, AuthCallbackRequest> {
@@ -104,4 +113,47 @@ export function useOAuthCallback(
       skipCacheInvalidation: true,
     }
   );
+}
+
+// Logout Hook (from useQuery.ts)
+interface UseLogoutOptions {
+  onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
+  onError?: (error: AxiosError<ErrorResponse>) => void;
+}
+
+export function useLogout(
+  options?: UseLogoutOptions
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+  const queryClient = useQueryClient();
+  return useMutationQuery<RedirectResponse, void>(ENDPOINT_LOGOUT, 'post', {
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries();
+      if (options?.onSuccess) {
+        options.onSuccess(data);
+      }
+    },
+  });
+}
+
+// Logout Handler Hook (from useLogoutHandler.ts)
+interface UseLogoutHandlerOptions {
+  onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
+  onError?: (message: string) => void;
+}
+
+export function useLogoutHandler(options?: UseLogoutHandlerOptions) {
+  const { mutate: logout, isLoading } = useLogout({
+    onSuccess: (response: AxiosResponse<RedirectResponse>) => {
+      options?.onSuccess?.(response);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      console.error('Logout failed:', error);
+      const errorMessage =
+        error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
+      options?.onError?.(errorMessage);
+    },
+  });
+
+  return { logout, isLoading };
 }

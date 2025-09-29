@@ -168,6 +168,49 @@ export function mockGetApiModel(
   ];
 }
 
+/**
+ * Stub handler for individual API model retrieval that responds every time (no closure state)
+ * Use this for tests that require multiple API calls to the same endpoint
+ */
+export function stubGetApiModel(
+  expectedId: string,
+  {
+    id = '',
+    api_format = 'openai',
+    base_url = 'https://api.openai.com/v1',
+    api_key_masked = '****123',
+    models = ['gpt-3.5-turbo'],
+    prefix = null,
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
+    ...rest
+  }: Partial<components['schemas']['ApiModelResponse']> = {}
+) {
+  return [
+    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
+      const { id: paramId } = params;
+
+      // Only respond if id matches
+      if (paramId !== expectedId) {
+        return; // Pass through to next handler
+      }
+
+      const responseData: components['schemas']['ApiModelResponse'] = {
+        id: id || (paramId as string),
+        api_format,
+        base_url,
+        api_key_masked,
+        models,
+        prefix,
+        created_at,
+        updated_at,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
+    }),
+  ];
+}
+
 export function mockGetApiModelError(
   expectedId: string,
   {

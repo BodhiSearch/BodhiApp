@@ -5,7 +5,7 @@ import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOAuthInitiate } from '@/hooks/useOAuth';
+import { useOAuthInitiate } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 import { handleSmartRedirect } from '@/lib/utils';

@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
-import { useChangeUserRole, useRemoveUser } from '@/hooks/useAccessRequest';
-import { AuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useChangeUserRole, useRemoveUser, AuthenticatedUser } from '@/hooks/useUsers';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserInfo } from '@bodhiapp/ts-client';
 import { getRoleLabel, getRoleBadgeVariant } from '@/lib/roles';

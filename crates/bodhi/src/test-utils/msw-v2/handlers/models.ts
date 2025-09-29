@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
-import { ENDPOINT_MODELS, ENDPOINT_MODEL_ALIAS, ENDPOINT_MODEL_ID } from '@/hooks/useQuery';
+import { ENDPOINT_MODELS, ENDPOINT_MODEL_ALIAS, ENDPOINT_MODEL_ID } from '@/hooks/useModels';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
 // ============================================================================

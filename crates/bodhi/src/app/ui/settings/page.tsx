@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSettings } from '@/hooks/useQuery';
+import { useSettings } from '@/hooks/useSettings';
 import { cn } from '@/lib/utils';
 import { SettingInfo } from '@bodhiapp/ts-client';
 import {

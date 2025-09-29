@@ -1,3 +1,4 @@
+import { useQuery, useMutationQuery } from '@/hooks/useQuery';
 import apiClient from '@/lib/apiClient';
 import {
   ApiModelResponse,
@@ -18,7 +19,6 @@ import {
   useQueryClient,
   UseQueryOptions,
   UseQueryResult,
-  useQuery as useReactQuery,
 } from 'react-query';
 
 // Type alias for compatibility
@@ -37,12 +37,10 @@ export function useApiModel(
   id: string,
   options?: UseQueryOptions<ApiModelResponse, AxiosError<ErrorResponse>>
 ): UseQueryResult<ApiModelResponse, AxiosError<ErrorResponse>> {
-  return useReactQuery<ApiModelResponse, AxiosError<ErrorResponse>>(
+  return useQuery<ApiModelResponse>(
     ['api-models', id],
-    async () => {
-      const { data } = await apiClient.get<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${id}`);
-      return data;
-    },
+    `${ENDPOINT_API_MODELS}/${id}`,
+    undefined,
     {
       enabled: !!id,
       refetchOnWindowFocus: false,
@@ -60,11 +58,9 @@ export function useCreateApiModel(
 ): UseMutationResult<AxiosResponse<ApiModelResponse>, AxiosError<ErrorResponse>, CreateApiModelRequest> {
   const queryClient = useQueryClient();
 
-  return useMutation<AxiosResponse<ApiModelResponse>, AxiosError<ErrorResponse>, CreateApiModelRequest>(
-    async (data) => {
-      const response = await apiClient.post<ApiModelResponse>(ENDPOINT_API_MODELS, data);
-      return response;
-    },
+  return useMutationQuery<ApiModelResponse, CreateApiModelRequest>(
+    ENDPOINT_API_MODELS,
+    'post',
     {
       ...options,
       onSuccess: (data, variables, context) => {
@@ -74,7 +70,8 @@ export function useCreateApiModel(
         queryClient.invalidateQueries(['models']);
         options?.onSuccess?.(data, variables, context);
       },
-    }
+    },
+    { skipCacheInvalidation: true }
   );
 }
 
@@ -94,6 +91,8 @@ export function useUpdateApiModel(
 > {
   const queryClient = useQueryClient();
 
+  // Using traditional useMutation for complex case with path variables and body transformation
+  // Variables: { id: string; data: UpdateApiModelRequest } need to be split into URL path and request body
   return useMutation<
     AxiosResponse<ApiModelResponse>,
     AxiosError<ErrorResponse>,
@@ -126,6 +125,8 @@ export function useDeleteApiModel(
 ): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
   const queryClient = useQueryClient();
 
+  // Using traditional useMutation for DELETE with path variable and no request body
+  // Variable is just the ID string which needs to be in the URL path, not request body
   return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
     async (id) => {
       const response = await apiClient.delete<void>(`${ENDPOINT_API_MODELS}/${id}`);
@@ -152,10 +153,7 @@ export function useDeleteApiModel(
 export function useTestApiModel(
   options?: UseMutationOptions<AxiosResponse<TestPromptResponse>, AxiosError<ErrorResponse>, TestPromptRequest>
 ): UseMutationResult<AxiosResponse<TestPromptResponse>, AxiosError<ErrorResponse>, TestPromptRequest> {
-  return useMutation<AxiosResponse<TestPromptResponse>, AxiosError<ErrorResponse>, TestPromptRequest>(async (data) => {
-    const response = await apiClient.post<TestPromptResponse>(ENDPOINT_API_MODELS_TEST, data);
-    return response;
-  }, options);
+  return useMutationQuery<TestPromptResponse, TestPromptRequest>(ENDPOINT_API_MODELS_TEST, 'post', options);
 }
 
 /**
@@ -164,13 +162,7 @@ export function useTestApiModel(
 export function useFetchApiModels(
   options?: UseMutationOptions<AxiosResponse<FetchModelsResponse>, AxiosError<ErrorResponse>, FetchModelsRequest>
 ): UseMutationResult<AxiosResponse<FetchModelsResponse>, AxiosError<ErrorResponse>, FetchModelsRequest> {
-  return useMutation<AxiosResponse<FetchModelsResponse>, AxiosError<ErrorResponse>, FetchModelsRequest>(
-    async (data) => {
-      const response = await apiClient.post<FetchModelsResponse>(ENDPOINT_API_MODELS_FETCH, data);
-      return response;
-    },
-    options
-  );
+  return useMutationQuery<FetchModelsResponse, FetchModelsRequest>(ENDPOINT_API_MODELS_FETCH, 'post', options);
 }
 
 /**
@@ -179,12 +171,10 @@ export function useFetchApiModels(
 export function useApiFormats(
   options?: UseQueryOptions<ApiFormatsResponse, AxiosError<ErrorResponse>>
 ): UseQueryResult<ApiFormatsResponse, AxiosError<ErrorResponse>> {
-  return useReactQuery<ApiFormatsResponse, AxiosError<ErrorResponse>>(
+  return useQuery<ApiFormatsResponse>(
     ['api-formats'],
-    async () => {
-      const { data } = await apiClient.get<ApiFormatsResponse>(ENDPOINT_API_MODELS_FORMATS);
-      return data;
-    },
+    ENDPOINT_API_MODELS_FORMATS,
+    undefined,
     {
       refetchOnWindowFocus: false,
       staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)

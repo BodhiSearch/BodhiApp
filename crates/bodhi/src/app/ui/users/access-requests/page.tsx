@@ -10,8 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequest';
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useAllRequests, useApproveRequest, useRejectRequest } from '@/hooks/useAccessRequests';
+import { useAuthenticatedUser } from '@/hooks/useUsers';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { UserAccessRequest } from '@bodhiapp/ts-client';
 import { Shield, Clock, CheckCircle, XCircle } from 'lucide-react';
