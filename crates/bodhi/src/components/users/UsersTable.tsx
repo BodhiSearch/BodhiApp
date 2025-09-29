@@ -3,7 +3,7 @@
 import React from 'react';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { AuthenticatedUser } from '@/hooks/useUsers';
 import { UserInfo } from '@bodhiapp/ts-client';
 import { Users } from 'lucide-react';
 import { SortState } from '@/types/models';

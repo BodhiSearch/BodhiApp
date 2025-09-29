@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import AliasForm from '@/app/ui/models/AliasForm';
-import { useModel } from '@/hooks/useQuery';
+import { useModel } from '@/hooks/useModels';
 import AppInitializer from '@/components/AppInitializer';
 import { Loading } from '@/components/ui/Loading';
 import { ErrorPage } from '@/components/ui/ErrorPage';

@@ -1,5 +1,5 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';

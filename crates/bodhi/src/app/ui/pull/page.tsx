@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useDownloads } from '@/hooks/useQuery';
+import { useDownloads } from '@/hooks/useModels';
 import { DownloadRequest } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
 import { useEffect, useState } from 'react';

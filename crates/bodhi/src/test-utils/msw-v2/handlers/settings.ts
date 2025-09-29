@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for settings endpoint using openapi-msw with full schema compliance
  */
-import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useQuery';
+import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useSettings';
 import { delay } from 'msw';
 import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-msw-setup';
 

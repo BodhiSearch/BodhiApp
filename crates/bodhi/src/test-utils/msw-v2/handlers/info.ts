@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for app info endpoint using openapi-msw
  */
-import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 

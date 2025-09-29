@@ -1,9 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { useOAuthInitiate } from '@/hooks/useOAuth';
-import { useUser } from '@/hooks/useQuery';
+import { useLogoutHandler, useOAuthInitiate } from '@/hooks/useAuth';
+import { useUser } from '@/hooks/useUsers';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';

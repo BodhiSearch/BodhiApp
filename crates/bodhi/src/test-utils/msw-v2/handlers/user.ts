@@ -11,7 +11,7 @@
  */
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
-import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/useQuery';
+import { ENDPOINT_USER_INFO, ENDPOINT_USERS, ENDPOINT_USER_ROLE, ENDPOINT_USER_ID } from '@/hooks/useUsers';
 import {
   mockSimpleUsersResponse,
   mockMultipleAdminsResponse,
@@ -205,6 +205,30 @@ export function mockUsersError({
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       if (hasBeenCalled) return;
       hasBeenCalled = true;
+      const errorData = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorData });
+    }),
+  ];
+}
+
+/**
+ * Stub handler for users list endpoint error that responds every time (no closure state)
+ * Use this for tests that require multiple API calls to the same endpoint
+ */
+export function stubUsersError({
+  code = INTERNAL_SERVER_ERROR.code,
+  message = 'Failed to fetch users',
+  type = INTERNAL_SERVER_ERROR.type,
+  status = INTERNAL_SERVER_ERROR.status,
+  ...rest
+}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+  return [
+    typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       const errorData = {
         code,
         message,

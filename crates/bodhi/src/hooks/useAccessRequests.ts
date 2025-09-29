@@ -7,8 +7,6 @@ import {
   Role,
   UserAccessRequest,
   UserAccessStatusResponse,
-  UserInfo,
-  UserListResponse,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useMutation, UseMutationResult, useQueryClient, UseQueryResult } from 'react-query';
@@ -38,7 +36,6 @@ const queryKeys = {
     page?.toString() ?? '-1',
     pageSize?.toString() ?? '-1',
   ],
-  users: (page?: number, pageSize?: number) => ['users', 'all', page?.toString() ?? '-1', pageSize?.toString() ?? '-1'],
 };
 
 // User request status
@@ -155,70 +152,6 @@ export function useRejectRequest(options?: {
       },
       onError: (error: AxiosError<ErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to reject request';
-        options?.onError?.(message);
-      },
-    }
-  );
-}
-
-// List all users (admin/manager)
-export function useAllUsers(
-  page: number = 1,
-  pageSize: number = 10
-): UseQueryResult<UserListResponse, AxiosError<ErrorResponse>> {
-  return useQuery<UserListResponse>(
-    queryKeys.users(page, pageSize),
-    '/bodhi/v1/users',
-    { page, page_size: pageSize },
-    {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    }
-  );
-}
-
-// Change user role (admin/manager)
-export function useChangeUserRole(options?: {
-  onSuccess?: () => void;
-  onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }> {
-  const queryClient = useQueryClient();
-
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, { userId: string; newRole: string }>(
-    async ({ userId, newRole }) => {
-      return await apiClient.put(`/bodhi/v1/users/${userId}/role`, { role: newRole });
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['users']);
-        options?.onSuccess?.();
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to change user role';
-        options?.onError?.(message);
-      },
-    }
-  );
-}
-
-// Remove user (admin only)
-export function useRemoveUser(options?: {
-  onSuccess?: () => void;
-  onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
-  const queryClient = useQueryClient();
-
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
-    async (userId: string) => {
-      return await apiClient.delete(`/bodhi/v1/users/${userId}`);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['users']);
-        options?.onSuccess?.();
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to remove user';
         options?.onError?.(message);
       },
     }

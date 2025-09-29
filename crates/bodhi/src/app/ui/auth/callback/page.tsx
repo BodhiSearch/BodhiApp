@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useOAuthCallback } from '@/hooks/useOAuth';
+import { useOAuthCallback } from '@/hooks/useAuth';
 import { AuthCallbackRequest } from '@bodhiapp/ts-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

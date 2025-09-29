@@ -12,7 +12,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader } from '@/componen
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
-import { useModels } from '@/hooks/useQuery';
+import { useModels } from '@/hooks/useModels';
 import { HelpCircle } from 'lucide-react';
 
 interface SettingRowProps {

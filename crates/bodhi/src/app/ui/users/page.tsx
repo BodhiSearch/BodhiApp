@@ -6,8 +6,7 @@ import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { useAllUsers } from '@/hooks/useAccessRequest';
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser';
+import { useAllUsers, useAuthenticatedUser } from '@/hooks/useUsers';
 import { AlertCircle } from 'lucide-react';
 import { UsersTable } from '@/components/users/UsersTable';
 

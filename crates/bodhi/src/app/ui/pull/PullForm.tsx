@@ -4,7 +4,7 @@ import React, { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
-import { usePullModel, useModelFiles } from '@/hooks/useQuery';
+import { usePullModel, useModelFiles } from '@/hooks/useModels';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';

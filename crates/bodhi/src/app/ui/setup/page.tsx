@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useSetupApp } from '@/hooks/useQuery';
+import { useSetupApp } from '@/hooks/useInfo';
 import {
   FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_SETUP_DOWNLOAD_MODELS,

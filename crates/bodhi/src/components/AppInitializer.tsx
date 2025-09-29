@@ -3,7 +3,8 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAppInfo, useUser } from '@/hooks/useQuery';
+import { useAppInfo } from '@/hooks/useInfo';
+import { useUser } from '@/hooks/useUsers';
 import {
   FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_DEFAULT,

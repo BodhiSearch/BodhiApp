@@ -23,6 +23,7 @@ import {
   mockTestApiModelSuccess,
   mockUpdateApiModel,
   mockUpdateApiModelError,
+  stubGetApiModel,
 } from '@/test-utils/msw-v2/handlers/api-models';
 import { mockAppInfoReady } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
@@ -139,7 +140,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel('test-model', {
+        ...stubGetApiModel('test-model', {
           id: 'test-model',
           api_format: 'openai',
           base_url: 'https://api.openai.com/v1',

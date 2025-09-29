@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useDownloads, usePullModel } from '@/hooks/useQuery';
+import { useDownloads, usePullModel } from '@/hooks/useModels';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
