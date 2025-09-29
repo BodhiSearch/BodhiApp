@@ -1,6 +1,11 @@
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 import { ROUTE_DEFAULT } from '@/lib/constants';
-import { mockAuthInitiate, mockAuthInitiateError } from '@/test-utils/msw-v2/handlers/auth';
+import {
+  mockAuthInitiate,
+  mockAuthInitiateError,
+  mockAuthInitiateUnauthenticated,
+  mockAuthInitiateAlreadyAuthenticated,
+} from '@/test-utils/msw-v2/handlers/auth';
 import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
@@ -93,7 +98,7 @@ describe('ResourceAdminPage', () => {
   it('handles OAuth initiation with external OAuth provider URL', async () => {
     server.use(
       ...mockAppInfoResourceAdmin(),
-      ...mockAuthInitiate({ status: 201, location: 'https://oauth.example.com/auth?client_id=test' })
+      ...mockAuthInitiateUnauthenticated({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
@@ -115,7 +120,7 @@ describe('ResourceAdminPage', () => {
   it('handles OAuth initiation with same-origin redirect URL', async () => {
     server.use(
       ...mockAppInfoResourceAdmin(),
-      ...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' })
+      ...mockAuthInitiateAlreadyAuthenticated({ location: 'http://localhost:3000/ui/chat' })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });

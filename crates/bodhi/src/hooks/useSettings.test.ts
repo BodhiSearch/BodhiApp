@@ -46,7 +46,7 @@ const mockSettingsData: Setting[] = [
 
 const mockUserInfoData = {
   ...createMockLoggedInUser(),
-  role: 'resource_user',
+  role: 'resource_user' as const,
 };
 
 setupMswV2();

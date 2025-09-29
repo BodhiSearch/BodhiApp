@@ -86,7 +86,7 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles OAuth initiation with same-origin redirect URL', async () => {
-    server.use(...mockAuthInitiate({ status: 200, location: 'http://localhost:3000/ui/chat' }));
+    server.use(...mockAuthInitiate({ location: 'http://localhost:3000/ui/chat' }));
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 

@@ -280,7 +280,7 @@ describe('RequestAccessPage - No Request Exists', () => {
         type: 'not_found_error',
         status: 404,
       }),
-      ...mockUserRequestAccess(100)
+      ...mockUserRequestAccess({ delayMs: 100 })
     );
     await act(async () => {
       render(<RequestAccessPage />, { wrapper: createWrapper() });

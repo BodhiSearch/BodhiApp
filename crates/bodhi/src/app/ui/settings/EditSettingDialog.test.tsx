@@ -373,13 +373,13 @@ describe('MSW Handler Passthrough Behavior', () => {
           current_value: 3000,
           default_value: 1135,
           source: 'settings_file',
-          metadata: { type: 'number' },
+          metadata: { type: 'number', min: 1025, max: 65535 },
         }),
         ...mockUpdateSetting('BODHI_LOG_LEVEL', {
           current_value: 'debug',
           default_value: 'warn',
           source: 'settings_file',
-          metadata: { type: 'option' },
+          metadata: { type: 'option', options: ['error', 'warn', 'info', 'debug', 'trace'] },
         }),
         ...mockSettingsNotFound() // Catch-all for unmapped keys
       );
@@ -441,7 +441,7 @@ describe('MSW Handler Passthrough Behavior', () => {
           current_value: 3000,
           default_value: 1135,
           source: 'settings_file',
-          metadata: { type: 'number' },
+          metadata: { type: 'number', min: 1025, max: 65535 },
         }),
         ...mockSettingsNotFound() // This will catch BODHI_HOME requests
       );

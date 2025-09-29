@@ -1,5 +1,6 @@
 import ApiModelForm from '@/components/api-models/ApiModelForm';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
+import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { act, render, screen, waitFor } from '@testing-library/react';
@@ -115,9 +116,9 @@ describe('ApiModelForm', () => {
   beforeEach(() => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
-      ...mockUserLoggedIn(createMockLoggedInUser()),
+      ...mockUserLoggedIn(undefined),
       ...mockApiFormats({ data: ['openai'] }),
-      ...mockCreateApiModel({ response: mockApiModelResponse }),
+      ...mockCreateApiModel(mockApiModelResponse),
       ...mockUpdateApiModel('test-api-model', mockApiModelResponse),
       ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo'] }),
       ...mockTestApiModel({ success: true, response: 'Test successful!' })
@@ -238,7 +239,7 @@ describe('ApiModelForm', () => {
     it('creates API model successfully', async () => {
       const user = userEvent.setup();
 
-      server.use(...mockCreateApiModel({ response: mockApiModelResponse }));
+      server.use(...mockCreateApiModel(mockApiModelResponse));
 
       await act(async () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });

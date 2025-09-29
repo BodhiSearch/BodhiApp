@@ -136,8 +136,8 @@ const mockPullModelResponse: DownloadRequest = {
   error: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
-  total_bytes: null,
-  downloaded_bytes: null,
+  total_bytes: undefined,
+  downloaded_bytes: undefined,
   started_at: '2024-01-01T00:00:00Z',
 };
 
@@ -298,8 +298,8 @@ describe('Model Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.alias).toBe(alias);
-      expect(result.current.data?.repo).toBe(mockModelData.repo);
+      expect((result.current.data as any)?.alias).toBe(alias);
+      expect((result.current.data as any)?.repo).toBe(mockModelData.repo);
     });
 
     it('is disabled when alias is empty', async () => {

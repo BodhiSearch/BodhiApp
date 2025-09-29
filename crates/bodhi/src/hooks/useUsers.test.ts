@@ -157,7 +157,7 @@ describe('User Hooks', () => {
     });
 
     it('redirects to login when user auth_status is not logged_in', async () => {
-      server.use(...mockUserLoggedIn({ auth_status: 'setup_required' as any }));
+      server.use(...mockUserLoggedOut());
 
       const { result } = renderHook(() => useAuthenticatedUser(), {
         wrapper: createWrapper(),

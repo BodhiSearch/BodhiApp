@@ -1,5 +1,7 @@
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useUsers';
+import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
+import { ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useModels';
+import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';
@@ -88,7 +90,7 @@ describe('ModelDownloadPage render', () => {
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
             total_bytes: null,
-            downloaded_bytes: null,
+            downloaded_bytes: undefined,
             started_at: '2024-01-01T00:00:00Z',
           },
           {
