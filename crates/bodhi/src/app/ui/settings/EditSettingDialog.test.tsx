@@ -331,7 +331,7 @@ describe('EditSettingDialog', () => {
             type: 'string',
           },
         },
-        100
+        { delayMs: 100 }
       )
     );
 

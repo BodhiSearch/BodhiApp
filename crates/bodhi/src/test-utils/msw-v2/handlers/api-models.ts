@@ -17,17 +17,20 @@ import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-ms
 /**
  * Mock handler for API models list endpoint with configurable responses
  */
-export function mockApiModels({
-  data = [],
-  page = 1,
-  page_size = 30,
-  total = 0,
-  ...rest
-}: Partial<components['schemas']['PaginatedApiModelResponse']> = {}) {
+export function mockApiModels(
+  {
+    data = [],
+    page = 1,
+    page_size = 30,
+    total = 0,
+    ...rest
+  }: Partial<components['schemas']['PaginatedApiModelResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['PaginatedApiModelResponse'] = {
         data,
@@ -41,17 +44,20 @@ export function mockApiModels({
   ];
 }
 
-export function mockApiModelsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockApiModelsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -67,21 +73,24 @@ export function mockApiModelsError({
 /**
  * Mock handler for API model creation endpoint with configurable responses
  */
-export function mockCreateApiModel({
-  id = 'test-api-model-123',
-  api_format = 'openai',
-  base_url = 'https://api.openai.com/v1',
-  api_key_masked = '****key',
-  models = ['gpt-4'],
-  prefix = null,
-  created_at = new Date().toISOString(),
-  updated_at = new Date().toISOString(),
-  ...rest
-}: Partial<components['schemas']['ApiModelResponse']> = {}) {
+export function mockCreateApiModel(
+  {
+    id = 'test-api-model-123',
+    api_format = 'openai',
+    base_url = 'https://api.openai.com/v1',
+    api_key_masked = '****key',
+    models = ['gpt-4'],
+    prefix = null,
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
+    ...rest
+  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['ApiModelResponse'] = {
         id,
@@ -99,17 +108,20 @@ export function mockCreateApiModel({
   ];
 }
 
-export function mockCreateApiModelError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockCreateApiModelError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -137,7 +149,8 @@ export function mockGetApiModel(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {}
+  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -149,51 +162,8 @@ export function mockGetApiModel(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-
-      const responseData: components['schemas']['ApiModelResponse'] = {
-        id: id || (paramId as string),
-        api_format,
-        base_url,
-        api_key_masked,
-        models,
-        prefix,
-        created_at,
-        updated_at,
-        ...rest,
-      };
-      return response(200 as const).json(responseData);
-    }),
-  ];
-}
-
-/**
- * Stub handler for individual API model retrieval that responds every time (no closure state)
- * Use this for tests that require multiple API calls to the same endpoint
- */
-export function stubGetApiModel(
-  expectedId: string,
-  {
-    id = '',
-    api_format = 'openai',
-    base_url = 'https://api.openai.com/v1',
-    api_key_masked = '****123',
-    models = ['gpt-3.5-turbo'],
-    prefix = null,
-    created_at = new Date().toISOString(),
-    updated_at = new Date().toISOString(),
-    ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {}
-) {
-  return [
-    typedHttp.get(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
-      const { id: paramId } = params;
-
-      // Only respond if id matches
-      if (paramId !== expectedId) {
-        return; // Pass through to next handler
-      }
 
       const responseData: components['schemas']['ApiModelResponse'] = {
         id: id || (paramId as string),
@@ -219,7 +189,8 @@ export function mockGetApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -231,7 +202,7 @@ export function mockGetApiModelError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -260,7 +231,8 @@ export function mockUpdateApiModel(
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
-  }: Partial<components['schemas']['ApiModelResponse']> = {}
+  }: Partial<components['schemas']['ApiModelResponse']> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -272,7 +244,7 @@ export function mockUpdateApiModel(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['ApiModelResponse'] = {
@@ -299,7 +271,8 @@ export function mockUpdateApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -311,7 +284,7 @@ export function mockUpdateApiModelError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -328,7 +301,7 @@ export function mockUpdateApiModelError(
 /**
  * Mock handler for API model deletion endpoint with configurable responses
  */
-export function mockDeleteApiModel(expectedId: string) {
+export function mockDeleteApiModel(expectedId: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_API_MODEL_ID, async ({ params, response }) => {
@@ -339,7 +312,7 @@ export function mockDeleteApiModel(expectedId: string) {
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       return response(204 as const).empty();
@@ -355,7 +328,8 @@ export function mockDeleteApiModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -367,7 +341,7 @@ export function mockDeleteApiModelError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -384,14 +358,14 @@ export function mockDeleteApiModelError(
 /**
  * Mock handler for API formats endpoint with configurable responses
  */
-export function mockApiFormats({
-  data = ['openai', 'placeholder'],
-  ...rest
-}: Partial<components['schemas']['ApiFormatsResponse']> = {}) {
+export function mockApiFormats(
+  { data = ['openai', 'placeholder'], ...rest }: Partial<components['schemas']['ApiFormatsResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['ApiFormatsResponse'] = {
         data,
@@ -402,17 +376,20 @@ export function mockApiFormats({
   ];
 }
 
-export function mockApiFormatsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockApiFormatsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_API_MODELS_FORMATS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -428,15 +405,18 @@ export function mockApiFormatsError({
 /**
  * Mock handler for API model test connection endpoint with configurable responses
  */
-export function mockTestApiModel({
-  success = true,
-  response: responseMessage = 'Connection successful',
-  ...rest
-}: Partial<components['schemas']['TestPromptResponse']> = {}) {
+export function mockTestApiModel(
+  {
+    success = true,
+    response: responseMessage = 'Connection successful',
+    ...rest
+  }: Partial<components['schemas']['TestPromptResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['TestPromptResponse'] = {
         success,
@@ -448,17 +428,20 @@ export function mockTestApiModel({
   ];
 }
 
-export function mockTestApiModelError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockTestApiModelError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_TEST, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -474,14 +457,17 @@ export function mockTestApiModelError({
 /**
  * Mock handler for API model fetch models endpoint with configurable responses
  */
-export function mockFetchApiModels({
-  models = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
-  ...rest
-}: Partial<components['schemas']['FetchModelsResponse']> = {}) {
+export function mockFetchApiModels(
+  {
+    models = ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo-preview'],
+    ...rest
+  }: Partial<components['schemas']['FetchModelsResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['FetchModelsResponse'] = {
         models,
@@ -492,17 +478,20 @@ export function mockFetchApiModels({
   ];
 }
 
-export function mockFetchApiModelsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockFetchApiModelsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(ENDPOINT_API_MODELS_FETCH, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,

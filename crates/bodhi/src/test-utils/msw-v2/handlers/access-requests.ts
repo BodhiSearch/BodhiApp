@@ -19,18 +19,21 @@ import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../openapi-ms
 /**
  * Mock handler for all access requests endpoint with configurable responses
  */
-export function mockAccessRequests({
-  requests = [],
-  total = 0,
-  page = 1,
-  page_size = 10,
-  ...rest
-}: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
+export function mockAccessRequests(
+  {
+    requests = [],
+    total = 0,
+    page = 1,
+    page_size = 10,
+    ...rest
+  }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
@@ -45,18 +48,21 @@ export function mockAccessRequests({
   ];
 }
 
-export function mockAccessRequestsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockAccessRequestsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -73,18 +79,21 @@ export function mockAccessRequestsError({
 /**
  * Mock handler for pending access requests endpoint with configurable responses
  */
-export function mockAccessRequestsPending({
-  requests = [],
-  total = 0,
-  page = 1,
-  page_size = 10,
-  ...rest
-}: Partial<components['schemas']['PaginatedUserAccessResponse']> = {}) {
+export function mockAccessRequestsPending(
+  {
+    requests = [],
+    total = 0,
+    page = 1,
+    page_size = 10,
+    ...rest
+  }: Partial<components['schemas']['PaginatedUserAccessResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedUserAccessResponse'] = {
@@ -99,18 +108,21 @@ export function mockAccessRequestsPending({
   ];
 }
 
-export function mockAccessRequestsPendingError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockAccessRequestsPendingError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_ACCESS_REQUESTS_PENDING, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -128,13 +140,13 @@ export function mockAccessRequestsPendingError({
  * Mock handler for access request approval - success case
  * Only responds to the specified ID, returns 404 for others
  */
-export function mockAccessRequestApprove(id: number) {
+export function mockAccessRequestApprove(id: number, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
       if (params.id !== id.toString()) return;
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       return response(200 as const).empty();
@@ -150,7 +162,8 @@ export function mockAccessRequestApproveError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -158,7 +171,7 @@ export function mockAccessRequestApproveError(
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
       // Only return error for matching ID
       if (params.id !== id.toString()) return;
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -176,14 +189,14 @@ export function mockAccessRequestApproveError(
  * Mock handler for access request rejection - success case
  * Only responds to the specified ID, returns 404 for others
  */
-export function mockAccessRequestReject(id: number) {
+export function mockAccessRequestReject(id: number, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only respond with success if ID matches
       if (params.id !== id.toString()) return;
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       return response(200 as const).empty();
@@ -199,7 +212,8 @@ export function mockAccessRequestRejectError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -207,7 +221,7 @@ export function mockAccessRequestRejectError(
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only return error for matching ID
       if (params.id !== id.toString()) return;
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -224,18 +238,21 @@ export function mockAccessRequestRejectError(
 /**
  * Mock handler for user access request status endpoint
  */
-export function mockUserRequestStatus({
-  status = 'pending',
-  username = 'user@example.com',
-  created_at = '2024-01-01T00:00:00Z',
-  updated_at = '2024-01-01T00:00:00Z',
-  ...rest
-}: Partial<components['schemas']['UserAccessStatusResponse']> = {}) {
+export function mockUserRequestStatus(
+  {
+    status = 'pending',
+    username = 'user@example.com',
+    created_at = '2024-01-01T00:00:00Z',
+    updated_at = '2024-01-01T00:00:00Z',
+    ...rest
+  }: Partial<components['schemas']['UserAccessStatusResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAccessStatusResponse'] = {
@@ -250,18 +267,21 @@ export function mockUserRequestStatus({
   ];
 }
 
-export function mockUserRequestStatusError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}) {
+export function mockUserRequestStatusError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_USER_REQUEST_STATUS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -278,12 +298,12 @@ export function mockUserRequestStatusError({
 /**
  * Mock handler for creating user access request - success case
  */
-export function mockUserRequestAccess(delayMs?: number) {
+export function mockUserRequestAccess({ delayMs, stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       if (delayMs) {
@@ -295,18 +315,21 @@ export function mockUserRequestAccess(delayMs?: number) {
   ];
 }
 
-export function mockUserRequestAccessError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 409 | 500 } = {}) {
+export function mockUserRequestAccessError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 409 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_USER_REQUEST_ACCESS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {

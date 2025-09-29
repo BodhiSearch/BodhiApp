@@ -16,7 +16,6 @@ export const ENDPOINT_SETTING_KEY = `${BODHI_API_BASE}/settings/{key}`;
 // Type alias
 type ErrorResponse = OpenAiApiError;
 
-
 // Settings hooks
 export function useSettings(): UseQueryResult<SettingInfo[], AxiosError<ErrorResponse>> {
   return useQuery<SettingInfo[]>('settings', ENDPOINT_SETTINGS);

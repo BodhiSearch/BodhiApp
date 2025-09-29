@@ -1,6 +1,6 @@
 import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
-import { stubAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockCreateToken,
   mockCreateTokenWithResponse,
@@ -9,7 +9,7 @@ import {
   mockUpdateTokenError,
   mockUpdateTokenStatus,
 } from '@/test-utils/msw-v2/handlers/tokens';
-import { stubUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
+import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -62,7 +62,11 @@ beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockClear();
   server.resetHandlers();
-  server.use(...stubAppInfo({ status: 'ready' }), ...stubUserLoggedIn(), ...mockTokens());
+  server.use(
+    ...mockAppInfo({ status: 'ready' }, { stub: true }),
+    ...mockUserLoggedIn({}, { stub: true }),
+    ...mockTokens()
+  );
 });
 
 describe('TokenPageContent', () => {
@@ -135,7 +139,7 @@ describe('TokenPageContent', () => {
 
 describe('TokenPage', () => {
   it('redirects to login when not authenticated', async () => {
-    server.use(...stubAppInfo({ status: 'ready' }), ...mockUserLoggedOut());
+    server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedOut());
 
     await act(async () => {
       render(<TokenPage />, { wrapper: createWrapper() });

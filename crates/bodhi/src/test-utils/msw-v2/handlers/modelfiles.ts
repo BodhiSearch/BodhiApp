@@ -14,18 +14,21 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-ms
  * Create type-safe MSW v2 handlers for modelfiles endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelFiles({
-  data = [],
-  page = 1,
-  page_size = 30,
-  total = 0,
-  ...rest
-}: Partial<components['schemas']['PaginatedLocalModelResponse']> = {}) {
+export function mockModelFiles(
+  {
+    data = [],
+    page = 1,
+    page_size = 30,
+    total = 0,
+    ...rest
+  }: Partial<components['schemas']['PaginatedLocalModelResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedLocalModelResponse'] = {
@@ -45,18 +48,21 @@ export function mockModelFiles({
  * Mock handler for model files error endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelFilesError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockModelFilesError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -117,18 +123,21 @@ export function mockModelFilesEmpty() {
  * Create type-safe MSW v2 handlers for model pull downloads endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPullDownloads({
-  data = [],
-  page = 1,
-  page_size = 30,
-  total = 0,
-  ...rest
-}: Partial<components['schemas']['PaginatedDownloadResponse']> = {}) {
+export function mockModelPullDownloads(
+  {
+    data = [],
+    page = 1,
+    page_size = 30,
+    total = 0,
+    ...rest
+  }: Partial<components['schemas']['PaginatedDownloadResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedDownloadResponse'] = {
@@ -148,18 +157,21 @@ export function mockModelPullDownloads({
  * Mock handler for model pull downloads error endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPullDownloadsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockModelPullDownloadsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -267,24 +279,27 @@ export function mockModelPullDownloadsInternalError() {
  * Mock handler for model pull POST endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPull({
-  id = '123',
-  repo = 'test/repo1',
-  filename = 'model1.gguf',
-  status = 'pending',
-  error = null,
-  created_at = new Date().toISOString(),
-  updated_at = new Date().toISOString(),
-  total_bytes = null,
-  downloaded_bytes,
-  started_at = new Date().toISOString(),
-  ...rest
-}: Partial<components['schemas']['DownloadRequest']> = {}) {
+export function mockModelPull(
+  {
+    id = '123',
+    repo = 'test/repo1',
+    filename = 'model1.gguf',
+    status = 'pending',
+    error = null,
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
+    total_bytes = null,
+    downloaded_bytes,
+    started_at = new Date().toISOString(),
+    ...rest
+  }: Partial<components['schemas']['DownloadRequest']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['DownloadRequest'] = {
@@ -312,18 +327,21 @@ export function mockModelPull({
  * Mock handler for model pull error endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelPullError({
-  code = 'pull_error-file_already_exists',
-  message = 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-  type = 'invalid_request_error',
-  status = 400,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockModelPullError(
+  {
+    code = 'pull_error-file_already_exists',
+    message = 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
+    type = 'invalid_request_error',
+    status = 400,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_MODEL_FILES_PULL, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {

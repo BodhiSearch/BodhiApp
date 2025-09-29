@@ -4,7 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { mockAppInfo, stubAppInfo } from '@/test-utils/msw-v2/handlers/info';
+import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockUserLoggedIn,
   mockUserLoggedOut,
@@ -13,7 +13,6 @@ import {
   mockUsersMultipleManagers,
   mockUsersEmpty,
   mockUsersError,
-  stubUserLoggedIn,
 } from '@/test-utils/msw-v2/handlers/user';
 import { mockAccessRequestsDefault } from '@/test-utils/msw-v2/handlers/access-requests';
 
@@ -381,8 +380,8 @@ describe('UsersPage Error Handling', () => {
 
   it('handles users API failure gracefully', async () => {
     server.use(
-      ...stubAppInfo({ status: 'ready' }),
-      ...stubUserLoggedIn({ role: 'resource_admin' }),
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }, { stub: true }),
       ...mockUsersError()
     );
 
