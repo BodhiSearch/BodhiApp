@@ -20,63 +20,6 @@ import {
 } from '@/test-fixtures/users';
 
 // ============================================================================
-// Stub Handlers (No closure state - for tests requiring multiple responses)
-// ============================================================================
-
-/**
- * Core response logic for user logged in endpoint (shared by mock and stub handlers)
- * @private
- */
-async function createUserLoggedInResponse(
-  {
-    user_id = '550e8400-e29b-41d4-a716-446655440000',
-    username = 'test@example.com',
-    first_name = null,
-    last_name = null,
-    role = null,
-    ...rest
-  }: Partial<components['schemas']['UserInfo']> = {},
-  delayMs: number | undefined,
-  response: any
-) {
-  if (delayMs) {
-    await delay(delayMs);
-  }
-  const responseData = {
-    auth_status: 'logged_in' as const,
-    user_id,
-    username,
-    first_name,
-    last_name,
-    role,
-    ...rest,
-  };
-  return response(200 as const).json(responseData);
-}
-
-/**
- * Stub handler for user info endpoint that responds every time (no closure state)
- * Use this for tests that require multiple API calls to the same endpoint
- */
-export function stubUserLoggedIn(
-  {
-    user_id = '550e8400-e29b-41d4-a716-446655440000',
-    username = 'test@example.com',
-    first_name = null,
-    last_name = null,
-    role = null,
-    ...rest
-  }: Partial<components['schemas']['UserInfo']> = {},
-  delayMs?: number
-) {
-  return [
-    typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
-      return createUserLoggedInResponse({ user_id, username, first_name, last_name, role, ...rest }, delayMs, response);
-    }),
-  ];
-}
-
-// ============================================================================
 // User Info Endpoint (GET /bodhi/v1/user)
 // ============================================================================
 
@@ -84,11 +27,11 @@ export function stubUserLoggedIn(
  * Mock handler for user info endpoint - logged out state
  * Uses generated OpenAPI types directly
  */
-export function mockUserLoggedOut() {
+export function mockUserLoggedOut({ stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       return response(200 as const).json({
         auth_status: 'logged_out',
@@ -110,14 +53,28 @@ export function mockUserLoggedIn(
     role = null,
     ...rest
   }: Partial<components['schemas']['UserInfo']> = {},
-  delayMs?: number
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      return createUserLoggedInResponse({ user_id, username, first_name, last_name, role, ...rest }, delayMs, response);
+
+      if (delayMs) {
+        await delay(delayMs);
+      }
+
+      const responseData = {
+        auth_status: 'logged_in' as const,
+        user_id,
+        username,
+        first_name,
+        last_name,
+        role,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
     }),
   ];
 }
@@ -126,17 +83,20 @@ export function mockUserLoggedIn(
  * Mock handler for user info endpoint error responses
  * Uses generated OpenAPI types directly
  */
-export function mockUserInfoError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+export function mockUserInfoError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USER_INFO, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -157,21 +117,24 @@ export function mockUserInfoError({
  * Mock handler for users list endpoint with configurable response data
  * Uses generated OpenAPI types directly
  */
-export function mockUsers({
-  client_id = 'resource-test-client',
-  users = mockSimpleUsersResponse.users,
-  page = 1,
-  page_size = 10,
-  total_pages = 1,
-  total_users = mockSimpleUsersResponse.total,
-  has_next = false,
-  has_previous = false,
-  ...rest
-}: Partial<components['schemas']['UserListResponse']> = {}) {
+export function mockUsers(
+  {
+    client_id = 'resource-test-client',
+    users = mockSimpleUsersResponse.users,
+    page = 1,
+    page_size = 10,
+    total_pages = 1,
+    total_users = mockSimpleUsersResponse.total,
+    has_next = false,
+    has_previous = false,
+    ...rest
+  }: Partial<components['schemas']['UserListResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData = {
         client_id,
@@ -193,42 +156,21 @@ export function mockUsers({
  * Mock handler for users list endpoint error responses
  * Uses generated OpenAPI types directly
  */
-export function mockUsersError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = 'Failed to fetch users',
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
+export function mockUsersError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = 'Failed to fetch users',
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
-      const errorData = {
-        code,
-        message,
-        type,
-        ...rest,
-      };
-      return response(status).json({ error: errorData });
-    }),
-  ];
-}
-
-/**
- * Stub handler for users list endpoint error that responds every time (no closure state)
- * Use this for tests that require multiple API calls to the same endpoint
- */
-export function stubUsersError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = 'Failed to fetch users',
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}) {
-  return [
-    typedHttp.get(ENDPOINT_USERS, async ({ response }) => {
       const errorData = {
         code,
         message,
@@ -271,7 +213,7 @@ export function mockUsersEmpty() {
  * Mock handler for user role change endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockUserRoleChange(user_id: string) {
+export function mockUserRoleChange(user_id: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_USER_ROLE, async ({ params, response }) => {
@@ -279,7 +221,7 @@ export function mockUserRoleChange(user_id: string) {
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       return response(200).empty();
     }),
@@ -298,7 +240,8 @@ export function mockUserRoleChangeError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -307,7 +250,7 @@ export function mockUserRoleChangeError(
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,
@@ -328,7 +271,7 @@ export function mockUserRoleChangeError(
  * Mock handler for user removal endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockUserRemove(user_id: string) {
+export function mockUserRemove(user_id: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.delete(ENDPOINT_USER_ID, async ({ params, response }) => {
@@ -336,7 +279,7 @@ export function mockUserRemove(user_id: string) {
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       return response(200).empty();
     }),
@@ -355,7 +298,8 @@ export function mockUserRemoveError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -364,7 +308,7 @@ export function mockUserRemoveError(
       if (params.user_id !== user_id) {
         return; // Pass through to next handler
       }
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorData = {
         code,

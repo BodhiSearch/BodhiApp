@@ -14,11 +14,11 @@ import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from 
  * Create type-safe MSW v2 handlers for settings endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockSettings(settings: components['schemas']['SettingInfo'][] = []) {
+export function mockSettings(settings: components['schemas']['SettingInfo'][] = [], { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const responseData: components['schemas']['SettingInfo'][] = settings;
       return response(200 as const).json(responseData);
@@ -79,17 +79,20 @@ export function mockSettingsEmpty() {
 /**
  * Create type-safe MSW v2 handler for settings errors
  */
-export function mockSettingsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockSettingsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(ENDPOINT_SETTINGS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
       const errorBody = {
         code,
@@ -130,7 +133,7 @@ export function mockUpdateSetting(
     metadata = { type: 'string' },
     ...rest
   }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {},
-  delayMs?: number
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -139,7 +142,7 @@ export function mockUpdateSetting(
       if (params.key !== key) return;
 
       // THEN closure check
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       if (delayMs) {
@@ -171,7 +174,8 @@ export function mockUpdateSettingError(
     type = 'invalid_request_error',
     status = 400,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -180,7 +184,7 @@ export function mockUpdateSettingError(
       if (params.key !== key) return;
 
       // THEN closure check
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {
@@ -217,7 +221,7 @@ export function mockUpdateSettingServerError(key: string) {
  * Create type-safe MSW v2 handler for setting update network errors
  * Only returns network error for the specified key
  */
-export function mockUpdateSettingNetworkError(key: string) {
+export function mockUpdateSettingNetworkError(key: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
     typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
@@ -225,7 +229,7 @@ export function mockUpdateSettingNetworkError(key: string) {
       if (params.key !== key) return;
 
       // THEN closure check
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       return HttpResponse.error();
@@ -250,7 +254,8 @@ export function mockDeleteSetting(
     source = 'default',
     metadata = { type: 'string' },
     ...rest
-  }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {}
+  }: Partial<Omit<components['schemas']['SettingInfo'], 'key'>> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -259,7 +264,7 @@ export function mockDeleteSetting(
       if (params.key !== key) return;
 
       // THEN closure check
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['SettingInfo'] = {
@@ -288,7 +293,8 @@ export function mockDeleteSettingError(
     type = 'not_found_error',
     status = 404,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -297,7 +303,7 @@ export function mockDeleteSettingError(
       if (params.key !== key) return;
 
       // THEN closure check
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {

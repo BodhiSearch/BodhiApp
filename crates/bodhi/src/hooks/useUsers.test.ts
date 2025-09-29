@@ -16,8 +16,6 @@ import {
   mockUserRoleChangeError,
   mockUserRemove,
   mockUserRemoveError,
-  stubUserLoggedIn,
-  stubUsersError,
 } from '@/test-utils/msw-v2/handlers/user';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -261,9 +259,12 @@ describe('User Hooks', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(result.current.isError).toBe(true);
+        },
+        { timeout: 10000 }
+      );
 
       const error = result.current.error as AxiosError<ApiError>;
       expect(error.response?.data.error?.message).toBe('Access denied');

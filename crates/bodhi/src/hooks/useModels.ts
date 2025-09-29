@@ -30,7 +30,6 @@ export const ENDPOINT_MODEL_ID = `${BODHI_API_BASE}/models/{id}`;
 // Type alias
 type ErrorResponse = OpenAiApiError;
 
-
 // Model-related hooks
 
 export function useModelFiles(page?: number, pageSize?: number, sort: string = 'repo', sortOrder: string = 'asc') {
@@ -60,20 +59,16 @@ export function useCreateModel(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, CreateAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Alias, CreateAliasRequest>(
-    ENDPOINT_MODELS,
-    'post',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(ENDPOINT_MODELS);
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to create model';
-        options?.onError?.(message);
-      },
-    }
-  );
+  return useMutationQuery<Alias, CreateAliasRequest>(ENDPOINT_MODELS, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(ENDPOINT_MODELS);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to create model';
+      options?.onError?.(message);
+    },
+  });
 }
 
 export function useUpdateModel(
@@ -118,19 +113,15 @@ export function usePullModel(options?: {
   onError?: (message: string, code?: string) => void;
 }): UseMutationResult<AxiosResponse<DownloadRequest>, AxiosError<ErrorResponse>, NewDownloadRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<DownloadRequest, NewDownloadRequest>(
-    ENDPOINT_MODEL_FILES_PULL,
-    'post',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries('downloads');
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to pull model';
-        const code = error?.response?.data?.error?.code ?? undefined;
-        options?.onError?.(message, code);
-      },
-    }
-  );
+  return useMutationQuery<DownloadRequest, NewDownloadRequest>(ENDPOINT_MODEL_FILES_PULL, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries('downloads');
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to pull model';
+      const code = error?.response?.data?.error?.code ?? undefined;
+      options?.onError?.(message, code);
+    },
+  });
 }

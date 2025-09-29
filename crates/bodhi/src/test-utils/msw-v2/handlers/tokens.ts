@@ -13,28 +13,31 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-ms
  * Create type-safe MSW v2 handlers for list tokens endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockTokens({
-  data = [
-    {
-      id: 'token-1',
-      name: 'Test Token 1',
-      status: 'active',
-      token_hash: 'hash123',
-      token_id: 'jwt-token-id-1',
-      user_id: 'user-123',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-    },
-  ],
-  total = 1,
-  page = 1,
-  page_size = 10,
-  ...rest
-}: Partial<components['schemas']['PaginatedApiTokenResponse']> = {}) {
+export function mockTokens(
+  {
+    data = [
+      {
+        id: 'token-1',
+        name: 'Test Token 1',
+        status: 'active',
+        token_hash: 'hash123',
+        token_id: 'jwt-token-id-1',
+        user_id: 'user-123',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+    ],
+    total = 1,
+    page = 1,
+    page_size = 10,
+    ...rest
+  }: Partial<components['schemas']['PaginatedApiTokenResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(API_TOKENS_ENDPOINT, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedApiTokenResponse'] = {
@@ -56,12 +59,12 @@ export function mockTokens({
  */
 export function mockCreateToken(
   { offline_token = 'test-token-123', ...rest }: Partial<components['schemas']['ApiTokenResponse']> = {},
-  delayMs?: number
+  { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(API_TOKENS_ENDPOINT, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       if (delayMs) {
@@ -93,7 +96,8 @@ export function mockUpdateToken(
     created_at = '2024-01-01T00:00:00Z',
     updated_at = '2024-01-01T00:00:01Z',
     ...rest
-  }: Partial<components['schemas']['ApiToken']> = {}
+  }: Partial<components['schemas']['ApiToken']> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -103,7 +107,7 @@ export function mockUpdateToken(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['ApiToken'] = {
@@ -170,17 +174,20 @@ export function mockUpdateTokenStatus(tokenId: string, status: 'active' | 'inact
 /**
  * Error handler for list tokens endpoint
  */
-export function mockTokensError({
-  code = 'access_denied',
-  message = 'Insufficient permissions to list tokens',
-  type = 'invalid_request_error',
-  status = 401,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 500 } = {}) {
+export function mockTokensError(
+  {
+    code = 'access_denied',
+    message = 'Insufficient permissions to list tokens',
+    type = 'invalid_request_error',
+    status = 401,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.get(API_TOKENS_ENDPOINT, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -198,17 +205,20 @@ export function mockTokensError({
 /**
  * Error handler for create token endpoint
  */
-export function mockCreateTokenError({
-  code = 'validation_error',
-  message = 'Invalid token creation request',
-  type = 'invalid_request_error',
-  status = 400,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {}) {
+export function mockCreateTokenError(
+  {
+    code = 'validation_error',
+    message = 'Invalid token creation request',
+    type = 'invalid_request_error',
+    status = 400,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
   return [
     typedHttp.post(API_TOKENS_ENDPOINT, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {
@@ -234,7 +244,8 @@ export function mockUpdateTokenError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 401 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
@@ -244,7 +255,7 @@ export function mockUpdateTokenError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorData = {

@@ -83,7 +83,7 @@ describe('TokenDialog', () => {
   it('disables form during submission', async () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
-    server.use(...mockCreateToken({ offline_token: 'test-token-123' }, 100));
+    server.use(...mockCreateToken({ offline_token: 'test-token-123' }, { delayMs: 100 }));
 
     await act(async () => {
       render(<TokenForm onTokenCreated={onTokenCreated} />, {

@@ -23,7 +23,6 @@ export const ENDPOINT_USER_ID = `${BODHI_API_BASE}/users/{user_id}`;
 export type AuthenticatedUser = UserInfo & { auth_status: 'logged_in' };
 type ErrorResponse = OpenAiApiError;
 
-
 // Basic user info hook
 export function useUser(options?: { enabled?: boolean }) {
   return useQuery<UserResponse | null>('user', ENDPOINT_USER_INFO, undefined, {
@@ -79,11 +78,15 @@ export function useChangeUserRole(options?: {
     async ({ userId, newRole }) => {
       // We need to use the traditional mutation approach here since useMutationQuery
       // doesn't support variables in the endpoint path directly and body transformation
-      return await apiClient.put(`${ENDPOINT_USERS}/${userId}/role`, { role: newRole }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return await apiClient.put(
+        `${ENDPOINT_USERS}/${userId}/role`,
+        { role: newRole },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     },
     {
       onSuccess: () => {

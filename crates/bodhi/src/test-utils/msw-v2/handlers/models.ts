@@ -14,18 +14,21 @@ import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-ms
  * Create type-safe MSW v2 handlers for models list endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModels({
-  data = [],
-  page = 1,
-  page_size = 30,
-  total = 0,
-  ...rest
-}: Partial<components['schemas']['PaginatedAliasResponse']> = {}) {
+export function mockModels(
+  {
+    data = [],
+    page = 1,
+    page_size = 30,
+    total = 0,
+    ...rest
+  }: Partial<components['schemas']['PaginatedAliasResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['PaginatedAliasResponse'] = {
@@ -127,18 +130,21 @@ export function mockModelsEmpty() {
  * Mock handler for models list error endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockModelsError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockModelsError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.get(ENDPOINT_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {
@@ -177,22 +183,25 @@ export function mockModelsInternalError(config: { message?: string } = {}) {
 /**
  * Create type-safe MSW v2 handler for model creation endpoint
  */
-export function mockCreateModel({
-  alias = 'new-model',
-  repo = 'test-repo',
-  filename = 'test-file.bin',
-  snapshot = 'abc123',
-  request_params = {},
-  context_params = [],
-  model_params = {},
-  source = 'user',
-  ...rest
-}: Partial<components['schemas']['UserAliasResponse']> = {}) {
+export function mockCreateModel(
+  {
+    alias = 'new-model',
+    repo = 'test-repo',
+    filename = 'test-file.bin',
+    snapshot = 'abc123',
+    request_params = {},
+    context_params = [],
+    model_params = {},
+    source = 'user',
+    ...rest
+  }: Partial<components['schemas']['UserAliasResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
@@ -217,18 +226,21 @@ export function mockCreateModel({
  * Mock handler for model creation error endpoint
  * Uses generated OpenAPI types directly
  */
-export function mockCreateModelError({
-  code = INTERNAL_SERVER_ERROR.code,
-  message = INTERNAL_SERVER_ERROR.message,
-  type = INTERNAL_SERVER_ERROR.type,
-  status = INTERNAL_SERVER_ERROR.status,
-  ...rest
-}: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}) {
+export function mockCreateModelError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = INTERNAL_SERVER_ERROR.message,
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_MODELS, async ({ response }) => {
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {
@@ -291,7 +303,8 @@ export function mockGetModel(
     model_params = {},
     source = 'user',
     ...rest
-  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
+  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -304,7 +317,7 @@ export function mockGetModel(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
@@ -337,7 +350,8 @@ export function mockGetModelError(
     type = 'not_found_error',
     status = 404,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 404 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -350,7 +364,7 @@ export function mockGetModelError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {
@@ -412,7 +426,8 @@ export function mockUpdateModel(
     model_params = {},
     source = 'user',
     ...rest
-  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {}
+  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -425,7 +440,7 @@ export function mockUpdateModel(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
@@ -458,7 +473,8 @@ export function mockUpdateModelError(
     type = INTERNAL_SERVER_ERROR.type,
     status = INTERNAL_SERVER_ERROR.status,
     ...rest
-  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {}
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -471,7 +487,7 @@ export function mockUpdateModelError(
         return; // Pass through to next handler
       }
 
-      if (hasBeenCalled) return;
+      if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
       const errorBody = {

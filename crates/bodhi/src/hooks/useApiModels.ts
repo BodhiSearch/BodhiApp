@@ -37,17 +37,12 @@ export function useApiModel(
   id: string,
   options?: UseQueryOptions<ApiModelResponse, AxiosError<ErrorResponse>>
 ): UseQueryResult<ApiModelResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ApiModelResponse>(
-    ['api-models', id],
-    `${ENDPOINT_API_MODELS}/${id}`,
-    undefined,
-    {
-      enabled: !!id,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000,
-      ...options,
-    }
-  );
+  return useQuery<ApiModelResponse>(['api-models', id], `${ENDPOINT_API_MODELS}/${id}`, undefined, {
+    enabled: !!id,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });
 }
 
 /**
@@ -171,16 +166,11 @@ export function useFetchApiModels(
 export function useApiFormats(
   options?: UseQueryOptions<ApiFormatsResponse, AxiosError<ErrorResponse>>
 ): UseQueryResult<ApiFormatsResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ApiFormatsResponse>(
-    ['api-formats'],
-    ENDPOINT_API_MODELS_FORMATS,
-    undefined,
-    {
-      refetchOnWindowFocus: false,
-      staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)
-      ...options,
-    }
-  );
+  return useQuery<ApiFormatsResponse>(['api-formats'], ENDPOINT_API_MODELS_FORMATS, undefined, {
+    refetchOnWindowFocus: false,
+    staleTime: 10 * 60 * 1000, // 10 minutes (formats don't change often)
+    ...options,
+  });
 }
 
 /**
