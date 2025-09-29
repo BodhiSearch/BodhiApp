@@ -1,15 +1,7 @@
-import { BODHI_API_BASE, useMutationQuery, useQuery } from '@/hooks/useQuery';
-import apiClient from '@/lib/apiClient';
-import {
-  ApproveUserAccessRequest,
-  OpenAiApiError,
-  PaginatedUserAccessResponse,
-  Role,
-  UserAccessRequest,
-  UserAccessStatusResponse,
-} from '@bodhiapp/ts-client';
+import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
+import { OpenAiApiError, PaginatedUserAccessResponse, Role, UserAccessStatusResponse } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
-import { useMutation, UseMutationResult, useQueryClient, UseQueryResult } from 'react-query';
+import { UseMutationResult, UseQueryResult } from 'react-query';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
@@ -105,18 +97,10 @@ export function useApproveRequest(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: number; role: string }> {
   const queryClient = useQueryClient();
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: number; role: string }>(
-    async ({ id, role }) => {
-      const request: ApproveUserAccessRequest = { role: role as Role };
-      // We need to use the traditional mutation approach here since useMutationQuery
-      // doesn't support variables in the endpoint path directly
-      const response = await apiClient.post<void>(`${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`, request, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return response;
-    },
+  // Transform from: {id: number; role: string} → endpoint: /access-requests/${id}/approve, body: {role: role as Role}
+  return useMutationQuery<void, { id: number; role: string }>(
+    ({ id }) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`,
+    'post',
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['access-request']);
@@ -126,6 +110,9 @@ export function useApproveRequest(options?: {
         const message = error?.response?.data?.error?.message || 'Failed to approve request';
         options?.onError?.(message);
       },
+    },
+    {
+      transformBody: ({ role }) => ({ role: role as Role }),
     }
   );
 }
@@ -136,15 +123,10 @@ export function useRejectRequest(options?: {
   onError?: (message: string) => void;
 }): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, number> {
   const queryClient = useQueryClient();
-  return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, number>(
-    async (id: number) => {
-      const response = await apiClient.post<void>(`${ENDPOINT_ACCESS_REQUESTS}/${id}/reject`, undefined, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      return response;
-    },
+  // POST with path variables and no meaningful body
+  return useMutationQuery<void, number>(
+    (id: number) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/reject`,
+    'post',
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['access-request']);
@@ -154,6 +136,9 @@ export function useRejectRequest(options?: {
         const message = error?.response?.data?.error?.message || 'Failed to reject request';
         options?.onError?.(message);
       },
+    },
+    {
+      transformBody: () => undefined, // POST with empty body
     }
   );
 }

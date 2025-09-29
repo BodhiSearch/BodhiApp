@@ -1,5 +1,5 @@
 import { useChat } from '@/hooks/use-chat';
-import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { Chat, Message } from '@/types/chat';

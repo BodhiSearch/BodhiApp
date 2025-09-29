@@ -14,16 +14,8 @@ import {
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
-// backend endpoints
+// Shared backend API base
 export const BODHI_API_BASE = '/bodhi/v1';
-
-export const ENDPOINT_UI_LOGIN = '/ui/login';
-
-export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
-// Token endpoints
-export const ENDPOINT_TOKEN_ID = `${BODHI_API_BASE}/tokens/{id}`;
-
-export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
 
 export function useQuery<T>(
   key: string | string[],
@@ -54,6 +46,8 @@ export function useMutationQuery<T, V>(
   axiosConfig?: {
     headers?: Record<string, string>;
     skipCacheInvalidation?: boolean;
+    transformBody?: (variables: V) => any;
+    noBody?: boolean;
   }
 ): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
   const queryClient = useQueryClient();
@@ -61,13 +55,35 @@ export function useMutationQuery<T, V>(
   return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>(
     async (variables) => {
       const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
-      const response = await apiClient[method]<T>(_endpoint, variables, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...axiosConfig?.headers,
-        },
-      });
-      return response;
+
+      // Handle body transformation or no body
+      let requestBody: any;
+      if (axiosConfig?.noBody) {
+        requestBody = undefined;
+      } else if (axiosConfig?.transformBody) {
+        requestBody = axiosConfig.transformBody(variables);
+      } else {
+        requestBody = variables;
+      }
+
+      // For DELETE with no body, don't pass body parameter
+      if (method === 'delete' && (axiosConfig?.noBody || requestBody === undefined)) {
+        const response = await apiClient[method]<T>(_endpoint, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...axiosConfig?.headers,
+          },
+        });
+        return response;
+      } else {
+        const response = await apiClient[method]<T>(_endpoint, requestBody, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...axiosConfig?.headers,
+          },
+        });
+        return response;
+      }
     },
     {
       ...options,
@@ -83,3 +99,6 @@ export function useMutationQuery<T, V>(
     }
   );
 }
+
+// Export useQueryClient for consistency
+export { useQueryClient } from 'react-query';

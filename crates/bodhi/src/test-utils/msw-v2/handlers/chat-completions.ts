@@ -3,7 +3,7 @@
  * Note: OpenAPI schema has incomplete response definitions (unknown/never types)
  * Therefore using manual MSW for all handlers until schema is improved
  */
-import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { http, HttpResponse } from 'msw';
 import { INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 

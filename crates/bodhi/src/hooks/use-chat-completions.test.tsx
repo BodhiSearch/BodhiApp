@@ -1,5 +1,5 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
-import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';

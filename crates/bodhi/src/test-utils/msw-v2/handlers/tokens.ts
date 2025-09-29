@@ -1,7 +1,7 @@
 /**
  * Type-safe MSW v2 handlers for API tokens endpoints using openapi-msw
  */
-import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useQuery';
+import { API_TOKENS_ENDPOINT, ENDPOINT_TOKEN_ID } from '@/hooks/useApiTokens';
 import { delay } from 'msw';
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../openapi-msw-setup';
 
