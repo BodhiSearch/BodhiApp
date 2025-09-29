@@ -5,8 +5,8 @@
  * for full type safety based on the generated OpenAPI schema.
  */
 import { createOpenApiHttp } from 'openapi-msw';
-import type { paths } from '../generated/openapi-schema';
-export type { components } from '../generated/openapi-schema';
+import type { paths, components } from '@bodhiapp/ts-client';
+export type { components };
 
 // Default internal server error values for error handlers
 export const INTERNAL_SERVER_ERROR = {

@@ -30,8 +30,8 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
-// Export types from generated schema for use in tests
-export type { components, paths } from '../generated/openapi-schema';
+// Export types from ts-client for use in tests
+export type { components, paths } from '@bodhiapp/ts-client';
 
 // Re-export MSW v2 http and HttpResponse for convenience
 export { http, HttpResponse };

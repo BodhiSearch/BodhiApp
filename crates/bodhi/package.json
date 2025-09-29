@@ -14,8 +14,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write .",
-    "prepare": "husky",
-    "generate:openapi-types": "openapi-typescript ../../openapi.json -o src/test-utils/generated/openapi-schema.ts"
+    "prepare": "husky"
   },
   "dependencies": {
     "@bodhiapp/ts-client": "file:../../ts-client",
@@ -101,7 +100,6 @@
     "next-router-mock": "^0.9.13",
     "node-html-parser": "^7.0.1",
     "openapi-msw": "^2.0.0",
-    "openapi-typescript": "^7.5.0",
     "postcss": "^8",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.17",
