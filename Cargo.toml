@@ -1,6 +1,8 @@
 [workspace]
 members = [
   "xtask",
+  "async-openai/async-openai",
+  "async-openai/async-openai-macros",
   "crates/llama_server_proc",
   "crates/errmeta_derive",
   "crates/objs",
@@ -20,6 +22,9 @@ members = [
 ]
 resolver = "2"
 exclude = []
+
+[workspace.package]
+rust-version = "1.87.0"
 
 [workspace.dependencies]
 errmeta_derive = { path = "crates/errmeta_derive" }
@@ -140,7 +145,7 @@ tracing-subscriber = "0.3.19"
 trybuild = "1.0.105"
 unic-langid = "0.9.6"
 url = "2.5.4"
-utoipa = "5.3.1"
+utoipa = { version = "5.3.1" }
 utoipa-swagger-ui = "9.0.2"
 uuid = "1.17.0"
 validator = "0.20.0"
