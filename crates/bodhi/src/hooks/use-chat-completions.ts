@@ -1,47 +1,102 @@
+/**
+ * Chat completion hook with OpenAI API compatibility and llama.cpp extensions.
+ *
+ * This hook provides a React interface to the OpenAI-compatible chat completions API,
+ * with support for both streaming and non-streaming responses.
+ *
+ * Type Architecture:
+ * - API Layer: Uses generated types from @bodhiapp/ts-client (OpenAI-compatible)
+ * - UI Layer: Uses Message type from @/types/chat (simplified for React state)
+ * - Adapters: Convert between API and UI types at the hook boundary
+ *
+ * llama.cpp Extensions:
+ * - Supports additional `timings` field in responses (not in standard OpenAI API)
+ * - Types extended via ChatCompletionResponseWithTimings and ChatCompletionStreamResponseWithTimings
+ *
+ * Message Conversion:
+ * - toApiMessage(): Converts UI Message → OpenAI ChatCompletionRequestMessage
+ * - Response handlers: Convert OpenAI ChatCompletionResponseMessage → UI Message
+ *
+ * @see https://platform.openai.com/docs/api-reference/chat
+ */
+
 import { useMutation } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
 import apiClient from '@/lib/apiClient';
 import { Message, MessageMetadata } from '@/types/chat';
 import { OpenAiApiError } from '@bodhiapp/ts-client';
 
+// Generated OpenAI-compatible types from ts-client
+import type {
+  CreateChatCompletionRequest,
+  ChatCompletionRequestMessage,
+  CreateChatCompletionResponse,
+  CreateChatCompletionStreamResponse,
+} from '@bodhiapp/ts-client';
+
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
+/**
+ * Convert UI Message to OpenAI ChatCompletionRequestMessage format.
+ * UI messages use simple { role, content } structure.
+ * OpenAI uses tagged union with role-specific structures.
+ */
+function toApiMessage(message: Message): ChatCompletionRequestMessage {
+  const role = message.role;
+  const content = message.content;
+
+  // Create appropriate message structure based on role
+  switch (role) {
+    case 'system':
+      return { role: 'system', content } as ChatCompletionRequestMessage;
+    case 'user':
+      return { role: 'user', content } as ChatCompletionRequestMessage;
+    case 'assistant':
+      return { role: 'assistant', content } as ChatCompletionRequestMessage;
+  }
+}
+
+/**
+ * llama.cpp-specific timings extension.
+ * These fields are added by llama.cpp server but not in standard OpenAI API.
+ */
+interface LlamaCppTimings {
+  cache_n?: number;
+  prompt_n?: number;
+  prompt_ms?: number;
+  prompt_per_token_ms?: number;
+  prompt_per_second?: number;
+  predicted_n?: number;
+  predicted_ms?: number;
+  predicted_per_token_ms?: number;
+  predicted_per_second?: number;
+}
+
+/**
+ * CreateChatCompletionResponse with llama.cpp timings extension.
+ */
+type ChatCompletionResponseWithTimings = CreateChatCompletionResponse & {
+  timings?: LlamaCppTimings;
+};
+
+/**
+ * CreateChatCompletionStreamResponse with llama.cpp timings extension.
+ */
+type ChatCompletionStreamResponseWithTimings = CreateChatCompletionStreamResponse & {
+  timings?: LlamaCppTimings;
+};
+
+/**
+ * Chat completion request using UI Message type.
+ * This will be converted to CreateChatCompletionRequest format when sent to API.
+ */
+type ChatCompletionRequestWithUIMessages = Omit<CreateChatCompletionRequest, 'messages'> & {
+  messages: Message[];
+};
+
 // Constants
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
-
-interface ChatCompletionRequest {
-  messages: Message[];
-  stream?: boolean;
-  model: string;
-  temperature?: number;
-  stop?: string[];
-  max_tokens?: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-}
-
-interface ChatCompletionResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: {
-    index: number;
-    message: Message;
-    finish_reason: string;
-  }[];
-  usage?: {
-    completion_tokens?: number;
-    prompt_tokens?: number;
-    total_tokens?: number;
-  };
-  timings?: {
-    prompt_per_second?: number;
-    predicted_per_second?: number;
-  };
-}
 
 interface ChatCompletionCallbacks {
   onDelta?: (content: string) => void;
@@ -59,7 +114,7 @@ export function useChatCompletion() {
     void,
     AxiosError,
     {
-      request: ChatCompletionRequest;
+      request: ChatCompletionRequestWithUIMessages;
     } & ChatCompletionCallbacks &
       RequestExts
   >(async ({ request, headers, onDelta, onMessage, onFinish, onError }) => {
@@ -73,7 +128,10 @@ export function useChatCompletion() {
           'Content-Type': 'application/json',
           ...headers,
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify({
+          ...request,
+          messages: request.messages.map(toApiMessage),
+        }),
       });
 
       const contentType = response.headers.get('Content-Type') || '';
@@ -113,17 +171,19 @@ export function useChatCompletion() {
           for (const line of lines) {
             try {
               const jsonStr = line.replace(/^data: /, '');
-              const json = JSON.parse(jsonStr);
+              const json: ChatCompletionStreamResponseWithTimings = JSON.parse(jsonStr);
 
               // Capture metadata from the last chunk
-              if (json.choices?.[0]?.finish_reason === 'stop' && json.timings) {
+              if (json.choices?.[0]?.finish_reason === 'stop') {
                 metadata = {
                   model: json.model,
-                  usage: json.usage,
-                  timings: {
-                    prompt_per_second: json.timings?.prompt_per_second,
-                    predicted_per_second: json.timings?.predicted_per_second,
-                  },
+                  usage: json.usage ?? undefined,
+                  timings: json.timings
+                    ? {
+                        prompt_per_second: json.timings.prompt_per_second,
+                        predicted_per_second: json.timings.predicted_per_second,
+                      }
+                    : undefined,
                 };
               } else if (json.choices?.[0]?.delta?.content) {
                 const content = json.choices[0].delta.content;
@@ -146,10 +206,13 @@ export function useChatCompletion() {
         }
         onFinish?.(finalMessage);
       } else {
-        const data: ChatCompletionResponse = await response.json();
+        const data: ChatCompletionResponseWithTimings = await response.json();
         if (data.choices?.[0]?.message) {
-          const message = {
-            ...data.choices[0].message,
+          // Convert OpenAI ChatCompletionResponseMessage to UI Message
+          const apiMessage = data.choices[0].message;
+          const message: Message = {
+            role: apiMessage.role as 'assistant',
+            content: apiMessage.content || '',
           };
           if (data.usage) {
             message.metadata = {
