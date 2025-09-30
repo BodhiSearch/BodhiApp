@@ -1,3 +1,6 @@
 [submodule "crates/llama_server_proc/llama.cpp"]
 	path = crates/llama_server_proc/llama.cpp
 	url = git@github.com:BodhiSearch/llama.cpp.git
+[submodule "async-openai"]
+	path = async-openai
+	url = https://github.com/BodhiSearch/async-openai.git
