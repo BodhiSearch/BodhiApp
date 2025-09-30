@@ -13,12 +13,12 @@ export type Alias = (UserAlias & {
 });
 
 export type ApiAlias = {
+    id: string;
     api_format: ApiFormat;
     base_url: string;
-    created_at: string;
-    id: string;
     models: Array<string>;
     prefix?: string | null;
+    created_at: string;
     updated_at: string;
 };
 
@@ -38,25 +38,25 @@ export type ApiFormatsResponse = {
  * Response containing API model configuration
  */
 export type ApiModelResponse = {
-    api_format: ApiFormat;
-    api_key_masked: string;
-    base_url: string;
-    created_at: string;
     id: string;
+    api_format: ApiFormat;
+    base_url: string;
+    api_key_masked: string;
     models: Array<string>;
     prefix?: string | null;
+    created_at: string;
     updated_at: string;
 };
 
 export type ApiToken = {
-    created_at: string;
     id: string;
-    name: string;
-    status: TokenStatus;
-    token_hash: string;
-    token_id: string;
-    updated_at: string;
     user_id: string;
+    name: string;
+    token_id: string;
+    token_hash: string;
+    status: TokenStatus;
+    created_at: string;
+    updated_at: string;
 };
 
 export type ApiTokenResponse = {
@@ -79,13 +79,13 @@ export type AppAccessResponse = {
  */
 export type AppInfo = {
     /**
-     * Current application setup and operational status
-     */
-    status: AppStatus;
-    /**
      * Application version number (semantic versioning)
      */
     version: string;
+    /**
+     * Current application setup and operational status
+     */
+    status: AppStatus;
 };
 
 export type AppRole = Role | TokenScope | UserScope;
@@ -108,6 +108,10 @@ export type AuthCallbackRequest = {
      */
     code?: string | null;
     /**
+     * OAuth state parameter for CSRF protection (must match initiated request)
+     */
+    state?: string | null;
+    /**
      * OAuth error code if authentication failed (e.g., "access_denied")
      */
     error?: string | null;
@@ -115,10 +119,6 @@ export type AuthCallbackRequest = {
      * Human-readable OAuth error description if authentication failed
      */
     error_description?: string | null;
-    /**
-     * OAuth state parameter for CSRF protection (must match initiated request)
-     */
-    state?: string | null;
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
 };
 
@@ -132,22 +132,437 @@ export type ChangeRoleRequest = {
     role: string;
 };
 
+export type ChatChoice = {
+    /**
+     * The index of the choice in the list of choices.
+     */
+    index: number;
+    message: ChatCompletionResponseMessage;
+    finish_reason?: null | FinishReason;
+    logprobs?: null | ChatChoiceLogprobs;
+};
+
+export type ChatChoiceLogprobs = {
+    /**
+     * A list of message content tokens with log probability information.
+     */
+    content?: Array<ChatCompletionTokenLogprob> | null;
+    refusal?: Array<ChatCompletionTokenLogprob> | null;
+};
+
+export type ChatChoiceStream = {
+    /**
+     * The index of the choice in the list of choices.
+     */
+    index: number;
+    delta: ChatCompletionStreamResponseDelta;
+    finish_reason?: null | FinishReason;
+    logprobs?: null | ChatChoiceLogprobs;
+};
+
+export type ChatCompletionAudio = {
+    /**
+     * The voice the model uses to respond. Supported voices are `ash`, `ballad`, `coral`, `sage`, and `verse` (also supported but not recommended are `alloy`, `echo`, and `shimmer`; these voices are less expressive).
+     */
+    voice: ChatCompletionAudioVoice;
+    /**
+     * Specifies the output audio format. Must be one of `wav`, `mp3`, `flac`, `opus`, or `pcm16`.
+     */
+    format: ChatCompletionAudioFormat;
+};
+
+export type ChatCompletionAudioFormat = 'wav' | 'mp3' | 'flac' | 'opus' | 'pcm16';
+
+export type ChatCompletionAudioVoice = 'alloy' | 'ash' | 'ballad' | 'coral' | 'echo' | 'sage' | 'shimmer' | 'verse';
+
+export type ChatCompletionFunctionCall = 'none' | 'auto' | {
+    /**
+     * Forces the model to call the specified function.
+     */
+    Function: {
+        name: string;
+    };
+};
+
+/**
+ * @deprecated
+ */
+export type ChatCompletionFunctions = {
+    /**
+     * The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
+     */
+    name: string;
+    /**
+     * A description of what the function does, used by the model to choose when and how to call the function.
+     */
+    description?: string | null;
+    /**
+     * The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+     *
+     * Omitting `parameters` defines a function with an empty parameter list.
+     */
+    parameters: unknown;
+};
+
+export type ChatCompletionMessageToolCall = {
+    /**
+     * The ID of the tool call.
+     */
+    id: string;
+    /**
+     * The type of the tool. Currently, only `function` is supported.
+     */
+    type: ChatCompletionToolType;
+    /**
+     * The function that the model called.
+     */
+    function: FunctionCall;
+};
+
+export type ChatCompletionMessageToolCallChunk = {
+    index: number;
+    /**
+     * The ID of the tool call.
+     */
+    id?: string | null;
+    type?: null | ChatCompletionToolType;
+    function?: null | FunctionCallStream;
+};
+
+/**
+ * Output types that you would like the model to generate for this request.
+ *
+ * Most models are capable of generating text, which is the default: `["text"]`
+ *
+ * The `gpt-4o-audio-preview` model can also be used to [generate
+ * audio](https://platform.openai.com/docs/guides/audio). To request that this model generate both text and audio responses, you can use: `["text", "audio"]`
+ */
+export type ChatCompletionModalities = 'text' | 'audio';
+
+/**
+ * Specifies a tool the model should use. Use to force the model to call a specific function.
+ */
+export type ChatCompletionNamedToolChoice = {
+    /**
+     * The type of the tool. Currently, only `function` is supported.
+     */
+    type: ChatCompletionToolType;
+    function: FunctionName;
+};
+
+export type ChatCompletionRequestAssistantMessage = {
+    content?: null | ChatCompletionRequestAssistantMessageContent;
+    /**
+     * The refusal message by the assistant.
+     */
+    refusal?: string | null;
+    /**
+     * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+     */
+    name?: string | null;
+    audio?: null | ChatCompletionRequestAssistantMessageAudio;
+    tool_calls?: Array<ChatCompletionMessageToolCall> | null;
+    function_call?: null | FunctionCall;
+};
+
+export type ChatCompletionRequestAssistantMessageAudio = {
+    /**
+     * Unique identifier for a previous audio response from the model.
+     */
+    id: string;
+};
+
+export type ChatCompletionRequestAssistantMessageContent = string | Array<ChatCompletionRequestAssistantMessageContentPart>;
+
+export type ChatCompletionRequestAssistantMessageContentPart = (ChatCompletionRequestMessageContentPartText & {
+    type: 'text';
+}) | (ChatCompletionRequestMessageContentPartRefusal & {
+    type: 'refusal';
+});
+
+export type ChatCompletionRequestDeveloperMessage = {
+    /**
+     * The contents of the developer message.
+     */
+    content: ChatCompletionRequestDeveloperMessageContent;
+    /**
+     * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+     */
+    name?: string | null;
+};
+
+export type ChatCompletionRequestDeveloperMessageContent = string | Array<ChatCompletionRequestMessageContentPartText>;
+
+export type ChatCompletionRequestFunctionMessage = {
+    /**
+     * The return value from the function call, to return to the model.
+     */
+    content?: string | null;
+    /**
+     * The name of the function to call.
+     */
+    name: string;
+};
+
+export type ChatCompletionRequestMessage = (ChatCompletionRequestDeveloperMessage & {
+    role: 'developer';
+}) | (ChatCompletionRequestSystemMessage & {
+    role: 'system';
+}) | (ChatCompletionRequestUserMessage & {
+    role: 'user';
+}) | (ChatCompletionRequestAssistantMessage & {
+    role: 'assistant';
+}) | (ChatCompletionRequestToolMessage & {
+    role: 'tool';
+}) | (ChatCompletionRequestFunctionMessage & {
+    role: 'function';
+});
+
+/**
+ * Learn about [audio inputs](https://platform.openai.com/docs/guides/audio).
+ */
+export type ChatCompletionRequestMessageContentPartAudio = {
+    input_audio: InputAudio;
+};
+
+export type ChatCompletionRequestMessageContentPartImage = {
+    image_url: ImageUrl;
+};
+
+export type ChatCompletionRequestMessageContentPartRefusal = {
+    /**
+     * The refusal message generated by the model.
+     */
+    refusal: string;
+};
+
+export type ChatCompletionRequestMessageContentPartText = {
+    text: string;
+};
+
+export type ChatCompletionRequestSystemMessage = {
+    /**
+     * The contents of the system message.
+     */
+    content: ChatCompletionRequestSystemMessageContent;
+    /**
+     * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+     */
+    name?: string | null;
+};
+
+export type ChatCompletionRequestSystemMessageContent = string | Array<ChatCompletionRequestSystemMessageContentPart>;
+
+export type ChatCompletionRequestSystemMessageContentPart = ChatCompletionRequestMessageContentPartText & {
+    type: 'text';
+};
+
+/**
+ * Tool message
+ */
+export type ChatCompletionRequestToolMessage = {
+    /**
+     * The contents of the tool message.
+     */
+    content: ChatCompletionRequestToolMessageContent;
+    tool_call_id: string;
+};
+
+export type ChatCompletionRequestToolMessageContent = string | Array<ChatCompletionRequestToolMessageContentPart>;
+
+export type ChatCompletionRequestToolMessageContentPart = ChatCompletionRequestMessageContentPartText & {
+    type: 'text';
+};
+
+export type ChatCompletionRequestUserMessage = {
+    /**
+     * The contents of the user message.
+     */
+    content: ChatCompletionRequestUserMessageContent;
+    /**
+     * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+     */
+    name?: string | null;
+};
+
+export type ChatCompletionRequestUserMessageContent = string | Array<ChatCompletionRequestUserMessageContentPart>;
+
+export type ChatCompletionRequestUserMessageContentPart = (ChatCompletionRequestMessageContentPartText & {
+    type: 'text';
+}) | (ChatCompletionRequestMessageContentPartImage & {
+    type: 'image_url';
+}) | (ChatCompletionRequestMessageContentPartAudio & {
+    type: 'input_audio';
+});
+
+/**
+ * A chat completion message generated by the model.
+ */
+export type ChatCompletionResponseMessage = {
+    /**
+     * The contents of the message.
+     */
+    content?: string | null;
+    /**
+     * The refusal message generated by the model.
+     */
+    refusal?: string | null;
+    /**
+     * The tool calls generated by the model, such as function calls.
+     */
+    tool_calls?: Array<ChatCompletionMessageToolCall> | null;
+    /**
+     * The role of the author of this message.
+     */
+    role: Role;
+    function_call?: null | FunctionCall;
+    audio?: null | ChatCompletionResponseMessageAudio;
+};
+
+export type ChatCompletionResponseMessageAudio = {
+    /**
+     * Unique identifier for this audio response.
+     */
+    id: string;
+    /**
+     * The Unix timestamp (in seconds) for when this audio response will no longer be accessible on the server for use in multi-turn conversations.
+     */
+    expires_at: number;
+    /**
+     * Base64 encoded audio bytes generated by the model, in the format specified in the request.
+     */
+    data: string;
+    /**
+     * Transcript of the audio generated by the model.
+     */
+    transcript: string;
+};
+
+/**
+ * Options for streaming response. Only set this when you set `stream: true`.
+ */
+export type ChatCompletionStreamOptions = {
+    /**
+     * If set, an additional chunk will be streamed before the `data: [DONE]` message. The `usage` field on this chunk shows the token usage statistics for the entire request, and the `choices` field will always be an empty array. All other chunks will also include a `usage` field, but with a null value.
+     */
+    include_usage: boolean;
+};
+
+/**
+ * A chat completion delta generated by streamed model responses.
+ */
+export type ChatCompletionStreamResponseDelta = {
+    /**
+     * The contents of the chunk message.
+     */
+    content?: string | null;
+    function_call?: null | FunctionCallStream;
+    tool_calls?: Array<ChatCompletionMessageToolCallChunk> | null;
+    role?: null | Role;
+    /**
+     * The refusal message generated by the model.
+     */
+    refusal?: string | null;
+};
+
+export type ChatCompletionTokenLogprob = {
+    /**
+     * The token.
+     */
+    token: string;
+    /**
+     * The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely.
+     */
+    logprob: number;
+    /**
+     * A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
+     */
+    bytes?: Array<number> | null;
+    /**
+     * List of the most likely tokens and their log probability, at this token position. In rare cases, there may be fewer than the number of requested `top_logprobs` returned.
+     */
+    top_logprobs: Array<TopLogprobs>;
+};
+
+export type ChatCompletionTool = {
+    type: ChatCompletionToolType;
+    function: FunctionObject;
+};
+
+/**
+ * Controls which (if any) tool is called by the model.
+ * `none` means the model will not call any tool and instead generates a message.
+ * `auto` means the model can pick between generating a message or calling one or more tools.
+ * `required` means the model must call one or more tools.
+ * Specifying a particular tool via `{"type": "function", "function": {"name": "my_function"}}` forces the model to call that tool.
+ *
+ * `none` is the default when no tools are present. `auto` is the default if tools are present.
+ */
+export type ChatCompletionToolChoiceOption = 'none' | 'auto' | 'required' | {
+    named: ChatCompletionNamedToolChoice;
+};
+
+export type ChatCompletionToolType = 'function';
+
 export type ChatRequest = {
+    model: string;
+    messages: Array<Message>;
+    stream?: boolean | null;
     format?: string | null;
     keep_alive?: null | Duration;
-    messages: Array<Message>;
-    model: string;
     options?: null | Options;
-    stream?: boolean | null;
+};
+
+/**
+ * Breakdown of tokens used in a completion.
+ */
+export type CompletionTokensDetails = {
+    accepted_prediction_tokens?: number | null;
+    /**
+     * Audio input tokens generated by the model.
+     */
+    audio_tokens?: number | null;
+    /**
+     * Tokens generated by the model for reasoning.
+     */
+    reasoning_tokens?: number | null;
+    /**
+     *  When using Predicted Outputs, the number of tokens in the
+     * prediction that did not appear in the completion. However, like
+     * reasoning tokens, these tokens are still counted in the total
+     * completion tokens for purposes of billing, output, and context
+     * window limits.
+     */
+    rejected_prediction_tokens?: number | null;
+};
+
+/**
+ * Usage statistics for the completion request.
+ */
+export type CompletionUsage = {
+    /**
+     * Number of tokens in the prompt.
+     */
+    prompt_tokens: number;
+    /**
+     * Number of tokens in the generated completion.
+     */
+    completion_tokens: number;
+    /**
+     * Total number of tokens used in the request (prompt + completion).
+     */
+    total_tokens: number;
+    prompt_tokens_details?: null | PromptTokensDetails;
+    completion_tokens_details?: null | CompletionTokensDetails;
 };
 
 export type CreateAliasRequest = {
     alias: string;
-    context_params?: Array<string> | null;
-    filename: string;
     repo: string;
-    request_params?: null | OaiRequestParams;
+    filename: string;
     snapshot?: string | null;
+    request_params?: null | OaiRequestParams;
+    context_params?: Array<string> | null;
 };
 
 /**
@@ -159,13 +574,13 @@ export type CreateApiModelRequest = {
      */
     api_format: ApiFormat;
     /**
-     * API key for authentication
-     */
-    api_key: string;
-    /**
      * API base URL
      */
     base_url: string;
+    /**
+     * API key for authentication
+     */
+    api_key: string;
     /**
      * List of available models
      */
@@ -186,17 +601,207 @@ export type CreateApiTokenRequest = {
     name?: string | null;
 };
 
+export type CreateChatCompletionRequest = {
+    /**
+     * A list of messages comprising the conversation so far. Depending on the [model](https://platform.openai.com/docs/models) you use, different message types (modalities) are supported, like [text](https://platform.openai.com/docs/guides/text-generation), [images](https://platform.openai.com/docs/guides/vision), and [audio](https://platform.openai.com/docs/guides/audio).
+     */
+    messages: Array<ChatCompletionRequestMessage>;
+    /**
+     * ID of the model to use.
+     * See the [model endpoint compatibility](https://platform.openai.com/docs/models#model-endpoint-compatibility) table for details on which models work with the Chat API.
+     */
+    model: string;
+    /**
+     * Whether or not to store the output of this chat completion request
+     *
+     * for use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or [evals](https://platform.openai.com/docs/guides/evals) products.
+     */
+    store?: boolean | null;
+    reasoning_effort?: null | ReasoningEffort;
+    /**
+     * Developer-defined tags and values used for filtering completions in the [dashboard](https://platform.openai.com/chat-completions).
+     */
+    metadata?: unknown;
+    /**
+     * Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+     */
+    frequency_penalty?: number | null;
+    /**
+     * Modify the likelihood of specified tokens appearing in the completion.
+     *
+     * Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100.
+     * Mathematically, the bias is added to the logits generated by the model prior to sampling.
+     * The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection;
+     * values like -100 or 100 should result in a ban or exclusive selection of the relevant token.
+     */
+    logit_bias?: {} | null;
+    /**
+     * Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the `content` of `message`.
+     */
+    logprobs?: boolean | null;
+    /**
+     * An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability. `logprobs` must be set to `true` if this parameter is used.
+     */
+    top_logprobs?: number | null;
+    /**
+     * The maximum number of [tokens](https://platform.openai.com/tokenizer) that can be generated in the chat completion.
+     *
+     * This value can be used to control [costs](https://openai.com/api/pricing/) for text generated via API.
+     * This value is now deprecated in favor of `max_completion_tokens`, and is
+     * not compatible with [o1 series models](https://platform.openai.com/docs/guides/reasoning).
+     * @deprecated
+     */
+    max_tokens?: number | null;
+    /**
+     * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
+     */
+    max_completion_tokens?: number | null;
+    /**
+     * How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep `n` as `1` to minimize costs.
+     */
+    n?: number | null;
+    modalities?: Array<ChatCompletionModalities> | null;
+    prediction?: null | PredictionContent;
+    audio?: null | ChatCompletionAudio;
+    /**
+     * Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+     */
+    presence_penalty?: number | null;
+    response_format?: null | ResponseFormat;
+    /**
+     *  This feature is in Beta.
+     * If specified, our system will make a best effort to sample deterministically, such that repeated requests
+     * with the same `seed` and parameters should return the same result.
+     * Determinism is not guaranteed, and you should refer to the `system_fingerprint` response parameter to monitor changes in the backend.
+     */
+    seed?: number | null;
+    service_tier?: null | ServiceTier;
+    stop?: null | Stop;
+    /**
+     * If set, partial message deltas will be sent, like in ChatGPT.
+     * Tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)
+     * as they become available, with the stream terminated by a `data: [DONE]` message. [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions).
+     */
+    stream?: boolean | null;
+    stream_options?: null | ChatCompletionStreamOptions;
+    /**
+     * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random,
+     * while lower values like 0.2 will make it more focused and deterministic.
+     *
+     * We generally recommend altering this or `top_p` but not both.
+     */
+    temperature?: number | null;
+    /**
+     * An alternative to sampling with temperature, called nucleus sampling,
+     * where the model considers the results of the tokens with top_p probability mass.
+     * So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+     *
+     * We generally recommend altering this or `temperature` but not both.
+     */
+    top_p?: number | null;
+    /**
+     * A list of tools the model may call. Currently, only functions are supported as a tool.
+     * Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported.
+     */
+    tools?: Array<ChatCompletionTool> | null;
+    tool_choice?: null | ChatCompletionToolChoiceOption;
+    /**
+     * Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling/parallel-function-calling) during tool use.
+     */
+    parallel_tool_calls?: boolean | null;
+    /**
+     * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
+     */
+    user?: string | null;
+    web_search_options?: null | WebSearchOptions;
+    function_call?: null | ChatCompletionFunctionCall;
+    /**
+     * Deprecated in favor of `tools`.
+     *
+     * A list of functions the model may generate JSON inputs for.
+     * @deprecated
+     */
+    functions?: Array<ChatCompletionFunctions> | null;
+};
+
+/**
+ * Represents a chat completion response returned by model, based on the provided input.
+ */
+export type CreateChatCompletionResponse = {
+    /**
+     * A unique identifier for the chat completion.
+     */
+    id: string;
+    /**
+     * A list of chat completion choices. Can be more than one if `n` is greater than 1.
+     */
+    choices: Array<ChatChoice>;
+    /**
+     * The Unix timestamp (in seconds) of when the chat completion was created.
+     */
+    created: number;
+    /**
+     * The model used for the chat completion.
+     */
+    model: string;
+    service_tier?: null | ServiceTierResponse;
+    /**
+     * This fingerprint represents the backend configuration that the model runs with.
+     *
+     * Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism.
+     */
+    system_fingerprint?: string | null;
+    /**
+     * The object type, which is always `chat.completion`.
+     */
+    object: string;
+    usage?: null | CompletionUsage;
+};
+
+/**
+ * Represents a streamed chunk of a chat completion response returned by model, based on the provided input.
+ */
+export type CreateChatCompletionStreamResponse = {
+    /**
+     * A unique identifier for the chat completion. Each chunk has the same ID.
+     */
+    id: string;
+    /**
+     * A list of chat completion choices. Can contain more than one elements if `n` is greater than 1. Can also be empty for the last chunk if you set `stream_options: {"include_usage": true}`.
+     */
+    choices: Array<ChatChoiceStream>;
+    /**
+     * The Unix timestamp (in seconds) of when the chat completion was created. Each chunk has the same timestamp.
+     */
+    created: number;
+    /**
+     * The model to generate the completion.
+     */
+    model: string;
+    service_tier?: null | ServiceTierResponse;
+    /**
+     * This fingerprint represents the backend configuration that the model runs with.
+     * Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism.
+     */
+    system_fingerprint?: string | null;
+    /**
+     * The object type, which is always `chat.completion.chunk`.
+     */
+    object: string;
+    usage?: null | CompletionUsage;
+};
+
 export type DownloadRequest = {
-    created_at: string;
-    downloaded_bytes?: number;
-    error?: string | null;
-    filename: string;
     id: string;
     repo: string;
-    started_at: string;
+    filename: string;
     status: DownloadStatus;
-    total_bytes?: number | null;
+    error?: string | null;
+    created_at: string;
     updated_at: string;
+    total_bytes?: number | null;
+    downloaded_bytes?: number;
+    started_at: string;
 };
 
 export type DownloadStatus = 'pending' | 'completed' | 'error';
@@ -205,21 +810,21 @@ export type Duration = string;
 
 export type ErrorBody = {
     /**
-     * Specific error code for programmatic error handling
-     */
-    code?: string | null;
-    /**
      * Human-readable error message describing what went wrong
      */
     message: string;
     /**
-     * Parameter name that caused the error (for validation errors)
-     */
-    param?: string | null;
-    /**
      * Error type categorizing the kind of error that occurred
      */
     type: string;
+    /**
+     * Specific error code for programmatic error handling
+     */
+    code?: string | null;
+    /**
+     * Parameter name that caused the error (for validation errors)
+     */
+    param?: string | null;
 };
 
 /**
@@ -231,13 +836,13 @@ export type FetchModelsRequest = {
      */
     api_key?: string;
     /**
-     * API base URL (optional when using id)
-     */
-    base_url: string;
-    /**
      * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
      */
     id?: string;
+    /**
+     * API base URL (optional when using id)
+     */
+    base_url: string;
 };
 
 /**
@@ -247,12 +852,90 @@ export type FetchModelsResponse = {
     models: Array<string>;
 };
 
+export type FinishReason = 'stop' | 'length' | 'tool_calls' | 'content_filter' | 'function_call';
+
+/**
+ * The name and arguments of a function that should be called, as generated by the model.
+ */
+export type FunctionCall = {
+    /**
+     * The name of the function to call.
+     */
+    name: string;
+    /**
+     * The arguments to call the function with, as generated by the model in JSON format. Note that the model does not always generate valid JSON, and may hallucinate parameters not defined by your function schema. Validate the arguments in your code before calling your function.
+     */
+    arguments: string;
+};
+
+export type FunctionCallStream = {
+    /**
+     * The name of the function to call.
+     */
+    name?: string | null;
+    /**
+     * The arguments to call the function with, as generated by the model in JSON format.
+     * Note that the model does not always generate valid JSON, and may hallucinate
+     * parameters not defined by your function schema. Validate the arguments in your
+     * code before calling your function.
+     */
+    arguments?: string | null;
+};
+
+export type FunctionName = {
+    /**
+     * The name of the function to call.
+     */
+    name: string;
+};
+
+export type FunctionObject = {
+    /**
+     * The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
+     */
+    name: string;
+    /**
+     * A description of what the function does, used by the model to choose when and how to call the function.
+     */
+    description?: string | null;
+    /**
+     * The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+     *
+     * Omitting `parameters` defines a function with an empty parameter list.
+     */
+    parameters?: unknown;
+    /**
+     * Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](https://platform.openai.com/docs/guides/function-calling).
+     */
+    strict?: boolean | null;
+};
+
+export type ImageDetail = 'auto' | 'low' | 'high';
+
+export type ImageUrl = {
+    /**
+     * Either a URL of the image or the base64 encoded image data.
+     */
+    url: string;
+    detail?: null | ImageDetail;
+};
+
+export type InputAudio = {
+    /**
+     * Base64 encoded audio data.
+     */
+    data: string;
+    /**
+     * The format of the encoded audio data. Currently supports "wav" and "mp3".
+     */
+    format: InputAudioFormat;
+};
+
+export type InputAudioFormat = 'wav' | 'mp3';
+
 export type ListModelResponse = {
+    object: string;
     data: Array<{
-        /**
-         * The Unix timestamp (in seconds) when the model was created.
-         */
-        created: number;
         /**
          * The model identifier, which can be referenced in the API endpoints.
          */
@@ -262,11 +945,14 @@ export type ListModelResponse = {
          */
         object: string;
         /**
+         * The Unix timestamp (in seconds) when the model was created.
+         */
+        created: number;
+        /**
          * The organization that owns the model.
          */
         owned_by: string;
     }>;
-    object: string;
 };
 
 /**
@@ -278,40 +964,40 @@ export type ListUsersParams = {
 };
 
 export type LocalModelResponse = {
-    filename: string;
-    model_params: {};
     repo: string;
-    size?: number | null;
+    filename: string;
     snapshot: string;
+    size?: number | null;
+    model_params: {};
 };
 
 export type Message = {
+    role: string;
     content: string;
     images?: Array<string> | null;
-    role: string;
 };
 
 export type Model = {
-    details: ModelDetails;
-    digest: string;
     model: string;
     modified_at: number;
     size: number;
+    digest: string;
+    details: ModelDetails;
 };
 
 export type ModelAlias = {
     alias: string;
-    filename: string;
     repo: string;
+    filename: string;
     snapshot: string;
 };
 
 export type ModelDetails = {
-    families?: Array<string> | null;
-    family: string;
-    format: string;
-    parameter_size: string;
     parent_model?: string | null;
+    format: string;
+    family: string;
+    families?: Array<string> | null;
+    parameter_size: string;
     quantization_level: string;
 };
 
@@ -320,10 +1006,6 @@ export type ModelDetails = {
  */
 export type ModelResponse = {
     /**
-     * The Unix timestamp (in seconds) when the model was created.
-     */
-    created: number;
-    /**
      * The model identifier, which can be referenced in the API endpoints.
      */
     id: string;
@@ -331,6 +1013,10 @@ export type ModelResponse = {
      * The object type, which is always "model".
      */
     object: string;
+    /**
+     * The Unix timestamp (in seconds) when the model was created.
+     */
+    created: number;
     /**
      * The organization that owns the model.
      */
@@ -346,13 +1032,13 @@ export type ModelsResponse = {
  */
 export type NewDownloadRequest = {
     /**
-     * Model file name to download (typically .gguf format)
-     */
-    filename: string;
-    /**
      * HuggingFace repository name in format 'username/repository-name'
      */
     repo: string;
+    /**
+     * Model file name to download (typically .gguf format)
+     */
+    filename: string;
 };
 
 export type OaiRequestParams = {
@@ -378,42 +1064,42 @@ export type OpenAiApiError = {
 };
 
 export type Options = {
-    f16_kv?: boolean | null;
-    frequency_penalty?: number | null;
-    logits_all?: boolean | null;
-    low_vram?: boolean | null;
-    main_gpu?: number | null;
-    mirostat?: number | null;
-    mirostat_eta?: number | null;
-    mirostat_tau?: number | null;
-    num_batch?: number | null;
-    num_ctx?: number | null;
-    num_gpu?: number | null;
     num_keep?: number | null;
-    num_predict?: number | null;
-    num_thread?: number | null;
-    numa?: boolean | null;
-    penalize_newline?: boolean | null;
-    presence_penalty?: number | null;
-    repeat_last_n?: number | null;
-    repeat_penalty?: number | null;
     seed?: number | null;
-    stop?: Array<string> | null;
-    temperature?: number | null;
-    tfs_z?: number | null;
+    num_predict?: number | null;
     top_k?: number | null;
     top_p?: number | null;
+    tfs_z?: number | null;
     typical_p?: number | null;
-    use_mlock?: boolean | null;
-    use_mmap?: boolean | null;
+    repeat_last_n?: number | null;
+    temperature?: number | null;
+    repeat_penalty?: number | null;
+    presence_penalty?: number | null;
+    frequency_penalty?: number | null;
+    mirostat?: number | null;
+    mirostat_tau?: number | null;
+    mirostat_eta?: number | null;
+    penalize_newline?: boolean | null;
+    stop?: Array<string> | null;
+    numa?: boolean | null;
+    num_ctx?: number | null;
+    num_batch?: number | null;
+    num_gpu?: number | null;
+    main_gpu?: number | null;
+    low_vram?: boolean | null;
+    f16_kv?: boolean | null;
+    logits_all?: boolean | null;
     vocab_only?: boolean | null;
+    use_mmap?: boolean | null;
+    use_mlock?: boolean | null;
+    num_thread?: number | null;
 };
 
 export type PaginatedAliasResponse = {
     data: Array<Alias>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 /**
@@ -421,44 +1107,36 @@ export type PaginatedAliasResponse = {
  */
 export type PaginatedApiModelResponse = {
     data: Array<ApiModelResponse>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 export type PaginatedApiTokenResponse = {
     data: Array<ApiToken>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 export type PaginatedDownloadResponse = {
     data: Array<DownloadRequest>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 export type PaginatedLocalModelResponse = {
     data: Array<LocalModelResponse>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 /**
  * Paginated response for access requests
  */
 export type PaginatedUserAccessResponse = {
-    /**
-     * Current page number
-     */
-    page: number;
-    /**
-     * Number of items per page
-     */
-    page_size: number;
     /**
      * List of access requests
      */
@@ -467,13 +1145,21 @@ export type PaginatedUserAccessResponse = {
      * Total number of requests
      */
     total: number;
+    /**
+     * Current page number
+     */
+    page: number;
+    /**
+     * Number of items per page
+     */
+    page_size: number;
 };
 
 export type PaginatedUserAliasResponse = {
     data: Array<UserAliasResponse>;
+    total: number;
     page: number;
     page_size: number;
-    total: number;
 };
 
 /**
@@ -508,6 +1194,40 @@ export type PingResponse = {
     message: string;
 };
 
+/**
+ * The type of the predicted content you want to provide. This type is
+ * currently always `content`.
+ */
+export type PredictionContent = {
+    /**
+     * The type of the predicted content you want to provide. This type is
+     * currently always `content`.
+     */
+    content: PredictionContentContent;
+    type: 'content';
+};
+
+/**
+ * The content that should be matched when generating a model response. If generated tokens would match this content, the entire model response can be returned much more quickly.
+ */
+export type PredictionContentContent = string | Array<ChatCompletionRequestMessageContentPartText>;
+
+/**
+ * Breakdown of tokens used in a completion.
+ */
+export type PromptTokensDetails = {
+    /**
+     * Audio input tokens present in the prompt.
+     */
+    audio_tokens?: number | null;
+    /**
+     * Cached tokens present in the prompt.
+     */
+    cached_tokens?: number | null;
+};
+
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+
 export type RedirectResponse = {
     /**
      * The URL to redirect to (OAuth authorization URL or application home page)
@@ -515,21 +1235,53 @@ export type RedirectResponse = {
     location: string;
 };
 
+export type ResponseFormat = {
+    type: 'text';
+} | {
+    type: 'json_object';
+} | {
+    json_schema: ResponseFormatJsonSchema;
+    type: 'json_schema';
+};
+
+export type ResponseFormatJsonSchema = {
+    /**
+     * A description of what the response format is for, used by the model to determine how to respond in the format.
+     */
+    description?: string | null;
+    /**
+     * The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
+     */
+    name: string;
+    /**
+     * The schema for the response format, described as a JSON Schema object.
+     */
+    schema?: unknown;
+    /**
+     * Whether to enable strict schema adherence when generating the output. If set to true, the model will always follow the exact schema defined in the `schema` field. Only a subset of JSON Schema is supported when `strict` is `true`. To learn more, read the [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs).
+     */
+    strict?: boolean | null;
+};
+
 export type Role = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
+export type ServiceTier = 'auto' | 'default' | 'flex' | 'scale' | 'priority';
+
+export type ServiceTierResponse = 'scale' | 'default' | 'flex' | 'priority';
+
 export type SettingInfo = {
+    key: string;
     current_value: unknown;
     default_value: unknown;
-    key: string;
-    metadata: SettingMetadata;
     source: SettingSource;
+    metadata: SettingMetadata;
 };
 
 export type SettingMetadata = {
     type: 'string';
 } | {
-    max: number;
     min: number;
+    max: number;
     type: 'number';
 } | {
     type: 'boolean';
@@ -545,13 +1297,13 @@ export type SettingSource = 'system' | 'command_line' | 'environment' | 'setting
  */
 export type SetupRequest = {
     /**
-     * Optional description of the server's purpose
-     */
-    description?: string | null;
-    /**
      * Server name for identification (minimum 10 characters)
      */
     name: string;
+    /**
+     * Optional description of the server's purpose
+     */
+    description?: string | null;
 };
 
 /**
@@ -578,6 +1330,8 @@ export type ShowResponse = {
     template: string;
 };
 
+export type Stop = string | Array<string>;
+
 /**
  * Request to test API connectivity with a prompt
  */
@@ -587,13 +1341,13 @@ export type TestPromptRequest = {
      */
     api_key?: string;
     /**
-     * API base URL (optional when using id)
-     */
-    base_url: string;
-    /**
      * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
      */
     id?: string;
+    /**
+     * API base URL (optional when using id)
+     */
+    base_url: string;
     /**
      * Model to use for testing
      */
@@ -608,21 +1362,36 @@ export type TestPromptRequest = {
  * Response from testing API connectivity
  */
 export type TestPromptResponse = {
-    error?: string | null;
-    response?: string | null;
     success: boolean;
+    response?: string | null;
+    error?: string | null;
 };
 
 export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_token_manager' | 'scope_token_admin';
 
 export type TokenStatus = 'active' | 'inactive';
 
+export type TopLogprobs = {
+    /**
+     * The token.
+     */
+    token: string;
+    /**
+     * The log probability of this token.
+     */
+    logprob: number;
+    /**
+     * A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
+     */
+    bytes?: Array<number> | null;
+};
+
 export type UpdateAliasRequest = {
-    context_params?: Array<string> | null;
-    filename: string;
     repo: string;
-    request_params?: null | OaiRequestParams;
+    filename: string;
     snapshot?: string | null;
+    request_params?: null | OaiRequestParams;
+    context_params?: Array<string> | null;
 };
 
 /**
@@ -634,13 +1403,13 @@ export type UpdateApiModelRequest = {
      */
     api_format: ApiFormat;
     /**
-     * API key for authentication (optional, only update if provided for security)
-     */
-    api_key?: string | null;
-    /**
      * API base URL (required)
      */
     base_url: string;
+    /**
+     * API key for authentication (optional, only update if provided for security)
+     */
+    api_key?: string | null;
     /**
      * List of available models (required)
      */
@@ -677,30 +1446,30 @@ export type UpdateSettingRequest = {
 
 export type UserAccessRequest = {
     /**
-     * Creation timestamp
-     */
-    created_at: string;
-    /**
      * Unique identifier for the request
      */
     id: number;
+    /**
+     * Username of the requesting user
+     */
+    username: string;
+    /**
+     * User ID (UUID) of the requesting user
+     */
+    user_id: string;
     reviewer?: string | null;
     /**
      * Current status of the request
      */
     status: UserAccessRequestStatus;
     /**
+     * Creation timestamp
+     */
+    created_at: string;
+    /**
      * Last update timestamp
      */
     updated_at: string;
-    /**
-     * User ID (UUID) of the requesting user
-     */
-    user_id: string;
-    /**
-     * Username of the requesting user
-     */
-    username: string;
 };
 
 export type UserAccessRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -710,60 +1479,60 @@ export type UserAccessRequestStatus = 'pending' | 'approved' | 'rejected';
  */
 export type UserAccessStatusResponse = {
     /**
-     * Creation timestamp
+     * Username of the requesting user
      */
-    created_at: string;
+    username: string;
     /**
      * Current status of the request (pending, approved, rejected)
      */
     status: UserAccessRequestStatus;
     /**
+     * Creation timestamp
+     */
+    created_at: string;
+    /**
      * Last update timestamp
      */
     updated_at: string;
-    /**
-     * Username of the requesting user
-     */
-    username: string;
 };
 
 export type UserAlias = {
     alias: string;
-    context_params?: Array<string>;
-    filename: string;
     repo: string;
-    request_params?: OaiRequestParams;
+    filename: string;
     snapshot: string;
+    request_params?: OaiRequestParams;
+    context_params?: Array<string>;
 };
 
 export type UserAliasResponse = {
     alias: string;
-    context_params: Array<string>;
-    filename: string;
-    model_params: {};
     repo: string;
-    request_params: OaiRequestParams;
+    filename: string;
     snapshot: string;
     source: string;
+    model_params: {};
+    request_params: OaiRequestParams;
+    context_params: Array<string>;
 };
 
 export type UserInfo = {
+    user_id: string;
+    username: string;
     first_name?: string | null;
     last_name?: string | null;
     role?: null | AppRole;
-    user_id: string;
-    username: string;
 };
 
 export type UserListResponse = {
     client_id: string;
-    has_next: boolean;
-    has_previous: boolean;
+    users: Array<UserInfo>;
     page: number;
     page_size: number;
     total_pages: number;
     total_users: number;
-    users: Array<UserInfo>;
+    has_next: boolean;
+    has_previous: boolean;
 };
 
 /**
@@ -776,6 +1545,48 @@ export type UserResponse = {
 });
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
+
+/**
+ * The amount of context window space to use for the search.
+ */
+export type WebSearchContextSize = 'low' | 'medium' | 'high';
+
+/**
+ * Approximate location parameters for the search.
+ */
+export type WebSearchLocation = {
+    /**
+     * The two-letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1) of the user, e.g. `US`.
+     */
+    country?: string | null;
+    /**
+     * Free text input for the region of the user, e.g. `California`.
+     */
+    region?: string | null;
+    /**
+     * Free text input for the city of the user, e.g. `San Francisco`.
+     */
+    city?: string | null;
+    /**
+     * The [IANA timezone](https://timeapi.io/documentation/iana-timezones) of the user, e.g. `America/Los_Angeles`.
+     */
+    timezone?: string | null;
+};
+
+/**
+ * Options for the web search tool.
+ */
+export type WebSearchOptions = {
+    search_context_size?: null | WebSearchContextSize;
+    user_location?: null | WebSearchUserLocation;
+};
+
+export type WebSearchUserLocation = {
+    type: WebSearchUserLocationType;
+    approximate: WebSearchLocation;
+};
+
+export type WebSearchUserLocationType = 'approximate';
 
 export type ChatOllamaModelData = {
     /**
@@ -2687,7 +3498,7 @@ export type PingServerResponses = {
 export type PingServerResponse = PingServerResponses[keyof PingServerResponses];
 
 export type CreateChatCompletionData = {
-    body: unknown;
+    body: CreateChatCompletionRequest;
     path?: never;
     query?: never;
     url: '/v1/chat/completions';
@@ -2718,12 +3529,14 @@ export type CreateChatCompletionResponses = {
     /**
      * Chat completion response
      */
-    200: unknown;
+    200: CreateChatCompletionResponse;
     /**
      * Chat completion stream, the status is 200, using 201 to avoid OpenAPI format limitation.
      */
-    201: unknown;
+    201: CreateChatCompletionStreamResponse;
 };
+
+export type CreateChatCompletionResponse2 = CreateChatCompletionResponses[keyof CreateChatCompletionResponses];
 
 export type ListModelsData = {
     body?: never;

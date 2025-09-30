@@ -26,6 +26,11 @@ use crate::{
   __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
   __path_user_request_access_handler,
 };
+use async_openai::types::{
+  ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
+  CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
+  CreateChatCompletionStreamResponse,
+};
 use objs::{
   Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
   SettingSource, TokenScope, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
@@ -209,6 +214,14 @@ For API keys, specify required scope when creating the token.
             // openai
             ListModelResponse,
             ModelResponse,
+            CreateChatCompletionRequest,
+            CreateChatCompletionResponse,
+            CreateChatCompletionStreamResponse,
+            ChatCompletionRequestMessage,
+            ChatCompletionResponseMessage,
+            ChatChoice,
+            ChatChoiceStream,
+            CompletionUsage,
         ),
         responses( ),
     ),
