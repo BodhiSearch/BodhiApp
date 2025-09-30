@@ -1,5 +1,5 @@
 use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
-use async_openai::types::CreateChatCompletionRequest;
+use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse};
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};
@@ -23,7 +23,7 @@ pub enum HttpError {
     summary = "Create Chat Completion (OpenAI Compatible)",
     description = "Creates a chat completion response using the specified model. Supports both streaming and non-streaming responses. Fully compatible with OpenAI's chat completions API format.",
     request_body(
-        content = serde_json::Value,
+        content = CreateChatCompletionRequest,
         example = json!({
             "model": "llama2:chat",
             "messages": [
@@ -42,9 +42,9 @@ pub enum HttpError {
         })
     ),
     responses(
-        (status = 200, description = "Chat completion response", 
+        (status = 200, description = "Chat completion response",
          content_type = "application/json",
-         body = serde_json::Value,
+         body = CreateChatCompletionResponse,
          example = json!({
              "id": "chatcmpl-123",
              "object": "chat.completion",
@@ -71,7 +71,7 @@ pub enum HttpError {
          headers(
              ("Cache-Control" = String, description = "No-cache directive")
          ),
-         body = serde_json::Value,
+         body = CreateChatCompletionStreamResponse,
          example = json!({
              "id": "chatcmpl-123",
              "object": "chat.completion.chunk",

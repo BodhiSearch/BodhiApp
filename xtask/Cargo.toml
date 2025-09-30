@@ -7,4 +7,4 @@ edition = "2021"
 anyhow = { workspace = true }
 xtaskops = { workspace = true }
 routes_app = { workspace = true }
-utoipa = { workspace = true }
+utoipa = { workspace = true, features = ["preserve_order"] }

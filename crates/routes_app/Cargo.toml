@@ -11,6 +11,7 @@ services = { workspace = true }
 commands = { workspace = true }
 auth_middleware = { workspace = true }
 server_core = { workspace = true }
+async-openai = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }

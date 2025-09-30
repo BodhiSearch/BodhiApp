@@ -219,35 +219,9 @@ dependencies = [
 
 [[package]]
 name = "async-openai"
-version = "0.28.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4df839a6643e1e3248733b01f229dc4f462d7256f808bbaf04cac40739b345c2"
-dependencies = [
- "async-openai-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "backoff",
- "base64 0.22.1",
- "bytes",
- "derive_builder 0.20.2",
- "eventsource-stream",
- "futures",
- "rand 0.8.5",
- "reqwest",
- "reqwest-eventsource",
- "secrecy",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
-name = "async-openai"
 version = "0.29.3"
 dependencies = [
- "async-openai-macros 0.1.0",
+ "async-openai-macros",
  "backoff",
  "base64 0.22.1",
  "bytes",
@@ -273,17 +247,6 @@ dependencies = [
 [[package]]
 name = "async-openai-macros"
 version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.102",
-]
-
-[[package]]
-name = "async-openai-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0289cba6d5143bfe8251d57b4a8cac036adf158525a76533a7082ba65ec76398"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -937,7 +900,7 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "async-trait",
  "axum",
  "axum-extra",
@@ -4335,7 +4298,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "axum",
  "axum-extra",
  "byteorder",
@@ -5518,6 +5481,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
+ "async-openai",
  "auth_middleware",
  "axum",
  "axum-extra",
@@ -5565,7 +5529,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "axum",
  "axum-extra",
  "chrono",
@@ -6145,7 +6109,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "async-trait",
  "axum",
  "commands",
@@ -6180,7 +6144,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "async-trait",
  "axum",
  "bytes",
@@ -6220,7 +6184,7 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "anyhow_trace",
- "async-openai 0.28.3",
+ "async-openai",
  "async-trait",
  "axum",
  "base64 0.22.1",

@@ -825,13 +825,13 @@ export interface components {
             source: "api";
         });
         ApiAlias: {
+            id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
-            /** Format: date-time */
-            created_at: string;
-            id: string;
             models: string[];
             prefix?: string | null;
+            /** Format: date-time */
+            created_at: string;
             /** Format: date-time */
             updated_at: string;
         };
@@ -868,34 +868,34 @@ export interface components {
          *     }
          */
         ApiModelResponse: {
-            api_format: components["schemas"]["ApiFormat"];
-            api_key_masked: string;
-            base_url: string;
-            /** Format: date-time */
-            created_at: string;
             id: string;
+            api_format: components["schemas"]["ApiFormat"];
+            base_url: string;
+            api_key_masked: string;
             models: string[];
             prefix?: string | null;
+            /** Format: date-time */
+            created_at: string;
             /** Format: date-time */
             updated_at: string;
         };
         ApiToken: {
+            id: string;
+            user_id: string;
+            name: string;
+            token_id: string;
+            token_hash: string;
+            status: components["schemas"]["TokenStatus"];
             /**
              * Format: date-time
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
-            id: string;
-            name: string;
-            status: components["schemas"]["TokenStatus"];
-            token_hash: string;
-            token_id: string;
             /**
              * Format: date-time
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
-            user_id: string;
         };
         /** @example {
          *       "offline_token": "bapp_1234567890abcdef"
@@ -921,13 +921,13 @@ export interface components {
          *     }
          */
         AppInfo: {
-            /** @description Current application setup and operational status */
-            status: components["schemas"]["AppStatus"];
             /**
              * @description Application version number (semantic versioning)
              * @example 0.1.0
              */
             version: string;
+            /** @description Current application setup and operational status */
+            status: components["schemas"]["AppStatus"];
         };
         AppRole: components["schemas"]["Role"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
         /**
@@ -956,6 +956,11 @@ export interface components {
              */
             code?: string | null;
             /**
+             * @description OAuth state parameter for CSRF protection (must match initiated request)
+             * @example random_state_456
+             */
+            state?: string | null;
+            /**
              * @description OAuth error code if authentication failed (e.g., "access_denied")
              * @example access_denied
              */
@@ -965,11 +970,6 @@ export interface components {
              * @example The user denied the request
              */
             error_description?: string | null;
-            /**
-             * @description OAuth state parameter for CSRF protection (must match initiated request)
-             * @example random_state_456
-             */
-            state?: string | null;
         } & {
             [key: string]: string;
         };
@@ -981,21 +981,326 @@ export interface components {
              */
             role: string;
         };
+        ChatChoice: {
+            /**
+             * Format: int32
+             * @description The index of the choice in the list of choices.
+             */
+            index: number;
+            message: components["schemas"]["ChatCompletionResponseMessage"];
+            finish_reason?: null | components["schemas"]["FinishReason"];
+            logprobs?: null | components["schemas"]["ChatChoiceLogprobs"];
+        };
+        ChatChoiceLogprobs: {
+            /** @description A list of message content tokens with log probability information. */
+            content?: components["schemas"]["ChatCompletionTokenLogprob"][] | null;
+            refusal?: components["schemas"]["ChatCompletionTokenLogprob"][] | null;
+        };
+        ChatChoiceStream: {
+            /**
+             * Format: int32
+             * @description The index of the choice in the list of choices.
+             */
+            index: number;
+            delta: components["schemas"]["ChatCompletionStreamResponseDelta"];
+            finish_reason?: null | components["schemas"]["FinishReason"];
+            logprobs?: null | components["schemas"]["ChatChoiceLogprobs"];
+        };
+        ChatCompletionAudio: {
+            /** @description The voice the model uses to respond. Supported voices are `ash`, `ballad`, `coral`, `sage`, and `verse` (also supported but not recommended are `alloy`, `echo`, and `shimmer`; these voices are less expressive). */
+            voice: components["schemas"]["ChatCompletionAudioVoice"];
+            /** @description Specifies the output audio format. Must be one of `wav`, `mp3`, `flac`, `opus`, or `pcm16`. */
+            format: components["schemas"]["ChatCompletionAudioFormat"];
+        };
+        /** @enum {string} */
+        ChatCompletionAudioFormat: "wav" | "mp3" | "flac" | "opus" | "pcm16";
+        /** @enum {string} */
+        ChatCompletionAudioVoice: "alloy" | "ash" | "ballad" | "coral" | "echo" | "sage" | "shimmer" | "verse";
+        ChatCompletionFunctionCall: "none" | "auto" | {
+            /** @description Forces the model to call the specified function. */
+            Function: {
+                name: string;
+            };
+        };
+        /** @deprecated */
+        ChatCompletionFunctions: {
+            /** @description The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64. */
+            name: string;
+            /** @description A description of what the function does, used by the model to choose when and how to call the function. */
+            description?: string | null;
+            /** @description The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+             *
+             *     Omitting `parameters` defines a function with an empty parameter list. */
+            parameters: unknown;
+        };
+        ChatCompletionMessageToolCall: {
+            /** @description The ID of the tool call. */
+            id: string;
+            /** @description The type of the tool. Currently, only `function` is supported. */
+            type: components["schemas"]["ChatCompletionToolType"];
+            /** @description The function that the model called. */
+            function: components["schemas"]["FunctionCall"];
+        };
+        ChatCompletionMessageToolCallChunk: {
+            /** Format: int32 */
+            index: number;
+            /** @description The ID of the tool call. */
+            id?: string | null;
+            type?: null | components["schemas"]["ChatCompletionToolType"];
+            function?: null | components["schemas"]["FunctionCallStream"];
+        };
+        /**
+         * @description Output types that you would like the model to generate for this request.
+         *
+         *     Most models are capable of generating text, which is the default: `["text"]`
+         *
+         *     The `gpt-4o-audio-preview` model can also be used to [generate
+         *     audio](https://platform.openai.com/docs/guides/audio). To request that this model generate both text and audio responses, you can use: `["text", "audio"]`
+         * @enum {string}
+         */
+        ChatCompletionModalities: "text" | "audio";
+        /** @description Specifies a tool the model should use. Use to force the model to call a specific function. */
+        ChatCompletionNamedToolChoice: {
+            /** @description The type of the tool. Currently, only `function` is supported. */
+            type: components["schemas"]["ChatCompletionToolType"];
+            function: components["schemas"]["FunctionName"];
+        };
+        ChatCompletionRequestAssistantMessage: {
+            content?: null | components["schemas"]["ChatCompletionRequestAssistantMessageContent"];
+            /** @description The refusal message by the assistant. */
+            refusal?: string | null;
+            /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
+            name?: string | null;
+            audio?: null | components["schemas"]["ChatCompletionRequestAssistantMessageAudio"];
+            tool_calls?: components["schemas"]["ChatCompletionMessageToolCall"][] | null;
+            function_call?: null | components["schemas"]["FunctionCall"];
+        };
+        ChatCompletionRequestAssistantMessageAudio: {
+            /** @description Unique identifier for a previous audio response from the model. */
+            id: string;
+        };
+        ChatCompletionRequestAssistantMessageContent: string | components["schemas"]["ChatCompletionRequestAssistantMessageContentPart"][];
+        ChatCompletionRequestAssistantMessageContentPart: (components["schemas"]["ChatCompletionRequestMessageContentPartText"] & {
+            /** @enum {string} */
+            type: "text";
+        }) | (components["schemas"]["ChatCompletionRequestMessageContentPartRefusal"] & {
+            /** @enum {string} */
+            type: "refusal";
+        });
+        ChatCompletionRequestDeveloperMessage: {
+            /** @description The contents of the developer message. */
+            content: components["schemas"]["ChatCompletionRequestDeveloperMessageContent"];
+            /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
+            name?: string | null;
+        };
+        ChatCompletionRequestDeveloperMessageContent: string | components["schemas"]["ChatCompletionRequestMessageContentPartText"][];
+        ChatCompletionRequestFunctionMessage: {
+            /** @description The return value from the function call, to return to the model. */
+            content?: string | null;
+            /** @description The name of the function to call. */
+            name: string;
+        };
+        ChatCompletionRequestMessage: (components["schemas"]["ChatCompletionRequestDeveloperMessage"] & {
+            /** @enum {string} */
+            role: "developer";
+        }) | (components["schemas"]["ChatCompletionRequestSystemMessage"] & {
+            /** @enum {string} */
+            role: "system";
+        }) | (components["schemas"]["ChatCompletionRequestUserMessage"] & {
+            /** @enum {string} */
+            role: "user";
+        }) | (components["schemas"]["ChatCompletionRequestAssistantMessage"] & {
+            /** @enum {string} */
+            role: "assistant";
+        }) | (components["schemas"]["ChatCompletionRequestToolMessage"] & {
+            /** @enum {string} */
+            role: "tool";
+        }) | (components["schemas"]["ChatCompletionRequestFunctionMessage"] & {
+            /** @enum {string} */
+            role: "function";
+        });
+        /** @description Learn about [audio inputs](https://platform.openai.com/docs/guides/audio). */
+        ChatCompletionRequestMessageContentPartAudio: {
+            input_audio: components["schemas"]["InputAudio"];
+        };
+        ChatCompletionRequestMessageContentPartImage: {
+            image_url: components["schemas"]["ImageUrl"];
+        };
+        ChatCompletionRequestMessageContentPartRefusal: {
+            /** @description The refusal message generated by the model. */
+            refusal: string;
+        };
+        ChatCompletionRequestMessageContentPartText: {
+            text: string;
+        };
+        ChatCompletionRequestSystemMessage: {
+            /** @description The contents of the system message. */
+            content: components["schemas"]["ChatCompletionRequestSystemMessageContent"];
+            /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
+            name?: string | null;
+        };
+        ChatCompletionRequestSystemMessageContent: string | components["schemas"]["ChatCompletionRequestSystemMessageContentPart"][];
+        ChatCompletionRequestSystemMessageContentPart: components["schemas"]["ChatCompletionRequestMessageContentPartText"] & {
+            /** @enum {string} */
+            type: "text";
+        };
+        /** @description Tool message */
+        ChatCompletionRequestToolMessage: {
+            /** @description The contents of the tool message. */
+            content: components["schemas"]["ChatCompletionRequestToolMessageContent"];
+            tool_call_id: string;
+        };
+        ChatCompletionRequestToolMessageContent: string | components["schemas"]["ChatCompletionRequestToolMessageContentPart"][];
+        ChatCompletionRequestToolMessageContentPart: components["schemas"]["ChatCompletionRequestMessageContentPartText"] & {
+            /** @enum {string} */
+            type: "text";
+        };
+        ChatCompletionRequestUserMessage: {
+            /** @description The contents of the user message. */
+            content: components["schemas"]["ChatCompletionRequestUserMessageContent"];
+            /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
+            name?: string | null;
+        };
+        ChatCompletionRequestUserMessageContent: string | components["schemas"]["ChatCompletionRequestUserMessageContentPart"][];
+        ChatCompletionRequestUserMessageContentPart: (components["schemas"]["ChatCompletionRequestMessageContentPartText"] & {
+            /** @enum {string} */
+            type: "text";
+        }) | (components["schemas"]["ChatCompletionRequestMessageContentPartImage"] & {
+            /** @enum {string} */
+            type: "image_url";
+        }) | (components["schemas"]["ChatCompletionRequestMessageContentPartAudio"] & {
+            /** @enum {string} */
+            type: "input_audio";
+        });
+        /** @description A chat completion message generated by the model. */
+        ChatCompletionResponseMessage: {
+            /** @description The contents of the message. */
+            content?: string | null;
+            /** @description The refusal message generated by the model. */
+            refusal?: string | null;
+            /** @description The tool calls generated by the model, such as function calls. */
+            tool_calls?: components["schemas"]["ChatCompletionMessageToolCall"][] | null;
+            /** @description The role of the author of this message. */
+            role: components["schemas"]["Role"];
+            function_call?: null | components["schemas"]["FunctionCall"];
+            audio?: null | components["schemas"]["ChatCompletionResponseMessageAudio"];
+        };
+        ChatCompletionResponseMessageAudio: {
+            /** @description Unique identifier for this audio response. */
+            id: string;
+            /**
+             * Format: int32
+             * @description The Unix timestamp (in seconds) for when this audio response will no longer be accessible on the server for use in multi-turn conversations.
+             */
+            expires_at: number;
+            /** @description Base64 encoded audio bytes generated by the model, in the format specified in the request. */
+            data: string;
+            /** @description Transcript of the audio generated by the model. */
+            transcript: string;
+        };
+        /** @description Options for streaming response. Only set this when you set `stream: true`. */
+        ChatCompletionStreamOptions: {
+            /** @description If set, an additional chunk will be streamed before the `data: [DONE]` message. The `usage` field on this chunk shows the token usage statistics for the entire request, and the `choices` field will always be an empty array. All other chunks will also include a `usage` field, but with a null value. */
+            include_usage: boolean;
+        };
+        /** @description A chat completion delta generated by streamed model responses. */
+        ChatCompletionStreamResponseDelta: {
+            /** @description The contents of the chunk message. */
+            content?: string | null;
+            function_call?: null | components["schemas"]["FunctionCallStream"];
+            tool_calls?: components["schemas"]["ChatCompletionMessageToolCallChunk"][] | null;
+            role?: null | components["schemas"]["Role"];
+            /** @description The refusal message generated by the model. */
+            refusal?: string | null;
+        };
+        ChatCompletionTokenLogprob: {
+            /** @description The token. */
+            token: string;
+            /**
+             * Format: float
+             * @description The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely.
+             */
+            logprob: number;
+            /** @description A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token. */
+            bytes?: number[] | null;
+            /** @description List of the most likely tokens and their log probability, at this token position. In rare cases, there may be fewer than the number of requested `top_logprobs` returned. */
+            top_logprobs: components["schemas"]["TopLogprobs"][];
+        };
+        ChatCompletionTool: {
+            type: components["schemas"]["ChatCompletionToolType"];
+            function: components["schemas"]["FunctionObject"];
+        };
+        /** @description Controls which (if any) tool is called by the model.
+         *     `none` means the model will not call any tool and instead generates a message.
+         *     `auto` means the model can pick between generating a message or calling one or more tools.
+         *     `required` means the model must call one or more tools.
+         *     Specifying a particular tool via `{"type": "function", "function": {"name": "my_function"}}` forces the model to call that tool.
+         *
+         *     `none` is the default when no tools are present. `auto` is the default if tools are present. */
+        ChatCompletionToolChoiceOption: "none" | "auto" | "required" | {
+            named: components["schemas"]["ChatCompletionNamedToolChoice"];
+        };
+        /** @enum {string} */
+        ChatCompletionToolType: "function";
         ChatRequest: {
+            model: string;
+            messages: components["schemas"]["Message"][];
+            stream?: boolean | null;
             format?: string | null;
             keep_alive?: null | components["schemas"]["Duration"];
-            messages: components["schemas"]["Message"][];
-            model: string;
             options?: null | components["schemas"]["Options"];
-            stream?: boolean | null;
+        };
+        /** @description Breakdown of tokens used in a completion. */
+        CompletionTokensDetails: {
+            /** Format: int32 */
+            accepted_prediction_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description Audio input tokens generated by the model.
+             */
+            audio_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description Tokens generated by the model for reasoning.
+             */
+            reasoning_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description  When using Predicted Outputs, the number of tokens in the
+             *     prediction that did not appear in the completion. However, like
+             *     reasoning tokens, these tokens are still counted in the total
+             *     completion tokens for purposes of billing, output, and context
+             *     window limits.
+             */
+            rejected_prediction_tokens?: number | null;
+        };
+        /** @description Usage statistics for the completion request. */
+        CompletionUsage: {
+            /**
+             * Format: int32
+             * @description Number of tokens in the prompt.
+             */
+            prompt_tokens: number;
+            /**
+             * Format: int32
+             * @description Number of tokens in the generated completion.
+             */
+            completion_tokens: number;
+            /**
+             * Format: int32
+             * @description Total number of tokens used in the request (prompt + completion).
+             */
+            total_tokens: number;
+            prompt_tokens_details?: null | components["schemas"]["PromptTokensDetails"];
+            completion_tokens_details?: null | components["schemas"]["CompletionTokensDetails"];
         };
         CreateAliasRequest: {
             alias: string;
-            context_params?: string[] | null;
-            filename: string;
             repo: string;
-            request_params?: null | components["schemas"]["OAIRequestParams"];
+            filename: string;
             snapshot?: string | null;
+            request_params?: null | components["schemas"]["OAIRequestParams"];
+            context_params?: string[] | null;
         };
         /**
          * @description Request to create a new API model configuration
@@ -1013,10 +1318,10 @@ export interface components {
         CreateApiModelRequest: {
             /** @description API format/protocol (e.g., "openai") */
             api_format: components["schemas"]["ApiFormat"];
-            /** @description API key for authentication */
-            api_key: string;
             /** @description API base URL */
             base_url: string;
+            /** @description API key for authentication */
+            api_key: string;
             /** @description List of available models */
             models: string[];
             /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4") */
@@ -1035,31 +1340,187 @@ export interface components {
              */
             name?: string | null;
         };
+        CreateChatCompletionRequest: {
+            /** @description A list of messages comprising the conversation so far. Depending on the [model](https://platform.openai.com/docs/models) you use, different message types (modalities) are supported, like [text](https://platform.openai.com/docs/guides/text-generation), [images](https://platform.openai.com/docs/guides/vision), and [audio](https://platform.openai.com/docs/guides/audio). */
+            messages: components["schemas"]["ChatCompletionRequestMessage"][];
+            /** @description ID of the model to use.
+             *     See the [model endpoint compatibility](https://platform.openai.com/docs/models#model-endpoint-compatibility) table for details on which models work with the Chat API. */
+            model: string;
+            /** @description Whether or not to store the output of this chat completion request
+             *
+             *     for use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or [evals](https://platform.openai.com/docs/guides/evals) products. */
+            store?: boolean | null;
+            reasoning_effort?: null | components["schemas"]["ReasoningEffort"];
+            /** @description Developer-defined tags and values used for filtering completions in the [dashboard](https://platform.openai.com/chat-completions). */
+            metadata?: unknown;
+            /**
+             * Format: float
+             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+             */
+            frequency_penalty?: number | null;
+            /** @description Modify the likelihood of specified tokens appearing in the completion.
+             *
+             *     Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100.
+             *     Mathematically, the bias is added to the logits generated by the model prior to sampling.
+             *     The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection;
+             *     values like -100 or 100 should result in a ban or exclusive selection of the relevant token. */
+            logit_bias?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the `content` of `message`. */
+            logprobs?: boolean | null;
+            /**
+             * Format: int32
+             * @description An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability. `logprobs` must be set to `true` if this parameter is used.
+             */
+            top_logprobs?: number | null;
+            /**
+             * Format: int32
+             * @deprecated
+             * @description The maximum number of [tokens](https://platform.openai.com/tokenizer) that can be generated in the chat completion.
+             *
+             *     This value can be used to control [costs](https://openai.com/api/pricing/) for text generated via API.
+             *     This value is now deprecated in favor of `max_completion_tokens`, and is
+             *     not compatible with [o1 series models](https://platform.openai.com/docs/guides/reasoning).
+             */
+            max_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
+             */
+            max_completion_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep `n` as `1` to minimize costs.
+             */
+            n?: number | null;
+            modalities?: components["schemas"]["ChatCompletionModalities"][] | null;
+            prediction?: null | components["schemas"]["PredictionContent"];
+            audio?: null | components["schemas"]["ChatCompletionAudio"];
+            /**
+             * Format: float
+             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+             */
+            presence_penalty?: number | null;
+            response_format?: null | components["schemas"]["ResponseFormat"];
+            /**
+             * Format: int64
+             * @description  This feature is in Beta.
+             *     If specified, our system will make a best effort to sample deterministically, such that repeated requests
+             *     with the same `seed` and parameters should return the same result.
+             *     Determinism is not guaranteed, and you should refer to the `system_fingerprint` response parameter to monitor changes in the backend.
+             */
+            seed?: number | null;
+            service_tier?: null | components["schemas"]["ServiceTier"];
+            stop?: null | components["schemas"]["Stop"];
+            /** @description If set, partial message deltas will be sent, like in ChatGPT.
+             *     Tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)
+             *     as they become available, with the stream terminated by a `data: [DONE]` message. [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions). */
+            stream?: boolean | null;
+            stream_options?: null | components["schemas"]["ChatCompletionStreamOptions"];
+            /**
+             * Format: float
+             * @description What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random,
+             *     while lower values like 0.2 will make it more focused and deterministic.
+             *
+             *     We generally recommend altering this or `top_p` but not both.
+             */
+            temperature?: number | null;
+            /**
+             * Format: float
+             * @description An alternative to sampling with temperature, called nucleus sampling,
+             *     where the model considers the results of the tokens with top_p probability mass.
+             *     So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+             *
+             *      We generally recommend altering this or `temperature` but not both.
+             */
+            top_p?: number | null;
+            /** @description A list of tools the model may call. Currently, only functions are supported as a tool.
+             *     Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported. */
+            tools?: components["schemas"]["ChatCompletionTool"][] | null;
+            tool_choice?: null | components["schemas"]["ChatCompletionToolChoiceOption"];
+            /** @description Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling/parallel-function-calling) during tool use. */
+            parallel_tool_calls?: boolean | null;
+            /** @description A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids). */
+            user?: string | null;
+            web_search_options?: null | components["schemas"]["WebSearchOptions"];
+            function_call?: null | components["schemas"]["ChatCompletionFunctionCall"];
+            /**
+             * @deprecated
+             * @description Deprecated in favor of `tools`.
+             *
+             *     A list of functions the model may generate JSON inputs for.
+             */
+            functions?: components["schemas"]["ChatCompletionFunctions"][] | null;
+        };
+        /** @description Represents a chat completion response returned by model, based on the provided input. */
+        CreateChatCompletionResponse: {
+            /** @description A unique identifier for the chat completion. */
+            id: string;
+            /** @description A list of chat completion choices. Can be more than one if `n` is greater than 1. */
+            choices: components["schemas"]["ChatChoice"][];
+            /**
+             * Format: int32
+             * @description The Unix timestamp (in seconds) of when the chat completion was created.
+             */
+            created: number;
+            /** @description The model used for the chat completion. */
+            model: string;
+            service_tier?: null | components["schemas"]["ServiceTierResponse"];
+            /** @description This fingerprint represents the backend configuration that the model runs with.
+             *
+             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism. */
+            system_fingerprint?: string | null;
+            /** @description The object type, which is always `chat.completion`. */
+            object: string;
+            usage?: null | components["schemas"]["CompletionUsage"];
+        };
+        /** @description Represents a streamed chunk of a chat completion response returned by model, based on the provided input. */
+        CreateChatCompletionStreamResponse: {
+            /** @description A unique identifier for the chat completion. Each chunk has the same ID. */
+            id: string;
+            /** @description A list of chat completion choices. Can contain more than one elements if `n` is greater than 1. Can also be empty for the last chunk if you set `stream_options: {"include_usage": true}`. */
+            choices: components["schemas"]["ChatChoiceStream"][];
+            /**
+             * Format: int32
+             * @description The Unix timestamp (in seconds) of when the chat completion was created. Each chunk has the same timestamp.
+             */
+            created: number;
+            /** @description The model to generate the completion. */
+            model: string;
+            service_tier?: null | components["schemas"]["ServiceTierResponse"];
+            /** @description This fingerprint represents the backend configuration that the model runs with.
+             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism. */
+            system_fingerprint?: string | null;
+            /** @description The object type, which is always `chat.completion.chunk`. */
+            object: string;
+            usage?: null | components["schemas"]["CompletionUsage"];
+        };
         DownloadRequest: {
+            id: string;
+            repo: string;
+            filename: string;
+            status: components["schemas"]["DownloadStatus"];
+            error?: string | null;
             /**
              * Format: date-time
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
-            /** Format: int64 */
-            downloaded_bytes?: number;
-            error?: string | null;
-            filename: string;
-            id: string;
-            repo: string;
-            /**
-             * Format: date-time
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            started_at: string;
-            status: components["schemas"]["DownloadStatus"];
-            /** Format: int64 */
-            total_bytes?: number | null;
             /**
              * Format: date-time
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
+            /** Format: int64 */
+            total_bytes?: number | null;
+            /** Format: int64 */
+            downloaded_bytes?: number;
+            /**
+             * Format: date-time
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            started_at: string;
         };
         /** @enum {string} */
         DownloadStatus: "pending" | "completed" | "error";
@@ -1072,25 +1533,25 @@ export interface components {
          *     } */
         ErrorBody: {
             /**
-             * @description Specific error code for programmatic error handling
-             * @example validation_error
-             */
-            code?: string | null;
-            /**
              * @description Human-readable error message describing what went wrong
              * @example Validation failed: name is required
              */
             message: string;
             /**
-             * @description Parameter name that caused the error (for validation errors)
-             * @example name
-             */
-            param?: string | null;
-            /**
              * @description Error type categorizing the kind of error that occurred
              * @example invalid_request_error
              */
             type: string;
+            /**
+             * @description Specific error code for programmatic error handling
+             * @example validation_error
+             */
+            code?: string | null;
+            /**
+             * @description Parameter name that caused the error (for validation errors)
+             * @example name
+             */
+            param?: string | null;
         };
         /**
          * @description Request to fetch available models from provider
@@ -1102,10 +1563,10 @@ export interface components {
         FetchModelsRequest: {
             /** @description API key for authentication (provide either api_key OR id, api_key takes preference if both provided) */
             api_key?: string;
-            /** @description API base URL (optional when using id) */
-            base_url: string;
             /** @description API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided) */
             id?: string;
+            /** @description API base URL (optional when using id) */
+            base_url: string;
         };
         /**
          * @description Response containing available models from provider
@@ -1120,21 +1581,70 @@ export interface components {
         FetchModelsResponse: {
             models: string[];
         };
+        /** @enum {string} */
+        FinishReason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call";
+        /** @description The name and arguments of a function that should be called, as generated by the model. */
+        FunctionCall: {
+            /** @description The name of the function to call. */
+            name: string;
+            /** @description The arguments to call the function with, as generated by the model in JSON format. Note that the model does not always generate valid JSON, and may hallucinate parameters not defined by your function schema. Validate the arguments in your code before calling your function. */
+            arguments: string;
+        };
+        FunctionCallStream: {
+            /** @description The name of the function to call. */
+            name?: string | null;
+            /** @description The arguments to call the function with, as generated by the model in JSON format.
+             *     Note that the model does not always generate valid JSON, and may hallucinate
+             *     parameters not defined by your function schema. Validate the arguments in your
+             *     code before calling your function. */
+            arguments?: string | null;
+        };
+        FunctionName: {
+            /** @description The name of the function to call. */
+            name: string;
+        };
+        FunctionObject: {
+            /** @description The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64. */
+            name: string;
+            /** @description A description of what the function does, used by the model to choose when and how to call the function. */
+            description?: string | null;
+            /** @description The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+             *
+             *     Omitting `parameters` defines a function with an empty parameter list. */
+            parameters?: unknown;
+            /** @description Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](https://platform.openai.com/docs/guides/function-calling). */
+            strict?: boolean | null;
+        };
+        /** @enum {string} */
+        ImageDetail: "auto" | "low" | "high";
+        ImageUrl: {
+            /** @description Either a URL of the image or the base64 encoded image data. */
+            url: string;
+            detail?: null | components["schemas"]["ImageDetail"];
+        };
+        InputAudio: {
+            /** @description Base64 encoded audio data. */
+            data: string;
+            /** @description The format of the encoded audio data. Currently supports "wav" and "mp3". */
+            format: components["schemas"]["InputAudioFormat"];
+        };
+        /** @enum {string} */
+        InputAudioFormat: "wav" | "mp3";
         ListModelResponse: {
+            object: string;
             data: {
+                /** @description The model identifier, which can be referenced in the API endpoints. */
+                id: string;
+                /** @description The object type, which is always "model". */
+                object: string;
                 /**
                  * Format: int32
                  * @description The Unix timestamp (in seconds) when the model was created.
                  */
                 created: number;
-                /** @description The model identifier, which can be referenced in the API endpoints. */
-                id: string;
-                /** @description The object type, which is always "model". */
-                object: string;
                 /** @description The organization that owns the model. */
                 owned_by: string;
             }[];
-            object: string;
         };
         /** @description List users query parameters */
         ListUsersParams: {
@@ -1150,55 +1660,55 @@ export interface components {
             page_size?: number | null;
         };
         LocalModelResponse: {
+            repo: string;
             filename: string;
+            snapshot: string;
+            /** Format: int64 */
+            size?: number | null;
             model_params: {
                 [key: string]: unknown;
             };
-            repo: string;
-            /** Format: int64 */
-            size?: number | null;
-            snapshot: string;
         };
         Message: {
+            role: string;
             content: string;
             images?: string[] | null;
-            role: string;
         };
         Model: {
-            details: components["schemas"]["ModelDetails"];
-            digest: string;
             model: string;
             /** Format: int32 */
             modified_at: number;
             /** Format: int64 */
             size: number;
+            digest: string;
+            details: components["schemas"]["ModelDetails"];
         };
         ModelAlias: {
             alias: string;
-            filename: string;
             /** Format: string */
             repo: string;
+            filename: string;
             snapshot: string;
         };
         ModelDetails: {
-            families?: string[] | null;
-            family: string;
-            format: string;
-            parameter_size: string;
             parent_model?: string | null;
+            format: string;
+            family: string;
+            families?: string[] | null;
+            parameter_size: string;
             quantization_level: string;
         };
         /** @description Describes an OpenAI model offering that can be used with the API. */
         ModelResponse: {
+            /** @description The model identifier, which can be referenced in the API endpoints. */
+            id: string;
+            /** @description The object type, which is always "model". */
+            object: string;
             /**
              * Format: int32
              * @description The Unix timestamp (in seconds) when the model was created.
              */
             created: number;
-            /** @description The model identifier, which can be referenced in the API endpoints. */
-            id: string;
-            /** @description The object type, which is always "model". */
-            object: string;
             /** @description The organization that owns the model. */
             owned_by: string;
         };
@@ -1214,15 +1724,15 @@ export interface components {
          */
         NewDownloadRequest: {
             /**
-             * @description Model file name to download (typically .gguf format)
-             * @example mistral-7b-instruct-v0.1.Q4_K_M.gguf
-             */
-            filename: string;
-            /**
              * @description HuggingFace repository name in format 'username/repository-name'
              * @example TheBloke/Mistral-7B-Instruct-v0.1-GGUF
              */
             repo: string;
+            /**
+             * @description Model file name to download (typically .gguf format)
+             * @example mistral-7b-instruct-v0.1.Q4_K_M.gguf
+             */
+            filename: string;
         };
         OAIRequestParams: {
             /** Format: float */
@@ -1256,86 +1766,86 @@ export interface components {
             error: components["schemas"]["ErrorBody"];
         };
         Options: {
-            f16_kv?: boolean | null;
-            /** Format: float */
-            frequency_penalty?: number | null;
-            logits_all?: boolean | null;
-            low_vram?: boolean | null;
-            /** Format: int32 */
-            main_gpu?: number | null;
-            /** Format: float */
-            mirostat?: number | null;
-            /** Format: float */
-            mirostat_eta?: number | null;
-            /** Format: float */
-            mirostat_tau?: number | null;
-            /** Format: int32 */
-            num_batch?: number | null;
-            /** Format: int32 */
-            num_ctx?: number | null;
-            /** Format: int32 */
-            num_gpu?: number | null;
             /** Format: int32 */
             num_keep?: number | null;
-            /** Format: int32 */
-            num_predict?: number | null;
-            /** Format: int32 */
-            num_thread?: number | null;
-            numa?: boolean | null;
-            penalize_newline?: boolean | null;
-            /** Format: float */
-            presence_penalty?: number | null;
-            /** Format: int32 */
-            repeat_last_n?: number | null;
-            /** Format: float */
-            repeat_penalty?: number | null;
             /** Format: int64 */
             seed?: number | null;
-            stop?: string[] | null;
-            /** Format: float */
-            temperature?: number | null;
-            /** Format: float */
-            tfs_z?: number | null;
+            /** Format: int32 */
+            num_predict?: number | null;
             /** Format: int32 */
             top_k?: number | null;
             /** Format: float */
             top_p?: number | null;
             /** Format: float */
+            tfs_z?: number | null;
+            /** Format: float */
             typical_p?: number | null;
-            use_mlock?: boolean | null;
-            use_mmap?: boolean | null;
+            /** Format: int32 */
+            repeat_last_n?: number | null;
+            /** Format: float */
+            temperature?: number | null;
+            /** Format: float */
+            repeat_penalty?: number | null;
+            /** Format: float */
+            presence_penalty?: number | null;
+            /** Format: float */
+            frequency_penalty?: number | null;
+            /** Format: float */
+            mirostat?: number | null;
+            /** Format: float */
+            mirostat_tau?: number | null;
+            /** Format: float */
+            mirostat_eta?: number | null;
+            penalize_newline?: boolean | null;
+            stop?: string[] | null;
+            numa?: boolean | null;
+            /** Format: int32 */
+            num_ctx?: number | null;
+            /** Format: int32 */
+            num_batch?: number | null;
+            /** Format: int32 */
+            num_gpu?: number | null;
+            /** Format: int32 */
+            main_gpu?: number | null;
+            low_vram?: boolean | null;
+            f16_kv?: boolean | null;
+            logits_all?: boolean | null;
             vocab_only?: boolean | null;
+            use_mmap?: boolean | null;
+            use_mlock?: boolean | null;
+            /** Format: int32 */
+            num_thread?: number | null;
         };
         PaginatedAliasResponse: {
             data: components["schemas"]["Alias"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         /** @description Paginated response for API model listings */
         PaginatedApiModelResponse: {
             data: components["schemas"]["ApiModelResponse"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         PaginatedApiTokenResponse: {
             data: components["schemas"]["ApiToken"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         PaginatedDownloadResponse: {
             data: components["schemas"]["DownloadRequest"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         PaginatedLocalModelResponse: {
             data: components["schemas"]["LocalModelResponse"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         /**
          * @description Paginated response for access requests
@@ -1356,20 +1866,20 @@ export interface components {
          *     }
          */
         PaginatedUserAccessResponse: {
-            /** @description Current page number */
-            page: number;
-            /** @description Number of items per page */
-            page_size: number;
             /** @description List of access requests */
             requests: components["schemas"]["UserAccessRequest"][];
             /** @description Total number of requests */
             total: number;
+            /** @description Current page number */
+            page: number;
+            /** @description Number of items per page */
+            page_size: number;
         };
         PaginatedUserAliasResponse: {
             data: components["schemas"]["UserAliasResponse"][];
+            total: number;
             page: number;
             page_size: number;
-            total: number;
         };
         /** @description Query parameters for pagination and sorting */
         PaginationSortParams: {
@@ -1407,6 +1917,31 @@ export interface components {
              */
             message: string;
         };
+        /** @description Static predicted output content, such as the content of a text file that is being regenerated. */
+        PredictionContent: {
+            /** @description The type of the predicted content you want to provide. This type is
+             *     currently always `content`. */
+            content: components["schemas"]["PredictionContentContent"];
+            /** @enum {string} */
+            type: "content";
+        };
+        /** @description The content that should be matched when generating a model response. If generated tokens would match this content, the entire model response can be returned much more quickly. */
+        PredictionContentContent: string | components["schemas"]["ChatCompletionRequestMessageContentPartText"][];
+        /** @description Breakdown of tokens used in a completion. */
+        PromptTokensDetails: {
+            /**
+             * Format: int32
+             * @description Audio input tokens present in the prompt.
+             */
+            audio_tokens?: number | null;
+            /**
+             * Format: int32
+             * @description Cached tokens present in the prompt.
+             */
+            cached_tokens?: number | null;
+        };
+        /** @enum {string} */
+        ReasoningEffort: "minimal" | "low" | "medium" | "high";
         /** @example {
          *       "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
          *     } */
@@ -1417,23 +1952,48 @@ export interface components {
              */
             location: string;
         };
+        ResponseFormat: {
+            /** @enum {string} */
+            type: "text";
+        } | {
+            /** @enum {string} */
+            type: "json_object";
+        } | {
+            json_schema: components["schemas"]["ResponseFormatJsonSchema"];
+            /** @enum {string} */
+            type: "json_schema";
+        };
+        ResponseFormatJsonSchema: {
+            /** @description A description of what the response format is for, used by the model to determine how to respond in the format. */
+            description?: string | null;
+            /** @description The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64. */
+            name: string;
+            /** @description The schema for the response format, described as a JSON Schema object. */
+            schema?: unknown;
+            /** @description Whether to enable strict schema adherence when generating the output. If set to true, the model will always follow the exact schema defined in the `schema` field. Only a subset of JSON Schema is supported when `strict` is `true`. To learn more, read the [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs). */
+            strict?: boolean | null;
+        };
         /** @enum {string} */
         Role: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
+        /** @enum {string} */
+        ServiceTier: "auto" | "default" | "flex" | "scale" | "priority";
+        /** @enum {string} */
+        ServiceTierResponse: "scale" | "default" | "flex" | "priority";
         SettingInfo: {
+            key: string;
             current_value: unknown;
             default_value: unknown;
-            key: string;
-            metadata: components["schemas"]["SettingMetadata"];
             source: components["schemas"]["SettingSource"];
+            metadata: components["schemas"]["SettingMetadata"];
         };
         SettingMetadata: {
             /** @enum {string} */
             type: "string";
         } | {
             /** Format: int64 */
-            max: number;
-            /** Format: int64 */
             min: number;
+            /** Format: int64 */
+            max: number;
             /** @enum {string} */
             type: "number";
         } | {
@@ -1455,15 +2015,15 @@ export interface components {
          */
         SetupRequest: {
             /**
-             * @description Optional description of the server's purpose
-             * @example My personal AI server
-             */
-            description?: string | null;
-            /**
              * @description Server name for identification (minimum 10 characters)
              * @example My Bodhi Server
              */
             name: string;
+            /**
+             * @description Optional description of the server's purpose
+             * @example My personal AI server
+             */
+            description?: string | null;
         };
         /**
          * @description Response containing the updated application status after setup
@@ -1490,6 +2050,7 @@ export interface components {
             parameters: string;
             template: string;
         };
+        Stop: string | string[];
         /**
          * @description Request to test API connectivity with a prompt
          * @example {
@@ -1502,10 +2063,10 @@ export interface components {
         TestPromptRequest: {
             /** @description API key for authentication (provide either api_key OR id, api_key takes preference if both provided) */
             api_key?: string;
-            /** @description API base URL (optional when using id) */
-            base_url: string;
             /** @description API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided) */
             id?: string;
+            /** @description API base URL (optional when using id) */
+            base_url: string;
             /** @description Model to use for testing */
             model: string;
             /** @description Test prompt (max 30 characters for cost control) */
@@ -1520,20 +2081,31 @@ export interface components {
          *     }
          */
         TestPromptResponse: {
-            error?: string | null;
-            response?: string | null;
             success: boolean;
+            response?: string | null;
+            error?: string | null;
         };
         /** @enum {string} */
         TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
+        TopLogprobs: {
+            /** @description The token. */
+            token: string;
+            /**
+             * Format: float
+             * @description The log probability of this token.
+             */
+            logprob: number;
+            /** @description A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token. */
+            bytes?: number[] | null;
+        };
         UpdateAliasRequest: {
-            context_params?: string[] | null;
-            filename: string;
             repo: string;
-            request_params?: null | components["schemas"]["OAIRequestParams"];
+            filename: string;
             snapshot?: string | null;
+            request_params?: null | components["schemas"]["OAIRequestParams"];
+            context_params?: string[] | null;
         };
         /**
          * @description Request to update an existing API model configuration
@@ -1551,10 +2123,10 @@ export interface components {
         UpdateApiModelRequest: {
             /** @description API format/protocol (required) */
             api_format: components["schemas"]["ApiFormat"];
-            /** @description API key for authentication (optional, only update if provided for security) */
-            api_key?: string | null;
             /** @description API base URL (required) */
             base_url: string;
+            /** @description API key for authentication (optional, only update if provided for security) */
+            api_key?: string | null;
             /** @description List of available models (required) */
             models: string[];
             /** @description Optional prefix for model namespacing */
@@ -1588,27 +2160,27 @@ export interface components {
         };
         UserAccessRequest: {
             /**
-             * Format: date-time
-             * @description Creation timestamp
-             */
-            created_at: string;
-            /**
              * Format: int64
              * @description Unique identifier for the request
              */
             id: number;
+            /** @description Username of the requesting user */
+            username: string;
+            /** @description User ID (UUID) of the requesting user */
+            user_id: string;
             reviewer?: string | null;
             /** @description Current status of the request */
             status: components["schemas"]["UserAccessRequestStatus"];
             /**
              * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+            /**
+             * Format: date-time
              * @description Last update timestamp
              */
             updated_at: string;
-            /** @description User ID (UUID) of the requesting user */
-            user_id: string;
-            /** @description Username of the requesting user */
-            username: string;
         };
         /** @enum {string} */
         UserAccessRequestStatus: "pending" | "approved" | "rejected";
@@ -1620,60 +2192,57 @@ export interface components {
          *     }
          */
         UserAccessStatusResponse: {
+            /** @description Username of the requesting user */
+            username: string;
+            /** @description Current status of the request (pending, approved, rejected) */
+            status: components["schemas"]["UserAccessRequestStatus"];
             /**
              * Format: date-time
              * @description Creation timestamp
              */
             created_at: string;
-            /** @description Current status of the request (pending, approved, rejected) */
-            status: components["schemas"]["UserAccessRequestStatus"];
             /**
              * Format: date-time
              * @description Last update timestamp
              */
             updated_at: string;
-            /** @description Username of the requesting user */
-            username: string;
         };
         UserAlias: {
             alias: string;
-            context_params?: string[];
-            filename: string;
             /** Format: string */
             repo: string;
-            request_params?: components["schemas"]["OAIRequestParams"];
+            filename: string;
             snapshot: string;
+            request_params?: components["schemas"]["OAIRequestParams"];
+            context_params?: string[];
         };
         UserAliasResponse: {
             alias: string;
-            context_params: string[];
+            repo: string;
             filename: string;
+            snapshot: string;
+            source: string;
             model_params: {
                 [key: string]: unknown;
             };
-            repo: string;
             request_params: components["schemas"]["OAIRequestParams"];
-            snapshot: string;
-            source: string;
+            context_params: string[];
         };
         UserInfo: {
+            /** @example 550e8400-e29b-41d4-a716-446655440000 */
+            user_id: string;
+            /** @example user@example.com */
+            username: string;
             /** @example John */
             first_name?: string | null;
             /** @example Doe */
             last_name?: string | null;
             role?: null | components["schemas"]["AppRole"];
-            /** @example 550e8400-e29b-41d4-a716-446655440000 */
-            user_id: string;
-            /** @example user@example.com */
-            username: string;
         };
         UserListResponse: {
             /** @example resource-abc123def456 */
             client_id: string;
-            /** @example true */
-            has_next: boolean;
-            /** @example false */
-            has_previous: boolean;
+            users: components["schemas"]["UserInfo"][];
             /**
              * Format: int32
              * @example 1
@@ -1694,7 +2263,10 @@ export interface components {
              * @example 45
              */
             total_users: number;
-            users: components["schemas"]["UserInfo"][];
+            /** @example true */
+            has_next: boolean;
+            /** @example false */
+            has_previous: boolean;
         };
         /**
          * @description User authentication response with discriminated union
@@ -1714,6 +2286,33 @@ export interface components {
         });
         /** @enum {string} */
         UserScope: "scope_user_user" | "scope_user_power_user" | "scope_user_manager" | "scope_user_admin";
+        /**
+         * @description The amount of context window space to use for the search.
+         * @enum {string}
+         */
+        WebSearchContextSize: "low" | "medium" | "high";
+        /** @description Approximate location parameters for the search. */
+        WebSearchLocation: {
+            /** @description The two-letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1) of the user, e.g. `US`. */
+            country?: string | null;
+            /** @description Free text input for the region of the user, e.g. `California`. */
+            region?: string | null;
+            /** @description Free text input for the city of the user, e.g. `San Francisco`. */
+            city?: string | null;
+            /** @description The [IANA timezone](https://timeapi.io/documentation/iana-timezones) of the user, e.g. `America/Los_Angeles`. */
+            timezone?: string | null;
+        };
+        /** @description Options for the web search tool. */
+        WebSearchOptions: {
+            search_context_size?: null | components["schemas"]["WebSearchContextSize"];
+            user_location?: null | components["schemas"]["WebSearchUserLocation"];
+        };
+        WebSearchUserLocation: {
+            type: components["schemas"]["WebSearchUserLocationType"];
+            approximate: components["schemas"]["WebSearchLocation"];
+        };
+        /** @enum {string} */
+        WebSearchUserLocationType: "approximate";
     };
     responses: never;
     parameters: never;
@@ -5012,7 +5611,7 @@ export interface operations {
                  *       "stream": false,
                  *       "temperature": 0.7
                  *     } */
-                "application/json": unknown;
+                "application/json": components["schemas"]["CreateChatCompletionRequest"];
             };
         };
         responses: {
@@ -5043,7 +5642,7 @@ export interface operations {
                      *         "total_tokens": 30
                      *       }
                      *     } */
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CreateChatCompletionResponse"];
                 };
             };
             /** @description Chat completion stream, the status is 200, using 201 to avoid OpenAPI format limitation. */
@@ -5069,7 +5668,7 @@ export interface operations {
                      *       "model": "llama2:chat",
                      *       "object": "chat.completion.chunk"
                      *     } */
-                    "text/event-stream": unknown;
+                    "text/event-stream": components["schemas"]["CreateChatCompletionStreamResponse"];
                 };
             };
             /** @description Invalid request parameters */
