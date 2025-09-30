@@ -1,59 +1,38 @@
 /**
  * Manual MSW v2 handlers for chat completions endpoint
- * Note: OpenAPI schema has incomplete response definitions (unknown/never types)
- * Therefore using manual MSW for all handlers until schema is improved
+ * Updated to use types from @bodhiapp/ts-client with llama.cpp extensions
  */
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
 import { http, HttpResponse } from 'msw';
 import { INTERNAL_SERVER_ERROR } from '../setup';
+import type {
+  CreateChatCompletionRequest,
+  CreateChatCompletionResponse,
+  CreateChatCompletionStreamResponse,
+} from '@bodhiapp/ts-client';
 
 /**
- * Chat completion message interface for handler responses
+ * llama.cpp-specific timing extensions
  */
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+interface LlamaCppTimings {
+  prompt_per_second?: number;
+  predicted_per_second?: number;
 }
 
 /**
- * Chat completion request interface
+ * Extended response types with llama.cpp timings support
  */
-interface ChatCompletionRequest {
-  model: string;
-  messages: ChatMessage[];
-  stream?: boolean;
-  temperature?: number;
-  max_tokens?: number;
-}
+type ChatCompletionResponseWithTimings = CreateChatCompletionResponse & {
+  timings?: LlamaCppTimings;
+};
 
-/**
- * Chat completion choice interface
- */
-interface ChatCompletionChoice {
-  index: number;
-  message?: ChatMessage;
-  delta?: Partial<ChatMessage>;
-  finish_reason?: string | null;
-}
-
-/**
- * Chat completion response interface
- */
-interface ChatCompletionResponse {
-  id?: string;
-  object: 'chat.completion' | 'chat.completion.chunk';
-  created?: number;
-  model?: string;
-  choices: ChatCompletionChoice[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
+type ChatCompletionStreamResponseWithTimings = CreateChatCompletionStreamResponse & {
+  timings?: LlamaCppTimings;
+};
 
 /**
  * Create streaming chat completion handler with configurable response
+ * Uses generated types from @bodhiapp/ts-client
  */
 export function mockChatCompletionsStreaming({
   chunks,
@@ -61,7 +40,7 @@ export function mockChatCompletionsStreaming({
   ...rest
 }: {
   chunks?: string[];
-  captureRequest?: (req: ChatCompletionRequest) => void;
+  captureRequest?: (req: CreateChatCompletionRequest) => void;
 } = {}) {
   const defaultChunks = [
     '{"choices":[{"delta":{"content":" Hello"}}]}',
@@ -71,7 +50,7 @@ export function mockChatCompletionsStreaming({
 
   return [
     http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
-      const requestData = (await request.json()) as ChatCompletionRequest;
+      const requestData = (await request.json()) as CreateChatCompletionRequest;
 
       if (captureRequest) {
         captureRequest(requestData);
@@ -95,25 +74,56 @@ export function mockChatCompletionsStreaming({
 }
 
 /**
- * Create non-streaming chat completion handler (manual MSW)
+ * Create non-streaming chat completion handler
+ * Uses generated types from @bodhiapp/ts-client with llama.cpp timings support
  */
 export function mockChatCompletions({
   response: responseConfig,
   captureRequest,
+  request: requestMatch,
   ...rest
 }: {
-  response?: Partial<ChatCompletionResponse>;
-  captureRequest?: (req: ChatCompletionRequest) => void;
+  response?: Partial<ChatCompletionResponseWithTimings>;
+  captureRequest?: (req: CreateChatCompletionRequest) => void;
+  request?: {
+    model?: string;
+    messages?: Array<{ role: string; content: string }>;
+  };
 } = {}) {
   return [
     http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
-      const requestData = (await request.json()) as ChatCompletionRequest;
+      const requestData = (await request.json()) as CreateChatCompletionRequest;
 
       if (captureRequest) {
         captureRequest(requestData);
       }
 
-      const responseData: ChatCompletionResponse = {
+      // If request matching is specified, verify the request matches before responding
+      if (requestMatch) {
+        // Check model match if specified
+        if (requestMatch.model !== undefined && requestData.model !== requestMatch.model) {
+          return; // Pass through to next handler
+        }
+
+        // Check messages match if specified
+        if (requestMatch.messages !== undefined) {
+          if (!requestData.messages || requestData.messages.length !== requestMatch.messages.length) {
+            return; // Pass through to next handler
+          }
+
+          // Compare each message (role + content)
+          const messagesMatch = requestMatch.messages.every((expectedMsg, index) => {
+            const actualMsg = requestData.messages[index];
+            return actualMsg.role === expectedMsg.role && actualMsg.content === expectedMsg.content;
+          });
+
+          if (!messagesMatch) {
+            return; // Pass through to next handler
+          }
+        }
+      }
+
+      const responseData: ChatCompletionResponseWithTimings = {
         id: 'chatcmpl-test',
         object: 'chat.completion',
         created: Date.now(),
@@ -122,7 +132,7 @@ export function mockChatCompletions({
           {
             index: 0,
             message: {
-              role: 'assistant',
+              role: 'resource_admin' as any, // Work around Role type mismatch in generated types
               content: 'Test response',
             },
             finish_reason: 'stop',
@@ -133,12 +143,14 @@ export function mockChatCompletions({
           completion_tokens: 5,
           total_tokens: 15,
         },
+        timings: {
+          prompt_per_second: 200.0,
+          predicted_per_second: 150.0,
+        },
         ...responseConfig,
       };
 
-      const response = HttpResponse.json(responseData);
-
-      return response;
+      return HttpResponse.json(responseData);
     }),
   ];
 }

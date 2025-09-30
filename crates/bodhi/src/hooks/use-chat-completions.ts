@@ -121,8 +121,10 @@ export function useChatCompletion() {
     const baseUrl =
       apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
 
+    const url = `${baseUrl}${ENDPOINT_OAI_CHAT_COMPLETIONS}`;
+
     try {
-      const response = await fetch(`${baseUrl}${ENDPOINT_OAI_CHAT_COMPLETIONS}`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
