@@ -1,5 +1,7 @@
 use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
-use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse};
+use async_openai::types::{
+  CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
+};
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};

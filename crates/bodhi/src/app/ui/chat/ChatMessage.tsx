@@ -33,7 +33,7 @@ export function ChatMessage({ message, isStreaming = false, isLatest = false, is
 
   return (
     <div
-      data-testid={isUser ? 'user-message' : 'assistant-message'}
+      data-testid={isUser ? 'user-message' : isStreaming ? 'streaming-message' : 'assistant-message'}
       className={cn(
         'group relative flex items-start gap-3 p-3',
         isUser ? 'bg-background' : 'bg-muted/30',
@@ -54,12 +54,15 @@ export function ChatMessage({ message, isStreaming = false, isLatest = false, is
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium mb-1.5">{isUser ? 'You' : 'Assistant'}</div>
 
-        <div data-testid={`${isUser ? 'user' : 'assistant'}-message-content`}>
+        <div data-testid={`${isUser ? 'user' : isStreaming ? 'streaming' : 'assistant'}-message-content`}>
           <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
         </div>
 
         {!isUser && !isStreaming && (
-          <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
+          <div
+            className="flex justify-between items-center mt-2 text-xs text-muted-foreground"
+            data-testid="message-metadata"
+          >
             <div className="flex items-center gap-4">
               {metadata?.usage && (
                 <div className="flex items-center gap-2">

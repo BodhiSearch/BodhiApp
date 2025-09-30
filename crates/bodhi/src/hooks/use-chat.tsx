@@ -69,11 +69,15 @@ export function useChat() {
           onFinish: (message) => {
             const id = currentChat?.id || nanoid();
             const createdAt = currentChat?.createdAt || Date.now();
+            // Use message.content for non-streaming, currentAssistantMessage for streaming
+            // For streaming, currentAssistantMessage is built up via onDelta
+            // For non-streaming, message.content has the full response
+            const finalContent = currentAssistantMessage || message.content;
             const messages = [
               ...userMessages,
               {
                 role: 'assistant' as const,
-                content: currentAssistantMessage,
+                content: finalContent,
                 metadata: message.metadata,
               },
             ];
