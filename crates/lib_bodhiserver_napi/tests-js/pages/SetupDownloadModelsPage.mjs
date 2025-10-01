@@ -8,7 +8,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
 
   selectors = {
     ...this.selectors,
-    recommendedModelsTitle: 'text=Recommended Models',
+    chatModelsTitle: 'text=Chat Models',
     modelCard: '[data-testid="model-card"]',
     downloadButton: 'button:has-text("Download")',
     downloadingButton: 'button:has-text("Downloading")',
@@ -27,7 +27,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
 
   async expectDownloadModelsPage() {
     await this.page.waitForURL((url) => url.pathname === '/ui/setup/download-models/');
-    await this.expectVisible(this.selectors.recommendedModelsTitle);
+    await this.expectVisible(this.selectors.chatModelsTitle);
     await this.expectStepIndicator(3);
     await this.expectRecommendedModelsDisplayed();
   }

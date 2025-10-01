@@ -168,7 +168,7 @@ export class SetupFixtures {
       {
         step: 3,
         path: '/ui/setup/download-models/',
-        title: 'Recommended Models',
+        title: 'Chat Models',
         description: 'Model download selection',
       },
       {

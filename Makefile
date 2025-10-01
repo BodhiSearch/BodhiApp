@@ -172,11 +172,12 @@ docker.list: ## List all locally built BodhiApp images
 docker.clean: ## Remove all locally built BodhiApp images
 	@$(MAKE) -C devops clean
 
-app.clear:
+app.clear: ## Clear the app data folders
 	rm -rf ~/.cache/bodhi-dev-makefile
 
 app.run: ## Run the BodhiApp
 	BODHI_ENCRYPTION_KEY=dummy-key \
+		HF_HOME=~/.cache/huggingface \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.cache/bodhi-dev-makefile \

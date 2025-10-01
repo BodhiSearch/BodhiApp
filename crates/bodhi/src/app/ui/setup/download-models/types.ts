@@ -1,4 +1,5 @@
-export interface ModelInfo {
+// Model catalog - static model information (future: fetch from API)
+export interface ModelCatalog {
   id: string;
   name: string;
   repo: string;
@@ -6,13 +7,33 @@ export interface ModelInfo {
   quantization: string;
   size: string;
   parameters: string;
-  category: 'small' | 'medium' | 'large' | 'extra-large';
+  category: 'chat' | 'embedding';
+  tier?: 'premium' | 'specialized';
+  badge?: string;
   ratings: {
     quality: number;
     speed: number;
-    accuracy: number;
+    specialization: number;
   };
+  benchmarks: {
+    mmlu?: number;
+    humanEval?: number;
+    bbb?: number;
+    mteb?: number;
+  };
+  contextWindow: string;
+  memoryEstimate: string;
   license: string;
+  licenseUrl: string;
+  tooltipContent: {
+    strengths: string[];
+    useCase: string;
+    researchNotes: string;
+  };
+}
+
+// Model info with runtime download state
+export interface ModelInfo extends ModelCatalog {
   downloadState: DownloadState;
 }
 
