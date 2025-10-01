@@ -14,7 +14,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use objs::{
   ApiError, BadRequestError, ConflictError, InternalServerError, NotFoundError, OpenAIApiError,
-  Role, UnauthorizedError, UnprocessableEntityError, API_TAG_AUTH,
+  ResourceRole, UnauthorizedError, UnprocessableEntityError, API_TAG_AUTH,
 };
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
@@ -65,7 +65,7 @@ impl From<UserAccessRequest> for UserAccessStatusResponse {
 }))]
 pub struct ApproveUserAccessRequest {
   /// Role to assign to the user
-  pub role: Role,
+  pub role: ResourceRole,
 }
 
 /// Paginated response for access requests
@@ -335,7 +335,7 @@ pub async fn approve_request_handler(
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
 
-  let approver_role = approver_role_str.parse::<Role>()?;
+  let approver_role = approver_role_str.parse::<ResourceRole>()?;
 
   // Extract approver's username from headers
   let approver_username = headers
@@ -514,11 +514,11 @@ mod tests {
     // Test request deserialization
     let json = r#"{"role": "resource_user"}"#;
     let request: ApproveUserAccessRequest = serde_json::from_str(json).unwrap();
-    assert_eq!(request.role, Role::User);
+    assert_eq!(request.role, ResourceRole::User);
 
     let json = r#"{"role": "resource_admin"}"#;
     let request: ApproveUserAccessRequest = serde_json::from_str(json).unwrap();
-    assert_eq!(request.role, Role::Admin);
+    assert_eq!(request.role, ResourceRole::Admin);
   }
 
   #[test]

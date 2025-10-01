@@ -5,7 +5,9 @@ use oauth2::{
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
-use objs::{impl_error_from, log, AppError, AppRole, ErrorType, ReqwestError, Role, UserInfo};
+use objs::{
+  impl_error_from, log, AppError, AppRole, ErrorType, ReqwestError, ResourceRole, UserInfo,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -212,7 +214,7 @@ struct UserInfoResponse {
 
 impl From<UserInfoResponse> for UserInfo {
   fn from(response: UserInfoResponse) -> Self {
-    let role = if let Ok(parsed_role) = response.role.parse::<Role>() {
+    let role = if let Ok(parsed_role) = response.role.parse::<ResourceRole>() {
       Some(AppRole::Session(parsed_role))
     } else {
       None

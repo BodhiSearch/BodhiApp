@@ -5,8 +5,8 @@ use axum::{
   response::Response,
 };
 use objs::{
-  ApiError, AppError, ErrorType, ResourceScope, ResourceScopeError, Role, RoleError, TokenScope,
-  TokenScopeError, UserScope, UserScopeError,
+  ApiError, AppError, ErrorType, ResourceRole, ResourceScope, ResourceScopeError, RoleError,
+  TokenScope, TokenScopeError, UserScope, UserScopeError,
 };
 use server_core::RouterState;
 use services::SecretServiceError;
@@ -44,7 +44,7 @@ pub enum ApiAuthError {
 }
 
 pub async fn api_auth_middleware(
-  required_role: Role,
+  required_role: ResourceRole,
   required_token_scope: Option<TokenScope>,
   required_user_scope: Option<UserScope>,
   State(state): State<Arc<dyn RouterState>>,
@@ -65,7 +65,7 @@ pub async fn api_auth_middleware(
 }
 
 pub async fn _impl(
-  required_role: Role,
+  required_role: ResourceRole,
   required_token_scope: Option<TokenScope>,
   required_user_scope: Option<UserScope>,
   State(_state): State<Arc<dyn RouterState>>,
@@ -82,7 +82,7 @@ pub async fn _impl(
       let user_role = role_header
         .to_str()
         .map_err(|e| ApiAuthError::MalformedRole(e.to_string()))?
-        .parse::<Role>()?;
+        .parse::<ResourceRole>()?;
 
       if !user_role.has_access_to(&required_role) {
         return Err(ApiAuthError::Forbidden);
@@ -136,7 +136,9 @@ mod tests {
     routing::get,
     Router,
   };
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, Role, TokenScope, UserScope};
+  use objs::{
+    test_utils::setup_l10n, FluentLocalizationService, ResourceRole, TokenScope, UserScope,
+  };
   use rstest::rstest;
   use serde_json::Value;
   use server_core::{
@@ -153,7 +155,7 @@ mod tests {
       .unwrap()
   }
 
-  fn test_router(required_role: Role, required_token_scope: Option<TokenScope>) -> Router {
+  fn test_router(required_role: ResourceRole, required_token_scope: Option<TokenScope>) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .build()
@@ -174,7 +176,10 @@ mod tests {
       .with_state(state)
   }
 
-  fn test_router_user_scope(required_role: Role, required_user_scope: Option<UserScope>) -> Router {
+  fn test_router_user_scope(
+    required_role: ResourceRole,
+    required_user_scope: Option<UserScope>,
+  ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .build()
@@ -196,21 +201,21 @@ mod tests {
   }
 
   #[rstest]
-  #[case::user_accessing_user(Role::User, Role::User)]
-  #[case::power_user_accessing_user(Role::PowerUser, Role::User)]
-  #[case::manager_accessing_user(Role::Manager, Role::User)]
-  #[case::admin_accessing_user(Role::Admin, Role::User)]
-  #[case::power_user_accessing_power_user(Role::PowerUser, Role::PowerUser)]
-  #[case::manager_accessing_power_user(Role::Manager, Role::PowerUser)]
-  #[case::admin_accessing_power_user(Role::Admin, Role::PowerUser)]
-  #[case::manager_accessing_manager(Role::Manager, Role::Manager)]
-  #[case::admin_accessing_manager(Role::Admin, Role::Manager)]
-  #[case::admin_accessing_admin(Role::Admin, Role::Admin)]
+  #[case::user_accessing_user(ResourceRole::User, ResourceRole::User)]
+  #[case::power_user_accessing_user(ResourceRole::PowerUser, ResourceRole::User)]
+  #[case::manager_accessing_user(ResourceRole::Manager, ResourceRole::User)]
+  #[case::admin_accessing_user(ResourceRole::Admin, ResourceRole::User)]
+  #[case::power_user_accessing_power_user(ResourceRole::PowerUser, ResourceRole::PowerUser)]
+  #[case::manager_accessing_power_user(ResourceRole::Manager, ResourceRole::PowerUser)]
+  #[case::admin_accessing_power_user(ResourceRole::Admin, ResourceRole::PowerUser)]
+  #[case::manager_accessing_manager(ResourceRole::Manager, ResourceRole::Manager)]
+  #[case::admin_accessing_manager(ResourceRole::Admin, ResourceRole::Manager)]
+  #[case::admin_accessing_admin(ResourceRole::Admin, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
-    #[case] required_role: Role,
+    #[case] user_role: ResourceRole,
+    #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
     let router = test_router(required_role, None);
     let req = Request::builder()
@@ -224,17 +229,17 @@ mod tests {
   }
 
   #[rstest]
-  #[case::user_accessing_power_user(Role::User, Role::PowerUser)]
-  #[case::user_accessing_manager(Role::User, Role::Manager)]
-  #[case::power_user_accessing_manager(Role::PowerUser, Role::Manager)]
-  #[case::user_accessing_admin(Role::User, Role::Admin)]
-  #[case::power_user_accessing_admin(Role::PowerUser, Role::Admin)]
-  #[case::manager_accessing_admin(Role::Manager, Role::Admin)]
+  #[case::user_accessing_power_user(ResourceRole::User, ResourceRole::PowerUser)]
+  #[case::user_accessing_manager(ResourceRole::User, ResourceRole::Manager)]
+  #[case::power_user_accessing_manager(ResourceRole::PowerUser, ResourceRole::Manager)]
+  #[case::user_accessing_admin(ResourceRole::User, ResourceRole::Admin)]
+  #[case::power_user_accessing_admin(ResourceRole::PowerUser, ResourceRole::Admin)]
+  #[case::manager_accessing_admin(ResourceRole::Manager, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_insufficient(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
-    #[case] required_role: Role,
+    #[case] user_role: ResourceRole,
+    #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
     let router = test_router(required_role, None);
     let req = Request::builder()
@@ -258,7 +263,7 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(Role::User, Some(required_scope));
+    let router = test_router(ResourceRole::User, Some(required_scope));
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -279,7 +284,7 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(Role::User, Some(required_scope));
+    let router = test_router(ResourceRole::User, Some(required_scope));
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -300,7 +305,7 @@ mod tests {
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(Role::User, None);
+    let router = test_router(ResourceRole::User, None);
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, scope.to_string())
@@ -313,17 +318,17 @@ mod tests {
 
   #[rstest]
   #[case::role_success_scope_insufficient(
-    Role::Admin,  // user_role
+    ResourceRole::Admin,  // user_role
     TokenScope::User,  // user_scope
-    Role::User,  // required_role
+    ResourceRole::User,  // required_role
     Some(TokenScope::Admin)  // required_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
     let router = test_router(required_role, required_scope);
@@ -340,17 +345,17 @@ mod tests {
 
   #[rstest]
   #[case::role_insufficient_scope_insufficient(
-    Role::User,  // user_role
+    ResourceRole::User,  // user_role
     TokenScope::User,  // user_scope
-    Role::Admin,  // required_role
+    ResourceRole::Admin,  // required_role
     Some(TokenScope::Admin)  // required_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_failure(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
     let router = test_router(required_role, required_scope);
@@ -367,17 +372,17 @@ mod tests {
 
   #[rstest]
   #[case::role_success_no_scope(
-    Role::Admin,  // user_role
+    ResourceRole::Admin,  // user_role
     TokenScope::User,  // user_scope
-    Role::User,  // required_role
+    ResourceRole::User,  // required_role
     None  // required_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_no_scope_required(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
     let router = test_router(required_role, required_scope);
@@ -397,7 +402,7 @@ mod tests {
   async fn test_api_auth_middleware_missing_role(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let router = test_router(Role::User, None);
+    let router = test_router(ResourceRole::User, None);
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -420,7 +425,7 @@ mod tests {
   async fn test_api_auth_middleware_invalid_role(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let router = test_router(Role::User, None);
+    let router = test_router(ResourceRole::User, None);
     let req = Request::builder()
       .uri("/test")
       .header(
@@ -466,7 +471,7 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(Role::User, Some(required_user_scope));
+    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope));
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -490,7 +495,7 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(Role::User, Some(required_user_scope));
+    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope));
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -511,7 +516,7 @@ mod tests {
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(Role::User, None);
+    let router = test_router_user_scope(ResourceRole::User, None);
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -524,17 +529,17 @@ mod tests {
 
   #[rstest]
   #[case::role_success_user_scope_insufficient(
-    Role::Admin,  // user_role
+    ResourceRole::Admin,  // user_role
     UserScope::User,  // user_scope
-    Role::User,  // required_role
+    ResourceRole::User,  // required_role
     Some(UserScope::Admin)  // required_user_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_over_user_scope_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
     let router = test_router_user_scope(required_role, required_user_scope);
@@ -551,17 +556,17 @@ mod tests {
 
   #[rstest]
   #[case::role_insufficient_user_scope_insufficient(
-    Role::User,  // user_role
+    ResourceRole::User,  // user_role
     UserScope::User,  // user_scope
-    Role::Admin,  // required_role
+    ResourceRole::Admin,  // required_role
     Some(UserScope::Admin)  // required_user_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_over_user_scope_failure(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
     let router = test_router_user_scope(required_role, required_user_scope);
@@ -578,17 +583,17 @@ mod tests {
 
   #[rstest]
   #[case::role_success_no_user_scope(
-    Role::Admin,  // user_role
+    ResourceRole::Admin,  // user_role
     UserScope::User,  // user_scope
-    Role::User,  // required_role
+    ResourceRole::User,  // required_role
     None  // required_user_scope
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_no_user_scope_required(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] user_role: Role,
+    #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
-    #[case] required_role: Role,
+    #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
     let router = test_router_user_scope(required_role, required_user_scope);
@@ -608,7 +613,7 @@ mod tests {
   async fn test_api_auth_middleware_user_scope_missing_auth(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(Role::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -631,7 +636,7 @@ mod tests {
   async fn test_api_auth_middleware_invalid_user_scope(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(Role::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder()
       .uri("/test")
       .header(
@@ -662,7 +667,7 @@ mod tests {
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     // Test sending a TokenScope value when UserScope is expected
-    let router = test_router_user_scope(Role::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::Admin.to_string())

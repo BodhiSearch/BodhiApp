@@ -1,7 +1,7 @@
 use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
-use objs::{AppRegInfoMissingError, ResourceScope, Role, TokenScope, UserScope};
+use objs::{AppRegInfoMissingError, ResourceRole, ResourceScope, TokenScope, UserScope};
 use services::{
   db::{DbService, TokenStatus},
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
@@ -265,7 +265,7 @@ impl DefaultTokenService {
     &self,
     session: Session,
     access_token: String,
-  ) -> Result<(String, Option<Role>), AuthError> {
+  ) -> Result<(String, Option<ResourceRole>), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
 
@@ -281,7 +281,7 @@ impl DefaultTokenService {
       let role = claims
         .resource_access
         .get(&client_id)
-        .map(|roles| Role::from_resource_role(&roles.roles))
+        .map(|roles| ResourceRole::from_resource_role(&roles.roles))
         .transpose()?;
       return Ok((access_token, role));
     }
@@ -344,7 +344,7 @@ impl DefaultTokenService {
     let role = claims
       .resource_access
       .get(&client_id)
-      .map(|resource_claims| Role::from_resource_role(&resource_claims.roles))
+      .map(|resource_claims| ResourceRole::from_resource_role(&resource_claims.roles))
       .transpose()?;
 
     tracing::info!("Successfully refreshed token for role: {:?}", role);

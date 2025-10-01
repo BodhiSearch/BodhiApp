@@ -13,7 +13,7 @@ use axum::{
   routing::{delete, get, post, put},
   Router,
 };
-use objs::{Role, TokenScope, UserScope};
+use objs::{ResourceRole, TokenScope, UserScope};
 use routes_app::{
   app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
   change_user_role_handler, create_alias_handler, create_api_model_handler,
@@ -114,7 +114,7 @@ pub fn build_routes(
       state.clone(),
       move |state, req, next| {
         api_auth_middleware(
-          Role::User,
+          ResourceRole::User,
           Some(TokenScope::User),
           Some(UserScope::User),
           state,
@@ -166,7 +166,7 @@ pub fn build_routes(
       state.clone(),
       move |state, req, next| {
         api_auth_middleware(
-          Role::PowerUser,
+          ResourceRole::PowerUser,
           Some(TokenScope::PowerUser),
           Some(UserScope::PowerUser),
           state,
@@ -186,7 +186,9 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| api_auth_middleware(Role::PowerUser, None, None, state, req, next),
+      move |state, req, next| {
+        api_auth_middleware(ResourceRole::PowerUser, None, None, state, req, next)
+      },
     ));
 
   let admin_session_apis = Router::new()
@@ -201,7 +203,9 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| api_auth_middleware(Role::Admin, None, None, state, req, next),
+      move |state, req, next| {
+        api_auth_middleware(ResourceRole::Admin, None, None, state, req, next)
+      },
     ));
 
   // Manager/Admin access request APIs (session-only)
@@ -230,7 +234,9 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| api_auth_middleware(Role::Manager, None, None, state, req, next),
+      move |state, req, next| {
+        api_auth_middleware(ResourceRole::Manager, None, None, state, req, next)
+      },
     ));
 
   // Combine all protected APIs
