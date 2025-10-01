@@ -1,23 +1,15 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'tests-js'),
-    },
-  },
   test: {
     globals: true,
     environment: 'node',
     testTimeout: 10000,
     hookTimeout: 10000,
     teardownTimeout: 10000,
-    include: ['tests-js/**/*.test.js', 'tests-js/**/*.spec.js'],
+    include: ['tests/**/*.test.js'],
     exclude: [
       'node_modules/**',
-      'tests-js/playwright/**/*.spec.js',
-      'tests-js/playwright/**/*.test.js',
     ],
     reporter: ['verbose'],
     coverage: {
