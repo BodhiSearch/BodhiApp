@@ -1,6 +1,8 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
+import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { useOAuthInitiate } from '@/hooks/useAuth';
@@ -45,37 +47,60 @@ function ResourceAdminContent() {
 
   return (
     <SetupContainer>
-      <SetupCard
-        title="Admin Setup"
-        footer={
-          <div className="flex flex-col gap-4 w-full">
-            <Button className="w-full" size="lg" onClick={handleOAuthInitiate} disabled={isButtonDisabled}>
-              {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
-            </Button>
-            <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
-          </div>
-        }
-      >
-        <div className="space-y-6" data-testid="resource-admin-page">
-          <div className="prose dark:prose-invert mx-auto">
-            <p className="text-center text-muted-foreground">
-              You are setting up Bodhi App in authenticated mode. The email address you log in with will be granted
-              admin role for this app instance.
-            </p>
-            {error && <p className="text-destructive text-sm text-center">{error}</p>}
-          </div>
-
-          <div className="space-y-4 text-sm">
+      <div data-testid="resource-admin-setup-page">
+        <motion.div variants={itemVariants}>
+          <SetupCard
+            title="Admin Setup"
+            description={
+              <>
+                <p className="py-2">You are setting up Bodhi App in authenticated mode.</p>
+                <p className="py-2">
+                  The email address you log in with will be granted admin role for this app instance.
+                </p>
+              </>
+            }
+            footer={
+              <div className="flex flex-col gap-3 w-full">
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={handleOAuthInitiate}
+                  disabled={isButtonDisabled}
+                  data-testid="continue-login-button"
+                >
+                  {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
+                </Button>
+                <p className="text-sm text-muted-foreground text-center">
+                  Login with a valid email address to continue
+                </p>
+              </div>
+            }
+          >
             <div className="space-y-2">
-              <h3 className="font-semibold">As an Admin, you can:</h3>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                <li>Manage user access and permissions</li>
-                <li>Unrestricted access to system-wide settings</li>
-              </ul>
+              {error && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                  <p className="text-destructive text-sm text-center">{error}</p>
+                </div>
+              )}
+
+              {/* Admin Capabilities */}
+              <div className="rounded-lg bg-muted/30 p-6 space-y-4">
+                <h4 className="font-semibold text-base">As an Admin, you can:</h4>
+                <div className="space-y-3">
+                  <div className="flex items-start">
+                    <span className="text-primary mr-3 mt-0.5">✓</span>
+                    <span className="text-sm text-muted-foreground">Manage user access and permissions</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="text-primary mr-3 mt-0.5">✓</span>
+                    <span className="text-sm text-muted-foreground">Unrestricted access to system-wide settings</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </SetupCard>
+          </SetupCard>
+        </motion.div>
+      </div>
     </SetupContainer>
   );
 }
