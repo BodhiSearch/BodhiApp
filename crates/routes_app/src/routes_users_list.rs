@@ -210,7 +210,7 @@ mod tests {
   };
   use chrono::{Duration, Utc};
   use mockall::predicate::{always, eq};
-  use objs::{test_utils::temp_bodhi_home, AppRole, Role, UserInfo};
+  use objs::{test_utils::temp_bodhi_home, AppRole, ResourceRole, UserInfo};
   use rstest::rstest;
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{
@@ -234,14 +234,14 @@ mod tests {
           username: "admin@example.com".to_string(),
           first_name: Some("Admin".to_string()),
           last_name: Some("User".to_string()),
-          role: Some(AppRole::Session(Role::Admin)),
+          role: Some(AppRole::Session(ResourceRole::Admin)),
         },
         UserInfo {
           user_id: "550e8400-e29b-41d4-a716-446655440001".to_string(),
           username: "user@example.com".to_string(),
           first_name: Some("Regular".to_string()),
           last_name: Some("User".to_string()),
-          role: Some(AppRole::Session(Role::User)),
+          role: Some(AppRole::Session(ResourceRole::User)),
         },
       ],
       page: 1,

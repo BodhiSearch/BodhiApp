@@ -34,7 +34,7 @@ describe('useChatCompletion', () => {
       const mockResponse = {
         choices: [
           {
-            finish_reason: 'stop',
+            finish_reason: 'stop' as const,
             index: 0,
             message: {
               content: 'The day that comes after Monday is Tuesday.',
@@ -208,7 +208,7 @@ describe('useChatCompletion', () => {
       const mockResponse = {
         choices: [
           {
-            finish_reason: 'stop',
+            finish_reason: 'stop' as const,
             index: 0,
             message: {
               content: 'Test response',
@@ -328,7 +328,7 @@ describe('useChatCompletion', () => {
       const mockResponse = {
         choices: [
           {
-            finish_reason: 'stop',
+            finish_reason: 'stop' as const,
             index: 0,
             message: {
               content: 'Test response',

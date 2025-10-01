@@ -32,10 +32,10 @@ use async_openai::types::{
   CreateChatCompletionStreamResponse,
 };
 use objs::{
-  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, Role, SettingInfo, SettingMetadata,
-  SettingSource, TokenScope, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
-  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
-  API_TAG_SYSTEM,
+  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
+  SettingMetadata, SettingSource, TokenScope, UserInfo, UserScope, API_TAG_API_KEYS,
+  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
+  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
   ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_oai_model_handler,
@@ -161,7 +161,7 @@ For API keys, specify required scope when creating the token.
             AppAccessResponse,
             UserResponse,
             AppRole,
-            Role,
+            ResourceRole,
             TokenScope,
             UserScope,
             // access requests

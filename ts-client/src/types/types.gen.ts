@@ -88,7 +88,7 @@ export type AppInfo = {
     status: AppStatus;
 };
 
-export type AppRole = Role | TokenScope | UserScope;
+export type AppRole = ResourceRole | TokenScope | UserScope;
 
 export type AppStatus = 'setup' | 'ready' | 'resource-admin';
 
@@ -99,7 +99,7 @@ export type ApproveUserAccessRequest = {
     /**
      * Role to assign to the user
      */
-    role: Role;
+    role: ResourceRole;
 };
 
 export type AuthCallbackRequest = {
@@ -1235,6 +1235,8 @@ export type RedirectResponse = {
     location: string;
 };
 
+export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
+
 export type ResponseFormat = {
     type: 'text';
 } | {
@@ -1263,7 +1265,7 @@ export type ResponseFormatJsonSchema = {
     strict?: boolean | null;
 };
 
-export type Role = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
+export type Role = 'system' | 'user' | 'assistant' | 'tool' | 'function';
 
 export type ServiceTier = 'auto' | 'default' | 'flex' | 'scale' | 'priority';
 

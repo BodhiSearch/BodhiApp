@@ -3,7 +3,9 @@ use auth_middleware::{
   KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
 };
 use axum::{http::header::HeaderMap, Json};
-use objs::{ApiError, AppRole, BadRequestError, ResourceScope, Role, UserInfo, API_TAG_AUTH};
+use objs::{
+  ApiError, AppRole, BadRequestError, ResourceRole, ResourceScope, UserInfo, API_TAG_AUTH,
+};
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
 use tracing::debug;
@@ -89,7 +91,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
       let role = role_header
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
-      let role = role.parse::<Role>()?;
+      let role = role.parse::<ResourceRole>()?;
       Ok(Json(UserResponse::LoggedIn(UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
@@ -142,8 +144,8 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, AppRole, FluentLocalizationService, ResourceScope, Role, TokenScope,
-    UserInfo, UserScope,
+    test_utils::setup_l10n, AppRole, FluentLocalizationService, ResourceRole, ResourceScope,
+    TokenScope, UserInfo, UserScope,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -245,14 +247,14 @@ mod tests {
   }
 
   #[rstest]
-  #[case::resource_user(Role::User)]
-  #[case::resource_power_user(Role::PowerUser)]
-  #[case::resource_manager(Role::Manager)]
-  #[case::resource_admin(Role::Admin)]
+  #[case::resource_user(ResourceRole::User)]
+  #[case::resource_power_user(ResourceRole::PowerUser)]
+  #[case::resource_manager(ResourceRole::Manager)]
+  #[case::resource_admin(ResourceRole::Admin)]
   #[tokio::test]
   async fn test_user_info_handler_session_token_with_role(
     token: (String, String),
-    #[case] role: Role,
+    #[case] role: ResourceRole,
   ) -> anyhow::Result<()> {
     let (token, _) = token;
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
@@ -386,7 +388,7 @@ mod tests {
       .oneshot(
         Request::get("/app/user")
           .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-          .header(KEY_HEADER_BODHIAPP_ROLE, Role::Manager.to_string())
+          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Manager.to_string())
           .header(
             KEY_HEADER_BODHIAPP_SCOPE,
             ResourceScope::Token(TokenScope::User).to_string(),
@@ -407,7 +409,7 @@ mod tests {
         username: "testuser@email.com".to_string(),
         first_name: Some("Test".to_string()),
         last_name: Some("User".to_string()),
-        role: Some(AppRole::Session(Role::Manager)),
+        role: Some(AppRole::Session(ResourceRole::Manager)),
       }),
       response_json
     );

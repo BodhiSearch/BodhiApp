@@ -4819,7 +4819,7 @@
       "AppRole": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/Role"
+            "$ref": "#/components/schemas/ResourceRole"
           },
           {
             "$ref": "#/components/schemas/TokenScope"
@@ -4846,7 +4846,7 @@
         ],
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/Role",
+            "$ref": "#/components/schemas/ResourceRole",
             "description": "Role to assign to the user"
           }
         },
@@ -7952,6 +7952,15 @@
           "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
         }
       },
+      "ResourceRole": {
+        "type": "string",
+        "enum": [
+          "resource_user",
+          "resource_power_user",
+          "resource_manager",
+          "resource_admin"
+        ]
+      },
       "ResponseFormat": {
         "oneOf": [
           {
@@ -8037,10 +8046,11 @@
       "Role": {
         "type": "string",
         "enum": [
-          "resource_user",
-          "resource_power_user",
-          "resource_manager",
-          "resource_admin"
+          "system",
+          "user",
+          "assistant",
+          "tool",
+          "function"
         ]
       },
       "ServiceTier": {

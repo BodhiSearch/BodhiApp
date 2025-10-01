@@ -929,7 +929,7 @@ export interface components {
             /** @description Current application setup and operational status */
             status: components["schemas"]["AppStatus"];
         };
-        AppRole: components["schemas"]["Role"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
+        AppRole: components["schemas"]["ResourceRole"] | components["schemas"]["TokenScope"] | components["schemas"]["UserScope"];
         /**
          * @example ready
          * @enum {string}
@@ -943,7 +943,7 @@ export interface components {
          */
         ApproveUserAccessRequest: {
             /** @description Role to assign to the user */
-            role: components["schemas"]["Role"];
+            role: components["schemas"]["ResourceRole"];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -1952,6 +1952,8 @@ export interface components {
              */
             location: string;
         };
+        /** @enum {string} */
+        ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
         ResponseFormat: {
             /** @enum {string} */
             type: "text";
@@ -1974,7 +1976,7 @@ export interface components {
             strict?: boolean | null;
         };
         /** @enum {string} */
-        Role: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
+        Role: "system" | "user" | "assistant" | "tool" | "function";
         /** @enum {string} */
         ServiceTier: "auto" | "default" | "flex" | "scale" | "priority";
         /** @enum {string} */
