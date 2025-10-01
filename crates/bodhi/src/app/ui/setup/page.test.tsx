@@ -11,7 +11,7 @@ import {
 } from '@/test-utils/msw-v2/handlers/setup';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -202,22 +202,39 @@ describe('Setup Page', () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('should render page content', async () => {
+  it('should render page content with updated benefits', async () => {
     await act(async () => {
       renderWithSetupProvider(<Setup />);
     });
 
+    // Check updated benefit titles
     expect(screen.getByText('Complete Privacy')).toBeInTheDocument();
-    expect(screen.getByText('Always Free')).toBeInTheDocument();
-    expect(screen.getByText('Full Control')).toBeInTheDocument();
-    expect(screen.getByText('Local Performance')).toBeInTheDocument();
-    expect(screen.getByText('AI for Everyone')).toBeInTheDocument();
-    expect(screen.getByText('Solid Foundation')).toBeInTheDocument();
+    expect(screen.getByText('Cost Freedom')).toBeInTheDocument();
+    expect(screen.getByText('Browser AI Revolution')).toBeInTheDocument();
+    expect(screen.getByText('Multi-User Ready')).toBeInTheDocument();
+    expect(screen.getByText('Hybrid Flexibility')).toBeInTheDocument();
+    expect(screen.getByText('Open Ecosystem')).toBeInTheDocument();
+
+    // Check welcome message
     expect(screen.getByText('Welcome to Bodhi App')).toBeInTheDocument();
-    expect(screen.getByText('Run AI Models Locally, Privately, and Completely Free')).toBeInTheDocument();
+    expect(screen.getByText(/Your Personal AI Hub/i)).toBeInTheDocument();
 
     // Check setup progress
     expect(screen.getByText('Step 1 of 6')).toBeInTheDocument();
+  });
+
+  it('should display NEW badges on new features', async () => {
+    await act(async () => {
+      renderWithSetupProvider(<Setup />);
+    });
+
+    const browserAICard = screen.getByTestId('benefit-card-browser-ai-revolution');
+    expect(browserAICard).toBeInTheDocument();
+    expect(within(browserAICard).getByText('NEW')).toBeInTheDocument();
+
+    const multiUserCard = screen.getByTestId('benefit-card-multi-user-ready');
+    expect(multiUserCard).toBeInTheDocument();
+    expect(within(multiUserCard).getByText('NEW')).toBeInTheDocument();
   });
 
   it('should disable form fields and button when loading', async () => {

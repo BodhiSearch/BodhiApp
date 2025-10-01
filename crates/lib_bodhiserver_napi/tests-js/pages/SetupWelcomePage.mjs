@@ -8,14 +8,16 @@ export class SetupWelcomePage extends SetupBasePage {
 
   selectors = {
     ...this.selectors,
+    pageContainer: '[data-testid="setup-welcome-page"]',
+    welcomeCard: '[data-testid="welcome-card"]',
+    benefitsGrid: '[data-testid="benefits-grid"]',
+    benefitCard: (title) => `[data-testid="benefit-card-${title}"]`,
+    browserAIBenefit: '[data-testid="benefit-card-browser-ai-revolution"]',
+    multiUserBenefit: '[data-testid="benefit-card-multi-user-ready"]',
+    serverNameInput: '[data-testid="server-name-input"]',
+    descriptionInput: '[data-testid="description-input"]',
     welcomeTitle: 'text=Welcome to Bodhi App',
-    serverNameInput: 'input[name="name"]',
     setupButton: 'button:has-text("Setup Bodhi Server")',
-    benefitCards: '[data-testid="benefit-card"]',
-    completePrivacyBenefit: 'text=Complete Privacy',
-    alwaysFreeBenefit: 'text=Always Free',
-    fullControlBenefit: 'text=Full Control',
-    localPerformanceBenefit: 'text=Local Performance',
   };
 
   async navigateToSetup() {
@@ -29,11 +31,24 @@ export class SetupWelcomePage extends SetupBasePage {
   }
 
   async expectBenefitsDisplayed() {
-    // Check for key benefits
-    await expect(this.page.locator(this.selectors.completePrivacyBenefit)).toBeVisible();
-    await expect(this.page.locator(this.selectors.alwaysFreeBenefit)).toBeVisible();
-    await expect(this.page.locator(this.selectors.fullControlBenefit)).toBeVisible();
-    await expect(this.page.locator(this.selectors.localPerformanceBenefit)).toBeVisible();
+    // Check for updated benefits
+    await expect(this.page.locator('text=Complete Privacy')).toBeVisible();
+    await expect(this.page.locator('text=Cost Freedom')).toBeVisible();
+    await expect(this.page.locator('text=Browser AI Revolution')).toBeVisible();
+    await expect(this.page.locator('text=Multi-User Ready')).toBeVisible();
+    await expect(this.page.locator('text=Hybrid Flexibility')).toBeVisible();
+    await expect(this.page.locator('text=Open Ecosystem')).toBeVisible();
+  }
+
+  async expectNewFeatureBadges() {
+    await this.expectVisible(this.selectors.browserAIBenefit);
+    await this.expectVisible(this.selectors.multiUserBenefit);
+
+    const browserCard = this.page.locator(this.selectors.browserAIBenefit);
+    await expect(browserCard.locator('text=NEW')).toBeVisible();
+
+    const multiUserCard = this.page.locator(this.selectors.multiUserBenefit);
+    await expect(multiUserCard.locator('text=NEW')).toBeVisible();
   }
 
   async fillServerName(name) {

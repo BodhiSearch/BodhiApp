@@ -28,33 +28,37 @@ import { useForm } from 'react-hook-form';
 const benefits = [
   {
     title: 'Complete Privacy',
-    description: 'Your chat data stays on your device. No data sharing/transfer out of your device.',
+    description:
+      'Your data stays under your control. Choose local models for maximum privacy or connect to trusted APIs.',
     icon: '🔒',
   },
   {
-    title: 'Always Free',
-    description: 'Run unlimited AI inferences locally without usage fees or API costs.',
+    title: 'Cost Freedom',
+    description: 'Run unlimited local AI without fees. Use your own API keys for cloud models. You control the costs.',
     icon: '💰',
   },
   {
-    title: 'Full Control',
-    description: 'Choose and run any compatible LLM model. Customize settings.',
+    title: 'Hybrid Flexibility',
+    description: 'Run local models on your hardware or connect to OpenAI, Anthropic, and other API providers.',
     icon: '🚀',
+    isNew: true,
   },
   {
-    title: 'Local Performance',
-    description: "Direct access to your hardware's capabilities without latency.",
-    icon: '⚡',
+    title: 'Multi-User Ready',
+    description: 'Built for teams and families. Role-based access with admin controls and user management.',
+    icon: '👥',
+    isNew: true,
   },
   {
-    title: 'AI for Everyone',
+    title: 'Browser AI Revolution',
     description:
-      'Experience AI without technical complexity. Simple, intuitive UI unlocks the power of LLM for everyone.',
-    icon: '🙏',
+      'Enable AI on any website through our browser extension. Publishers save costs, users get enhanced experiences.',
+    icon: '🌐',
+    isNew: true,
   },
   {
-    title: 'Solid Foundation',
-    description: 'Leverages open-source eco-system: HuggingFace, llama.cpp, etc.',
+    title: 'Open Ecosystem',
+    description: 'Powered by llama.cpp, compatible with HuggingFace models, OpenAI APIs, and more.',
     icon: '🌟',
   },
 ];
@@ -98,10 +102,10 @@ function SetupContent() {
   };
 
   return (
-    <SetupContainer>
+    <SetupContainer data-testid="setup-welcome-page">
       <WelcomeCard />
 
-      <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants}>
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants} data-testid="benefits-grid">
         {benefits.map((benefit) => (
           <BenefitCard key={benefit.title} {...benefit} />
         ))}
@@ -117,7 +121,12 @@ function SetupContent() {
                 <FormItem>
                   <FormLabel>Server Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Doe's Bodhi App Server" {...field} disabled={isLoading} />
+                    <Input
+                      placeholder="John Doe's Bodhi App Server"
+                      {...field}
+                      disabled={isLoading}
+                      data-testid="server-name-input"
+                    />
                   </FormControl>
                   <FormMessage />
                   <p className="text-sm text-muted-foreground">
@@ -139,6 +148,7 @@ function SetupContent() {
                       rows={3}
                       {...field}
                       disabled={isLoading}
+                      data-testid="description-input"
                     />
                   </FormControl>
                   <FormMessage />
