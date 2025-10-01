@@ -6,7 +6,7 @@ import { config } from 'dotenv';
 // Load test environment variables globally
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-config({ path: join(__dirname, 'tests-js', 'playwright', '.env.test') });
+config({ path: join(__dirname, 'tests-js', '.env.test') });
 
 const testTimeout = 120000;
 const navigationTimeout = 30000;

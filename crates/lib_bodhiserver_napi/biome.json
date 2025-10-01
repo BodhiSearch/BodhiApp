@@ -9,6 +9,7 @@
       "src/**/*.ts",
       "*.js",
       "*.ts",
+      "tests/**/*.js",
       "tests-js/**/*.js",
       "tests-js/**/*.mjs"
     ],
