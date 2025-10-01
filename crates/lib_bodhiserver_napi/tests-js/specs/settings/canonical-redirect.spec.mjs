@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { getAuthServerConfig } from '@/playwright/auth-server-client.mjs';
-import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { getAuthServerConfig } from '@/utils/auth-server-client.mjs';
+import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { randomPort } from '@/test-helpers.mjs';
 import { CanonicalRedirectPage } from '@/pages/CanonicalRedirectPage.mjs';
 import { CanonicalRedirectFixtures } from '@/fixtures/canonicalRedirectFixtures.mjs';

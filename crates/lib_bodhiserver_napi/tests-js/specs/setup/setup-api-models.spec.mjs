@@ -1,6 +1,6 @@
 import { test } from '@playwright/test';
-import { getAuthServerConfig, getTestCredentials } from '@/playwright/auth-server-client.mjs';
-import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
+import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { randomPort } from '@/test-helpers.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
