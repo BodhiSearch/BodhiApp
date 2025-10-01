@@ -19,7 +19,7 @@ export interface ModelCatalog {
     mmlu?: number;
     humanEval?: number;
     bbb?: number;
-    mteb?: number;
+    mteb?: number | string;
   };
   contextWindow: string;
   memoryEstimate: string;

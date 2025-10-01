@@ -55,6 +55,18 @@ describe('ResourceAdminPage', () => {
     });
   });
 
+  it('renders admin capabilities section with proper styling', async () => {
+    server.use(...mockAppInfoResourceAdmin());
+
+    renderWithSetupProvider(<ResourceAdminPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('As an Admin, you can:')).toBeInTheDocument();
+      expect(screen.getByText('Manage user access and permissions')).toBeInTheDocument();
+      expect(screen.getByText('Unrestricted access to system-wide settings')).toBeInTheDocument();
+    });
+  });
+
   it('redirects to /ui/setup when status is setup', async () => {
     server.use(...mockAppInfoSetup());
 

@@ -69,7 +69,7 @@ export function ModelDownloadContent() {
 
   return (
     <SetupContainer>
-      <SetupCard title="Chat Models">
+      <SetupCard title="Chat Models" description="For conversations, content generation, summarization, and Q&A">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {chatModels.map((model) => {
             const modelWithState = getDownloadState(model);
