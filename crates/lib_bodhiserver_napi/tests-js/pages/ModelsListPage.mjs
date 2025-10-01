@@ -120,6 +120,9 @@ export class ModelsListPage extends BasePage {
     await this.waitForSelector(this.selectors.table);
     await this.waitForSelector(`${this.selectors.table} tbody tr`);
 
+    // Wait for the specific model alias cell to appear (gives React Query time to reload data)
+    await expect(this.page.locator(this.selectors.localAliasCell(alias))).toBeVisible({ timeout: 10000 });
+
     // Verify model data in table cells
     await expect(this.page.locator(this.selectors.localAliasCell(alias))).toContainText(alias);
     await expect(this.page.locator(this.selectors.localRepoCell(alias))).toContainText(repo);

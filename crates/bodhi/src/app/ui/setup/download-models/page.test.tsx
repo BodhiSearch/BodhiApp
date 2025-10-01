@@ -1,15 +1,42 @@
+/**
+ * ModelDownloadPage Component Tests
+ *
+ * Purpose: Integration testing of model download page workflow with real components.
+ * Component-level details tested in ModelCard.test.tsx.
+ *
+ * Focus Areas:
+ * - Access control and authentication
+ * - Model catalog integration (hooks + components)
+ * - Download workflow (user click → API → state update)
+ * - Error handling with toast notifications
+ * - Navigation and background download continuation
+ *
+ * Test Coverage:
+ * 1. Access Control: Setup/login redirects (3 tests)
+ * 2. Integration: Catalog rendering and download workflow (2 tests)
+ * 3. Error Handling: API errors with retry (1 test)
+ * 4. Navigation: Continue button with localStorage (1 test)
+ *
+ * Total: 7 integration tests
+ *
+ * Note: ModelCard tested comprehensively in ModelCard.test.tsx
+ */
+
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
-import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
-import { ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useModels';
-import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
-import { showErrorParams } from '@/lib/utils.test';
-import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, within } from '@testing-library/react';
-import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
-import { mockAppInfo, mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
+import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
-import { mockModelPullDownloads, mockModelPullDownloadsEmpty } from '@/test-utils/msw-v2/handlers/modelfiles';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  mockModelPullDownloads,
+  mockModelPullDownloadsEmpty,
+  mockModelPull,
+  mockModelPullError,
+} from '@/test-utils/msw-v2/handlers/modelfiles';
+import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -18,40 +45,35 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast-messages', () => ({
+  useToastMessages: () => ({
+    showSuccess: mockToast,
+    showError: mockToast,
+  }),
+}));
+
 setupMswV2();
+
 beforeEach(() => {
   vi.resetAllMocks();
   pushMock.mockClear();
+  mockToast.mockClear();
+  localStorage.clear();
 });
 
-// Add ModelCard mock after existing mocks
-vi.mock('@/app/ui/setup/download-models/ModelCard', () => ({
-  ModelCard: ({ model }: any) => (
-    <div data-testid={`model-card-${model.id}`}>
-      <div>Name: {model.name}</div>
-      <div>Status: {model.downloadState.status}</div>
-      {model.downloadState.status === 'pending' && <div>Progress: {model.downloadState.progress}%</div>}
-    </div>
-  ),
-}));
-
-// Add toast mock after existing mocks
-const mockToast = vi.fn();
-vi.mock('@/components/ui/use-toast', () => ({
-  useToast: () => ({ toast: mockToast }),
-}));
-
-describe('ModelDownloadPage access control', () => {
-  it('should redirect to /ui/setup if app status is setup', async () => {
+describe('ModelDownloadPage Access Control', () => {
+  it('redirects to /ui/setup if app status is setup', async () => {
     server.use(...mockAppInfoSetup(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
+
     expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
-  it('should render the page when app is ready and user is logged in', async () => {
+  it('renders the page when app is ready and user is logged in', async () => {
     server.use(
       ...mockAppInfoReady(),
       ...mockUserLoggedIn({ username: 'user@email.com', role: 'resource_user' }),
@@ -61,90 +83,185 @@ describe('ModelDownloadPage access control', () => {
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
-    expect(screen.getByText('Recommended Models')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat Models')).toBeInTheDocument();
+    });
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('should redirect to /ui/login when app is ready but user is not logged in', async () => {
+  it('redirects to /ui/login when app is ready but user is not logged in', async () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
+
     expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 });
 
-describe('ModelDownloadPage render', () => {
+describe('ModelDownloadPage Integration Tests', () => {
   beforeEach(() => {
-    mockToast.mockClear(); // Clear toast mock before each test
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn({ username: 'user@email.com', role: 'resource_user' }));
+  });
+
+  it('renders catalog and initiates download on click', async () => {
+    const user = userEvent.setup();
+    server.use(...mockModelPullDownloadsEmpty());
+    server.use(
+      ...mockModelPull({ repo: 'bartowski/Qwen2.5-14B-Instruct-GGUF', filename: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf' })
+    );
+
+    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat Models')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Qwen2.5 14B')).toBeInTheDocument();
+    expect(screen.getByText('Phi-4 14B')).toBeInTheDocument();
+    expect(screen.getByText('GPT-OSS 20B')).toBeInTheDocument();
+
+    expect(screen.getByText('Embedding Models')).toBeInTheDocument();
+    expect(screen.getByText('Qwen3 Embedding 4B')).toBeInTheDocument();
+    expect(screen.getByText('Nomic Embed v1.5')).toBeInTheDocument();
+    expect(screen.getByText('BGE Large EN v1.5')).toBeInTheDocument();
+
+    const downloadButtons = screen.getAllByTestId('download-button');
+    expect(downloadButtons.length).toBeGreaterThan(0);
+
+    await user.click(downloadButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('Success', 'Model download started');
+    });
+  });
+
+  it('displays existing downloads with correct states', async () => {
     server.use(
       ...mockModelPullDownloads({
         data: [
           {
-            id: 'deepseek-r1-distill-llama-8b',
-            repo: 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
-            filename: 'DeepSeek-R1-Distill-Llama-8B.gguf',
+            id: 'qwen-pending',
+            repo: 'bartowski/Qwen2.5-14B-Instruct-GGUF',
+            filename: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf',
             status: 'pending',
             error: null,
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
-            total_bytes: null,
-            downloaded_bytes: undefined,
+            total_bytes: 9_000_000_000,
+            downloaded_bytes: 4_500_000_000,
             started_at: '2024-01-01T00:00:00Z',
           },
           {
-            id: 'meta-llama-3.1-8b-instruct',
-            repo: 'bartowski/Meta-Llama-3.1-8B-Instruct-GGUF',
-            filename: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf',
-            status: 'pending',
-            error: null,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            total_bytes: 2000000,
-            downloaded_bytes: 1000000,
-            started_at: '2024-01-01T00:00:00Z',
-          },
-          {
-            id: 'phi-3.5-mini-128k-instruct',
-            repo: 'bartowski/Phi-3.5-mini-instruct-GGUF',
-            filename: 'Phi-3.5-mini-instruct-Q8_0.gguf',
+            id: 'phi-completed',
+            repo: 'bartowski/phi-4-GGUF',
+            filename: 'phi-4-Q4_K_M.gguf',
             status: 'completed',
             error: null,
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-01T00:00:00Z',
-            total_bytes: 1500000,
-            downloaded_bytes: 1500000,
+            total_bytes: 9_050_000_000,
+            downloaded_bytes: 9_050_000_000,
             started_at: '2024-01-01T00:00:00Z',
           },
         ],
         page: 1,
         page_size: 100,
-        total: 3,
+        total: 2,
       })
+    );
+
+    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat Models')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('50%')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('byte-display')).toHaveTextContent('4.2 GB / 8.4 GB');
+
+    const downloadedButtons = screen.getAllByRole('button', { name: /downloaded/i });
+    expect(downloadedButtons.length).toBeGreaterThan(0);
+    expect(downloadedButtons[0]).toBeDisabled();
+  });
+});
+
+describe('ModelDownloadPage Error Handling', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ username: 'user@email.com', role: 'resource_user' }),
+      ...mockModelPullDownloadsEmpty()
     );
   });
 
-  it('should render models with different download states', async () => {
-    await act(async () => {
-      render(<ModelDownloadContent />, { wrapper: createWrapper() });
+  it('download error shows toast and allows retry', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      ...mockModelPullError({
+        code: 'internal_server_error',
+        message: 'Download failed',
+        status: 500,
+      })
+    );
+
+    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat Models')).toBeInTheDocument();
     });
 
-    // Wait for models to load
-    const idleModel = await screen.findByTestId('model-card-deepseek-r1-distill-llama-8b');
-    const pendingModel = screen.getByTestId('model-card-meta-llama-3.1-8b-instruct');
-    const completedModel = screen.getByTestId('model-card-phi-3.5-mini-128k-instruct');
+    const downloadButtons = screen.getAllByTestId('download-button');
+    await user.click(downloadButtons[0]);
 
-    // Check idle model
-    expect(idleModel).toBeInTheDocument();
-    expect(within(idleModel).getByText('Status: idle')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('Error', 'Download failed');
+    });
 
-    // Check pending model
-    expect(pendingModel).toBeInTheDocument();
-    expect(within(pendingModel).getByText('Status: pending')).toBeInTheDocument();
+    server.use(
+      ...mockModelPull({
+        repo: 'bartowski/Qwen2.5-14B-Instruct-GGUF',
+        filename: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf',
+      })
+    );
 
-    // Check completed model
-    expect(completedModel).toBeInTheDocument();
-    expect(within(completedModel).getByText('Status: completed')).toBeInTheDocument();
+    await user.click(downloadButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('Success', 'Model download started');
+    });
+  });
+});
+
+describe('ModelDownloadPage Navigation', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ username: 'user@email.com', role: 'resource_user' }),
+      ...mockModelPullDownloadsEmpty()
+    );
+  });
+
+  it('continue button navigates and sets localStorage flag', async () => {
+    const user = userEvent.setup();
+
+    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Chat Models')).toBeInTheDocument();
+    });
+
+    const continueButton = screen.getByTestId('continue-button');
+    expect(continueButton).toBeInTheDocument();
+
+    await user.click(continueButton);
+
+    expect(localStorage.getItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED)).toBe('true');
+    expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_API_MODELS);
   });
 });
