@@ -671,3 +671,344 @@ If critical issues arise:
 - If stuck, document the issue clearly and try alternative approach
 - Maintain backward compatibility for AppInitializer wrapper
 - Don't modify test files unless absolutely necessary
+
+---
+
+# PHASE 14: Standardize Welcome Page with New Features
+
+## Objective
+Standardize the welcome page to align with other setup pages while updating content to reflect BodhiApp's new features: hybrid AI (local + remote APIs), multi-user support, and browser extension.
+
+## Context
+BodhiApp has evolved from a local-only AI solution to a comprehensive AI platform with:
+- **Hybrid AI**: Both local models AND remote API connectivity (OpenAI, Anthropic, etc.)
+- **Multi-User Support**: Role-based access control (Admin, Resource Manager, User)
+- **Browser Extension**: Revolutionary feature exposing AI to any webpage, shifting costs from publishers to users
+- **Cost Innovation**: User controls all costs - free for local models, their own API keys for cloud models
+
+## Tasks
+
+### 14.1 Update Benefits Content
+**File**: `/crates/bodhi/src/app/ui/setup/page.tsx`
+
+Update the `benefits` array to reflect new features:
+
+```typescript
+const benefits = [
+  {
+    title: 'Complete Privacy',
+    description: 'Your data stays under your control. Choose local models for maximum privacy or connect to trusted APIs.',
+    icon: '🔒',
+  },
+  {
+    title: 'Cost Freedom',
+    description: 'Run unlimited local AI without fees. Use your own API keys for cloud models. You control the costs.',
+    icon: '💰',
+  },
+  {
+    title: 'Browser AI Revolution',
+    description: 'Enable AI on any website through our browser extension. Publishers save costs, users get enhanced experiences.',
+    icon: '🌐',
+    isNew: true,
+  },
+  {
+    title: 'Multi-User Ready',
+    description: 'Built for teams and families. Role-based access with admin controls and user management.',
+    icon: '👥',
+    isNew: true,
+  },
+  {
+    title: 'Hybrid Flexibility',
+    description: 'Run local models on your hardware or connect to OpenAI, Anthropic, and other API providers.',
+    icon: '🚀',
+  },
+  {
+    title: 'Open Ecosystem',
+    description: 'Built on open standards. Compatible with HuggingFace models, OpenAI APIs, and more.',
+    icon: '🌟',
+  },
+];
+```
+
+### 14.2 Update WelcomeCard Content
+**File**: `/crates/bodhi/src/app/ui/setup/WelcomeCard.tsx`
+
+Remove duplicate logo and update messaging:
+
+```tsx
+export const WelcomeCard = () => {
+  return (
+    <motion.div variants={itemVariants}>
+      <Card data-testid="welcome-card">
+        <CardHeader>
+          <CardTitle className="text-center text-3xl font-bold">Welcome to Bodhi App</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-center text-muted-foreground text-lg">
+            Your Personal AI Hub - Local, Remote, and Everywhere
+          </p>
+          <div className="prose dark:prose-invert mx-auto text-center">
+            <p>
+              &quot;Bodhi&quot; (बोधि) comes from ancient Sanskrit/Pali, meaning deep wisdom and intelligence.
+            </p>
+            <p>
+              We believe AI should be:
+              <br />• Private and secure - your data, your control
+              <br />• Accessible to everyone - free from usage restrictions
+              <br />• Available everywhere - from desktop to browser to API
+            </p>
+            <p>
+              Bodhi App democratizes AI by putting you in control of how, where, and when you use artificial intelligence.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+```
+
+### 14.3 Enhance BenefitCard with "NEW" Badge
+**File**: `/crates/bodhi/src/app/ui/setup/BenefitCard.tsx`
+
+Add support for highlighting new features:
+
+```tsx
+interface BenefitCardProps {
+  title: string;
+  description: string;
+  icon: string;
+  isNew?: boolean;
+}
+
+export function BenefitCard({ title, description, icon, isNew }: BenefitCardProps) {
+  const testId = `benefit-card-${title.toLowerCase().replace(/\s+/g, '-')}`;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 300 }}
+    >
+      <Card className="h-full relative" data-testid={testId}>
+        {isNew && (
+          <span className="absolute top-2 right-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+            NEW
+          </span>
+        )}
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-2xl">{icon}</span>
+            <span>{title}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{description}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+```
+
+### 14.4 Add Testing Attributes
+**File**: `/crates/bodhi/src/app/ui/setup/page.tsx`
+
+Add data-testid attributes throughout:
+
+```tsx
+function SetupContent() {
+  // ... existing code
+
+  return (
+    <SetupContainer data-testid="setup-welcome-page">
+      <WelcomeCard />
+
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        variants={itemVariants}
+        data-testid="benefits-grid"
+      >
+        {benefits.map((benefit) => (
+          <BenefitCard key={benefit.title} {...benefit} />
+        ))}
+      </motion.div>
+
+      <SetupCard title="Setup Your Bodhi Server">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSetup)} className="space-y-6" data-testid="setup-form">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Server Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="John Doe's Bodhi App Server"
+                      {...field}
+                      disabled={isLoading}
+                      data-testid="server-name-input"
+                    />
+                  </FormControl>
+                  {/* ... */}
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="A description of your Bodhi server instance..."
+                      rows={3}
+                      {...field}
+                      disabled={isLoading}
+                      data-testid="description-input"
+                    />
+                  </FormControl>
+                  {/* ... */}
+                </FormItem>
+              )}
+            />
+            {/* ... rest of form */}
+          </form>
+        </Form>
+      </SetupCard>
+    </SetupContainer>
+  );
+}
+```
+
+### 14.5 Update Unit Tests
+**File**: `/crates/bodhi/src/app/ui/setup/page.test.tsx`
+
+Update tests to match new content:
+
+```tsx
+it('should render page content with updated benefits', async () => {
+  await act(async () => {
+    renderWithSetupProvider(<Setup />);
+  });
+
+  // Check updated benefit titles
+  expect(screen.getByText('Complete Privacy')).toBeInTheDocument();
+  expect(screen.getByText('Cost Freedom')).toBeInTheDocument();
+  expect(screen.getByText('Browser AI Revolution')).toBeInTheDocument();
+  expect(screen.getByText('Multi-User Ready')).toBeInTheDocument();
+  expect(screen.getByText('Hybrid Flexibility')).toBeInTheDocument();
+  expect(screen.getByText('Open Ecosystem')).toBeInTheDocument();
+
+  // Check welcome message
+  expect(screen.getByText('Welcome to Bodhi App')).toBeInTheDocument();
+  expect(screen.getByText(/Your Personal AI Hub/i)).toBeInTheDocument();
+
+  // Check setup progress
+  expect(screen.getByText('Step 1 of 6')).toBeInTheDocument();
+});
+
+it('should display NEW badges on new features', async () => {
+  await act(async () => {
+    renderWithSetupProvider(<Setup />);
+  });
+
+  const browserAICard = screen.getByTestId('benefit-card-browser-ai-revolution');
+  expect(browserAICard).toBeInTheDocument();
+  expect(within(browserAICard).getByText('NEW')).toBeInTheDocument();
+
+  const multiUserCard = screen.getByTestId('benefit-card-multi-user-ready');
+  expect(multiUserCard).toBeInTheDocument();
+  expect(within(multiUserCard).getByText('NEW')).toBeInTheDocument();
+});
+```
+
+### 14.6 Update Playwright Page Object Model
+**File**: `/crates/lib_bodhiserver_napi/tests-js/pages/SetupWelcomePage.mjs`
+
+Update selectors to use data-testid:
+
+```javascript
+selectors = {
+  ...this.selectors,
+  pageContainer: '[data-testid="setup-welcome-page"]',
+  welcomeCard: '[data-testid="welcome-card"]',
+  benefitsGrid: '[data-testid="benefits-grid"]',
+  benefitCard: (title) => `[data-testid="benefit-card-${title}"]`,
+  browserAIBenefit: '[data-testid="benefit-card-browser-ai-revolution"]',
+  multiUserBenefit: '[data-testid="benefit-card-multi-user-ready"]',
+  serverNameInput: '[data-testid="server-name-input"]',
+  descriptionInput: '[data-testid="description-input"]',
+  welcomeTitle: 'text=Welcome to Bodhi App',
+  setupButton: 'button:has-text("Setup Bodhi Server")',
+};
+
+async expectBenefitsDisplayed() {
+  // Check for updated benefits
+  await expect(this.page.locator('text=Complete Privacy')).toBeVisible();
+  await expect(this.page.locator('text=Cost Freedom')).toBeVisible();
+  await expect(this.page.locator('text=Browser AI Revolution')).toBeVisible();
+  await expect(this.page.locator('text=Multi-User Ready')).toBeVisible();
+  await expect(this.page.locator('text=Hybrid Flexibility')).toBeVisible();
+  await expect(this.page.locator('text=Open Ecosystem')).toBeVisible();
+}
+
+async expectNewFeatureBadges() {
+  await this.expectVisible(this.selectors.browserAIBenefit);
+  await this.expectVisible(this.selectors.multiUserBenefit);
+
+  const browserCard = this.page.locator(this.selectors.browserAIBenefit);
+  await expect(browserCard.locator('text=NEW')).toBeVisible();
+
+  const multiUserCard = this.page.locator(this.selectors.multiUserBenefit);
+  await expect(multiUserCard.locator('text=NEW')).toBeVisible();
+}
+```
+
+## Verification Steps
+
+### 14.7 Run Unit Tests
+```bash
+cd crates/bodhi
+npm run test -- page.test.tsx
+```
+
+### 14.8 Rebuild Embedded UI
+```bash
+cd /Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp
+make rebuild.ui
+```
+
+### 14.9 Run Playwright Tests
+```bash
+cd crates/lib_bodhiserver_napi
+npx playwright test tests-js/specs/setup/setup-flow.spec.mjs
+```
+
+### 14.10 Visual Verification
+- Check that duplicate logo is removed
+- Verify NEW badges appear on Browser AI and Multi-User cards
+- Confirm updated benefit descriptions are clear and compelling
+- Ensure welcome message reflects hybrid AI positioning
+- Validate responsive design on mobile (2x3 grid → 1 column)
+
+## Success Criteria
+- [ ] Welcome page uses SetupCard pattern consistently
+- [ ] Duplicate logo removed from WelcomeCard
+- [ ] All 6 benefits reflect new features (hybrid AI, multi-user, browser extension)
+- [ ] NEW badges display correctly on Browser AI Revolution and Multi-User Ready
+- [ ] All data-testid attributes added for testing
+- [ ] Unit tests pass with updated content
+- [ ] Playwright tests pass after UI rebuild
+- [ ] Welcome message properly positions BodhiApp as comprehensive AI platform
+- [ ] Visual consistency with other standardized setup pages
+
+## Notes
+- This phase showcases BodhiApp's evolution from local-only to hybrid AI platform
+- Browser extension feature is highlighted as key differentiator
+- Multi-user support shows enterprise-readiness
+- Cost control messaging is central to value proposition
+- Pattern follows standardization work from Phases 1-13

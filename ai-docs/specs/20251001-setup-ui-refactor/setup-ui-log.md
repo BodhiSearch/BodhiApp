@@ -2661,3 +2661,158 @@ npm test -- browser-extension/page.test.tsx
 
 *Phase 13 Started: 2025-10-01*
 *Status: IN PROGRESS - Page Object Model Updated*
+
+## [Phase 14] - Standardize Welcome Page with New Features
+**Date**: 2025-10-01 14:45
+**Agent**: Claude Sonnet 4.5
+**Status**: ✅ Complete
+
+### Objective
+Standardize the setup welcome page to align with other setup pages while updating content to reflect BodhiApp's evolution as a comprehensive AI platform with hybrid AI (local + remote APIs), multi-user support, and browser extension integration.
+
+### Actions Taken
+
+#### Task 14.1: Updated Benefits Content
+**File**: `/crates/bodhi/src/app/ui/setup/page.tsx`
+- Updated `benefits` array with new feature descriptions:
+  - "Complete Privacy" - Updated description to mention both local and trusted API options
+  - "Always Free" → "Cost Freedom" - Emphasizes user control of all costs
+  - "Full Control" → "Browser AI Revolution" - NEW feature with `isNew: true` flag
+  - "Local Performance" → "Multi-User Ready" - NEW feature with `isNew: true` flag
+  - "AI for Everyone" → "Hybrid Flexibility" - Highlights local + cloud provider options
+  - "Solid Foundation" → "Open Ecosystem" - Emphasizes standards and compatibility
+
+#### Task 14.2: Updated WelcomeCard Content
+**File**: `/crates/bodhi/src/app/ui/setup/WelcomeCard.tsx`
+- Removed duplicate logo display (lines 10-17) - logo already in app header
+- Updated subtitle from "Run AI Models Locally, Privately, and Completely Free" to "Your Personal AI Hub - Local, Remote, and Everywhere"
+- Restructured philosophy text to emphasize three core principles:
+  - Private and secure - your data, your control
+  - Accessible to everyone - free from usage restrictions
+  - Available everywhere - from desktop to browser to API
+- Updated closing statement to reflect democratization of AI control
+- Added `data-testid="welcome-card"` attribute
+- Removed unused Image import
+
+#### Task 14.3: Enhanced BenefitCard
+**File**: `/crates/bodhi/src/app/ui/setup/BenefitCard.tsx`
+- Added `isNew?: boolean` prop to interface
+- Implemented NEW badge display with `absolute top-2 right-2` positioning
+- Badge styling: `text-xs bg-primary text-primary-foreground px-2 py-1 rounded`
+- Added automatic `data-testid` generation: `benefit-card-${title.toLowerCase().replace(/\s+/g, '-')}`
+- Updated Card component to be `relative` positioned for badge placement
+
+#### Task 14.4: Added Testing Attributes
+**File**: `/crates/bodhi/src/app/ui/setup/page.tsx`
+- Added `data-testid="setup-welcome-page"` on SetupContainer
+- Added `data-testid="benefits-grid"` on benefits container
+- Added `data-testid="server-name-input"` on name input field
+- Added `data-testid="description-input"` on description textarea
+
+#### Task 14.5: Updated Unit Tests
+**File**: `/crates/bodhi/src/app/ui/setup/page.test.tsx`
+- Renamed test from "should render page content" to "should render page content with updated benefits"
+- Updated benefit title assertions to match new names:
+  - "Always Free" → "Cost Freedom"
+  - "Full Control" → "Browser AI Revolution"
+  - "Local Performance" → "Multi-User Ready"
+  - "AI for Everyone" → "Hybrid Flexibility"
+  - "Solid Foundation" → "Open Ecosystem"
+- Updated welcome message assertion to use regex: `/Your Personal AI Hub/i`
+- Added new test: "should display NEW badges on new features"
+  - Verifies `benefit-card-browser-ai-revolution` has "NEW" badge
+  - Verifies `benefit-card-multi-user-ready` has "NEW" badge
+  - Uses `within()` helper for scoped queries
+- Added `within` import from `@testing-library/react`
+
+#### Task 14.6: Updated Playwright Page Object Model
+**File**: `/crates/lib_bodhiserver_napi/tests-js/pages/SetupWelcomePage.mjs`
+- Enhanced selectors with data-testid attributes:
+  - `pageContainer: '[data-testid="setup-welcome-page"]'`
+  - `welcomeCard: '[data-testid="welcome-card"]'`
+  - `benefitsGrid: '[data-testid="benefits-grid"]'`
+  - `benefitCard: (title) => '[data-testid="benefit-card-${title}"]'`
+  - `browserAIBenefit: '[data-testid="benefit-card-browser-ai-revolution"]'`
+  - `multiUserBenefit: '[data-testid="benefit-card-multi-user-ready"]'`
+  - `serverNameInput: '[data-testid="server-name-input"]'`
+  - `descriptionInput: '[data-testid="description-input"]'`
+- Updated `expectBenefitsDisplayed()` method to check for new benefit names
+- Added new `expectNewFeatureBadges()` method to verify NEW badges on new features
+
+### Tests Run
+
+#### Unit Tests
+**Command**: `npm run test -- page.test.tsx` (in crates/bodhi)
+**Result**: ✅ PASS
+- All 248 tests passed (2 skipped)
+- 12 tests in Setup Page suite all passing
+- New "should display NEW badges on new features" test passing
+- "should render page content with updated benefits" test passing
+- Duration: 5.41s
+
+#### Embedded UI Rebuild
+**Command**: `make rebuild.ui`
+**Result**: ✅ Success
+- Next.js build completed successfully
+- 43 static pages generated
+- NAPI bindings rebuilt
+- Total build time: ~30 seconds
+
+#### Playwright Tests
+**Command**: `npx playwright test tests-js/specs/setup/setup-flow.spec.mjs`
+**Result**: ✅ PASS
+- 1 test passed
+- Setup flow test completed successfully
+- Duration: ~19 seconds
+
+### Issues Encountered
+None - all implementation steps completed successfully without issues.
+
+### Files Modified
+1. `/crates/bodhi/src/app/ui/setup/page.tsx` - Updated benefits array and added data-testid attributes
+2. `/crates/bodhi/src/app/ui/setup/WelcomeCard.tsx` - Removed duplicate logo, updated content, added data-testid
+3. `/crates/bodhi/src/app/ui/setup/BenefitCard.tsx` - Added isNew prop, NEW badge display, and data-testid
+4. `/crates/bodhi/src/app/ui/setup/page.test.tsx` - Updated tests for new content and added NEW badge test
+5. `/crates/lib_bodhiserver_napi/tests-js/pages/SetupWelcomePage.mjs` - Updated selectors and added new methods
+
+### Key Changes Summary
+- **Content Updates**: All benefits now reflect BodhiApp's evolution to a comprehensive AI platform
+- **NEW Features Highlighted**: Browser AI Revolution and Multi-User Ready have visual NEW badges
+- **Duplicate Logo Removed**: Cleaner welcome card without redundant logo
+- **Enhanced Testing**: Complete data-testid coverage for all interactive elements
+- **Updated Philosophy**: Welcome message now emphasizes "private, accessible, available everywhere"
+- **Playwright Integration**: Page Object Model fully updated with new selectors and verification methods
+
+### Verification
+- ✅ Benefits reflect new features (hybrid AI, multi-user, browser extension)
+- ✅ NEW badges visible on Browser AI Revolution and Multi-User Ready
+- ✅ Duplicate logo removed from WelcomeCard
+- ✅ All data-testid attributes added
+- ✅ Unit tests pass (248 tests)
+- ✅ Embedded UI rebuilt successfully
+- ✅ Playwright tests pass
+- ✅ Welcome message properly positions BodhiApp as comprehensive AI platform
+- ✅ Visual consistency with other standardized setup pages
+
+### Success Criteria Met
+All Phase 14 success criteria have been achieved:
+- [x] Welcome page uses SetupCard pattern consistently
+- [x] Duplicate logo removed from WelcomeCard
+- [x] All 6 benefits reflect new features (hybrid AI, multi-user, browser extension)
+- [x] NEW badges display correctly on Browser AI Revolution and Multi-User Ready
+- [x] All data-testid attributes added for testing
+- [x] Unit tests pass with updated content
+- [x] Playwright tests pass after UI rebuild
+- [x] Welcome message properly positions BodhiApp as comprehensive AI platform
+- [x] Visual consistency with other standardized setup pages
+
+### Next Steps
+Phase 14 is complete. The setup welcome page now properly showcases BodhiApp's evolution from a local-only AI solution to a comprehensive AI platform with:
+- Hybrid AI capabilities (local models + remote APIs)
+- Multi-user support with role-based access control
+- Revolutionary browser extension for AI on any webpage
+- User control of all costs (free local, own API keys for cloud)
+
+The standardization maintains visual consistency while effectively communicating BodhiApp's value proposition and differentiating features.
+
+---
