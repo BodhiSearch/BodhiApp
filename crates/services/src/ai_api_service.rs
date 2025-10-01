@@ -1,10 +1,11 @@
 use crate::db::DbService;
-use async_openai::types::CreateChatCompletionRequest;
 use async_trait::async_trait;
+use axum::body::Body;
 use axum::response::Response;
 use derive_new::new;
 use objs::{impl_error_from, ApiAlias, AppError, ErrorType, ReqwestError};
 use reqwest::Client;
+use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -72,12 +73,8 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
   /// Fetch available models from provider API
   async fn fetch_models(&self, api_key: &str, base_url: &str) -> Result<Vec<String>>;
 
-  /// Forward chat completion request to remote API
-  async fn forward_chat_completion(
-    &self,
-    id: &str,
-    request: CreateChatCompletionRequest,
-  ) -> Result<Response>;
+  /// Forward request to remote API
+  async fn forward_request(&self, api_path: &str, id: &str, request: Value) -> Result<Response>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -220,20 +217,30 @@ impl AiApiService for DefaultAiApiService {
     Ok(models)
   }
 
-  async fn forward_chat_completion(
+  async fn forward_request(
     &self,
+    api_path: &str,
     id: &str,
-    mut request: CreateChatCompletionRequest,
+    mut request: Value,
   ) -> Result<Response> {
     let (api_alias, api_key) = self.get_api_config(id).await?;
-    let url = format!("{}/chat/completions", api_alias.base_url);
+    let url = format!("{}{}", api_alias.base_url, api_path);
+
+    // Handle prefix stripping if configured
     if let Some(ref prefix) = api_alias.prefix {
-      if request.model.starts_with(prefix) {
-        request.model = request
-          .model
-          .strip_prefix(prefix)
-          .unwrap_or(&request.model)
-          .to_string();
+      if let Some(model_str) = request.get("model").and_then(|v| v.as_str()) {
+        if model_str.starts_with(prefix) {
+          let stripped_model = model_str
+            .strip_prefix(prefix)
+            .unwrap_or(model_str)
+            .to_string();
+          if let Some(obj) = request.as_object_mut() {
+            obj.insert(
+              "model".to_string(),
+              serde_json::Value::String(stripped_model),
+            );
+          }
+        }
       }
     }
 
@@ -250,7 +257,7 @@ impl AiApiService for DefaultAiApiService {
     let status = response.status();
 
     // Convert reqwest::Response to axum::Response for streaming support
-    let mut builder = axum::response::Response::builder().status(status.as_u16());
+    let mut builder = Response::builder().status(status.as_u16());
 
     // Copy headers
     for (key, value) in response.headers() {
@@ -261,7 +268,7 @@ impl AiApiService for DefaultAiApiService {
 
     // Stream the body
     let body_stream = response.bytes_stream();
-    let body = axum::body::Body::from_stream(body_stream);
+    let body = Body::from_stream(body_stream);
 
     let axum_response = builder
       .body(body)
@@ -500,7 +507,11 @@ mod tests {
       .await;
     let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
     let response = service
-      .forward_chat_completion(api_id, serde_json::from_value(incoming_request)?)
+      .forward_request(
+        "/chat/completions",
+        api_id,
+        serde_json::from_value(incoming_request)?,
+      )
       .await?;
     assert_eq!(response.status(), StatusCode::OK);
     Ok(())

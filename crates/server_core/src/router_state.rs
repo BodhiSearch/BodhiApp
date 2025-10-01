@@ -3,21 +3,37 @@ use crate::{
   shared_rw::SharedContext,
   ContextError,
 };
-use async_openai::types::CreateChatCompletionRequest;
 use futures::StreamExt;
 use objs::ObjValidationError;
+use serde_json::Value;
 use services::{
   AiApiService, AiApiServiceError, AliasNotFoundError, AppService, DefaultAiApiService,
   HubServiceError,
 };
 use std::{future::Future, pin::Pin, sync::Arc};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LlmEndpoint {
+  ChatCompletions,
+  Embeddings,
+}
+
+impl LlmEndpoint {
+  pub fn api_path(&self) -> &str {
+    match self {
+      Self::ChatCompletions => "/chat/completions",
+      Self::Embeddings => "/embeddings",
+    }
+  }
+}
+
 pub trait RouterState: std::fmt::Debug + Send + Sync {
   fn app_service(&self) -> Arc<dyn AppService>;
 
-  fn chat_completions(
+  fn forward_request(
     &self,
-    request: CreateChatCompletionRequest,
+    endpoint: LlmEndpoint,
+    request: Value,
   ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>>;
 }
 
@@ -72,18 +88,28 @@ impl RouterState for DefaultRouterState {
     self.app_service.clone()
   }
 
-  fn chat_completions(
+  fn forward_request(
     &self,
-    request: CreateChatCompletionRequest,
+    endpoint: LlmEndpoint,
+    request_value: Value,
   ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
     Box::pin(async move {
+      // Extract model field from the request for routing
+      let model = request_value
+        .get("model")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AiApiServiceError::ApiError("Missing model field in request".to_string()))?;
+
       // Use ModelRouter to determine routing destination
-      let destination = self.model_router().route_request(&request.model).await?;
+      let destination = self.model_router().route_request(model).await?;
 
       match destination {
         RouteDestination::Local(alias) => {
           // Route to local model via SharedContext (existing behavior)
-          let response = self.ctx.chat_completions(request, alias).await?;
+          let response = self
+            .ctx
+            .forward_request(endpoint, request_value, alias)
+            .await?;
           Ok(response)
         }
         RouteDestination::Remote(api_alias) => {
@@ -92,7 +118,7 @@ impl RouterState for DefaultRouterState {
           // for compatibility with the existing interface
           let axum_response = self
             .ai_api_service()
-            .forward_chat_completion(&api_alias.id, request)
+            .forward_request(endpoint.api_path(), &api_alias.id, request_value)
             .await?;
 
           // Convert axum::Response to reqwest::Response while preserving streaming
@@ -102,7 +128,7 @@ impl RouterState for DefaultRouterState {
           // Convert axum body to bytes stream for reqwest
           let body_stream = body
             .into_data_stream()
-            .map(|result| result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)));
+            .map(|result| result.map_err(std::io::Error::other));
           let reqwest_body = reqwest::Body::wrap_stream(body_stream);
 
           // Build a response that can be converted to reqwest::Response
@@ -128,8 +154,8 @@ impl RouterState for DefaultRouterState {
 #[cfg(test)]
 mod test {
   use crate::{
-    ContextError, DefaultRouterState, MockSharedContext, ModelRouterError, RouterState,
-    RouterStateError,
+    ContextError, DefaultRouterState, LlmEndpoint, MockSharedContext, ModelRouterError,
+    RouterState, RouterStateError,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
@@ -156,7 +182,10 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let result = state.chat_completions(request).await;
+    let request_value = serde_json::to_value(&request)?;
+    let result = state
+      .forward_request(LlmEndpoint::ChatCompletions, request_value)
+      .await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     match err {
@@ -183,14 +212,16 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
+    let request_value = serde_json::to_value(&request)?;
     mock_ctx
-      .expect_chat_completions()
+      .expect_forward_request()
       .with(
-        eq(request.clone()),
+        eq(LlmEndpoint::ChatCompletions),
+        eq(request_value.clone()),
         eq(Alias::User(UserAlias::testalias_exists())),
       )
       .times(1)
-      .return_once(|_, _| Ok(mock_response("")));
+      .return_once(|_, _, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
       .with_hub_service()
@@ -198,7 +229,9 @@ mod test {
       .await
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
-    state.chat_completions(request).await?;
+    state
+      .forward_request(LlmEndpoint::ChatCompletions, request_value)
+      .await?;
     Ok(())
   }
 
@@ -214,12 +247,17 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
+    let request_value = serde_json::to_value(&request)?;
     let alias = UserAlias::testalias_exists();
     mock_ctx
-      .expect_chat_completions()
-      .with(eq(request.clone()), eq(Alias::User(alias)))
+      .expect_forward_request()
+      .with(
+        eq(LlmEndpoint::ChatCompletions),
+        eq(request_value.clone()),
+        eq(Alias::User(alias)),
+      )
       .times(1)
-      .return_once(|_, _| {
+      .return_once(|_, _, _| {
         Err(ContextError::Server(ServerError::StartupError(
           "test error".to_string(),
         )))
@@ -231,7 +269,9 @@ mod test {
       .await
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
-    let result = state.chat_completions(request).await;
+    let result = state
+      .forward_request(LlmEndpoint::ChatCompletions, request_value)
+      .await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     match err {

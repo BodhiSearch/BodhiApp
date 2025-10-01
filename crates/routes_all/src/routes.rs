@@ -36,9 +36,10 @@ use routes_app::{
   ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
-  chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
-  ollama_model_show_handler, ollama_models_handler, ENDPOINT_OAI_CHAT_COMPLETIONS,
-  ENDPOINT_OAI_MODELS, ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
+  chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
+  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
+  ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
+  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
 use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
@@ -99,6 +100,7 @@ pub fn build_routes(
       ENDPOINT_OAI_CHAT_COMPLETIONS,
       post(chat_completions_handler),
     )
+    .route(ENDPOINT_OAI_EMBEDDINGS, post(embeddings_handler))
     // Ollama APIs
     .route(ENDPOINT_OLLAMA_TAGS, get(ollama_models_handler))
     .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))

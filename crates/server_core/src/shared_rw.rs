@@ -1,7 +1,7 @@
-use crate::{merge_server_args, ContextError};
-use async_openai::types::CreateChatCompletionRequest;
+use crate::{merge_server_args, ContextError, LlmEndpoint};
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
+use serde_json::Value;
 use services::{HubService, SettingService};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
@@ -29,9 +29,10 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
 
   async fn is_loaded(&self) -> bool;
 
-  async fn chat_completions(
+  async fn forward_request(
     &self,
-    mut request: CreateChatCompletionRequest,
+    endpoint: LlmEndpoint,
+    request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response>;
 
@@ -173,9 +174,10 @@ impl SharedContext for DefaultSharedContext {
     Ok(())
   }
 
-  async fn chat_completions(
+  async fn forward_request(
     &self,
-    mut request: CreateChatCompletionRequest,
+    endpoint: LlmEndpoint,
+    mut request: Value,
     alias: Alias,
   ) -> Result<reqwest::Response> {
     // Pattern match to extract local alias information and reject API aliases
@@ -213,17 +215,26 @@ impl SharedContext for DefaultSharedContext {
 
     // Apply request parameters if this is a user alias
     if let Alias::User(user_alias) = &alias {
-      user_alias.request_params.update(&mut request);
+      // For Value, we need to deserialize, update, and re-serialize
+      // This is only needed for chat completions, but we'll apply it universally
+      if let Ok(mut chat_request) =
+        serde_json::from_value::<async_openai::types::CreateChatCompletionRequest>(request.clone())
+      {
+        user_alias.request_params.update(&mut chat_request);
+        request = serde_json::to_value(chat_request)?;
+      }
     }
 
-    let input_value = serde_json::to_value(request)?;
+    let input_value = request;
     let setting_args = self.get_setting_args();
     let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
+        let server = server
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
+        let response = match endpoint {
+          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
+          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+        };
         Ok(response)
       }
       ModelLoadStrategy::DropAndLoad => {
@@ -238,11 +249,13 @@ impl SharedContext for DefaultSharedContext {
           .build()?;
         self.reload(Some(server_args)).await?;
         let lock = self.server.read().await;
-        let server = lock.as_ref();
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
+        let server = lock
+          .as_ref()
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
+        let response = match endpoint {
+          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
+          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+        };
         Ok(response)
       }
       ModelLoadStrategy::Load => {
@@ -257,11 +270,13 @@ impl SharedContext for DefaultSharedContext {
         drop(lock);
         self.reload(Some(server_args)).await?;
         let lock = self.server.read().await;
-        let server = lock.as_ref();
-        let response = server
-          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .chat_completions(&input_value)
-          .await?;
+        let server = lock
+          .as_ref()
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?;
+        let response = match endpoint {
+          LlmEndpoint::ChatCompletions => server.chat_completions(&input_value).await?,
+          LlmEndpoint::Embeddings => server.embeddings(&input_value).await?,
+        };
         Ok(response)
       }
     };
@@ -350,6 +365,7 @@ mod test {
   use crate::{
     shared_rw::{DefaultSharedContext, ModelLoadStrategy, SharedContext},
     test_utils::{bin_path, mock_server, ServerFactoryStub},
+    LlmEndpoint,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
@@ -445,8 +461,13 @@ mod test {
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
+    let request_value = serde_json::to_value(&request)?;
     shared_ctx
-      .chat_completions(request, Alias::User(UserAlias::testalias()))
+      .forward_request(
+        LlmEndpoint::ChatCompletions,
+        request_value,
+        Alias::User(UserAlias::testalias()),
+      )
       .await?;
     shared_ctx.stop().await?;
     Ok(())
@@ -496,8 +517,13 @@ mod test {
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
+    let request_value = serde_json::to_value(&request)?;
     shared_ctx
-      .chat_completions(request, Alias::User(UserAlias::testalias()))
+      .forward_request(
+        LlmEndpoint::ChatCompletions,
+        request_value,
+        Alias::User(UserAlias::testalias()),
+      )
       .await?;
     Ok(())
   }
@@ -577,8 +603,13 @@ mod test {
       "model": "fakemodel:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
+    let request_value = serde_json::to_value(&request)?;
     shared_ctx
-      .chat_completions(request, Alias::User(UserAlias::testalias()))
+      .forward_request(
+        LlmEndpoint::ChatCompletions,
+        request_value,
+        Alias::User(UserAlias::testalias()),
+      )
       .await?;
     shared_ctx.stop().await?;
     Ok(())

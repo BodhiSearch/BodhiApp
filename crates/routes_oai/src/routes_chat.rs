@@ -1,11 +1,12 @@
-use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
+use crate::{ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS};
 use async_openai::types::{
   CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
+  CreateEmbeddingRequest, CreateEmbeddingResponse,
 };
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};
-use server_core::RouterState;
+use server_core::{LlmEndpoint, RouterState};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -14,6 +15,10 @@ pub enum HttpError {
   #[error("http_error")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Http(#[from] http::Error),
+
+  #[error("serialization_error")]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Serialization(#[from] serde_json::Error),
 }
 
 /// Create a chat completion
@@ -95,7 +100,66 @@ pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, ApiError>,
 ) -> Result<Response, ApiError> {
-  let response = state.chat_completions(request).await?;
+  let request_value = serde_json::to_value(request).map_err(HttpError::Serialization)?;
+  let response = state
+    .forward_request(LlmEndpoint::ChatCompletions, request_value)
+    .await?;
+  let mut response_builder = Response::builder().status(response.status());
+  if let Some(headers) = response_builder.headers_mut() {
+    *headers = response.headers().clone();
+  }
+  let stream = response.bytes_stream();
+  let body = Body::from_stream(stream);
+  Ok(response_builder.body(body).map_err(HttpError::Http)?)
+}
+
+/// Create embeddings
+#[utoipa::path(
+    post,
+    path = ENDPOINT_OAI_EMBEDDINGS,
+    tag = API_TAG_OPENAI,
+    operation_id = "createEmbedding",
+    summary = "Create Embeddings (OpenAI Compatible)",
+    description = "Creates embeddings for the input text using the specified model. Fully compatible with OpenAI's embeddings API format.",
+    request_body(
+        content = CreateEmbeddingRequest,
+        example = json!({
+            "model": "text-embedding-model",
+            "input": "The quick brown fox jumps over the lazy dog"
+        })
+    ),
+    responses(
+        (status = 200, description = "Embedding response",
+         content_type = "application/json",
+         body = CreateEmbeddingResponse,
+         example = json!({
+             "object": "list",
+             "data": [
+                 {
+                     "object": "embedding",
+                     "index": 0,
+                     "embedding": [0.1, 0.2, 0.3]
+                 }
+             ],
+             "model": "text-embedding-model",
+             "usage": {
+                 "prompt_tokens": 8,
+                 "total_tokens": 8
+             }
+         })),
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
+)]
+pub async fn embeddings_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, ApiError>,
+) -> Result<Response, ApiError> {
+  let request_value = serde_json::to_value(request).map_err(HttpError::Serialization)?;
+  let response = state
+    .forward_request(LlmEndpoint::Embeddings, request_value)
+    .await?;
   let mut response_builder = Response::builder().status(response.status());
   if let Some(headers) = response_builder.headers_mut() {
     *headers = response.headers().clone();
@@ -107,12 +171,13 @@ pub async fn chat_completions_handler(
 
 #[cfg(test)]
 mod test {
-  use crate::routes_chat::chat_completions_handler;
+  use crate::routes_chat::{chat_completions_handler, embeddings_handler};
   use anyhow_trace::anyhow_trace;
   use async_openai::types::{
     ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
     CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
-    CreateChatCompletionStreamResponse,
+    CreateChatCompletionStreamResponse, CreateEmbeddingRequest, CreateEmbeddingResponse,
+    EmbeddingInput,
   };
   use axum::{extract::Request, routing::post, Router};
   use futures_util::StreamExt;
@@ -124,7 +189,7 @@ mod test {
   use serde_json::json;
   use server_core::{
     test_utils::{RequestTestExt, ResponseTestExt},
-    ContextError, DefaultRouterState, MockSharedContext,
+    ContextError, DefaultRouterState, LlmEndpoint, MockSharedContext,
   };
   use services::test_utils::{app_service_stub, AppServiceStub};
   use std::sync::Arc;
@@ -165,12 +230,17 @@ mod test {
       .build()?;
     let user_alias = UserAlias::testalias_exists();
     let alias = Alias::User(user_alias);
+    let request_value = serde_json::to_value(&request)?;
     let mut ctx = MockSharedContext::default();
     ctx
-      .expect_chat_completions()
-      .with(eq(request.clone()), eq(alias))
+      .expect_forward_request()
+      .with(
+        eq(LlmEndpoint::ChatCompletions),
+        eq(request_value),
+        eq(alias),
+      )
       .times(1)
-      .return_once(move |_, _| Ok(non_streamed_response()));
+      .return_once(move |_, _, _| Ok(non_streamed_response()));
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()
       .route("/v1/chat/completions", post(chat_completions_handler))
@@ -253,12 +323,17 @@ mod test {
       .build()?;
     let user_alias = UserAlias::testalias_exists();
     let alias = Alias::User(user_alias);
+    let request_value = serde_json::to_value(&request)?;
     let mut ctx = MockSharedContext::default();
     ctx
-      .expect_chat_completions()
-      .with(eq(request.clone()), eq(alias))
+      .expect_forward_request()
+      .with(
+        eq(LlmEndpoint::ChatCompletions),
+        eq(request_value),
+        eq(alias),
+      )
       .times(1)
-      .return_once(move |_, _| streamed_response());
+      .return_once(move |_, _, _| streamed_response());
 
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()
@@ -282,6 +357,68 @@ mod test {
       f
     });
     assert_eq!("  After Monday, the next day is Tuesday.", content);
+    Ok(())
+  }
+
+  fn embeddings_response() -> reqwest::Response {
+    let response = json! {{
+      "object": "list",
+      "data": [
+        {
+          "object": "embedding",
+          "index": 0,
+          "embedding": vec![0.1, 0.2, 0.3, 0.4, 0.5]
+        }
+      ],
+      "model": "testalias-exists:instruct",
+      "usage": {
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      }
+    }};
+    mock_response(response.to_string())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_routes_embeddings_non_stream(
+    #[future] app_service_stub: AppServiceStub,
+  ) -> anyhow::Result<()> {
+    let request = CreateEmbeddingRequest {
+      model: "testalias-exists:instruct".to_string(),
+      input: EmbeddingInput::String("The quick brown fox jumps over the lazy dog".to_string()),
+      encoding_format: None,
+      user: None,
+      dimensions: None,
+    };
+    let user_alias = UserAlias::testalias_exists();
+    let alias = Alias::User(user_alias);
+    let request_value = serde_json::to_value(&request)?;
+    let mut ctx = MockSharedContext::default();
+    ctx
+      .expect_forward_request()
+      .with(eq(LlmEndpoint::Embeddings), eq(request_value), eq(alias))
+      .times(1)
+      .return_once(move |_, _, _| Ok(embeddings_response()));
+    let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
+    let app = Router::new()
+      .route("/v1/embeddings", post(embeddings_handler))
+      .with_state(Arc::new(router_state));
+    let response = app
+      .oneshot(Request::post("/v1/embeddings").json(request).unwrap())
+      .await
+      .unwrap();
+    assert_eq!(StatusCode::OK, response.status());
+    let result: CreateEmbeddingResponse = response.json().await.unwrap();
+    assert_eq!("list", result.object);
+    assert_eq!("testalias-exists:instruct", result.model);
+    assert_eq!(1, result.data.len());
+    assert_eq!(0, result.data[0].index);
+    assert_eq!(vec![0.1, 0.2, 0.3, 0.4, 0.5], result.data[0].embedding);
+    assert_eq!(8, result.usage.prompt_tokens);
+    assert_eq!(8, result.usage.total_tokens);
     Ok(())
   }
 }

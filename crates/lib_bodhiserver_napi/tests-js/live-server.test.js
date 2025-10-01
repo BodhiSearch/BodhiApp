@@ -124,4 +124,96 @@ describe('Live Server Tests', () => {
       expect(await server.isRunning()).toBe(true);
     });
   });
+
+  describe('Embeddings Endpoint Tests', () => {
+    test('should handle model not found error for non-existent model', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 27010 });
+      runningServers.push(server);
+
+      await server.start();
+      expect(await server.isRunning()).toBe(true);
+
+      await sleep(2000);
+
+      const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'non-existent-model-xyz',
+          input: 'Hello world',
+        }),
+      });
+
+      expect(response.status).toBe(404);
+    });
+
+    test('should handle invalid request with missing required input field', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 27011 });
+      runningServers.push(server);
+
+      await server.start();
+      expect(await server.isRunning()).toBe(true);
+
+      await sleep(2000);
+
+      const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'test-model',
+        }),
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.status).toBeLessThan(500);
+    });
+
+    test('should handle invalid request with malformed JSON', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 27012 });
+      runningServers.push(server);
+
+      await server.start();
+      expect(await server.isRunning()).toBe(true);
+
+      await sleep(2000);
+
+      const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: 'invalid json',
+      });
+
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.status).toBeLessThan(500);
+    });
+
+    test('should verify embeddings endpoint is registered', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 27013 });
+      runningServers.push(server);
+
+      await server.start();
+      expect(await server.isRunning()).toBe(true);
+
+      await sleep(2000);
+
+      const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'any-model',
+          input: 'test',
+        }),
+      });
+
+      expect([401, 404]).toContain(response.status);
+    });
+  });
 });

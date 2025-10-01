@@ -55,6 +55,7 @@ impl LlamaServerArgs {
       self.alias.clone(),
       "--model".to_string(),
       self.model.to_string_lossy().to_string(),
+      "--embeddings".to_string(),
     ];
 
     if let Some(api_key) = &self.api_key {
@@ -188,7 +189,6 @@ impl LlamaServer {
   async fn proxy_request(&self, endpoint: &str, body: &Value) -> Result<Response> {
     let url = format!("{}{}", self.base_url, endpoint);
     let response = self.client.post(url).json(body).send().await?;
-
     Ok(response)
   }
 }
@@ -301,6 +301,7 @@ mod tests {
         "test-alias",
         "--model",
         "/path/to/model",
+        "--embeddings",
         "--port",
         "12345",
         "--ctx-size",

@@ -593,12 +593,20 @@ pub async fn ollama_model_chat_handler(
   let request: CreateChatCompletionRequest = ollama_request.into();
   let stream = request.stream.unwrap_or(true);
 
-  // Get raw response from chat_completions
-  let response = state.chat_completions(request).await.map_err(|e| {
+  // Get raw response from forward_request
+  let request_value = serde_json::to_value(&request).map_err(|e| {
     Json(OllamaError {
-      error: format!("chat completion error: {e}"),
+      error: format!("failed to serialize request: {e}"),
     })
   })?;
+  let response = state
+    .forward_request(server_core::LlmEndpoint::ChatCompletions, request_value)
+    .await
+    .map_err(|e| {
+      Json(OllamaError {
+        error: format!("chat completion error: {e}"),
+      })
+    })?;
 
   let mut response_builder = Response::builder().status(response.status());
   if let Some(headers) = response_builder.headers_mut() {
