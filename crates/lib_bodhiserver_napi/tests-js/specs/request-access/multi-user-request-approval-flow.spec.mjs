@@ -1,10 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { randomPort } from '@/test-helpers.mjs';
-import {
-  createAuthServerTestClient,
-  getAuthServerConfig,
-} from '@/playwright/auth-server-client.mjs';
-import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
+import { createAuthServerTestClient, getAuthServerConfig } from '@/utils/auth-server-client.mjs';
+import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { RequestAccessPage } from '@/pages/RequestAccessPage.mjs';
 import { UsersManagementPage } from '@/pages/UsersManagementPage.mjs';

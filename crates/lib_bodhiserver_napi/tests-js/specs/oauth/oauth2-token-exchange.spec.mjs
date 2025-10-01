@@ -4,14 +4,14 @@ import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
-} from '@/playwright/auth-server-client.mjs';
-import { createServerManager } from '@/playwright/bodhi-app-server.mjs';
-import { createStaticServer } from '@/playwright/static-server.mjs';
+} from '@/utils/auth-server-client.mjs';
+import { createServerManager } from '@/utils/bodhi-app-server.mjs';
+import { createStaticServer } from '@/utils/static-server.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
 import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
 import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
-import { OAuth2ApiHelper } from '@/helpers/OAuth2ApiHelper.mjs';
+import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 
 test.describe('OAuth2 Token Exchange Integration Tests', () => {
   let authServerConfig;
