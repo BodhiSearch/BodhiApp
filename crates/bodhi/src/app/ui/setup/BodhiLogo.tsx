@@ -15,7 +15,7 @@ export const BodhiLogoImage = () => (
 
 export const BodhiLogo = () => {
   return (
-    <motion.div variants={itemVariants} className="text-center mb-8">
+    <motion.div variants={itemVariants} className="text-center pt-4 mb-4">
       <BodhiLogoImage />
     </motion.div>
   );

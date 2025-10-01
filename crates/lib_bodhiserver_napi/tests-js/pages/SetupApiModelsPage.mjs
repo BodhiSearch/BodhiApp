@@ -18,7 +18,7 @@ export class SetupApiModelsPage extends SetupBasePage {
     setupProgress: '[data-testid="setup-progress"]',
     setupForm: '[data-testid="setup-api-model-form"]',
     skipButton: '[data-testid="skip-api-setup"]',
-    welcomeTitle: 'text=☁️Setup API Models',
+    welcomeTitle: 'text=Setup API Models',
     helpSection: "text=Don't have an API key?",
   };
 

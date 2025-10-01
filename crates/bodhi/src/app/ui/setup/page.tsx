@@ -1,13 +1,11 @@
 'use client';
 
 import { BenefitCard } from '@/app/ui/setup/BenefitCard';
-import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
-import { SetupProgress } from '@/app/ui/setup/SetupProgress';
-import { containerVariants, itemVariants } from '@/app/ui/setup/types';
+import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
+import { itemVariants } from '@/app/ui/setup/types';
 import { WelcomeCard } from '@/app/ui/setup/WelcomeCard';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -100,90 +98,71 @@ function SetupContent() {
   };
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8">
-      <motion.div
-        className="mx-auto max-w-4xl space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <SetupProgress
-          currentStep={SETUP_STEPS.WELCOME}
-          totalSteps={SETUP_TOTAL_STEPS}
-          stepLabels={SETUP_STEP_LABELS}
-        />
-        <WelcomeCard />
+    <SetupContainer>
+      <WelcomeCard />
 
-        <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants}>
-          {benefits.map((benefit) => (
-            <BenefitCard key={benefit.title} {...benefit} />
-          ))}
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Setup Your Bodhi Server</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSetup)} className="space-y-6" data-testid="setup-form">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Server Name *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe's Bodhi App Server" {...field} disabled={isLoading} />
-                        </FormControl>
-                        <FormMessage />
-                        <p className="text-sm text-muted-foreground">
-                          Minimum 10 characters. This will identify your server instance.
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description (Optional)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="A description of your Bodhi server instance..."
-                            rows={3}
-                            {...field}
-                            disabled={isLoading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                        <p className="text-sm text-muted-foreground">
-                          Optional description to help you identify this server.
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Setting up...
-                      </>
-                    ) : (
-                      'Setup Bodhi Server →'
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants}>
+        {benefits.map((benefit) => (
+          <BenefitCard key={benefit.title} {...benefit} />
+        ))}
       </motion.div>
-    </main>
+
+      <SetupCard title="Setup Your Bodhi Server">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSetup)} className="space-y-6" data-testid="setup-form">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Server Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe's Bodhi App Server" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-sm text-muted-foreground">
+                    Minimum 10 characters. This will identify your server instance.
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="A description of your Bodhi server instance..."
+                      rows={3}
+                      {...field}
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-sm text-muted-foreground">
+                    Optional description to help you identify this server.
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Setting up...
+                </>
+              ) : (
+                'Setup Bodhi Server →'
+              )}
+            </Button>
+          </form>
+        </Form>
+      </SetupCard>
+    </SetupContainer>
   );
 }
 

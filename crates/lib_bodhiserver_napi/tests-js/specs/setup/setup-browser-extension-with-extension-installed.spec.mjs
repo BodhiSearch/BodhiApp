@@ -96,11 +96,9 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     await browserExtensionPage.expectExtensionFound();
 
     await expect(extensionPage.locator('[data-testid="extension-found"]')).toBeVisible();
-    await expect(extensionPage.locator('[data-testid="extension-id-display"]')).toBeVisible();
-    await expect(extensionPage.locator('[data-testid="next-button"]')).toBeVisible();
-    await expect(extensionPage.locator('[data-testid="skip-button"]')).not.toBeVisible();
+    await expect(extensionPage.locator('[data-testid="browser-extension-continue"]')).toBeVisible();
 
-    await browserExtensionPage.clickNext();
+    await browserExtensionPage.clickContinue();
 
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/complete/');
     expect(getCurrentPath(extensionPage)).toBe('/ui/setup/complete/');

@@ -31,12 +31,23 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
     return 'pending';
   };
 
+  // Calculate bar position to connect only between step centers
+  const barLeftPosition = 50 / totalSteps; // Center of first step as percentage
+  const barWidth = (100 * (totalSteps - 1)) / totalSteps; // Width to reach center of last step
+
   return (
-    <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4" data-testid="setup-progress">
+    <div className="mb-6" data-testid="setup-progress">
       <div className="mx-auto max-w-2xl">
         {/* Progress bar */}
-        <div className="relative">
-          <div className="absolute left-0 top-1/2 h-1 w-full -translate-y-1/2 bg-muted">
+        <div className="relative mb-8">
+          {/* Background bar - positioned to connect step centers only */}
+          <div
+            className="absolute top-4 h-1 bg-muted"
+            style={{
+              left: `${barLeftPosition}%`,
+              width: `${barWidth}%`,
+            }}
+          >
             <motion.div
               className="h-full bg-primary"
               initial={{ width: 0 }}
@@ -53,61 +64,54 @@ export function SetupProgress({ currentStep, totalSteps, stepLabels, compact = f
             />
           </div>
 
-          {/* Step indicators */}
+          {/* Step indicators with labels */}
           <div className="relative flex justify-between">
             {Array.from({ length: totalSteps }).map((_, index) => {
               const { isCompleted, isCurrent } = getStepStatus(index);
 
               return (
-                <motion.div
-                  key={index}
-                  data-testid={`step-indicator-${index + 1}`}
-                  data-completed={isCompleted}
-                  data-current={isCurrent}
-                  data-status={getStepDataStatus(index)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    isCompleted || isCurrent ? 'bg-primary' : 'bg-muted'
-                  }`}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  {isCompleted ? (
-                    <Check className="h-4 w-4 text-primary-foreground" />
-                  ) : (
-                    <span className={`text-sm ${isCurrent ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-                      {index + 1}
-                    </span>
+                <div key={index} className="flex flex-col items-center" style={{ flex: '1 1 0%' }}>
+                  {/* Circle indicator */}
+                  <motion.div
+                    data-testid={`step-indicator-${index + 1}`}
+                    data-completed={isCompleted}
+                    data-current={isCurrent}
+                    data-status={getStepDataStatus(index)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                      isCompleted || isCurrent ? 'bg-primary' : 'bg-muted'
+                    }`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    {isCompleted ? (
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                    ) : (
+                      <span className={`text-sm ${isCurrent ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                        {index + 1}
+                      </span>
+                    )}
+                  </motion.div>
+
+                  {/* Label below circle */}
+                  {stepLabels && !compact && (
+                    <div className="mt-3 hidden sm:block max-w-full px-1">
+                      <span
+                        data-testid={`step-label-${index + 1}`}
+                        className={`text-xs truncate block text-center ${
+                          isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'
+                        }`}
+                        title={stepLabels[index]}
+                      >
+                        {stepLabels[index]}
+                      </span>
+                    </div>
                   )}
-                </motion.div>
+                </div>
               );
             })}
           </div>
         </div>
-
-        {/* Step labels (if provided and not compact) */}
-        {stepLabels && !compact && (
-          <div className="relative mt-3 hidden sm:block">
-            <div className="flex justify-between">
-              {stepLabels.map((label, index) => {
-                if (index >= totalSteps) return null;
-                const { isCurrent } = getStepStatus(index);
-
-                return (
-                  <div key={index} className="flex-1 text-center" style={{ maxWidth: `${100 / totalSteps}%` }}>
-                    <span
-                      data-testid={`step-label-${index + 1}`}
-                      className={`text-xs truncate ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}`}
-                      title={label}
-                    >
-                      {label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Step counter */}
         <div className="mt-2 text-center text-sm text-muted-foreground" data-testid="step-counter">

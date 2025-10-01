@@ -70,10 +70,10 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
     >
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className={mode === 'setup' ? 'text-center' : ''}>
             {mode === 'edit' ? 'Edit API Model' : mode === 'setup' ? 'Setup API Models' : 'Create New API Model'}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className={mode === 'setup' ? 'text-center' : ''}>
             {mode === 'edit'
               ? 'Update the configuration for your API model'
               : mode === 'setup'

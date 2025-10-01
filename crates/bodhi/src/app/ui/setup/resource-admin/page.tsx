@@ -1,35 +1,12 @@
 'use client';
 
-import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
-import { SetupProgress } from '@/app/ui/setup/SetupProgress';
+import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOAuthInitiate } from '@/hooks/useAuth';
-import { motion } from 'framer-motion';
-import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 import { handleSmartRedirect } from '@/lib/utils';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-  },
-};
 
 function ResourceAdminContent() {
   const [error, setError] = useState<string | null>(null);
@@ -67,54 +44,39 @@ function ResourceAdminContent() {
   const isButtonDisabled = isLoading || redirecting;
 
   return (
-    <main className="min-h-screen bg-background p-4 md:p-8" data-testid="resource-admin-page">
-      <motion.div
-        className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+    <SetupContainer>
+      <SetupCard
+        title="Admin Setup"
+        footer={
+          <div className="flex flex-col gap-4 w-full">
+            <Button className="w-full" size="lg" onClick={handleOAuthInitiate} disabled={isButtonDisabled}>
+              {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
+            </Button>
+            <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
+          </div>
+        }
       >
-        <SetupProgress
-          currentStep={SETUP_STEPS.RESOURCE_ADMIN}
-          totalSteps={SETUP_TOTAL_STEPS}
-          stepLabels={SETUP_STEP_LABELS}
-        />
-        <BodhiLogo />
+        <div className="space-y-6" data-testid="resource-admin-page">
+          <div className="prose dark:prose-invert mx-auto">
+            <p className="text-center text-muted-foreground">
+              You are setting up Bodhi App in authenticated mode. The email address you log in with will be granted
+              admin role for this app instance.
+            </p>
+            {error && <p className="text-destructive text-sm text-center">{error}</p>}
+          </div>
 
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Admin Setup</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="prose dark:prose-invert mx-auto">
-                <p className="text-center text-muted-foreground">
-                  You are setting up Bodhi App in authenticated mode. The email address you log in with will be granted
-                  admin role for this app instance.
-                </p>
-                {error && <p className="text-destructive text-sm text-center">{error}</p>}
-              </div>
-
-              <div className="space-y-4 text-sm">
-                <div className="space-y-2">
-                  <h3 className="font-semibold">As an Admin, you can:</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    <li>Manage user access and permissions</li>
-                    <li>Unrestricted access to system-wide settings</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button className="w-full" size="lg" onClick={handleOAuthInitiate} disabled={isButtonDisabled}>
-                {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
-              </Button>
-              <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
-            </CardFooter>
-          </Card>
-        </motion.div>
-      </motion.div>
-    </main>
+          <div className="space-y-4 text-sm">
+            <div className="space-y-2">
+              <h3 className="font-semibold">As an Admin, you can:</h3>
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>Manage user access and permissions</li>
+                <li>Unrestricted access to system-wide settings</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </SetupCard>
+    </SetupContainer>
   );
 }
 

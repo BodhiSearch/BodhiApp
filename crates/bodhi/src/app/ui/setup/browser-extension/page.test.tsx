@@ -3,6 +3,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import BrowserExtensionSetupPage from './page';
 import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
+import { SetupProvider } from '@/app/ui/setup/components';
 
 // Mock Next.js router
 const mockPush = vi.fn();
@@ -10,6 +11,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  usePathname: () => '/ui/setup/browser-extension',
 }));
 
 // Mock framer-motion
@@ -73,6 +75,7 @@ vi.mock('@/components/ui/card', () => ({
   CardDescription: ({ children }: any) => <div data-testid="card-description">{children}</div>,
   CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
   CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
+  CardFooter: ({ children }: any) => <div data-testid="card-footer">{children}</div>,
 }));
 
 vi.mock('@/components/ui/button', () => ({
@@ -82,6 +85,11 @@ vi.mock('@/components/ui/button', () => ({
     </button>
   ),
 }));
+
+// Helper to render with SetupProvider
+const renderWithSetupProvider = (component: React.ReactElement) => {
+  return render(<SetupProvider>{component}</SetupProvider>);
+};
 
 describe('BrowserExtensionSetupPage', () => {
   beforeEach(() => {
@@ -107,14 +115,14 @@ describe('BrowserExtensionSetupPage', () => {
   });
 
   it('renders page with correct authentication requirements', () => {
-    render(<BrowserExtensionSetupPage />);
+    renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
     expect(screen.getByTestId('app-initializer')).toBeInTheDocument();
     expect(screen.getByTestId('browser-extension-setup-page')).toBeInTheDocument();
   });
 
   it('displays correct setup progress', () => {
-    render(<BrowserExtensionSetupPage />);
+    renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
     const setupProgress = screen.getByTestId('setup-progress');
     expect(setupProgress).toBeInTheDocument();
@@ -122,14 +130,13 @@ describe('BrowserExtensionSetupPage', () => {
   });
 
   it('renders welcome section and logo', () => {
-    render(<BrowserExtensionSetupPage />);
+    renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
     // Check for logo
     expect(screen.getByTestId('bodhi-logo')).toBeInTheDocument();
 
     // Check for welcome section
     expect(screen.getByText('Browser Extension Setup')).toBeInTheDocument();
-    expect(screen.getByTestId('monitor-icon')).toBeInTheDocument();
     expect(
       screen.getByText('Choose your browser and install the Bodhi extension to unlock AI features on any website.')
     ).toBeInTheDocument();
@@ -137,8 +144,10 @@ describe('BrowserExtensionSetupPage', () => {
     // Check for browser selector
     expect(screen.getByTestId('browser-selector')).toBeInTheDocument();
 
-    // Check for help section
-    expect(screen.getByText('Need help?')).toBeInTheDocument();
+    // Check for help section in footer
+    expect(
+      screen.getByText(/Need help\? The extension enables AI features directly in your browser tabs/)
+    ).toBeInTheDocument();
     expect(screen.getByText('You can always install the extension later from the settings page.')).toBeInTheDocument();
   });
 
@@ -155,16 +164,13 @@ describe('BrowserExtensionSetupPage', () => {
         },
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
       // Should show extension detection UI
       expect(screen.getByText('Extension Not Found')).toBeInTheDocument();
-      expect(screen.getByTestId('download-icon')).toBeInTheDocument();
       expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
-      expect(screen.getByTestId('skip-button')).toBeInTheDocument();
-
-      // Should not show continue button for unsupported browsers
-      expect(screen.queryByTestId('continue-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
+      expect(screen.getByText('Skip for Now')).toBeInTheDocument();
     });
 
     it('shows coming soon message for unsupported browsers', () => {
@@ -179,17 +185,15 @@ describe('BrowserExtensionSetupPage', () => {
         },
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
       // Should not show extension detection UI
       expect(screen.queryByText('Extension Not Found')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('download-icon')).not.toBeInTheDocument();
       expect(screen.queryByTestId('refresh-button')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('skip-button')).not.toBeInTheDocument();
 
-      // Should show continue button for unsupported browsers
-      expect(screen.getByTestId('continue-button')).toBeInTheDocument();
-      expect(screen.getByText('Continue Setup')).toBeInTheDocument();
+      // Should show skip button in footer
+      expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
+      expect(screen.getByText('Skip for Now')).toBeInTheDocument();
     });
   });
 
@@ -213,15 +217,14 @@ describe('BrowserExtensionSetupPage', () => {
         redetect: vi.fn(),
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
       // Should show extension found UI
-      expect(screen.getByText('Extension Found!')).toBeInTheDocument();
+      expect(screen.getByText('Extension Ready')).toBeInTheDocument();
       expect(screen.getByTestId('check-icon')).toBeInTheDocument();
-      expect(screen.getByText(/Perfect! The Bodhi Browser extension is installed and ready/)).toBeInTheDocument();
-      expect(screen.getByText(/Extension ID:/)).toBeInTheDocument();
-      expect(screen.getByText('test-extension-id-123')).toBeInTheDocument();
-      expect(screen.getByTestId('next-button')).toBeInTheDocument();
+      expect(screen.getByText(/The Bodhi Browser extension is installed and ready to use/)).toBeInTheDocument();
+      expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
+      expect(screen.getByText('Continue')).toBeInTheDocument();
     });
 
     it('handles supported browser with extension not installed', () => {
@@ -243,20 +246,20 @@ describe('BrowserExtensionSetupPage', () => {
         redetect: vi.fn(),
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
       // Should show extension not found UI
       expect(screen.getByText('Extension Not Found')).toBeInTheDocument();
-      expect(screen.getByTestId('download-icon')).toBeInTheDocument();
-      expect(screen.getByText('Install the extension to continue, then refresh this page.')).toBeInTheDocument();
+      expect(screen.getByText(/Install the extension and click below to verify/)).toBeInTheDocument();
       expect(screen.getByTestId('refresh-button')).toBeInTheDocument();
-      expect(screen.getByTestId('skip-button')).toBeInTheDocument();
+      expect(screen.getByTestId('browser-extension-continue')).toBeInTheDocument();
+      expect(screen.getByText('Skip for Now')).toBeInTheDocument();
     });
   });
 
   describe('Navigation button behavior', () => {
-    it('continues setup when next button is clicked', () => {
-      // Mock Chrome browser with extension installed (shows next button)
+    it('continues setup when continue button is clicked (extension installed)', () => {
+      // Mock Chrome browser with extension installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -274,16 +277,16 @@ describe('BrowserExtensionSetupPage', () => {
         redetect: vi.fn(),
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      const nextButton = screen.getByTestId('next-button');
-      nextButton.click();
+      const continueButton = screen.getByTestId('browser-extension-continue');
+      continueButton.click();
 
       expect(mockPush).toHaveBeenCalledWith('/ui/setup/complete');
     });
 
-    it('continues setup when skip button is clicked', () => {
-      // Mock Chrome browser with extension not installed (shows skip button)
+    it('continues setup when skip button is clicked (extension not installed)', () => {
+      // Mock Chrome browser with extension not installed
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Google Chrome',
@@ -301,16 +304,16 @@ describe('BrowserExtensionSetupPage', () => {
         redetect: vi.fn(),
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      const skipButton = screen.getByTestId('skip-button');
+      const skipButton = screen.getByTestId('browser-extension-continue');
       skipButton.click();
 
       expect(mockPush).toHaveBeenCalledWith('/ui/setup/complete');
     });
 
-    it('continues setup when continue button is clicked for unsupported browsers', () => {
-      // Mock Firefox browser (unsupported, shows continue button)
+    it('continues setup when skip button is clicked for unsupported browsers', () => {
+      // Mock Firefox browser (unsupported)
       vi.mocked(useBrowserDetection).mockReturnValue({
         detectedBrowser: {
           name: 'Mozilla Firefox',
@@ -321,10 +324,10 @@ describe('BrowserExtensionSetupPage', () => {
         },
       });
 
-      render(<BrowserExtensionSetupPage />);
+      renderWithSetupProvider(<BrowserExtensionSetupPage />);
 
-      const continueButton = screen.getByTestId('continue-button');
-      continueButton.click();
+      const skipButton = screen.getByTestId('browser-extension-continue');
+      skipButton.click();
 
       expect(mockPush).toHaveBeenCalledWith('/ui/setup/complete');
     });

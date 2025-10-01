@@ -14,9 +14,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
     browserInfoCard: '[data-testid="browser-info-card"]',
     installExtensionLink: '[data-testid="install-extension-link"]',
     refreshButton: '[data-testid="refresh-button"]',
-    skipButton: '[data-testid="skip-button"]',
-    nextButton: '[data-testid="next-button"]',
-    continueButton: '[data-testid="continue-button"]',
+    continueButton: '[data-testid="browser-extension-continue"]',
     welcomeTitle: 'text=Browser Extension Setup',
     extensionDetecting: '[data-testid="extension-detecting"]',
     extensionFound: '[data-testid="extension-found"]',
@@ -84,7 +82,6 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
 
     // Should NOT show extension detection UI
     await expect(this.page.locator(this.selectors.refreshButton)).not.toBeVisible();
-    await expect(this.page.locator(this.selectors.skipButton)).not.toBeVisible();
   }
 
   async expectExtensionDetecting() {
@@ -94,19 +91,29 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
   async expectExtensionNotFound() {
     await this.expectVisible(this.selectors.extensionNotFound);
     await this.expectVisible(this.selectors.refreshButton);
-    await this.expectVisible(this.selectors.skipButton);
+    await this.expectVisible(this.selectors.continueButton);
 
     // Should show install guidance
-    await expect(this.page.locator('text=Install the extension to continue')).toBeVisible();
+    await expect(
+      this.page.locator('text=Install the extension and click below to verify')
+    ).toBeVisible();
+
+    // Verify button shows "Skip for Now"
+    const continueButton = this.page.locator(this.selectors.continueButton);
+    await expect(continueButton).toContainText('Skip for Now');
   }
 
   async expectExtensionFound() {
     await this.expectVisible(this.selectors.extensionFound);
-    await this.expectVisible(this.selectors.nextButton);
+    await this.expectVisible(this.selectors.continueButton);
 
     await expect(
-      this.page.locator('text=Perfect! The Bodhi Browser extension is installed')
+      this.page.locator('text=The Bodhi Browser extension is installed and ready to use')
     ).toBeVisible();
+
+    // Verify button shows "Continue"
+    const continueButton = this.page.locator(this.selectors.continueButton);
+    await expect(continueButton).toContainText('Continue');
   }
 
   async clickRefresh() {
@@ -115,16 +122,6 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
 
     // Should trigger page reload
     await this.page.waitForLoadState('networkidle');
-  }
-
-  async clickSkip() {
-    await this.expectVisible(this.selectors.skipButton);
-    await this.page.click(this.selectors.skipButton);
-  }
-
-  async clickNext() {
-    await this.expectVisible(this.selectors.nextButton);
-    await this.page.click(this.selectors.nextButton);
   }
 
   async clickContinue() {
@@ -145,21 +142,8 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
   async completeBrowserExtensionSetup(options = {}) {
     const { browser = 'chrome', extensionInstalled = false, skipExtension = false } = options;
 
-    if (browser === 'firefox' || browser === 'safari') {
-      // Unsupported browser - just continue
-      await this.clickContinue();
-      return;
-    }
-
-    // Supported browser (Chrome/Edge)
-    if (skipExtension) {
-      await this.clickSkip();
-    } else if (extensionInstalled) {
-      await this.clickNext();
-    } else {
-      // Extension not installed - skip for now
-      await this.clickSkip();
-    }
+    // All browsers now use the unified continue button
+    await this.clickContinue();
   }
 
   // Browser-specific test helpers

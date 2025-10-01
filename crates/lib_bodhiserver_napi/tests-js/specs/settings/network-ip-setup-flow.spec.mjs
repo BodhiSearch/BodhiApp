@@ -86,7 +86,7 @@ test.describe('Network IP Authentication Setup Flow', () => {
 
       // Step 5: Browser Extension page
       await browserExtensionPage.expectBrowserExtensionPage();
-      await browserExtensionPage.clickSkip();
+      await browserExtensionPage.clickContinue();
 
       // Step 6: Setup completion
       await completePage.expectSetupCompletePage();
@@ -174,7 +174,7 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await apiModelsPage.skipApiSetup();
 
       await browserExtensionPage.expectBrowserExtensionPage();
-      await browserExtensionPage.clickSkip();
+      await browserExtensionPage.clickContinue();
 
       await completePage.expectSetupCompletePage();
       await completePage.clickStartUsingApp();

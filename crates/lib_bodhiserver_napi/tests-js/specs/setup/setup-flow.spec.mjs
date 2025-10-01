@@ -96,8 +96,8 @@ test.describe('First-Time Setup Flow Integration', () => {
     await browserExtensionPage.expectBrowserExtensionPage();
     await browserExtensionPage.expectStepIndicator(5);
     await browserExtensionPage.expectBrowserSelectorPresent();
-    // Skip extension setup (will click skip or continue depending on browser support)
-    await browserExtensionPage.completeBrowserExtensionSetup({ skipExtension: true });
+    // Skip extension setup (using unified continue button)
+    await browserExtensionPage.clickContinue();
 
     // Step 6: Setup completion using page object
     await page.waitForURL((url) => url.pathname === '/ui/setup/complete/');
