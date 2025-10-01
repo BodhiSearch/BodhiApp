@@ -108,8 +108,8 @@ test.describe('Browser Extension Setup Integration', () => {
     // Should still show extension not found after refresh
     await browserExtensionPage.expectExtensionNotFound();
 
-    // Phase 4: Skip extension installation
-    await browserExtensionPage.clickSkip();
+    // Phase 4: Skip extension installation (using unified continue button)
+    await browserExtensionPage.clickContinue();
 
     // Phase 5: Verify navigation to completion
     await page.waitForURL((url) => url.pathname === '/ui/setup/complete/');
@@ -123,8 +123,8 @@ test.describe('Browser Extension Setup Integration', () => {
     await browserExtensionPage.expectBrowserExtensionPage();
     await browserExtensionPage.expectStepIndicator(5);
 
-    // Complete the test by skipping extension again
-    await browserExtensionPage.clickSkip();
+    // Complete the test by continuing through the page
+    await browserExtensionPage.clickContinue();
     await browserExtensionPage.expectNavigationToComplete();
   });
 });

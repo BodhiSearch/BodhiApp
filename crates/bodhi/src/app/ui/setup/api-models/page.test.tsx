@@ -34,6 +34,9 @@ import {
   selectApiFormat,
 } from '@/test-utils/api-model-test-utils';
 
+// Import SetupProvider for context
+import { SetupProvider } from '@/app/ui/setup/components';
+
 // Mock next/navigation router
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
@@ -43,6 +46,7 @@ vi.mock('next/navigation', () => ({
     replace: mockReplace,
   }),
   useSearchParams: vi.fn(),
+  usePathname: () => '/ui/setup/api-models',
 }));
 
 // Mock toast notifications
@@ -67,6 +71,11 @@ vi.mock('@/app/ui/setup/BodhiLogo', () => ({
 // Setup MSW v2 server
 setupMswV2();
 
+// Helper to render with SetupProvider
+const renderWithSetupProvider = (component: React.ReactElement) => {
+  return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
+};
+
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -85,7 +94,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       );
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for and verify the page container is rendered
       await waitFor(() => {
@@ -115,7 +124,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       );
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for the page to fully load
       await waitFor(() => {
@@ -137,7 +146,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
       const skipButton = screen.getByTestId('skip-api-setup');
       expect(skipButton).toBeInTheDocument();
-      expect(skipButton).toHaveTextContent('Skip for Now');
+      expect(skipButton).toHaveTextContent('Continue');
 
       // No cancel button in setup mode
       expect(screen.queryByTestId('cancel-button')).not.toBeInTheDocument();
@@ -175,7 +184,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       const user = userEvent.setup();
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for the page to fully load
       await waitFor(() => {
@@ -208,7 +217,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       );
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for the page to fully load
       await waitFor(() => {
@@ -254,7 +263,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       );
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for the page to fully load
       await waitFor(() => {
@@ -309,7 +318,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       );
 
       // Render the setup page
-      render(<ApiModelsSetupPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ApiModelsSetupPage />);
 
       // Wait for the page to fully load
       await waitFor(() => {

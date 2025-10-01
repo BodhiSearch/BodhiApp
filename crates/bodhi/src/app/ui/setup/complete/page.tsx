@@ -2,22 +2,13 @@
 
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ROUTE_CHAT } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
-import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
+import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -127,15 +118,8 @@ function SetupCompleteContent() {
 
   return (
     <main className="min-h-screen bg-background">
-      <motion.div
-        className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {showConfetti && <Confetti />}
-        <BodhiLogo />
-
+      {showConfetti && <Confetti />}
+      <SetupContainer showProgress={false}>
         {/* Completion Message */}
         <motion.div variants={itemVariants} className="text-center space-y-4">
           <h1 className="text-4xl font-bold">🎉 Setup Complete!</h1>
@@ -145,63 +129,53 @@ function SetupCompleteContent() {
         </motion.div>
 
         {/* Social Links */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Join Our Community</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {socialLinks.map((link) => (
-                <motion.a
-                  key={link.title}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${link.color}`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {link.icon}
-                  <div className="flex-1">
-                    <h3 className="font-medium flex items-center gap-2">
-                      {link.title}
-                      {link.stats && <span className="text-sm text-muted-foreground">{link.stats}</span>}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{link.description}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </motion.a>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
+        <SetupCard title="Join Our Community">
+          <div className="grid gap-4">
+            {socialLinks.map((link) => (
+              <motion.a
+                key={link.title}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-4 p-4 rounded-lg transition-colors ${link.color}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {link.icon}
+                <div className="flex-1">
+                  <h3 className="font-medium flex items-center gap-2">
+                    {link.title}
+                    {link.stats && <span className="text-sm text-muted-foreground">{link.stats}</span>}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </motion.a>
+            ))}
+          </div>
+        </SetupCard>
 
         {/* Resources */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Quick Resources</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {resourceLinks.map((link) => (
-                <motion.a
-                  key={link.title}
-                  href={link.url}
-                  className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {link.icon}
-                  <div>
-                    <h3 className="font-medium">{link.title}</h3>
-                    <p className="text-sm text-muted-foreground">{link.description}</p>
-                  </div>
-                  <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                </motion.a>
-              ))}
-            </CardContent>
-          </Card>
-        </motion.div>
+        <SetupCard title="Quick Resources">
+          <div className="grid gap-4">
+            {resourceLinks.map((link) => (
+              <motion.a
+                key={link.title}
+                href={link.url}
+                className="flex items-center gap-4 p-4 rounded-lg hover:bg-muted"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {link.icon}
+                <div>
+                  <h3 className="font-medium">{link.title}</h3>
+                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                </div>
+                <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
+              </motion.a>
+            ))}
+          </div>
+        </SetupCard>
 
         {/* Start Using App Button */}
         <motion.div variants={itemVariants} className="flex justify-center pt-4">
@@ -209,7 +183,7 @@ function SetupCompleteContent() {
             Start Using Bodhi App →
           </Button>
         </motion.div>
-      </motion.div>
+      </SetupContainer>
     </main>
   );
 }

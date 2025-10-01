@@ -12,6 +12,7 @@ import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SetupProvider } from '@/app/ui/setup/components';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -22,6 +23,7 @@ vi.mock('next/navigation', () => ({
     get: () => null,
   }),
   redirect: vi.fn(),
+  usePathname: () => '/ui/setup/resource-admin',
 }));
 
 vi.mock('next/image', () => ({
@@ -29,6 +31,10 @@ vi.mock('next/image', () => ({
 }));
 
 setupMswV2();
+
+const renderWithSetupProvider = (component: React.ReactElement) => {
+  return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
+};
 
 beforeEach(() => {
   mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
@@ -41,7 +47,7 @@ describe('ResourceAdminPage', () => {
   it('renders the resource admin page when status is resource-admin', async () => {
     server.use(...mockAppInfoResourceAdmin());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Admin Setup')).toBeInTheDocument();
@@ -52,7 +58,7 @@ describe('ResourceAdminPage', () => {
   it('redirects to /ui/setup when status is setup', async () => {
     server.use(...mockAppInfoSetup());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup');
@@ -62,7 +68,7 @@ describe('ResourceAdminPage', () => {
   it('redirects to download models when status is ready and models page not shown', async () => {
     server.use(...mockAppInfoReady());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup/download-models');
@@ -88,7 +94,7 @@ describe('ResourceAdminPage', () => {
 
     server.use(...mockAppInfoReady());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
@@ -101,7 +107,7 @@ describe('ResourceAdminPage', () => {
       ...mockAuthInitiateUnauthenticated({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -123,7 +129,7 @@ describe('ResourceAdminPage', () => {
       ...mockAuthInitiateAlreadyAuthenticated({ location: 'http://localhost:3000/ui/chat' })
     );
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -145,7 +151,7 @@ describe('ResourceAdminPage', () => {
       ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -161,7 +167,7 @@ describe('ResourceAdminPage', () => {
       ...mockAuthInitiateError({ status: 500, code: 'oauth_config_error', message: 'OAuth configuration error' })
     );
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -180,7 +186,7 @@ describe('ResourceAdminPage', () => {
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
     server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiateError());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -193,7 +199,7 @@ describe('ResourceAdminPage', () => {
   it('handles default auth initiate response', async () => {
     server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate());
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
@@ -206,7 +212,7 @@ describe('ResourceAdminPage', () => {
   it('handles custom URL in response by treating as external and keeping button disabled', async () => {
     server.use(...mockAppInfoResourceAdmin(), ...mockAuthInitiate({ location: 'invalid-url-format' }));
 
-    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ResourceAdminPage />);
 
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);

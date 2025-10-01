@@ -1,4 +1,5 @@
 import Setup from '@/app/ui/setup/page';
+import { SetupProvider } from '@/app/ui/setup/components';
 import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
@@ -16,16 +17,23 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 const mockToast = vi.fn();
 const pushMock = vi.fn();
+const mockPathname = '/ui/setup';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => mockPathname,
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
+
+// Helper to render with SetupProvider
+const renderWithSetupProvider = (component: React.ReactElement) => {
+  return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
+};
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -56,7 +64,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Verify form is rendered
@@ -84,7 +92,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Fill out the form with valid data (minimum 10 characters for name)
@@ -105,7 +113,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Fill out the form with valid data (minimum 10 characters for name)
@@ -124,7 +132,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Fill out the form with invalid data (less than 10 characters)
@@ -146,7 +154,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Fill out the form with invalid data (more than 100 characters)
@@ -169,7 +177,7 @@ describe('Setup Page', () => {
     const user = userEvent.setup();
 
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     // Fill out the form with valid name but invalid description
@@ -196,7 +204,7 @@ describe('Setup Page', () => {
 
   it('should render page content', async () => {
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
 
     expect(screen.getByText('Complete Privacy')).toBeInTheDocument();
@@ -218,7 +226,7 @@ describe('Setup Page', () => {
 
     const user = userEvent.setup();
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
     await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));
@@ -232,7 +240,7 @@ describe('Setup Page', () => {
   it('should submit form with only required fields', async () => {
     const user = userEvent.setup();
     await act(async () => {
-      render(<Setup />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<Setup />);
     });
     await user.type(screen.getByLabelText(/server name/i), 'My Test Server Instance');
     await user.click(screen.getByRole('button', { name: /setup bodhi server/i }));

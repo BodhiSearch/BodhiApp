@@ -23,6 +23,7 @@
  */
 
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
+import { SetupProvider } from '@/app/ui/setup/components';
 import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import {
@@ -43,6 +44,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => '/ui/setup/download-models',
 }));
 
 const mockToast = vi.fn();
@@ -54,6 +56,11 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 }));
 
 setupMswV2();
+
+// Helper to render with SetupProvider
+const renderWithSetupProvider = (component: React.ReactElement) => {
+  return render(<SetupProvider>{component}</SetupProvider>, { wrapper: createWrapper() });
+};
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -67,7 +74,7 @@ describe('ModelDownloadPage Access Control', () => {
     server.use(...mockAppInfoSetup(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
-      render(<ModelDownloadPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ModelDownloadPage />);
     });
 
     expect(pushMock).toHaveBeenCalledWith('/ui/setup');
@@ -81,7 +88,7 @@ describe('ModelDownloadPage Access Control', () => {
     );
 
     await act(async () => {
-      render(<ModelDownloadPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ModelDownloadPage />);
     });
 
     await waitFor(() => {
@@ -94,7 +101,7 @@ describe('ModelDownloadPage Access Control', () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedOut(), ...mockModelPullDownloadsEmpty());
 
     await act(async () => {
-      render(<ModelDownloadPage />, { wrapper: createWrapper() });
+      renderWithSetupProvider(<ModelDownloadPage />);
     });
 
     expect(pushMock).toHaveBeenCalledWith('/ui/login');
@@ -113,7 +120,7 @@ describe('ModelDownloadPage Integration Tests', () => {
       ...mockModelPull({ repo: 'bartowski/Qwen2.5-14B-Instruct-GGUF', filename: 'Qwen2.5-14B-Instruct-Q4_K_M.gguf' })
     );
 
-    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ModelDownloadContent />);
 
     await waitFor(() => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();
@@ -173,7 +180,7 @@ describe('ModelDownloadPage Integration Tests', () => {
       })
     );
 
-    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ModelDownloadContent />);
 
     await waitFor(() => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();
@@ -210,7 +217,7 @@ describe('ModelDownloadPage Error Handling', () => {
       })
     );
 
-    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ModelDownloadContent />);
 
     await waitFor(() => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();
@@ -250,7 +257,7 @@ describe('ModelDownloadPage Navigation', () => {
   it('continue button navigates and sets localStorage flag', async () => {
     const user = userEvent.setup();
 
-    render(<ModelDownloadContent />, { wrapper: createWrapper() });
+    renderWithSetupProvider(<ModelDownloadContent />);
 
     await waitFor(() => {
       expect(screen.getByText('Chat Models')).toBeInTheDocument();

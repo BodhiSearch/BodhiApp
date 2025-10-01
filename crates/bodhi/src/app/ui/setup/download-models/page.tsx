@@ -2,12 +2,8 @@
 
 import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
 import { ModelInfo, ModelCatalog } from '@/app/ui/setup/download-models/types';
-import { SETUP_STEPS, SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '@/app/ui/setup/constants';
-import { SetupProgress } from '@/app/ui/setup/SetupProgress';
-import { containerVariants, itemVariants } from '@/app/ui/setup/types';
+import { SetupContainer, SetupCard, SetupFooter } from '@/app/ui/setup/components';
 import AppInitializer from '@/components/AppInitializer';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatModelsCatalog, useEmbeddingModelsCatalog } from '@/hooks/useModelCatalog';
@@ -16,7 +12,6 @@ import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/l
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 export function ModelDownloadContent() {
   const router = useRouter();
@@ -73,88 +68,47 @@ export function ModelDownloadContent() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
-      <motion.div
-        className="mx-auto max-w-7xl space-y-6 p-4 md:p-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <SetupProgress
-          currentStep={SETUP_STEPS.DOWNLOAD_MODELS}
-          totalSteps={SETUP_TOTAL_STEPS}
-          stepLabels={SETUP_STEP_LABELS}
-        />
-        <BodhiLogo />
+    <SetupContainer>
+      <SetupCard title="Chat Models">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {chatModels.map((model) => {
+            const modelWithState = getDownloadState(model);
+            const downloadProgress = getDownloadProgress(model);
+            return (
+              <ModelCard
+                key={model.id}
+                model={modelWithState}
+                onDownload={() => handleModelDownload(model)}
+                downloadProgress={downloadProgress}
+              />
+            );
+          })}
+        </div>
+      </SetupCard>
 
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-lg">Chat Models</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {chatModels.map((model) => {
-                  const modelWithState = getDownloadState(model);
-                  const downloadProgress = getDownloadProgress(model);
-                  return (
-                    <ModelCard
-                      key={model.id}
-                      model={modelWithState}
-                      onDownload={() => handleModelDownload(model)}
-                      downloadProgress={downloadProgress}
-                    />
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <SetupCard title="Embedding Models" description="For RAG, semantic search, and document retrieval">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {embeddingModels.map((model) => {
+            const modelWithState = getDownloadState(model);
+            const downloadProgress = getDownloadProgress(model);
+            return (
+              <ModelCard
+                key={model.id}
+                model={modelWithState}
+                onDownload={() => handleModelDownload(model)}
+                downloadProgress={downloadProgress}
+              />
+            );
+          })}
+        </div>
+      </SetupCard>
 
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center text-lg">Embedding Models</CardTitle>
-              <p className="text-center text-sm text-muted-foreground">
-                For RAG, semantic search, and document retrieval
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {embeddingModels.map((model) => {
-                  const modelWithState = getDownloadState(model);
-                  const downloadProgress = getDownloadProgress(model);
-                  return (
-                    <ModelCard
-                      key={model.id}
-                      model={modelWithState}
-                      onDownload={() => handleModelDownload(model)}
-                      downloadProgress={downloadProgress}
-                    />
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardContent className="py-4">
-              <p className="text-sm text-center text-muted-foreground">
-                Downloads will continue in the background. You can download additional models later on the Models page.
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="flex justify-end">
-          <Button data-testid="continue-button" variant="outline" onClick={() => router.push(ROUTE_SETUP_API_MODELS)}>
-            Continue
-          </Button>
-        </motion.div>
-      </motion.div>
-    </main>
+      <SetupFooter
+        clarificationText="Downloads will continue in the background. You can download additional models later on the Models page."
+        onContinue={() => router.push(ROUTE_SETUP_API_MODELS)}
+        buttonTestId="continue-button"
+      />
+    </SetupContainer>
   );
 }
 
