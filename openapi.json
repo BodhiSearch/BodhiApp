@@ -4319,6 +4319,106 @@
         ]
       }
     },
+    "/v1/embeddings": {
+      "post": {
+        "tags": [
+          "openai"
+        ],
+        "summary": "Create Embeddings (OpenAI Compatible)",
+        "description": "Creates embeddings for the input text using the specified model. Fully compatible with OpenAI's embeddings API format.",
+        "operationId": "createEmbedding",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEmbeddingRequest"
+              },
+              "example": {
+                "input": "The quick brown fox jumps over the lazy dog",
+                "model": "text-embedding-model"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Embedding response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateEmbeddingResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "embedding": [
+                        0.1,
+                        0.2,
+                        0.3
+                      ],
+                      "index": 0,
+                      "object": "embedding"
+                    }
+                  ],
+                  "model": "text-embedding-model",
+                  "object": "list",
+                  "usage": {
+                    "prompt_tokens": 8,
+                    "total_tokens": 8
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/v1/models": {
       "get": {
         "tags": [
@@ -6702,6 +6802,79 @@
           }
         }
       },
+      "CreateEmbeddingRequest": {
+        "type": "object",
+        "required": [
+          "model",
+          "input"
+        ],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "ID of the model to use. You can use the\n[List models](https://platform.openai.com/docs/api-reference/models/list)\nAPI to see all of your available models, or see our\n[Model overview](https://platform.openai.com/docs/models/overview)\nfor descriptions of them."
+          },
+          "input": {
+            "$ref": "#/components/schemas/EmbeddingInput",
+            "description": "Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for `text-embedding-ada-002`), cannot be an empty string, and any array must be 2048 dimensions or less. [Example Python code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for counting tokens."
+          },
+          "encoding_format": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EncodingFormat",
+                "description": "The format to return the embeddings in. Can be either `float` or [`base64`](https://pypi.org/project/pybase64/). Defaults to float"
+              }
+            ]
+          },
+          "user": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A unique identifier representing your end-user, which will help OpenAI\n to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/usage-policies/end-user-ids)."
+          },
+          "dimensions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` and later models.",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateEmbeddingResponse": {
+        "type": "object",
+        "required": [
+          "object",
+          "model",
+          "data",
+          "usage"
+        ],
+        "properties": {
+          "object": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "description": "The name of the model used to generate the embedding."
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Embedding"
+            },
+            "description": "The list of embeddings generated by the model."
+          },
+          "usage": {
+            "$ref": "#/components/schemas/EmbeddingUsage",
+            "description": "The usage information for the request."
+          }
+        }
+      },
       "DownloadRequest": {
         "type": "object",
         "required": [
@@ -6772,6 +6945,95 @@
       },
       "Duration": {
         "type": "string"
+      },
+      "Embedding": {
+        "type": "object",
+        "description": "Represents an embedding vector returned by embedding endpoint.",
+        "required": [
+          "index",
+          "object",
+          "embedding"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The index of the embedding in the list of embeddings.",
+            "minimum": 0
+          },
+          "object": {
+            "type": "string",
+            "description": "The object type, which is always \"embedding\"."
+          },
+          "embedding": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "The embedding vector, which is a list of floats. The length of vector\ndepends on the model as listed in the [embedding guide](https://platform.openai.com/docs/guides/embeddings)."
+          }
+        }
+      },
+      "EmbeddingInput": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              }
+            }
+          }
+        ]
+      },
+      "EmbeddingUsage": {
+        "type": "object",
+        "required": [
+          "prompt_tokens",
+          "total_tokens"
+        ],
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The number of tokens used by the prompt.",
+            "minimum": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The total number of tokens used by the request.",
+            "minimum": 0
+          }
+        }
+      },
+      "EncodingFormat": {
+        "type": "string",
+        "enum": [
+          "float",
+          "base64"
+        ]
       },
       "ErrorBody": {
         "type": "object",

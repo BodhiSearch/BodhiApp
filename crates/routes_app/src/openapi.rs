@@ -29,7 +29,8 @@ use crate::{
 use async_openai::types::{
   ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
   CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
-  CreateChatCompletionStreamResponse,
+  CreateChatCompletionStreamResponse, CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding,
+  EmbeddingInput, EmbeddingUsage,
 };
 use objs::{
   Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
@@ -38,9 +39,9 @@ use objs::{
   API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
-  ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_oai_model_handler,
-  __path_oai_models_handler, __path_ollama_model_chat_handler, __path_ollama_model_show_handler,
-  __path_ollama_models_handler,
+  ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_embeddings_handler,
+  __path_oai_model_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
+  __path_ollama_model_show_handler, __path_ollama_models_handler,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -222,6 +223,11 @@ For API keys, specify required scope when creating the token.
             ChatChoice,
             ChatChoiceStream,
             CompletionUsage,
+            CreateEmbeddingRequest,
+            CreateEmbeddingResponse,
+            Embedding,
+            EmbeddingInput,
+            EmbeddingUsage,
         ),
         responses( ),
     ),
@@ -276,6 +282,7 @@ For API keys, specify required scope when creating the token.
         oai_models_handler,
         oai_model_handler,
         chat_completions_handler,
+        embeddings_handler,
 
         // Ollama endpoints
         ollama_models_handler,
