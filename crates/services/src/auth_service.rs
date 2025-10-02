@@ -396,28 +396,120 @@ impl AuthService for KeycloakAuthService {
     let url = self.auth_token_url();
     log::log_http_request("POST", &url, "auth_service", Some(&params));
 
-    let response = self
-      .client
-      .post(&url)
-      .form(&params)
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
+    // Retry logic with exponential backoff for network errors only
+    // Attempts: 1st try immediate, retry 1 after 100ms, retry 2 after 500ms, retry 3 after 2000ms
+    let max_retries = 3;
+    let mut last_error = None;
 
-    if response.status().is_success() {
-      let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
-        response.json().await?;
-      Ok((
-        token_response.access_token().secret().to_string(),
-        token_response
-          .refresh_token()
-          .map(|s| s.secret().to_string()),
-      ))
-    } else {
-      let error = response.json::<KeycloakError>().await?;
-      log::log_http_error("POST", &url, "auth_service", &error.error);
-      Err(error.into())
+    for attempt in 0..=max_retries {
+      if attempt > 0 {
+        let delay_ms = match attempt {
+          1 => 100,
+          2 => 500,
+          3 => 2000,
+          _ => 0,
+        };
+        tracing::info!(
+          "Retrying token refresh (attempt {}/{}) after {}ms delay",
+          attempt,
+          max_retries,
+          delay_ms
+        );
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+      }
+
+      let response = match self
+        .client
+        .post(&url)
+        .form(&params)
+        .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+        .send()
+        .await
+      {
+        Ok(resp) => resp,
+        Err(e) => {
+          // Check if this is a network/timeout error that should be retried
+          if e.is_timeout() || e.is_connect() || e.is_request() {
+            tracing::warn!(
+              "Network error during token refresh (attempt {}/{}): {}",
+              attempt + 1,
+              max_retries + 1,
+              e
+            );
+            last_error = Some(e.into());
+            continue; // Retry
+          } else {
+            // Other errors (e.g., invalid request structure) should not be retried
+            tracing::error!("Non-retryable error during token refresh: {}", e);
+            return Err(e.into());
+          }
+        }
+      };
+
+      // Check response status
+      if response.status().is_success() {
+        let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+          response.json().await?;
+        tracing::info!(
+          "Token refresh successful{}",
+          if attempt > 0 {
+            format!(" after {} retries", attempt)
+          } else {
+            String::new()
+          }
+        );
+        return Ok((
+          token_response.access_token().secret().to_string(),
+          token_response
+            .refresh_token()
+            .map(|s| s.secret().to_string()),
+        ));
+      } else {
+        // 4xx or 5xx response - parse error
+        let status = response.status();
+        let error = response.json::<KeycloakError>().await?;
+
+        // 4xx errors (client errors) should not be retried
+        if status.is_client_error() {
+          tracing::error!(
+            "Token refresh failed with client error ({}): {}",
+            status,
+            error.error
+          );
+          log::log_http_error("POST", &url, "auth_service", &error.error);
+          return Err(error.into());
+        }
+
+        // 5xx errors (server errors) can be retried
+        if status.is_server_error() && attempt < max_retries {
+          tracing::warn!(
+            "Token refresh failed with server error (attempt {}/{}): {} - {}",
+            attempt + 1,
+            max_retries + 1,
+            status,
+            error.error
+          );
+          last_error = Some(error.into());
+          continue; // Retry
+        } else {
+          tracing::error!(
+            "Token refresh failed with server error (final attempt): {} - {}",
+            status,
+            error.error
+          );
+          log::log_http_error("POST", &url, "auth_service", &error.error);
+          return Err(error.into());
+        }
+      }
     }
+
+    // All retries exhausted
+    tracing::error!("Token refresh failed after {} attempts", max_retries + 1);
+    Err(
+      last_error.unwrap_or_else(|| {
+        AuthServiceError::AuthServiceApiError("Max retries exceeded".to_string())
+      }),
+    )
   }
 
   async fn make_resource_admin(

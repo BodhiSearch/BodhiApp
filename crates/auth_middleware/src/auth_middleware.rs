@@ -159,6 +159,7 @@ pub async fn auth_middleware(
       .await
       .map_err(AuthError::from)?
     {
+      debug!("auth_middleware: found access token in session, validating");
       let (access_token, role) = token_service
         .get_valid_session_token(session, access_token)
         .await?;
@@ -172,19 +173,25 @@ pub async fn auth_middleware(
       }
       // username only for session tokens for now, will implement for bearer once we implement access token story
       let claims = extract_claims::<UserIdClaims>(&access_token)?;
+      let user_id = claims.sub.clone();
       req.headers_mut().insert(
         KEY_HEADER_BODHIAPP_USERNAME,
         claims.preferred_username.parse().unwrap(),
       );
       req
         .headers_mut()
-        .insert(KEY_HEADER_BODHIAPP_USER_ID, claims.sub.parse().unwrap());
-      debug!("auth_middleware: session token validated");
+        .insert(KEY_HEADER_BODHIAPP_USER_ID, user_id.parse().unwrap());
+      debug!(
+        "auth_middleware: session token validated successfully for user: {}",
+        user_id
+      );
       Ok(next.run(req).await)
     } else {
+      debug!("auth_middleware: no access token in session, returning InvalidAccess");
       Err(AuthError::InvalidAccess)?
     }
   } else {
+    debug!("auth_middleware: request is not same-origin, returning InvalidAccess");
     Err(AuthError::InvalidAccess)?
   }
 }
@@ -228,7 +235,7 @@ pub async fn inject_optional_auth_info(
     // session token
     if let Ok(Some(access_token)) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
       match token_service
-        .get_valid_session_token(session, access_token)
+        .get_valid_session_token(session.clone(), access_token.clone())
         .await
       {
         Ok((validated_token, role)) => {
@@ -252,16 +259,41 @@ pub async fn inject_optional_auth_info(
         }
         Err(AuthError::RefreshTokenNotFound) => {
           // Log this specific case - user needs to re-login
-          debug!(
-            "inject_session_auth_info: session has no refresh token - user must re-authenticate"
-          );
+          // Clear the invalid session data to prevent repeated failed refresh attempts
+          debug!("inject_session_auth_info: session has no refresh token - clearing session data");
+          if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
+            debug!(?e, "Failed to clear access token from session");
+          }
+          if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
+            debug!(?e, "Failed to clear refresh token from session");
+          }
+          if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
+            debug!(?e, "Failed to clear user_id from session");
+          }
         }
         Err(err) => {
-          // Log other errors but continue
+          // Log other errors and clear session on unrecoverable errors
           debug!(
             ?err,
             "inject_session_auth_info: token validation/refresh failed"
           );
+
+          // Check if this is an auth error that indicates session should be cleared
+          if matches!(
+            err,
+            AuthError::Token(_) | AuthError::AuthService(_) | AuthError::InvalidToken(_)
+          ) {
+            debug!("inject_session_auth_info: clearing invalid session due to auth error");
+            if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
+              debug!(?e, "Failed to clear access token from session");
+            }
+            if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
+              debug!(?e, "Failed to clear refresh token from session");
+            }
+            if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
+              debug!(?e, "Failed to clear user_id from session");
+            }
+          }
         }
       }
     } else {
@@ -654,6 +686,101 @@ mod tests {
         .as_str()
         .unwrap()
     );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_token_refresh_persists_to_session(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    expired_token: (String, String),
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let (expired_token, _) = expired_token;
+    let mut access_token_claims = access_token_claims();
+    access_token_claims["resource_access"][TEST_CLIENT_ID]["roles"] =
+      Value::Array(vec![Value::String("resource_admin".to_string())]);
+    let (new_access_token, _) = build_token(access_token_claims)?;
+    let new_access_token_cl = new_access_token.clone();
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+          "access_token".to_string() => Value::String(expired_token.clone()),
+          "refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+
+    // Create mock auth service that succeeds refresh
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_refresh_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq("valid_refresh_token".to_string()),
+      )
+      .times(1)
+      .return_once(|_, _, _| Ok((new_access_token_cl, Some("new_refresh_token".to_string()))));
+
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .auth_service(Arc::new(mock_auth_service))
+      .session_service(session_service.clone())
+      .with_db_service()
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
+
+    // First request should trigger refresh
+    let req1 = Request::get("/with_auth")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
+      .body(Body::empty())?;
+    let router = test_router(state.clone());
+
+    let response1 = router.clone().oneshot(req1).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response1.status());
+
+    // Verify session was updated with new tokens
+    let updated_record = session_service.session_store.load(&id).await?.unwrap();
+    assert_eq!(
+      new_access_token,
+      updated_record
+        .data
+        .get("access_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+    assert_eq!(
+      "new_refresh_token",
+      updated_record
+        .data
+        .get("refresh_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+
+    // Second request should use the refreshed token without another refresh
+    let req2 = Request::get("/with_auth")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
+      .body(Body::empty())?;
+
+    let response2 = router.oneshot(req2).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response2.status());
 
     Ok(())
   }
