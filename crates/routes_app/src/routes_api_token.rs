@@ -1,23 +1,27 @@
 use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
-use auth_middleware::KEY_HEADER_BODHIAPP_TOKEN;
+use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN};
 use axum::{
   extract::{Path, Query, State},
   http::{HeaderMap, StatusCode},
   Json,
 };
 use axum_extra::extract::WithRejection;
+use base64::{engine::general_purpose, Engine};
 use objs::{
-  ApiError, AppError, EntityError, ErrorType, OpenAIApiError, ServiceUnavailableError,
-  API_TAG_API_KEYS,
+  ApiError, AppError, BadRequestError, EntityError, ErrorType, OpenAIApiError, ResourceRole,
+  TokenScope, API_TAG_API_KEYS,
 };
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
   db::{ApiToken, TokenStatus},
   extract_claims, AuthServiceError, IdClaims, TokenError,
 };
-use std::sync::Arc;
+use sha2::{Digest, Sha256};
+use std::{str::FromStr, sync::Arc};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 /// Request to create a new API token
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -33,12 +37,12 @@ pub struct CreateApiTokenRequest {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
-    "offline_token": "bapp_1234567890abcdef"
+    "token": "bodhiapp_1234567890abcdef"
 }))]
 pub struct ApiTokenResponse {
-  /// API token with bapp_ prefix for programmatic access
-  #[schema(example = "bapp_1234567890abcdef")]
-  offline_token: String,
+  /// API token with bodhiapp_ prefix for programmatic access
+  #[schema(example = "bodhiapp_1234567890abcdef")]
+  token: String,
 }
 
 /// Request to update an existing API token
@@ -81,7 +85,7 @@ pub enum ApiTokenError {
     tag = API_TAG_API_KEYS,
     operation_id = "createApiToken",
     summary = "Create API Token",
-    description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. This feature is currently not available.",
+    description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).",
     request_body(
         content = CreateApiTokenRequest,
         description = "API token creation parameters",
@@ -93,7 +97,7 @@ pub enum ApiTokenError {
     responses(
         (status = 201, description = "API token created successfully", body = ApiTokenResponse,
          example = json!({
-             "offline_token": "bapp_1234567890abcdef"
+             "token": "bodhiapp_1234567890abcdef"
          })),
     ),
     security(
@@ -101,13 +105,74 @@ pub enum ApiTokenError {
     )
 )]
 pub async fn create_token_handler(
-  _headers: HeaderMap,
-  State(_state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(_payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
+  headers: HeaderMap,
+  State(state): State<Arc<dyn RouterState>>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<ApiTokenResponse>), ApiError> {
-  Err(ServiceUnavailableError::new(
-    "api token feature is not available".to_string(),
-  ))?
+  let app_service = state.app_service();
+  let db_service = app_service.db_service();
+
+  // Extract user info from headers
+  let resource_token = headers
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
+    .and_then(|token| token.to_str().ok())
+    .ok_or(ApiTokenError::AccessTokenMissing)?;
+
+  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
+  let user_role_str = headers
+    .get(KEY_HEADER_BODHIAPP_ROLE)
+    .and_then(|role| role.to_str().ok())
+    .ok_or(ApiTokenError::AccessTokenMissing)?;
+
+  let user_role =
+    ResourceRole::from_str(user_role_str).map_err(|e| BadRequestError::new(e.to_string()))?;
+
+  // Map role to token scope
+  let token_scope = match user_role {
+    ResourceRole::Admin => TokenScope::PowerUser,
+    ResourceRole::Manager => TokenScope::PowerUser,
+    ResourceRole::PowerUser => TokenScope::PowerUser,
+    ResourceRole::User => TokenScope::User,
+  };
+
+  // Generate cryptographically secure random token
+  let mut random_bytes = [0u8; 32];
+  rand::rng().fill_bytes(&mut random_bytes);
+  let random_string = general_purpose::URL_SAFE_NO_PAD.encode(random_bytes);
+  let token_str = format!("bodhiapp_{}", random_string);
+
+  // Extract prefix (first 8 chars after "bodhiapp_")
+  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+  // Hash token with SHA-256
+  let mut hasher = Sha256::new();
+  hasher.update(token_str.as_bytes());
+  let token_hash = format!("{:x}", hasher.finalize());
+
+  // CRITICAL: Use TimeService, NOT Utc::now()!
+  let now = app_service.time_service().utc_now();
+
+  // Create ApiToken
+  let mut api_token = ApiToken {
+    id: Uuid::new_v4().to_string(),
+    user_id,
+    name: payload.name.unwrap_or_default(),
+    token_prefix: token_prefix.to_string(),
+    token_hash,
+    scopes: token_scope.to_string(),
+    status: TokenStatus::Active,
+    created_at: now,
+    updated_at: now,
+  };
+
+  // Store in database
+  db_service.create_api_token(&mut api_token).await?;
+
+  // Return token (shown only once!)
+  Ok((
+    StatusCode::CREATED,
+    Json(ApiTokenResponse { token: token_str }),
+  ))
 }
 
 /// Update an existing API token
@@ -261,27 +326,24 @@ pub async fn list_tokens_handler(
 mod tests {
   use super::{list_tokens_handler, update_token_handler};
   use crate::{
-    create_token_handler, wait_for_event, ApiTokenError, PaginatedApiTokenResponse,
-    UpdateApiTokenRequest,
+    create_token_handler, ApiTokenError, ApiTokenResponse, CreateApiTokenRequest,
+    PaginatedApiTokenResponse, UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::KEY_HEADER_BODHIAPP_TOKEN;
+  use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN};
   use axum::{
     body::Body,
     http::{Method, Request},
     routing::{get, post, put},
     Router,
   };
-  use chrono::Utc;
   use hyper::StatusCode;
-  use mockall::predicate::eq;
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
     AppError, FluentLocalizationService,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use serde_json::{json, Value};
   use server_core::{
     test_utils::{RequestTestExt, ResponseTestExt},
     DefaultRouterState, MockSharedContext,
@@ -290,11 +352,12 @@ mod tests {
     db::{ApiToken, DbService, TokenStatus},
     test_utils::{
       access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
-      FrozenTimeService, SecretServiceStub, TestDbService,
+      TestDbService,
     },
-    AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService,
+    AppService,
   };
-  use std::{sync::Arc, time::Duration};
+  use sha2::{Digest, Sha256};
+  use std::sync::Arc;
   use tower::ServiceExt;
   use uuid::Uuid;
 
@@ -331,231 +394,6 @@ mod tests {
       .with_state(Arc::new(router_state))
   }
 
-  #[rstest]
-  #[ignore = "enable when supporting creating api tokens"]
-  #[awt]
-  #[tokio::test]
-  async fn test_create_token_handler_success(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let mut rx = test_db_service.subscribe();
-    let (offline_token, _) = build_token(json! {
-      {
-        "iat": Utc::now(),
-        "jti": "test-jti",
-        "iss": "https://test-id.app/realms/test",
-        "aud": "https://test-id.app/realms/test",
-        "sub": "test-user-id",
-        "typ": "Offline",
-        "azp": "test-resource",
-        "session_state": "test-session-id",
-        "scope": "openid offline_access scope_token_user",
-        "sid": "test-session-id"
-      }
-    })?;
-    let offline_token_cl = offline_token.clone();
-    let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service
-      .expect_exchange_token()
-      .with(
-        eq("test_client_id"),
-        eq("test_client_secret"),
-        eq("test_token"),
-        eq("urn:ietf:params:oauth:token-type:refresh_token"),
-        eq(vec![
-          "openid".to_string(),
-          "offline_access".to_string(),
-          "scope_token_user".to_string(),
-        ]),
-      )
-      .times(1)
-      .return_once(|_, _, _, _, _| Ok(("new_access_token".to_string(), Some(offline_token_cl))));
-
-    let secret_service = SecretServiceStub::new()
-      .with_app_reg_info(&AppRegInfo {
-        client_id: "test_client_id".to_string(),
-        client_secret: "test_client_secret".to_string(),
-      })
-      .with_app_status(&AppStatus::Ready);
-
-    let time_service = FrozenTimeService::default();
-    let test_db_service = Arc::new(test_db_service);
-    let app_service = AppServiceStubBuilder::default()
-      .auth_service(Arc::new(mock_auth_service))
-      .secret_service(Arc::new(secret_service))
-      .time_service(Arc::new(time_service))
-      .db_service(test_db_service.clone())
-      .build()
-      .unwrap();
-    let app = app(app_service).await;
-    let payload = json!({
-        "name": "My API Token"
-    });
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method(Method::POST)
-          .uri("/api/tokens")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, "test_token")
-          .json(&payload)?,
-      )
-      .await?;
-
-    assert_eq!(StatusCode::CREATED, response.status());
-    let response = response.json::<Value>().await?;
-    let response_obj = response.as_object().unwrap();
-    assert_eq!(
-      offline_token,
-      response_obj.get("offline_token").unwrap().as_str().unwrap()
-    );
-    let event_received = wait_for_event!(rx, "create_api_token_from", Duration::from_millis(500));
-    assert!(
-      event_received,
-      "Timed out waiting for create_api_token_from event"
-    );
-
-    // List tokens to verify creation
-    let (tokens, _) = test_db_service
-      .list_api_tokens("test-user-id", 1, 10)
-      .await?;
-    assert_eq!(1, tokens.len());
-    let created_token = &tokens[0];
-    assert_eq!("test-jti", created_token.token_id);
-    assert_eq!("test-user-id", created_token.user_id);
-    assert_eq!("My API Token", created_token.name);
-    assert_eq!(TokenStatus::Active, created_token.status);
-    Ok(())
-  }
-
-  #[rstest]
-  #[ignore = "enable when supporting creating api tokens"]
-  #[awt]
-  #[tokio::test]
-  async fn test_create_token_handler_no_name(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let (offline_token, _) = build_token(json! {{"jti": "test-jti", "sub": "test-user"}})?;
-    let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service
-      .expect_exchange_token()
-      .with(
-        eq("test_client_id"),
-        eq("test_client_secret"),
-        eq("test_token"),
-        eq("urn:ietf:params:oauth:token-type:refresh_token"),
-        eq(vec![
-          "openid".to_string(),
-          "offline_access".to_string(),
-          "scope_token_user".to_string(),
-        ]),
-      )
-      .times(1)
-      .return_once(|_, _, _, _, _| Ok(("some_access_token".to_string(), Some(offline_token))));
-
-    let secret_service = SecretServiceStub::new()
-      .with_app_reg_info(&AppRegInfo {
-        client_id: "test_client_id".to_string(),
-        client_secret: "test_client_secret".to_string(),
-      })
-      .with_app_status(&AppStatus::Ready);
-
-    let app_service = AppServiceStubBuilder::default()
-      .auth_service(Arc::new(mock_auth_service))
-      .secret_service(Arc::new(secret_service))
-      .db_service(Arc::new(test_db_service))
-      .build()
-      .unwrap();
-    let app = app(app_service).await;
-    let payload = json!({});
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method(Method::POST)
-          .uri("/api/tokens")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, "test_token")
-          .json(&payload)?,
-      )
-      .await?;
-    assert_eq!(StatusCode::CREATED, response.status());
-    Ok(())
-  }
-
-  #[rstest]
-  #[ignore = "enable when supporting creating api tokens"]
-  #[awt]
-  #[tokio::test]
-  async fn test_create_token_handler_exchange_error(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service
-      .expect_exchange_token()
-      .with(
-        eq("test_client_id"),
-        eq("test_client_secret"),
-        eq("invalid_token"),
-        eq("urn:ietf:params:oauth:token-type:refresh_token"),
-        eq(vec![
-          "openid".to_string(),
-          "offline_access".to_string(),
-          "scope_token_user".to_string(),
-        ]),
-      )
-      .times(1)
-      .return_once(|_, _, _, _, _| {
-        Err(AuthServiceError::TokenExchangeError(
-          "test_error".to_string(),
-        ))
-      });
-
-    let secret_service = SecretServiceStub::new()
-      .with_app_reg_info(&AppRegInfo {
-        client_id: "test_client_id".to_string(),
-        client_secret: "test_client_secret".to_string(),
-      })
-      .with_app_status(&AppStatus::Ready);
-
-    let app_service = AppServiceStubBuilder::default()
-      .auth_service(Arc::new(mock_auth_service))
-      .secret_service(Arc::new(secret_service))
-      .db_service(Arc::new(test_db_service))
-      .build()
-      .unwrap();
-    let app = app(app_service).await;
-    let payload = json!({
-        "name": "My API Token"
-    });
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method(Method::POST)
-          .uri("/api/tokens")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid_token")
-          .json(&payload)?,
-      )
-      .await?;
-
-    assert_eq!(StatusCode::BAD_REQUEST, response.status());
-    let response = response.json::<Value>().await?;
-    assert_eq!(
-      json!({
-          "error": {
-              "type": "invalid_request_error",
-              "code": "auth_service_error-token_exchange_error",
-              "message": "token exchange failed: \u{2068}test_error\u{2069}"
-          }
-      }),
-      response
-    );
-
-    Ok(())
-  }
-
   #[anyhow_trace]
   #[rstest]
   #[awt]
@@ -580,8 +418,9 @@ mod tests {
         id: Uuid::new_v4().to_string(),
         user_id: user_id.to_string(),
         name: format!("Test Token {}", i),
-        token_id: Uuid::new_v4().to_string(),
+        token_prefix: format!("bodhiapp_test{:02}", i),
         token_hash: "token_hash".to_string(),
+        scopes: "scope_token_user".to_string(),
         status: TokenStatus::Active,
         created_at: app_service.time_service().utc_now(),
         updated_at: app_service.time_service().utc_now(),
@@ -671,6 +510,288 @@ mod tests {
     Ok(())
   }
 
+  #[anyhow_trace]
+  #[rstest]
+  #[case::user_role("resource_user", "scope_token_user")]
+  #[case::admin_role("resource_admin", "scope_token_power_user")]
+  #[case::manager_role("resource_manager", "scope_token_power_user")]
+  #[case::power_user_role("resource_power_user", "scope_token_power_user")]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_role_scope_mapping(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] role: &str,
+    #[case] expected_scope: &str,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let user_id = claims["sub"].as_str().unwrap().to_string();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request with specific role
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, role)
+          .json(&CreateApiTokenRequest {
+            name: Some(format!("Test Token for {}", role)),
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::CREATED, response.status());
+
+    let token_response = response.json::<ApiTokenResponse>().await?;
+    assert!(
+      token_response.token.starts_with("bodhiapp_"),
+      "Token should start with 'bodhiapp_' prefix"
+    );
+
+    // Verify token in database has correct scope
+    let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
+    let db_token = test_db_service
+      .get_api_token_by_prefix(token_prefix)
+      .await?
+      .expect("Token should exist in database");
+
+    assert_eq!(expected_scope, db_token.scopes);
+    assert_eq!(user_id, db_token.user_id);
+    assert_eq!(TokenStatus::Active, db_token.status);
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_success(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let user_id = claims["sub"].as_str().unwrap().to_string();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request
+    let token_name = "Test Integration Token";
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
+          .json(&CreateApiTokenRequest {
+            name: Some(token_name.to_string()),
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::CREATED, response.status());
+
+    let token_response = response.json::<ApiTokenResponse>().await?;
+    let token_str = &token_response.token;
+
+    // Verify token format
+    assert!(
+      token_str.starts_with("bodhiapp_"),
+      "Token should start with 'bodhiapp_' prefix"
+    );
+    assert!(
+      token_str.len() > 50,
+      "Token should be sufficiently long (prefix + base64)"
+    );
+
+    // Extract prefix for DB lookup
+    let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+    // Verify token exists in database
+    let db_token = test_db_service
+      .get_api_token_by_prefix(token_prefix)
+      .await?
+      .expect("Token should exist in database");
+
+    assert_eq!(token_name, db_token.name);
+    assert_eq!(user_id, db_token.user_id);
+    assert_eq!(TokenStatus::Active, db_token.status);
+    assert_eq!("scope_token_user", db_token.scopes);
+
+    // Verify hash matches
+    let mut hasher = Sha256::new();
+    hasher.update(token_str.as_bytes());
+    let calculated_hash = format!("{:x}", hasher.finalize());
+    assert_eq!(calculated_hash, db_token.token_hash);
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_without_name(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request without name
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
+          .json(&CreateApiTokenRequest { name: None })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::CREATED, response.status());
+
+    let token_response = response.json::<ApiTokenResponse>().await?;
+    let token_prefix = &token_response.token[.."bodhiapp_".len() + 8];
+
+    // Verify token has empty name
+    let db_token = test_db_service
+      .get_api_token_by_prefix(token_prefix)
+      .await?
+      .expect("Token should exist in database");
+
+    assert_eq!("", db_token.name);
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_missing_auth(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request WITHOUT authentication header
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .json(&CreateApiTokenRequest {
+            name: Some("Test Token".to_string()),
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_invalid_role(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request with INVALID role header
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role_value")
+          .json(&CreateApiTokenRequest {
+            name: Some("Test Token".to_string()),
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_handler_missing_role(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Make create request WITHOUT role header (should fail)
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          // NO KEY_HEADER_BODHIAPP_ROLE header - should return error
+          .json(&CreateApiTokenRequest {
+            name: Some("Test Token".to_string()),
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
+  }
+
   #[rstest]
   #[awt]
   #[tokio::test]
@@ -681,24 +802,28 @@ mod tests {
     let claims = access_token_claims();
     let user_id = claims["sub"].as_str().unwrap().to_string();
     let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+    let now = app_service.time_service().utc_now();
+
     // Create initial token
     let mut token = ApiToken {
       id: Uuid::new_v4().to_string(),
       user_id: user_id.to_string(),
       name: "Initial Name".to_string(),
-      token_id: "token123".to_string(),
+      token_prefix: "bodhiapp_test123".to_string(),
       token_hash: "token_hash".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
-      created_at: Utc::now(),
-      updated_at: Utc::now(),
+      created_at: now,
+      updated_at: now,
     };
     test_db_service.create_api_token(&mut token).await?;
-    let test_db_service = Arc::new(test_db_service);
 
     // Setup app with router
-    let app_service = AppServiceStubBuilder::default()
-      .db_service(test_db_service.clone())
-      .build()?;
     let app = app(app_service).await;
 
     // Make update request

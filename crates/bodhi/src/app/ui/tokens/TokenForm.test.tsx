@@ -9,7 +9,7 @@ import { mockCreateToken, mockCreateTokenError } from '@/test-utils/msw-v2/handl
 import { describe, expect, it, vi } from 'vitest';
 
 const mockToken: ApiTokenResponse = {
-  offline_token: 'test-token-123',
+  token: 'test-token-123',
 };
 
 const mockToast = vi.fn();
@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('TokenForm', () => {
   beforeEach(() => {
-    server.use(...mockCreateToken({ offline_token: mockToken.offline_token }));
+    server.use(...mockCreateToken({ token: mockToken.token }));
   });
 
   it('renders form fields correctly', () => {
@@ -83,7 +83,7 @@ describe('TokenDialog', () => {
   it('disables form during submission', async () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
-    server.use(...mockCreateToken({ offline_token: 'test-token-123' }, { delayMs: 100 }));
+    server.use(...mockCreateToken({ token: 'test-token-123' }, { delayMs: 100 }));
 
     await act(async () => {
       render(<TokenForm onTokenCreated={onTokenCreated} />, {

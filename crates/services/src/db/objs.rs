@@ -93,8 +93,9 @@ pub struct ApiToken {
   pub id: String,
   pub user_id: String,
   pub name: String,
-  pub token_id: String,
+  pub token_prefix: String,
   pub token_hash: String,
+  pub scopes: String,
   pub status: TokenStatus,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,

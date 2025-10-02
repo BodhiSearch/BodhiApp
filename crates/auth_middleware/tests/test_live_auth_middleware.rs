@@ -2,7 +2,7 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   auth_middleware,
   test_utils::{AuthServerConfig, AuthServerTestClient},
-  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN, SESSION_KEY_ACCESS_TOKEN,
+  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
 };
 use axum::{
   body::Body,
@@ -10,32 +10,23 @@ use axum::{
   http::{HeaderMap, Request, StatusCode},
   middleware::from_fn_with_state,
   response::Json,
-  routing::{get, post},
+  routing::get,
   Router,
 };
 use dotenv;
-use maplit::hashmap;
 use objs::{test_utils::setup_l10n, ErrorBody, FluentLocalizationService, OpenAIApiError};
 use rstest::{fixture, rstest};
-use serde_json::Value;
 use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
 };
 use services::{
   extract_claims,
   test_utils::{test_db_service, AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
-  AppRegInfoBuilder, Claims, KeycloakAuthService, OfflineClaims, SecretServiceExt,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  AppRegInfoBuilder, Claims, KeycloakAuthService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
 use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
-use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
-use tower_sessions::{
-  cookie::{Cookie, SameSite},
-  session::{Id, Record},
-  SessionStore,
-};
 
 // Test response structure for our test endpoint
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -65,59 +56,6 @@ fn create_test_router(state: Arc<dyn RouterState>) -> Router {
     .merge(
       Router::new()
         .route("/test", get(test_token_info_handler))
-        .route_layer(from_fn_with_state(state.clone(), auth_middleware)),
-    )
-    .layer(state.app_service().session_service().session_layer())
-    .with_state(state)
-}
-
-async fn create_token_handler(
-  headers: HeaderMap,
-  State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<TestTokenResponse>, String> {
-  let app_service = state.app_service();
-  let auth_service = app_service.auth_service();
-
-  let app_reg_info = app_service
-    .secret_service()
-    .app_reg_info()
-    .map_err(|e| e.to_string())?
-    .ok_or("app_reg_info missing".to_string())?;
-
-  let token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .ok_or("token missing".to_string())?
-    .to_str()
-    .map_err(|err| err.to_string())?;
-
-  // Exchange token
-  let (_, offline_token) = auth_service
-    .exchange_token(
-      &app_reg_info.client_id,
-      &app_reg_info.client_secret,
-      token,
-      "urn:ietf:params:oauth:token-type:refresh_token",
-      vec![
-        "openid".to_string(),
-        "offline_access".to_string(),
-        "scope_token_user".to_string(),
-      ],
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-
-  let offline_token = offline_token.ok_or("refresh token missing".to_string())?;
-  Ok(Json(TestTokenResponse {
-    token: Some(offline_token),
-    scope: None,
-  }))
-}
-
-fn create_token_create_router(state: Arc<dyn RouterState>) -> Router {
-  Router::new()
-    .merge(
-      Router::new()
-        .route("/create", post(create_token_handler))
         .route_layer(from_fn_with_state(state.clone(), auth_middleware)),
     )
     .layer(state.app_service().session_service().session_layer())
@@ -200,105 +138,6 @@ fn test_user() -> (String, String) {
     std::env::var("INTEG_TEST_USERNAME").expect("INTEG_TEST_USERNAME must be set"),
     std::env::var("INTEG_TEST_PASSWORD").expect("INTEG_TEST_PASSWORD must be set"),
   )
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_offline_token_exchange_success(
-  setup_l10n: &Arc<FluentLocalizationService>,
-  auth_server_config: &AuthServerConfig,
-  test_user: (String, String),
-  auth_client: AuthServerTestClient,
-) -> anyhow::Result<()> {
-  let (username, password) = test_user;
-  let dynamic_clients = auth_client
-    .setup_dynamic_clients(&username, &password)
-    .await?;
-  let resource_client_id = dynamic_clients.resource_client.client_id;
-  let resource_client_secret = dynamic_clients
-    .resource_client
-    .client_secret
-    .as_ref()
-    .unwrap();
-  let state = create_test_state(
-    setup_l10n,
-    &auth_server_config,
-    &resource_client_id,
-    &resource_client_secret,
-  )
-  .await?;
-  let user_token = auth_client
-    .get_user_token(
-      &resource_client_id,
-      &resource_client_secret,
-      &username,
-      &password,
-      &[
-        "openid",
-        "email",
-        "profile",
-        "roles",
-        "offline_access",
-        "scope_token_user",
-      ],
-    )
-    .await?;
-
-  // Step 4: Create session with user token
-  let session_id = Id::default();
-  let session_data = hashmap! {
-    SESSION_KEY_ACCESS_TOKEN.to_string() => Value::String(user_token.clone()),
-  };
-  let mut record = Record {
-    id: session_id,
-    data: session_data,
-    expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
-  };
-  state
-    .app_service()
-    .session_service()
-    .get_session_store()
-    .create(&mut record)
-    .await?;
-
-  // Step 5: Test offline token creation
-  let session_cookie = Cookie::build(("bodhiapp_session_id", session_id.to_string()))
-    .path("/")
-    .http_only(true)
-    .same_site(SameSite::Strict)
-    .build();
-  let router = create_token_create_router(state);
-  let request = Request::builder()
-    .method("POST")
-    .uri("/create")
-    .header("Content-Type", "application/json")
-    .header("Sec-Fetch-Site", "same-origin")
-    .header("Cookie", session_cookie.to_string())
-    .body(Body::empty())?;
-  let response = router.oneshot(request).await?;
-
-  // Step 6: Verify response
-  assert_eq!(
-    StatusCode::OK,
-    response.status(),
-    "Offline token create failed: {}",
-    response
-      .text()
-      .await
-      .unwrap_or_else(|_| "Unable to read response body".to_string())
-  );
-
-  let body: TestTokenResponse = response.json().await?;
-  let claims = extract_claims::<OfflineClaims>(&body.token.unwrap())?;
-  assert_eq!(claims.azp, resource_client_id);
-  let mut token_scopes = claims.scope.split_whitespace().collect::<Vec<&str>>();
-  token_scopes.sort();
-  assert_eq!(
-    vec!["basic", "offline_access", "openid", "scope_token_user"],
-    token_scopes,
-  );
-  Ok(())
 }
 
 #[rstest]

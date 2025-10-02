@@ -202,14 +202,6 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("create_api_token"))
   }
 
-  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError> {
-    self
-      .inner
-      .create_api_token_from(name, token)
-      .await
-      .tap(|_| self.notify("create_api_token_from"))
-  }
-
   async fn list_api_tokens(
     &self,
     user_id: &str,
@@ -235,12 +227,12 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("get_api_token_by_id"))
   }
 
-  async fn get_api_token_by_token_id(&self, token_id: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError> {
     self
       .inner
-      .get_api_token_by_token_id(token_id)
+      .get_api_token_by_prefix(prefix)
       .await
-      .tap(|_| self.notify("get_api_token_by_token_id"))
+      .tap(|_| self.notify("get_api_token_by_prefix"))
   }
 
   async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError> {

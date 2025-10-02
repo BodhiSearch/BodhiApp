@@ -345,6 +345,7 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "constant_time_eq",
  "derive_builder 0.20.2",
  "dotenv",
  "errmeta_derive",
@@ -1138,6 +1139,12 @@ name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
+
+[[package]]
+name = "constant_time_eq"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 
 [[package]]
 name = "convert_case"
@@ -5502,6 +5509,7 @@ dependencies = [
  "oauth2",
  "objs",
  "pretty_assertions",
+ "rand 0.9.1",
  "routes_oai",
  "rstest",
  "serde",

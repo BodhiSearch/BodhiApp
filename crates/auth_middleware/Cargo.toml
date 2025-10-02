@@ -15,6 +15,7 @@ anyhow = { workspace = true, optional = true }
 axum = { workspace = true }
 base64 = { workspace = true, optional = true }
 chrono = { workspace = true }
+constant_time_eq = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }

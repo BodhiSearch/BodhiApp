@@ -1,10 +1,7 @@
-use crate::{
-  db::{
-    encryption::{decrypt_api_key, encrypt_api_key},
-    ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError, TokenStatus,
-    UserAccessRequest, UserAccessRequestStatus,
-  },
-  extract_claims,
+use crate::db::{
+  encryption::{decrypt_api_key, encrypt_api_key},
+  ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError, TokenStatus,
+  UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -12,7 +9,6 @@ use objs::{impl_error_from, AppError, ErrorType};
 use objs::{ApiAlias, ApiFormat};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
-use uuid::Uuid;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait TimeService: std::fmt::Debug + Send + Sync {
@@ -116,8 +112,6 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 
-  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError>;
-
   async fn list_api_tokens(
     &self,
     user_id: &str,
@@ -128,7 +122,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn get_api_token_by_id(&self, user_id: &str, id: &str)
     -> Result<Option<ApiToken>, DbError>;
 
-  async fn get_api_token_by_token_id(&self, token: &str) -> Result<Option<ApiToken>, DbError>;
+  async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError>;
 
   async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError>;
 
@@ -181,6 +175,7 @@ impl SqliteDbService {
         String,
         String,
         String,
+        String,
         DateTime<Utc>,
         DateTime<Utc>,
       ),
@@ -191,7 +186,17 @@ impl SqliteDbService {
     .await?;
 
     match result {
-      Some((id, user_id, name, token_id, token_hash, status, created_at, updated_at)) => {
+      Some((
+        id,
+        user_id,
+        name,
+        token_prefix,
+        token_hash,
+        scopes,
+        status,
+        created_at,
+        updated_at,
+      )) => {
         let Ok(status) = TokenStatus::from_str(&status) else {
           tracing::warn!("unknown token status: {status} for id: {id}");
           return Ok(None);
@@ -201,8 +206,9 @@ impl SqliteDbService {
           id,
           user_id,
           name,
-          token_id,
+          token_prefix,
           token_hash,
+          scopes,
           status,
           created_at,
           updated_at,
@@ -626,15 +632,16 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_tokens (id, user_id, name, token_id, token_hash, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO api_tokens (id, user_id, name, token_prefix, token_hash, scopes, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&token.id)
     .bind(&token.user_id)
     .bind(&token.name)
-    .bind(&token.token_id)
+    .bind(&token.token_prefix)
     .bind(&token.token_hash)
+    .bind(&token.scopes)
     .bind(token.status.to_string())
     .bind(token.created_at.timestamp())
     .bind(token.updated_at.timestamp())
@@ -642,50 +649,6 @@ impl DbService for SqliteDbService {
     .await?;
 
     Ok(())
-  }
-
-  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError> {
-    use crate::IdClaims;
-    use sha2::{Digest, Sha256};
-
-    let claims =
-      extract_claims::<IdClaims>(token).map_err(|e| DbError::TokenValidation(e.to_string()))?;
-
-    let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-    let token_hash = token_hash[..12].to_string();
-
-    let now = self.time_service.utc_now();
-    let id = Uuid::new_v4().to_string();
-
-    let api_token = ApiToken {
-      id,
-      user_id: claims.sub,
-      name: name.to_string(),
-      token_id: claims.jti,
-      token_hash,
-      status: TokenStatus::Active,
-      created_at: now,
-      updated_at: now,
-    };
-
-    sqlx::query(
-      r#"
-      INSERT INTO api_tokens (id, user_id, name, token_id, token_hash, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      "#,
-    )
-    .bind(&api_token.id)
-    .bind(&api_token.user_id)
-    .bind(&api_token.name)
-    .bind(&api_token.token_id)
-    .bind(&api_token.token_hash)
-    .bind(api_token.status.to_string())
-    .bind(api_token.created_at.timestamp())
-    .bind(api_token.updated_at.timestamp())
-    .execute(&self.pool)
-    .await?;
-
-    Ok(api_token)
   }
 
   async fn list_api_tokens(
@@ -704,6 +667,7 @@ impl DbService for SqliteDbService {
         String,
         String,
         String,
+        String,
         DateTime<Utc>,
         DateTime<Utc>,
       ),
@@ -713,8 +677,9 @@ impl DbService for SqliteDbService {
         id,
         user_id,
         name,
-        token_id,
+        token_prefix,
         token_hash,
+        scopes,
         status,
         created_at,
         updated_at
@@ -733,7 +698,7 @@ impl DbService for SqliteDbService {
     let tokens: Vec<_> = results
       .into_iter()
       .filter_map(
-        |(id, user_id, name, token_id, token_hash, status, created_at, updated_at)| {
+        |(id, user_id, name, token_prefix, token_hash, scopes, status, created_at, updated_at)| {
           let Ok(status) = TokenStatus::from_str(&status) else {
             tracing::warn!("unknown token status: {} for id: {}", status, id);
             return None;
@@ -743,8 +708,9 @@ impl DbService for SqliteDbService {
             id,
             user_id,
             name,
-            token_id,
+            token_prefix,
             token_hash,
+            scopes,
             status,
             created_at,
             updated_at,
@@ -770,8 +736,9 @@ impl DbService for SqliteDbService {
         id,
         user_id,
         name,
-        token_id,
+        token_prefix,
         token_hash,
+        scopes,
         status,
         created_at,
         updated_at
@@ -781,36 +748,70 @@ impl DbService for SqliteDbService {
     self.get_by_col(query, user_id, id).await
   }
 
-  async fn get_api_token_by_token_id(&self, token: &str) -> Result<Option<ApiToken>, DbError> {
-    use crate::IdClaims;
-    use sha2::{Digest, Sha256};
-    let claims =
-      extract_claims::<IdClaims>(token).map_err(|e| DbError::TokenValidation(e.to_string()))?;
-    let query = r#"
+  async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError> {
+    let result = query_as::<
+      _,
+      (
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      r#"
       SELECT
         id,
         user_id,
         name,
-        token_id,
+        token_prefix,
         token_hash,
+        scopes,
         status,
         created_at,
         updated_at
       FROM api_tokens
-      WHERE user_id = ? AND token_id = ?
-      "#;
-    let api_token = self.get_by_col(query, &claims.sub, &claims.jti).await?;
-    match api_token {
-      None => Ok(None),
-      Some(api_token) => {
-        let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-        let token_hash = token_hash[..12].to_string();
-        if api_token.token_hash == token_hash {
-          Ok(Some(api_token))
-        } else {
-          Ok(None)
-        }
+      WHERE token_prefix = ?
+      "#,
+    )
+    .bind(prefix)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((
+        id,
+        user_id,
+        name,
+        token_prefix,
+        token_hash,
+        scopes,
+        status,
+        created_at,
+        updated_at,
+      )) => {
+        let Ok(status) = TokenStatus::from_str(&status) else {
+          tracing::warn!("unknown token status: {status} for id: {id}");
+          return Ok(None);
+        };
+
+        Ok(Some(ApiToken {
+          id,
+          user_id,
+          name,
+          token_prefix,
+          token_hash,
+          scopes,
+          status,
+          created_at,
+          updated_at,
+        }))
       }
+      None => Ok(None),
     }
   }
 
@@ -1081,7 +1082,7 @@ mod test {
       ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, SqlxError, TokenStatus,
       UserAccessRequest, UserAccessRequestStatus,
     },
-    test_utils::{build_token, test_db_service, TestDbService},
+    test_utils::{test_db_service, TestDbService},
   };
   use chrono::Utc;
   use objs::ApiAlias;
@@ -1314,8 +1315,9 @@ mod test {
       id: Uuid::new_v4().to_string(),
       user_id: user_id.clone(),
       name: "".to_string(),
-      token_id: Uuid::new_v4().to_string(),
+      token_prefix: "bodhiapp_test01".to_string(),
       token_hash: "token_hash".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
       created_at: now,
       updated_at: now,
@@ -1345,8 +1347,9 @@ mod test {
       id: Uuid::new_v4().to_string(),
       user_id: "test_user".to_string(),
       name: "Initial Name".to_string(),
-      token_id: "token123".to_string(),
+      token_prefix: "bodhiapp_test02".to_string(),
       token_hash: "token_hash".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -1367,49 +1370,9 @@ mod test {
     assert_eq!(updated.status, TokenStatus::Inactive);
     assert_eq!(updated.id, token.id);
     assert_eq!(updated.user_id, token.user_id);
-    assert_eq!(updated.token_id, token.token_id);
+    assert_eq!(updated.token_prefix, token.token_prefix);
     assert_eq!(updated.created_at, token.created_at);
     assert!(updated.updated_at >= token.updated_at);
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_create_api_token_from(
-    #[future]
-    #[from(test_db_service)]
-    db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Create a test token with known claims
-    let test_jti = Uuid::new_v4().to_string();
-    let test_sub = Uuid::new_v4().to_string();
-    let (token, _) = build_token(serde_json::json!({
-      "jti": test_jti,
-      "sub": test_sub,
-      "preferred_username": "test_user@email.com"
-    }))?;
-
-    // Create API token
-    let name = "Test Token";
-    let api_token = db_service.create_api_token_from(name, &token).await?;
-
-    // Verify the created token
-    assert_eq!(api_token.name, name);
-    assert_eq!(api_token.token_id, test_jti);
-    assert_eq!(api_token.user_id, test_sub);
-    assert_eq!(api_token.status, TokenStatus::Active);
-
-    // Verify we can retrieve it
-    let retrieved = db_service
-      .get_api_token_by_id(&test_sub, &api_token.id)
-      .await?;
-    assert!(retrieved.is_some());
-    let retrieved = retrieved.unwrap();
-    assert_eq!(retrieved.token_id, test_jti);
-    assert_eq!(retrieved.user_id, test_sub);
-    assert_eq!(retrieved.token_hash, api_token.token_hash);
 
     Ok(())
   }
@@ -1433,8 +1396,9 @@ mod test {
       id: Uuid::new_v4().to_string(),
       user_id: user1_id.to_string(),
       name: "User1 Token".to_string(),
-      token_id: Uuid::new_v4().to_string(),
+      token_prefix: "bodhiapp_test03".to_string(),
       token_hash: "hash1".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
       created_at: now,
       updated_at: now,
@@ -1446,8 +1410,9 @@ mod test {
       id: Uuid::new_v4().to_string(),
       user_id: user2_id.to_string(),
       name: "User2 Token".to_string(),
-      token_id: Uuid::new_v4().to_string(),
+      token_prefix: "bodhiapp_test04".to_string(),
       token_hash: "hash2".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
       created_at: now,
       updated_at: now,
@@ -1487,8 +1452,9 @@ mod test {
       id: Uuid::new_v4().to_string(),
       user_id: user1_id.to_string(),
       name: "Initial Name".to_string(),
-      token_id: Uuid::new_v4().to_string(),
+      token_prefix: "bodhiapp_test05".to_string(),
       token_hash: "hash".to_string(),
+      scopes: "scope_token_user".to_string(),
       status: TokenStatus::Active,
       created_at: now,
       updated_at: now,

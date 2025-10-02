@@ -48,7 +48,7 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="token-form">
         <FormField
           control={form.control}
           name="name"
@@ -56,13 +56,18 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
             <FormItem>
               <FormLabel>Token Name (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Enter a name for your token" disabled={isLoading} {...field} />
+                <Input
+                  placeholder="Enter a name for your token"
+                  disabled={isLoading}
+                  data-testid="token-name-input"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} data-testid="generate-token-button">
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

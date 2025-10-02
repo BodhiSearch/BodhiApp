@@ -15,7 +15,7 @@ import {
 } from '@/test-utils/msw-v2/handlers/tokens';
 
 const mockTokenResponse: ApiTokenResponse = {
-  offline_token: 'test-token-123',
+  token: 'test-token-123',
 };
 
 const mockListResponse: PaginatedApiTokenResponse = {
@@ -25,7 +25,8 @@ const mockListResponse: PaginatedApiTokenResponse = {
       name: 'Test Token 1',
       status: 'active',
       token_hash: 'hash123',
-      token_id: 'jwt-token-id-1',
+      token_prefix: 'bodhiapp_test01',
+      scopes: 'scope_token_user',
       user_id: 'user-123',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
@@ -41,7 +42,8 @@ const mockUpdatedToken = {
   name: 'Updated Token',
   status: 'inactive' as const,
   token_hash: 'hash123',
-  token_id: 'jwt-token-id-1',
+  token_prefix: 'bodhiapp_test01',
+  scopes: 'scope_token_user',
   user_id: 'user-123',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:01Z',
@@ -163,8 +165,9 @@ describe('useCreateToken', () => {
             id: 'new-token',
             name: 'New Token',
             status: 'active',
+            scopes: 'scope_token_user',
             token_hash: 'newhash456',
-            token_id: 'jwt-token-id-new',
+            token_prefix: 'jwt-token-id-new',
             user_id: 'user-123',
             created_at: '2024-01-02T00:00:00Z',
             updated_at: '2024-01-02T00:00:00Z',

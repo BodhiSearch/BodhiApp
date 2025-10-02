@@ -3411,7 +3411,7 @@
                   "$ref": "#/components/schemas/ApiTokenResponse"
                 },
                 "example": {
-                  "offline_token": "bapp_1234567890abcdef"
+                  "token": "bodhiapp_1234567890abcdef"
                 }
               }
             }
@@ -4818,8 +4818,9 @@
           "id",
           "user_id",
           "name",
-          "token_id",
+          "token_prefix",
           "token_hash",
+          "scopes",
           "status",
           "created_at",
           "updated_at"
@@ -4834,10 +4835,13 @@
           "name": {
             "type": "string"
           },
-          "token_id": {
+          "token_prefix": {
             "type": "string"
           },
           "token_hash": {
+            "type": "string"
+          },
+          "scopes": {
             "type": "string"
           },
           "status": {
@@ -4858,17 +4862,17 @@
       "ApiTokenResponse": {
         "type": "object",
         "required": [
-          "offline_token"
+          "token"
         ],
         "properties": {
-          "offline_token": {
+          "token": {
             "type": "string",
-            "description": "API token with bapp_ prefix for programmatic access",
-            "example": "bapp_1234567890abcdef"
+            "description": "API token with bodhiapp_ prefix for programmatic access",
+            "example": "bodhiapp_1234567890abcdef"
           }
         },
         "example": {
-          "offline_token": "bapp_1234567890abcdef"
+          "token": "bodhiapp_1234567890abcdef"
         }
       },
       "AppAccessRequest": {
