@@ -57,7 +57,9 @@ pub enum CreateAliasError {
       (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn create_alias_handler(
@@ -98,7 +100,9 @@ pub async fn create_alias_handler(
       (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn update_alias_handler(

@@ -46,8 +46,9 @@ use validator::Validate;
          })),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn list_api_models_handler(
@@ -110,8 +111,9 @@ pub async fn list_api_models_handler(
          })),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn get_api_model_handler(
@@ -142,8 +144,9 @@ pub async fn get_api_model_handler(
         (status = 409, description = "Alias already exists", body = objs::OpenAIApiError),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn create_api_model_handler(
@@ -198,8 +201,9 @@ pub async fn create_api_model_handler(
         (status = 404, description = "API model not found", body = OpenAIApiError),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn update_api_model_handler(
@@ -261,8 +265,9 @@ pub async fn update_api_model_handler(
         (status = 404, description = "API model not found", body = OpenAIApiError),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn delete_api_model_handler(
@@ -297,8 +302,9 @@ pub async fn delete_api_model_handler(
         (status = 400, description = "Invalid request", body = OpenAIApiError),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn test_api_model_handler(
@@ -372,8 +378,9 @@ pub async fn test_api_model_handler(
         (status = 400, description = "Invalid request", body = OpenAIApiError),
     ),
     security(
-        ("bearer_auth" = []),
-        ("session_auth" = [])
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn fetch_models_handler(
@@ -441,6 +448,11 @@ pub async fn fetch_models_handler(
          example = json!({
              "data": ["openai"]
          })),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn get_api_formats_handler() -> Result<Json<ApiFormatsResponse>, ApiError> {

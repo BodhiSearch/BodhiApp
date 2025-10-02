@@ -50,7 +50,9 @@ use services::{
 };
 use std::sync::Arc;
 use utoipa::{
-  openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+  openapi::security::{
+    AuthorizationCode, Flow, HttpAuthScheme, HttpBuilder, OAuth2, Scopes, SecurityScheme,
+  },
   Modify, OpenApi,
 };
 
@@ -104,26 +106,101 @@ pub const ENDPOINT_DEV_ENVS: &str = "/dev/envs";
         ),
         description = r#"API documentation for Bodhi App.
 
-## Authentication
-This API supports two authentication methods:
+## Authentication Methods
 
-1. **Browser Session** (Default)
-   - Login via `/bodhi/v1/auth/initiate` endpoint
-   - Session cookie will be used automatically
-   - Best for browser-based access
+Bodhi App supports three sophisticated authentication methods:
 
-2. **API Token**
-   - Create API Token using the app Menu > Settings > API Tokens
-   - Use the API Token as the Authorization Bearer token in API calls
-   - Best for programmatic access
+### 1. API Token Authentication (Recommended for API access)
+- **Method**: Bearer token in Authorization header
+- **Format**: `Authorization: Bearer bodhiapp_<random_string>`
+- **Obtain**: Create via web interface at Menu > Settings > API Tokens
+- **Scopes**: Token-based scopes with hierarchical permissions
+  - `scope_token_user`: Basic API access (read operations, OpenAI/Ollama APIs)
+  - `scope_token_power_user`: Advanced operations (model creation, downloads)
+  - `scope_token_manager`: User management operations
+  - `scope_token_admin`: Full administrative access
+- **Usage**: Best for programmatic access, CI/CD, and external integrations
 
-## Authorization
-APIs require different privilege levels:
+### 2. Session Authentication (Browser-based)
+- **Method**: HTTP cookies (automatic for browsers)
+- **Login**: Initiate via `POST /bodhi/v1/auth/initiate`
+- **Callback**: Complete via `POST /bodhi/v1/auth/callback`
+- **Roles**: Resource-based roles with hierarchical permissions
+  - `resource_user`: Basic authenticated access
+  - `resource_power_user`: Advanced operations
+  - `resource_manager`: User management (session-only)
+  - `resource_admin`: Full administration (session-only)
+- **Usage**: Best for web browsers and interactive applications
+- **Session-Only Operations**: Some sensitive operations (token management, settings, user management) require session authentication only for security
 
-- **User Level**: Requires `resource_user` role or `scope_token_user`
-- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`
+### 3. OAuth 2.1 Token Exchange (External integrations)
+- **Method**: Bearer token with exchanged OAuth credentials
+- **Format**: `Authorization: Bearer <oauth_exchanged_token>`
+- **Scopes**: User-based scopes via OAuth 2.1 token exchange
+  - `scope_user_user`: Basic user access via OAuth exchange
+  - `scope_user_power_user`: Advanced user operations via OAuth exchange  
+  - `scope_user_manager`: Manager operations via OAuth exchange
+  - `scope_user_admin`: Admin operations via OAuth exchange
+- **Usage**: For external OAuth 2.1 providers integrating with Bodhi
 
-For API keys, specify required scope when creating the token.
+## Authorization Hierarchy
+
+**Permission Hierarchy** (higher levels include all lower permissions):
+```
+Admin > Manager > PowerUser > User
+```
+
+**Scope/Role Mapping**:
+| Permission Level | API Token Scope | OAuth User Scope | Session Role |
+|------------------|----------------|------------------|-------------|
+| User | `scope_token_user` | `scope_user_user` | `resource_user` |
+| PowerUser | `scope_token_power_user` | `scope_user_power_user` | `resource_power_user` |
+| Manager | `scope_token_manager` | `scope_user_manager` | `resource_manager` |
+| Admin | `scope_token_admin` | `scope_user_admin` | `resource_admin` |
+
+## Endpoint Access Patterns
+
+- **Public Endpoints**: No authentication required (ping, health, app_info, setup)
+- **Optional Auth Endpoints**: Work with or without authentication, providing different data (user_info)
+- **Multi-Auth Endpoints**: Accept any of the three authentication methods (most API endpoints)
+- **Session-Only Endpoints**: Require browser session authentication only:
+  - Token management (`/bodhi/v1/tokens/*`) - PowerUser+ session required
+  - Settings management (`/bodhi/v1/settings/*`) - Admin session required  
+  - User management (`/bodhi/v1/users/*`) - Manager+ session required
+
+## Security Examples
+
+### API Token Usage:
+```bash
+curl -H "Authorization: Bearer bodhiapp_1234567890abcdef" \
+     https://api.example.com/v1/models
+```
+
+### Session Authentication:
+```bash
+# Login first
+curl -X POST https://api.example.com/bodhi/v1/auth/initiate \
+     -H "Content-Type: application/json" \
+     -d '{"provider": "github"}'
+
+# Then use session cookie automatically
+curl https://api.example.com/v1/models \
+     --cookie-jar cookies.txt --cookie cookies.txt
+```
+
+### OAuth 2.1 Token Exchange:
+```bash
+curl -H "Authorization: Bearer <oauth_exchanged_token>" \
+     https://api.example.com/v1/models
+```
+
+## Security Best Practices
+
+1. **Use HTTPS**: Always use HTTPS in production
+2. **Scope Principle**: Request minimal required scopes/roles
+3. **Token Rotation**: Regularly rotate API tokens
+4. **Session Security**: Session-only operations prevent token-based access to sensitive functions
+5. **Hierarchical Permissions**: Higher roles automatically include lower role permissions
 "#
     ),
     external_docs(
@@ -327,30 +404,109 @@ impl Modify for OpenAPIEnvModifier {
     openapi.servers = Some(vec![server]);
 
     if let Some(components) = &mut openapi.components {
-      // Enhanced Bearer Token Authentication
+      // 1. API Token Authentication (Database-stored tokens with TokenScope)
       components.security_schemes.insert(
-        "bearer_auth".to_string(),
+        "bearer_api_token".to_string(),
         SecurityScheme::Http(
-          HttpBuilder::default()
+          HttpBuilder::new()
             .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("API Token")
-            .description(Some(
-              "API token for programmatic access. Tokens are randomly generated with 'bodhiapp_' prefix (e.g., bodhiapp_1234567890abcdef). Obtain tokens from /bodhi/v1/tokens endpoint. Include as: Authorization: Bearer <token>. Required scopes: scope_token_user (basic access) or scope_token_power_user (admin access).".to_string(),
-            ))
-            .build(),
+            .bearer_format("bodhiapp_<token>")
+            .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
+            .build()
         ),
       );
 
-      // Enhanced Session Authentication
+      // 2. OAuth 2.1 Token Exchange (External tokens with UserScope)
+      components.security_schemes.insert(
+        "bearer_oauth_token".to_string(),
+        SecurityScheme::Http(
+          HttpBuilder::new()
+            .scheme(HttpAuthScheme::Bearer)
+            .bearer_format("JWT")
+            .description(Some("OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"))
+            .build()
+        ),
+      );
+
+      // 3. Session Cookie Authentication (Browser sessions with ResourceRole)
       components.security_schemes.insert(
         "session_auth".to_string(),
+        SecurityScheme::OAuth2(
+          OAuth2::with_description(
+            [Flow::AuthorizationCode(
+              AuthorizationCode::new(
+                "/bodhi/v1/auth/initiate".to_string(),
+                "/bodhi/v1/auth/callback".to_string(),
+                Scopes::from_iter([
+                  ("resource_user".to_string(), "Basic authenticated user access via browser session".to_string()),
+                  ("resource_power_user".to_string(), "Power user operations via browser session".to_string()),
+                  ("resource_manager".to_string(), "Manager operations via browser session (session-only)".to_string()),
+                  ("resource_admin".to_string(), "Admin operations via browser session (session-only)".to_string()),
+                ]),
+              ),
+            )],
+            "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only.",
+          )
+        ),
+      );
+    }
+  }
+}
+
+/// Modifies OpenAPI documentation to add security schemes
+#[derive(Debug)]
+pub struct SecurityModifier;
+
+impl Modify for SecurityModifier {
+  fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    if openapi.components.is_none() {
+      openapi.components = Some(Default::default());
+    }
+
+    if let Some(components) = &mut openapi.components {
+      // 1. API Token Authentication (Database-stored tokens with TokenScope)
+      components.security_schemes.insert(
+        "bearer_api_token".to_string(),
         SecurityScheme::Http(
-          HttpBuilder::default()
+          HttpBuilder::new()
             .scheme(HttpAuthScheme::Bearer)
-            .description(Some(
-              "Session-based authentication using browser cookies. Authenticate via /bodhi/v1/auth/initiate endpoint. Session cookies are automatically included in browser requests. Required roles: resource_user (basic access) or resource_power_user (admin access).".to_string(),
-            ))
-            .build(),
+            .bearer_format("bodhiapp_<token>")
+            .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
+            .build()
+        ),
+      );
+
+      // 2. OAuth 2.1 Token Exchange (External tokens with UserScope)
+      components.security_schemes.insert(
+        "bearer_oauth_token".to_string(),
+        SecurityScheme::Http(
+          HttpBuilder::new()
+            .scheme(HttpAuthScheme::Bearer)
+            .bearer_format("JWT")
+            .description(Some("OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"))
+            .build()
+        ),
+      );
+
+      // 3. Session Cookie Authentication (Browser sessions with ResourceRole)
+      components.security_schemes.insert(
+        "session_auth".to_string(),
+        SecurityScheme::OAuth2(
+          OAuth2::with_description(
+            [Flow::AuthorizationCode(
+              AuthorizationCode::new(
+                "/bodhi/v1/auth/initiate".to_string(),
+                "/bodhi/v1/auth/callback".to_string(),
+                Scopes::from_iter([
+                  ("resource_user".to_string(), "Basic authenticated user access via browser session".to_string()),
+                  ("resource_power_user".to_string(), "Power user operations via browser session".to_string()),
+                  ("resource_manager".to_string(), "Manager operations via browser session (session-only)".to_string()),
+                  ("resource_admin".to_string(), "Admin operations via browser session (session-only)".to_string()),
+                ]),
+              ),
+            )],
+            "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only.",
+          )
         ),
       );
     }

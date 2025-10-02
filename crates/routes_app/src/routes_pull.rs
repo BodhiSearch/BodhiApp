@@ -89,7 +89,9 @@ pub enum PullError {
         ),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn list_downloads_handler(
@@ -150,7 +152,9 @@ pub async fn list_downloads_handler(
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn create_pull_request_handler(
@@ -266,7 +270,9 @@ pub async fn create_pull_request_handler(
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn pull_by_alias_handler(
@@ -371,7 +377,9 @@ pub async fn pull_by_alias_handler(
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
     ),
 )]
 pub async fn get_download_status_handler(

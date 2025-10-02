@@ -3296,7 +3296,7 @@ export type GetCurrentUserError = GetCurrentUserErrors[keyof GetCurrentUserError
 
 export type GetCurrentUserResponses = {
     /**
-     * Current user information retrieved successfully
+     * User information (authenticated or not)
      */
     200: UserResponse;
 };

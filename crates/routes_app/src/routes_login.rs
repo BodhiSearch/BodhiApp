@@ -46,6 +46,12 @@ use utoipa::ToSchema;
          example = json!({
              "location": "https://app.example.com/dashboard"
          })),
+    ),
+    security(
+        (),
+        ("bearer_api_token" = []),
+        ("bearer_oauth_token" = []),
+        ("session_auth" = [])
     )
 )]
 pub async fn auth_initiate_handler(
@@ -158,6 +164,12 @@ pub async fn auth_initiate_handler(
                  "code": "oauth_state_mismatch"
              }
          })),
+    ),
+    security(
+        (),
+        ("bearer_api_token" = []),
+        ("bearer_oauth_token" = []),
+        ("session_auth" = [])
     )
 )]
 pub async fn auth_callback_handler(
@@ -390,6 +402,12 @@ pub async fn logout_handler(
          example = json!({
              "scope": "scope_resource_bodhi-server"
          })),
+    ),
+    security(
+        (),
+        ("bearer_api_token" = []),
+        ("bearer_oauth_token" = []),
+        ("session_auth" = [])
     )
 )]
 pub async fn request_access_handler(
