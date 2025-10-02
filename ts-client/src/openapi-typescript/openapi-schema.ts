@@ -559,7 +559,7 @@ export interface paths {
         put?: never;
         /**
          * Create API Token
-         * @description Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. This feature is currently not available.
+         * @description Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).
          */
         post: operations["createApiToken"];
         delete?: never;
@@ -1351,7 +1351,8 @@ export interface components {
         /**
          * @description Request to create a new API token
          * @example {
-         *       "name": "My Integration Token"
+         *       "name": "My Integration Token",
+         *       "scope": "scope_token_user"
          *     }
          */
         CreateApiTokenRequest: {
@@ -1360,6 +1361,8 @@ export interface components {
              * @example My Integration Token
              */
             name?: string | null;
+            /** @description Token scope defining access level */
+            scope: components["schemas"]["TokenScope"];
         };
         CreateChatCompletionRequest: {
             /** @description A list of messages comprising the conversation so far. Depending on the [model](https://platform.openai.com/docs/models) you use, different message types (modalities) are supported, like [text](https://platform.openai.com/docs/guides/text-generation), [images](https://platform.openai.com/docs/guides/vision), and [audio](https://platform.openai.com/docs/guides/audio). */

@@ -119,7 +119,7 @@ describe('useCreateToken', () => {
     });
 
     await act(async () => {
-      const { data } = await result.current.mutateAsync({ name: 'Test Token' });
+      const { data } = await result.current.mutateAsync({ name: 'Test Token', scope: 'scope_token_user' });
       expect(data).toEqual(mockTokenResponse);
     });
   });
@@ -132,8 +132,27 @@ describe('useCreateToken', () => {
     });
 
     await act(async () => {
-      const { data } = await result.current.mutateAsync({});
+      const { data } = await result.current.mutateAsync({ scope: 'scope_token_user' });
       expect(data).toEqual(mockTokenResponse);
+    });
+  });
+
+  it.each([
+    { scope: 'scope_token_user' as const, tokenValue: 'test-token-user', label: 'User' },
+    { scope: 'scope_token_power_user' as const, tokenValue: 'test-token-poweruser', label: 'PowerUser' },
+  ])('creates token with $label scope and passes it correctly to API', async ({ scope, tokenValue }) => {
+    server.use(...mockCreateToken({ token: tokenValue }));
+
+    const { result } = renderHook(() => useCreateToken(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      const { data } = await result.current.mutateAsync({
+        name: `${scope} Token`,
+        scope,
+      });
+      expect(data).toEqual({ token: tokenValue });
     });
   });
 
@@ -185,7 +204,7 @@ describe('useCreateToken', () => {
       wrapper,
     });
     await act(async () => {
-      await createResult.current.mutateAsync({ name: 'New Token' });
+      await createResult.current.mutateAsync({ name: 'New Token', scope: 'scope_token_user' });
     });
 
     // Verify list query was invalidated and refetched with new data
@@ -211,7 +230,7 @@ describe('useCreateToken', () => {
 
     await act(async () => {
       try {
-        await result.current.mutateAsync({ name: 'Test Token' });
+        await result.current.mutateAsync({ name: 'Test Token', scope: 'scope_token_user' });
       } catch (error) {
         const axiosError = error as AxiosError<OpenAiApiError>;
         expect(axiosError.response?.status).toBe(400);

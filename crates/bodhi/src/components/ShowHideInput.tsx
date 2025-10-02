@@ -28,12 +28,12 @@ export const ShowHideInput = ({
   return (
     <div className={cn('relative', containerClassName)} data-testid={dataTestId}>
       <div
-        className={cn('rounded-md bg-muted p-3 font-mono text-sm break-all', inputClassName)}
+        className={cn('rounded-md bg-muted p-3 pr-12 font-mono text-sm break-all', inputClassName)}
         data-testid={dataTestId ? `${dataTestId}-content` : undefined}
       >
         {shown ? value : hiddenChar.repeat(40)}
       </div>
-      <div className={cn('absolute right-2 top-2 space-x-2', className)}>
+      <div className={cn('absolute right-2 top-2 flex items-center gap-1', className)}>
         <Button
           variant="ghost"
           size="icon"

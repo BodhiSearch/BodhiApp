@@ -31,13 +31,13 @@ export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md" data-testid="token-dialog">
+      <DialogContent className="sm:max-w-2xl" data-testid="token-dialog">
         <DialogHeader>
           <DialogTitle>API Token Generated</DialogTitle>
           <DialogDescription>Copy your API token now. You won&apos;t be able to see it again.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Alert variant="destructive">
             <Shield className="h-4 w-4" />
             <AlertDescription>
@@ -46,13 +46,18 @@ export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
             </AlertDescription>
           </Alert>
 
-          <ShowHideInput
-            value={token.token}
-            shown={showToken}
-            onToggle={toggleShowToken}
-            actions={<CopyButton text={token.token} showToast={false} />}
-            data-testid="token-value-input"
-          />
+          <div className="space-y-3">
+            <ShowHideInput
+              value={token.token}
+              shown={showToken}
+              onToggle={toggleShowToken}
+              data-testid="token-value-input"
+              containerClassName="mb-3"
+            />
+            <div className="flex justify-end">
+              <CopyButton text={token.token} showToast={false} />
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="sm:justify-start">

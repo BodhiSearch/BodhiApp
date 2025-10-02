@@ -600,6 +600,10 @@ export type CreateApiTokenRequest = {
      * Descriptive name for the API token (minimum 3 characters)
      */
     name?: string | null;
+    /**
+     * Token scope defining access level
+     */
+    scope: TokenScope;
 };
 
 export type CreateChatCompletionRequest = {

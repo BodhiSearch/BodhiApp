@@ -254,6 +254,50 @@ test.describe('API Tokens - Complete Integration', () => {
     }
   });
 
+  test('Token Scope Selection and Display @integration', async ({ page }) => {
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    const tokensPage = new TokensPage(page, baseUrl);
+
+    const tokenNames = TokenFixtures.getTestTokenNames();
+
+    // Step 1-2: Login and navigate to tokens page
+    await loginPage.performOAuthLogin();
+    await tokensPage.navigateToTokens();
+    await tokensPage.expectTokensPage();
+
+    // Step 3: Create token with User scope
+    await tokensPage.createToken(tokenNames.basic, 'scope_token_user');
+    await tokensPage.expectTokenDialog();
+    await tokensPage.copyTokenFromDialog();
+    await tokensPage.closeTokenDialog();
+    await tokensPage.expectDialogClosed();
+
+    // Step 4: Verify token appears in list with User scope
+    await tokensPage.waitForTokenCreationSuccess();
+    const userTokenData = await tokensPage.findTokenByName(tokenNames.basic);
+    expect(userTokenData).not.toBeNull();
+    expect(userTokenData.scope).toBe('scope_token_user');
+    expect(userTokenData.status).toBe('active');
+
+    // Step 5: Create token with PowerUser scope
+    await tokensPage.createToken(tokenNames.admin1, 'scope_token_power_user');
+    await tokensPage.expectTokenDialog();
+    await tokensPage.copyTokenFromDialog();
+    await tokensPage.closeTokenDialog();
+    await tokensPage.expectDialogClosed();
+
+    // Step 6: Verify token appears in list with PowerUser scope
+    await tokensPage.waitForTokenCreationSuccess();
+    const powerUserTokenData = await tokensPage.findTokenByName(tokenNames.admin1);
+    expect(powerUserTokenData).not.toBeNull();
+    expect(powerUserTokenData.scope).toBe('scope_token_power_user');
+    expect(powerUserTokenData.status).toBe('active');
+
+    // Step 7: Verify both tokens are displayed in the list with correct scopes
+    const tokenCount = await tokensPage.getTokenCount();
+    expect(tokenCount).toBeGreaterThanOrEqual(2);
+  });
+
   test('Error Handling and Recovery @integration', async ({ page }) => {
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
     const tokensPage = new TokensPage(page, baseUrl);
