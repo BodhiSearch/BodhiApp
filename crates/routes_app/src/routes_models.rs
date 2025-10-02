@@ -18,7 +18,7 @@ use std::sync::Arc;
     tag = API_TAG_MODELS,
     operation_id = "listAllModels",
     summary = "List All Model Aliases",
-    description = "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options.",
+    description = "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).",
     params(
         PaginationSortParams
     ),
@@ -61,7 +61,9 @@ use std::sync::Arc;
         ),
     ),
     security(
-        ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn list_aliases_handler(
@@ -96,7 +98,7 @@ pub async fn list_aliases_handler(
     tag = API_TAG_MODELS,
     operation_id = "listModelFiles",
     summary = "List Local Model Files",
-    description = "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size.",
+    description = "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
     params(
         PaginationSortParams
     ),
@@ -116,7 +118,9 @@ pub async fn list_aliases_handler(
         ),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn list_local_modelfiles_handler(
@@ -231,6 +235,8 @@ fn get_alias_source(alias: &Alias) -> &str {
     path = ENDPOINT_MODELS.to_owned() + "/{alias}",
     tag = API_TAG_MODELS,
     operation_id = "getAlias",
+    summary = "Get Model Alias Details",
+    description = "Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).",
     params(
         ("alias" = String, Path, description = "Alias identifier for the model")
     ),
@@ -267,7 +273,9 @@ fn get_alias_source(alias: &Alias) -> &str {
          })),
     ),
     security(
-        ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     )
 )]
 pub async fn get_user_alias_handler(

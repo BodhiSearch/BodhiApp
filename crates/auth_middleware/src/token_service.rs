@@ -69,7 +69,7 @@ impl DefaultTokenService {
         .db_service
         .get_api_token_by_prefix(token_prefix)
         .await
-        .map_err(|e| AuthError::DbError(e))?;
+        .map_err(AuthError::DbError)?;
 
       let Some(api_token) = api_token else {
         return Err(TokenError::InvalidToken("Token not found".to_string()))?;

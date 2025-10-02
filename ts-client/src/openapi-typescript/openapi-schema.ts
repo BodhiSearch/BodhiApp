@@ -350,7 +350,7 @@ export interface paths {
         };
         /**
          * List Local Model Files
-         * @description Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size.
+         * @description Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).
          */
         get: operations["listModelFiles"];
         put?: never;
@@ -434,7 +434,7 @@ export interface paths {
         };
         /**
          * List All Model Aliases
-         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options.
+         * @description Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).
          */
         get: operations["listAllModels"];
         put?: never;
@@ -453,7 +453,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get details for a specific model alias */
+        /**
+         * Get Model Alias Details
+         * @description Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).
+         */
         get: operations["getAlias"];
         put?: never;
         post?: never;
@@ -490,6 +493,8 @@ export interface paths {
         /**
          * List Application Settings
          * @description Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.
+         *
+         *     **Security Note:** Admin session authentication required for system configuration access.
          */
         get: operations["listSettings"];
         put?: never;
@@ -511,12 +516,16 @@ export interface paths {
         /**
          * Update Application Setting
          * @description Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.
+         *
+         *     **Security Note:** Admin session authentication required for system configuration changes.
          */
         put: operations["updateSetting"];
         post?: never;
         /**
          * Reset Setting to Default
          * @description Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.
+         *
+         *     **Security Note:** Admin session authentication required.
          */
         delete: operations["deleteSetting"];
         options?: never;
@@ -554,12 +563,16 @@ export interface paths {
         /**
          * List API Tokens
          * @description Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.
+         *
+         *     **Security Note:** Session-only authentication required to prevent information disclosure via tokens.
          */
         get: operations["listApiTokens"];
         put?: never;
         /**
          * Create API Token
          * @description Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).
+         *
+         *     **Security Note:** Session-only authentication required to prevent token-based privilege escalation.
          */
         post: operations["createApiToken"];
         delete?: never;
@@ -579,6 +592,8 @@ export interface paths {
         /**
          * Update API Token
          * @description Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.
+         *
+         *     **Security Note:** Session-only authentication required to prevent token-based privilege escalation.
          */
         put: operations["updateApiToken"];
         post?: never;
@@ -597,7 +612,7 @@ export interface paths {
         };
         /**
          * Get Current User Information
-         * @description Retrieves information about the currently authenticated user including email, roles, token type, and authentication source.
+         * @description Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange).
          */
         get: operations["getCurrentUser"];
         put?: never;
@@ -5193,18 +5208,12 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current user information retrieved successfully */
+            /** @description User information (authenticated or not) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "auth_status": "logged_in",
-                     *       "role": "resource_admin",
-                     *       "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                     *       "username": "user@example.com"
-                     *     } */
                     "application/json": components["schemas"]["UserResponse"];
                 };
             };

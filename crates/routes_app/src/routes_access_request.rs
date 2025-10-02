@@ -110,6 +110,9 @@ pub struct PaginatedUserAccessResponse {
         (status = 422, description = "User already has role", body = OpenAIApiError),
     ),
     security(
+        (),
+        ("bearer_api_token" = []),
+        ("bearer_oauth_token" = []),
         ("session_auth" = [])
     )
 )]
@@ -193,6 +196,9 @@ pub async fn user_request_access_handler(
         (status = 404, description = "Request not found", body = OpenAIApiError),
     ),
     security(
+        (),
+        ("bearer_api_token" = []),
+        ("bearer_oauth_token" = []),
         ("session_auth" = [])
     )
 )]
@@ -232,7 +238,7 @@ pub async fn request_status_handler(
         (status = 200, description = "Pending requests retrieved", body = PaginatedUserAccessResponse),
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn list_pending_requests_handler(
@@ -274,7 +280,7 @@ pub async fn list_pending_requests_handler(
         (status = 200, description = "All requests retrieved", body = PaginatedUserAccessResponse),
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn list_all_requests_handler(
@@ -317,7 +323,7 @@ pub async fn list_all_requests_handler(
         (status = 404, description = "Request not found", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn approve_request_handler(
@@ -422,7 +428,7 @@ pub async fn approve_request_handler(
         (status = 404, description = "Request not found", body = OpenAIApiError)
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn reject_request_handler(

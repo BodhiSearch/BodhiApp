@@ -83,13 +83,17 @@ pub enum ApiTokenError {
 }
 
 /// Create a new API token
+///
+/// **Security Note:** This endpoint requires browser session authentication only.
+/// API tokens cannot be used to create additional tokens, preventing token-based
+/// privilege escalation. Login via `/bodhi/v1/auth/initiate` is required.
 #[utoipa::path(
     post,
     path = ENDPOINT_TOKENS,
     tag = API_TAG_API_KEYS,
     operation_id = "createApiToken",
     summary = "Create API Token",
-    description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).",
+    description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
     request_body(
         content = CreateApiTokenRequest,
         description = "API token creation parameters",
@@ -103,9 +107,10 @@ pub enum ApiTokenError {
          example = json!({
              "token": "bodhiapp_1234567890abcdef"
          })),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot create tokens)", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn create_token_handler(
@@ -185,15 +190,18 @@ pub async fn create_token_handler(
 }
 
 /// Update an existing API token
+///
+/// **Security Note:** Session-only authentication required for token management.
+/// API tokens cannot manage other tokens to prevent privilege escalation.
 #[utoipa::path(
     put,
     path = ENDPOINT_TOKENS.to_owned() + "/{id}",
     tag = API_TAG_API_KEYS,
     operation_id = "updateApiToken",
     summary = "Update API Token",
-    description = "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.",
+    description = "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
     params(
-        ("id" = String, Path, 
+        ("id" = String, Path,
          description = "Unique identifier of the API token to update",
          example = "550e8400-e29b-41d4-a716-446655440000")
     ),
@@ -224,9 +232,10 @@ pub async fn create_token_handler(
                  "code": "entity_error-not_found"
              }
          })),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot manage tokens)", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn update_token_handler(
@@ -260,13 +269,16 @@ pub async fn update_token_handler(
 }
 
 /// List all API tokens for the current user
+///
+/// **Security Note:** Session-only authentication required for viewing tokens.
+/// API tokens cannot list other tokens to prevent information disclosure.
 #[utoipa::path(
     get,
     path = ENDPOINT_TOKENS,
     tag = API_TAG_API_KEYS,
     operation_id = "listApiTokens",
     summary = "List API Tokens",
-    description = "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.",
+    description = "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.\n\n**Security Note:** Session-only authentication required to prevent information disclosure via tokens.",
     params(
         PaginationSortParams
     ),
@@ -297,9 +309,10 @@ pub async fn update_token_handler(
              "page": 1,
              "page_size": 10
          })),
+        (status = 403, description = "Forbidden - Session authentication required (API tokens cannot list tokens)", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_power_user"])
     )
 )]
 pub async fn list_tokens_handler(

@@ -40,13 +40,16 @@ pub struct UpdateSettingRequest {
 }
 
 /// List all application settings
+///
+/// **Security Note:** Admin session authentication required. Settings management
+/// is restricted to interactive sessions to prevent unauthorized configuration changes.
 #[utoipa::path(
     get,
     path = ENDPOINT_SETTINGS,
     tag = API_TAG_SETTINGS,
     operation_id = "listSettings",
     summary = "List Application Settings",
-    description = "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.",
+    description = "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.\n\n**Security Note:** Admin session authentication required for system configuration access.",
     responses(
         (status = 200, description = "Application settings retrieved successfully", body = Vec<SettingInfo>,
          example = json!([
@@ -72,9 +75,10 @@ pub struct UpdateSettingRequest {
                  }
              }
          ])),
+        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_admin"])
     )
 )]
 pub async fn list_settings_handler(
@@ -86,15 +90,18 @@ pub async fn list_settings_handler(
 }
 
 /// Update a specific setting
+///
+/// **Security Note:** Admin session authentication required. Settings modification
+/// is restricted to interactive sessions to prevent unauthorized system reconfiguration.
 #[utoipa::path(
     put,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
     tag = API_TAG_SETTINGS,
     operation_id = "updateSetting",
     summary = "Update Application Setting",
-    description = "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.",
+    description = "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
     params(
-        ("key" = String, Path, 
+        ("key" = String, Path,
          description = "Setting key identifier (e.g., BODHI_LOG_LEVEL, BODHI_PORT)",
          example = "BODHI_LOG_LEVEL")
     ),
@@ -119,13 +126,14 @@ pub async fn list_settings_handler(
          example = json!({
              "error": {
                  "message": "Setting not found: INVALID_KEY",
-                 "type": "not_found_error", 
+                 "type": "not_found_error",
                  "code": "settings_error-invalid_setting"
              }
-         }))
+         })),
+        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError)
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_admin"])
     )
 )]
 pub async fn update_setting_handler(
@@ -163,15 +171,17 @@ pub async fn update_setting_handler(
 }
 
 /// Reset a setting to its default value
+///
+/// **Security Note:** Admin session authentication required for system configuration.
 #[utoipa::path(
     delete,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
     tag = API_TAG_SETTINGS,
     operation_id = "deleteSetting",
     summary = "Reset Setting to Default",
-    description = "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.",
+    description = "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.\n\n**Security Note:** Admin session authentication required.",
     params(
-        ("key" = String, Path, 
+        ("key" = String, Path,
          description = "Setting key identifier to reset to default value",
          example = "BODHI_LOG_LEVEL")
     ),
@@ -180,7 +190,7 @@ pub async fn update_setting_handler(
          example = json!({
              "key": "BODHI_LOG_LEVEL",
              "current_value": "warn",
-             "default_value": "warn", 
+             "default_value": "warn",
              "source": "default",
              "metadata": {
                  "type": "option",
@@ -194,10 +204,11 @@ pub async fn update_setting_handler(
                  "type": "not_found_error",
                  "code": "settings_error-not_found"
              }
-         }))
+         })),
+        (status = 403, description = "Forbidden - Admin session authentication required", body = OpenAIApiError)
     ),
     security(
-        ("session_auth" = [])
+        ("session_auth" = ["resource_admin"])
     )
 )]
 pub async fn delete_setting_handler(

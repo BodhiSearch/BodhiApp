@@ -45,7 +45,7 @@ pub struct ChangeRoleRequest {
         (status = 200, description = "Users retrieved successfully", body = UserListResponse),
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn list_users_handler(
@@ -91,7 +91,7 @@ pub async fn list_users_handler(
         (status = 404, description = "User not found", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = ["role:manager", "role:admin"])
+        ("session_auth" = ["resource_manager"])
     )
 )]
 pub async fn change_user_role_handler(
@@ -159,7 +159,7 @@ pub async fn change_user_role_handler(
         (status = 404, description = "User not found", body = OpenAIApiError),
     ),
     security(
-        ("session_auth" = ["role:admin"])
+        ("session_auth" = ["resource_admin"])
     )
 )]
 pub async fn remove_user_handler(

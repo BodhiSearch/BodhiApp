@@ -84,7 +84,9 @@ pub struct OllamaError {
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn ollama_models_handler(
@@ -239,7 +241,9 @@ pub struct ShowResponse {
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn ollama_model_show_handler(
@@ -583,7 +587,9 @@ pub struct Options {
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn ollama_model_chat_handler(

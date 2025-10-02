@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Bodhi App APIs",
-    "description": "API documentation for Bodhi App.\n\n## Authentication\nThis API supports two authentication methods:\n\n1. **Browser Session** (Default)\n   - Login via `/bodhi/v1/auth/initiate` endpoint\n   - Session cookie will be used automatically\n   - Best for browser-based access\n\n2. **API Token**\n   - Create API Token using the app Menu > Settings > API Tokens\n   - Use the API Token as the Authorization Bearer token in API calls\n   - Best for programmatic access\n\n## Authorization\nAPIs require different privilege levels:\n\n- **User Level**: Requires `resource_user` role or `scope_token_user`\n- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`\n\nFor API keys, specify required scope when creating the token.\n",
+    "description": "API documentation for Bodhi App.\n\n## Authentication Methods\n\nBodhi App supports three sophisticated authentication methods:\n\n### 1. API Token Authentication (Recommended for API access)\n- **Method**: Bearer token in Authorization header\n- **Format**: `Authorization: Bearer bodhiapp_<random_string>`\n- **Obtain**: Create via web interface at Menu > Settings > API Tokens\n- **Scopes**: Token-based scopes with hierarchical permissions\n  - `scope_token_user`: Basic API access (read operations, OpenAI/Ollama APIs)\n  - `scope_token_power_user`: Advanced operations (model creation, downloads)\n  - `scope_token_manager`: User management operations\n  - `scope_token_admin`: Full administrative access\n- **Usage**: Best for programmatic access, CI/CD, and external integrations\n\n### 2. Session Authentication (Browser-based)\n- **Method**: HTTP cookies (automatic for browsers)\n- **Login**: Initiate via `POST /bodhi/v1/auth/initiate`\n- **Callback**: Complete via `POST /bodhi/v1/auth/callback`\n- **Roles**: Resource-based roles with hierarchical permissions\n  - `resource_user`: Basic authenticated access\n  - `resource_power_user`: Advanced operations\n  - `resource_manager`: User management (session-only)\n  - `resource_admin`: Full administration (session-only)\n- **Usage**: Best for web browsers and interactive applications\n- **Session-Only Operations**: Some sensitive operations (token management, settings, user management) require session authentication only for security\n\n### 3. OAuth 2.1 Token Exchange (External integrations)\n- **Method**: Bearer token with exchanged OAuth credentials\n- **Format**: `Authorization: Bearer <oauth_exchanged_token>`\n- **Scopes**: User-based scopes via OAuth 2.1 token exchange\n  - `scope_user_user`: Basic user access via OAuth exchange\n  - `scope_user_power_user`: Advanced user operations via OAuth exchange  \n  - `scope_user_manager`: Manager operations via OAuth exchange\n  - `scope_user_admin`: Admin operations via OAuth exchange\n- **Usage**: For external OAuth 2.1 providers integrating with Bodhi\n\n## Authorization Hierarchy\n\n**Permission Hierarchy** (higher levels include all lower permissions):\n```\nAdmin > Manager > PowerUser > User\n```\n\n**Scope/Role Mapping**:\n| Permission Level | API Token Scope | OAuth User Scope | Session Role |\n|------------------|----------------|------------------|-------------|\n| User | `scope_token_user` | `scope_user_user` | `resource_user` |\n| PowerUser | `scope_token_power_user` | `scope_user_power_user` | `resource_power_user` |\n| Manager | `scope_token_manager` | `scope_user_manager` | `resource_manager` |\n| Admin | `scope_token_admin` | `scope_user_admin` | `resource_admin` |\n\n## Endpoint Access Patterns\n\n- **Public Endpoints**: No authentication required (ping, health, app_info, setup)\n- **Optional Auth Endpoints**: Work with or without authentication, providing different data (user_info)\n- **Multi-Auth Endpoints**: Accept any of the three authentication methods (most API endpoints)\n- **Session-Only Endpoints**: Require browser session authentication only:\n  - Token management (`/bodhi/v1/tokens/*`) - PowerUser+ session required\n  - Settings management (`/bodhi/v1/settings/*`) - Admin session required  \n  - User management (`/bodhi/v1/users/*`) - Manager+ session required\n\n## Security Examples\n\n### API Token Usage:\n```bash\ncurl -H \"Authorization: Bearer bodhiapp_1234567890abcdef\" \\\n     https://api.example.com/v1/models\n```\n\n### Session Authentication:\n```bash\n# Login first\ncurl -X POST https://api.example.com/bodhi/v1/auth/initiate \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\"provider\": \"github\"}'\n\n# Then use session cookie automatically\ncurl https://api.example.com/v1/models \\\n     --cookie-jar cookies.txt --cookie cookies.txt\n```\n\n### OAuth 2.1 Token Exchange:\n```bash\ncurl -H \"Authorization: Bearer <oauth_exchanged_token>\" \\\n     https://api.example.com/v1/models\n```\n\n## Security Best Practices\n\n1. **Use HTTPS**: Always use HTTPS in production\n2. **Scope Principle**: Request minimal required scopes/roles\n3. **Token Rotation**: Regularly rotate API tokens\n4. **Session Security**: Session-only operations prevent token-based access to sensitive functions\n5. **Hierarchical Permissions**: Higher roles automatically include lower role permissions\n",
     "contact": {
       "name": "Bodhi API Support",
       "url": "https://github.com/BodhiSearch/BodhiApp/issues",
@@ -139,7 +139,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -249,7 +261,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -334,7 +358,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -442,8 +478,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -552,8 +587,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -648,8 +682,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -733,8 +766,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -855,10 +887,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       },
@@ -942,10 +983,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -1014,7 +1064,24 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
       }
     },
     "/bodhi/v1/api-models/fetch-models": {
@@ -1088,10 +1155,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -1167,10 +1243,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -1273,10 +1358,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       },
@@ -1371,10 +1465,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       },
@@ -1452,10 +1555,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
           },
           {
-            "session_auth": []
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -1536,7 +1648,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
       }
     },
     "/bodhi/v1/auth/callback": {
@@ -1633,7 +1757,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
       }
     },
     "/bodhi/v1/auth/initiate": {
@@ -1721,7 +1857,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
       }
     },
     "/bodhi/v1/info": {
@@ -1841,7 +1989,7 @@
           "models"
         ],
         "summary": "List Local Model Files",
-        "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size.",
+        "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
         "operationId": "listModelFiles",
         "parameters": [
           {
@@ -1950,7 +2098,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -2073,7 +2233,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       },
@@ -2181,7 +2353,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -2305,7 +2489,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -2410,7 +2606,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -2421,7 +2629,7 @@
           "models"
         ],
         "summary": "List All Model Aliases",
-        "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options.",
+        "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).",
         "operationId": "listAllModels",
         "parameters": [
           {
@@ -2558,7 +2766,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       },
@@ -2632,7 +2852,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -2642,7 +2874,8 @@
         "tags": [
           "models"
         ],
-        "summary": "Get details for a specific model alias",
+        "summary": "Get Model Alias Details",
+        "description": "Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).",
         "operationId": "getAlias",
         "parameters": [
           {
@@ -2747,7 +2980,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -2835,7 +3080,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -2846,7 +3103,7 @@
           "settings"
         ],
         "summary": "List Application Settings",
-        "description": "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.",
+        "description": "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.\n\n**Security Note:** Admin session authentication required for system configuration access.",
         "operationId": "listSettings",
         "responses": {
           "200": {
@@ -2934,7 +3191,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_admin"
+            ]
           }
         ]
       }
@@ -2945,7 +3204,7 @@
           "settings"
         ],
         "summary": "Update Application Setting",
-        "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.",
+        "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
         "operationId": "updateSetting",
         "parameters": [
           {
@@ -3072,7 +3331,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_admin"
+            ]
           }
         ]
       },
@@ -3081,7 +3342,7 @@
           "settings"
         ],
         "summary": "Reset Setting to Default",
-        "description": "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.",
+        "description": "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.\n\n**Security Note:** Admin session authentication required.",
         "operationId": "deleteSetting",
         "parameters": [
           {
@@ -3182,7 +3443,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_admin"
+            ]
           }
         ]
       }
@@ -3253,7 +3516,7 @@
           "api-keys"
         ],
         "summary": "List API Tokens",
-        "description": "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.",
+        "description": "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.\n\n**Security Note:** Session-only authentication required to prevent information disclosure via tokens.",
         "operationId": "listApiTokens",
         "parameters": [
           {
@@ -3374,7 +3637,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       },
@@ -3383,7 +3648,7 @@
           "api-keys"
         ],
         "summary": "Create API Token",
-        "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).",
+        "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
         "operationId": "createApiToken",
         "requestBody": {
           "description": "API token creation parameters",
@@ -3459,7 +3724,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -3470,7 +3737,7 @@
           "api-keys"
         ],
         "summary": "Update API Token",
-        "description": "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.",
+        "description": "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
         "operationId": "updateApiToken",
         "parameters": [
           {
@@ -3579,7 +3846,9 @@
         },
         "security": [
           {
-            "session_auth": []
+            "session_auth": [
+              "resource_power_user"
+            ]
           }
         ]
       }
@@ -3590,21 +3859,32 @@
           "auth"
         ],
         "summary": "Get Current User Information",
-        "description": "Retrieves information about the currently authenticated user including email, roles, token type, and authentication source.",
+        "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange).",
         "operationId": "getCurrentUser",
         "responses": {
           "200": {
-            "description": "Current user information retrieved successfully",
+            "description": "User information (authenticated or not)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponse"
                 },
-                "example": {
-                  "auth_status": "logged_in",
-                  "role": "resource_admin",
-                  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                  "username": "user@example.com"
+                "examples": {
+                  "authenticated": {
+                    "summary": "Authenticated user",
+                    "value": {
+                      "auth_status": "logged_in",
+                      "role": "resource_admin",
+                      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                      "username": "user@example.com"
+                    }
+                  },
+                  "unauthenticated": {
+                    "summary": "Unauthenticated request",
+                    "value": {
+                      "auth_status": "logged_out"
+                    }
+                  }
                 }
               }
             }
@@ -3649,7 +3929,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
       }
     },
     "/bodhi/v1/user/request-access": {
@@ -3726,6 +4018,13 @@
           }
         },
         "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
           {
             "session_auth": []
           }
@@ -3803,6 +4102,13 @@
           }
         },
         "security": [
+          {},
+          {
+            "bearer_api_token": []
+          },
+          {
+            "bearer_oauth_token": []
+          },
           {
             "session_auth": []
           }
@@ -3898,8 +4204,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -3982,7 +4287,7 @@
         "security": [
           {
             "session_auth": [
-              "role:admin"
+              "resource_admin"
             ]
           }
         ]
@@ -4075,8 +4380,7 @@
         "security": [
           {
             "session_auth": [
-              "role:manager",
-              "role:admin"
+              "resource_manager"
             ]
           }
         ]
@@ -4314,7 +4618,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -4414,7 +4730,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -4498,7 +4826,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -4600,7 +4940,19 @@
         },
         "security": [
           {
-            "bearer_auth": []
+            "bearer_api_token": [
+              "scope_token_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_user"
+            ]
           }
         ]
       }
@@ -9222,6 +9574,36 @@
         "enum": [
           "approximate"
         ]
+      }
+    },
+    "securitySchemes": {
+      "bearer_api_token": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "bodhiapp_<token>",
+        "description": "API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"
+      },
+      "bearer_oauth_token": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"
+      },
+      "session_auth": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "/bodhi/v1/auth/initiate",
+            "tokenUrl": "/bodhi/v1/auth/callback",
+            "scopes": {
+              "resource_admin": "Admin operations via browser session (session-only)",
+              "resource_manager": "Manager operations via browser session (session-only)",
+              "resource_power_user": "Power user operations via browser session",
+              "resource_user": "Basic authenticated user access via browser session"
+            }
+          }
+        },
+        "description": "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only."
       }
     }
   },

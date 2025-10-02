@@ -93,7 +93,9 @@ pub enum HttpError {
         ),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn chat_completions_handler(
@@ -149,7 +151,9 @@ pub async fn chat_completions_handler(
          })),
     ),
     security(
-      ("bearer_auth" = []),
+        ("bearer_api_token" = ["scope_token_user"]),
+        ("bearer_oauth_token" = ["scope_user_user"]),
+        ("session_auth" = ["resource_user"])
     ),
 )]
 pub async fn embeddings_handler(
