@@ -233,7 +233,12 @@ impl DefaultTokenService {
       return Err(AuthError::RefreshTokenNotFound);
     };
 
-    tracing::info!("Attempting to refresh expired access token");
+    // Extract user_id from expired token for logging
+    let user_id = claims.sub.clone();
+    tracing::info!(
+      "Attempting to refresh expired access token for user: {}",
+      user_id
+    );
 
     // Get app registration info
     let app_reg_info: AppRegInfo = self
@@ -241,7 +246,7 @@ impl DefaultTokenService {
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?;
 
-    // Attempt token refresh
+    // Attempt token refresh with retry logic in auth_service
     let (new_access_token, new_refresh_token) = match self
       .auth_service
       .refresh_token(
@@ -251,41 +256,70 @@ impl DefaultTokenService {
       )
       .await
     {
-      Ok(tokens) => tokens,
+      Ok(tokens) => {
+        tracing::info!("Token refresh successful for user: {}", user_id);
+        tokens
+      }
       Err(e) => {
-        tracing::error!("Failed to refresh token: {:?}", e);
+        tracing::error!("Failed to refresh token for user {}: {:?}", user_id, e);
         return Err(e.into());
       }
     };
 
-    // Extract claims from new token first to get user_id
-    let claims = extract_claims::<Claims>(&new_access_token)?;
-    // Store user_id and new tokens in session
+    // Extract claims from new token first to validate and get role
+    let new_claims = extract_claims::<Claims>(&new_access_token)?;
+
+    // Store new tokens in session
     session
       .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
       .await?;
-    if let Some(refresh_token) = new_refresh_token.as_ref() {
+
+    if let Some(new_refresh_token) = new_refresh_token.as_ref() {
       session
-        .insert(SESSION_KEY_REFRESH_TOKEN, refresh_token)
+        .insert(SESSION_KEY_REFRESH_TOKEN, new_refresh_token)
         .await?;
-      tracing::debug!("Updated user_id, access and refresh tokens in session");
+      tracing::debug!(
+        "Updated access and refresh tokens in session for user: {}",
+        user_id
+      );
     } else {
       tracing::debug!(
-        "Updated user_id and access token in session (no new refresh token provided)"
+        "Updated access token in session (no new refresh token) for user: {}",
+        user_id
       );
     }
+
+    // Explicitly save session to ensure persistence
+    session.save().await.map_err(|e| {
+      tracing::error!(
+        "Failed to save session after token refresh for user {}: {:?}",
+        user_id,
+        e
+      );
+      AuthError::TowerSession(e)
+    })?;
+
+    tracing::info!(
+      "Session saved successfully after token refresh for user: {}",
+      user_id
+    );
+
     let client_id = self
       .secret_service
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?
       .client_id;
-    let role = claims
+    let role = new_claims
       .resource_access
       .get(&client_id)
       .map(|resource_claims| ResourceRole::from_resource_role(&resource_claims.roles))
       .transpose()?;
 
-    tracing::info!("Successfully refreshed token for role: {:?}", role);
+    tracing::info!(
+      "Successfully refreshed token for user {} with role: {:?}",
+      user_id,
+      role
+    );
     Ok((new_access_token, role))
   }
 }
