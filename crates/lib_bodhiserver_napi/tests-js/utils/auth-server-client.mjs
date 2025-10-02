@@ -41,6 +41,28 @@ export function getTestCredentials() {
 }
 
 /**
+ * Get realm admin credentials for admin API operations
+ */
+export function getRealmAdminCredentials() {
+  const config = {
+    username: process.env.INTEG_TEST_REALM_ADMIN,
+    password: process.env.INTEG_TEST_REALM_ADMIN_PASS,
+  };
+
+  // Validate required environment variables
+  const requiredVars = ['username', 'password'];
+  for (const varName of requiredVars) {
+    if (!config[varName]) {
+      throw new Error(
+        `Required environment variable missing for realm admin: INTEG_TEST_REALM_${varName.toUpperCase()}`
+      );
+    }
+  }
+
+  return config;
+}
+
+/**
  * AuthServerTestClient - Handles OAuth2 Token Exchange v2 operations
  */
 export class AuthServerTestClient {
@@ -83,6 +105,43 @@ export class AuthServerTestClient {
       console.log('Error response body:', errorText);
       throw new Error(
         `Failed to get dev console token: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  }
+
+  /**
+   * Get admin token using admin-cli client with password grant
+   * @param {string} username - Realm admin username
+   * @param {string} password - Realm admin password
+   * @returns {Promise<string>} Admin access token with realm-management permissions
+   */
+  async getRealmAdminToken(username, password) {
+    const tokenUrl = `${this.authUrl}/realms/master/protocol/openid-connect/token`;
+
+    const params = new URLSearchParams({
+      client_id: 'admin-cli',
+      grant_type: 'password',
+      username: username,
+      password: password,
+    });
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Admin token request failed:', response.status, response.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(
+        `Failed to get realm admin token: ${response.status} ${response.statusText} - ${errorText}`
       );
     }
 
@@ -424,6 +483,70 @@ export class AuthServerTestClient {
 
     const data = await response.json();
     return data.access_token;
+  }
+
+  /**
+   * Configure client access token lifespan using Keycloak Admin API
+   * @param {string} adminToken - Admin access token for authorization
+   * @param {string} clientId - Client ID (not UUID)
+   * @param {number} accessTokenLifespan - Access token lifespan in seconds (default 5)
+   * @returns {Promise<void>}
+   */
+  async configureClientTokenLifespan(adminToken, clientId, accessTokenLifespan = 5) {
+    const getClientUrl = `${this.authUrl}/admin/realms/${this.authRealm}/clients?clientId=${clientId}`;
+
+    const getResponse = await fetch(getClientUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!getResponse.ok) {
+      const errorText = await getResponse.text();
+      console.log('Get client failed:', getResponse.status, getResponse.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(
+        `Failed to get client: ${getResponse.status} ${getResponse.statusText} - ${errorText}`
+      );
+    }
+
+    const clients = await getResponse.json();
+    if (!clients || clients.length === 0) {
+      throw new Error(`Client with clientId '${clientId}' not found`);
+    }
+
+    const client = clients[0];
+    const clientUuid = client.id;
+
+    const updateClientUrl = `${this.authUrl}/admin/realms/${this.authRealm}/clients/${clientUuid}`;
+
+    const updatedClient = {
+      ...client,
+      attributes: {
+        ...client.attributes,
+        'access.token.lifespan': accessTokenLifespan.toString(),
+      },
+    };
+
+    const updateResponse = await fetch(updateClientUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedClient),
+    });
+
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text();
+      console.log('Update client failed:', updateResponse.status, updateResponse.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(
+        `Failed to update client: ${updateResponse.status} ${updateResponse.statusText} - ${errorText}`
+      );
+    }
   }
 }
 

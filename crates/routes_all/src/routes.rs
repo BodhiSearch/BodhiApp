@@ -60,7 +60,7 @@ pub fn build_routes(
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(ctx, app_service.clone()));
 
   // Public APIs (no auth required)
-  let mut public_apis = Router::new()
+  let public_apis = Router::new()
     .route(ENDPOINT_PING, get(ping_handler))
     .route(ENDPOINT_HEALTH, get(health_handler))
     .route(ENDPOINT_APP_INFO, get(app_info_handler))
@@ -68,15 +68,7 @@ pub fn build_routes(
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
     .route(ENDPOINT_LOGOUT, post(logout_handler));
 
-  // Dev-only admin routes
-  if !app_service.setting_service().is_production() {
-    let dev_apis = Router::new()
-      .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
-      .route(ENDPOINT_DEV_ENVS, get(envs_handler));
-    public_apis = public_apis.merge(dev_apis);
-  }
-
-  let optional_auth = Router::new()
+  let mut optional_auth = Router::new()
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
@@ -85,8 +77,18 @@ pub fn build_routes(
       ENDPOINT_USER_REQUEST_ACCESS,
       post(user_request_access_handler),
     )
-    .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info));
+    .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler));
+
+  // Dev-only routes with optional auth
+  if !app_service.setting_service().is_production() {
+    let dev_apis = Router::new()
+      .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
+      .route(ENDPOINT_DEV_ENVS, get(envs_handler));
+    optional_auth = optional_auth.merge(dev_apis);
+  }
+
+  let optional_auth =
+    optional_auth.route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info));
 
   // User level APIs (role=user & scope=scope_token_user)
   let user_apis = Router::new()

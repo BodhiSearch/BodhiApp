@@ -261,7 +261,7 @@ impl DefaultTokenService {
         tokens
       }
       Err(e) => {
-        tracing::error!("Failed to refresh token for user {}: {:?}", user_id, e);
+        tracing::error!("Failed to refresh token for user {}: {}", user_id, e);
         return Err(e.into());
       }
     };

@@ -141,9 +141,7 @@ export function TokenPageContent() {
           <div className="mt-6 mb-4">
             <Pagination
               page={page}
-              totalPages={
-                tokensData ? Math.ceil((tokensData.total as number) / (tokensData.page_size as number)) : 1
-              }
+              totalPages={tokensData ? Math.ceil((tokensData.total as number) / (tokensData.page_size as number)) : 1}
               onPageChange={setPage}
             />
           </div>
