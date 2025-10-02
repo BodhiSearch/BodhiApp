@@ -108,11 +108,18 @@ pub struct KeycloakAuthService {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 struct KeycloakError {
   error: String,
+  #[serde(default)]
+  error_description: Option<String>,
 }
 
 impl From<KeycloakError> for AuthServiceError {
   fn from(value: KeycloakError) -> Self {
-    AuthServiceError::AuthServiceApiError(value.error)
+    let msg = if let Some(desc) = value.error_description {
+      format!("{}: {}", value.error, desc)
+    } else {
+      value.error
+    };
+    AuthServiceError::AuthServiceApiError(msg)
   }
 }
 
@@ -284,6 +291,7 @@ impl AuthService for KeycloakAuthService {
       log::log_http_error("POST", &client_endpoint, "auth_service", &response_text);
       let error: KeycloakError = serde_json::from_str(&response_text).unwrap_or(KeycloakError {
         error: response_text.clone(),
+        error_description: None,
       });
       Err(error.into())
     }
@@ -396,6 +404,12 @@ impl AuthService for KeycloakAuthService {
     let url = self.auth_token_url();
     log::log_http_request("POST", &url, "auth_service", Some(&params));
 
+    // Log token prefix for debugging (first 10 chars)
+    tracing::debug!(
+      "Attempting token refresh with token prefix: {}...",
+      &refresh_token.chars().take(10).collect::<String>()
+    );
+
     // Retry logic with exponential backoff for network errors only
     // Attempts: 1st try immediate, retry 1 after 100ms, retry 2 after 500ms, retry 3 after 2000ms
     let max_retries = 3;
@@ -471,33 +485,48 @@ impl AuthService for KeycloakAuthService {
 
         // 4xx errors (client errors) should not be retried
         if status.is_client_error() {
+          let error_msg = if let Some(ref desc) = error.error_description {
+            format!("{}: {}", error.error, desc)
+          } else {
+            error.error.clone()
+          };
           tracing::error!(
             "Token refresh failed with client error ({}): {}",
             status,
-            error.error
+            error_msg
           );
-          log::log_http_error("POST", &url, "auth_service", &error.error);
+          log::log_http_error("POST", &url, "auth_service", &error_msg);
           return Err(error.into());
         }
 
         // 5xx errors (server errors) can be retried
         if status.is_server_error() && attempt < max_retries {
+          let error_msg = if let Some(ref desc) = error.error_description {
+            format!("{}: {}", error.error, desc)
+          } else {
+            error.error.clone()
+          };
           tracing::warn!(
             "Token refresh failed with server error (attempt {}/{}): {} - {}",
             attempt + 1,
             max_retries + 1,
             status,
-            error.error
+            error_msg
           );
           last_error = Some(error.into());
           continue; // Retry
         } else {
+          let error_msg = if let Some(ref desc) = error.error_description {
+            format!("{}: {}", error.error, desc)
+          } else {
+            error.error.clone()
+          };
           tracing::error!(
             "Token refresh failed with server error (final attempt): {} - {}",
             status,
-            error.error
+            error_msg
           );
-          log::log_http_error("POST", &url, "auth_service", &error.error);
+          log::log_http_error("POST", &url, "auth_service", &error_msg);
           return Err(error.into());
         }
       }
@@ -885,7 +914,7 @@ mod tests {
     let error = result.unwrap_err();
     assert!(matches!(
       error,
-      AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant"
+      AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant: Invalid refresh token"
     ));
     mock.assert();
     Ok(())

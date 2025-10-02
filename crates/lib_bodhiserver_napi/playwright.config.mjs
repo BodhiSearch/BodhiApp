@@ -12,12 +12,17 @@ const testTimeout = 120000;
 const navigationTimeout = 30000;
 const actionTimeout = 30000;
 
+// Check if running scheduled tests via --grep flag
+const isScheduledRun = process.argv.includes('--grep') && process.argv.some(arg => arg.includes('@scheduled'));
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: './tests-js',
   testMatch: '**/*.spec.mjs',
+  /* Exclude scheduled tests from regular runs, unless explicitly running with --grep @scheduled */
+  ...(isScheduledRun ? {} : { grepInvert: /@scheduled/ }),
   /* Run tests in files in parallel */
   fullyParallel: false, // Sequential execution for server tests
   /* Fail the build on CI if you accidentally left test.only in the source code. */
