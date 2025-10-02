@@ -335,7 +335,7 @@ impl Modify for OpenAPIEnvModifier {
             .scheme(HttpAuthScheme::Bearer)
             .bearer_format("API Token")
             .description(Some(
-              "API token for programmatic access. Tokens are randomly generated with 'bapp_' prefix (e.g., bapp_1234567890abcdef). Obtain tokens from /bodhi/v1/tokens endpoint. Include as: Authorization: Bearer <token>. Required scopes: scope_token_user (basic access) or scope_token_power_user (admin access).".to_string(),
+              "API token for programmatic access. Tokens are randomly generated with 'bodhiapp_' prefix (e.g., bodhiapp_1234567890abcdef). Obtain tokens from /bodhi/v1/tokens endpoint. Include as: Authorization: Bearer <token>. Required scopes: scope_token_user (basic access) or scope_token_power_user (admin access).".to_string(),
             ))
             .build(),
         ),

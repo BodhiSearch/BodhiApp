@@ -66,12 +66,16 @@ export class ChatPage extends BasePage {
    * Send a message in the chat
    */
   async sendMessage(message) {
+    // Wait for any toast to disappear before trying to interact with the send button
+    await this.waitForToastToHideOptional();
     const sendButton = await this.sendMessageAndReturn(message);
     await expect(sendButton).toBeDisabled();
     await this.waitForLatestUserMessage();
   }
 
   async sendMessageAndReturn(message) {
+    // Wait for any toast to disappear before trying to interact with the send button
+    await this.waitForToastToHideOptional();
     await this.page.fill(this.selectors.messageInput, message);
     const sendButton = this.page.locator(this.selectors.sendButton);
     await expect(sendButton).toBeEnabled();
@@ -294,7 +298,7 @@ export class ChatPage extends BasePage {
   /**
    * Expect network error
    */
-  async expectNetworkError() {
+  async expectError() {
     await expect(this.page.locator('[data-state="open"]')).toContainText(/error|failed|network/i);
   }
 

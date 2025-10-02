@@ -43,8 +43,8 @@ export function useChat() {
             : userMessages;
 
         const headers: Record<string, string> = {};
-        if (chatSettings.api_token_enabled && chatSettings.api_token) {
-          headers.Authorization = `Bearer ${chatSettings.api_token}`;
+        if (chatSettings.api_token_enabled) {
+          headers.Authorization = `Bearer ${chatSettings.api_token || ''}`;
         }
 
         await append({

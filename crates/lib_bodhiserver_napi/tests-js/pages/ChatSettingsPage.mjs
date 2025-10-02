@@ -139,15 +139,17 @@ export class ChatSettingsPage extends BasePage {
     await this.openSettings();
 
     const apiTokenToggle = this.page.locator(this.selectors.apiTokenEnabledSwitch);
-    const isEnabled = await apiTokenToggle.isChecked();
+    const apiTokenInput = this.page.locator(this.selectors.apiTokenInput);
 
-    if (isEnabled !== enabled) {
-      await apiTokenToggle.click();
-    }
+    // Set toggle state
+    await apiTokenToggle.setChecked(enabled);
 
-    if (enabled && token) {
-      const apiTokenInput = this.page.locator(this.selectors.apiTokenInput);
+    // Wait for data-enabled attribute to update
+    if (enabled) {
+      await expect(apiTokenInput).toHaveAttribute('data-enabled', 'true');
       await apiTokenInput.fill(token);
+    } else {
+      await expect(apiTokenInput).toHaveAttribute('data-enabled', 'false');
     }
 
     await this.waitForSPAReady();

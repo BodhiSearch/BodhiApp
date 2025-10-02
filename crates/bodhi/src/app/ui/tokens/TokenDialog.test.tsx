@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 describe('TokenDialog', () => {
   const mockToken: ApiTokenResponse = {
-    offline_token: 'test-token-123',
+    token: 'test-token-123',
   };
 
   let user: ReturnType<typeof userEvent.setup>;

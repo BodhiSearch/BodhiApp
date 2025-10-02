@@ -52,8 +52,9 @@ export type ApiToken = {
     id: string;
     user_id: string;
     name: string;
-    token_id: string;
+    token_prefix: string;
     token_hash: string;
+    scopes: string;
     status: TokenStatus;
     created_at: string;
     updated_at: string;
@@ -61,9 +62,9 @@ export type ApiToken = {
 
 export type ApiTokenResponse = {
     /**
-     * API token with bapp_ prefix for programmatic access
+     * API token with bodhiapp_ prefix for programmatic access
      */
-    offline_token: string;
+    token: string;
 };
 
 export type AppAccessRequest = {

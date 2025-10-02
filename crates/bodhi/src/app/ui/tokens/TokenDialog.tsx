@@ -31,7 +31,7 @@ export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-testid="token-dialog">
         <DialogHeader>
           <DialogTitle>API Token Generated</DialogTitle>
           <DialogDescription>Copy your API token now. You won&apos;t be able to see it again.</DialogDescription>
@@ -47,15 +47,16 @@ export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
           </Alert>
 
           <ShowHideInput
-            value={token.offline_token}
+            value={token.token}
             shown={showToken}
             onToggle={toggleShowToken}
-            actions={<CopyButton text={token.offline_token} showToast={false} />}
+            actions={<CopyButton text={token.token} showToast={false} />}
+            data-testid="token-value-input"
           />
         </div>
 
         <DialogFooter className="sm:justify-start">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} data-testid="token-dialog-done">
             Done
           </Button>
         </DialogFooter>

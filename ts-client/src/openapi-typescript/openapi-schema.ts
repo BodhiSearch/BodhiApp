@@ -903,8 +903,9 @@ export interface components {
             id: string;
             user_id: string;
             name: string;
-            token_id: string;
+            token_prefix: string;
             token_hash: string;
+            scopes: string;
             status: components["schemas"]["TokenStatus"];
             /**
              * Format: date-time
@@ -918,14 +919,14 @@ export interface components {
             updated_at: string;
         };
         /** @example {
-         *       "offline_token": "bapp_1234567890abcdef"
+         *       "token": "bodhiapp_1234567890abcdef"
          *     } */
         ApiTokenResponse: {
             /**
-             * @description API token with bapp_ prefix for programmatic access
-             * @example bapp_1234567890abcdef
+             * @description API token with bodhiapp_ prefix for programmatic access
+             * @example bodhiapp_1234567890abcdef
              */
-            offline_token: string;
+            token: string;
         };
         AppAccessRequest: {
             app_client_id: string;
@@ -5041,7 +5042,7 @@ export interface operations {
                 };
                 content: {
                     /** @example {
-                     *       "offline_token": "bapp_1234567890abcdef"
+                     *       "token": "bodhiapp_1234567890abcdef"
                      *     } */
                     "application/json": components["schemas"]["ApiTokenResponse"];
                 };

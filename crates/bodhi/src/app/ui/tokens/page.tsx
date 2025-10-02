@@ -11,9 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { ApiToken, ApiTokenResponse } from '@bodhiapp/ts-client';
+import { ApiToken, ApiTokenResponse, PaginatedApiTokenResponse, TokenStatus } from '@bodhiapp/ts-client';
 import { useAppInfo } from '@/hooks/useInfo';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useQueryClient } from '@/hooks/useQuery';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
 
@@ -49,6 +50,7 @@ export function TokenPageContent() {
     direction: 'desc',
   });
   const { showSuccess, showError } = useToastMessages();
+  const queryClient = useQueryClient();
 
   const { mutate: updateToken } = useUpdateToken({
     onSuccess: (token) => {
@@ -81,7 +83,7 @@ export function TokenPageContent() {
 
   if (appLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="token-page-loading">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="tokens-page" data-pagestatus="loading">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -103,13 +105,14 @@ export function TokenPageContent() {
 
   const renderRow = (token: ApiToken) => (
     <>
-      <TableCell>{token.name || '-'}</TableCell>
+      <TableCell data-testid={`token-name-${token.id}`}>{token.name || '-'}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Switch
             checked={token.status === 'active'}
             onCheckedChange={(checked) => handleStatusChange(token, checked)}
             aria-label="Toggle token status"
+            data-testid={`token-status-switch-${token.id}`}
           />
           <StatusBadge status={token.status} />
         </div>
@@ -120,7 +123,11 @@ export function TokenPageContent() {
   );
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div
+      className="container mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      data-testid="tokens-page"
+      data-pagestatus={tokensLoading ? 'loading' : 'ready'}
+    >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -136,10 +143,10 @@ export function TokenPageContent() {
               API tokens provide full access to the API. Keep them secure. Tokens cannot be viewed again after creation.
             </AlertDescription>
           </Alert>
-          <div className="mt-6">
+          <div className="mt-6" data-testid="token-form-container">
             <TokenForm onTokenCreated={handleTokenCreated} />
           </div>
-          <div className="mt-8">
+          <div className="mt-8" data-testid="tokens-table-container">
             <DataTable
               data={tokensData?.data || []}
               columns={columns}
@@ -148,6 +155,7 @@ export function TokenPageContent() {
               getItemId={(item) => item.id}
               sort={sort}
               onSortChange={() => {}}
+              data-testid="tokens-table"
             />
             {tokensData && (
               <div className="mt-6 mb-4">

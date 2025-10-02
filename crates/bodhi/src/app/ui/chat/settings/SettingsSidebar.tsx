@@ -83,6 +83,8 @@ export function SettingsSidebar() {
               <Input
                 type="password"
                 id="api-token"
+                data-testid="api-token-input"
+                data-enabled={String(!isLoading && settings.api_token_enabled)}
                 value={settings.api_token || ''}
                 onChange={(e) => settings.setApiToken(e.target.value || undefined)}
                 disabled={isLoading || !settings.api_token_enabled}

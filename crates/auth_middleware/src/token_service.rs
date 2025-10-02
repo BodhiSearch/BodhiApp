@@ -1,25 +1,17 @@
 use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
-use chrono::{Duration, Utc};
-use jsonwebtoken::{DecodingKey, Validation};
+use chrono::Utc;
 use objs::{AppRegInfoMissingError, ResourceRole, ResourceScope, TokenScope, UserScope};
 use services::{
   db::{DbService, TokenStatus},
-  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
-  ScopeClaims, SecretService, SecretServiceExt, SettingService, TokenError, TOKEN_TYPE_OFFLINE,
+  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, ScopeClaims,
+  SecretService, SecretServiceExt, SettingService, TokenError,
 };
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
-const SCOPE_OFFLINE_ACCESS: &str = "offline_access";
-const LEEWAY_SECONDS: i64 = 60; // 1 minute leeway for clock skew
-
-pub fn create_token_digest(bearer_token: &str) -> String {
-  let mut hasher = Sha256::new();
-  hasher.update(bearer_token.as_bytes());
-  format!("{:x}", hasher.finalize())[0..12].to_string()
-}
+const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
@@ -61,99 +53,92 @@ impl DefaultTokenService {
       ))?;
     }
 
-    // Check token is found and active
-    let api_token = if let Ok(Some(api_token)) = self
-      .db_service
-      .get_api_token_by_token_id(bearer_token)
-      .await
-    {
-      if api_token.status == TokenStatus::Inactive {
-        return Err(AuthError::TokenInactive);
-      } else {
-        api_token
-      }
-    } else {
-      let bearer_claims = extract_claims::<ExpClaims>(bearer_token)?;
-      if bearer_claims.exp < Utc::now().timestamp() as u64 {
-        return Err(TokenError::Expired)?;
-      }
-      let token_digest = create_token_digest(bearer_token);
-      let cached_token = if let Some(access_token) = self
-        .cache_service
-        .get(&format!("exchanged_token:{}", &token_digest))
-      {
-        let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
-        if scope_claims.exp < Utc::now().timestamp() as u64 {
-          None
-        } else {
-          let user_scope = UserScope::from_scope(&scope_claims.scope)?;
-          Some((access_token, ResourceScope::User(user_scope)))
-        }
-      } else {
-        None
-      };
-      if let Some((access_token, resource_scope)) = cached_token {
-        return Ok((access_token, resource_scope));
-      }
-      let (access_token, resource_scope) = self.handle_external_client_token(bearer_token).await?;
-      self
-        .cache_service
-        .set(&format!("exchanged_token:{}", &token_digest), &access_token);
-      return Ok((access_token, resource_scope));
-    };
+    // Check if it's a database-backed token (starts with "bodhiapp_")
+    if bearer_token.starts_with(BODHIAPP_TOKEN_PREFIX) {
+      // DATABASE TOKEN VALIDATION
 
-    // Check if token is in cache and not expired
-    if let Some(access_token) = self
-      .cache_service
-      .get(&format!("token:{}", api_token.token_id))
-    {
-      let mut validation = Validation::default();
-      validation.insecure_disable_signature_validation();
-      validation.validate_exp = true;
-      validation.validate_aud = false;
-      let token_data = jsonwebtoken::decode::<ExpClaims>(
-        &access_token,
-        &DecodingKey::from_secret(&[]), // dummy key for parsing
-        &validation,
-      );
-      if let Ok(token_data) = token_data {
-        let offline_scope = token_data.claims.scope;
-        let scope = TokenScope::from_scope(&offline_scope)?;
-        return Ok((access_token, ResourceScope::Token(scope)));
-      } else {
-        self
-          .cache_service
-          .remove(&format!("token:{}", api_token.token_id));
+      // 1. Extract prefix (first 8 chars after "bodhiapp_")
+      let prefix_end = BODHIAPP_TOKEN_PREFIX.len() + 8;
+      if bearer_token.len() < prefix_end {
+        return Err(TokenError::InvalidToken("Token too short".to_string()))?;
       }
+      let token_prefix = &bearer_token[..prefix_end];
+
+      // 2. Lookup token in database by prefix
+      let api_token = self
+        .db_service
+        .get_api_token_by_prefix(token_prefix)
+        .await
+        .map_err(|e| AuthError::DbError(e))?;
+
+      let Some(api_token) = api_token else {
+        return Err(TokenError::InvalidToken("Token not found".to_string()))?;
+      };
+
+      // 3. Check token status
+      if api_token.status != TokenStatus::Active {
+        return Err(AuthError::TokenInactive);
+      }
+
+      // 4. Hash the provided token
+      let mut hasher = Sha256::new();
+      hasher.update(bearer_token.as_bytes());
+      let provided_hash = format!("{:x}", hasher.finalize());
+
+      // 5. Constant-time comparison with stored hash
+      if !constant_time_eq::constant_time_eq(
+        provided_hash.as_bytes(),
+        api_token.token_hash.as_bytes(),
+      ) {
+        return Err(TokenError::InvalidToken("Invalid token".to_string()))?;
+      }
+
+      // 6. Parse scopes string to TokenScope enum
+      let token_scope = TokenScope::from_str(&api_token.scopes)
+        .map_err(|e| TokenError::InvalidToken(format!("Invalid scope: {}", e)))?;
+
+      // 7. Return ResourceScope::Token with the bearer token itself as the access token
+      return Ok((bearer_token.to_string(), ResourceScope::Token(token_scope)));
     }
 
-    // If token is active and not found in cache, proceed with full validation
-    let app_reg_info: AppRegInfo = self
-      .secret_service
-      .app_reg_info()?
-      .ok_or(AppRegInfoMissingError)?;
+    // EXTERNAL CLIENT TOKEN VALIDATION (keep existing logic)
+    // Check if token has valid expiration first
+    let bearer_claims = extract_claims::<ExpClaims>(bearer_token)?;
+    if bearer_claims.exp < Utc::now().timestamp() as u64 {
+      return Err(TokenError::Expired)?;
+    }
 
-    // Validate claims - iat, expiry, tpe, azp, scope: offline_access
-    let claims = extract_claims::<OfflineClaims>(bearer_token)?;
-    self.validate_token_claims(&claims, &app_reg_info.client_id)?;
+    // Create token digest for cache lookup
+    let mut hasher = Sha256::new();
+    hasher.update(bearer_token.as_bytes());
+    let token_digest = format!("{:x}", hasher.finalize())[0..12].to_string();
 
-    // Exchange token
-    let (access_token, _) = self
-      .auth_service
-      .refresh_token(
-        &app_reg_info.client_id,
-        &app_reg_info.client_secret,
-        bearer_token,
-      )
-      .await?;
+    // Check cache for exchanged token
+    let cached_token = if let Some(access_token) = self
+      .cache_service
+      .get(&format!("exchanged_token:{}", &token_digest))
+    {
+      let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
+      if scope_claims.exp < Utc::now().timestamp() as u64 {
+        None
+      } else {
+        let user_scope = UserScope::from_scope(&scope_claims.scope)?;
+        Some((access_token, ResourceScope::User(user_scope)))
+      }
+    } else {
+      None
+    };
 
-    // store the retrieved access token in cache
+    if let Some((access_token, resource_scope)) = cached_token {
+      return Ok((access_token, resource_scope));
+    }
+
+    // Exchange external client token
+    let (access_token, resource_scope) = self.handle_external_client_token(bearer_token).await?;
     self
       .cache_service
-      .set(&format!("token:{}", api_token.token_id), &access_token);
-    let scope = extract_claims::<ScopeClaims>(&access_token)?;
-    let token_scope = TokenScope::from_scope(&scope.scope)?;
-    Ok((access_token, ResourceScope::Token(token_scope)))
+      .set(&format!("exchanged_token:{}", &token_digest), &access_token);
+    Ok((access_token, resource_scope))
   }
 
   /// Handle external client token validation and exchange
@@ -212,53 +197,6 @@ impl DefaultTokenService {
     let user_scope = UserScope::from_scope(&scope_claims.scope)?;
 
     Ok((access_token, ResourceScope::User(user_scope)))
-  }
-
-  fn validate_token_claims(
-    &self,
-    claims: &OfflineClaims,
-    client_id: &str,
-  ) -> Result<(), AuthError> {
-    // Validate token expiration
-    let now = Utc::now().timestamp();
-    let leeway = Duration::seconds(LEEWAY_SECONDS);
-
-    // Check if token is not yet valid (with leeway)
-    if claims.iat > (now + leeway.num_seconds()) as u64 {
-      return Err(AuthError::InvalidToken(format!(
-        "token is not yet valid, issued at {}",
-        claims.iat
-      )));
-    }
-
-    // Check token type
-    if claims.typ != TOKEN_TYPE_OFFLINE {
-      return Err(AuthError::InvalidToken(
-        "token type must be Offline".to_string(),
-      ));
-    }
-
-    // Check authorized party
-    if claims.azp != client_id {
-      return Err(AuthError::InvalidToken(
-        "invalid token authorized party".to_string(),
-      ));
-    }
-
-    // Check scope
-    if !claims
-      .scope
-      .split(' ')
-      .map(|s| s.to_string())
-      .collect::<Vec<_>>()
-      .contains(&SCOPE_OFFLINE_ACCESS.to_string())
-    {
-      return Err(AuthError::InvalidToken(
-        "token missing required scope: offline_access".to_string(),
-      ));
-    }
-
-    Ok(())
   }
 
   pub async fn get_valid_session_token(
@@ -354,9 +292,7 @@ impl DefaultTokenService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    create_token_digest, token_service::SCOPE_OFFLINE_ACCESS, AuthError, DefaultTokenService,
-  };
+  use crate::{AuthError, DefaultTokenService};
   use anyhow_trace::anyhow_trace;
   use chrono::{Duration, Utc};
   use mockall::predicate::*;
@@ -364,18 +300,234 @@ mod tests {
     test_utils::setup_l10n, FluentLocalizationService, ResourceScope, TokenScope, UserScope,
   };
   use rstest::rstest;
-  use serde_json::{json, Value};
+  use serde_json::json;
   use services::{
-    db::DbService,
+    db::{ApiToken, DbService, TokenStatus},
     test_utils::{
-      build_token, offline_token_claims, test_db_service, SecretServiceStub, SettingServiceStub,
-      TestDbService, ISSUER, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+      build_token, test_db_service, SecretServiceStub, SettingServiceStub, TestDbService, ISSUER,
+      TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MockSecretService,
     MockSettingService, MokaCacheService, TOKEN_TYPE_OFFLINE,
   };
+  use sha2::{Digest, Sha256};
   use std::{collections::HashMap, sync::Arc};
   use uuid::Uuid;
+
+  // Helper function for tests that need token digest (external client token tests)
+  fn create_token_digest(bearer_token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bearer_token.as_bytes());
+    format!("{:x}", hasher.finalize())[0..12].to_string()
+  }
+
+  #[rstest]
+  #[case::user("scope_token_user", TokenScope::User)]
+  #[case::power_user("scope_token_power_user", TokenScope::PowerUser)]
+  #[case::manager("scope_token_manager", TokenScope::Manager)]
+  #[case::admin("scope_token_admin", TokenScope::Admin)]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bodhiapp_token_scope_variations(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] scope_str: &str,
+    #[case] expected_scope: TokenScope,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Setup test database with token
+    let token_str = "bodhiapp_test12345678901234567890123456789012";
+    let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+    // Hash the token
+    let mut hasher = Sha256::new();
+    hasher.update(token_str.as_bytes());
+    let token_hash = format!("{:x}", hasher.finalize());
+
+    // Create ApiToken in database with specified scope
+    let mut api_token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test-user".to_string(),
+      name: "Test Token".to_string(),
+      token_prefix: token_prefix.to_string(),
+      token_hash,
+      scopes: scope_str.to_string(),
+      status: TokenStatus::Active,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    test_db_service.create_api_token(&mut api_token).await?;
+
+    // Create token service
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(MockSecretService::default()),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(MockSettingService::default()),
+    );
+
+    // Validate token
+    let (access_token, scope) = token_service
+      .validate_bearer_token(&format!("Bearer {}", token_str))
+      .await?;
+
+    assert_eq!(token_str, access_token);
+    assert_eq!(ResourceScope::Token(expected_scope), scope);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bodhiapp_token_success(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Setup test database with token
+    let token_str = "bodhiapp_test12345678901234567890123456789012";
+    // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
+    let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+    // Hash the token
+    let mut hasher = Sha256::new();
+    hasher.update(token_str.as_bytes());
+    let token_hash = format!("{:x}", hasher.finalize());
+
+    // Create ApiToken in database
+    let mut api_token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test-user".to_string(),
+      name: "Test Token".to_string(),
+      token_prefix: token_prefix.to_string(),
+      token_hash,
+      scopes: "scope_token_user".to_string(),
+      status: TokenStatus::Active,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    test_db_service.create_api_token(&mut api_token).await?;
+
+    // Create token service
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(MockSecretService::default()),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(MockSettingService::default()),
+    );
+
+    // Validate token
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token_str))
+      .await;
+
+    assert_eq!(true, result.is_ok());
+    let (access_token, scope) = result.unwrap();
+    assert_eq!(token_str, access_token);
+    assert_eq!(ResourceScope::Token(TokenScope::User), scope);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bodhiapp_token_inactive(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Setup test database with inactive token
+    let token_str = "bodhiapp_test12345678901234567890123456789012";
+    // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
+    let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+    // Hash the token
+    let mut hasher = Sha256::new();
+    hasher.update(token_str.as_bytes());
+    let token_hash = format!("{:x}", hasher.finalize());
+
+    // Create ApiToken in database with Inactive status
+    let mut api_token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test-user".to_string(),
+      name: "Test Token".to_string(),
+      token_prefix: token_prefix.to_string(),
+      token_hash,
+      scopes: "scope_token_user".to_string(),
+      status: TokenStatus::Inactive,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    test_db_service.create_api_token(&mut api_token).await?;
+
+    // Create token service
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(MockSecretService::default()),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(MockSettingService::default()),
+    );
+
+    // Validate token - should fail due to inactive status
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token_str))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(AuthError::TokenInactive)));
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bodhiapp_token_invalid_hash(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Setup test database with token
+    let stored_token_str = "bodhiapp_test12345678901234567890123456789012";
+    let different_token_str = "bodhiapp_test12399999999999999999999999999999";
+    // token_prefix is first 9 chars ("bodhiapp_") + next 8 chars = 17 chars total
+    let token_prefix = &stored_token_str[.."bodhiapp_".len() + 8];
+
+    // Hash the stored token
+    let mut hasher = Sha256::new();
+    hasher.update(stored_token_str.as_bytes());
+    let token_hash = format!("{:x}", hasher.finalize());
+
+    // Create ApiToken in database
+    let mut api_token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test-user".to_string(),
+      name: "Test Token".to_string(),
+      token_prefix: token_prefix.to_string(),
+      token_hash,
+      scopes: "scope_token_user".to_string(),
+      status: TokenStatus::Active,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    test_db_service.create_api_token(&mut api_token).await?;
+
+    // Create token service
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(MockSecretService::default()),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(MockSettingService::default()),
+    );
+
+    // Try to validate with different token string (wrong hash)
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", different_token_str))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result, Err(AuthError::Token(_))));
+    Ok(())
+  }
 
   #[rstest]
   #[case::empty("")]
@@ -399,425 +551,6 @@ mod tests {
     let result = token_service.validate_bearer_token(header).await;
     assert!(result.is_err());
     assert!(matches!(result, Err(AuthError::Token(_))));
-    Ok(())
-  }
-
-  #[anyhow_trace]
-  #[rstest]
-  #[case::scope_token_user("offline_access scope_token_user", TokenScope::User)]
-  #[case::scope_token_user_power_user(
-    "offline_access scope_token_power_user",
-    TokenScope::PowerUser
-  )]
-  #[case::scope_token_user_manager("offline_access scope_token_manager", TokenScope::Manager)]
-  #[case::scope_token_user_admin("offline_access scope_token_admin", TokenScope::Admin)]
-  #[awt]
-  #[tokio::test]
-  async fn test_validate_bearer_token_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-    #[case] scope: &str,
-    #[case] expected_role: TokenScope,
-  ) -> anyhow::Result<()> {
-    // Given
-    let claims = offline_token_claims();
-    let (offline_token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &offline_token)
-      .await?;
-    let (refreshed_token, _) = build_token(
-      json! {{"iss": ISSUER, "azp": TEST_CLIENT_ID, "exp": Utc::now().timestamp() + 3600, "scope": scope}},
-    )?;
-    let refreshed_token_cl = refreshed_token.clone();
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let mut mock_auth = MockAuthService::new();
-    mock_auth
-      .expect_refresh_token()
-      .with(
-        eq(TEST_CLIENT_ID),
-        eq(TEST_CLIENT_SECRET),
-        eq(offline_token.clone()),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
-
-    let token_service = Arc::new(DefaultTokenService::new(
-      Arc::new(mock_auth),
-      Arc::new(secret_service),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    ));
-
-    // When
-    let (result, role) = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await?;
-
-    // Then
-    assert_eq!(refreshed_token, result);
-    assert_eq!(ResourceScope::Token(expected_role), role);
-    Ok(())
-  }
-
-  #[anyhow_trace]
-  #[rstest]
-  #[case::scope_token_user("", "missing_offline_access")]
-  #[case::scope_token_user("scope_token_user", "missing_offline_access")]
-  #[case::scope_token_user("offline_access", "missing_token_scope")]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_service_bearer_token_exchanged_token_scope_invalid(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-    #[case] scope: &str,
-    #[case] err_msg: &str,
-  ) -> anyhow::Result<()> {
-    // Given
-    let claims = offline_token_claims();
-    let (offline_token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &offline_token)
-      .await?;
-    let (refreshed_token, _) = build_token(
-      json! {{ "iss": ISSUER, "azp": TEST_CLIENT_ID, "exp": Utc::now().timestamp() + 3600, "scope": scope}},
-    )?;
-    let refreshed_token_cl = refreshed_token.clone();
-    let mut mock_auth = MockAuthService::new();
-    mock_auth
-      .expect_refresh_token()
-      .with(
-        eq(TEST_CLIENT_ID),
-        eq(TEST_CLIENT_SECRET),
-        eq(offline_token.clone()),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
-
-    let token_service = Arc::new(DefaultTokenService::new(
-      Arc::new(mock_auth),
-      Arc::new(SecretServiceStub::default().with_app_reg_info_default()),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    ));
-
-    // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await;
-    assert!(result.is_err());
-    assert_eq!(err_msg, result.unwrap_err().to_string());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::invalid_type(
-    json!({"typ": "Invalid"}),"token type must be Offline"
-  )]
-  #[case::wrong_azp(
-    json!({"azp": "wrong-client"}),"invalid token authorized party"
-  )]
-  #[case::no_offline_access_scope(
-    json!({"scope": "openid profile"}),"token missing required scope: offline_access"
-  )]
-  #[awt]
-  #[tokio::test]
-  async fn test_validate_bearer_token_validation_errors(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] claims_override: serde_json::Value,
-    #[case] expected: &str,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let mut claims = offline_token_claims();
-    claims
-      .as_object_mut()
-      .unwrap()
-      .extend(claims_override.as_object().unwrap().clone());
-    let (offline_token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &offline_token)
-      .await?;
-    let secret_service =
-      SecretServiceStub::default().with_app_reg_info(&AppRegInfoBuilder::test_default().build()?);
-    let token_service = Arc::new(DefaultTokenService::new(
-      Arc::new(MockAuthService::default()),
-      Arc::new(secret_service),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    ));
-
-    // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await;
-
-    // Then
-    assert!(result.is_err());
-    let api_error = objs::ApiError::from(result.unwrap_err());
-    assert_eq!(expected, api_error.args["var_0"]);
-    assert_eq!("auth_error-invalid_token", api_error.code);
-    Ok(())
-  }
-
-  #[rstest]
-  #[case( json!({
-    "iat": Utc::now().timestamp() + 3600,  // issued 1 hour in future
-    "jti": "test-jti",
-    "iss": ISSUER,
-    "sub": "test-sub",
-    "typ": TOKEN_TYPE_OFFLINE,
-    "azp": TEST_CLIENT_ID,
-    "scope": SCOPE_OFFLINE_ACCESS
-  }))]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_time_validation_failures(
-    #[case] claims: Value,
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let (token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &token)
-      .await?;
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let auth_service = MockAuthService::new();
-    let token_service = DefaultTokenService::new(
-      Arc::new(auth_service),
-      Arc::new(secret_service),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    );
-
-    // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
-      .await;
-
-    // Then
-    assert!(result.is_err());
-    assert!(
-      matches!(result, Err(AuthError::InvalidToken(msg)) if msg.starts_with("token is not yet valid"))
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_validation_success_with_leeway(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let now = Utc::now().timestamp();
-    let claims = json!({
-      "exp": now + 30, // expires in 30 seconds
-      "iat": now - 30, // issued 30 seconds ago
-      "jti": "test-jti",
-      "iss": ISSUER,
-      "sub": "test-sub",
-      "typ": TOKEN_TYPE_OFFLINE,
-      "azp": TEST_CLIENT_ID,
-      "scope": SCOPE_OFFLINE_ACCESS
-    });
-    let (offline_token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &offline_token)
-      .await?;
-    let (refreshed_token, _) = build_token(
-      json! {{ "iss": ISSUER, "azp": TEST_CLIENT_ID, "exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
-    )?;
-    let refreshed_token_cl = refreshed_token.clone();
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let mut auth_service = MockAuthService::new();
-    auth_service
-      .expect_refresh_token()
-      .with(
-        eq(TEST_CLIENT_ID),
-        eq(TEST_CLIENT_SECRET),
-        eq(offline_token.clone()),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok((refreshed_token_cl, None)));
-    let token_service = DefaultTokenService::new(
-      Arc::new(auth_service),
-      Arc::new(secret_service),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    );
-
-    // When
-    let (result, token_scope) = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await?;
-
-    // Then
-    assert_eq!(refreshed_token, result);
-    assert_eq!(ResourceScope::Token(TokenScope::User), token_scope);
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_validation_auth_service_error(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let claims = offline_token_claims();
-    let (token, _) = build_token(claims)?;
-    test_db_service
-      .create_api_token_from("test_token", &token)
-      .await?;
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let mut auth_service = MockAuthService::new();
-    auth_service
-      .expect_refresh_token()
-      .with(
-        eq(TEST_CLIENT_ID),
-        eq(TEST_CLIENT_SECRET),
-        eq(token.clone()),
-      )
-      .times(1)
-      .return_once(|_, _, _| {
-        Err(AuthServiceError::AuthServiceApiError(
-          "server unreachable".to_string(),
-        ))
-      });
-    let token_service = DefaultTokenService::new(
-      Arc::new(auth_service),
-      Arc::new(secret_service),
-      Arc::new(MokaCacheService::default()),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    );
-
-    // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
-      .await;
-
-    // Then
-    assert!(result.is_err());
-    assert!(matches!(result, Err(AuthError::AuthService(_))));
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_validation_with_cache_hit(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let claims = offline_token_claims();
-    let (offline_token, _) = build_token(claims)?;
-    let (access_token, _) = build_token(
-      json! {{"jti": "test-jti", "sub": "test-sub", "exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
-    )?;
-    let api_token = test_db_service
-      .create_api_token_from("test-token", &offline_token)
-      .await?;
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let auth_service = MockAuthService::new(); // Should not be called
-    let cache_service = MokaCacheService::default();
-    let cache_key = format!("token:{}", api_token.token_id);
-    cache_service.set(&cache_key, &access_token);
-    let token_service = DefaultTokenService::new(
-      Arc::new(auth_service),
-      Arc::new(secret_service),
-      Arc::new(cache_service),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    );
-
-    // When
-    let (result, scope) = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await?;
-
-    // Then
-    assert_eq!(access_token, result);
-    assert_eq!(ResourceScope::Token(TokenScope::User), scope);
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_token_validation_with_expired_cache(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[future] test_db_service: TestDbService,
-  ) -> anyhow::Result<()> {
-    // Given
-    let claims = offline_token_claims();
-    let (offline_token, _) = build_token(claims)?;
-    let api_token = test_db_service
-      .create_api_token_from("test_token", &offline_token)
-      .await?;
-    let (refreshed_token, _) = build_token(
-      json! {{"iss": ISSUER, "azp": TEST_CLIENT_ID, "exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
-    )?;
-    let refreshed_token_cl = refreshed_token.clone();
-    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
-    let mut mock_auth = MockAuthService::new();
-    let cache_service = MokaCacheService::default();
-
-    // Create an expired access token and store it in cache
-    let expired_claims = json!({
-      "exp": Utc::now().timestamp() - 3600, // expired 1 hour ago
-      "iat": Utc::now().timestamp() - 7200,  // issued 2 hours ago
-    });
-    let (expired_access_token, _) = build_token(expired_claims)?;
-
-    // Store expired token in cache
-    cache_service.set(
-      &format!("token:{}", api_token.token_id),
-      &expired_access_token,
-    );
-
-    // Expect token exchange to be called since cached token is expired
-    mock_auth
-      .expect_refresh_token()
-      .with(
-        eq(TEST_CLIENT_ID),
-        eq(TEST_CLIENT_SECRET),
-        eq(offline_token.clone()),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok((refreshed_token_cl, None)));
-
-    let token_service = DefaultTokenService::new(
-      Arc::new(mock_auth),
-      Arc::new(secret_service),
-      Arc::new(cache_service),
-      Arc::new(test_db_service),
-      Arc::new(MockSettingService::default()),
-    );
-
-    // When
-    let (result, token_scope) = token_service
-      .validate_bearer_token(&format!("Bearer {}", offline_token))
-      .await?;
-
-    // Then
-    assert_eq!(refreshed_token, result);
-    assert_eq!(ResourceScope::Token(TokenScope::User), token_scope);
     Ok(())
   }
 

@@ -11,6 +11,7 @@ interface ShowHideInputProps {
   inputClassName?: string;
   containerClassName?: string;
   actions?: React.ReactNode;
+  'data-testid'?: string;
 }
 
 export const ShowHideInput = ({
@@ -22,10 +23,14 @@ export const ShowHideInput = ({
   inputClassName = '',
   containerClassName = '',
   actions,
+  'data-testid': dataTestId,
 }: ShowHideInputProps) => {
   return (
-    <div className={cn('relative', containerClassName)}>
-      <div className={cn('rounded-md bg-muted p-3 font-mono text-sm break-all', inputClassName)}>
+    <div className={cn('relative', containerClassName)} data-testid={dataTestId}>
+      <div
+        className={cn('rounded-md bg-muted p-3 font-mono text-sm break-all', inputClassName)}
+        data-testid={dataTestId ? `${dataTestId}-content` : undefined}
+      >
         {shown ? value : hiddenChar.repeat(40)}
       </div>
       <div className={cn('absolute right-2 top-2 space-x-2', className)}>

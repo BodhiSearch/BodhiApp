@@ -21,7 +21,8 @@ export function mockTokens(
         name: 'Test Token 1',
         status: 'active',
         token_hash: 'hash123',
-        token_id: 'jwt-token-id-1',
+        token_prefix: 'bodhiapp_test01',
+        scopes: 'scope_token_user',
         user_id: 'user-123',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
@@ -58,7 +59,7 @@ export function mockTokens(
  * Uses generated OpenAPI types directly
  */
 export function mockCreateToken(
-  { offline_token = 'test-token-123', ...rest }: Partial<components['schemas']['ApiTokenResponse']> = {},
+  { token = 'test-token-123', ...rest }: Partial<components['schemas']['ApiTokenResponse']> = {},
   { delayMs, stub }: { delayMs?: number; stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -71,7 +72,7 @@ export function mockCreateToken(
         await delay(delayMs);
       }
       const responseData: components['schemas']['ApiTokenResponse'] = {
-        offline_token,
+        token,
         ...rest,
       };
 
@@ -91,7 +92,8 @@ export function mockUpdateToken(
     name = 'Test Token 1',
     status = 'inactive',
     token_hash = 'hash123',
-    token_id = 'jwt-token-id-1',
+    token_prefix = 'bodhiapp_test01',
+    scopes = 'scope_token_user',
     user_id = 'user-123',
     created_at = '2024-01-01T00:00:00Z',
     updated_at = '2024-01-01T00:00:01Z',
@@ -115,7 +117,8 @@ export function mockUpdateToken(
         name,
         status,
         token_hash,
-        token_id,
+        token_prefix,
+        scopes,
         user_id,
         created_at,
         updated_at,

@@ -11,7 +11,7 @@ use rstest::fixture;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{AppRegInfoBuilder, KeycloakAuthService, TOKEN_TYPE_BEARER, TOKEN_TYPE_OFFLINE};
+use crate::{AppRegInfoBuilder, KeycloakAuthService};
 
 pub const TEST_CLIENT_ID: &str = "test-client";
 pub const TEST_CLIENT_SECRET: &str = "test-client-secret";
@@ -141,37 +141,6 @@ pub fn sign_token(
 
   let output = STANDARD.encode(public_key.to_pkcs1_der()?);
   Ok((token, output))
-}
-
-pub fn offline_token_claims() -> Value {
-  json!({
-      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
-      "iat": Utc::now().timestamp(),
-      "jti": Uuid::new_v4().to_string(),
-      "iss": ISSUER.to_string(),
-      "sub": Uuid::new_v4().to_string(),
-      "typ": TOKEN_TYPE_OFFLINE,
-      "azp": TEST_CLIENT_ID,
-      "session_state": Uuid::new_v4().to_string(),
-      "scope": "openid offline_access scope_token_user",
-      "sid": Uuid::new_v4().to_string(),
-  })
-}
-
-pub fn offline_access_token_claims() -> Value {
-  json!({
-      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
-      "iat": Utc::now().timestamp(),
-      "auth_time": Utc::now().timestamp(),
-      "jti": Uuid::new_v4().to_string(),
-      "iss": ISSUER.to_string(),
-      "sub": Uuid::new_v4().to_string(),
-      "typ": TOKEN_TYPE_BEARER,
-      "azp": TEST_CLIENT_ID,
-      "session_state": Uuid::new_v4().to_string(),
-      "scope": "offline_access scope_token_user",
-      "sid": Uuid::new_v4().to_string(),
-  })
 }
 
 pub fn test_auth_service(url: &str) -> KeycloakAuthService {
