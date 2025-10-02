@@ -3383,7 +3383,7 @@
           "api-keys"
         ],
         "summary": "Create API Token",
-        "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. This feature is currently not available.",
+        "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).",
         "operationId": "createApiToken",
         "requestBody": {
           "description": "API token creation parameters",
@@ -6373,6 +6373,9 @@
       "CreateApiTokenRequest": {
         "type": "object",
         "description": "Request to create a new API token",
+        "required": [
+          "scope"
+        ],
         "properties": {
           "name": {
             "type": [
@@ -6383,10 +6386,15 @@
             "example": "My Integration Token",
             "maxLength": 100,
             "minLength": 3
+          },
+          "scope": {
+            "$ref": "#/components/schemas/TokenScope",
+            "description": "Token scope defining access level"
           }
         },
         "example": {
-          "name": "My Integration Token"
+          "name": "My Integration Token",
+          "scope": "scope_token_user"
         }
       },
       "CreateChatCompletionRequest": {

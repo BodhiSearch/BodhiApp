@@ -5,19 +5,24 @@ export class TokensPage extends BasePage {
   selectors = {
     // Page elements
     tokensPage: '[data-testid="tokens-page"]',
-    tokenFormContainer: '[data-testid="token-form-container"]',
+    newTokenButton: '[data-testid="new-token-button"]',
+
+    // Dialog elements
+    createTokenDialog: '[data-testid="create-token-dialog"]',
     tokenForm: '[data-testid="token-form"]',
     tokenNameInput: '[data-testid="token-name-input"]',
+    tokenScopeSelect: '[data-testid="token-scope-select"]',
     generateButton: '[data-testid="generate-token-button"]',
 
     // Table elements
     tokensTableContainer: '[data-testid="tokens-table-container"]',
     tokensTable: '[data-testid="tokens-table"]',
     tokenName: (id) => `[data-testid="token-name-${id}"]`,
+    tokenScope: (id) => `[data-testid="token-scope-${id}"]`,
     statusSwitch: (id) => `[data-testid="token-status-switch-${id}"]`,
     tableRow: 'tbody tr',
 
-    // Dialog elements
+    // Token dialog (after creation)
     tokenDialog: '[data-testid="token-dialog"]',
     tokenValueInput: '[data-testid="token-value-input"]',
     copyButton: '[data-testid="copy-content"]',
@@ -44,20 +49,56 @@ export class TokensPage extends BasePage {
   }
 
   /**
-   * Create a new token with optional name
-   * @param {string} name - Optional token name
+   * Open the token creation dialog by clicking "New API Token" button
    */
-  async createToken(name = '') {
-    const nameInput = this.page.locator(this.selectors.tokenNameInput);
-    const generateButton = this.page.locator(this.selectors.generateButton);
+  async openTokenDialog() {
+    const newTokenButton = this.page.locator(this.selectors.newTokenButton);
+    await expect(newTokenButton).toBeVisible();
+    await newTokenButton.click();
 
+    // Wait for dialog to appear
+    await this.page.waitForSelector(this.selectors.createTokenDialog);
+    await expect(this.page.locator(this.selectors.createTokenDialog)).toBeVisible();
+  }
+
+  /**
+   * Select token scope from dropdown
+   * @param {string} scope - Scope value ('scope_token_user' or 'scope_token_power_user')
+   */
+  async selectScope(scope = 'scope_token_user') {
+    const scopeSelect = this.page.locator(this.selectors.tokenScopeSelect);
+    await expect(scopeSelect).toBeVisible();
+    await scopeSelect.click();
+
+    // Wait for dropdown options to appear and click the desired scope
+    const scopeOption = this.page.locator(`[data-testid="scope-option-${scope}"]`);
+    await expect(scopeOption).toBeVisible();
+    await scopeOption.click();
+  }
+
+  /**
+   * Create a new token with optional name and scope
+   * @param {string} name - Optional token name
+   * @param {string} scope - Token scope ('scope_token_user' or 'scope_token_power_user')
+   */
+  async createToken(name = '', scope = 'scope_token_user') {
+    // Open the dialog first
+    await this.openTokenDialog();
+
+    // Select scope
+    await this.selectScope(scope);
+
+    // Fill name if provided
     if (name) {
+      const nameInput = this.page.locator(this.selectors.tokenNameInput);
       await nameInput.fill(name);
     }
 
+    // Click generate button
+    const generateButton = this.page.locator(this.selectors.generateButton);
     await generateButton.click();
 
-    // Wait for dialog to appear
+    // Wait for token dialog to appear (after generation)
     await this.page.waitForSelector(this.selectors.tokenDialog);
     await expect(this.page.locator(this.selectors.tokenDialog)).toBeVisible();
   }
@@ -166,15 +207,18 @@ export class TokensPage extends BasePage {
 
       if (rowText && rowText.includes(name)) {
         // Found the row, extract data
+        // Table structure: name (0), scope (1), status (2), created_at (3), updated_at (4)
         const cells = row.locator('td');
         const tokenName = await cells.nth(0).textContent();
-        const statusCell = cells.nth(1);
+        const tokenScope = await cells.nth(1).textContent();
+        const statusCell = cells.nth(2);
         const statusSwitch = statusCell.locator('[role="switch"]');
         const isActive = await statusSwitch.isChecked();
 
         return {
           row,
           name: tokenName?.trim() || '',
+          scope: tokenScope?.trim() || '',
           status: isActive ? 'active' : 'inactive',
           statusSwitch,
         };

@@ -26,13 +26,17 @@ use uuid::Uuid;
 /// Request to create a new API token
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
-    "name": "My Integration Token"
+    "name": "My Integration Token",
+    "scope": "scope_token_user"
 }))]
 pub struct CreateApiTokenRequest {
   /// Descriptive name for the API token (minimum 3 characters)
   #[serde(default)]
   #[schema(min_length = 3, max_length = 100, example = "My Integration Token")]
   pub name: Option<String>,
+  /// Token scope defining access level
+  #[schema(example = "scope_token_user")]
+  pub scope: TokenScope,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -127,13 +131,18 @@ pub async fn create_token_handler(
   let user_role =
     ResourceRole::from_str(user_role_str).map_err(|e| BadRequestError::new(e.to_string()))?;
 
-  // Map role to token scope
-  let token_scope = match user_role {
-    ResourceRole::Admin => TokenScope::PowerUser,
-    ResourceRole::Manager => TokenScope::PowerUser,
-    ResourceRole::PowerUser => TokenScope::PowerUser,
-    ResourceRole::User => TokenScope::User,
-  };
+  // Validate privilege escalation - users cannot create tokens with higher privileges than their role
+  let token_scope = match (user_role, &payload.scope) {
+    // User can only create user-level tokens
+    (ResourceRole::User, TokenScope::User) => Ok(payload.scope),
+    (ResourceRole::User, _) => Err(BadRequestError::new(
+      "privilege_escalation_not_allowed".to_string(),
+    )),
+
+    // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens only
+    (_, TokenScope::User | TokenScope::PowerUser) => Ok(payload.scope),
+    (_, _) => Err(BadRequestError::new("invalid_token_scope".to_string())),
+  }?;
 
   // Generate cryptographically secure random token
   let mut random_bytes = [0u8; 32];
@@ -340,7 +349,7 @@ mod tests {
   use hyper::StatusCode;
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService,
+    AppError, FluentLocalizationService, TokenScope,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -512,15 +521,31 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  #[case::user_role("resource_user", "scope_token_user")]
-  #[case::admin_role("resource_admin", "scope_token_power_user")]
-  #[case::manager_role("resource_manager", "scope_token_power_user")]
-  #[case::power_user_role("resource_power_user", "scope_token_power_user")]
+  #[case::user_role_user_scope("resource_user", TokenScope::User, "scope_token_user")]
+  #[case::admin_role_user_scope("resource_admin", TokenScope::User, "scope_token_user")]
+  #[case::admin_role_power_user_scope(
+    "resource_admin",
+    TokenScope::PowerUser,
+    "scope_token_power_user"
+  )]
+  #[case::manager_role_user_scope("resource_manager", TokenScope::User, "scope_token_user")]
+  #[case::manager_role_power_user_scope(
+    "resource_manager",
+    TokenScope::PowerUser,
+    "scope_token_power_user"
+  )]
+  #[case::power_user_role_user_scope("resource_power_user", TokenScope::User, "scope_token_user")]
+  #[case::power_user_role_power_user_scope(
+    "resource_power_user",
+    TokenScope::PowerUser,
+    "scope_token_power_user"
+  )]
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_role_scope_mapping(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] role: &str,
+    #[case] requested_scope: TokenScope,
     #[case] expected_scope: &str,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
@@ -535,7 +560,7 @@ mod tests {
 
     let app = app(app_service).await;
 
-    // Make create request with specific role
+    // Make create request with specific role and scope
     let response = app
       .oneshot(
         Request::builder()
@@ -545,6 +570,7 @@ mod tests {
           .header(KEY_HEADER_BODHIAPP_ROLE, role)
           .json(&CreateApiTokenRequest {
             name: Some(format!("Test Token for {}", role)),
+            scope: requested_scope,
           })?,
       )
       .await?;
@@ -601,6 +627,7 @@ mod tests {
           .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
           .json(&CreateApiTokenRequest {
             name: Some(token_name.to_string()),
+            scope: TokenScope::User,
           })?,
       )
       .await?;
@@ -669,7 +696,10 @@ mod tests {
           .uri("/api/tokens")
           .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
           .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
-          .json(&CreateApiTokenRequest { name: None })?,
+          .json(&CreateApiTokenRequest {
+            name: None,
+            scope: TokenScope::User,
+          })?,
       )
       .await?;
 
@@ -711,6 +741,7 @@ mod tests {
           .uri("/api/tokens")
           .json(&CreateApiTokenRequest {
             name: Some("Test Token".to_string()),
+            scope: TokenScope::User,
           })?,
       )
       .await?;
@@ -747,6 +778,7 @@ mod tests {
           .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role_value")
           .json(&CreateApiTokenRequest {
             name: Some("Test Token".to_string()),
+            scope: TokenScope::User,
           })?,
       )
       .await?;
@@ -783,6 +815,7 @@ mod tests {
           // NO KEY_HEADER_BODHIAPP_ROLE header - should return error
           .json(&CreateApiTokenRequest {
             name: Some("Test Token".to_string()),
+            scope: TokenScope::User,
           })?,
       )
       .await?;
@@ -886,6 +919,93 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[case::user_to_power_user("resource_user", TokenScope::PowerUser)]
+  #[case::user_to_manager("resource_user", TokenScope::Manager)]
+  #[case::user_to_admin("resource_user", TokenScope::Admin)]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_privilege_escalation_user(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] role: &str,
+    #[case] requested_scope: TokenScope,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // User attempting to create higher-privilege token
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, role)
+          .json(&CreateApiTokenRequest {
+            name: Some("Escalation Attempt".to_string()),
+            scope: requested_scope,
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[case::power_user_to_manager("resource_power_user", TokenScope::Manager)]
+  #[case::power_user_to_admin("resource_power_user", TokenScope::Admin)]
+  #[case::manager_to_admin("resource_manager", TokenScope::Admin)]
+  #[case::admin_to_manager("resource_admin", TokenScope::Manager)]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_token_privilege_escalation_invalid_scopes(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] role: &str,
+    #[case] requested_scope: TokenScope,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let (access_token, _) = build_token(claims)?;
+
+    let test_db_service = Arc::new(test_db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+
+    let app = app(app_service).await;
+
+    // Any role attempting to create Manager/Admin token
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::POST)
+          .uri("/api/tokens")
+          .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+          .header(KEY_HEADER_BODHIAPP_ROLE, role)
+          .json(&CreateApiTokenRequest {
+            name: Some("Invalid Scope Attempt".to_string()),
+            scope: requested_scope,
+          })?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
     Ok(())
   }
 }

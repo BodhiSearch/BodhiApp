@@ -106,17 +106,26 @@ describe('TokenPage - Token Creation Flow', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
+      expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
-    // Step 1: Fill token name and submit form
+    // Step 1: Open dialog by clicking "New API Token" button
+    const newTokenButton = screen.getByTestId('new-token-button');
+    await user.click(newTokenButton);
+
+    // Wait for dialog to open
+    await waitFor(() => {
+      expect(screen.getByLabelText('Token Name (Optional)')).toBeInTheDocument();
+    });
+
+    // Step 2: Fill token name and submit form
     const nameInput = screen.getByLabelText('Token Name (Optional)');
     await user.type(nameInput, 'My API Token');
 
     const generateButton = screen.getByRole('button', { name: 'Generate Token' });
     await user.click(generateButton);
 
-    // Step 2: Verify dialog opens with token
+    // Step 3: Verify dialog shows created token
     await waitFor(() => {
       expect(screen.getByText('API Token Generated')).toBeInTheDocument();
     });
@@ -124,7 +133,7 @@ describe('TokenPage - Token Creation Flow', () => {
     expect(screen.getByText(/Copy your API token now/)).toBeInTheDocument();
     expect(screen.getByText(/Make sure to copy your token now/)).toBeInTheDocument();
 
-    // Step 3: Test show/hide toggle functionality
+    // Step 4: Test show/hide toggle functionality
     const showButton = screen.getByRole('button', { name: /show content/i });
 
     // Token should be hidden by default (showing dots)
@@ -139,7 +148,7 @@ describe('TokenPage - Token Creation Flow', () => {
     await user.click(hideButton);
     expect(screen.queryByText(createdToken)).not.toBeInTheDocument();
 
-    // Step 4: Test copy button functionality
+    // Step 5: Test copy button functionality
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       value: {
@@ -153,7 +162,7 @@ describe('TokenPage - Token Creation Flow', () => {
 
     expect(writeTextMock).toHaveBeenCalledWith(createdToken);
 
-    // Step 5: Close dialog with "Done"
+    // Step 6: Close dialog with "Done"
     const doneButton = screen.getByRole('button', { name: 'Done' });
     await user.click(doneButton);
 
@@ -161,7 +170,7 @@ describe('TokenPage - Token Creation Flow', () => {
       expect(screen.queryByText('API Token Generated')).not.toBeInTheDocument();
     });
 
-    // Step 6: Verify success toast was called
+    // Step 7: Verify success toast was called
     expect(toastMock).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
   });
 });
@@ -179,7 +188,7 @@ describe('TokenPage - Token List Display', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
+      expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
     // Verify table exists but has no data rows
@@ -221,7 +230,7 @@ describe('TokenPage - Token List Display', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/API Tokens/)).toBeInTheDocument();
+      expect(screen.getByTestId('tokens-page')).toBeInTheDocument();
     });
 
     // Verify both tokens are displayed

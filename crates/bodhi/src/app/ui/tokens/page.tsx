@@ -1,17 +1,16 @@
 'use client';
 
-import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
-import { TokenForm } from '@/app/ui/tokens/TokenForm';
+import { CreateTokenDialog } from '@/app/ui/tokens/CreateTokenDialog';
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination, SortState } from '@/components/DataTable';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { ApiToken, ApiTokenResponse, PaginatedApiTokenResponse, TokenStatus } from '@bodhiapp/ts-client';
+import { ApiToken, PaginatedApiTokenResponse, TokenStatus } from '@bodhiapp/ts-client';
 import { useAppInfo } from '@/hooks/useInfo';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useQueryClient } from '@/hooks/useQuery';
@@ -20,6 +19,7 @@ import { useState } from 'react';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
+  { id: 'scope', name: 'Scope', sorted: false },
   { id: 'status', name: 'Status', sorted: false },
   {
     id: 'created_at',
@@ -41,7 +41,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function TokenPageContent() {
-  const [token, setToken] = useState<ApiTokenResponse | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
   const { isLoading: appLoading } = useAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -73,32 +73,17 @@ export function TokenPageContent() {
     });
   };
 
-  const handleTokenCreated = (newToken: ApiTokenResponse) => {
-    setToken(newToken);
-  };
-
   const handleDialogClose = () => {
-    setToken(null);
+    setShowDialog(false);
   };
 
   if (appLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="tokens-page" data-pagestatus="loading">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-8 w-32" />
-            </div>
-            <Skeleton className="h-4 w-3/4 mt-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-1/4" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto p-4" data-testid="tokens-page" data-pagestatus="loading">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-1/4" />
+        </div>
       </div>
     );
   }
@@ -106,6 +91,7 @@ export function TokenPageContent() {
   const renderRow = (token: ApiToken) => (
     <>
       <TableCell data-testid={`token-name-${token.id}`}>{token.name || '-'}</TableCell>
+      <TableCell data-testid={`token-scope-${token.id}`}>{token.scopes}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Switch
@@ -124,54 +110,46 @@ export function TokenPageContent() {
 
   return (
     <div
-      className="container mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      className="container mx-auto p-4"
       data-testid="tokens-page"
       data-pagestatus={tokensLoading ? 'loading' : 'ready'}
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            API Tokens
-          </CardTitle>
-          <CardDescription>Generate and manage API tokens for programmatic access to the API</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <Shield className="h-4 w-4" />
-            <AlertDescription>
-              API tokens provide full access to the API. Keep them secure. Tokens cannot be viewed again after creation.
-            </AlertDescription>
-          </Alert>
-          <div className="mt-6" data-testid="token-form-container">
-            <TokenForm onTokenCreated={handleTokenCreated} />
-          </div>
-          <div className="mt-8" data-testid="tokens-table-container">
-            <DataTable
-              data={tokensData?.data || []}
-              columns={columns}
-              loading={tokensLoading}
-              renderRow={renderRow}
-              getItemId={(item) => item.id}
-              sort={sort}
-              onSortChange={() => {}}
-              data-testid="tokens-table"
+      <div className="flex justify-end gap-2 mb-4">
+        <Button onClick={() => setShowDialog(true)} data-testid="new-token-button">
+          <Shield className="h-4 w-4 mr-2" />
+          New API Token
+        </Button>
+      </div>
+      <Alert>
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          API tokens provide full access to the API. Keep them secure. Tokens cannot be viewed again after creation.
+        </AlertDescription>
+      </Alert>
+      <div className="mt-6" data-testid="tokens-table-container">
+        <DataTable
+          data={tokensData?.data || []}
+          columns={columns}
+          loading={tokensLoading}
+          renderRow={renderRow}
+          getItemId={(item) => item.id}
+          sort={sort}
+          onSortChange={() => {}}
+          data-testid="tokens-table"
+        />
+        {tokensData && (
+          <div className="mt-6 mb-4">
+            <Pagination
+              page={page}
+              totalPages={
+                tokensData ? Math.ceil((tokensData.total as number) / (tokensData.page_size as number)) : 1
+              }
+              onPageChange={setPage}
             />
-            {tokensData && (
-              <div className="mt-6 mb-4">
-                <Pagination
-                  page={page}
-                  totalPages={
-                    tokensData ? Math.ceil((tokensData.total as number) / (tokensData.page_size as number)) : 1
-                  }
-                  onPageChange={setPage}
-                />
-              </div>
-            )}
           </div>
-        </CardContent>
-      </Card>
-      {token && <TokenDialog token={token} onClose={handleDialogClose} open={!!token} />}
+        )}
+      </div>
+      <CreateTokenDialog open={showDialog} onClose={handleDialogClose} />
     </div>
   );
 }
