@@ -1449,6 +1449,13 @@ export type TestPromptResponse = {
     error?: string | null;
 };
 
+/**
+ * API Token information response
+ */
+export type TokenInfo = {
+    role: TokenScope;
+};
+
 export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_token_manager' | 'scope_token_admin';
 
 export type TokenStatus = 'active' | 'inactive';
@@ -1624,6 +1631,8 @@ export type UserResponse = {
     auth_status: 'logged_out';
 } | (UserInfo & {
     auth_status: 'logged_in';
+}) | (TokenInfo & {
+    auth_status: 'api_token';
 });
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
