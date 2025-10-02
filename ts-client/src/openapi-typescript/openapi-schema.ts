@@ -2182,6 +2182,10 @@ export interface components {
             response?: string | null;
             error?: string | null;
         };
+        /** @description API Token information response */
+        TokenInfo: {
+            role: components["schemas"]["TokenScope"];
+        };
         /** @enum {string} */
         TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
         /** @enum {string} */
@@ -2380,6 +2384,9 @@ export interface components {
         } | (components["schemas"]["UserInfo"] & {
             /** @enum {string} */
             auth_status: "logged_in";
+        }) | (components["schemas"]["TokenInfo"] & {
+            /** @enum {string} */
+            auth_status: "api_token";
         });
         /** @enum {string} */
         UserScope: "scope_user_user" | "scope_user_power_user" | "scope_user_manager" | "scope_user_admin";

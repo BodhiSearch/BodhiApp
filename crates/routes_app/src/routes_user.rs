@@ -4,7 +4,8 @@ use auth_middleware::{
 };
 use axum::{http::header::HeaderMap, Json};
 use objs::{
-  ApiError, AppRole, BadRequestError, ResourceRole, ResourceScope, UserInfo, API_TAG_AUTH,
+  ApiError, AppRole, BadRequestError, ResourceRole, ResourceScope, TokenScope, UserInfo,
+  API_TAG_AUTH,
 };
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
@@ -33,6 +34,12 @@ pub enum RoleSource {
   ScopeUser,
 }
 
+/// API Token information response
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct TokenInfo {
+  pub role: TokenScope,
+}
+
 /// User authentication response with discriminated union
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(tag = "auth_status")]
@@ -49,6 +56,9 @@ pub enum UserResponse {
   /// User is authenticated with details
   #[serde(rename = "logged_in")]
   LoggedIn(UserInfo),
+  /// API token authentication
+  #[serde(rename = "api_token")]
+  Token(TokenInfo),
 }
 
 /// Get information about the currently logged in user
@@ -93,16 +103,16 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
     debug!("injected token is empty");
     return Err(BadRequestError::new("injected token is empty".to_string()))?;
   }
-  let claims: Claims = extract_claims::<Claims>(token)?;
   let role_header = headers.get(KEY_HEADER_BODHIAPP_ROLE);
-  let token_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
-  match (role_header, token_header) {
+  let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
+  match (role_header, scope_header) {
     (Some(role_header), _) => {
       debug!("role header present");
       let role = role_header
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
       let role = role.parse::<ResourceRole>()?;
+      let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
@@ -111,26 +121,33 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
         role: Some(AppRole::Session(role)),
       })))
     }
-    (None, Some(token_header)) => {
-      debug!("token header present");
-      let token = token_header
+    (None, Some(scope_header)) => {
+      debug!("scope header present");
+      let scope = scope_header
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
-      let token = ResourceScope::try_parse(token)?;
-      let app_role = match token {
-        ResourceScope::Token(token_scope) => AppRole::ApiToken(token_scope),
-        ResourceScope::User(user_scope) => AppRole::ExchangedToken(user_scope),
-      };
-      Ok(Json(UserResponse::LoggedIn(UserInfo {
-        user_id: claims.sub,
-        username: claims.preferred_username,
-        first_name: claims.given_name,
-        last_name: claims.family_name,
-        role: Some(app_role),
-      })))
+      let resource_scope = ResourceScope::try_parse(scope)?;
+      match resource_scope {
+        ResourceScope::Token(token_scope) => {
+          debug!("token scope present, returning api token info");
+          Ok(Json(UserResponse::Token(TokenInfo { role: token_scope })))
+        }
+        ResourceScope::User(user_scope) => {
+          debug!("user scope present, extracting claims");
+          let claims: Claims = extract_claims::<Claims>(token)?;
+          Ok(Json(UserResponse::LoggedIn(UserInfo {
+            user_id: claims.sub,
+            username: claims.preferred_username,
+            first_name: claims.given_name,
+            last_name: claims.family_name,
+            role: Some(AppRole::ExchangedToken(user_scope)),
+          })))
+        }
+      }
     }
     (None, None) => {
-      debug!("no role or token header, returning logged in user without role");
+      debug!("no role or scope header, returning logged in user without role");
+      let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
@@ -144,7 +161,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
 
 #[cfg(test)]
 mod tests {
-  use crate::{user_info_handler, UserResponse};
+  use crate::{user_info_handler, TokenInfo, UserResponse};
   use auth_middleware::{
     KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
   };
@@ -305,19 +322,19 @@ mod tests {
   #[case::scope_token_manager(TokenScope::Manager)]
   #[case::scope_token_admin(TokenScope::Admin)]
   #[tokio::test]
-  async fn test_user_info_handler_bearer_token_with_token_scope(
-    token: (String, String),
+  async fn test_user_info_handler_api_token_with_token_scope(
     #[case] token_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let (token, _) = token;
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let router = test_router(app_service);
 
+    // API tokens are random strings, not JWT - simulate what middleware injects
+    let api_token = "bodhiapp_test_random_token_string";
     let resource_scope = ResourceScope::Token(token_scope);
     let response = router
       .oneshot(
         Request::get("/app/user")
-          .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
+          .header(KEY_HEADER_BODHIAPP_TOKEN, api_token)
           .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
           .body(Body::empty())?,
       )
@@ -326,17 +343,9 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let response_json = response.json::<UserResponse>().await?;
 
-    // Extract user_id from the token to verify correct response
-    let claims = services::extract_claims::<services::Claims>(&token)?;
-
+    // API tokens should return TokenInfo, not UserInfo
     assert_eq!(
-      UserResponse::LoggedIn(UserInfo {
-        user_id: claims.sub,
-        username: "testuser@email.com".to_string(),
-        first_name: Some("Test".to_string()),
-        last_name: Some("User".to_string()),
-        role: Some(AppRole::ApiToken(token_scope)),
-      }),
+      UserResponse::Token(TokenInfo { role: token_scope }),
       response_json
     );
     Ok(())

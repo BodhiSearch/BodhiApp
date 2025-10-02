@@ -8984,6 +8984,18 @@
           "success": true
         }
       },
+      "TokenInfo": {
+        "type": "object",
+        "description": "API Token information response",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/TokenScope"
+          }
+        }
+      },
       "TokenScope": {
         "type": "string",
         "enum": [
@@ -9464,6 +9476,29 @@
               }
             ],
             "description": "User is authenticated with details"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenInfo",
+                "description": "API token authentication"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "auth_status"
+                ],
+                "properties": {
+                  "auth_status": {
+                    "type": "string",
+                    "enum": [
+                      "api_token"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "API token authentication"
           }
         ],
         "description": "User authentication response with discriminated union",
