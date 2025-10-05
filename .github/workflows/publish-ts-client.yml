@@ -67,10 +67,8 @@ jobs:
         run: |
           # Clean the dist directory
           npm run clean
-          # Generate types from existing OpenAPI spec
-          npm run generate:types
-          # Bundle the package
-          npm run bundle
+          # Generate types from existing OpenAPI spec and bundle
+          npm run build:openapi
 
       - name: Verify build artifacts
         working-directory: ./ts-client

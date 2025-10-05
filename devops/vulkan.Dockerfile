@@ -45,6 +45,7 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock ./
 COPY scripts/filter-cargo-toml.py ./scripts/
 COPY crates/ci_optims/ crates/ci_optims/
+COPY async-openai/ async-openai/
 
 # Create filtered Cargo.toml for dependency-only build and generate new lock file
 RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml && \
