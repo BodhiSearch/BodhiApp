@@ -14,12 +14,19 @@ import sys
 from typing import List, Optional
 
 
-def run_gh_api_command(repo_owner: str, package_name: str) -> Optional[dict]:
-  """Run gh api command to get package versions from GHCR."""
+def run_gh_api_command(repo_owner: str, package_name: str) -> Optional[List[dict]]:
+  """Run gh api command to get package versions from GHCR with pagination."""
   try:
-    cmd = ["gh", "api", f"/orgs/{repo_owner}/packages/container/{package_name}/versions"]
+    cmd = ["gh", "api", "--paginate", f"/orgs/{repo_owner}/packages/container/{package_name}/versions"]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return json.loads(result.stdout)
+    # gh api --paginate returns newline-separated JSON arrays, we need to parse and merge them
+    all_versions = []
+    for line in result.stdout.strip().split('\n'):
+      if line:
+        page_data = json.loads(line)
+        if isinstance(page_data, list):
+          all_versions.extend(page_data)
+    return all_versions
   except subprocess.CalledProcessError:
     return None
   except json.JSONDecodeError:
@@ -83,7 +90,7 @@ def get_ghcr_docker_version(variant: str, debug: bool = False) -> str:
   if debug:
     print(f"DEBUG: Fetching versions for {repo_owner}/{package_name} (variant: {variant})", file=sys.stderr)
 
-  # Get package versions from GHCR
+  # Get package versions from GHCR (with pagination to fetch all versions)
   response = run_gh_api_command(repo_owner, package_name)
   if not response:
     if debug:

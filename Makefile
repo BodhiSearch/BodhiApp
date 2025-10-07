@@ -221,25 +221,53 @@ define create_docker_release_tag
 endef
 
 
-release-docker: ## Create and push tag for production Docker image release
+release-docker: ## Create and push tag for production Docker image release (use DOCKER_VERSION=docker/vX.Y.Z to override)
 	@echo "Preparing to release production Docker image..."
 	$(call check_git_branch)
-	@echo "Fetching latest production release version from GHCR..."
-	@CURRENT_VERSION=$$($(call get_ghcr_docker_version,production)) && \
-	if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
-		echo "No existing production releases found in GHCR, starting with version 0.0.1"; \
-	fi && \
-	$(call create_docker_release_tag,production,$$CURRENT_VERSION)
+	@if [ -n "$(DOCKER_VERSION)" ]; then \
+		echo "Using manually specified version: $(DOCKER_VERSION)"; \
+		if ! echo "$(DOCKER_VERSION)" | grep -qE '^docker/v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+			echo "Error: DOCKER_VERSION must be in format docker/vX.Y.Z (e.g., docker/v0.0.5)"; \
+			exit 1; \
+		fi; \
+		TAG_NAME="$(DOCKER_VERSION)"; \
+		$(call delete_tag_if_exists,$$TAG_NAME); \
+		echo "Creating production release tag $$TAG_NAME..."; \
+		git tag "$$TAG_NAME"; \
+		git push origin "$$TAG_NAME"; \
+		echo "Production release tag $$TAG_NAME pushed. GitHub workflow will handle the Docker image build and publish."; \
+	else \
+		echo "Fetching latest production release version from GHCR..."; \
+		CURRENT_VERSION=$$($(call get_ghcr_docker_version,production)); \
+		if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+			echo "No existing production releases found in GHCR, starting with version 0.0.1"; \
+		fi; \
+		$(call create_docker_release_tag,production,$$CURRENT_VERSION); \
+	fi
 
-release-docker-dev: ## Create and push tag for development Docker image release
+release-docker-dev: ## Create and push tag for development Docker image release (use DOCKER_DEV_VERSION=docker-dev/vX.Y.Z to override)
 	@echo "Preparing to release development Docker image..."
 	$(call check_git_branch)
-	@echo "Fetching latest development release version from GHCR..."
-	@CURRENT_VERSION=$$($(call get_ghcr_docker_version,development)) && \
-	if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
-		echo "No existing development releases found in GHCR, starting with version 0.0.1"; \
-	fi && \
-	$(call create_docker_release_tag,development,$$CURRENT_VERSION)
+	@if [ -n "$(DOCKER_DEV_VERSION)" ]; then \
+		echo "Using manually specified version: $(DOCKER_DEV_VERSION)"; \
+		if ! echo "$(DOCKER_DEV_VERSION)" | grep -qE '^docker-dev/v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
+			echo "Error: DOCKER_DEV_VERSION must be in format docker-dev/vX.Y.Z (e.g., docker-dev/v0.0.5)"; \
+			exit 1; \
+		fi; \
+		TAG_NAME="$(DOCKER_DEV_VERSION)"; \
+		$(call delete_tag_if_exists,$$TAG_NAME); \
+		echo "Creating development release tag $$TAG_NAME..."; \
+		git tag "$$TAG_NAME"; \
+		git push origin "$$TAG_NAME"; \
+		echo "Development release tag $$TAG_NAME pushed. GitHub workflow will handle the Docker image build and publish."; \
+	else \
+		echo "Fetching latest development release version from GHCR..."; \
+		CURRENT_VERSION=$$($(call get_ghcr_docker_version,development)); \
+		if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+			echo "No existing development releases found in GHCR, starting with version 0.0.1"; \
+		fi; \
+		$(call create_docker_release_tag,development,$$CURRENT_VERSION); \
+	fi
 
 check-docker-versions: ## Check latest versions of both production and development Docker images from GHCR
 	@echo "=== Latest Docker Release Versions (from GHCR) ==="
