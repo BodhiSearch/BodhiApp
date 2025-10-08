@@ -1,196 +1,422 @@
-# CLAUDE.md
+# CLAUDE.md - services Crate
 
-This file provides guidance to Claude Code when working with the `services` crate.
-
-See [PACKAGE.md](crates/services/PACKAGE.md) for implementation details and technical depth.
+See [crates/services/PACKAGE.md](crates/services/PACKAGE.md) for implementation details.
 
 ## Purpose
 
-The `services` crate implements BodhiApp's business logic layer through a sophisticated service architecture that coordinates OAuth2 authentication, AI API integrations, model management, user access control, data persistence, and multi-layer security. This crate serves as the foundation layer that bridges domain objects from the `objs` crate with external systems and provides comprehensive service orchestration for the entire BodhiApp ecosystem.
+The `services` crate implements BodhiApp's **business logic orchestration layer**, providing 11 interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, user access control, data persistence, and multi-layer security. This crate bridges domain objects from `objs` with external systems while maintaining deployment flexibility across standalone servers, desktop applications, and embedded contexts.
 
-## Key Domain Architecture
+## Architectural Design Rationale
 
-### Service Registry Pattern
-BodhiApp uses a sophisticated trait-based service registry with comprehensive dependency injection:
-- **AppService trait**: Central registry providing access to 11 business services including AI API service, localization, and time services
-- **DefaultAppService**: Concrete implementation managing service composition with derive_new pattern for dependency injection
-- **Arc<dyn Trait> pattern**: Thread-safe shared ownership across async contexts with comprehensive mockall integration for testing
-- **Service interdependencies**: Complex coordination between authentication, AI API, data, hub, database, session, secret, cache, setting, and time services
-- **Cross-service communication**: Services coordinate through well-defined interfaces with error propagation and transaction management
+### Why Service Registry Pattern
 
-### Authentication Coordination System
-Multi-stage authentication flow with comprehensive service coordination:
-- **OAuth2 Client Registration**: Dynamic app registration with Keycloak identity provider using custom Bodhi API endpoints with version header propagation
-- **PKCE Authorization Flow**: Authorization code exchange with PKCE security, code verifier validation, and comprehensive error handling
-- **Token Management**: JWT access/refresh token lifecycle with automatic refresh, expiration handling, and database persistence
-- **Token Exchange Protocol**: RFC 8693 token exchange for service-to-service authentication with scope validation and app token specialization
-- **Session Integration**: SQLite-backed HTTP session management coordinated with JWT tokens, secure cookie configuration, and user session tracking
-- **User Access Control**: Advanced user access request management with status tracking, approval workflows, and resource administration
-- **Resource Administration**: Dynamic resource admin assignment with comprehensive access request lifecycle management
+BodhiApp chose a trait-based service registry pattern over traditional dependency injection frameworks for several critical reasons:
 
-### Model Management Pipeline
-Integrated model discovery, download, and local management with sophisticated error handling:
-- **Hub Service Integration**: Hugging Face Hub API with gated repository handling, authentication token management, and comprehensive error categorization
-- **Local Storage Coordination**: File system organization with metadata tracking, atomic file operations, and GGUF validation
-- **Alias System**: YAML-based model aliases linking friendly names to specific snapshots with filename sanitization
-- **Remote Model Registry**: Centralized model metadata with version synchronization and cache invalidation
-- **Error Recovery**: Network failure handling with retry logic, partial download recovery, and detailed error categorization (gated access, not found, transport errors)
-- **Offline Testing**: OfflineHubService for testing without external dependencies using local test data
+1. **Compile-Time Safety**: The `AppService` trait ensures all service dependencies are satisfied at compile time, preventing runtime surprises in production deployments
+2. **Testing Isolation**: Each service trait has `#[mockall::automock]` annotations enabling comprehensive mock generation for unit testing without external dependencies
+3. **Deployment Flexibility**: The registry pattern allows different service implementations across deployment contexts (server vs desktop vs embedded) without architectural changes
+4. **Thread-Safe Concurrency**: All services implement `Send + Sync + Debug`, enabling safe sharing across async tasks and worker threads
+5. **Explicit Dependencies**: Service constructors explicitly declare dependencies through the `derive-new` pattern, making the dependency graph clear and maintainable
 
-### AI API Service Integration
-Comprehensive AI API coordination with multiple provider support and enhanced capabilities:
-- **Multi-Provider Support**: OpenAI-compatible API integration with provider abstraction, unified response handling, and streaming response support
-- **Model Testing**: Comprehensive model validation with configurable test prompts, response validation, API key verification, and prompt length validation
-- **Chat Completion Integration**: Full support for CreateChatCompletionRequest with streaming responses and proper error handling
-- **Rate Limiting**: Provider-specific rate limit handling with backoff strategies, request throttling, and comprehensive error recovery
-- **Error Classification**: Detailed error categorization (authentication, not found, rate limit, API errors, model not found) with localized error messages
-- **Timeout Management**: Configurable request timeouts (default 30s) with graceful degradation and comprehensive error recovery
-- **Database Integration**: API key management with encrypted storage, model registry synchronization, usage tracking, and API key validation
-- **Response Processing**: Axum response handling with proper streaming support and error transformation
+### Why Multi-Layer Authentication
 
-### Multi-Layer Security Architecture
-Coordinated security services for comprehensive data protection with platform-specific implementations:
-- **Secret Service**: AES-GCM encryption with PBKDF2 key derivation (1000 iterations), random salt/nonce generation, and Base64 encoding
-- **Keyring Service**: Platform-specific secure credential storage integration (Apple Keychain, Linux Secret Service, Windows Credential Manager)
-- **Session Security**: SQLite-backed HTTP sessions with SameSite::Strict cookies, secure configuration, and session isolation
-- **Database Security**: Parameterized queries with sqlx, transaction isolation, and migration management
-- **Transport Security**: OAuth2 PKCE with code verifier validation, JWT token validation, and comprehensive error handling
-- **Credential Flow**: End-to-end credential encryption, storage, and retrieval with platform keyring integration
+The authentication system spans multiple services rather than a monolithic auth module because:
 
-### Database Transaction System
-SQLite-based persistence with versioned schema evolution and event broadcasting:
-- **Migration Management**: Versioned database migrations with sqlx migrate support and rollback capabilities
-- **Connection Pooling**: SQLite connection pool management for concurrent access with proper lifecycle management
-- **Transaction Coordination**: Cross-service transaction support for data consistency with atomic operations
-- **Time Service Abstraction**: Testable time operations with frozen time for testing and nanosecond precision removal
-- **Request Tracking**: Download request management with status tracking and comprehensive lifecycle management
-- **Event Broadcasting**: Database change notification system for reactive testing and service coordination
+1. **Separation of Concerns**: Each service handles a specific aspect - OAuth2 flows (AuthService), credential encryption (SecretService), session management (SessionService), and persistent storage (KeyringService)
+2. **Platform Abstraction**: KeyringService abstracts OS-specific credential storage (Keychain, Secret Service, Windows Credential Manager) behind a unified interface
+3. **Security Defense in Depth**: Multiple layers ensure credentials are never exposed - encrypted in database, protected by platform keyring, and transmitted via secure sessions
+4. **Token Lifecycle Management**: Complex JWT refresh logic, token exchange protocols, and session coordination require specialized handling across service boundaries
+5. **Keycloak Integration**: Custom Bodhi API endpoints for resource management and dynamic admin assignment require coordinated service interactions
 
-### Caching and Performance Layer
-Performance optimization through strategic caching and resource management:
-- **Mini-Moka Integration**: High-performance in-memory cache with TTL support and thread-safe concurrent access
-- **Cache Coordination**: Service-level cache invalidation strategies coordinated with database changes
-- **Async Operations**: Non-blocking I/O coordination across all services with proper error propagation
-- **Resource Management**: Connection pooling and resource lifecycle management with cleanup strategies
-- **Performance Testing**: Cache service stubs for testing cache invalidation and consistency scenarios
+### Why Separated Model Management Services
 
-## Architecture Position
+Model management is split between HubService and DataService rather than a single service because:
 
-The `services` crate serves as the orchestration layer:
+1. **External vs Local Concerns**: HubService handles Hugging Face API interactions while DataService manages local file system operations
+2. **Offline Capability**: DataService can operate without network access, enabling offline model usage and testing
+3. **Error Recovery Boundaries**: Network failures in HubService don't affect local model operations in DataService
+4. **Cache Coherency**: Separation allows independent caching strategies - API responses in HubService, file metadata in DataService
+5. **Testing Isolation**: OfflineHubService enables testing without external API dependencies while DataService tests focus on file operations
 
-- **Above**: Domain objects (`objs`), infrastructure (`llama_server_proc`), and external APIs
-- **Below**: HTTP routes, server middleware, CLI commands, and application entry points
-- **Coordination**: Manages complex interactions between external systems and internal state
-- **Abstraction**: Provides clean interfaces for business logic testing and composition across HTTP, CLI, and embedded application contexts
-- **Deployment Flexibility**: Service architecture supports multiple deployment modes including standalone servers, embedded applications, and dual-mode desktop/server configurations
+## Cross-Crate Coordination Patterns
 
-## Service Interdependencies
+### Service to HTTP Infrastructure Flow
 
-### HTTP Infrastructure Service Integration
-Services coordinate with HTTP infrastructure for request processing:
-- **DataService** ↔ **HTTP RouterState**: Model alias resolution via `find_alias()` for chat completion requests
-- **HubService** ↔ **HTTP SharedContext**: Local model file discovery via `find_local_file()` for LLM server coordination
-- **SettingService** ↔ **HTTP SharedContext**: Server configuration and execution variant management for LLM server lifecycle
-- **Service Error Translation**: All service errors flow through HTTP infrastructure with RouterStateError translation to appropriate HTTP status codes
+Services integrate with HTTP infrastructure through specific coordination points:
 
-### Authentication Flow Dependencies
-Complex service coordination for complete authentication with comprehensive error handling:
-- **AuthService** ↔ **DbService**: Token validation, storage, and API token management with transaction support and auth_middleware integration
-- **AuthService** ↔ **SessionService**: Session creation, management, and SQLite-backed persistence coordinated through auth_middleware
-- **AuthService** ↔ **SecretService**: Credential encryption, storage, and AppRegInfo management for JWT token validation in auth_middleware
-- **AuthService** ↔ **SettingService**: OAuth client configuration and Keycloak endpoint management with auth_middleware token exchange
-- **AuthService** ↔ **KeyringService**: Platform-specific credential storage for persistent authentication across HTTP sessions
-- **AuthService** ↔ **auth_middleware**: OAuth2 token exchange, refresh operations, and external client token validation with comprehensive caching
+**Model Resolution Pipeline**:
+- HTTP request arrives at routes_oai chat completion endpoint
+- Route handler queries DataService.find_alias() for model resolution
+- DataService returns Alias object with request parameter overlays
+- SharedContext uses HubService.find_local_file() to locate GGUF file
+- LLM server process launched with resolved model path
 
-### Model Management Dependencies
-Coordinated model discovery, storage, and validation:
-- **HubService** ↔ **DataService**: Downloaded model registration, alias creation, and GGUF validation
-- **HubService** ↔ **CacheService**: Repository metadata caching with TTL and invalidation strategies
-- **DataService** ↔ **SettingService**: Storage path configuration and Hugging Face cache management
-- **DataService** ↔ **SecretService**: Repository access token management for gated models
-- **DataService** ↔ **HubService**: Model file validation and metadata extraction coordination
+**Error Translation Chain**:
+- Service method returns domain-specific error (e.g., HubServiceError::GatedAccess)
+- Error implements AppError trait via errmeta_derive
+- RouterStateError wraps service error with HTTP context
+- Error converts to ApiError with OpenAI-compatible format
+- Response includes localized error message from objs LocalizationService
 
-### Database Transaction Boundaries
-Cross-service transaction coordination with event broadcasting:
-- **Download tracking**: Multiple services participate in download request lifecycle with status management
-- **Access control**: Authentication state synchronized with database permissions and role management
-- **Alias management**: File system operations coordinated with database metadata and atomic writes
-- **Session management**: HTTP sessions synchronized with authentication state and secure cookie handling
-- **Event coordination**: Database change notifications broadcast to reactive services for consistency
+### Service to Authentication Middleware Coordination
 
-### Time Service Integration
-Deterministic time operations across all services:
+Authentication flows span services and middleware with precise coordination:
 
-- **DbService** ↔ **TimeService**: Consistent timestamp generation for database records
-- **AuthService** ↔ **TimeService**: Token expiration and refresh timing coordination
-- **TestDbService** ↔ **FrozenTimeService**: Deterministic testing with frozen time for reproducible results
+**Token Exchange Flow**:
+1. External client presents access token to auth_middleware
+2. Middleware queries AuthService for token validation
+3. AuthService checks DbService for cached validation result
+4. If expired, AuthService initiates RFC 8693 token exchange with Keycloak
+5. New token stored in DbService with expiration tracking
+6. SessionService creates/updates HTTP session with user context
+7. Middleware attaches authenticated user to request extensions
 
-### Deployment Context Coordination
-Service architecture supports multiple deployment contexts with consistent behavior:
+**Access Control Decision**:
+1. Route handler specifies required Role/Scope via auth_middleware
+2. Middleware extracts user context from SessionService
+3. Role hierarchy checked against required permissions
+4. Resource-specific scopes validated through TokenScope parsing
+5. Access granted or denied with appropriate error response
 
-- **Embedded Application Integration**: Services coordinate seamlessly across embedded contexts including desktop applications and library integrations
-- **Dual-Mode Service Coordination**: Service registry pattern enables consistent service access across different deployment modes (desktop, server, CLI) without architectural changes
-- **Context-Agnostic Service Design**: All services implement deployment-neutral interfaces enabling flexible application composition and embedding scenarios
-- **Resource Management Coordination**: Services adapt resource management strategies based on deployment context while maintaining consistent business logic and data integrity
+### Service to Database Transaction Boundaries
 
-## Important Constraints
+Database operations maintain consistency through coordinated transactions:
 
-### Service Lifecycle Management
-- All services must be thread-safe and implement Send + Sync + Debug for comprehensive debugging
-- Services use Arc<dyn Trait> for shared ownership across async contexts with proper lifetime management
-- Service registration happens at application startup with dependency injection via DefaultAppService::new
-- Mock services available via `#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]` for comprehensive testing
-- Service composition testing requires careful mock expectation coordination and dependency ordering
+**Model Download Transaction**:
+```rust
+// Conceptual transaction boundary
+db.transaction(|tx| {
+  // HubService creates download request record
+  let request_id = hub_service.create_download_request(tx, &repo)?;
 
-### Authentication Security Requirements
-- OAuth2 PKCE required for all authorization flows with code verifier validation
-- JWT tokens must have expiration and refresh mechanisms with automatic refresh handling
-- Session cookies configured with SameSite::Strict and secure settings (TODO: enable secure flag for HTTPS)
-- All authentication state changes must be atomic across service boundaries with transaction support
-- Keycloak integration requires custom Bodhi API endpoints for resource management and admin assignment
-- Token exchange must follow RFC 8693 standards with proper scope and audience validation
+  // DataService reserves local storage path
+  let path = data_service.reserve_model_path(tx, &repo)?;
 
-### Data Consistency Requirements
-- Database operations must use parameterized queries with sqlx to prevent SQL injection
-- File system operations must be atomic with rollback capabilities using temporary files and rename operations
-- Cache invalidation must be coordinated with database changes through service-level coordination
-- Cross-service operations must maintain transactional consistency with proper error propagation
-- Migration management must support both up and down migrations with data preservation
-- Event broadcasting must maintain consistency across reactive service boundaries
+  // HubService performs download with progress tracking
+  hub_service.download_with_progress(tx, request_id, &path)?;
 
-### External Integration Constraints
-- Hugging Face Hub API rate limiting and error handling required with comprehensive error categorization
-- OAuth provider integration must handle various error conditions including gated access and invalid tokens
-- Network operations must implement retry logic with exponential backoff for transient failures
-- All external API calls must have configurable timeout handling with proper error propagation
-- Keycloak integration requires specific realm configuration and custom Bodhi API endpoint support
-- Platform keyring integration must handle different credential storage mechanisms across operating systems
+  // DataService registers completed model
+  data_service.register_model(tx, &repo, &path)?;
 
-### Security and Privacy Requirements
-- Secrets must never be stored in plaintext or logged with comprehensive masking in HTTP request logging
-- Encryption keys derived using PBKDF2 with 1000 iterations and random salts for each encryption operation
-- Platform keyring integration required for persistent credentials with OS-specific implementations
-- All sensitive operations must be auditable and traceable with proper error context preservation
-- AES-GCM encryption with unique nonces per operation and Base64 encoding for storage
-- Session security with SQLite backend and SameSite::Strict cookie configuration
+  // Transaction commits atomically
+  Ok(())
+})
+```
 
-## Error Handling Strategy
+### Service to CLI Integration Patterns
 
-### Service-Specific Error Domains
-Each service defines localized error types with comprehensive handling using errmeta_derive:
-- **AuthServiceError**: OAuth flow failures, token validation, client registration errors, and Keycloak API errors
-- **HubServiceError**: API failures, gated repository access, network errors with retry logic, and comprehensive error categorization
-- **DataServiceError**: File system operations, alias conflicts, YAML parsing errors, and atomic operation failures
-- **DbError**: SQL operations, migration failures, transaction rollbacks, and connection pool management
-- **SecretServiceError**: Encryption/decryption failures, key derivation errors, and platform keyring integration issues
-- **SessionServiceError**: HTTP session management, SQLite store operations, and cookie configuration errors
+Services adapt to CLI context through specialized error handling:
 
-### Cross-Service Error Propagation
-Complex error handling across service boundaries with comprehensive context preservation:
-- Transparent error wrapping maintains original context using impl_error_from! macro patterns
-- Service errors map to appropriate HTTP status codes via ErrorType enum from objs crate
-- Localized error messages support multiple languages through objs LocalizationService integration
-- Error recovery strategies coordinated across affected services with proper transaction rollback
-- HTTP request/response logging with parameter masking for security-sensitive operations
-- Comprehensive error categorization for external API failures (gated access, not found, transport errors)
+**CLI Error Translation**:
+- Service errors bubble up to commands crate
+- CLI-specific formatting applied (no JSON envelopes)
+- Progress bars integrate with HubService download tracking
+- Interactive prompts use DataService for model selection
+- Configuration updates through SettingService persist across sessions
 
+## Domain-Specific Architecture Patterns
+
+### OAuth2 with Dynamic Client Registration
+
+BodhiApp implements a sophisticated OAuth2 flow with runtime client registration:
+
+**Why Dynamic Registration**:
+- Eliminates pre-shared client credentials reducing deployment complexity
+- Enables per-installation client isolation for security
+- Supports custom Bodhi API endpoints for resource administration
+- Allows runtime realm configuration without rebuild
+
+**Registration Sequence**:
+1. AuthService detects missing client configuration
+2. Registers new OAuth client with Keycloak using Bodhi API
+3. Stores encrypted client credentials via SecretService
+4. Persists registration metadata in platform keyring
+5. Subsequent requests use cached credentials
+
+### AI API Service Testing Architecture
+
+The AI API service implements comprehensive model testing capabilities:
+
+**Test Strategy Rationale**:
+- Validates API keys before expensive operations
+- Tests model availability with minimal token usage
+- Provides configurable test prompts for different providers
+- Handles provider-specific rate limiting gracefully
+- Categorizes failures for appropriate user guidance
+
+**Error Classification Hierarchy**:
+```
+AiApiServiceError
+├── ApiKeyNotConfigured     → Guides configuration
+├── ModelNotFound           → Suggests alternatives
+├── AuthenticationFailed    → Prompts credential update
+├── RateLimitExceeded      → Implements backoff
+└── ApiError               → Provider-specific handling
+```
+
+### Platform-Agnostic Credential Storage
+
+The layered credential storage system ensures security across platforms:
+
+**Storage Layers**:
+1. **Database**: Encrypted credentials with AES-GCM
+2. **Platform Keyring**: OS-specific secure storage
+3. **Session Cookies**: Temporary authentication state
+4. **Memory Cache**: Short-lived token cache
+
+**Why This Layering**:
+- Database encryption protects at-rest credentials
+- Platform keyring leverages OS security features
+- Session cookies enable stateless HTTP requests
+- Memory cache reduces token validation overhead
+
+## Critical Design Decisions
+
+### Time Service Abstraction
+
+All timestamp operations flow through TimeService rather than direct Utc::now() calls:
+
+**Rationale**:
+- Enables deterministic testing with FrozenTimeService
+- Ensures consistent timestamp format across services
+- Removes nanosecond precision for cross-platform compatibility
+- Facilitates time-travel testing for token expiration
+
+**Implementation Impact**:
+- Service constructors accept TimeService parameter
+- Database records use TimeService for created_at/updated_at
+- Token validation checks expiration via TimeService
+- Tests inject FrozenTimeService for reproducibility
+
+### Event Broadcasting for Reactive Coordination
+
+Database operations broadcast change events enabling reactive testing:
+
+**Design Benefits**:
+- Eliminates polling in integration tests
+- Enables cache invalidation on data changes
+- Supports real-time UI updates in future
+- Maintains loose coupling between services
+
+**Current Usage**:
+- Test infrastructure listens for operation completion
+- Cache service invalidates on model changes
+- Session service updates on authentication events
+
+### Offline Testing with Service Stubs
+
+Each external service has an offline stub implementation:
+
+**OfflineHubService**:
+- Returns predefined model metadata
+- Simulates download progress
+- Enables testing without Hugging Face API
+
+**MockAuthService**:
+- Provides deterministic token generation
+- Simulates OAuth2 flows locally
+- Enables auth testing without Keycloak
+
+**Benefits**:
+- Fast unit tests without network dependencies
+- Deterministic test execution
+- Reduced API rate limit consumption
+- Simplified CI/CD pipeline
+
+## Security Architecture Decisions
+
+### Why PBKDF2 with 1000 Iterations
+
+The SecretService uses PBKDF2 for key derivation with specific parameters:
+
+**Design Rationale**:
+- 1000 iterations balances security with performance for interactive operations
+- Random salt per encryption prevents rainbow table attacks
+- AES-GCM provides authenticated encryption detecting tampering
+- Base64 encoding enables safe storage in text-based formats
+
+**Trade-offs Considered**:
+- Higher iteration counts (100,000+) would improve security but impact UX
+- Argon2 would provide better security but lacks wide platform support
+- Hardware security modules would be ideal but limit deployment flexibility
+
+### Session Security Configuration
+
+HTTP sessions use specific security settings:
+
+**Current Configuration**:
+- SameSite::Strict prevents CSRF attacks
+- SQLite backend enables horizontal scaling
+- TODO: Secure flag pending HTTPS deployment
+
+**Future Enhancements**:
+- Enable Secure flag when HTTPS is universal
+- Implement session rotation on privilege escalation
+- Add session timeout with automatic cleanup
+
+## Extension Guidelines
+
+### Adding New Services
+
+When creating new services for the ecosystem:
+
+1. **Define Service Trait**: Create trait with async methods and mockall annotation
+2. **Implement Service**: Provide concrete implementation with proper error handling
+3. **Add to Registry**: Extend AppService trait and DefaultAppService
+4. **Create Test Utils**: Add mock builders in test_utils module
+5. **Document Dependencies**: Update service interdependency documentation
+
+### Extending Authentication
+
+For new authentication providers or flows:
+
+1. **Implement Provider Trait**: Define provider-specific operations
+2. **Extend AuthService**: Add provider-specific methods
+3. **Update Token Handling**: Ensure token refresh logic handles provider
+4. **Add Error Types**: Create provider-specific error variants
+5. **Test Integration**: Verify session and database coordination
+
+### Adding External Integrations
+
+When integrating new external services:
+
+1. **Create Service Abstraction**: Hide external API behind trait
+2. **Implement Offline Stub**: Enable testing without external dependency
+3. **Add Error Classification**: Categorize failures appropriately
+4. **Implement Retry Logic**: Handle transient failures gracefully
+5. **Document Rate Limits**: Specify any API constraints
+
+## Testing Architecture
+
+### Service Testing Patterns
+
+Services use consistent testing patterns:
+
+**Unit Test Structure**:
+```rust
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use mockall::predicate::*;
+
+  #[tokio::test]
+  async fn test_service_operation() {
+    // Arrange: Setup mocks
+    let mut mock_dep = MockDependency::new();
+    mock_dep.expect_method()
+      .with(eq("param"))
+      .returning(|_| Ok(()));
+
+    // Act: Execute service method
+    let service = ServiceImpl::new(Arc::new(mock_dep));
+    let result = service.operation("param").await;
+
+    // Assert: Verify behavior
+    assert!(result.is_ok());
+  }
+}
+```
+
+**Integration Test Pattern**:
+```rust
+#[rstest]
+#[tokio::test]
+async fn test_service_integration(
+  #[future] app_service: Arc<dyn AppService>
+) {
+  let app_service = app_service.await;
+
+  // Test cross-service interaction
+  let result = app_service.hub_service()
+    .list_models("llama")
+    .await;
+
+  assert!(!result.unwrap().is_empty());
+}
+```
+
+### Mock Service Coordination
+
+Complex operations require coordinated mock expectations:
+
+**Authentication Flow Mocking**:
+```rust
+// Setup auth service mock
+auth_mock.expect_validate_token()
+  .returning(|_| Ok(User::test_user()));
+
+// Setup session service mock
+session_mock.expect_create_session()
+  .returning(|_| Ok(SessionId::new()));
+
+// Setup database mock
+db_mock.expect_save_token()
+  .returning(|_| Ok(()));
+
+// Coordinate service interactions
+let result = coordinate_auth_flow(auth_mock, session_mock, db_mock).await;
+```
+
+## Performance Considerations
+
+### Caching Strategy
+
+Services implement multi-level caching:
+
+**Cache Levels**:
+1. **Memory (Mini-Moka)**: Hot data with TTL
+2. **Database**: Persistent cache with expiration
+3. **File System**: Model metadata cache
+
+**Cache Invalidation**:
+- Time-based expiration for external data
+- Event-based invalidation for local changes
+- Manual invalidation for configuration updates
+
+### Connection Pool Management
+
+Database connections are carefully managed:
+
+**Pool Configuration**:
+- SQLite WAL mode for concurrent reads
+- Limited connection count for embedded scenarios
+- Connection timeout for deadlock prevention
+
+### Async Operation Coordination
+
+Services coordinate async operations efficiently:
+
+**Strategies**:
+- Buffered streaming for large downloads
+- Parallel fetching for independent operations
+- Request coalescing for duplicate calls
+- Timeout enforcement for external APIs
+
+## Critical Invariants
+
+### Service Initialization Order
+
+Services must initialize in dependency order:
+1. TimeService (no dependencies)
+2. DbService (depends on TimeService)
+3. SecretService (depends on DbService)
+4. SettingService (depends on SecretService)
+5. AuthService (depends on above)
+6. SessionService (depends on AuthService)
+7. Remaining services
+
+### Thread Safety Requirements
+
+All services must be thread-safe:
+- Implement Send + Sync + Debug
+- Use Arc for shared ownership
+- Avoid interior mutability without synchronization
+- Prefer immutable operations
+
+### Error Context Preservation
+
+Service errors must preserve context:
+- Original error as source
+- Operation being performed
+- Relevant parameters (sanitized)
+- Suggested recovery action
