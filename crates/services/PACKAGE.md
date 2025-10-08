@@ -1,506 +1,274 @@
-# PACKAGE.md - Services Crate
+# PACKAGE.md - services Crate Implementation Index
 
-*For architectural insights and design decisions, see [crates/services/CLAUDE.md](crates/services/CLAUDE.md)*
+*For architectural documentation and design rationale, see [crates/services/CLAUDE.md](crates/services/CLAUDE.md)*
 
-## Implementation Index
+## Module Structure
 
-The `services` crate implements BodhiApp's comprehensive business logic layer through sophisticated service orchestration patterns, multi-layer security, and cross-service coordination.
+### Core Service Registry
+- `src/lib.rs` - Crate root with module exports and feature flags
+- `src/app_service.rs` - Central AppService trait and DefaultAppService implementation
+- `src/service_ext.rs` - Service extension utilities
+- `src/macros.rs` - Service macro definitions
 
-### Core Service Files
+### Authentication & Security Services
+- `src/auth_service.rs` - OAuth2 PKCE flows with Keycloak integration
+- `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation
+- `src/keyring_service.rs` - Platform-specific credential storage
+- `src/session_service.rs` - SQLite-backed HTTP session management
+- `src/token.rs` - JWT token utilities and validation
 
-**src/lib.rs**
-- Module exports and feature-gated test utilities
-- Comprehensive service re-exports for unified API access
+### Model Management Services
+- `src/hub_service.rs` - HuggingFace Hub API integration
+- `src/data_service.rs` - Local model storage and alias management
+- `src/ai_api_service.rs` - External AI API integration with OpenAI compatibility
+- `src/cache_service.rs` - Mini-moka based caching layer
 
-**src/app_service.rs**
-- AppService trait defining the central service registry
-- DefaultAppService implementation with dependency injection
-- Comprehensive service composition for all 11 business services
+### Infrastructure Services
+- `src/db/mod.rs` - Database module exports
+- `src/db/service.rs` - SQLite operations with migration support
+- `src/db/sqlite_pool.rs` - Connection pool management
+- `src/db/encryption.rs` - Database-level encryption utilities
+- `src/db/error.rs` - Database error types
+- `src/db/objs.rs` - Database domain objects
 
-**src/auth_service.rs**
-- OAuth2 PKCE authentication with Keycloak integration
-- JWT token management and refresh mechanisms
-- User access request and resource administration workflows
+### Configuration & Environment
+- `src/setting_service.rs` - Application configuration management
+- `src/env_wrapper.rs` - Environment variable abstraction
+- `src/progress_tracking.rs` - Download progress monitoring
+- `src/objs.rs` - Service-specific domain objects
 
-**src/hub_service.rs**
-- HuggingFace Hub API integration with error categorization
-- Model download coordination and local cache management
-- Gated repository handling with authentication token support
+### Test Utilities (`test-utils` feature)
+- `src/test_utils/mod.rs` - Test fixture exports
+- `src/test_utils/app.rs` - AppService test builders
+- `src/test_utils/auth.rs` - Authentication service mocks
+- `src/test_utils/data.rs` - Data service test helpers
+- `src/test_utils/db.rs` - Database test fixtures
+- `src/test_utils/envs.rs` - Environment test utilities
+- `src/test_utils/hf.rs` - HuggingFace service mocks
+- `src/test_utils/objs.rs` - Domain object test builders
+- `src/test_utils/secret.rs` - Secret service test helpers
+- `src/test_utils/session.rs` - Session service mocks
+- `src/test_utils/settings.rs` - Settings test configuration
 
-**src/data_service.rs**
-- File system operations for model alias and metadata management
-- YAML-based configuration with atomic write operations
-- Local model discovery and validation with GGUF support
+## Key Implementation Examples
 
-**src/db/service.rs**
-- SQLite database operations with migration management
-- Download request tracking and user access control
-- Transaction coordination and connection pooling
-
-### Service Architecture Examples
-
-#### Service Registry Pattern
-
+### Service Registry Pattern
 ```rust
-  #[cfg_attr(test, mockall::automock)]
-  pub trait AppService: std::fmt::Debug + Send + Sync {
-    fn setting_service(&self) -> Arc<dyn SettingService>;
-    fn data_service(&self) -> Arc<dyn DataService>;
-    fn hub_service(&self) -> Arc<dyn HubService>;
-    fn auth_service(&self) -> Arc<dyn AuthService>;
-    fn db_service(&self) -> Arc<dyn DbService>;
-    fn session_service(&self) -> Arc<dyn SessionService>;
-    fn secret_service(&self) -> Arc<dyn SecretService>;
-    fn cache_service(&self) -> Arc<dyn CacheService>;
-    fn localization_service(&self) -> Arc<dyn LocalizationService>;
-    fn time_service(&self) -> Arc<dyn TimeService>;
-    fn ai_api_service(&self) -> Arc<dyn AiApiService>;
-  }
+// src/app_service.rs
+#[cfg_attr(test, mockall::automock)]
+pub trait AppService: std::fmt::Debug + Send + Sync {
+  fn setting_service(&self) -> Arc<dyn SettingService>;
+  fn hub_service(&self) -> Arc<dyn HubService>;
+  fn data_service(&self) -> Arc<dyn DataService>;
+  fn auth_service(&self) -> Arc<dyn AuthService>;
+  fn db_service(&self) -> Arc<dyn DbService>;
+  fn session_service(&self) -> Arc<dyn SessionService>;
+  fn secret_service(&self) -> Arc<dyn SecretService>;
+  fn cache_service(&self) -> Arc<dyn CacheService>;
+  fn localization_service(&self) -> Arc<dyn LocalizationService>;
+  fn time_service(&self) -> Arc<dyn TimeService>;
+  fn ai_api_service(&self) -> Arc<dyn AiApiService>;
+}
 
-  #[derive(Clone, Debug, derive_new::new)]
-  pub struct DefaultAppService {
-    env_service: Arc<dyn SettingService>,
-    hub_service: Arc<dyn HubService>,
-    data_service: Arc<dyn DataService>,
-    auth_service: Arc<dyn AuthService>,
-    db_service: Arc<dyn DbService>,
-    session_service: Arc<dyn SessionService>,
-    secret_service: Arc<dyn SecretService>,
-    cache_service: Arc<dyn CacheService>,
-    localization_service: Arc<dyn LocalizationService>,
-    time_service: Arc<dyn TimeService>,
-    ai_api_service: Arc<dyn AiApiService>,
-  }
+#[derive(Clone, Debug, derive_new::new)]
+pub struct DefaultAppService {
+  env_service: Arc<dyn SettingService>,
+  hub_service: Arc<dyn HubService>,
+  // ... all 11 services
+}
 ```
 
-#### OAuth2 Authentication Flow
-
+### OAuth2 Authentication Flow
 ```rust
-  #[async_trait]
-  pub trait AuthService: Send + Sync + std::fmt::Debug {
-    async fn register_client(
-      &self,
-      name: String,
-      description: String,
-      redirect_uris: Vec<String>
-    ) -> Result<AppRegInfo>;
+// src/auth_service.rs
+#[async_trait]
+pub trait AuthService: Send + Sync + std::fmt::Debug {
+  async fn exchange_auth_code(
+    &self,
+    code: AuthorizationCode,
+    client_id: ClientId,
+    client_secret: ClientSecret,
+    redirect_uri: RedirectUrl,
+    code_verifier: PkceCodeVerifier,
+  ) -> Result<(AccessToken, RefreshToken)>;
 
-    async fn exchange_auth_code(
-      &self,
-      code: AuthorizationCode,
-      client_id: ClientId,
-      client_secret: ClientSecret,
-      redirect_uri: RedirectUrl,
-      code_verifier: PkceCodeVerifier,
-    ) -> Result<(AccessToken, RefreshToken)>;
-
-    async fn refresh_token(
-      &self,
-      client_id: &str,
-      client_secret: &str,
-      refresh_token: &str,
-    ) -> Result<(String, Option<String>)>;
-
-    async fn exchange_app_token(
-      &self,
-      client_id: &str,
-      client_secret: &str,
-      subject_token: &str,
-      scopes: Vec<String>,
-    ) -> Result<(String, Option<String>)>;
-  }
+  async fn refresh_token(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    refresh_token: &str,
+  ) -> Result<(String, Option<String>)>;
+}
 ```
 
-#### AI API Service Integration
-
+### Multi-Layer Encryption
 ```rust
-  #[async_trait]
-  pub trait AiApiService: Send + Sync + std::fmt::Debug {
-    async fn test_api_key(&self, alias: &ApiAlias) -> Result<()>;
+// src/secret_service.rs
+pub async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
+  let mut salt = vec![0u8; SALT_SIZE];
+  let mut nonce = vec![0u8; NONCE_SIZE];
+  rng().fill_bytes(&mut salt);
+  rng().fill_bytes(&mut nonce);
 
-    async fn test_model(
-      &self,
-      alias: &ApiAlias,
-      model_name: &str
-    ) -> Result<()>;
+  let mut derived_key = [0u8; 32];
+  pbkdf2_hmac::<Sha256>(&master_key, &salt, 1000, &mut derived_key);
 
-    async fn chat_completion(
-      &self,
-      alias: &ApiAlias,
-      request: CreateChatCompletionRequest,
-    ) -> Result<Response>;
-
-    async fn forward_chat_completion(
-      &self,
-      alias_id: &str,
-      request: CreateChatCompletionRequest,
-    ) -> Result<axum::Response>;
-  }
+  let cipher = Aes256Gcm::new(&derived_key);
+  let encrypted = cipher.encrypt(&nonce, value.as_bytes())?;
+  // Store with Base64 encoding
+}
 ```
 
-## Multi-Layer Security Implementation
-
-### Secret Service Encryption
-
+### Model Download Coordination
 ```rust
-  impl SecretService for DefaultSecretService {
-    async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
-      let mut salt = vec![0u8; SALT_SIZE];
-      let mut nonce = vec![0u8; NONCE_SIZE];
-      rng().fill_bytes(&mut salt);
-      rng().fill_bytes(&mut nonce);
+// src/hub_service.rs
+#[async_trait]
+pub trait HubService: Send + Sync + std::fmt::Debug {
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+    progress: Option<Progress>,
+  ) -> Result<HubFile, HubServiceError>;
 
-      let mut derived_key = [0u8; 32];
-      pbkdf2_hmac::<Sha256>(&master_key, &salt, PBKDF2_ITERATIONS, &mut derived_key);
-
-      let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&derived_key));
-      let encrypted = cipher.encrypt(Nonce::from_slice(&nonce), value.as_bytes())?;
-
-      let encrypted_data = EncryptedData { salt, nonce, data: encrypted };
-      // Store with Base64 encoding
-    }
-
-    async fn retrieve_secret(&self, key: &str) -> Result<Option<String>> {
-      // Decrypt with proper key derivation and error handling
-    }
-  }
+  fn find_local_file(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile, HubServiceError>;
+}
 ```
 
-### Platform Keyring Integration
-
+### AI API Integration
 ```rust
-  impl KeyringService for DefaultKeyringService {
-    async fn store_credential(
-      &self,
-      service: &str,
-      account: &str,
-      password: &str,
-    ) -> Result<()> {
-      let entry = Entry::new(service, account)?;
-      entry.set_password(password)?;
-      Ok(())
-    }
+// src/ai_api_service.rs
+#[async_trait]
+pub trait AiApiService: Send + Sync + std::fmt::Debug {
+  async fn test_api_key(&self, alias: &ApiAlias) -> Result<()>;
 
-    async fn retrieve_credential(
-      &self,
-      service: &str,
-      account: &str,
-    ) -> Result<Option<String>> {
-      let entry = Entry::new(service, account)?;
-      match entry.get_password() {
-        Ok(password) => Ok(Some(password)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(KeyringServiceError::KeyringError(e.to_string())),
-      }
-    }
-  }
+  async fn chat_completion(
+    &self,
+    alias: &ApiAlias,
+    request: CreateChatCompletionRequest,
+  ) -> Result<Response>;
+
+  async fn forward_chat_completion(
+    &self,
+    alias_id: &str,
+    request: CreateChatCompletionRequest,
+  ) -> Result<axum::Response>;
+}
 ```
 
-## Database Transaction System
+## Crate Commands
 
-### Migration Management
-
-```rust
-  impl DbService for SqliteDbService {
-    async fn migrate(&self) -> Result<(), DbError> {
-      sqlx::migrate!("./migrations").run(&self.pool).await?;
-      Ok(())
-    }
-
-    async fn pool(&self) -> &SqlitePool {
-      &self.pool
-    }
-  }
-```
-
-### Download Request Management
-
-```rust
-  impl DbService for SqliteDbService {
-    async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-      let mut tx = self.pool.begin().await?;
-
-      query!(
-        r#"INSERT INTO download_requests
-           (id, repo, filename, status, created_at, updated_at, total_bytes, downloaded_bytes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
-        request.id,
-        request.repo,
-        request.filename,
-        request.status.to_string(),
-        request.created_at,
-        request.updated_at,
-        request.total_bytes,
-        request.downloaded_bytes
-      ).execute(&mut *tx).await?;
-
-      tx.commit().await?;
-      Ok(())
-    }
-
-    async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-      query!(
-        r#"UPDATE download_requests
-           SET status = ?, updated_at = ?, total_bytes = ?, downloaded_bytes = ?
-           WHERE id = ?"#,
-        request.status.to_string(),
-        request.updated_at,
-        request.total_bytes,
-        request.downloaded_bytes,
-        request.id
-      ).execute(&self.pool).await?;
-      Ok(())
-    }
-  }
-```
-
-### User Access Request Management
-
-```rust
-  impl DbService for SqliteDbService {
-    async fn create_user_access_request(
-      &self,
-      request: &UserAccessRequest,
-    ) -> Result<(), DbError> {
-      query!(
-        r#"INSERT INTO user_access_requests
-           (username, user_id, reason, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)"#,
-        request.username,
-        request.user_id,
-        request.reason,
-        request.status.to_string(),
-        request.created_at,
-        request.updated_at
-      ).execute(&self.pool).await?;
-      Ok(())
-    }
-
-    async fn update_user_access_request_status(
-      &self,
-      id: i64,
-      status: UserAccessRequestStatus,
-      updated_at: DateTime<Utc>,
-    ) -> Result<(), DbError> {
-      query!(
-        "UPDATE user_access_requests SET status = ?, updated_at = ? WHERE id = ?",
-        status.to_string(),
-        updated_at,
-        id
-      ).execute(&self.pool).await?;
-      Ok(())
-    }
-  }
-```
-
-## Model Management Coordination
-
-### Hub Service Implementation
-
-```rust
-  #[async_trait]
-  pub trait HubService: Send + Sync + std::fmt::Debug {
-    async fn download(
-      &self,
-      repo: &Repo,
-      filename: &str,
-      snapshot: Option<String>,
-      progress: Option<Progress>,
-    ) -> Result<HubFile, HubServiceError>;
-
-    fn local_file_exists(
-      &self,
-      repo: &Repo,
-      filename: &str,
-      snapshot: Option<String>,
-    ) -> Result<bool, HubServiceError>;
-
-    fn find_local_file(
-      &self,
-      repo: &Repo,
-      filename: &str,
-      snapshot: Option<String>,
-    ) -> Result<HubFile, HubServiceError>;
-  }
-```
-
-### Error Handling Implementation
-
-```rust
-  #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-  #[error_meta(trait_to_impl = AppError)]
-  pub enum HubServiceError {
-    #[error(transparent)]
-    HubApiError(#[from] HubApiError),
-
-    #[error("hub_file_missing")]
-    #[error_meta(error_type = ErrorType::NotFound)]
-    HubFileNotFound(#[from] HubFileNotFoundError),
-
-    #[error("io_error")]
-    #[error_meta(error_type = ErrorType::InternalError)]
-    IoError(#[from] std::io::Error),
-
-    #[error("invalid_hub_file")]
-    #[error_meta(error_type = ErrorType::ValidationError)]
-    InvalidHubFile(String),
-  }
-```
-
-## Session Management
-
-### SQLite Session Store
-
-```rust
-  impl SessionService for SqliteSessionService {
-    fn session_layer(&self) -> SessionManagerLayer<SqliteStore> {
-      SessionManagerLayer::new(self.session_store.clone())
-        .with_secure(false) // TODO: Enable when HTTPS supported
-        .with_same_site(SameSite::Strict)
-        .with_name("bodhiapp_session_id")
-    }
-  }
-```
-
-## Testing Infrastructure
-
-### Service Composition Testing
-
-```rust
-  #[fixture]
-  pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
-    let bodhi_home = temp_dir.path().to_string_lossy().to_string();
-    let port = rand::rng().random_range(20000..30000);
-
-    let mut config = create_napi_app_options();
-    config = set_env_var(config, BODHI_HOME.to_string(), bodhi_home);
-    config = set_env_var(config, BODHI_HOST.to_string(), "127.0.0.1".to_string());
-    config = set_env_var(config, BODHI_PORT.to_string(), port.to_string());
-
-    // System settings for complete setup
-    config = set_system_setting(config, BODHI_ENV_TYPE.to_string(), "development".to_string());
-    config = set_system_setting(config, BODHI_APP_TYPE.to_string(), "container".to_string());
-
-    (config, temp_dir)
-  }
-```
-
-### Mock Service Coordination
-
-```rust
-  #[rstest]
-  #[tokio::test]
-  async fn test_multi_service_workflow() -> anyhow::Result<()> {
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_download()
-      .with(eq(Repo::testalias()), eq("model.gguf"), eq(None), always())
-      .return_once(|_, _, _, _| Ok(HubFile::testalias()));
-
-    let mut mock_data_service = MockDataService::new();
-    mock_data_service
-      .expect_save_alias()
-      .with(function(|alias: &UserAlias| alias.alias == "test"))
-      .return_once(|_| Ok(PathBuf::from("/tmp/alias.yaml")));
-
-    let service = AppServiceStub::new()
-      .with_hub_service(Arc::new(mock_hub_service))
-      .with_data_service(Arc::new(mock_data_service))
-      .build()?;
-
-    // Test coordinated service operations
-    let hub_file = service.hub_service().download(&Repo::testalias(), "model.gguf", None, None).await?;
-    let alias_path = service.data_service().save_alias(&alias)?;
-
-    assert!(alias_path.exists());
-    Ok(())
-  }
-```
-
-## Build Commands
-
+### Building
 ```bash
-# Test services crate
-cargo test -p services
-
-# Test with all features
-cargo test -p services --features test-utils
-
-# Build services crate
 cargo build -p services
-
-# Run clippy
-cargo clippy -p services
-
-# Format code
-cargo fmt -p services
+cargo build -p services --features test-utils
 ```
 
-## Extension Patterns
+### Testing
+```bash
+cargo test -p services
+cargo test -p services --features test-utils
+cargo test -p services -- --nocapture  # Show test output
+```
 
-### Adding New Services
+### Documentation
+```bash
+cargo doc -p services --open
+cargo doc -p services --features test-utils --open
+```
 
-1. Define trait with async methods and proper error handling
-2. Implement concrete service with dependency injection support
-3. Add mock generation via mockall attributes
-4. Register in AppService trait and DefaultAppService implementation
-5. Add comprehensive error types with localization support
+## Usage Examples
 
-### Database Schema Changes
-
-1. Create migration files with both up and down SQL
-2. Update DbService methods to handle new schema
-3. Test migrations with existing data
-4. Coordinate with related services that depend on the data
-
-### External API Integration
-
-1. Implement retry logic with exponential backoff
-2. Handle API rate limiting and quota restrictions
-3. Add proper error categorization (network, auth, not found)
-4. Cache responses when appropriate for performance
-5. Add comprehensive testing with mock HTTP clients
-
-## Service Dependencies
-
-### Cross-Service Coordination
-
-- **AuthService** ↔ **DbService**: Token storage and validation
-- **AuthService** ↔ **SecretService**: Credential encryption and storage
-- **HubService** ↔ **DataService**: Model download and alias creation
-- **HubService** ↔ **CacheService**: Repository metadata caching
-- **SessionService** ↔ **DbService**: HTTP session persistence
-- **All services** ↔ **TimeService**: Consistent timestamp generation
-
-### Service Mock Testing
-
+### Service Initialization
 ```rust
-  let service = AppServiceStubBuilder::default()
-    .with_hub_service()
-    .with_data_service()
-    .await
-    .with_session_service()
-    .await
-    .with_secret_service()
-    .build()?;
+use services::{DefaultAppService, TimeService, DbService, SecretService};
+
+// Initialize services in dependency order
+let time_service = Arc::new(DefaultTimeService::new());
+let db_service = Arc::new(SqliteDbService::new(pool, time_service.clone()));
+let secret_service = Arc::new(DefaultSecretService::new(db_service.clone()));
+
+let app_service = DefaultAppService::new(
+  env_service,
+  hub_service,
+  data_service,
+  auth_service,
+  db_service,
+  session_service,
+  secret_service,
+  cache_service,
+  localization_service,
+  time_service,
+  ai_api_service,
+);
 ```
 
-## Recent Architecture Changes
+### Authentication Workflow
+```rust
+use services::{AuthService, SessionService};
 
-### AI API Service Enhancement
-- Comprehensive external AI provider integration with OpenAI compatibility
-- Model testing and validation with configurable test prompts
-- Streaming response support with proper Axum integration
-- Enhanced error categorization for API failures
+// OAuth2 code exchange
+let (access_token, refresh_token) = auth_service
+  .exchange_auth_code(code, client_id, client_secret, redirect_uri, verifier)
+  .await?;
 
-### User Access Management
-- Advanced user access request workflow with status tracking
-- Resource administration with dynamic admin assignment
-- Comprehensive access control with approval workflows
-- Database-backed user permission management
+// Create session
+let session_id = session_service
+  .create_session(user_id, &access_token)
+  .await?;
+```
 
-### Enhanced Security Architecture
-- Multi-layer encryption with AES-GCM and PBKDF2 key derivation
-- Platform-specific keyring integration for credential storage
-- Session management with SQLite backend and security configuration
-- Comprehensive audit trails and access logging
+### Model Management
+```rust
+use services::{HubService, DataService};
+
+// Download model
+let hub_file = hub_service
+  .download(&repo, "model.gguf", None, Some(progress))
+  .await?;
+
+// Save alias
+let alias = UserAlias::new("my-model", repo, filename);
+data_service.save_alias(&alias)?;
+```
+
+## Feature Flags
+
+- `test-utils`: Enables comprehensive test utilities and mock services
+
+## Dependencies
+
+### Core Dependencies
+- `async-trait`: Async trait support
+- `axum`: HTTP framework integration
+- `sqlx`: Database operations
+- `oauth2`: OAuth2 client
+- `jsonwebtoken`: JWT handling
+- `aes-gcm`: Encryption
+- `pbkdf2`: Key derivation
+- `keyring`: Platform credential storage
+- `mini-moka`: Caching
+- `hf-hub`: HuggingFace API
+
+### Optional Dependencies (test-utils)
+- `mockall`: Mock generation
+- `rstest`: Fixture-based testing
+- `tempfile`: Temporary directories
+
+## File References
+
+See individual module files for complete implementation details:
+- Service registry: `src/app_service.rs`
+- Authentication: `src/auth_service.rs`, `src/session_service.rs`
+- Security: `src/secret_service.rs`, `src/keyring_service.rs`
+- Model management: `src/hub_service.rs`, `src/data_service.rs`
+- Database: `src/db/*.rs`
+- AI APIs: `src/ai_api_service.rs`
+- Configuration: `src/setting_service.rs`
+- Test utilities: `src/test_utils/*.rs`

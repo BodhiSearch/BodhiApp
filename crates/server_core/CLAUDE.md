@@ -1,193 +1,403 @@
-# CLAUDE.md
+# CLAUDE.md - server_core Crate
 
-This file provides guidance to Claude Code when working with the `server_core` crate.
-
-*For detailed implementation examples and technical depth, see [crates/server_core/PACKAGE.md](crates/server_core/PACKAGE.md)*
+See [crates/server_core/PACKAGE.md](crates/server_core/PACKAGE.md) for implementation details.
 
 ## Purpose
 
-The `server_core` crate serves as BodhiApp's **HTTP infrastructure orchestration layer**, providing sophisticated server-sent event streaming, LLM server context management, and HTTP route coordination with comprehensive async operations and error handling.
+The `server_core` crate implements BodhiApp's **HTTP infrastructure orchestration layer**, providing server-sent event streaming, LLM server context management, model request routing, and HTTP state coordination. This crate bridges the service layer with HTTP route handlers while managing the complex lifecycle of LLM server processes and real-time streaming connections.
 
-## Key Domain Architecture
+## Architectural Design Rationale
 
-### HTTP Infrastructure Orchestration System
-Advanced HTTP server infrastructure with streaming and context coordination:
-- **RouterState Management**: Centralized dependency injection container for HTTP route handlers
-- **Server-Sent Events Architecture**: Dual SSE implementation (direct + forwarded) for real-time chat streaming  
-- **SharedContext Coordination**: LLM server instance lifecycle management with state synchronization
-- **Request Orchestration**: Intelligent request routing and proxy forwarding to llama.cpp servers
-- **Async Stream Processing**: High-performance streaming with connection management and error recovery
+### Why RouterState Dependency Injection
 
-### Cross-Service HTTP Coordination Architecture  
-Sophisticated HTTP infrastructure coordinating across BodhiApp's service layer:
-- **Services ↔ RouterState**: Dependency injection providing `AppService` registry access to HTTP handlers
-- **SharedContext ↔ LlamaServerProc**: LLM server lifecycle management with process coordination
-- **RouterState ↔ Routes**: State management for HTTP route handlers with error translation
-- **SSE ↔ Streaming**: Real-time event streaming coordination with connection management
-- **Context ↔ Services**: LLM server state synchronization with service layer operations
+BodhiApp uses RouterState as a centralized dependency injection container for HTTP handlers rather than global state or individual extractors because:
 
-### Server-Sent Events Streaming Architecture
-Dual SSE implementation for different streaming scenarios:
-- **DirectSSE**: Application-generated event streaming with custom event formatting and keep-alive support
-- **RawSSE/ForwardedSSE**: Proxy streaming from external LLM services with efficient request forwarding
-- **Stream Management**: Connection lifecycle management with automatic cleanup and error recovery
-- **Event Formatting**: BytesMut-based event construction with optimized memory usage and DirectEvent builder pattern
-- **Axum Integration**: Native Axum response streaming with HTTP header management and proper MIME type handling
+1. **Type-Safe Service Access**: RouterState provides compile-time guaranteed access to all services through the AppService registry
+2. **Request Context Isolation**: Each request handler receives a consistent view of services without global state pollution
+3. **Testing Flexibility**: RouterState can be easily mocked with test services for comprehensive HTTP handler testing
+4. **Middleware Integration**: Authentication and authorization middleware can inject context into RouterState for downstream handlers
+5. **Performance Optimization**: Arc-based sharing eliminates service instantiation overhead per request
 
-### LLM Server Context Management
-Advanced context coordination for LLM server instances:
-- **SharedContext Trait**: Interface for LLM server lifecycle operations (start/stop/reload/set_exec_variant)
-- **Server State Management**: State synchronization across HTTP requests with RwLock-based async coordination
-- **Request Routing**: Intelligent routing with ModelLoadStrategy (Continue/DropAndLoad/Load) for efficient model switching
-- **Resource Lifecycle**: Proper startup/shutdown coordination with cleanup and error handling via ServerFactory pattern
-- **State Listeners**: Observer pattern for server state change notifications with async notification broadcasting
-- **Execution Variant Management**: Dynamic server variant switching with ExecVariant coordination
+### Why Dual SSE Implementation
 
-### Model Request Routing Infrastructure
-Sophisticated model request routing system for local vs remote API coordination:
-- **ModelRouter Trait**: Interface for intelligent model request routing with RouteDestination determination
-- **Local vs Remote Routing**: Automatic detection and routing of User/Model aliases to SharedContext vs API aliases to AiApiService
-- **Precedence Resolution**: User aliases override Model aliases, Model aliases override API models for consistent request handling
-- **Response Format Conversion**: Seamless conversion between axum::Response and reqwest::Response for API compatibility
-- **Error Handling**: Comprehensive error handling with ModelRouterError for routing failures and not found scenarios
+The crate provides two distinct SSE implementations (DirectSSE and ForwardedSSE) because:
 
-### Server Configuration Merging System
-Advanced LLM server argument merging with hierarchical precedence:
-- **Three-Tier Precedence**: Setting-level, variant-level, and alias-level argument coordination with HashMap deduplication
-- **Advanced Flag Parsing**: Sophisticated argument parsing with negative number detection and complex value handling
-- **LLM-Specific Patterns**: Support for llama.cpp argument patterns including logit-bias, override-kv, and lora-scaled configurations
-- **Cross-String Parsing**: Robust parsing across configuration string boundaries for flexible argument specification
-- **Configuration Flexibility**: Dynamic server configuration with runtime argument override capabilities
+1. **Different Event Sources**: DirectSSE handles application-generated events while ForwardedSSE proxies external service streams
+2. **Memory Optimization**: DirectSSE uses BytesMut for efficient event construction while ForwardedSSE streams raw bytes
+3. **Error Handling Boundaries**: Application events have different error semantics than proxied LLM server streams
+4. **Connection Management**: Keep-alive strategies differ between self-generated and proxied event streams
+5. **Format Flexibility**: DirectSSE supports custom event formatting while ForwardedSSE preserves original stream format
 
-## Architecture Position
+### Why SharedContext for LLM Server Management
 
-The `server_core` crate serves as BodhiApp's **HTTP infrastructure orchestration layer**:
+SharedContext provides a sophisticated abstraction for LLM server lifecycle management because:
 
-- **Above services and objs**: Coordinates service layer operations and domain objects for HTTP operations
-- **Below route implementations**: Provides HTTP infrastructure foundation for routes_oai and routes_app
-- **Parallel to commands**: Similar orchestration role but optimized for HTTP/streaming instead of CLI
-- **Integration with llama_server_proc**: Manages LLM server process lifecycle and request coordination
-- **Embedded Deployment Support**: HTTP infrastructure designed for embedding in various application contexts including desktop applications, library integrations, and containerized deployments
+1. **Process Isolation**: Each LLM server runs as a separate process requiring careful lifecycle coordination
+2. **State Synchronization**: Multiple concurrent HTTP requests need consistent views of server state
+3. **Resource Management**: LLM servers consume significant resources requiring proper cleanup on shutdown
+4. **Hot Reloading**: Model switching without service interruption requires sophisticated state management
+5. **Observer Pattern**: Multiple components need notifications of server state changes for coordination
 
-## Cross-Crate Integration Patterns
+## Cross-Crate Coordination Patterns
 
-### Service Layer HTTP Coordination
-HTTP infrastructure orchestrates complex service interactions:
-- **AppService Registry Integration**: RouterState provides HTTP handlers access to all business services through dependency injection including auth_middleware
-- **DataService Coordination**: Model alias resolution via `find_alias()` for HTTP request processing with error translation and authentication context
-- **HubService Integration**: Local model file discovery via `find_local_file()` coordinated through HTTP context for chat completions with authorization
-- **AuthService HTTP Integration**: Authentication middleware coordination with HTTP state management through auth_middleware layer
-- **Authentication Header Management**: RouterState coordinates with auth_middleware for X-Resource-Token, X-Resource-Role, and X-Resource-Scope injection
-- **Error Service Coordination**: Service errors translated to appropriate HTTP status codes with localization via RouterStateError and auth_middleware integration
-- **OpenAI API Integration**: RouterState coordinates with routes_oai for OpenAI-compatible API endpoints with streaming support and error translation
-- **Application API Integration**: RouterState coordinates with routes_app for model management, authentication, and configuration endpoints
-- **API Response Streaming**: HTTP infrastructure supports both OpenAI and Ollama streaming formats through routes_oai coordination
-- **Route Composition Integration**: HTTP infrastructure coordinated through routes_all for unified route composition with comprehensive middleware orchestration and UI serving
+### HTTP to Service Layer Bridge
 
-### LLM Process Integration Architecture
-Sophisticated coordination with llama.cpp server processes:
-- **LlamaServerProc Management**: SharedContext coordinates LLM server lifecycle with HTTP request handling via ServerFactory abstraction
-- **Process State Synchronization**: HTTP context manages LLM server state across concurrent requests with RwLock coordination
-- **Request Routing**: Intelligent routing with ModelLoadStrategy for efficient model switching and resource management
-- **Stream Coordination**: SSE streaming coordinated with LLM server response streaming through reqwest::Response proxying
-- **Resource Management**: Proper HTTP resource cleanup coordinated with LLM process management and server args merging
+The server_core crate orchestrates complex interactions between HTTP handlers and business services:
 
-### HTTP Streaming Integration
-Advanced streaming coordination across BodhiApp's architecture:
+**Request Processing Pipeline**:
+```rust
+// Conceptual flow through server_core
+HTTP Request → RouterState → AppService Registry → Business Service
+                    ↓                                      ↓
+              SharedContext → LLM Server Process → Response Stream
+                    ↓                                      ↓
+               DirectSSE/ForwardedSSE → HTTP Response → Client
+```
 
-- **DirectSSE ↔ Routes**: Application-generated events streamed through HTTP responses
-- **ForwardedSSE ↔ LLM**: LLM server responses proxied through HTTP streaming infrastructure
-- **Connection Management**: HTTP connection lifecycle coordinated with service operations
-- **Error Propagation**: Streaming errors properly handled and translated for HTTP responses
+**Service Access Pattern**:
+- RouterState provides `app_service()` method for handler access to services
+- Services accessed through Arc<dyn Trait> for thread-safe sharing
+- Error translation through RouterStateError for consistent HTTP responses
+- Authentication context injected via auth_middleware integration
 
-### Embedded Deployment Integration
-HTTP infrastructure coordination for embedded application contexts:
+### LLM Server Coordination Flow
 
-- **Application Lifecycle Coordination**: HTTP server infrastructure integrates with external application lifecycle management including desktop applications and embedded library contexts
-- **Resource Sharing**: SharedContext and RouterState designed for safe sharing across embedded application boundaries with proper resource isolation and cleanup
-- **Deployment Context Adaptation**: HTTP infrastructure adapts to different deployment contexts (standalone server, embedded desktop, library integration) while maintaining consistent API behavior
-- **External Integration Points**: HTTP infrastructure provides clean integration points for external applications including server handle management and graceful shutdown coordination
+SharedContext coordinates LLM server processes with HTTP infrastructure:
 
-## HTTP Infrastructure Orchestration Workflows
+**Model Loading Strategy**:
+1. Request arrives with model identifier
+2. ModelRouter determines if model is local or remote API
+3. For local models, SharedContext checks current loaded model
+4. ModelLoadStrategy determines action (Continue/DropAndLoad/Load)
+5. Server args merged from setting/variant/alias levels
+6. LLM server started/restarted as needed
+7. Request forwarded to appropriate server instance
 
-### Multi-Service HTTP Request Coordination
-Complex HTTP request processing with service orchestration:
+**State Management Flow**:
+```rust
+// State synchronization across requests
+SharedContext {
+  state: RwLock<ServerState>,
+  listeners: Vec<StateListener>,
+  server_factory: Arc<dyn ServerFactory>
+}
+```
 
-1. **Request Reception**: HTTP routes receive requests with RouterState dependency injection
-2. **Service Access**: RouterState provides access to AppService registry for business logic
-3. **Alias Resolution**: DataService resolves model aliases for chat completion requests
-4. **Context Coordination**: SharedContext manages LLM server instances for request processing
-5. **Response Streaming**: SSE architecture handles real-time streaming responses
-6. **Error Translation**: Service errors converted to appropriate HTTP status codes with localization
+### Streaming Infrastructure Coordination
 
-### Server-Sent Events Streaming Orchestration
-Sophisticated streaming coordination for real-time communication:
+SSE implementations coordinate with different parts of the architecture:
 
-**DirectSSE Workflow**:
-1. **Event Generation**: Application generates events for streaming to clients
-2. **Stream Creation**: DirectEvent formatting with BytesMut optimization
-3. **Connection Management**: Keep-alive and connection lifecycle management
-4. **Response Integration**: Axum HTTP response streaming with proper headers
+**DirectSSE Integration**:
+- Routes generate application events (progress, status updates)
+- DirectEvent builder creates formatted SSE messages
+- BytesMut optimization for memory-efficient streaming
+- Axum response integration with proper headers
 
-**ForwardedSSE Workflow**:
-1. **Request Proxying**: HTTP requests forwarded to LLM server instances
-2. **Stream Proxying**: LLM server response streams forwarded to clients
-3. **Error Handling**: Stream interruption and error recovery coordination
-4. **Connection Cleanup**: Proper resource cleanup on client disconnect
+**ForwardedSSE Integration**:
+- LLM server responses proxied through HTTP infrastructure
+- reqwest::Response converted to axum::Response
+- Stream interruption handling with automatic recovery
+- Connection cleanup coordinated with LLM server lifecycle
 
-### LLM Server Context Orchestration
-Advanced LLM server lifecycle management:
-1. **Context Initialization**: SharedContext manages LLM server startup and configuration
-2. **State Synchronization**: Server state coordinated across concurrent HTTP requests
-3. **Request Routing**: Intelligent routing of requests to appropriate LLM instances
-4. **Resource Management**: Proper shutdown and cleanup coordination
-5. **State Notification**: Observer pattern for server state change notifications
+## Domain-Specific Architecture Patterns
 
-## Important Constraints
+### Model Request Routing Architecture
 
-### HTTP Infrastructure Requirements
-- All HTTP operations must use RouterState dependency injection for consistent service access
-- SSE streaming must properly handle connection lifecycle management and cleanup
-- SharedContext operations must be thread-safe and support concurrent HTTP request processing
-- Error handling must translate service errors to appropriate HTTP status codes with localization
+The ModelRouter trait enables intelligent routing between local and remote models:
 
-### LLM Server Coordination Standards  
-- SharedContext must manage LLM server lifecycle with proper startup/shutdown coordination
-- Request routing must intelligently handle LLM server instance selection and load balancing
-- Server state must be synchronized across concurrent HTTP requests with async coordination
-- Context operations must support observer pattern for state change notifications
+**Routing Decision Tree**:
+```
+Request with model_id
+    ├→ Check UserAlias (highest priority)
+    │   └→ Route to SharedContext (local)
+    ├→ Check ModelAlias (medium priority)
+    │   └→ Route to SharedContext (local)
+    ├→ Check ApiAlias (low priority)
+    │   └→ Route to AiApiService (remote)
+    └→ Not Found Error
+```
 
-### Streaming Infrastructure Rules
-- DirectSSE must use BytesMut for efficient event formatting and memory management
-- ForwardedSSE must properly proxy LLM server streams with error handling and recovery
-- Connection management must handle client disconnects with automatic resource cleanup
-- Keep-alive mechanisms must maintain connection stability for long-lived streaming operations
+**Why This Hierarchy**:
+- User aliases allow custom model configurations
+- Model aliases provide auto-discovered local models
+- API aliases enable remote model access
+- Precedence ensures local models preferred over remote
 
-## HTTP Infrastructure Extension Patterns
+### Server Arguments Merging Strategy
 
-### Adding New HTTP Streaming Capabilities
-When creating new streaming functionality:
+Complex argument merging supports flexible LLM server configuration:
 
-1. **SSE Type Selection**: Choose DirectSSE for application events or ForwardedSSE for service proxying
-2. **Connection Lifecycle**: Design proper connection management with automatic cleanup
-3. **Error Recovery**: Implement comprehensive error handling with graceful degradation
-4. **Performance Optimization**: Use efficient memory management and streaming patterns
-5. **Integration Testing**: Test streaming with realistic network conditions and client behavior
+**Three-Tier Precedence**:
+1. **Setting Level**: Global server arguments from configuration
+2. **Variant Level**: Execution variant specific arguments (CPU/CUDA/etc)
+3. **Alias Level**: Model-specific parameter overrides
 
-### SharedContext Extensions  
-For new LLM server context management:
+**Merging Algorithm**:
+```rust
+// Conceptual merging process
+let mut args = HashMap::new();
+args.extend(setting_args);      // Base configuration
+args.extend(variant_args);       // Variant overrides
+args.extend(alias_args);         // Model overrides
+deduplicate_and_order(args)      // Final arguments
+```
 
-1. **Lifecycle Management**: Implement proper async startup/shutdown coordination
-2. **State Synchronization**: Design thread-safe state management for concurrent operations
-3. **Resource Management**: Ensure proper cleanup and resource lifecycle management
-4. **Observer Integration**: Support state change notifications with observer pattern
-5. **Error Coordination**: Provide comprehensive error handling with context preservation
+**Complex Argument Patterns**:
+- Negative numbers: `--temp -0.5`
+- Key-value pairs: `--override-kv tokenizer.ggml.add_bos_token=bool:false`
+- Scaled values: `--lora-scaled model.gguf 0.5`
+- JSON arrays: `--logit-bias 29871-2`
 
-### RouterState Integration Patterns
-For new HTTP infrastructure coordination:
+### Connection Lifecycle Management
 
-1. **Service Integration**: Coordinate with AppService registry for business logic access
-2. **Error Translation**: Convert service errors to appropriate HTTP responses with localization
-3. **Dependency Injection**: Provide proper service access patterns for HTTP handlers
-4. **Request Processing**: Design efficient request processing with service coordination
-5. **Testing Infrastructure**: Support comprehensive HTTP infrastructure testing with service mocking
+SSE connections require sophisticated lifecycle management:
+
+**Keep-Alive Strategy**:
+- Periodic comment events prevent proxy timeouts
+- Configurable keep-alive intervals (default 30s)
+- Automatic cleanup on client disconnect
+- Resource tracking for connection limits
+
+**Error Recovery Pattern**:
+```rust
+// Stream error handling
+match stream_result {
+  Ok(chunk) => forward_chunk(),
+  Err(Timeout) => send_keep_alive(),
+  Err(Disconnect) => cleanup_resources(),
+  Err(ServerError) => send_error_event()
+}
+```
+
+## Critical Design Decisions
+
+### Why RwLock for SharedContext State
+
+SharedContext uses async RwLock for state management rather than Mutex:
+
+**Rationale**:
+- Multiple readers (status checks) with occasional writers (state changes)
+- Read operations don't block other reads improving concurrency
+- Write operations ensure exclusive access during state transitions
+- Async lock prevents blocking runtime threads
+
+**Trade-offs**:
+- More complex than Mutex but better read concurrency
+- Potential writer starvation under heavy read load
+- Deadlock prevention requires careful lock ordering
+
+### Server Factory Abstraction
+
+LLM server creation abstracted behind ServerFactory trait:
+
+**Benefits**:
+- Testing with mock servers without real processes
+- Different server implementations (llama.cpp, alternatives)
+- Process management strategies (direct, containerized)
+- Resource limit enforcement per deployment context
+
+**Implementation**:
+```rust
+#[async_trait]
+pub trait ServerFactory: Send + Sync {
+  async fn create(&self, args: Vec<String>) -> Result<Box<dyn LlamaServerInterface>>;
+}
+```
+
+### Error Translation Architecture
+
+Service errors translated to HTTP responses through RouterStateError:
+
+**Translation Layers**:
+1. Service returns domain error (e.g., `HubServiceError`)
+2. RouterStateError wraps with HTTP context
+3. Error type determines HTTP status code
+4. Localized message extracted for response body
+5. OpenAI-compatible error format for API responses
+
+**Why This Approach**:
+- Consistent error handling across all routes
+- Proper HTTP semantics (404, 401, 500, etc)
+- Localized error messages for international users
+- API compatibility with OpenAI clients
+
+## Security Architecture Decisions
+
+### Authentication Context Propagation
+
+RouterState integrates with auth_middleware for security:
+
+**Context Flow**:
+1. auth_middleware validates request credentials
+2. User/role/scope information attached to request extensions
+3. RouterState provides authenticated context to handlers
+4. Services receive security context for authorization
+
+**Header Injection**:
+- `X-Resource-Token`: Internal service authentication
+- `X-Resource-Role`: User role for authorization
+- `X-Resource-Scope`: OAuth2 scopes for fine-grained access
+
+### Stream Security Considerations
+
+SSE streams require special security handling:
+
+**Challenges**:
+- Long-lived connections bypass typical request timeouts
+- Authentication tokens may expire during streaming
+- Resource consumption attacks via connection exhaustion
+
+**Mitigations**:
+- Connection limits per client
+- Periodic authentication revalidation
+- Resource usage monitoring
+- Automatic cleanup on suspicious patterns
+
+## Performance Optimization Strategies
+
+### Memory-Efficient Streaming
+
+SSE implementations optimize memory usage:
+
+**BytesMut Optimization**:
+- Reusable buffers for event construction
+- Minimal allocations during streaming
+- Efficient UTF-8 validation
+- Zero-copy where possible
+
+**Chunked Transfer**:
+- Streaming responses without buffering entire content
+- Backpressure handling for slow clients
+- Automatic flow control with async streams
+
+### Connection Pool Management
+
+HTTP client connections efficiently managed:
+
+**Pooling Strategy**:
+- Reusable connections to LLM servers
+- Connection timeout configuration
+- Automatic retry with exponential backoff
+- Circuit breaker for failing servers
+
+### Concurrent Request Handling
+
+SharedContext enables high concurrency:
+
+**Optimization Techniques**:
+- Read-write lock minimizes contention
+- State observers avoid polling
+- Async operations throughout
+- Resource pooling for efficiency
+
+## Extension Guidelines
+
+### Adding New Streaming Formats
+
+To support new streaming protocols:
+
+1. **Define Stream Type**: Create new SSE variant or separate implementation
+2. **Handle Framing**: Implement protocol-specific message framing
+3. **Error Semantics**: Define error handling and recovery
+4. **Connection Management**: Implement lifecycle and cleanup
+5. **Test Coverage**: Add streaming tests with various scenarios
+
+### Extending SharedContext
+
+For new LLM server capabilities:
+
+1. **Define Operations**: Add methods to SharedContext trait
+2. **State Management**: Update state model for new operations
+3. **Observer Notifications**: Emit events for state changes
+4. **Resource Cleanup**: Ensure proper cleanup in all paths
+5. **Concurrency Safety**: Verify thread-safe operation
+
+### Custom Model Routing
+
+To add routing strategies:
+
+1. **Implement ModelRouter**: Create custom routing logic
+2. **Priority Rules**: Define precedence for route selection
+3. **Caching Strategy**: Implement route caching if needed
+4. **Error Handling**: Provide clear routing failure errors
+5. **Testing**: Verify routing decisions with tests
+
+## Testing Architecture
+
+### HTTP Infrastructure Testing
+
+Comprehensive test utilities for HTTP handlers:
+
+**Test RouterState**:
+```rust
+#[fixture]
+pub fn test_router_state() -> RouterState {
+  let app_service = create_test_app_service();
+  RouterState::new(app_service, test_context())
+}
+```
+
+**SSE Testing**:
+```rust
+#[tokio::test]
+async fn test_sse_streaming() {
+  let events = vec![
+    DirectEvent::new("message", "data"),
+    DirectEvent::new("error", "failed"),
+  ];
+
+  let stream = direct_sse(events);
+  let response = stream.into_response();
+
+  assert_eq!(response.headers()["content-type"], "text/event-stream");
+}
+```
+
+### LLM Server Mocking
+
+Mock implementations for testing without real processes:
+
+**Mock ServerFactory**:
+```rust
+struct MockServerFactory;
+
+impl ServerFactory for MockServerFactory {
+  async fn create(&self, _args: Vec<String>) -> Result<Box<dyn LlamaServerInterface>> {
+    Ok(Box::new(MockLlamaServer::new()))
+  }
+}
+```
+
+## Critical Invariants
+
+### State Consistency Requirements
+
+SharedContext must maintain consistent state:
+- Server state transitions must be atomic
+- Observers notified after state committed
+- No partial state visible to requests
+- Cleanup guaranteed even on panic
+
+### Streaming Invariants
+
+SSE streams must maintain protocol compliance:
+- Events formatted with `data:` prefix
+- Double newline between events
+- UTF-8 encoding throughout
+- Proper connection cleanup
+
+### Resource Management Rules
+
+All resources must be properly managed:
+- LLM processes terminated on shutdown
+- Connections closed on errors
+- Memory freed on stream completion
+- Temporary files cleaned up
+
+### Thread Safety Guarantees
+
+All shared state must be thread-safe:
+- RouterState immutable after creation
+- SharedContext uses proper synchronization
+- Service references use Arc
+- No data races possible
