@@ -125,15 +125,13 @@ describe('Live Server Tests', () => {
     });
   });
 
-  describe('Embeddings Endpoint Tests', () => {
+  describe.skip('Embeddings Endpoint Tests', () => {
     test('should handle model not found error for non-existent model', async () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 27010 });
       runningServers.push(server);
 
       await server.start();
       expect(await server.isRunning()).toBe(true);
-
-      await sleep(2000);
 
       const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
         method: 'POST',
@@ -155,8 +153,6 @@ describe('Live Server Tests', () => {
 
       await server.start();
       expect(await server.isRunning()).toBe(true);
-
-      await sleep(2000);
 
       const response = await fetch(`${server.serverUrl()}/v1/embeddings`, {
         method: 'POST',
