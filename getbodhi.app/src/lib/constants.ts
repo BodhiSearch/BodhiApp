@@ -1,0 +1,1 @@
+export const DOWNLOAD_URL = "https://github.com/BodhiSearch/BodhiApp/releases/download/v0.0.19/Bodhi.App_0.1.0_aarch64.dmg"; 
