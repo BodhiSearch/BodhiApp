@@ -93,3 +93,71 @@ None. All tasks completed successfully.
   ```
 - Build artifacts are properly excluded from git via .gitignore
 - CNAME file correctly preserved in build output
+
+## Agent: Phase 2 Execution - Subpath Configuration
+**Date:** 2025-10-09 16:02
+**Status:** Completed
+
+### Tasks Performed
+1. Modified next.config.mjs to add basePath: '/BodhiApp'
+2. Moved public/CNAME to public/CNAME.backup (temporary removal for testing)
+3. Tested build with basePath - verified URLs have correct /BodhiApp/ prefix
+4. Created GitHub Actions workflow (.github/workflows/deploy-website.yml) with manual trigger only
+5. Staged all changes to git (not committed per user preference)
+
+### Verification Results
+- [x] basePath added to next.config.mjs (line 5, after output: 'export')
+- [x] CNAME file backed up (moved to CNAME.backup, not in build output)
+- [x] Build succeeds with basePath configuration (18 pages, ~5 seconds)
+- [x] URLs in HTML have /BodhiApp/ prefix (verified with grep)
+- [x] Asset paths (src="...") also prefixed correctly with /BodhiApp/
+- [x] GitHub Actions workflow created (workflow_dispatch trigger only)
+- [x] All changes staged in git (3 files: 1 modified, 1 renamed, 1 new)
+
+### Issues Encountered
+None. All tasks completed successfully.
+
+**Minor Notes:**
+- Build showed same deprecation warnings as Phase 1 (non-blocking)
+- Build output includes CNAME.backup file (harmless) - Next.js copies all public/ files
+- Git correctly detected CNAME → CNAME.backup as a rename operation
+- No CNAME file in out/ directory (confirmed moved to backup)
+
+### Build Results
+- Build time: ~5 seconds
+- Pages generated: 18 static pages
+- First Load JS: 87.3 kB (unchanged from Phase 1)
+- Asset URL examples from out/index.html:
+  - `href="/BodhiApp/_next/static/media/e4af272ccee01ff0-s.p.woff2"`
+  - `href="/BodhiApp/_next/static/css/2a8be090204fcb1f.css"`
+  - `href="/BodhiApp/favicon.ico"`
+  - `href="/BodhiApp/"`
+  - `href="/BodhiApp/docs/"`
+  - `src="/BodhiApp/_next/static/chunks/fd9d1056-877671e9694123b2.js"`
+  - `src="/BodhiApp/_next/static/chunks/117-9aa179276ea19892.js"`
+
+### Files Created/Modified
+- Modified: getbodhi.app/next.config.mjs (added basePath: '/BodhiApp')
+- Renamed: getbodhi.app/public/CNAME → getbodhi.app/public/CNAME.backup
+- Created: .github/workflows/deploy-website.yml (67 lines)
+- Total staged changes: 68 insertions across 3 files
+
+### Notes for Next Agent (Phase 3)
+- Phase 2 complete and fully verified
+- Ready for Phase 3: Test Deployment to Subpath
+- User should manually commit before Phase 3 begins
+- Suggested commit message:
+  ```
+  Configure website for subpath testing (Phase 2)
+
+  - Add basePath: '/BodhiApp' to Next.js config for testing
+  - Temporarily remove CNAME (moved to CNAME.backup)
+  - Create GitHub Actions workflow for Pages deployment
+  - Manual trigger only (workflow_dispatch)
+  - Ready for Phase 3: Test deployment to bodhisearch.github.io/BodhiApp
+  ```
+- Build is now configured for /BodhiApp/ subpath
+- CNAME is backed up and will be restored in Phase 6 (final migration)
+- Workflow uses workflow_dispatch only (manual trigger, no automatic deployments)
+- All URLs and asset paths correctly prefixed with /BodhiApp/
+- Build artifacts still excluded from git (node_modules, .next, out)

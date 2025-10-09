@@ -118,3 +118,69 @@ The `.gitignore` file in getbodhi.app/ correctly lists these exclusions, so git 
 ### Recommendation
 - This exclusion pattern should be maintained for any future file operations
 - When copying or syncing files, always use the same exclusion list
+
+## Phase 2 Execution - basePath Configuration Insights
+**Date:** 2025-10-09
+**Agent:** Phase 2 Execution
+
+### Discovery
+The basePath configuration in Next.js works flawlessly for subpath deployment:
+- Adding `basePath: '/BodhiApp'` to next.config.mjs immediately affects all URL generation
+- All asset URLs (href, src attributes) are automatically prefixed with /BodhiApp/
+- External URLs (e.g., GitHub, Discord, Product Hunt) are NOT prefixed (correct behavior)
+- Build time remains consistent (~5 seconds) with no performance impact
+- CNAME file in public/ is excluded from build when moved to CNAME.backup
+- Git correctly detects CNAME → CNAME.backup as a rename operation (clean history)
+
+### Important Behaviors
+**CNAME Handling:**
+- Moving public/CNAME to public/CNAME.backup prevents it from being in build output
+- Next.js copies all public/ files to out/, so CNAME.backup appears in out/ (harmless)
+- No CNAME in out/ means GitHub Pages won't try to claim custom domain during testing
+
+**basePath URL Prefixing:**
+- All internal links get /BodhiApp/ prefix: `href="/BodhiApp/docs/"`
+- All assets get /BodhiApp/ prefix: `src="/BodhiApp/_next/static/..."`
+- External URLs are left unchanged: `href="https://github.com/..."`
+- Some image URLs may not be prefixed if they're in public/ (e.g., `/chat-ui.jpeg`)
+
+**Git Rename Detection:**
+- Using `git add` on both CNAME (deleted) and CNAME.backup (new) allows Git to detect rename
+- This provides cleaner history showing intent (rename not delete+add)
+- Staging order doesn't matter - Git figures it out automatically
+
+### Impact
+**For Phase 3 (Test Deployment):**
+- The build is fully configured for /BodhiApp/ subpath
+- GitHub Actions workflow is ready for manual trigger
+- All URLs will work correctly at bodhisearch.github.io/BodhiApp
+- No further configuration changes needed before deployment test
+
+**For Phase 6 (Final Migration):**
+- Removing basePath line and restoring CNAME will be straightforward
+- These are the only two changes needed to switch to production
+- Build time and asset structure remain identical between configurations
+
+**For Troubleshooting:**
+- If URLs don't work after deployment, verify basePath is exactly '/BodhiApp' (case-sensitive)
+- If custom domain claims fail, verify CNAME file is completely absent from out/
+- If assets 404, check that GitHub Pages is serving from correct branch and directory
+
+### Recommendation
+**For Phase 3 Agent:**
+1. The configuration is complete and tested - no changes needed
+2. Workflow can be triggered immediately after user commits
+3. Monitor deployment logs for any path-related issues
+4. Verify deployed site at bodhisearch.github.io/BodhiApp loads all assets
+5. Test navigation between pages to ensure basePath works end-to-end
+
+**For Future Phases:**
+- Keep basePath and CNAME changes together in version control
+- Document that these are temporary testing configurations
+- When reverting to root path, test build locally before deployment
+- Consider keeping CNAME.backup in repo as documentation of testing process
+
+**For Any Issues:**
+- If images in public/ don't load, they may need explicit basePath handling in code
+- If API calls fail, ensure they're using relative URLs (not hardcoded domains)
+- If hash routing fails, verify Next.js router is handling basePath correctly
