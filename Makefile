@@ -299,4 +299,11 @@ update-context-symlinks-dry-run: ## Preview changes that would be made to AI con
 extension.download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)
 	@$(MAKE) -C crates/lib_bodhiserver_napi download-extension FORCE=$(FORCE)
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run extension.download help
+# Website documentation sync
+sync.docs: ## Sync documentation from embedded app to website
+	@cd getbodhi.app && $(MAKE) sync.docs
+
+sync.docs.check: ## Check if website docs are in sync (release gate)
+	@cd getbodhi.app && $(MAKE) sync.docs.check
+
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run extension.download sync.docs sync.docs.check help
