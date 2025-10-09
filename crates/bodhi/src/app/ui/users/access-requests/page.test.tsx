@@ -173,7 +173,7 @@ describe('AllRequestsPage Data Display', () => {
     expect(screen.getByText('Rejected')).toBeInTheDocument();
 
     // Check reviewer information for approved/rejected requests
-    const reviewerElements = screen.getAllByText('by admin@example.com');
+    const reviewerElements = screen.getAllByText('admin@example.com');
     expect(reviewerElements).toHaveLength(2); // One for approved, one for rejected
   });
 
@@ -283,7 +283,7 @@ describe('AllRequestsPage Data Display', () => {
 
     // Verify both show the correct reviewer
     reviewerElements.forEach((element) => {
-      expect(element).toHaveTextContent('by admin@example.com');
+      expect(element).toHaveTextContent('admin@example.com');
     });
   });
 });

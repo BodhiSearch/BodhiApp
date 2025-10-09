@@ -94,7 +94,7 @@ function AllRequestRow({ request, userRole }: { request: UserAccessRequest; user
       <TableCell>
         {request.status !== 'pending' && request.reviewer ? (
           <span className="text-sm text-muted-foreground" data-testid="request-reviewer">
-            by {request.reviewer}
+            {request.reviewer}
           </span>
         ) : request.status !== 'pending' ? (
           <span className="text-muted-foreground">-</span>

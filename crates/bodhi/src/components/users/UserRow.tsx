@@ -90,11 +90,6 @@ export function UserRow({ user, currentUserRole, currentUsername, currentUserInf
       <TableCell data-testid={`user-role-${user.username}`}>
         <span data-testid="user-role">{getRoleBadge(currentRole)}</span>
       </TableCell>
-      <TableCell data-testid={`user-status-${user.username}`}>
-        <Badge variant="outline" data-testid="user-status">
-          Active
-        </Badge>
-      </TableCell>
       <TableCell data-testid={`user-actions-${user.username}`}>
         <UserActionsCell
           username={user.username}

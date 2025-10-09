@@ -40,7 +40,6 @@ export function UsersTable({
   const columns = [
     { id: 'username', name: 'Username', sorted: false },
     { id: 'role', name: 'Role', sorted: false },
-    { id: 'status', name: 'Status', sorted: false },
     { id: 'actions', name: 'Actions', sorted: false },
   ];
 

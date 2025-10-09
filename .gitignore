@@ -5,6 +5,7 @@ artifacts
 docker-data/
 hf-home/
 .playwright-mcp/
+changelogs/
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
