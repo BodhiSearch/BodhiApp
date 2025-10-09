@@ -179,6 +179,8 @@ test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
     expect(finalAccessToken).toContain('eyJhbGciOiJSUzI1NiIs'); // Valid JWT header
 
     console.log('Final access token (first 20 chars):', finalAccessToken.substring(0, 20));
-    console.log('Session preserved successfully - user not logged out after token expiry in background');
+    console.log(
+      'Session preserved successfully - user not logged out after token expiry in background'
+    );
   });
 });
