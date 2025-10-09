@@ -161,3 +161,138 @@ None. All tasks completed successfully.
 - Workflow uses workflow_dispatch only (manual trigger, no automatic deployments)
 - All URLs and asset paths correctly prefixed with /BodhiApp/
 - Build artifacts still excluded from git (node_modules, .next, out)
+
+## Agent: Production Cutover Preparation
+**Date:** 2025-10-09 16:18
+**Status:** Completed
+
+### Tasks Performed
+1. Removed basePath: '/BodhiApp' from next.config.mjs
+2. Restored public/CNAME from public/CNAME.backup
+3. Tested production build - verified root path URLs
+4. Staged changes to git (not committed per user preference)
+
+### Verification Results
+- [x] basePath removed from next.config.mjs (line 5 deleted)
+- [x] CNAME file restored to public/CNAME with content: getbodhi.app
+- [x] CNAME.backup no longer exists (properly moved, not copied)
+- [x] Build succeeds with production configuration (18 pages)
+- [x] URLs in HTML start with / (root relative, no /BodhiApp/)
+- [x] Asset paths also root relative (no /BodhiApp/ prefix)
+- [x] out/CNAME exists with correct domain: getbodhi.app
+- [x] No /BodhiApp/ paths found anywhere in build output
+- [x] Changes staged in git (2 files: 1 modified, 1 renamed)
+- [x] Git correctly detected CNAME.backup → CNAME as rename operation
+
+### Issues Encountered
+None. All tasks completed successfully.
+
+**Minor Notes:**
+- Build showed same deprecation warnings as previous phases (non-blocking)
+- Browserslist outdated warning (inherited from source repo, non-blocking)
+- Build completed cleanly in ~5 seconds
+
+### Build Results
+- Build time: ~5 seconds (consistent with previous builds)
+- Pages generated: 18 static pages
+- First Load JS: 87.3 kB (unchanged from previous phases)
+- Total pages: 18 (homepage + docs pages)
+
+**URL Examples from out/index.html:**
+- `href="/_next/static/media/e4af272ccee01ff0-s.p.woff2"` (root relative)
+- `href="/_next/static/css/f24664fd40a1e0b9.css"` (root relative)
+- `href="/favicon.ico"` (root relative)
+- `href="/"` (root relative)
+- `href="/docs/"` (root relative)
+- `src="/_next/static/chunks/fd9d1056-877671e9694123b2.js"` (root relative)
+- `src="/_next/static/chunks/117-6f5808788d5a9bb6.js"` (root relative)
+
+**CNAME Verification:**
+- File location: getbodhi.app/public/CNAME
+- Build output: getbodhi.app/out/CNAME
+- Content: getbodhi.app
+- Status: Ready for custom domain deployment
+
+### Files Modified
+- Modified: getbodhi.app/next.config.mjs (removed basePath line)
+- Renamed: getbodhi.app/public/CNAME.backup → getbodhi.app/public/CNAME
+- Total staged changes: 1 deletion across 2 files
+
+### Git Staging Details
+```
+Changes to be committed:
+  modified:   getbodhi.app/next.config.mjs
+  renamed:    getbodhi.app/public/CNAME.backup -> getbodhi.app/public/CNAME
+```
+
+### Notes for User - Manual DNS Cutover Steps Required
+
+**The code is ready for production deployment. User must now perform manual DNS cutover:**
+
+**Suggested commit message:**
+```
+Configure website for production deployment
+
+- Remove basePath: '/BodhiApp' (testing config no longer needed)
+- Restore CNAME for getbodhi.app domain
+- URLs now serve from root path
+- Ready for DNS cutover to BodhiApp repo
+```
+
+**Manual Cutover Steps (perform in quick succession to minimize downtime):**
+
+1. **Commit these changes:**
+   ```bash
+   git commit -m "Configure website for production deployment
+
+   - Remove basePath: '/BodhiApp' (testing config no longer needed)
+   - Restore CNAME for getbodhi.app domain
+   - URLs now serve from root path
+   - Ready for DNS cutover to BodhiApp repo"
+   ```
+
+2. **Disable old site (bodhisearch.github.io):**
+   - Go to: https://github.com/BodhiSearch/bodhisearch.github.io/settings/pages
+   - Click "Unpublish site" or disable GitHub Pages
+   - This releases the custom domain claim on getbodhi.app
+
+3. **Push changes to BodhiApp repo:**
+   ```bash
+   git push origin main
+   ```
+
+4. **Deploy to GitHub Pages:**
+   ```bash
+   gh workflow run deploy-website.yml
+   ```
+   Or manually trigger via GitHub UI: Actions → Deploy Website → Run workflow
+
+5. **Configure custom domain in BodhiApp:**
+   - Go to: https://github.com/BodhiSearch/BodhiApp/settings/pages
+   - Under "Custom domain", enter: getbodhi.app
+   - Click Save
+   - Wait for DNS check to complete (may take 1-2 minutes)
+   - Enable "Enforce HTTPS" once DNS check passes
+
+6. **Verify production deployment:**
+   - Visit: https://getbodhi.app
+   - Check homepage loads correctly
+   - Navigate to docs: https://getbodhi.app/docs/
+   - Verify all assets load (images, CSS, JS)
+   - Check browser console for errors
+
+**Expected Downtime:** 1-3 minutes between step 2 (unpublish old site) and step 6 (new site live)
+
+**Critical:** Perform steps 2-6 in quick succession to minimize downtime
+
+**Rollback Plan (if issues occur):**
+- Re-enable GitHub Pages on bodhisearch.github.io repository
+- Domain will automatically revert to old site
+- Debug issues in BodhiApp repo without production impact
+
+### Production Cutover Complete
+- Code changes: DONE
+- Staging: DONE
+- Documentation: DONE
+- Manual deployment steps: DOCUMENTED ABOVE
+- User action required: Follow manual cutover steps 1-6

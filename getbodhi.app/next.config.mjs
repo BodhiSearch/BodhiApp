@@ -2,7 +2,6 @@
 const nextConfig = {
   // Enable static exports
   output: 'export',
-  basePath: '/BodhiApp',
   trailingSlash: true,
 
   // Optimize image handling
