@@ -184,3 +184,115 @@ The basePath configuration in Next.js works flawlessly for subpath deployment:
 - If images in public/ don't load, they may need explicit basePath handling in code
 - If API calls fail, ensure they're using relative URLs (not hardcoded domains)
 - If hash routing fails, verify Next.js router is handling basePath correctly
+
+## Production Cutover Preparation - Reverting to Root Path
+**Date:** 2025-10-09
+**Agent:** Production Cutover Preparation
+
+### Discovery
+The production cutover process is remarkably clean and reversible:
+- Removing `basePath: '/BodhiApp'` from next.config.mjs immediately reverts all URLs to root path
+- All asset URLs automatically change from `/BodhiApp/...` to `/...` with zero additional configuration
+- Restoring CNAME file (mv CNAME.backup → CNAME) enables custom domain deployment
+- Build process remains consistent (~5 seconds) between basePath and root path configurations
+- Git correctly detects CNAME restoration as a rename operation (clean history)
+- No residual /BodhiApp/ paths remain anywhere in build output after basePath removal
+
+### Important Production Cutover Behaviors
+
+**basePath Removal Impact:**
+- Deleting single line (`basePath: '/BodhiApp',`) from next.config.mjs is sufficient
+- Next.js automatically handles all URL generation changes
+- No code changes required in React components or pages
+- External URLs remain unchanged (already correct)
+- Build output structure identical to original (pre-testing) configuration
+
+**CNAME Restoration:**
+- Moving CNAME.backup → CNAME re-enables custom domain
+- CNAME.backup no longer exists after move (clean state)
+- Build output includes CNAME file for GitHub Pages custom domain claim
+- No manual editing of CNAME content required (preserved from original)
+
+**Build Verification Critical Checks:**
+1. All URLs must start with `/` (root relative, NOT `/BodhiApp/`)
+2. Asset paths (src attributes) must also be root relative
+3. CNAME file must exist in both `public/` and `out/` directories
+4. No /BodhiApp/ references should exist anywhere in build output
+
+**Git Staging Pattern:**
+- Only 2 files change: next.config.mjs (modified), CNAME (renamed)
+- Git shows: "1 deletion" (basePath line removed)
+- Git detects: "renamed: CNAME.backup → CNAME" automatically
+- Clean history showing intent of production cutover
+
+### Impact
+
+**For Manual DNS Cutover (User Action Required):**
+- Code is production-ready after these changes
+- User must perform manual cutover steps in quick succession
+- Expected downtime: 1-3 minutes between old site disable and new site live
+- Critical timing: Steps must be performed quickly to minimize downtime
+
+**DNS Cutover Sequence (must be performed by user):**
+1. Commit production cutover changes
+2. Disable GitHub Pages on bodhisearch.github.io (releases domain claim)
+3. Push changes to BodhiApp repo
+4. Deploy via GitHub Actions workflow
+5. Configure custom domain in BodhiApp settings
+6. Verify production deployment at getbodhi.app
+
+**For Rollback (if issues occur):**
+- Re-enable GitHub Pages on bodhisearch.github.io immediately
+- Domain will automatically revert to old site (DNS propagation is instant)
+- Debug BodhiApp deployment without production impact
+- Can re-attempt cutover after fixing issues
+
+**Build Consistency Verification:**
+- 18 static pages generated (consistent across all configurations)
+- First Load JS: 87.3 kB (unchanged from testing phases)
+- Build time: ~5 seconds (consistent performance)
+- Same deprecation warnings (eslint, browserslist) - non-blocking
+
+### Recommendation
+
+**For User Performing Manual Cutover:**
+1. Review all 6 manual cutover steps in agent-log.md before starting
+2. Have GitHub tabs pre-opened for both repos (bodhisearch.github.io and BodhiApp)
+3. Perform steps 2-6 in rapid succession (within 5 minutes) to minimize downtime
+4. Keep bodhisearch.github.io Pages settings open for quick rollback if needed
+5. Test thoroughly at https://getbodhi.app before announcing cutover complete
+
+**Critical Timing Considerations:**
+- Downtime starts when old site is unpublished (step 2)
+- Downtime ends when new site DNS check completes (step 5)
+- DNS propagation is typically instant for GitHub Pages
+- Longest delay is usually GitHub Actions workflow execution (~1-2 minutes)
+
+**Verification Checklist After Cutover:**
+- [ ] Homepage loads at https://getbodhi.app
+- [ ] Docs pages accessible at https://getbodhi.app/docs/
+- [ ] All images load correctly (check Network tab)
+- [ ] CSS and JavaScript load without errors (check Console)
+- [ ] Navigation between pages works smoothly
+- [ ] HTTPS enforced (green padlock in browser)
+- [ ] No mixed content warnings (HTTP resources on HTTPS page)
+
+**Common Issues and Quick Fixes:**
+- If DNS check fails: Wait 2-3 minutes and retry (DNS propagation delay)
+- If assets 404: Verify workflow deployed to correct branch/directory
+- If homepage redirects to old site: Clear browser cache and DNS cache
+- If HTTPS fails: Wait for GitHub's SSL certificate provision (~5 minutes)
+
+**Success Indicators:**
+- getbodhi.app loads new site (from BodhiApp repo)
+- Browser shows "Served by GitHub Pages" in network headers
+- SSL certificate valid and enforced
+- All assets load from getbodhi.app domain (no 404s)
+- Old bodhisearch.github.io no longer claims the domain
+
+**Documentation for Future Reference:**
+- This cutover process is reversible - can switch back to old site if needed
+- CNAME.backup file no longer exists - original CNAME restored
+- basePath testing configuration completely removed
+- Production configuration matches original pre-migration state (root path)
+- All testing was successful at subpath before reverting to root path
