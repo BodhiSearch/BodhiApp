@@ -1,12 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Mail, ChevronRight } from 'lucide-react';
+import { Download, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import Image from 'next/image';
 import Link from 'next/link';
 import { fadeIn } from './animations';
+import { DOWNLOAD_URL } from '@/lib/constants';
 
 export function HeroSection() {
   return (
@@ -40,9 +41,9 @@ export function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button size="lg" className="gap-2" asChild>
-              <Link href="https://tally.so/r/mVyxQa" target="_blank" rel="noopener noreferrer">
-                <Mail className="h-5 w-5" />
-                Get notified
+              <Link href={DOWNLOAD_URL}>
+                <Download className="h-5 w-5" />
+                Download for macOS
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="gap-2" asChild>
