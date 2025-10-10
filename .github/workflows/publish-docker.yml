@@ -83,12 +83,28 @@ jobs:
         include:
           - variant: cpu
             platforms: 'linux/amd64,linux/arm64'
+            description: 'Multi-platform: AMD64 + ARM64'
+            docker_flags: '-p 8080:8080'
+            hardware_req: 'x86_64 (AMD64) or ARM64 processors (auto-detected)'
+            special_note: '⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.'
           - variant: cuda
             platforms: 'linux/amd64'
+            description: 'NVIDIA GPU acceleration'
+            docker_flags: '--gpus all -p 8080:8080'
+            hardware_req: 'NVIDIA GPU with CUDA 12.4+ support (AMD64 only)'
+            special_note: ''
           - variant: rocm
             platforms: 'linux/amd64'
+            description: 'AMD GPU acceleration'
+            docker_flags: '--device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080'
+            hardware_req: 'AMD GPU with ROCm 6.4+ support (AMD64 only)'
+            special_note: ''
           # - variant: vulkan
           #   platforms: 'linux/amd64'
+          #   description: 'Cross-vendor GPU acceleration'
+          #   docker_flags: '--device=/dev/dri -p 8080:8080'
+          #   hardware_req: 'GPU with Vulkan API support (AMD64 only)'
+          #   special_note: ''
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -135,16 +151,286 @@ jobs:
             BODHI_COMMIT_SHA=${{ needs.extract-version.outputs.commit_sha }}
             CI_DOCKER=true
 
+      - name: Create build info artifact
+        if: always()
+        env:
+          BUILD_STATUS: ${{ steps.build.outcome }}
+          BUILD_DIGEST: ${{ steps.build.outputs.digest }}
+          VARIANT: ${{ matrix.variant }}
+          PLATFORMS: ${{ matrix.platforms }}
+          DESCRIPTION: ${{ matrix.description }}
+          DOCKER_FLAGS: ${{ matrix.docker_flags }}
+          HARDWARE_REQ: ${{ matrix.hardware_req }}
+          SPECIAL_NOTE: ${{ matrix.special_note }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ needs.extract-version.outputs.image_name }}
+          TAG_VERSION: ${{ needs.extract-version.outputs.tag_version }}
+          IMAGE_SUFFIX: ${{ needs.extract-version.outputs.image_suffix }}
+          BUILD_VARIANT: ${{ needs.extract-version.outputs.build_variant }}
+          APP_VERSION: ${{ needs.extract-version.outputs.app_version }}
+          COMMIT_SHA: ${{ needs.extract-version.outputs.commit_sha }}
+        run: |
+          # Create base info
+          jq -n \
+            --arg variant "$VARIANT" \
+            --arg status "$BUILD_STATUS" \
+            --arg platforms "$PLATFORMS" \
+            --arg dockerfile "./devops/$VARIANT.Dockerfile" \
+            --arg description "$DESCRIPTION" \
+            --arg docker_flags "$DOCKER_FLAGS" \
+            --arg hardware_req "$HARDWARE_REQ" \
+            --arg special_note "$SPECIAL_NOTE" \
+            '{
+              variant: $variant,
+              status: $status,
+              platforms: ($platforms | split(",")),
+              dockerfile: $dockerfile,
+              description: $description,
+              docker_flags: $docker_flags,
+              hardware_req: $hardware_req,
+              special_note: $special_note
+            }' > build-info-$VARIANT.json
+
+          # Add success-specific info if build succeeded
+          if [ "$BUILD_STATUS" = "success" ]; then
+            jq \
+              --arg registry "$REGISTRY" \
+              --arg image_name "$IMAGE_NAME" \
+              --arg tag_version "$TAG_VERSION" \
+              --arg image_suffix "$IMAGE_SUFFIX" \
+              --arg digest "$BUILD_DIGEST" \
+              --arg build_variant "$BUILD_VARIANT" \
+              --arg app_version "$APP_VERSION" \
+              --arg commit_sha "$COMMIT_SHA" \
+              '. + {
+                tags: [
+                  "\($registry)/\($image_name):\($tag_version)-\(.variant)\($image_suffix)",
+                  "\($registry)/\($image_name):latest-\(.variant)\($image_suffix)"
+                ],
+                digest: $digest,
+                build_args: {
+                  BUILD_VARIANT: $build_variant,
+                  BODHI_VERSION: $app_version,
+                  BODHI_COMMIT_SHA: $commit_sha,
+                  CI_DOCKER: "true"
+                }
+              }' build-info-$VARIANT.json > tmp.json
+            mv tmp.json build-info-$VARIANT.json
+          fi
+
+          echo "Build info for $VARIANT:"
+          cat build-info-$VARIANT.json | jq .
+
+      - name: Upload build info artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info-${{ matrix.variant }}
+          path: build-info-${{ matrix.variant }}.json
+          retention-days: 7
+
 
   # Create release (CPU image is now built as multi-platform directly)
   # No separate manifest creation needed as build-variants creates multi-platform images
 
-  # Create GitHub Release if at least one variant succeeds
-  create-release:
+  # Collect all build information into release.json artifact
+  collect-release-info:
     needs: [extract-version, build-variants]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
+      - name: Download all build info artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-info-*
+          path: build-artifacts
+          merge-multiple: false
+
+      - name: Combine build info into release.json
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+        run: |
+          # Create the base structure
+          jq -n \
+            --arg version "${{ needs.extract-version.outputs.tag_version }}" \
+            --arg tag "${{ github.ref_name }}" \
+            --arg registry "$REGISTRY" \
+            --arg image_name "${{ needs.extract-version.outputs.image_name }}" \
+            --arg build_variant "${{ needs.extract-version.outputs.build_variant }}" \
+            --arg commit_sha "${{ needs.extract-version.outputs.commit_sha }}" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              version: $version,
+              tag: $tag,
+              registry: $registry,
+              image_name: $image_name,
+              build_variant: $build_variant,
+              commit_sha: $commit_sha,
+              timestamp: $timestamp,
+              variants: []
+            }' > release.json
+
+          # Find all build-info JSON files
+          VARIANTS=$(find build-artifacts -name 'build-info-*.json' -type f | sort)
+
+          # Build the variants array
+          VARIANTS_JSON="[]"
+          for info_file in $VARIANTS; do
+            if [ -f "$info_file" ]; then
+              echo "Processing: $info_file"
+              VARIANT_DATA=$(cat "$info_file")
+              VARIANTS_JSON=$(echo "$VARIANTS_JSON" | jq --argjson variant "$VARIANT_DATA" '. + [$variant]')
+            fi
+          done
+
+          # Update release.json with variants
+          jq --argjson variants "$VARIANTS_JSON" '.variants = $variants' release.json > release.tmp.json
+          mv release.tmp.json release.json
+
+          # Pretty print the result
+          echo "Generated release.json:"
+          cat release.json | jq .
+
+      - name: Upload release info artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-info
+          path: release.json
+          retention-days: 90
+
+  # Create GitHub Release if at least one variant succeeds
+  create-release:
+    needs: [extract-version, build-variants, collect-release-info]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release info artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-info
+          path: release-artifacts
+
+      - name: Generate dynamic release body
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+        run: |
+          # Read release.json
+          RELEASE_JSON="release-artifacts/release.json"
+
+          # Extract basic info
+          VERSION=$(jq -r '.version' "$RELEASE_JSON")
+          BUILD_VARIANT=$(jq -r '.build_variant' "$RELEASE_JSON")
+          IMAGE_NAME=$(jq -r '.image_name' "$RELEASE_JSON")
+          REGISTRY=$(jq -r '.registry' "$RELEASE_JSON")
+          AUTH_SERVER="${{ needs.extract-version.outputs.build_variant == 'production' && 'https://id.getbodhi.app' || 'https://main-id.getbodhi.app' }}"
+
+          # Start building the release body
+          cat > release_body.md <<EOF
+          # BodhiApp Docker Images Release ${VERSION} (${BUILD_VARIANT})
+
+          ## Available Variants
+
+          EOF
+
+          # Get successful variants
+          SUCCESS_VARIANTS=$(jq -r '.variants[] | select(.status == "success") | @json' "$RELEASE_JSON")
+
+          if [ -z "$SUCCESS_VARIANTS" ]; then
+            echo "⚠️ No variants were successfully built in this release." >> release_body.md
+          else
+            # Generate section for each successful variant
+            echo "$SUCCESS_VARIANTS" | while IFS= read -r variant_json; do
+              VARIANT=$(echo "$variant_json" | jq -r '.variant')
+              DESCRIPTION=$(echo "$variant_json" | jq -r '.description')
+              DOCKER_FLAGS=$(echo "$variant_json" | jq -r '.docker_flags')
+              SPECIAL_NOTE=$(echo "$variant_json" | jq -r '.special_note')
+              VARIANT_TAG=$(echo "$variant_json" | jq -r '.tags[0]')
+
+              # Capitalize first letter for title
+              VARIANT_UPPER=$(echo "$VARIANT" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+
+              cat >> release_body.md <<VARIANT_EOF
+          ### ${VARIANT_UPPER} Variant (${DESCRIPTION})
+          \`\`\`bash
+          docker pull ${VARIANT_TAG}
+          docker run ${DOCKER_FLAGS} \\
+            -v ./bodhi_home:/data/bodhi_home \\
+            -v ./hf_home:/data/hf_home \\
+            ${VARIANT_TAG}
+          \`\`\`
+
+          VARIANT_EOF
+
+              # Add special note if present
+              if [ -n "$SPECIAL_NOTE" ] && [ "$SPECIAL_NOTE" != "null" ] && [ "$SPECIAL_NOTE" != "" ]; then
+                echo "$SPECIAL_NOTE" >> release_body.md
+                echo "" >> release_body.md
+              fi
+            done
+          fi
+
+          # Add Image Details section
+          cat >> release_body.md <<EOF
+
+          ## Image Details
+          - **Build Variant**: ${BUILD_VARIANT}
+          - **Registry**: ${REGISTRY}/${IMAGE_NAME}
+          - **Version**: ${VERSION}
+          - **Auth Server**: ${AUTH_SERVER}
+
+          ## Platform Support
+          EOF
+
+          # List platforms for each successful variant
+          echo "$SUCCESS_VARIANTS" | while IFS= read -r variant_json; do
+            VARIANT=$(echo "$variant_json" | jq -r '.variant')
+            PLATFORMS=$(echo "$variant_json" | jq -r '.platforms | join(", ")')
+            echo "- **${VARIANT}**: ${PLATFORMS}" >> release_body.md
+          done
+
+          # Add Hardware Requirements section
+          cat >> release_body.md <<EOF
+
+          ## Hardware Requirements
+
+          EOF
+
+          echo "$SUCCESS_VARIANTS" | while IFS= read -r variant_json; do
+            VARIANT=$(echo "$variant_json" | jq -r '.variant')
+            VARIANT_UPPER=$(echo "$VARIANT" | awk '{print toupper($0)}')
+            HW_REQ=$(echo "$variant_json" | jq -r '.hardware_req')
+            echo "- **${VARIANT_UPPER}**: ${HW_REQ}" >> release_body.md
+          done
+
+          # Add Benefits section
+          cat >> release_body.md <<EOF
+
+          ## Benefits
+
+          - **Multi-platform CPU**: Automatic architecture detection for ARM64 and AMD64
+          - **Faster Builds**: No llama-server compilation during build
+          - **GPU Acceleration**: Hardware-optimized variants available
+          - **Smaller Images**: Optimized runtime images
+          - **Better Caching**: Improved Docker layer caching
+          EOF
+
+          # List failed variants if any
+          FAILED_VARIANTS=$(jq -r '.variants[] | select(.status != "success") | .variant' "$RELEASE_JSON")
+          if [ -n "$FAILED_VARIANTS" ]; then
+            cat >> release_body.md <<EOF
+
+          ## Build Status
+
+          The following variants failed to build and are not available in this release:
+          EOF
+            echo "$FAILED_VARIANTS" | while read -r variant; do
+              echo "- ❌ ${variant}" >> release_body.md
+            done
+          fi
+
+          echo "Generated release body:"
+          cat release_body.md
+
       - name: Check if at least one variant was published
         id: check
         run: |
@@ -177,79 +463,28 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: 'Docker Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
-          body: |
-            # BodhiApp Docker Images Release ${{ needs.extract-version.outputs.tag_version }} (${{ needs.extract-version.outputs.build_variant }})
-
-            ## Available Variants
-
-            ### CPU Variant (Multi-platform: AMD64 + ARM64)
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
-            docker run -p 8080:8080 \
-              -v ./bodhi_home:/data/bodhi_home \
-              -v ./hf_home:/data/hf_home \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
-
-
-            ⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.
-
-            ### CUDA Variant (NVIDIA GPU acceleration)
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cuda${{ needs.extract-version.outputs.image_suffix }}
-            docker run --gpus all -p 8080:8080 \
-              -v ./bodhi_home:/data/bodhi_home \
-              -v ./hf_home:/data/hf_home \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cuda${{ needs.extract-version.outputs.image_suffix }}
-            ```
-
-            ### ROCm Variant (AMD GPU acceleration)
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-rocm${{ needs.extract-version.outputs.image_suffix }}
-            docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080 \
-              -v ./bodhi_home:/data/bodhi_home \
-              -v ./hf_home:/data/hf_home \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-rocm${{ needs.extract-version.outputs.image_suffix }}
-            ```
-
-            ### Vulkan Variant (Cross-vendor GPU acceleration)
-            ```bash
-            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-vulkan${{ needs.extract-version.outputs.image_suffix }}
-            docker run --device=/dev/dri -p 8080:8080 \
-              -v ./bodhi_home:/data/bodhi_home \
-              -v ./hf_home:/data/hf_home \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-vulkan${{ needs.extract-version.outputs.image_suffix }}
-            ```
-
-            ## Image Details
-            - **Variant**: ${{ needs.extract-version.outputs.build_variant }}
-            - **Platforms**:
-              - **CPU**: linux/amd64, linux/arm64 (multi-platform)
-              - **GPU variants**: linux/amd64 only
-            - **Registry**: ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}
-            - **Tag**: ${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
-            - **Auth Server**: ${{ needs.extract-version.outputs.build_variant == 'production' && 'https://id.getbodhi.app' || 'https://main-id.getbodhi.app' }}
-
-            ## Hardware Requirements
-
-            - **CPU**: x86_64 (AMD64) or ARM64 processors (auto-detected)
-            - **CUDA**: NVIDIA GPU with CUDA 12.4+ support (AMD64 only)
-            - **ROCm**: AMD GPU with ROCm 6.4+ support (AMD64 only)
-            - **Vulkan**: GPU with Vulkan API support (AMD64 only)
-
-            ## Benefits
-
-            - **Multi-platform CPU**: Automatic architecture detection for ARM64 and AMD64
-            - **Faster Builds**: No llama-server compilation during build
-            - **GPU Acceleration**: Hardware-optimized variants available
-            - **Smaller Images**: Optimized runtime images
-            - **Better Caching**: Improved Docker layer caching
+          body_path: release_body.md
           draft: false
           prerelease: ${{ needs.extract-version.outputs.is_development == 'true' }}
+          files: |
+            release-artifacts/release.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output image details
         run: |
-          echo "::notice title=Docker Images Published::Multi-variant images published to ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}"
-          echo "::notice title=Available Variants::cpu, cuda, rocm, vulkan"
-          echo "::notice title=Example Pull::docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}"
+          RELEASE_JSON="release-artifacts/release.json"
+          IMAGE_NAME=$(jq -r '.image_name' "$RELEASE_JSON")
+          REGISTRY=$(jq -r '.registry' "$RELEASE_JSON")
+
+          # Get list of successful variants
+          SUCCESSFUL_VARIANTS=$(jq -r '.variants[] | select(.status == "success") | .variant' "$RELEASE_JSON" | tr '\n' ', ' | sed 's/,$//')
+
+          # Get first successful variant tag for example
+          EXAMPLE_TAG=$(jq -r '.variants[] | select(.status == "success") | .tags[0]' "$RELEASE_JSON" | head -n 1)
+
+          echo "::notice title=Docker Images Published::Multi-variant images published to ${REGISTRY}/${IMAGE_NAME}"
+          echo "::notice title=Available Variants::${SUCCESSFUL_VARIANTS}"
+          if [ -n "$EXAMPLE_TAG" ]; then
+            echo "::notice title=Example Pull::docker pull ${EXAMPLE_TAG}"
+          fi
