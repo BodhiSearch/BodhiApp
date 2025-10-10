@@ -14,7 +14,7 @@ export function DownloadSection() {
   const detectedOS = useDetectedOS();
 
   return (
-    <section id="download-section" className="py-20 bg-gradient-to-b from-violet-50 to-white">
+    <section id="download-section" className="pt-20 pb-8 bg-gradient-to-b from-violet-50 to-white">
       <Container>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -84,14 +84,6 @@ export function DownloadSection() {
               }
             )}
           </div>
-
-          <p className="text-sm text-muted-foreground mt-8">
-            Looking for other installation methods? Check our{' '}
-            <Link href="/docs" className="text-violet-600 hover:underline">
-              documentation
-            </Link>{' '}
-            for Docker and other deployment options.
-          </p>
         </motion.div>
       </Container>
     </section>
