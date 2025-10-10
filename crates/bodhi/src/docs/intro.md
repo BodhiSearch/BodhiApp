@@ -32,7 +32,6 @@ Bodhi App is a cross‑platform LLM inference tool that seamlessly integrates wi
   Bodhi App uses OAuth2 with PKCE (Proof Key for Code Exchange) for secure, mandatory authentication. The first user to log in via OAuth automatically becomes the admin (determined by checking if any users exist in the database during OAuth login), while subsequent users must request access and await admin approval.
 
   **Key Security Features:**
-
   - Mandatory OAuth2 authentication for all users
   - First-user admin assignment
   - Access request workflow for new users

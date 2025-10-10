@@ -60,19 +60,16 @@ Bodhi App supports hybrid AI architecture - use powerful API models from leading
 All providers listed below use the **OpenAI API format**. Configure them by selecting the OpenAI format and entering the appropriate base URL:
 
 1. **OpenAI**
-
    - **API Format**: OpenAI
    - **Base URL**: `https://api.openai.com/v1`
    - Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 
 2. **OpenRouter**
-
    - **API Format**: OpenAI (compatible)
    - **Base URL**: `https://openrouter.ai/api/v1`
    - Get API key from OpenRouter dashboard
 
 3. **HuggingFace Inference API**
-
    - **API Format**: OpenAI (compatible)
    - **Base URL**: `https://router.huggingface.co/v1`
    - Get API key from HuggingFace settings
@@ -108,7 +105,6 @@ All providers listed below use the **OpenAI API format**. Configure them by sele
 Configure which provider you want to connect to by selecting the API format and entering the base URL.
 
 1. **Select API Format**: Click the "API format" dropdown and select the format
-
    - Currently only **OpenAI** format is supported
    - Future support planned for Anthropic, Grok, and other API formats
 
@@ -150,7 +146,6 @@ Provider resolution happens based on the `model` field in the request. Prefixes 
 Both OpenAI and OpenRouter can provide access to GPT-4. Using prefixes lets you choose which provider to use:
 
 - **Without prefix** (OpenAI direct):
-
   - Model ID: `gpt-4`
   - Routes to: OpenAI provider (direct API)
 

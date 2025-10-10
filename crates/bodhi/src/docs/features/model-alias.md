@@ -49,7 +49,6 @@ A Model Alias YAML file includes the following keys:
 - **snapshot:** (optional) Controls which version/snapshot of a model to use. Leave blank for the latest version, or specify a commit hash for a specific snapshot. This allows you to pin to a specific model version for reproducibility.
 
 - **context_params:** (optional) Array of llama-server command-line arguments for inference configuration. Each argument should be a complete flag with its value.
-
   - Common arguments:
     - `--ctx-size <n>`: Maximum context size in tokens (e.g., `--ctx-size 2048`)
     - `--threads <n>`: Number of CPU threads to use (e.g., `--threads 4`)

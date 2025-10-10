@@ -23,13 +23,11 @@ Key points:
 ## How It Works
 
 1. **Submit a Download Request:**
-
    - Navigate to the Download Models section in the app.
    - Provide the **repository** (e.g., `TheBloke/Mistral-7B-Instruct-v0.1-GGUF`) and the **filename** (e.g., `mistral-7b-instruct-v0.1.Q8_0.gguf`).
    - The system creates a new download request or returns an existing request if the file is already present.
 
 2. **Processing the Request:**
-
    - The download request is saved with a status of `pending`.
    - An asynchronous process starts downloading the model file from the specified HuggingFace repository.
    - The status of the download (such as `pending`, `completed`, or `error`) is updated and can be viewed on the Downloads page.

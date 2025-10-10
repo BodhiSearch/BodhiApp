@@ -13,7 +13,6 @@ If you encounter issues with Bodhi App, this guide can help you diagnose and res
 - **Bodhi Home Directory:**  
   Bodhi App sets up its home directory inside `$HOME/.cache/bodhi`. If access to this folder is denied or if it isn't writable, the app may crash during startup.  
   **Solution:**
-
   - Verify that the `$HOME/.cache/bodhi` folder exists and has the correct permissions.
   - Ensure you have read/write access to this directory.
 
@@ -29,7 +28,6 @@ Any startup error details are logged—see the **Logs** section below for furthe
 - **Log Files:**  
   Once initialized, Bodhi App writes logs to `$BODHI_HOME/logs` and rotates them daily. In the event the app crashes before logging is fully set up, error messages may be output to STDOUT.  
   **Solution:**
-
   - If you suspect logging-related issues, run Bodhi App from the command line to capture output in real-time.
   - Ensure the logs directory exists and has proper permissions.
 
@@ -68,7 +66,6 @@ If you continue to experience issues after following these steps, please reach o
 Follow this decision tree to diagnose common issues:
 
 1. **Application Launch**
-
    - Is the app starting?
      - No → Check:
        - System requirements
@@ -77,7 +74,6 @@ Follow this decision tree to diagnose common issues:
      - Yes → Proceed to step 2
 
 2. **UI Access**
-
    - Can you access the web interface?
      - No → Check:
        - Network connectivity
@@ -86,7 +82,6 @@ Follow this decision tree to diagnose common issues:
      - Yes → Proceed to step 3
 
 3. **Model Loading**
-
    - Are models loading correctly?
      - No → Verify:
        - Model file exists
@@ -95,7 +90,6 @@ Follow this decision tree to diagnose common issues:
      - Yes → Proceed to step 4
 
 4. **API Access**
-
    - Are API calls working?
      - No → Check:
        - API token validity
