@@ -1,0 +1,144 @@
+{
+  "project": "getbodhi.app Docker Release Integration",
+  "created": "2025-10-10",
+  "spec_file": "website-docker-info.md",
+  "phase1": {
+    "status": "completed",
+    "agent": "general-purpose",
+    "objective": "Backend Infrastructure with Variant Auto-Discovery",
+    "releases_json_path": "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/public/releases.json",
+    "env_file_path": "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/.env.release_urls",
+    "discovered_variants": ["cpu", "cuda", "rocm", "vulkan"],
+    "docker_version": "0.0.2",
+    "registry_url": "ghcr.io/bodhisearch/bodhiapp",
+    "data_structure": {
+      "docker": {
+        "version": "string - version number extracted from tag (e.g., '0.0.2')",
+        "tag": "string - full GitHub tag (e.g., 'docker/v0.0.2')",
+        "released_at": "string - ISO date of release (e.g., '2025-10-07T12:58:40Z')",
+        "registry": "string - Docker registry URL (e.g., 'ghcr.io/bodhisearch/bodhiapp')",
+        "variants": {
+          "{variant_name}": {
+            "image_tag": "string - versioned image tag (e.g., '0.0.2-cpu')",
+            "latest_tag": "string - latest tag (e.g., 'latest-cpu')",
+            "platforms": ["array of platform strings (e.g., 'linux/amd64', 'linux/arm64')"],
+            "pull_command": "string - complete docker pull command",
+            "gpu_type": "optional string - GPU vendor (e.g., 'NVIDIA', 'AMD', 'Intel', 'Cross-vendor')",
+            "description": "optional string - variant description from release body"
+          }
+        }
+      }
+    },
+    "notes": [
+      "Script successfully extended to parse Docker releases using regex pattern matching",
+      "Variant discovery is fully automatic - parses release body for '### {Variant} Variant' sections",
+      "All 4 variants discovered from docker/v0.0.2: cpu, cuda, rocm, vulkan",
+      "CPU variant correctly identified as multi-platform (AMD64 + ARM64)",
+      "GPU variants include gpu_type field for frontend badge display",
+      "Backward compatible - desktop platform functionality unchanged",
+      "releases.json now has nested structure with 'desktop' and 'docker' top-level keys",
+      "Environment variables added: NEXT_PUBLIC_DOCKER_VERSION, NEXT_PUBLIC_DOCKER_TAG, NEXT_PUBLIC_DOCKER_REGISTRY",
+      "Future variants (intel, etc.) will be discovered automatically without code changes"
+    ]
+  },
+  "phase2": {
+    "status": "completed",
+    "agent": "general-purpose",
+    "objective": "Frontend Docker Display Component",
+    "components_created": [
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/src/lib/docker-variants.ts",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/src/app/DockerSection.tsx"
+    ],
+    "components_modified": [
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/src/lib/constants.ts",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/src/app/page.tsx"
+    ],
+    "integration_point": "src/app/page.tsx - DockerSection added after DownloadSection, before Footer",
+    "metadata_pattern": "VARIANT_METADATA[variantKey] with getVariantMetadata() fallback for unknown variants",
+    "copy_implementation": "navigator.clipboard.writeText() with async/await, 2s visual feedback, error handling",
+    "data_loading": "Client-side fetch('/releases.json') in useEffect, loading/error states handled",
+    "ui_patterns": {
+      "layout": "Responsive grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+      "animations": "Framer Motion with staggered 0.1s delays per card",
+      "icons": "Cpu for CPU variant, Zap for GPU variants",
+      "colors": {
+        "cpu": "blue",
+        "cuda": "green",
+        "rocm": "red",
+        "vulkan": "purple",
+        "intel": "indigo"
+      },
+      "badges": "GPU type badges (violet), Recommended badge (green with CheckCircle2 icon)"
+    },
+    "notes": [
+      "Component loads Docker data dynamically from releases.json",
+      "Supports any number of variants (currently 4: cpu, cuda, rocm, vulkan)",
+      "Copy-to-clipboard shows visual feedback for 2 seconds",
+      "Metadata fallback ensures unknown variants render with defaults",
+      "Documentation link prominent at bottom of section",
+      "All variants render as cards with docker pull commands",
+      "No download buttons - shows copy-to-clipboard for pull commands",
+      "Responsive design matches existing DownloadSection style",
+      "TypeScript interfaces ensure type safety",
+      "Error handling for failed data loads",
+      "Successfully tested in dev mode - compiles without errors",
+      "Future variants (intel, etc.) will appear automatically when released"
+    ]
+  },
+  "phase3": {
+    "status": "completed",
+    "agent": "general-purpose",
+    "objective": "Documentation & Testing",
+    "docs_updated": [
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/crates/bodhi/src/docs/deployment/docker.md",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/getbodhi.app/Makefile"
+    ],
+    "specs_created": [
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/ai-docs/specs/20251009-getbodhi-app/SPEC.md",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/ai-docs/specs/20251009-getbodhi-app/IMPLEMENTATION.md",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/ai-docs/specs/20251009-getbodhi-app/TESTING.md",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/ai-docs/specs/20251009-getbodhi-app/VARIANT_EXTENSION.md",
+      "/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/BodhiApp/ai-docs/specs/20251009-getbodhi-app/phase3-docs.log"
+    ],
+    "testing_complete": true,
+    "validation_results": {
+      "docker_env_vars": "✓ All 3 Docker variables present in .env.release_urls",
+      "docker_variants": "✓ 4 variants discovered: cpu, cuda, rocm, vulkan",
+      "docker_docs_updated": "✓ 'Latest Docker Releases' section added at line 24",
+      "variant_table_updated": "✓ Vulkan variant added to comparison table",
+      "makefile_updated": "✓ Comments added for Docker automation",
+      "website_build": "✓ Build completed successfully with no errors",
+      "specs_comprehensive": "✓ All 4 specification documents created"
+    },
+    "notes": [
+      "Docker documentation updated with 'Latest Docker Releases' section",
+      "Section references getbodhi.app as single source of truth for versions",
+      "Variant comparison table updated to include Vulkan variant",
+      "Choosing a Variant section updated with cross-vendor option",
+      "Makefile comments enhanced to mention Docker variant discovery",
+      "SPEC.md: Complete architectural specification with design decisions",
+      "IMPLEMENTATION.md: Technical implementation details with code samples",
+      "TESTING.md: Comprehensive testing procedures for all phases",
+      "VARIANT_EXTENSION.md: Step-by-step guide for adding new variants",
+      "All documentation emphasizes automation and zero-code variant addition",
+      "Website build validation successful - no TypeScript or build errors",
+      "End-to-end workflow verified: GitHub release → automation → website display",
+      "Backward compatibility maintained for desktop platform releases",
+      "Phase 3 log created documenting all activities"
+    ]
+  },
+  "execution_log": [
+    "2025-10-10: Phase 1 completed - Backend infrastructure with variant auto-discovery",
+    "2025-10-10: Phase 2 completed - Frontend Docker display component",
+    "2025-10-10: Phase 3 completed - Documentation, specs, and testing validation"
+  ],
+  "recommendations": [
+    "Consider CI/CD integration for automated releases.json validation",
+    "Add Playwright E2E tests for Docker section copy-to-clipboard",
+    "Monitor user feedback on variant selection and descriptions",
+    "Consider adding variant usage analytics (privacy-respecting)",
+    "Document process for variant deprecation when needed",
+    "Create runbook for troubleshooting variant discovery issues",
+    "Consider adding variant performance benchmarks to website"
+  ]
+}

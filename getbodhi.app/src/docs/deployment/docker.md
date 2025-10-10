@@ -13,6 +13,7 @@ Bodhi App provides optimized Docker images for different hardware configurations
 - **CPU**: Multi-platform (AMD64 + ARM64)
 - **CUDA**: NVIDIA GPU acceleration (8-12x speedup)
 - **ROCm**: AMD GPU acceleration
+- **Vulkan**: Cross-vendor GPU acceleration
 
 All variants run the same Bodhi App codebase with hardware-specific optimizations for llama.cpp inference.
 
@@ -20,21 +21,36 @@ All variants run the same Bodhi App codebase with hardware-specific optimization
 
 > **Note**: Use the GitHub CLI (`gh`) to explore available images and tags at [github.com/bodhisearch/Bodhi App/pkgs/container/bodhiapp](https://github.com/BodhiSearch/BodhiApp/pkgs/container/bodhiapp).
 
+## Latest Docker Releases
+
+For the most up-to-date Docker image versions and variants, visit [getbodhi.app](https://getbodhi.app). The website automatically displays the latest production Docker releases with copy-to-clipboard commands for all available variants.
+
+**Why check the website:**
+
+- Always shows the latest version numbers
+- Automatically updates when new variants are released
+- Provides ready-to-use docker pull commands
+- No manual version checking required
+
+The examples in this documentation use `latest-{variant}` tags for convenience, but you can find specific version tags (e.g., `0.0.2-cpu`) on the website for production deployments.
+
 ## Variant Comparison
 
-| Variant  | Platforms    | Hardware   | Use Case                     | Performance       |
-| -------- | ------------ | ---------- | ---------------------------- | ----------------- |
-| **CPU**  | AMD64, ARM64 | Any CPU    | General purpose, ARM devices | Baseline          |
-| **CUDA** | AMD64        | NVIDIA GPU | NVIDIA GPUs, cloud instances | 8-12x faster      |
-| **ROCm** | AMD64        | AMD GPU    | AMD GPUs                     | GPU accelerated\* |
+| Variant    | Platforms    | Hardware         | Use Case                     | Performance       |
+| ---------- | ------------ | ---------------- | ---------------------------- | ----------------- |
+| **CPU**    | AMD64, ARM64 | Any CPU          | General purpose, ARM devices | Baseline          |
+| **CUDA**   | AMD64        | NVIDIA GPU       | NVIDIA GPUs, cloud instances | 8-12x faster      |
+| **ROCm**   | AMD64        | AMD GPU          | AMD GPUs                     | GPU accelerated\* |
+| **Vulkan** | AMD64        | Cross-vendor GPU | Multi-vendor GPU support     | GPU accelerated\* |
 
-> **Note**: Performance benchmark data is not yet available for ROCm variant. For image sizes, use `gh` CLI to query the container registry.
+> **Note**: Performance benchmark data is not yet available for ROCm and Vulkan variants. For image sizes, use `gh` CLI to query the container registry. New variants may be added over time - check [getbodhi.app](https://getbodhi.app) for the complete list.
 
 **Choosing a Variant**:
 
 1. **Have NVIDIA GPU?** → CUDA variant (best performance)
 2. **Have AMD GPU?** → ROCm variant
-3. **CPU only or ARM device?** → CPU variant
+3. **Need cross-vendor GPU support?** → Vulkan variant
+4. **CPU only or ARM device?** → CPU variant
 
 ## Prerequisites
 

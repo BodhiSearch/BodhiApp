@@ -4,6 +4,7 @@ import { HeroSection } from './HeroSection';
 import { SocialProofSection } from './SocialProofSection';
 import { FeaturesSection } from './FeaturesSection';
 import { DownloadSection } from './DownloadSection';
+import { DockerSection } from './DockerSection';
 import { Footer } from './Footer';
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
         <SocialProofSection />
         <FeaturesSection />
         <DownloadSection />
+        <DockerSection />
       </main>
       <Footer />
     </div>

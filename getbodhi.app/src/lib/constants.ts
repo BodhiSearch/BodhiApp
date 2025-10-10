@@ -47,3 +47,8 @@ export function getPlatformData(os: 'macos' | 'windows' | 'linux'): PlatformData
 
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
 export const APP_TAG = process.env.NEXT_PUBLIC_APP_TAG;
+
+// Docker release info from environment
+export const DOCKER_VERSION = process.env.NEXT_PUBLIC_DOCKER_VERSION;
+export const DOCKER_TAG = process.env.NEXT_PUBLIC_DOCKER_TAG;
+export const DOCKER_REGISTRY = process.env.NEXT_PUBLIC_DOCKER_REGISTRY;

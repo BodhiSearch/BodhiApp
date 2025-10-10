@@ -11,10 +11,10 @@ sync.docs: ## Sync docs from embedded app
 sync.docs.check: ## Check if docs are in sync
 	@npm run sync:docs:check
 
-update_releases: ## Update .env.release_urls from latest GitHub releases
+update_releases: ## Update .env.release_urls and releases.json from latest GitHub releases (desktop + Docker variants)
 	@npm run update_releases
 
-update_releases.check: ## Check latest releases (dry-run)
+update_releases.check: ## Check latest releases (dry-run) - validates desktop and Docker variant discovery
 	@npm run update_releases:check
 
 build: ## Build website (auto-syncs docs first via prebuild)
