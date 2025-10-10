@@ -1892,7 +1892,7 @@ dependencies = [
 
 [[package]]
 name = "errmeta_derive"
-version = "0.0.16-dev"
+version = "0.1.0"
 dependencies = [
  "convert_case 0.8.0",
  "pretty_assertions",

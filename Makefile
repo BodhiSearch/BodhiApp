@@ -57,14 +57,21 @@ coverage: ## Generate code coverage report
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
 	cargo llvm-cov test --no-fail-fast --all-features $$PACKAGES --lcov --output-path lcov.info
 
-ci.update-version: ## Update version in all Cargo.toml files
-	@echo "Updating version to $(VERSION) in Cargo.toml files"
+ci.update-version: ## Update version in all Cargo.toml, package.json, and tauri.conf.json files
+	@echo "Updating version to $(VERSION)"
+	@echo "  - Updating Cargo.toml files..."
 	@for dir in crates/* crates/bodhi/src-tauri; do \
 		if [ -f $$dir/Cargo.toml ]; then \
 			sed -i.bak "s/^version = .*/version = \"$(VERSION)\"/" $$dir/Cargo.toml && \
 			rm $$dir/Cargo.toml.bak; \
 		fi \
 	done
+	@echo "  - Updating package.json..."
+	@cd crates/bodhi && npm version $(VERSION) --no-git-tag-version --allow-same-version
+	@echo "  - Updating tauri.conf.json..."
+	@jq '.version = "$(VERSION)"' crates/bodhi/src-tauri/tauri.conf.json > crates/bodhi/src-tauri/tauri.conf.json.tmp && \
+		mv crates/bodhi/src-tauri/tauri.conf.json.tmp crates/bodhi/src-tauri/tauri.conf.json
+	@echo "✓ Version updated to $(VERSION) in all files"
 
 ci.build: ## Build the Tauri application
 	cd crates/bodhi/src-tauri && \
