@@ -135,6 +135,28 @@ jobs:
         run: |
           mkdir -p artifacts
           cp ${{ matrix.artifact_path }} artifacts/
+      - name: Rename Artifacts to Simple Names
+        shell: bash
+        run: |
+          cd artifacts
+          for file in *; do
+            case "$file" in
+              *.dmg)
+                mv "$file" "Bodhi App.dmg"
+                echo "Renamed $file to Bodhi App.dmg"
+                ;;
+              *.msi)
+                mv "$file" "Bodhi App.msi"
+                echo "Renamed $file to Bodhi App.msi"
+                ;;
+              *.rpm)
+                mv "$file" "Bodhi App.rpm"
+                echo "Renamed $file to Bodhi App.rpm"
+                ;;
+            esac
+          done
+          echo "Final artifacts:"
+          ls -lh
       - name: Upload Built Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -183,4 +205,37 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/* --repo ${{ github.repository }}
+
+  bump-version:
+    if: inputs.draft != 'no-release' && inputs.draft != 'yes'
+    needs: [upload-assets, create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Bump Version to Next Dev
+        shell: bash
+        run: |
+          CURRENT_VERSION="${{ needs.create-release.outputs.VERSION }}"
+          NEXT_VERSION=$(./scripts/increment_version.js "$CURRENT_VERSION" minor dev)
+          echo "Bumping from $CURRENT_VERSION to $NEXT_VERSION"
+          make ci.update-version VERSION="$NEXT_VERSION"
+      - name: Commit Version Bump
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          NEXT_VERSION=$(./scripts/increment_version.js "${{ needs.create-release.outputs.VERSION }}" minor dev)
+          git add -A
+          git commit -m "chore: bump version to $NEXT_VERSION [skip ci]"
+          git push origin main
 
