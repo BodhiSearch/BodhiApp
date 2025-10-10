@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import Link from "next/link";
-import { motion } from "framer-motion";
+import { Mail } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Container } from '@/components/ui/container';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 export function DownloadSection() {
   return (
@@ -18,7 +18,8 @@ export function DownloadSection() {
         >
           <h2 className="text-3xl font-bold mb-6">Stay in the loop</h2>
           <p className="text-muted-foreground mb-8">
-            We are working on a new version of Bodhi App that will be available for download soon. Sign up to get notified.
+            We are working on a new version of Bodhi App that will be available for download soon. Sign up to get
+            notified.
           </p>
           <Button size="lg" className="gap-2" asChild>
             <Link href="https://tally.so/r/mVyxQa" target="_blank" rel="noopener noreferrer">
@@ -30,4 +31,4 @@ export function DownloadSection() {
       </Container>
     </section>
   );
-} 
+}

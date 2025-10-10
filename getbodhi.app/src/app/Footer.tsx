@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Github, Disc as Discord, ExternalLink } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { Container } from "@/components/ui/container";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Github, Disc as Discord, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Container } from '@/components/ui/container';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 export function Footer() {
   return (
@@ -15,46 +15,29 @@ export function Footer() {
           {/* Brand Section */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/bodhi-logo/bodhi-logo-60.svg"
-                alt="Bodhi Logo"
-                width={24}
-                height={24}
-                className="h-6 w-6"
-              />
+              <Image src="/bodhi-logo/bodhi-logo-60.svg" alt="Bodhi Logo" width={24} height={24} className="h-6 w-6" />
               <span className="font-semibold text-foreground">Bodhi</span>
             </Link>
-            <p className="text-sm text-muted-foreground">
-              Run LLMs locally with complete privacy and control.
-            </p>
+            <p className="text-sm text-muted-foreground">Run LLMs locally with complete privacy and control.</p>
           </div>
 
           {/* Resources */}
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Resources</h3>
             <nav className="flex flex-col space-y-3">
-              <Link 
-                href="/docs/install/" 
-                className="text-sm text-muted-foreground hover:text-violet-600"
-              >
+              <Link href="/docs/install/" className="text-sm text-muted-foreground hover:text-violet-600">
                 Installation Guide
               </Link>
-              <Link 
-                href="/docs/features/chat-ui/" 
-                className="text-sm text-muted-foreground hover:text-violet-600"
-              >
+              <Link href="/docs/features/chat-ui/" className="text-sm text-muted-foreground hover:text-violet-600">
                 Chat Interface
               </Link>
-              <Link 
-                href="/docs/features/model-downloads/" 
+              <Link
+                href="/docs/features/model-downloads/"
                 className="text-sm text-muted-foreground hover:text-violet-600"
               >
                 Model Management
               </Link>
-              <Link 
-                href="/docs/troubleshooting/" 
-                className="text-sm text-muted-foreground hover:text-violet-600"
-              >
+              <Link href="/docs/troubleshooting/" className="text-sm text-muted-foreground hover:text-violet-600">
                 Troubleshooting
               </Link>
             </nav>
@@ -65,8 +48,8 @@ export function Footer() {
             <h3 className="font-semibold text-foreground">Community</h3>
             <nav className="flex flex-col space-y-3">
               <Button variant="link" className="h-auto justify-start p-0" asChild>
-                <Link 
-                  href="https://github.com/BodhiSearch/BodhiApp" 
+                <Link
+                  href="https://github.com/BodhiSearch/BodhiApp"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-violet-600"
@@ -77,8 +60,8 @@ export function Footer() {
                 </Link>
               </Button>
               <Button variant="link" className="h-auto justify-start p-0" asChild>
-                <Link 
-                  href="https://discord.gg/3vur28nz82" 
+                <Link
+                  href="https://discord.gg/3vur28nz82"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-violet-600"
@@ -95,9 +78,7 @@ export function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Bodhi App. All rights reserved.
-          </p>
+          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Bodhi App. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Button variant="ghost" size="icon" asChild>
               <Link
@@ -124,4 +105,4 @@ export function Footer() {
       </Container>
     </footer>
   );
-} 
+}
