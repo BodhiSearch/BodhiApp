@@ -12,6 +12,8 @@
     "format": "prettier --write .",
     "sync:docs": "node scripts/sync-docs.js",
     "sync:docs:check": "node scripts/sync-docs.js --check",
+    "update_releases": "node scripts/update-release-urls.js",
+    "update_releases:check": "node scripts/update-release-urls.js --check",
     "prebuild": "npm run sync:docs"
   },
   "dependencies": {
@@ -39,12 +41,14 @@
     "unified": "^11.0.5"
   },
   "devDependencies": {
+    "@octokit/rest": "^22.0.0",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "dotenv": "^17.2.3",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.22",
     "eslint-config-prettier": "^9.1.0",

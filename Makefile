@@ -301,9 +301,28 @@ extension.download: ## Download Bodhi browser extension for testing (use FORCE=1
 
 # Website documentation sync
 sync.docs: ## Sync documentation from embedded app to website
-	@cd getbodhi.app && $(MAKE) sync.docs
+	$(MAKE) -C getbodhi.app sync.docs
 
 sync.docs.check: ## Check if website docs are in sync (release gate)
-	@cd getbodhi.app && $(MAKE) sync.docs.check
+	$(MAKE) -C getbodhi.app sync.docs.check
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run extension.download sync.docs sync.docs.check help
+# Website release URLs
+website.update_releases: ## Update website release URLs from latest releases
+	$(MAKE) -C getbodhi.app update_releases
+
+website.update_releases.check: ## Check latest releases (dry-run)
+	$(MAKE) -C getbodhi.app update_releases.check
+
+.PHONY: test format coverage \
+	ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui \
+	ci.ts-client-check ci.ts-client-test ts-client \
+	release-app release-app-bindings \
+	ui.test \
+	docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda \
+	docker.run docker.list docker.clean \
+	release-docker release-docker-dev check-docker-versions \
+	update-context-symlinks update-context-symlinks-dry-run \
+	extension.download \
+	sync.docs sync.docs.check \
+	website.update_releases website.update_releases.check \
+	help
