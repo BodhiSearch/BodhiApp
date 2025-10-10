@@ -20,7 +20,18 @@ update_releases.check: ## Check latest releases (dry-run)
 build: ## Build website (auto-syncs docs first via prebuild)
 	@npm run build
 
+format: ## Format code
+	@npm run format
+
+lint: ## Lint code
+	@npm run lint
+
+lint.fix: ## Lint code and fix errors
+	@npm run lint:fix
+
 .PHONY: help \
 	sync.docs sync.docs.check \
 	update_releases update_releases.check \
-	build
+	build \
+	format format.fix \
+	lint lint.fix

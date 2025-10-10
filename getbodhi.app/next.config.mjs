@@ -9,7 +9,11 @@ if (existsSync(envPath)) {
 }
 
 // After optional load, validate required env vars exist
-const requiredVars = ['NEXT_PUBLIC_DOWNLOAD_URL_MACOS_ARM64'];
+const requiredVars = [
+  'NEXT_PUBLIC_DOWNLOAD_URL_MACOS',
+  'NEXT_PUBLIC_DOWNLOAD_URL_WINDOWS',
+  'NEXT_PUBLIC_DOWNLOAD_URL_LINUX',
+];
 requiredVars.forEach((varName) => {
   if (!process.env[varName]) {
     throw new Error(

@@ -19,8 +19,29 @@ const REPO = 'BodhiApp';
 const TAG_PATTERNS = [
   {
     regex: /^app\/v/,
-    assetPattern: /_aarch64\.dmg$/,
-    envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_MACOS_ARM64',
+    platforms: [
+      {
+        id: 'macos',
+        assetPattern: /Bodhi[\s.]App.*\.dmg$/,
+        envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_MACOS',
+        platformKey: 'macos',
+        archKey: 'silicon',
+      },
+      {
+        id: 'windows',
+        assetPattern: /Bodhi[\s.]App.*\.msi$/,
+        envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_WINDOWS',
+        platformKey: 'windows',
+        archKey: 'x64',
+      },
+      {
+        id: 'linux',
+        assetPattern: /Bodhi[\s.]App.*\.rpm$/,
+        envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_LINUX',
+        platformKey: 'linux',
+        archKey: 'x64',
+      },
+    ],
   },
   // Future patterns:
   // { regex: /^docker\/v/, envVar: 'NEXT_PUBLIC_DOCKER_VERSION' },
@@ -31,6 +52,7 @@ const TAG_PATTERNS = [
 
 async function fetchLatestReleases() {
   const found = {};
+  let releaseMetadata = null;
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
@@ -39,7 +61,13 @@ async function fetchLatestReleases() {
 
   console.log('Fetching releases from GitHub...');
 
-  while (shouldContinue && Object.keys(found).length < TAG_PATTERNS.length) {
+  // Count total platforms to find
+  const totalPlatforms = TAG_PATTERNS.reduce(
+    (sum, pattern) => sum + (pattern.platforms ? pattern.platforms.length : 1),
+    0
+  );
+
+  while (shouldContinue && Object.keys(found).length < totalPlatforms) {
     const { data: releases } = await octokit.repos.listReleases({
       owner: OWNER,
       repo: REPO,
@@ -66,24 +94,59 @@ async function fetchLatestReleases() {
 
       // Check each tag pattern
       for (const pattern of TAG_PATTERNS) {
-        if (!found[pattern.envVar] && pattern.regex.test(release.tag_name)) {
-          // If pattern has assetPattern, find matching asset
-          if (pattern.assetPattern) {
-            const asset = release.assets.find((a) => pattern.assetPattern.test(a.name));
-            if (asset) {
-              found[pattern.envVar] = asset.browser_download_url;
-              console.log(`✓ Found ${pattern.envVar}: ${release.tag_name} -> ${asset.name}`);
+        if (pattern.regex.test(release.tag_name)) {
+          // Handle platform-based patterns
+          if (pattern.platforms) {
+            for (const platform of pattern.platforms) {
+              if (!found[platform.envVar]) {
+                const asset = release.assets.find((a) => platform.assetPattern.test(a.name));
+                if (asset) {
+                  found[platform.envVar] = {
+                    url: asset.browser_download_url,
+                    filename: asset.name,
+                    platformKey: platform.platformKey,
+                    archKey: platform.archKey,
+                  };
+                  console.log(`✓ Found ${platform.id}: ${release.tag_name} -> ${asset.name}`);
+                }
+              }
+            }
+
+            // Store release metadata (version, tag, released_at) from first matching release
+            if (!releaseMetadata) {
+              const versionMatch = release.tag_name.match(/v([\d.]+)$/);
+              releaseMetadata = {
+                version: versionMatch ? versionMatch[1] : release.tag_name,
+                tag: release.tag_name,
+                released_at: release.published_at || release.created_at,
+              };
+            }
+          } else if (pattern.assetPattern) {
+            // Legacy single-asset pattern
+            if (!found[pattern.envVar]) {
+              const asset = release.assets.find((a) => pattern.assetPattern.test(a.name));
+              if (asset) {
+                found[pattern.envVar] = {
+                  url: asset.browser_download_url,
+                  filename: asset.name,
+                };
+                console.log(`✓ Found ${pattern.envVar}: ${release.tag_name} -> ${asset.name}`);
+              }
             }
           } else {
             // No asset pattern - just store the tag
-            found[pattern.envVar] = release.tag_name;
-            console.log(`✓ Found ${pattern.envVar}: ${release.tag_name}`);
+            if (!found[pattern.envVar]) {
+              found[pattern.envVar] = {
+                url: release.tag_name,
+              };
+              console.log(`✓ Found ${pattern.envVar}: ${release.tag_name}`);
+            }
           }
         }
       }
 
-      // If all patterns found, we can stop
-      if (Object.keys(found).length === TAG_PATTERNS.length) {
+      // If all platforms found, we can stop
+      if (Object.keys(found).length === totalPlatforms) {
         shouldContinue = false;
         break;
       }
@@ -97,10 +160,10 @@ async function fetchLatestReleases() {
     page++;
   }
 
-  return found;
+  return { found, releaseMetadata };
 }
 
-function generateEnvFile(urls, dryRun) {
+function generateEnvFile(data, releaseMetadata, dryRun) {
   const lines = [
     '# Auto-generated download URLs for website',
     `# Last updated: ${new Date().toISOString().split('T')[0]}`,
@@ -110,8 +173,19 @@ function generateEnvFile(urls, dryRun) {
     '',
   ];
 
-  for (const [key, value] of Object.entries(urls)) {
-    lines.push(`${key}=${value}`);
+  // Add version and tag if available
+  if (releaseMetadata) {
+    lines.push('# App version and tag');
+    lines.push(`NEXT_PUBLIC_APP_VERSION=${releaseMetadata.version}`);
+    lines.push(`NEXT_PUBLIC_APP_TAG=${releaseMetadata.tag}`);
+    lines.push('');
+    lines.push('# Platform download URLs');
+  }
+
+  // Add download URLs
+  for (const [key, value] of Object.entries(data)) {
+    const url = typeof value === 'string' ? value : value.url;
+    lines.push(`${key}=${url}`);
   }
 
   const content = lines.join('\n') + '\n';
@@ -125,7 +199,54 @@ function generateEnvFile(urls, dryRun) {
   fs.writeFileSync('.env.release_urls', content);
   console.log('\n✓ Updated .env.release_urls');
   console.log('  File:', '.env.release_urls');
-  console.log('  Variables updated:', Object.keys(urls).length);
+  console.log('  Variables updated:', Object.keys(data).length + (releaseMetadata ? 2 : 0));
+}
+
+function generateReleasesJson(data, releaseMetadata, dryRun) {
+  if (!releaseMetadata) {
+    console.log('\n⚠ Skipping releases.json generation - no release metadata available');
+    return;
+  }
+
+  // Build nested platform structure
+  const platforms = {};
+
+  for (const value of Object.values(data)) {
+    if (value.platformKey && value.archKey) {
+      if (!platforms[value.platformKey]) {
+        platforms[value.platformKey] = {};
+      }
+      platforms[value.platformKey][value.archKey] = {
+        download_url: value.url,
+        filename: value.filename,
+      };
+    }
+  }
+
+  const releasesData = {
+    version: releaseMetadata.version,
+    tag: releaseMetadata.tag,
+    released_at: releaseMetadata.released_at,
+    platforms,
+  };
+
+  const content = JSON.stringify(releasesData, null, 2) + '\n';
+
+  if (dryRun) {
+    console.log('\n=== Dry-run mode - would write to public/releases.json: ===\n');
+    console.log(content);
+    return;
+  }
+
+  // Ensure public directory exists
+  if (!fs.existsSync('public')) {
+    fs.mkdirSync('public', { recursive: true });
+  }
+
+  fs.writeFileSync('public/releases.json', content);
+  console.log('\n✓ Updated public/releases.json');
+  console.log('  File:', 'public/releases.json');
+  console.log('  Platforms:', Object.keys(platforms).length);
 }
 
 async function main() {
@@ -135,9 +256,9 @@ async function main() {
   console.log('');
 
   try {
-    const urls = await fetchLatestReleases();
+    const { found, releaseMetadata } = await fetchLatestReleases();
 
-    if (Object.keys(urls).length === 0) {
+    if (Object.keys(found).length === 0) {
       console.error('\n✗ No matching releases found!');
       console.error(
         '  Searched for patterns:',
@@ -146,13 +267,14 @@ async function main() {
       process.exit(1);
     }
 
-    generateEnvFile(urls, dryRun);
+    generateEnvFile(found, releaseMetadata, dryRun);
+    generateReleasesJson(found, releaseMetadata, dryRun);
 
     if (!dryRun) {
       console.log('\nNext steps:');
-      console.log('  1. Review changes: git diff .env.release_urls');
+      console.log('  1. Review changes: git diff .env.release_urls public/releases.json');
       console.log('  2. Test build: npm run build');
-      console.log('  3. Commit changes: git add .env.release_urls && git commit');
+      console.log('  3. Commit changes: git add .env.release_urls public/releases.json && git commit');
     }
   } catch (error) {
     console.error('\n✗ Error:', error.message);

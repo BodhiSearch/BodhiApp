@@ -26,6 +26,7 @@ format: ## Format code in all projects (Rust, Node, Python)
 	cd crates/bodhi && npm run format
 	cd crates/lib_bodhiserver_napi && npm run format
 	# cd openai-pysdk-compat && poetry run ruff format .
+	$(MAKE) -C getbodhi.app format
 
 format.all: format ## Format code in all projects (Rust, Node, Python), and run Clippy
 	cargo clippy --fix --allow-dirty --allow-staged

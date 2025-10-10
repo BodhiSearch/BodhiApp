@@ -1,0 +1,25 @@
+{
+  "version": "0.0.31",
+  "tag": "app/v0.0.31",
+  "released_at": "2025-10-07T11:16:55Z",
+  "platforms": {
+    "macos": {
+      "silicon": {
+        "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App_0.1.0_aarch64.dmg",
+        "filename": "Bodhi.App_0.1.0_aarch64.dmg"
+      }
+    },
+    "windows": {
+      "x64": {
+        "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App_0.1.0_x64_en-US.msi",
+        "filename": "Bodhi.App_0.1.0_x64_en-US.msi"
+      }
+    },
+    "linux": {
+      "x64": {
+        "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App-0.1.0-1.x86_64.rpm",
+        "filename": "Bodhi.App-0.1.0-1.x86_64.rpm"
+      }
+    }
+  }
+}
