@@ -321,6 +321,9 @@ website.update_releases: ## Update website release URLs from latest releases
 website.update_releases.check: ## Check latest releases (dry-run)
 	$(MAKE) -C getbodhi.app update_releases.check
 
+website.release: ## Create and push tag for website release
+	$(MAKE) -C getbodhi.app release
+
 .PHONY: test format coverage \
 	ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui \
 	ci.ts-client-check ci.ts-client-test ts-client \
@@ -332,5 +335,5 @@ website.update_releases.check: ## Check latest releases (dry-run)
 	update-context-symlinks update-context-symlinks-dry-run \
 	extension.download \
 	sync.docs sync.docs.check \
-	website.update_releases website.update_releases.check \
+	website.update_releases website.update_releases.check website.release \
 	help

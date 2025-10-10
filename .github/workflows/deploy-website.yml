@@ -1,8 +1,17 @@
 name: Deploy Website to GitHub Pages
 
 on:
-  # Manual trigger only
+  # Manual trigger with version input
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (x.y.z format, e.g., 0.1.0)'
+        required: true
+        type: string
+  # Auto-trigger on release tags
+  push:
+    tags:
+      - 'getbodhi.app/v*'
 
 permissions:
   contents: read
@@ -47,6 +56,39 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Update version and generate version.json
+        run: |
+          # Determine version based on trigger type
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using workflow_dispatch version: $VERSION"
+          else
+            VERSION="${GITHUB_REF_NAME#getbodhi.app/v}"
+            echo "Using tag version: $VERSION"
+          fi
+
+          # Validate version format
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format: $VERSION (expected x.y.z)"
+            exit 1
+          fi
+
+          SHA="${GITHUB_SHA:0:8}"
+
+          # Update package.json version
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          echo "✓ Updated package.json to version $VERSION"
+
+          # Generate version.json
+          mkdir -p public
+          cat > public/version.json << EOF
+          {
+            "version": "$VERSION",
+            "tag": "$SHA"
+          }
+          EOF
+          echo "✓ Generated version.json with version=$VERSION, tag=$SHA"
+
       - name: Build with Next.js
         run: npm run build
 
@@ -65,3 +107,55 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  bump-dev-version:
+    if: startsWith(github.ref, 'refs/tags/getbodhi.app/v')
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: getbodhi.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Bump to development version
+        run: |
+          VERSION="${GITHUB_REF_NAME#getbodhi.app/v}"
+          NEXT_VERSION=$(node ../scripts/increment_version.js "$VERSION" patch dev)
+          echo "Bumping to development version: $NEXT_VERSION"
+
+          # Update package.json and package-lock.json
+          npm version "$NEXT_VERSION" --no-git-tag-version --allow-same-version
+
+          # Generate dev version.json
+          mkdir -p public
+          cat > public/version.json << EOF
+          {
+            "version": "$NEXT_VERSION",
+            "tag": "dev"
+          }
+          EOF
+
+          echo "Updated package.json to $NEXT_VERSION"
+          echo "Generated dev version.json"
+
+      - name: Commit and push
+        run: |
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add getbodhi.app/package.json getbodhi.app/package-lock.json getbodhi.app/public/version.json
+          git commit -m "chore(getbodhi.app): bump to development version after release
+
+          Automatically bumped after deploying ${GITHUB_REF_NAME}"
+          git push origin main
