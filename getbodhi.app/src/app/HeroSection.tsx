@@ -1,13 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Download, ChevronRight } from 'lucide-react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import Image from 'next/image';
 import Link from 'next/link';
 import { fadeIn } from './animations';
-import { DOWNLOAD_URL } from '@/lib/constants';
+import { DownloadButton } from '@/components/DownloadButton';
 
 export function HeroSection() {
   return (
@@ -40,10 +40,11 @@ export function HeroSection() {
             Run LLMs locally, completely free, private and without technical hassle or setup.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button size="lg" className="gap-2" asChild>
-              <Link href={DOWNLOAD_URL}>
-                <Download className="h-5 w-5" />
-                Download for macOS
+            <DownloadButton />
+            <Button variant="outline" size="lg" className="gap-2" asChild>
+              <Link href="#download-section">
+                Download for other platforms
+                <ChevronDown className="h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="gap-2" asChild>
