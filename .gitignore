@@ -43,7 +43,6 @@ coverage/**
 coverage.*/**
 
 # python
-.env
 .idea
 storage
 .python-version
@@ -181,6 +180,7 @@ celerybeat.pid
 !.env.example
 !.env.test.example
 !.env.ci
+!getbodhi.app/.env.release_urls
 .venv
 env/
 venv/
