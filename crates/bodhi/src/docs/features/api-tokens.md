@@ -97,7 +97,6 @@ Choose permissions granted to this token. Each scope enables access to specific 
 Currently, Bodhi App supports two token scopes:
 
 1. **Token User** (Read-Only Access):
-
    - Chat completions API (`/bodhi/v1/chat/completions`)
    - Embeddings API (`/bodhi/v1/embeddings`)
    - Model listing (read-only access to `/bodhi/v1/models`)
@@ -372,30 +371,25 @@ Capabilities: All Token User capabilities + model download/deletion
 **Possible Causes & Solutions**:
 
 1. **Token Copied Incorrectly**:
-
    - Verify no extra spaces before/after token
    - Check entire token copied (no truncation)
    - Try copying again from secure storage
 
 2. **Token Inactive**:
-
    - Check token status in Tokens page
    - Reactivate if accidentally deactivated
    - Create new token if intentionally deactivated
 
 3. **Wrong Authorization Header Format**:
-
    - Correct: `Authorization: Bearer YOUR_TOKEN`
    - Incorrect: `Authorization: YOUR_TOKEN` (missing "Bearer ")
    - Incorrect: `Bearer YOUR_TOKEN` (missing "Authorization:" header)
 
 4. **Token Expiration**:
-
    - Tokens currently do not expire automatically
    - If authentication fails, check token is still active in UI
 
 5. **User Removed**:
-
    - Token invalidated when user deleted
    - Create new token with active user account
 
@@ -442,13 +436,11 @@ Capabilities: All Token User capabilities + model download/deletion
 **Solutions**:
 
 1. **Check Token Scopes**:
-
    - View token scopes in the tokens list UI
    - Scopes are displayed in the table for easy identification
    - Verify required scope for endpoint
 
 2. **Create New Token with Correct Scopes**:
-
    - **Scopes cannot be modified after token creation**
    - Create new token with required scopes
    - Update application configuration with new token

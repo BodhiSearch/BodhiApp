@@ -58,7 +58,6 @@ The Settings page clearly shows which source is providing the current value, hel
 
 1. **Listing Settings:**
    The Settings page displays all application configurations organized into categorized cards. Each setting shows:
-
    - **Current Value:** The active setting in use
    - **Default Value:** The value that would be applied if not overridden
    - **Source:** Color-coded badge indicating the origin (System/CLI/Env/File/Default)
