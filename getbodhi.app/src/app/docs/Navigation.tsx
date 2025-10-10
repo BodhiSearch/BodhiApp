@@ -32,11 +32,5 @@ export function Navigation({ items }: NavigationProps) {
     };
   });
 
-  return (
-    <SidebarNav
-      items={navItems}
-      className="p-4"
-      data-testid="main-navigation"
-    />
-  );
+  return <SidebarNav items={navItems} className="p-4" data-testid="main-navigation" />;
 }

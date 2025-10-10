@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import { Database, FileJson, Rocket } from "lucide-react";
+import { motion } from 'framer-motion';
+import { Database, FileJson, Rocket } from 'lucide-react';
 
 export function SocialProofSection() {
   return (
@@ -29,4 +29,4 @@ export function SocialProofSection() {
       </div>
     </section>
   );
-} 
+}

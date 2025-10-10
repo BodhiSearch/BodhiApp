@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import { Mail, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import Image from "next/image";
-import Link from "next/link";
-import { fadeIn } from "./animations";
+import { motion } from 'framer-motion';
+import { Mail, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Container } from '@/components/ui/container';
+import Image from 'next/image';
+import Link from 'next/link';
+import { fadeIn } from './animations';
 
 export function HeroSection() {
   return (
@@ -30,7 +30,7 @@ export function HeroSection() {
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Run LLMs locally, powered by{" "}
+            Run LLMs locally, powered by{' '}
             <span className="bg-gradient-to-r from-violet-600 to-purple-400 bg-clip-text text-transparent animate-gradient">
               Open Source
             </span>
