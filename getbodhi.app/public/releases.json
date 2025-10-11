@@ -1,26 +1,67 @@
 {
   "desktop": {
-    "version": "0.0.31",
-    "tag": "app/v0.0.31",
-    "released_at": "2025-10-07T11:16:55Z",
+    "version": "0.0.32",
+    "tag": "app/v0.0.32",
+    "released_at": "2025-10-10T15:36:41Z",
     "platforms": {
       "macos": {
         "silicon": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App_0.1.0_aarch64.dmg",
-          "filename": "Bodhi.App_0.1.0_aarch64.dmg"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.dmg",
+          "filename": "Bodhi.App.dmg"
         }
       },
       "windows": {
         "x64": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App_0.1.0_x64_en-US.msi",
-          "filename": "Bodhi.App_0.1.0_x64_en-US.msi"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.msi",
+          "filename": "Bodhi.App.msi"
         }
       },
       "linux": {
         "x64": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.31/Bodhi.App-0.1.0-1.x86_64.rpm",
-          "filename": "Bodhi.App-0.1.0-1.x86_64.rpm"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.rpm",
+          "filename": "Bodhi.App.rpm"
         }
+      }
+    }
+  },
+  "docker": {
+    "version": "0.0.3",
+    "tag": "docker/v0.0.3",
+    "released_at": "2025-10-10T16:14:12Z",
+    "registry": "ghcr.io/bodhisearch/bodhiapp",
+    "variants": {
+      "cpu": {
+        "image_tag": "0.0.3-cpu",
+        "latest_tag": "latest-cpu",
+        "platforms": [
+          "linux/amd64",
+          "linux/arm64"
+        ],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  ghcr.io/bodhisearch/bodhiapp:latest-cpu",
+        "description": "Multi-platform: AMD64 + ARM64"
+      },
+      "cuda": {
+        "image_tag": "0.0.3-cuda",
+        "latest_tag": "latest-cuda",
+        "platforms": [
+          "linux/amd64"
+        ],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cuda",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --gpus all \\\n  ghcr.io/bodhisearch/bodhiapp:latest-cuda",
+        "description": "NVIDIA GPU acceleration",
+        "gpu_type": "NVIDIA"
+      },
+      "rocm": {
+        "image_tag": "0.0.3-rocm",
+        "latest_tag": "latest-rocm",
+        "platforms": [
+          "linux/amd64"
+        ],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-rocm",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/kfd \\\n  --device=/dev/dri \\\n  --group-add video \\\n  ghcr.io/bodhisearch/bodhiapp:latest-rocm",
+        "description": "AMD GPU acceleration",
+        "gpu_type": "AMD"
       }
     }
   }
