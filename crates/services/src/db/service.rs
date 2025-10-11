@@ -1,7 +1,7 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
-  ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError, TokenStatus,
-  UserAccessRequest, UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError,
+  TokenStatus, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -132,7 +132,11 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     filename: &str,
   ) -> Result<Vec<DownloadRequest>, DbError>;
 
-  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError>;
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError>;
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
 
@@ -140,7 +144,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     &self,
     id: &str,
     model: &ApiAlias,
-    api_key: Option<String>,
+    api_key: ApiKeyUpdate,
   ) -> Result<(), DbError>;
 
   async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
@@ -893,12 +897,21 @@ impl DbService for SqliteDbService {
     Ok(items)
   }
 
-  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError> {
-    let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, api_key)
-      .map_err(|e| DbError::EncryptionError(e.to_string()))?;
-
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError> {
     let models_json = serde_json::to_string(&alias.models)
       .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
+
+    let (encrypted_api_key, salt, nonce) = if let Some(ref key) = api_key {
+      let (enc, s, n) = encrypt_api_key(&self.encryption_key, key)
+        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+      (Some(enc), Some(s), Some(n))
+    } else {
+      (None, None, None)
+    };
 
     sqlx::query(
       r#"
@@ -907,7 +920,7 @@ impl DbService for SqliteDbService {
       "#
     )
     .bind(&alias.id)
-    .bind(&alias.api_format.to_string())
+    .bind(alias.api_format.to_string())
     .bind(&alias.base_url)
     .bind(&models_json)
     .bind(&alias.prefix)
@@ -959,53 +972,78 @@ impl DbService for SqliteDbService {
     &self,
     id: &str,
     model: &ApiAlias,
-    api_key: Option<String>,
+    api_key: ApiKeyUpdate,
   ) -> Result<(), DbError> {
     let models_json = serde_json::to_string(&model.models)
       .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
 
     let now = self.time_service.utc_now();
 
-    if let Some(api_key) = api_key {
-      // Update with new API key
-      let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, &api_key)
-        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+    match api_key {
+      ApiKeyUpdate::Set(api_key_opt) => {
+        // Update with new API key (or clear if None)
+        match api_key_opt {
+          Some(api_key) => {
+            let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, &api_key)
+              .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
-      sqlx::query(
-        r#"
-        UPDATE api_model_aliases 
-        SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
-        WHERE id = ?
-        "#
-      )
-      .bind(&model.api_format.to_string())
-      .bind(&model.base_url)
-      .bind(&models_json)
-      .bind(&model.prefix)
-      .bind(&encrypted_api_key)
-      .bind(&salt)
-      .bind(&nonce)
-      .bind(now.timestamp())
-      .bind(id)
-      .execute(&self.pool)
-      .await?;
-    } else {
-      // Update without changing API key
-      sqlx::query(
-        r#"
-        UPDATE api_model_aliases 
-        SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
-        WHERE id = ?
-        "#,
-      )
-      .bind(&model.api_format.to_string())
-      .bind(&model.base_url)
-      .bind(&models_json)
-      .bind(&model.prefix)
-      .bind(now.timestamp())
-      .bind(id)
-      .execute(&self.pool)
-      .await?;
+            sqlx::query(
+              r#"
+              UPDATE api_model_aliases
+              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+              WHERE id = ?
+              "#
+            )
+            .bind(model.api_format.to_string())
+            .bind(&model.base_url)
+            .bind(&models_json)
+            .bind(&model.prefix)
+            .bind(&encrypted_api_key)
+            .bind(&salt)
+            .bind(&nonce)
+            .bind(now.timestamp())
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+          }
+          None => {
+            // Clear the API key
+            sqlx::query(
+              r#"
+              UPDATE api_model_aliases
+              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = NULL, salt = NULL, nonce = NULL, updated_at = ?
+              WHERE id = ?
+              "#
+            )
+            .bind(model.api_format.to_string())
+            .bind(&model.base_url)
+            .bind(&models_json)
+            .bind(&model.prefix)
+            .bind(now.timestamp())
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+          }
+        }
+      }
+      ApiKeyUpdate::Keep => {
+        // Update without changing API key
+        sqlx::query(
+          r#"
+          UPDATE api_model_aliases
+          SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
+          WHERE id = ?
+          "#,
+        )
+        .bind(model.api_format.to_string())
+        .bind(&model.base_url)
+        .bind(&models_json)
+        .bind(&model.prefix)
+        .bind(now.timestamp())
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+      }
     }
 
     Ok(())
@@ -1053,7 +1091,7 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError> {
-    let result = query_as::<_, (String, String, String)>(
+    let result = query_as::<_, (Option<String>, Option<String>, Option<String>)>(
       "SELECT encrypted_api_key, salt, nonce FROM api_model_aliases WHERE id = ?",
     )
     .bind(id)
@@ -1061,12 +1099,26 @@ impl DbService for SqliteDbService {
     .await?;
 
     match result {
-      Some((encrypted_api_key, salt, nonce)) => {
+      Some((Some(encrypted_api_key), Some(salt), Some(nonce))) => {
         let api_key = decrypt_api_key(&self.encryption_key, &encrypted_api_key, &salt, &nonce)
           .map_err(|e| DbError::EncryptionError(e.to_string()))?;
         Ok(Some(api_key))
       }
-      None => Ok(None),
+      Some((None, None, None)) => {
+        // No API key stored - return None
+        Ok(None)
+      }
+      Some(_) => {
+        // Partial NULL - data corruption
+        Err(DbError::EncryptionError(format!(
+          "Data corruption: API key encryption fields are partially NULL for alias '{}'",
+          id
+        )))
+      }
+      None => {
+        // Alias doesn't exist
+        Ok(None)
+      }
     }
   }
 
@@ -1079,8 +1131,8 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, SqlxError, TokenStatus,
-      UserAccessRequest, UserAccessRequestStatus,
+      ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, SqlxError,
+      TokenStatus, UserAccessRequest, UserAccessRequestStatus,
     },
     test_utils::{test_db_service, TestDbService},
   };
@@ -1513,7 +1565,9 @@ mod test {
     let api_key = "sk-test123456789";
 
     // Create API model alias
-    service.create_api_model_alias(&alias_obj, api_key).await?;
+    service
+      .create_api_model_alias(&alias_obj, Some(api_key.to_string()))
+      .await?;
 
     // Retrieve and verify
     let retrieved = service.get_api_model_alias("openai").await?.unwrap();
@@ -1522,6 +1576,39 @@ mod test {
     // Verify API key is stored encrypted and retrievable
     let decrypted_key = service.get_api_key_for_alias("openai").await?.unwrap();
     assert_eq!(api_key, decrypted_key);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_model_alias_without_key(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let alias_obj = ApiAlias::new(
+      "no-key-model",
+      ApiFormat::OpenAI,
+      "https://api.example.com/v1",
+      vec!["gpt-4".to_string()],
+      None,
+      now,
+    );
+
+    // Create API model alias WITHOUT api_key
+    service.create_api_model_alias(&alias_obj, None).await?;
+
+    // Verify model exists
+    let retrieved = service.get_api_model_alias("no-key-model").await?;
+    assert!(retrieved.is_some());
+    assert_eq!(alias_obj, retrieved.unwrap());
+
+    // Verify API key is None
+    let key = service.get_api_key_for_alias("no-key-model").await?;
+    assert_eq!(None, key);
 
     Ok(())
   }
@@ -1548,13 +1635,17 @@ mod test {
 
     // Create initial alias
     service
-      .create_api_model_alias(&alias_obj, original_api_key)
+      .create_api_model_alias(&alias_obj, Some(original_api_key.to_string()))
       .await?;
 
     // Update with new API key and additional model
     alias_obj.models.push("claude-3.5".to_string());
     service
-      .update_api_model_alias("claude", &alias_obj, Some(new_api_key.to_string()))
+      .update_api_model_alias(
+        "claude",
+        &alias_obj,
+        ApiKeyUpdate::Set(Some(new_api_key.to_string())),
+      )
       .await?;
 
     // Verify updated data
@@ -1588,12 +1679,14 @@ mod test {
     let api_key = "AIzaSy-test123";
 
     // Create initial alias
-    service.create_api_model_alias(&alias_obj, api_key).await?;
+    service
+      .create_api_model_alias(&alias_obj, Some(api_key.to_string()))
+      .await?;
 
     // Update without changing API key
     alias_obj.base_url = "https://generativelanguage.googleapis.com/v1beta".to_string();
     service
-      .update_api_model_alias("gemini", &alias_obj, None)
+      .update_api_model_alias("gemini", &alias_obj, ApiKeyUpdate::Keep)
       .await?;
 
     // Verify API key unchanged
@@ -1636,7 +1729,9 @@ mod test {
         None,
         *created_at,
       );
-      service.create_api_model_alias(&alias_obj, key).await?;
+      service
+        .create_api_model_alias(&alias_obj, Some(key.to_string()))
+        .await?;
     }
 
     // List and verify
@@ -1670,7 +1765,7 @@ mod test {
 
     // Create and verify exists
     service
-      .create_api_model_alias(&alias_obj, "test-key")
+      .create_api_model_alias(&alias_obj, Some("test-key".to_string()))
       .await?;
     assert!(service.get_api_model_alias("to-delete").await?.is_some());
 
@@ -1703,7 +1798,7 @@ mod test {
 
     // Store API key
     service
-      .create_api_model_alias(&alias_obj, sensitive_key)
+      .create_api_model_alias(&alias_obj, Some(sensitive_key.to_string()))
       .await?;
 
     // Verify different encryptions produce different results
@@ -1716,7 +1811,7 @@ mod test {
       now,
     );
     service
-      .create_api_model_alias(&alias_obj2, sensitive_key)
+      .create_api_model_alias(&alias_obj2, Some(sensitive_key.to_string()))
       .await?;
 
     // Both should decrypt to same key but have different encrypted values in DB
@@ -1750,6 +1845,102 @@ mod test {
     // Test getting API key for non-existent alias
     let key = service.get_api_key_for_alias("nonexistent").await?;
     assert!(key.is_none());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_model_alias_keeps_key_when_none_provided(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut alias_obj = ApiAlias::new(
+      "keep-key-test",
+      ApiFormat::OpenAI,
+      "https://api.example.com/v1",
+      vec!["gpt-4".to_string()],
+      None,
+      now,
+    );
+    let original_key = "sk-original-key-12345";
+
+    // Create WITH api_key
+    service
+      .create_api_model_alias(&alias_obj, Some(original_key.to_string()))
+      .await?;
+
+    // Verify key exists
+    let key = service.get_api_key_for_alias("keep-key-test").await?;
+    assert_eq!(Some(original_key.to_string()), key);
+
+    // Update without providing api_key (Keep) - should keep existing key
+    alias_obj.base_url = "https://api.example.com/v2".to_string();
+    service
+      .update_api_model_alias("keep-key-test", &alias_obj, ApiKeyUpdate::Keep)
+      .await?;
+
+    // Verify key still exists and unchanged
+    let key = service.get_api_key_for_alias("keep-key-test").await?;
+    assert_eq!(Some(original_key.to_string()), key);
+
+    // Verify other fields were updated
+    let updated_alias = service.get_api_model_alias("keep-key-test").await?.unwrap();
+    assert_eq!("https://api.example.com/v2", updated_alias.base_url);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::with_existing_key(Some("sk-key-to-be-cleared"), "https://api.example.com/v2")]
+  #[case::without_existing_key(None, "https://api.example.com/v2")]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_model_alias_clear_key(
+    #[case] initial_api_key: Option<&str>,
+    #[case] updated_base_url: &str,
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut alias_obj = ApiAlias::new(
+      "clear-key-test",
+      ApiFormat::OpenAI,
+      "https://api.example.com/v1",
+      vec!["gpt-4".to_string()],
+      None,
+      now,
+    );
+
+    // Create with or without API key
+    service
+      .create_api_model_alias(&alias_obj, initial_api_key.map(|s| s.to_string()))
+      .await?;
+
+    // Verify initial key state
+    let key = service.get_api_key_for_alias("clear-key-test").await?;
+    assert_eq!(initial_api_key.map(|s| s.to_string()), key);
+
+    // Update and clear the API key
+    alias_obj.base_url = updated_base_url.to_string();
+    service
+      .update_api_model_alias("clear-key-test", &alias_obj, ApiKeyUpdate::Set(None))
+      .await?;
+
+    // Verify key is now None (regardless of initial state)
+    let key = service.get_api_key_for_alias("clear-key-test").await?;
+    assert_eq!(None, key);
+
+    // Verify model still exists and other fields were updated
+    let model = service
+      .get_api_model_alias("clear-key-test")
+      .await?
+      .unwrap();
+    assert_eq!(updated_base_url, model.base_url);
 
     Ok(())
   }

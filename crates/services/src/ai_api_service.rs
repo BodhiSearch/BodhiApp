@@ -18,19 +18,19 @@ pub enum AiApiServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
 
-  #[error("ai_api_service_api_error")]
+  #[error("api_error")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ApiError(String),
 
-  #[error("ai_api_service_unauthorized")]
+  #[error("unauthorized")]
   #[error_meta(error_type = ErrorType::Authentication)]
   Unauthorized(String),
 
-  #[error("ai_api_service_not_found")]
+  #[error("not_found")]
   #[error_meta(error_type = ErrorType::NotFound)]
   NotFound(String),
 
-  #[error("ai_api_service_rate_limit")]
+  #[error("rate_limit")]
   #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   RateLimit(String),
 
@@ -44,10 +44,6 @@ pub enum AiApiServiceError {
   #[error("model_not_found")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ModelNotFound(String),
-
-  #[error("api_key_not_found")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  ApiKeyNotFound(String),
 }
 
 impl_error_from!(
@@ -62,16 +58,18 @@ type Result<T> = std::result::Result<T, AiApiServiceError>;
 #[async_trait]
 pub trait AiApiService: Send + Sync + std::fmt::Debug {
   /// Test connectivity with a short prompt (max 30 chars for cost control)
+  /// API key is optional - if None, requests without authentication (API may return 401)
   async fn test_prompt(
     &self,
-    api_key: &str,
+    api_key: Option<String>,
     base_url: &str,
     model: &str,
     prompt: &str,
   ) -> Result<String>;
 
   /// Fetch available models from provider API
-  async fn fetch_models(&self, api_key: &str, base_url: &str) -> Result<Vec<String>>;
+  /// API key is optional - if None, requests without authentication (API may return 401)
+  async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>>;
 
   /// Forward request to remote API
   async fn forward_request(&self, api_path: &str, id: &str, request: Value) -> Result<Response>;
@@ -95,7 +93,8 @@ impl DefaultAiApiService {
   }
 
   /// Get API configuration for an id
-  async fn get_api_config(&self, id: &str) -> Result<(ApiAlias, String)> {
+  /// API key is optional - returns None if not configured
+  async fn get_api_config(&self, id: &str) -> Result<(ApiAlias, Option<String>)> {
     // Get the API model alias configuration
     let api_alias = self
       .db_service
@@ -104,13 +103,12 @@ impl DefaultAiApiService {
       .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?
       .ok_or_else(|| AiApiServiceError::ModelNotFound(id.to_string()))?;
 
-    // Get the decrypted API key
+    // Get the decrypted API key (optional - may not be configured)
     let api_key = self
       .db_service
       .get_api_key_for_alias(id)
       .await
-      .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?
-      .ok_or_else(|| AiApiServiceError::ApiKeyNotFound(id.to_string()))?;
+      .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?;
 
     Ok((api_alias, api_key))
   }
@@ -130,7 +128,7 @@ impl DefaultAiApiService {
 impl AiApiService for DefaultAiApiService {
   async fn test_prompt(
     &self,
-    api_key: &str,
+    api_key: Option<String>,
     base_url: &str,
     model: &str,
     prompt: &str,
@@ -156,14 +154,18 @@ impl AiApiService for DefaultAiApiService {
 
     let url = format!("{}/chat/completions", base_url);
 
-    let response = self
+    let mut request = self
       .client
       .post(&url)
-      .header("Authorization", format!("Bearer {}", api_key))
       .header("Content-Type", "application/json")
-      .json(&request_body)
-      .send()
-      .await?;
+      .json(&request_body);
+
+    // Only add Authorization header if API key is provided
+    if let Some(key) = api_key {
+      request = request.header("Authorization", format!("Bearer {}", key));
+    }
+
+    let response = request.send().await?;
 
     let status = response.status();
     if !status.is_success() {
@@ -185,15 +187,17 @@ impl AiApiService for DefaultAiApiService {
     Ok(content)
   }
 
-  async fn fetch_models(&self, api_key: &str, base_url: &str) -> Result<Vec<String>> {
+  async fn fetch_models(&self, api_key: Option<String>, base_url: &str) -> Result<Vec<String>> {
     let url = format!("{}/models", base_url);
 
-    let response = self
-      .client
-      .get(&url)
-      .header("Authorization", format!("Bearer {}", api_key))
-      .send()
-      .await?;
+    let mut request = self.client.get(&url);
+
+    // Only add Authorization header if API key is provided
+    if let Some(key) = api_key {
+      request = request.header("Authorization", format!("Bearer {}", key));
+    }
+
+    let response = request.send().await?;
 
     let status = response.status();
     if !status.is_success() {
@@ -245,14 +249,17 @@ impl AiApiService for DefaultAiApiService {
     }
 
     // Forward the request to the remote API
-    let response = self
+    let mut http_request = self
       .client
       .post(&url)
-      .header("Authorization", format!("Bearer {}", api_key))
-      .header("Content-Type", "application/json")
-      .json(&request)
-      .send()
-      .await?;
+      .header("Content-Type", "application/json");
+
+    // Only add Authorization header if API key is provided
+    if let Some(key) = api_key {
+      http_request = http_request.header("Authorization", format!("Bearer {}", key));
+    }
+
+    let response = http_request.json(&request).send().await?;
 
     let status = response.status();
 
@@ -315,7 +322,7 @@ mod tests {
       .await;
 
     let result = service
-      .test_prompt("test-key", &url, "gpt-3.5-turbo", "Hello")
+      .test_prompt(Some("test-key".to_string()), &url, "gpt-3.5-turbo", "Hello")
       .await?;
     assert_eq!("Hello response", result);
 
@@ -332,7 +339,12 @@ mod tests {
 
     let long_prompt = "a".repeat(31);
     let result = service
-      .test_prompt("test-key", &url, "gpt-3.5-turbo", &long_prompt)
+      .test_prompt(
+        Some("test-key".to_string()),
+        &url,
+        "gpt-3.5-turbo",
+        &long_prompt,
+      )
       .await;
 
     assert!(matches!(
@@ -370,7 +382,9 @@ mod tests {
       .create_async()
       .await;
 
-    let models = service.fetch_models("test-key", &url).await?;
+    let models = service
+      .fetch_models(Some("test-key".to_string()), &url)
+      .await?;
     assert_eq!(vec!["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"], models);
 
     Ok(())
@@ -392,7 +406,7 @@ mod tests {
       .await;
 
     let result = service
-      .test_prompt("test-key", &url, "gpt-3.5-turbo", "Hello")
+      .test_prompt(Some("test-key".to_string()), &url, "gpt-3.5-turbo", "Hello")
       .await;
 
     assert!(matches!(result, Err(AiApiServiceError::Unauthorized(_))));
@@ -416,7 +430,12 @@ mod tests {
       .await;
 
     let result = service
-      .test_prompt("invalid-key", &url, "unknown-model", "Hello")
+      .test_prompt(
+        Some("invalid-key".to_string()),
+        &url,
+        "unknown-model",
+        "Hello",
+      )
       .await;
 
     assert!(matches!(result, Err(AiApiServiceError::NotFound(_))));
@@ -514,6 +533,220 @@ mod tests {
       )
       .await?;
     assert_eq!(response.status(), StatusCode::OK);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
+    let mut mock_db = MockDbService::new();
+    let mut server = Server::new_async().await;
+    let url = server.url();
+    let api_id = "test-api-no-key";
+
+    // Create API alias without API key
+    let api_alias = ApiAlias::new(
+      api_id,
+      ApiFormat::OpenAI,
+      &url,
+      vec!["gpt-4".to_string()],
+      None,
+      Utc::now(),
+    );
+
+    // Setup mock expectations - no API key
+    let api_id_owned = api_id.to_string();
+    mock_db
+      .expect_get_api_model_alias()
+      .with(mockall::predicate::eq(api_id_owned.clone()))
+      .returning(move |_| Ok(Some(api_alias.clone())));
+
+    mock_db
+      .expect_get_api_key_for_alias()
+      .with(mockall::predicate::eq(api_id_owned))
+      .returning(|_| Ok(None)); // No API key configured
+
+    let request = json! {{
+      "model": "gpt-4",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello"
+        }
+      ]
+    }};
+
+    // Mock server expects request WITHOUT Authorization header
+    let _mock = server
+      .mock("POST", "/chat/completions")
+      .match_header("content-type", "application/json")
+      .match_body(mockito::Matcher::JsonString(serde_json::to_string(
+        &request,
+      )?))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(r#"{"choices":[{"message":{"content":"Response without auth"}}]}"#)
+      .create_async()
+      .await;
+
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+    let response = service
+      .forward_request(
+        "/chat/completions",
+        api_id,
+        serde_json::from_value(request)?,
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::with_api_key(
+    Some("test-key"),
+    r#"{"choices":[{"message":{"content":"Response with auth"}}]}"#,
+    "Response with auth"
+  )]
+  #[case::without_api_key(
+    None,
+    r#"{"choices":[{"message":{"content":"Response without auth"}}]}"#,
+    "Response without auth"
+  )]
+  #[tokio::test]
+  async fn test_test_prompt_success_parameterized(
+    #[case] api_key: Option<&str>,
+    #[case] response_body: &str,
+    #[case] expected_response: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+    let mock_db = MockDbService::new();
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+
+    let _mock = server
+      .mock("POST", "/chat/completions")
+      .match_header("content-type", "application/json")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(response_body)
+      .create_async()
+      .await;
+
+    let result = service
+      .test_prompt(
+        api_key.map(|s| s.to_string()),
+        &url,
+        "gpt-3.5-turbo",
+        "Hello",
+      )
+      .await?;
+
+    assert_eq!(expected_response, result);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::with_api_key(Some("bad-key"), 401, "Unauthorized")]
+  #[case::without_api_key(None, 401, "Unauthorized")]
+  #[tokio::test]
+  async fn test_test_prompt_failure_parameterized(
+    #[case] api_key: Option<&str>,
+    #[case] status_code: u16,
+    #[case] response_body: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+    let mock_db = MockDbService::new();
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+
+    let _mock = server
+      .mock("POST", "/chat/completions")
+      .match_header("content-type", "application/json")
+      .with_status(status_code as usize)
+      .with_body(response_body)
+      .create_async()
+      .await;
+
+    let result = service
+      .test_prompt(
+        api_key.map(|s| s.to_string()),
+        &url,
+        "gpt-3.5-turbo",
+        "Hello",
+      )
+      .await;
+
+    assert!(result.is_err());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::with_api_key(Some("test-key"), r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
+  #[case::without_api_key(None, r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
+  #[tokio::test]
+  async fn test_fetch_models_success_parameterized(
+    #[case] api_key: Option<&str>,
+    #[case] response_body: &str,
+    #[case] expected_models: Vec<&str>,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+    let mock_db = MockDbService::new();
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+
+    let _mock = server
+      .mock("GET", "/models")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(response_body)
+      .create_async()
+      .await;
+
+    let result = service
+      .fetch_models(api_key.map(|s| s.to_string()), &url)
+      .await?;
+
+    assert_eq!(
+      expected_models
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>(),
+      result
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::with_api_key(Some("bad-key"), 401, "Unauthorized")]
+  #[case::without_api_key(None, 401, "Unauthorized")]
+  #[tokio::test]
+  async fn test_fetch_models_failure_parameterized(
+    #[case] api_key: Option<&str>,
+    #[case] status_code: u16,
+    #[case] response_body: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+    let mock_db = MockDbService::new();
+    let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));
+
+    let _mock = server
+      .mock("GET", "/models")
+      .with_status(status_code as usize)
+      .with_body(response_body)
+      .create_async()
+      .await;
+
+    let result = service
+      .fetch_models(api_key.map(|s| s.to_string()), &url)
+      .await;
+
+    assert!(result.is_err());
+
     Ok(())
   }
 }

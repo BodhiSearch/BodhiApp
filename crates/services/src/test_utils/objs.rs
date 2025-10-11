@@ -88,7 +88,7 @@ pub async fn seed_test_api_models(
 
   for alias in &aliases {
     db_service
-      .create_api_model_alias(alias, "sk-test-key-123456789")
+      .create_api_model_alias(alias, Some("sk-test-key-123456789".to_string()))
       .await?;
   }
 

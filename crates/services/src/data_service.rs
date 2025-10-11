@@ -153,26 +153,17 @@ impl DataService for LocalDataService {
 
   async fn list_aliases(&self) -> Result<Vec<Alias>> {
     let user_aliases = self.list_user_aliases()?;
-    let mut result: Vec<Alias> = user_aliases
-      .into_values()
-      .map(|alias| Alias::User(alias))
-      .collect();
+    let mut result: Vec<Alias> = user_aliases.into_values().map(Alias::User).collect();
 
     let model_aliases = self.hub_service.list_model_aliases()?;
-    let model_alias_variants: Vec<Alias> = model_aliases
-      .into_iter()
-      .map(|alias| Alias::Model(alias))
-      .collect();
+    let model_alias_variants: Vec<Alias> = model_aliases.into_iter().map(Alias::Model).collect();
 
     result.extend(model_alias_variants);
 
     // Add API aliases from database
     match self.db_service.list_api_model_aliases().await {
       Ok(api_aliases) => {
-        let api_alias_variants: Vec<Alias> = api_aliases
-          .into_iter()
-          .map(|alias| Alias::Api(alias))
-          .collect();
+        let api_alias_variants: Vec<Alias> = api_aliases.into_iter().map(Alias::Api).collect();
         result.extend(api_alias_variants);
       }
       Err(_) => {
@@ -523,7 +514,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&api_alias, "test-key")
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
       .await?;
 
     // Test finding by model name
@@ -567,7 +558,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&api_alias, "test-key")
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
       .await?;
 
     let found = data_service.find_alias(search_alias).await;
@@ -612,7 +603,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&api_alias, "test-key")
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
       .await?;
 
     // Should find user alias, not API alias (user has priority)
@@ -815,7 +806,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&test_alias, "test-key")
+      .create_api_model_alias(&test_alias, Some("test-key".to_string()))
       .await?;
 
     let found = data_service.find_alias(search_term).await;
@@ -853,7 +844,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&test_alias, "test-key")
+      .create_api_model_alias(&test_alias, Some("test-key".to_string()))
       .await?;
 
     let found = data_service.find_alias(search_term).await;
@@ -887,7 +878,7 @@ chat_template: llama3
       db_service.now(),
     );
     db_service
-      .create_api_model_alias(&prefixed_alias, "test-key")
+      .create_api_model_alias(&prefixed_alias, Some("test-key".to_string()))
       .await?;
 
     // Searching for "gpt-4" should NOT match the prefixed API

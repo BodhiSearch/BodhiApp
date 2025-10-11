@@ -7,9 +7,9 @@ CREATE TABLE api_model_aliases (
     prefix TEXT,
     base_url TEXT NOT NULL,
     models_json TEXT NOT NULL,
-    encrypted_api_key TEXT NOT NULL,
-    salt TEXT NOT NULL,
-    nonce TEXT NOT NULL,
+    encrypted_api_key TEXT,
+    salt TEXT,
+    nonce TEXT,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );

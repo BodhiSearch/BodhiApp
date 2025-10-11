@@ -1,6 +1,6 @@
 use crate::db::{
-  ApiToken, DbError, DbService, DownloadRequest, SqliteDbService, TimeService, UserAccessRequest,
-  UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, SqliteDbService, TimeService,
+  UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -255,7 +255,11 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("find_download_request_by_repo_filename"))
   }
 
-  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError> {
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError> {
     self
       .inner
       .create_api_model_alias(alias, api_key)
@@ -275,11 +279,11 @@ impl DbService for TestDbService {
     &self,
     alias: &str,
     model: &ApiAlias,
-    api_key: Option<String>,
+    api_key_update: ApiKeyUpdate,
   ) -> Result<(), DbError> {
     self
       .inner
-      .update_api_model_alias(alias, model, api_key)
+      .update_api_model_alias(alias, model, api_key_update)
       .await
       .tap(|_| self.notify("update_api_model_alias"))
   }
