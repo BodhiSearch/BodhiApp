@@ -142,16 +142,16 @@ jobs:
           for file in *; do
             case "$file" in
               *.dmg)
-                mv "$file" "Bodhi App.dmg"
-                echo "Renamed $file to Bodhi App.dmg"
+                mv "$file" "Bodhi_App.dmg"
+                echo "Renamed $file to Bodhi_App.dmg"
                 ;;
               *.msi)
-                mv "$file" "Bodhi App.msi"
-                echo "Renamed $file to Bodhi App.msi"
+                mv "$file" "Bodhi_App.msi"
+                echo "Renamed $file to Bodhi_App.msi"
                 ;;
               *.rpm)
-                mv "$file" "Bodhi App.rpm"
-                echo "Renamed $file to Bodhi App.rpm"
+                mv "$file" "Bodhi_App.rpm"
+                echo "Renamed $file to Bodhi_App.rpm"
                 ;;
             esac
           done
@@ -199,12 +199,40 @@ jobs:
           pattern: artifacts-*
           path: ./artifacts
           merge-multiple: true
+      - name: List artifacts before upload
+        shell: bash
+        run: |
+          echo "=== Artifacts to be uploaded ==="
+          ls -lah ./artifacts
+          echo ""
+          echo "=== File details ==="
+          for file in ./artifacts/*; do
+            echo "File: $(basename "$file")"
+            echo "  Size: $(ls -lh "$file" | awk '{print $5}')"
+            echo "  SHA256: $(shasum -a 256 "$file" | awk '{print $1}')"
+            echo ""
+          done
       - name: Upload Assets to Release
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Uploading assets to release app/v${{ needs.create-release.outputs.VERSION }}"
           gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/* --repo ${{ github.repository }}
+      - name: Verify uploaded assets
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Verifying assets uploaded to GitHub ==="
+          gh release view "app/v${{ needs.create-release.outputs.VERSION }}" --repo ${{ github.repository }} --json assets --jq '.assets[] | "Asset: \(.name)\n  Size: \(.size) bytes\n  Download: \(.url)\n"'
+          echo ""
+          echo "=== Comparison ==="
+          echo "Local files uploaded:"
+          ls -1 ./artifacts/ | sed 's/^/  - /'
+          echo ""
+          echo "GitHub release assets:"
+          gh release view "app/v${{ needs.create-release.outputs.VERSION }}" --repo ${{ github.repository }} --json assets --jq '.assets[].name' | sed 's/^/  - /'
 
   bump-version:
     if: inputs.draft != 'no-release' && inputs.draft != 'yes'
@@ -215,6 +243,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GH_PAT }}
       - name: Setup Node.js
         uses: actions/setup-node@v4
