@@ -33,10 +33,7 @@
       "cpu": {
         "image_tag": "0.0.3-cpu",
         "latest_tag": "latest-cpu",
-        "platforms": [
-          "linux/amd64",
-          "linux/arm64"
-        ],
+        "platforms": ["linux/amd64", "linux/arm64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu",
         "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  ghcr.io/bodhisearch/bodhiapp:latest-cpu",
         "description": "Multi-platform: AMD64 + ARM64"
@@ -44,9 +41,7 @@
       "cuda": {
         "image_tag": "0.0.3-cuda",
         "latest_tag": "latest-cuda",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cuda",
         "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --gpus all \\\n  ghcr.io/bodhisearch/bodhiapp:latest-cuda",
         "description": "NVIDIA GPU acceleration",
@@ -55,9 +50,7 @@
       "rocm": {
         "image_tag": "0.0.3-rocm",
         "latest_tag": "latest-rocm",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-rocm",
         "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/kfd \\\n  --device=/dev/dri \\\n  --group-add video \\\n  ghcr.io/bodhisearch/bodhiapp:latest-rocm",
         "description": "AMD GPU acceleration",
