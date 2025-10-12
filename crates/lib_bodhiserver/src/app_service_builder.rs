@@ -4,8 +4,9 @@ use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
   DefaultAppService, DefaultSecretService, HfHubService, HubService, KeycloakAuthService,
-  KeyringStore, LocalDataService, MokaCacheService, SecretService, SecretServiceExt,
-  SessionService, SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
+  KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService, SecretService,
+  SecretServiceExt, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
+  HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -209,6 +210,7 @@ impl AppServiceBuilder {
     let cache_service = self.get_or_build_cache_service();
     let auth_service = self.get_or_build_auth_service();
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
+    let concurrency_service = self.get_or_build_concurrency_service();
 
     // Build and return the complete app service
     let app_service = DefaultAppService::new(
@@ -223,6 +225,7 @@ impl AppServiceBuilder {
       localization_service,
       time_service,
       ai_api_service,
+      concurrency_service,
     );
     Ok(app_service)
   }
@@ -383,6 +386,11 @@ impl AppServiceBuilder {
     }
 
     Arc::new(DefaultAiApiService::with_db_service(db_service))
+  }
+
+  /// Gets or builds the concurrency service.
+  fn get_or_build_concurrency_service(&mut self) -> Arc<dyn services::ConcurrencyService> {
+    Arc::new(LocalConcurrencyService::new())
   }
 }
 

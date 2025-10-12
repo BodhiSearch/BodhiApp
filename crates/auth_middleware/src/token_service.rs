@@ -3,8 +3,8 @@ use chrono::Utc;
 use objs::{AppRegInfoMissingError, ResourceRole, ResourceScope, TokenScope, UserScope};
 use services::{
   db::{DbService, TokenStatus},
-  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, ScopeClaims,
-  SecretService, SecretServiceExt, SettingService, TokenError,
+  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims,
+  ScopeClaims, SecretService, SecretServiceExt, SettingService, TokenError,
 };
 use sha2::{Digest, Sha256};
 use std::{str::FromStr, sync::Arc};
@@ -19,6 +19,7 @@ pub struct DefaultTokenService {
   cache_service: Arc<dyn CacheService>,
   db_service: Arc<dyn DbService>,
   setting_service: Arc<dyn SettingService>,
+  concurrency_service: Arc<dyn ConcurrencyService>,
 }
 
 impl DefaultTokenService {
@@ -28,6 +29,7 @@ impl DefaultTokenService {
     cache_service: Arc<dyn CacheService>,
     db_service: Arc<dyn DbService>,
     setting_service: Arc<dyn SettingService>,
+    concurrency_service: Arc<dyn ConcurrencyService>,
   ) -> Self {
     Self {
       auth_service,
@@ -35,6 +37,7 @@ impl DefaultTokenService {
       cache_service,
       db_service,
       setting_service,
+      concurrency_service,
     }
   }
 
@@ -224,103 +227,177 @@ impl DefaultTokenService {
       return Ok((access_token, role));
     }
 
-    // Token is expired, try to refresh
-    let refresh_token = session.get::<String>("refresh_token").await?;
-
-    // Add better error handling and logging
-    let Some(refresh_token) = refresh_token else {
-      tracing::warn!("Refresh token not found in session for expired access token");
-      return Err(AuthError::RefreshTokenNotFound);
-    };
+    // Token is expired, use concurrency control to ensure only one refresh happens
+    // Extract session ID for lock key
+    let session_id = session
+      .id()
+      .ok_or_else(|| AuthError::RefreshTokenNotFound)?;
+    let lock_key = format!("refresh_token:{}", session_id);
 
     // Extract user_id from expired token for logging
     let user_id = claims.sub.clone();
-    tracing::info!(
-      "Attempting to refresh expired access token for user: {}",
-      user_id
-    );
 
-    // Get app registration info
-    let app_reg_info: AppRegInfo = self
-      .secret_service
-      .app_reg_info()?
-      .ok_or(AppRegInfoMissingError)?;
+    // Clone Arc references for use in the closure
+    let auth_service = Arc::clone(&self.auth_service);
+    let secret_service = Arc::clone(&self.secret_service);
+    let session_clone = session.clone();
 
-    // Attempt token refresh with retry logic in auth_service
-    let (new_access_token, new_refresh_token) = match self
-      .auth_service
-      .refresh_token(
-        &app_reg_info.client_id,
-        &app_reg_info.client_secret,
-        &refresh_token,
+    // Execute refresh logic with distributed lock
+    let result = self
+      .concurrency_service
+      .with_lock_auth(
+        &lock_key,
+        Box::new(move || {
+          Box::pin(async move {
+            // Wrap the entire logic in a closure that maps AuthError to boxed error
+            let inner_result: Result<(String, Option<ResourceRole>), AuthError> = async move {
+              // Double-checked locking: re-fetch token from session
+              // (another request might have already refreshed it)
+              let current_access_token = session_clone
+                .get::<String>(SESSION_KEY_ACCESS_TOKEN)
+                .await?;
+
+              let Some(current_access_token) = current_access_token else {
+                tracing::warn!(
+                  "Access token not found in session after acquiring lock for user: {}",
+                  user_id
+                );
+                return Err(AuthError::RefreshTokenNotFound);
+              };
+
+              // Re-validate the current token - it might have been refreshed
+              let current_claims = extract_claims::<Claims>(&current_access_token)?;
+              let now = Utc::now().timestamp();
+
+              if now < current_claims.exp as i64 {
+                // Token was refreshed by another request, use it
+                tracing::info!(
+                  "Token already refreshed by concurrent request for user: {}",
+                  user_id
+                );
+                let client_id = secret_service
+                  .app_reg_info()?
+                  .ok_or(AppRegInfoMissingError)?
+                  .client_id;
+                let role = current_claims
+                  .resource_access
+                  .get(&client_id)
+                  .map(|roles| ResourceRole::from_resource_role(&roles.roles))
+                  .transpose()?;
+                return Ok((current_access_token, role));
+              }
+
+              // Token still expired, we need to refresh it
+              let refresh_token = session_clone
+                .get::<String>(SESSION_KEY_REFRESH_TOKEN)
+                .await?;
+
+              let Some(refresh_token) = refresh_token else {
+                tracing::warn!("Refresh token not found in session for expired access token");
+                return Err(AuthError::RefreshTokenNotFound);
+              };
+
+              tracing::info!(
+                "Attempting to refresh expired access token for user: {}",
+                user_id
+              );
+
+              // Get app registration info
+              let app_reg_info: AppRegInfo = secret_service
+                .app_reg_info()?
+                .ok_or(AppRegInfoMissingError)?;
+
+              // Attempt token refresh with retry logic in auth_service
+              let (new_access_token, new_refresh_token) = match auth_service
+                .refresh_token(
+                  &app_reg_info.client_id,
+                  &app_reg_info.client_secret,
+                  &refresh_token,
+                )
+                .await
+              {
+                Ok(tokens) => {
+                  tracing::info!("Token refresh successful for user: {}", user_id);
+                  tokens
+                }
+                Err(e) => {
+                  tracing::error!("Failed to refresh token for user {}: {}", user_id, e);
+                  return Err(e.into());
+                }
+              };
+
+              // Extract claims from new token first to validate and get role
+              let new_claims = extract_claims::<Claims>(&new_access_token)?;
+
+              // Store new tokens in session
+              session_clone
+                .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
+                .await?;
+
+              if let Some(new_refresh_token) = new_refresh_token.as_ref() {
+                session_clone
+                  .insert(SESSION_KEY_REFRESH_TOKEN, new_refresh_token)
+                  .await?;
+                tracing::debug!(
+                  "Updated access and refresh tokens in session for user: {}",
+                  user_id
+                );
+              } else {
+                tracing::debug!(
+                  "Updated access token in session (no new refresh token) for user: {}",
+                  user_id
+                );
+              }
+
+              // Explicitly save session to ensure persistence
+              session_clone.save().await.map_err(|e| {
+                tracing::error!(
+                  "Failed to save session after token refresh for user {}: {:?}",
+                  user_id,
+                  e
+                );
+                AuthError::TowerSession(e)
+              })?;
+
+              tracing::info!(
+                "Session saved successfully after token refresh for user: {}",
+                user_id
+              );
+
+              let client_id = secret_service
+                .app_reg_info()?
+                .ok_or(AppRegInfoMissingError)?
+                .client_id;
+              let role = new_claims
+                .resource_access
+                .get(&client_id)
+                .map(|resource_claims| ResourceRole::from_resource_role(&resource_claims.roles))
+                .transpose()?;
+
+              tracing::info!(
+                "Successfully refreshed token for user {} with role: {:?}",
+                user_id,
+                role
+              );
+              Ok((new_access_token, role))
+            }
+            .await;
+
+            // Map AuthError to boxed error for trait compatibility
+            inner_result.map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+          })
+        }),
       )
-      .await
-    {
-      Ok(tokens) => {
-        tracing::info!("Token refresh successful for user: {}", user_id);
-        tokens
-      }
-      Err(e) => {
-        tracing::error!("Failed to refresh token for user {}: {}", user_id, e);
-        return Err(e.into());
-      }
-    };
+      .await;
 
-    // Extract claims from new token first to validate and get role
-    let new_claims = extract_claims::<Claims>(&new_access_token)?;
-
-    // Store new tokens in session
-    session
-      .insert(SESSION_KEY_ACCESS_TOKEN, &new_access_token)
-      .await?;
-
-    if let Some(new_refresh_token) = new_refresh_token.as_ref() {
-      session
-        .insert(SESSION_KEY_REFRESH_TOKEN, new_refresh_token)
-        .await?;
-      tracing::debug!(
-        "Updated access and refresh tokens in session for user: {}",
-        user_id
-      );
-    } else {
-      tracing::debug!(
-        "Updated access token in session (no new refresh token) for user: {}",
-        user_id
-      );
-    }
-
-    // Explicitly save session to ensure persistence
-    session.save().await.map_err(|e| {
-      tracing::error!(
-        "Failed to save session after token refresh for user {}: {:?}",
-        user_id,
-        e
-      );
-      AuthError::TowerSession(e)
-    })?;
-
-    tracing::info!(
-      "Session saved successfully after token refresh for user: {}",
-      user_id
-    );
-
-    let client_id = self
-      .secret_service
-      .app_reg_info()?
-      .ok_or(AppRegInfoMissingError)?
-      .client_id;
-    let role = new_claims
-      .resource_access
-      .get(&client_id)
-      .map(|resource_claims| ResourceRole::from_resource_role(&resource_claims.roles))
-      .transpose()?;
-
-    tracing::info!(
-      "Successfully refreshed token for user {} with role: {:?}",
-      user_id,
-      role
-    );
-    Ok((new_access_token, role))
+    // Map back from boxed error to AuthError
+    result.map_err(|e| {
+      e.downcast::<AuthError>()
+        .map(|boxed| *boxed)
+        .unwrap_or_else(|e| {
+          AuthError::InvalidToken(format!("Unexpected token refresh error: {}", e))
+        })
+    })
   }
 }
 
@@ -341,8 +418,8 @@ mod tests {
       build_token, test_db_service, SecretServiceStub, SettingServiceStub, TestDbService, ISSUER,
       TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
-    AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MockSecretService,
-    MockSettingService, MokaCacheService, TOKEN_TYPE_OFFLINE,
+    AppRegInfoBuilder, AuthServiceError, CacheService, LocalConcurrencyService, MockAuthService,
+    MockSecretService, MockSettingService, MokaCacheService, TOKEN_TYPE_OFFLINE,
   };
   use sha2::{Digest, Sha256};
   use std::{collections::HashMap, sync::Arc};
@@ -398,6 +475,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(MockSettingService::default()),
+      Arc::new(LocalConcurrencyService::new()),
     );
 
     // Validate token
@@ -448,6 +526,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(MockSettingService::default()),
+      Arc::new(LocalConcurrencyService::new()),
     );
 
     // Validate token
@@ -500,6 +579,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(MockSettingService::default()),
+      Arc::new(LocalConcurrencyService::new()),
     );
 
     // Validate token - should fail due to inactive status
@@ -551,6 +631,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(MockSettingService::default()),
+      Arc::new(LocalConcurrencyService::new()),
     );
 
     // Try to validate with different token string (wrong hash)
@@ -581,6 +662,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(MockSettingService::default()),
+      Arc::new(LocalConcurrencyService::new()),
     ));
     let result = token_service.validate_bearer_token(header).await;
     assert!(result.is_err());
@@ -651,6 +733,7 @@ mod tests {
       Arc::new(MokaCacheService::default()),
       Arc::new(test_db_service),
       Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
     ));
 
     // When - Try to validate the external token
@@ -772,6 +855,7 @@ mod tests {
       cache_service.clone(),
       Arc::new(test_db_service),
       Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
     ));
 
     // When - First validate the legitimate token (this will cache it)

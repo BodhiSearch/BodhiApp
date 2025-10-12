@@ -1,7 +1,7 @@
 use crate::{
   db::{DbService, TimeService},
-  AiApiService, AuthService, CacheService, DataService, HubService, SecretService, SessionService,
-  SettingService,
+  AiApiService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
+  SecretService, SessionService, SettingService,
 };
 use objs::LocalizationService;
 use std::sync::Arc;
@@ -29,6 +29,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn time_service(&self) -> Arc<dyn TimeService>;
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService>;
+
+  fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -45,6 +47,7 @@ pub struct DefaultAppService {
   localization_service: Arc<dyn LocalizationService>,
   time_service: Arc<dyn TimeService>,
   ai_api_service: Arc<dyn AiApiService>,
+  concurrency_service: Arc<dyn ConcurrencyService>,
 }
 
 impl AppService for DefaultAppService {
@@ -90,5 +93,9 @@ impl AppService for DefaultAppService {
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService> {
     self.ai_api_service.clone()
+  }
+
+  fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {
+    self.concurrency_service.clone()
   }
 }

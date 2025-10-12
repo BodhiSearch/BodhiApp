@@ -4,9 +4,10 @@ use crate::{
     test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
     TestDbService,
   },
-  AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, DataService,
-  HfHubService, HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService,
-  SecretService, SessionService, SettingService, SqliteSessionService,
+  AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, ConcurrencyService,
+  DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
+  MockAuthService, MockHubService, MokaCacheService, SecretService, SessionService, SettingService,
+  SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -62,6 +63,8 @@ pub struct AppServiceStub {
   pub localization_service: Option<Arc<dyn LocalizationService>>,
   #[builder(default = "self.default_time_service()")]
   pub time_service: Option<Arc<dyn TimeService>>,
+  #[builder(default = "self.default_concurrency_service()")]
+  pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -87,6 +90,10 @@ impl AppServiceStubBuilder {
 
   fn default_time_service(&self) -> Option<Arc<dyn TimeService>> {
     Some(Arc::new(FrozenTimeService::default()))
+  }
+
+  fn default_concurrency_service(&self) -> Option<Arc<dyn ConcurrencyService>> {
+    Some(Arc::new(LocalConcurrencyService::new()))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -272,5 +279,9 @@ impl AppService for AppServiceStub {
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService> {
     panic!("ai_api_service not implemented in test stub")
+  }
+
+  fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {
+    self.concurrency_service.clone().unwrap()
   }
 }

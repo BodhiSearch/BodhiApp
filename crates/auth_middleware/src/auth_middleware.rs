@@ -131,6 +131,7 @@ pub async fn auth_middleware(
     app_service.cache_service(),
     app_service.db_service(),
     app_service.setting_service(),
+    app_service.concurrency_service(),
   );
 
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -211,6 +212,7 @@ pub async fn inject_optional_auth_info(
     app_service.cache_service(),
     app_service.db_service(),
     app_service.setting_service(),
+    app_service.concurrency_service(),
   );
 
   // Check app status
