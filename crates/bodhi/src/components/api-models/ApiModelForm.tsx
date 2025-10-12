@@ -96,6 +96,8 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
           <ApiKeyInput
             {...formLogic.register('api_key')}
             mode={formLogic.mode}
+            enabled={formLogic.watchedValues.useApiKey}
+            onEnabledChange={(enabled) => formLogic.setValue('useApiKey', enabled)}
             error={formLogic.errors.api_key?.message}
           />
 

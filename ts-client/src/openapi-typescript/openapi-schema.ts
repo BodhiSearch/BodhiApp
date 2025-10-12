@@ -886,6 +886,18 @@ export interface components {
         ApiFormatsResponse: {
             data: components["schemas"]["ApiFormat"][];
         };
+        /** @description Validated API key wrapper - validates length when Some, allows None for public APIs */
+        ApiKey: string | null;
+        /** @description Represents an API key update action for API model updates */
+        ApiKeyUpdateAction: {
+            /** @enum {string} */
+            action: "keep";
+        } | {
+            /** @description Set a new API key (or add one if none exists) - can be None for public APIs */
+            value: components["schemas"]["ApiKey"];
+            /** @enum {string} */
+            action: "set";
+        };
         /**
          * @description Response containing API model configuration
          * @example {
@@ -906,7 +918,7 @@ export interface components {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
-            api_key_masked: string;
+            api_key_masked?: string | null;
             models: string[];
             prefix?: string | null;
             /** Format: date-time */
@@ -1356,8 +1368,8 @@ export interface components {
             api_format: components["schemas"]["ApiFormat"];
             /** @description API base URL */
             base_url: string;
-            /** @description API key for authentication */
-            api_key: string;
+            /** @description API key for authentication (null for public APIs) */
+            api_key?: components["schemas"]["ApiKey"];
             /** @description List of available models */
             models: string[];
             /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4") */
@@ -1651,16 +1663,17 @@ export interface components {
         /**
          * @description Request to fetch available models from provider
          * @example {
-         *       "api_key": "sk-...",
-         *       "base_url": "https://api.openai.com/v1"
+         *       "base_url": "http://localhost:8080/v1",
+         *       "creds": {
+         *         "type": "api_key",
+         *         "value": null
+         *       }
          *     }
          */
         FetchModelsRequest: {
-            /** @description API key for authentication (provide either api_key OR id, api_key takes preference if both provided) */
-            api_key?: string;
-            /** @description API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided) */
-            id?: string;
-            /** @description API base URL (optional when using id) */
+            /** @description Credentials to use for fetching models */
+            creds?: components["schemas"]["TestCreds"];
+            /** @description API base URL (required - always needed to know where to fetch models from) */
             base_url: string;
         };
         /**
@@ -2148,21 +2161,34 @@ export interface components {
             template: string;
         };
         Stop: string | string[];
+        /** @description Credentials for test/fetch operations */
+        TestCreds: {
+            /** @description Look up credentials from stored API model */
+            value: string;
+            /** @enum {string} */
+            type: "id";
+        } | {
+            /** @description Use direct API key (null for no authentication) */
+            value: components["schemas"]["ApiKey"];
+            /** @enum {string} */
+            type: "api_key";
+        };
         /**
          * @description Request to test API connectivity with a prompt
          * @example {
-         *       "api_key": "sk-...",
          *       "base_url": "https://api.openai.com/v1",
+         *       "creds": {
+         *         "type": "api_key",
+         *         "value": "sk-..."
+         *       },
          *       "model": "gpt-4",
          *       "prompt": "Hello, how are you?"
          *     }
          */
         TestPromptRequest: {
-            /** @description API key for authentication (provide either api_key OR id, api_key takes preference if both provided) */
-            api_key?: string;
-            /** @description API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided) */
-            id?: string;
-            /** @description API base URL (optional when using id) */
+            /** @description Credentials to use for testing */
+            creds?: components["schemas"]["TestCreds"];
+            /** @description API base URL */
             base_url: string;
             /** @description Model to use for testing */
             model: string;
@@ -2212,7 +2238,9 @@ export interface components {
          * @description Request to update an existing API model configuration
          * @example {
          *       "api_format": "openai",
-         *       "api_key": "sk-new-key",
+         *       "api_key": {
+         *         "action": "keep"
+         *       },
          *       "base_url": "https://api.openai.com/v1",
          *       "models": [
          *         "gpt-4-turbo",
@@ -2226,8 +2254,8 @@ export interface components {
             api_format: components["schemas"]["ApiFormat"];
             /** @description API base URL (required) */
             base_url: string;
-            /** @description API key for authentication (optional, only update if provided for security) */
-            api_key?: string | null;
+            /** @description API key update action (Keep/Set with Some or None) */
+            api_key?: components["schemas"]["ApiKeyUpdateAction"];
             /** @description List of available models (required) */
             models: string[];
             /** @description Optional prefix for model namespacing */

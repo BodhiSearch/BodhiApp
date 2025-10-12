@@ -51,6 +51,7 @@ export function useApiModelForm({
           models: initialData?.models || [],
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
+          useApiKey: initialData?.api_key_masked != null, // "***" = has key, checkbox checked
         }
       : mode === 'setup'
         ? {
@@ -60,6 +61,7 @@ export function useApiModelForm({
             models: [],
             prefix: '',
             usePrefix: false,
+            useApiKey: false,
           }
         : {
             api_format: 'openai',
@@ -68,6 +70,7 @@ export function useApiModelForm({
             models: [],
             prefix: '',
             usePrefix: false,
+            useApiKey: false,
           },
   });
 
@@ -144,6 +147,7 @@ export function useApiModelForm({
       setValue('models', []);
       setValue('prefix', '');
       setValue('usePrefix', false);
+      setValue('useApiKey', false);
       fetchModels.clearModels();
       testConnection.resetStatus();
     }
@@ -158,6 +162,7 @@ export function useApiModelForm({
       setValue('models', []);
       setValue('prefix', '');
       setValue('usePrefix', false);
+      setValue('useApiKey', false);
       fetchModels.clearModels();
       testConnection.resetStatus();
     }
@@ -187,10 +192,11 @@ export function useApiModelForm({
 
   // Test connection wrapper
   const handleTestConnection = async () => {
-    if (!watchedValues.base_url || (!watchedValues.api_key && !(isEditMode && initialData?.id))) return;
+    if (!watchedValues.base_url) return;
 
     await testConnection.testConnection({
-      apiKey: watchedValues.api_key,
+      apiKey: watchedValues.useApiKey ? watchedValues.api_key : undefined,
+      id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
       baseUrl: watchedValues.base_url,
       model: watchedValues.models?.[0] || 'gpt-3.5-turbo',
     });
@@ -198,18 +204,17 @@ export function useApiModelForm({
 
   // Fetch models wrapper
   const handleFetchModels = async () => {
-    if (!watchedValues.base_url || (!watchedValues.api_key && !(isEditMode && initialData?.id))) return;
-
     await fetchModels.fetchModels({
-      apiKey: watchedValues.api_key,
-      baseUrl: watchedValues.base_url,
+      apiKey: watchedValues.useApiKey ? watchedValues.api_key : undefined,
+      id: !watchedValues.useApiKey && isEditMode ? initialData?.id : undefined,
+      baseUrl: watchedValues.base_url || '',
     });
   };
 
   // Form submission
   const onSubmit = async (data: FormData) => {
     if (isEditMode && initialData) {
-      const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
+      const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData, initialData);
       updateMutation.mutate({
         id: initialData.id,
         data: updateData,
@@ -228,13 +233,9 @@ export function useApiModelForm({
   };
 
   // Computed values
-  const canTest = Boolean(
-    watchedValues.base_url &&
-      (watchedValues.api_key || (isEditMode && initialData?.id)) &&
-      watchedValues.models?.length > 0
-  );
+  const canTest = Boolean(watchedValues.base_url && watchedValues.models?.length > 0);
 
-  const canFetch = Boolean(watchedValues.base_url && (watchedValues.api_key || (isEditMode && initialData?.id)));
+  const canFetch = Boolean(watchedValues.base_url);
 
   return {
     // Form state

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFetchApiModels } from '@/hooks/useApiModels';
 import { useToast } from '@/hooks/use-toast';
-import { FetchModelsRequest } from '@bodhiapp/ts-client';
+import { FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 import { ApiProvider } from '../providers/constants';
 
 interface UseFetchModelsProps {
@@ -31,33 +31,36 @@ export function useFetchModels({
   const { toast, dismiss } = useToast();
 
   const canFetch = (data: FetchModelsData) => {
-    return Boolean(data.baseUrl && (data.apiKey || (mode === 'edit' && initialData?.id)));
+    return Boolean(data.baseUrl);
   };
 
   const getFetchDisabledReason = (data: FetchModelsData) => {
-    const missing = [];
-    if (!data.baseUrl) missing.push('base URL');
-    if (!data.apiKey && !(mode === 'edit' && initialData?.id)) {
-      missing.push(mode === 'edit' ? 'API key (or use stored credentials)' : 'API key');
+    if (!data.baseUrl) {
+      return 'You need to add base URL to fetch models';
     }
-    return missing.length > 0 ? `You need to add ${missing.join(', ')} to fetch models` : '';
+    return '';
   };
 
   const fetchModels = async (data: FetchModelsData) => {
-    if (!canFetch(data)) {
-      return;
-    }
-
     dismiss();
     setStatus('loading');
 
+    // Build TestCreds discriminated union
+    let creds: TestCreds | undefined;
+
+    if (data.apiKey) {
+      // Use provided API key directly
+      creds = { type: 'api_key' as const, value: data.apiKey as ApiKey };
+    } else if (mode === 'edit' && initialData?.id) {
+      // Look up stored credentials by ID in edit mode
+      creds = { type: 'id' as const, value: initialData.id };
+    } else {
+      // No authentication (public API)
+      creds = { type: 'api_key' as const, value: null };
+    }
+
     const fetchData: FetchModelsRequest = {
-      // In edit mode, use stored model ID if no API key provided
-      ...(data.apiKey
-        ? { api_key: data.apiKey }
-        : mode === 'edit' && initialData?.id
-          ? { id: initialData.id }
-          : { api_key: data.apiKey || '' }),
+      creds,
       base_url: data.baseUrl,
     };
 

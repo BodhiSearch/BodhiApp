@@ -75,7 +75,7 @@ afterEach(() => {
 
 describe('New API Model Page - Page-Level Integration Tests', () => {
   describe('Page Structure and Initial Render', () => {
-    it('renders page with correct authentication and app status requirements', async () => {
+    it('renders page with authentication and all form elements', async () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -90,22 +90,6 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
         expect(screen.getByText('Create New API Model')).toBeInTheDocument();
-      });
-    });
-
-    it('displays API format selector initially', async () => {
-      server.use(
-        ...mockAppInfoReady(),
-        ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockApiFormatsDefault(),
-        ...mockTestApiModelSuccess(),
-        ...mockFetchApiModelsSuccess(),
-        ...mockCreateApiModelSuccess()
-      );
-
-      render(<NewApiModel />, { wrapper: createWrapper() });
-
-      await waitFor(() => {
         expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
         expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
         expect(screen.getByTestId('base-url-input')).toBeInTheDocument();
@@ -141,36 +125,19 @@ describe('New API Model Page - Page-Level Integration Tests', () => {
       expect(baseUrlInput).toHaveValue('https://api.openai.com/v1'); // Default OpenAI URL
       expect(apiKeyInput).toHaveValue(''); // Empty initially
 
-      // Verify button states - should be disabled initially
+      // Verify API key field is password type initially (hidden)
+      expectApiKeyHidden();
+
+      // Verify button states - fetch enabled (base_url present), test disabled (no models yet)
       const testConnectionButton = screen.getByTestId('test-connection-button');
       const fetchModelsButton = screen.getByTestId('fetch-models-button');
       expect(testConnectionButton).toBeDisabled();
-      expect(fetchModelsButton).toBeDisabled();
+      expect(fetchModelsButton).not.toBeDisabled();
 
       // Verify submit button shows create mode text and initial state
       const submitButton = screen.getByTestId('create-api-model-button');
       expect(submitButton).toHaveTextContent(/create/i);
       expect(submitButton).not.toBeDisabled(); // Form allows submission (validation happens on submit)
-    });
-
-    it('Form shows correct initial field values and states', async () => {
-      server.use(
-        ...mockAppInfoReady(),
-        ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockApiFormatsDefault(),
-        ...mockTestApiModelSuccess(),
-        ...mockFetchApiModelsSuccess(),
-        ...mockCreateApiModelSuccess()
-      );
-
-      render(<NewApiModel />, { wrapper: createWrapper() });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-api-model-form')).toBeInTheDocument();
-      });
-
-      // Verify API key field is password type initially (hidden)
-      expectApiKeyHidden();
     });
 
     it('Form validation prevents submission with empty required fields', async () => {

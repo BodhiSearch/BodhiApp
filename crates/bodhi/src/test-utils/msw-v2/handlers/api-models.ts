@@ -72,13 +72,17 @@ export function mockApiModelsError(
 
 /**
  * Mock handler for API model creation endpoint with configurable responses
+ *
+ * Note: api_key_masked semantics:
+ * - '***': API key exists (default)
+ * - null: No API key stored
  */
 export function mockCreateApiModel(
   {
     id = 'test-api-model-123',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '****key',
+    api_key_masked = '***',
     models = ['gpt-4'],
     prefix = null,
     created_at = new Date().toISOString(),
@@ -136,6 +140,10 @@ export function mockCreateApiModelError(
 
 /**
  * Mock handler for individual API model retrieval with configurable responses
+ *
+ * Note: api_key_masked semantics:
+ * - '***': API key exists (default)
+ * - null: No API key stored
  */
 export function mockGetApiModel(
   expectedId: string,
@@ -143,7 +151,7 @@ export function mockGetApiModel(
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '****123',
+    api_key_masked = '***',
     models = ['gpt-3.5-turbo'],
     prefix = null,
     created_at = new Date().toISOString(),
@@ -218,6 +226,10 @@ export function mockGetApiModelError(
 
 /**
  * Mock handler for API model update endpoint with configurable responses
+ *
+ * Note: api_key_masked semantics:
+ * - '***': API key exists (default)
+ * - null: No API key stored
  */
 export function mockUpdateApiModel(
   expectedId: string,
@@ -225,7 +237,7 @@ export function mockUpdateApiModel(
     id = '',
     api_format = 'openai',
     base_url = 'https://api.openai.com/v1',
-    api_key_masked = '****key',
+    api_key_masked = '***',
     models = ['gpt-4'],
     prefix = null,
     created_at = new Date().toISOString(),
@@ -518,7 +530,7 @@ export function mockApiModelsDefault() {
         id: 'test-api-model',
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
-        api_key_masked: '****123',
+        api_key_masked: '***', // Has API key
         models: ['gpt-4', 'gpt-3.5-turbo'],
         prefix: null,
         created_at: '2024-01-01T00:00:00Z',
@@ -576,11 +588,33 @@ export function mockCreateApiModelSuccess() {
     id: 'test-model-123',
     api_format: 'openai',
     base_url: 'https://api.openai.com/v1',
-    api_key_masked: '****key',
+    api_key_masked: '***', // Has API key
     models: ['gpt-4'],
     prefix: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Mock API model with API key (masked as '***')
+ * Use this when testing scenarios where an API key exists
+ */
+export function mockApiModelWithKey(overrides?: Partial<components['schemas']['ApiModelResponse']>) {
+  return mockCreateApiModel({
+    api_key_masked: '***',
+    ...overrides,
+  });
+}
+
+/**
+ * Mock API model without API key (null)
+ * Use this when testing public API scenarios or models without authentication
+ */
+export function mockApiModelWithoutKey(overrides?: Partial<components['schemas']['ApiModelResponse']>) {
+  return mockCreateApiModel({
+    api_key_masked: null,
+    ...overrides,
   });
 }
 

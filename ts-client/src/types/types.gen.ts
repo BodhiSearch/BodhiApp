@@ -35,13 +35,31 @@ export type ApiFormatsResponse = {
 };
 
 /**
+ * Validated API key wrapper - validates length when Some, allows None for public APIs
+ */
+export type ApiKey = string | null;
+
+/**
+ * Represents an API key update action for API model updates
+ */
+export type ApiKeyUpdateAction = {
+    action: 'keep';
+} | {
+    /**
+     * Set a new API key (or add one if none exists) - can be None for public APIs
+     */
+    value: ApiKey;
+    action: 'set';
+};
+
+/**
  * Response containing API model configuration
  */
 export type ApiModelResponse = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
-    api_key_masked: string;
+    api_key_masked?: string | null;
     models: Array<string>;
     prefix?: string | null;
     created_at: string;
@@ -579,9 +597,9 @@ export type CreateApiModelRequest = {
      */
     base_url: string;
     /**
-     * API key for authentication
+     * API key for authentication (null for public APIs)
      */
-    api_key: string;
+    api_key?: ApiKey;
     /**
      * List of available models
      */
@@ -912,15 +930,11 @@ export type ErrorBody = {
  */
 export type FetchModelsRequest = {
     /**
-     * API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
+     * Credentials to use for fetching models
      */
-    api_key?: string;
+    creds?: TestCreds;
     /**
-     * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
-     */
-    id?: string;
-    /**
-     * API base URL (optional when using id)
+     * API base URL (required - always needed to know where to fetch models from)
      */
     base_url: string;
 };
@@ -1415,19 +1429,32 @@ export type ShowResponse = {
 export type Stop = string | Array<string>;
 
 /**
+ * Credentials for test/fetch operations
+ */
+export type TestCreds = {
+    /**
+     * Look up credentials from stored API model
+     */
+    value: string;
+    type: 'id';
+} | {
+    /**
+     * Use direct API key (null for no authentication)
+     */
+    value: ApiKey;
+    type: 'api_key';
+};
+
+/**
  * Request to test API connectivity with a prompt
  */
 export type TestPromptRequest = {
     /**
-     * API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
+     * Credentials to use for testing
      */
-    api_key?: string;
+    creds?: TestCreds;
     /**
-     * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
-     */
-    id?: string;
-    /**
-     * API base URL (optional when using id)
+     * API base URL
      */
     base_url: string;
     /**
@@ -1496,9 +1523,9 @@ export type UpdateApiModelRequest = {
      */
     base_url: string;
     /**
-     * API key for authentication (optional, only update if provided for security)
+     * API key update action (Keep/Set with Some or None)
      */
-    api_key?: string | null;
+    api_key?: ApiKeyUpdateAction;
     /**
      * List of available models (required)
      */

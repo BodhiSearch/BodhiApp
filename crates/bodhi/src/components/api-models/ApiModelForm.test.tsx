@@ -1,25 +1,25 @@
 import ApiModelForm from '@/components/api-models/ApiModelForm';
-import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
-import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
-import { createWrapper } from '@/tests/wrapper';
-import { createMockLoggedInUser } from '@/test-utils/mock-user';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
 import {
   mockApiFormats,
   mockCreateApiModel,
   mockCreateApiModelError,
-  mockUpdateApiModel,
   mockFetchApiModels,
   mockFetchApiModelsError,
   mockTestApiModel,
   mockTestApiModelError,
+  mockUpdateApiModel,
 } from '@/test-utils/msw-v2/handlers/api-models';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { server, setupMswV2, typedHttp } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 import { ApiModelResponse } from '@bodhiapp/ts-client';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// API endpoint constants for MSW handlers
+const ENDPOINT_API_MODEL_ID = '/bodhi/v1/api-models/{id}';
 
 // Mock useRouter
 const pushMock = vi.fn();
@@ -40,30 +40,6 @@ vi.mock('@/hooks/use-toast', () => ({
 // Mock component dependencies
 vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
-}));
-
-vi.mock('@/components/ModelSelector', () => ({
-  ModelSelector: ({
-    onModelSelect,
-    onModelRemove,
-    onModelsSelectAll,
-    onFetchModels,
-    isFetchingModels,
-    availableModels,
-    selectedModels,
-    canFetch,
-  }: any) => (
-    <div data-testid="model-selector">
-      <button onClick={() => onModelSelect?.('gpt-4')}>Select gpt-4</button>
-      <button onClick={() => onModelRemove?.('gpt-4')}>Remove gpt-4</button>
-      <button onClick={() => onModelsSelectAll?.(['gpt-4', 'gpt-3.5-turbo'])}>Select All</button>
-      <button onClick={() => onFetchModels?.()} disabled={!canFetch} data-testid="fetch-models-button">
-        {isFetchingModels ? 'Loading...' : 'Fetch Models'}
-      </button>
-      <div data-testid="available-models">{Array.isArray(availableModels) ? availableModels.join(', ') : ''}</div>
-      <div data-testid="selected-models">{Array.isArray(selectedModels) ? selectedModels.join(', ') : ''}</div>
-    </div>
-  ),
 }));
 
 // Mock required HTMLElement methods for Radix UI
@@ -105,12 +81,54 @@ const mockApiModelResponse: ApiModelResponse = {
   id: 'test-api-model',
   api_format: 'openai',
   base_url: 'https://api.openai.com/v1',
-  api_key_masked: '****key',
+  api_key_masked: '***', // Has API key
   models: ['gpt-4', 'gpt-3.5-turbo'],
   prefix: null,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
+
+// Helper functions for test setup
+async function renderCreateFormWithApiKey(apiKey = 'sk-test-123') {
+  const user = userEvent.setup();
+  await act(async () => {
+    render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+  });
+  await user.click(screen.getByTestId('api-key-input-checkbox'));
+  await user.type(screen.getByTestId('api-key-input'), apiKey);
+  return user;
+}
+
+async function renderCreateFormWithoutApiKey() {
+  const user = userEvent.setup();
+  await act(async () => {
+    render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+  });
+  return user;
+}
+
+async function renderEditFormUsingStoredCreds() {
+  const user = userEvent.setup();
+  await act(async () => {
+    render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+      wrapper: createWrapper(),
+    });
+  });
+  return user;
+}
+
+// Helper functions for model selection operations
+async function fetchModelsAndWait(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByTestId('fetch-models-button'));
+  await waitFor(() => {
+    expect(screen.queryByTestId('available-model-gpt-4')).toBeInTheDocument();
+  });
+}
+
+async function selectModel(user: ReturnType<typeof userEvent.setup>, modelName: string) {
+  const modelElement = screen.getByTestId(`available-model-${modelName}`);
+  await user.click(modelElement);
+}
 
 describe('ApiModelForm', () => {
   beforeEach(() => {
@@ -131,15 +149,13 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Form title
       expect(screen.getByText('Create New API Model')).toBeInTheDocument();
 
-      // Form fields (no ID field since it's auto-generated)
       expect(screen.getByTestId('api-format-selector')).toBeInTheDocument();
       expect(screen.getByTestId('base-url-input')).toBeInTheDocument();
       expect(screen.getByTestId('api-key-input')).toBeInTheDocument();
+      expect(screen.getByTestId('api-key-input-checkbox')).toBeInTheDocument();
 
-      // Buttons
       expect(screen.getByTestId('create-api-model-button')).toBeInTheDocument();
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Fetch Models/i })).toBeInTheDocument();
@@ -153,24 +169,13 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Try to submit without filling required fields
       await user.click(screen.getByTestId('create-api-model-button'));
 
       await waitFor(() => {
-        // Look for any validation error message about API key
-        const errorMessages = screen.getAllByText((content, element) => {
-          return element?.tagName.toLowerCase() === 'p' && content.toLowerCase().includes('api key');
-        });
-        expect(errorMessages.length).toBeGreaterThan(0);
+        const errorMessage = screen.queryByTestId('model-selection-section-error');
+        expect(errorMessage).toBeInTheDocument();
+        expect(errorMessage).toHaveTextContent(/at least one model must be selected/i);
       });
-    });
-
-    it('handles api_format preset selection', async () => {
-      const user = userEvent.setup();
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
-      });
-      expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
     });
 
     it('handles fetch models functionality', async () => {
@@ -185,11 +190,11 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Fill required fields for fetch
       await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
       await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
-      // Click fetch models
       await user.click(screen.getByTestId('fetch-models-button'));
 
       await waitFor(() => {
@@ -198,7 +203,10 @@ describe('ApiModelForm', () => {
           description: 'Found 3 available models',
         });
       });
-      expect(screen.getByTestId('available-models')).toHaveTextContent('gpt-4, gpt-3.5-turbo, gpt-4-turbo');
+
+      expect(screen.getByTestId('available-model-gpt-4')).toBeInTheDocument();
+      expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
+      expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
     });
 
     it('handles test connection functionality', async () => {
@@ -215,14 +223,14 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Fill required fields
       await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
       await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
-      // Select a model using the mock model selector
-      await user.click(screen.getByText('Select gpt-4'));
+      await fetchModelsAndWait(user);
+      await selectModel(user, 'gpt-4');
 
-      // Test connection button should be enabled
       const testButton = screen.getByTestId('test-connection-button');
       expect(testButton).not.toBeDisabled();
 
@@ -245,14 +253,12 @@ describe('ApiModelForm', () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      // Fill the form (no ID field - it's auto-generated)
-      // Api format and Base URL are pre-filled with OpenAI defaults
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
       await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
 
-      // Select models
-      await user.click(screen.getByText('Select gpt-4'));
+      await fetchModelsAndWait(user);
+      await selectModel(user, 'gpt-4');
 
-      // Submit form
       await user.click(screen.getByTestId('create-api-model-button'));
 
       await waitFor(() => {
@@ -266,63 +272,148 @@ describe('ApiModelForm', () => {
       expect(pushMock).toHaveBeenCalledWith('/ui/models');
     });
 
-    it('handles API key visibility toggle', async () => {
+    it('enables fetch models button when base_url is present (regardless of API key)', async () => {
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      const fetchButton = screen.getByTestId('fetch-models-button');
+      // Fetch button should be enabled because base_url defaults to preset value
+      expect(fetchButton).not.toBeDisabled();
+    });
+
+    it('validates empty API key when checkbox is checked and submitted', async () => {
       const user = userEvent.setup();
 
       await act(async () => {
         render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
       });
 
-      const apiKeyInput = screen.getByTestId('api-key-input');
-      expect(apiKeyInput).toHaveAttribute('type', 'password');
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
+      await fetchModelsAndWait(user);
+      await selectModel(user, 'gpt-4');
+      await user.click(screen.getByTestId('create-api-model-button'));
 
-      // Click the eye icon to show password
-      const toggleButton = screen.getByTestId('api-key-input-visibility-toggle');
-      await user.click(toggleButton);
-
-      expect(apiKeyInput).toHaveAttribute('type', 'text');
-
-      // Click again to hide
-      await user.click(toggleButton);
-      expect(apiKeyInput).toHaveAttribute('type', 'password');
+      await waitFor(() => {
+        const errorMessage = screen.queryByTestId('api-key-input-error');
+        expect(errorMessage).toBeInTheDocument();
+        expect(errorMessage).toHaveTextContent(/API key must not be empty/i);
+      });
     });
   });
 
   describe('Edit mode', () => {
-    it('renders form for editing existing API model', async () => {
-      await act(async () => {
-        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
-          wrapper: createWrapper(),
+    describe('API key field initialization', () => {
+      it.each([
+        {
+          description: 'when api_key_masked is "***" (has stored key)',
+          apiKeyMasked: '***' as const,
+          checkboxChecked: true,
+          inputDisabled: false,
+        },
+        {
+          description: 'when api_key_masked is null (no stored key)',
+          apiKeyMasked: null,
+          checkboxChecked: false,
+          inputDisabled: true,
+        },
+        {
+          description: 'when api_key_masked is undefined (no stored key)',
+          apiKeyMasked: undefined,
+          checkboxChecked: false,
+          inputDisabled: true,
+        },
+      ])('renders API key field correctly $description', async ({ apiKeyMasked, checkboxChecked, inputDisabled }) => {
+        const testData: ApiModelResponse = {
+          ...mockApiModelResponse,
+          api_key_masked: apiKeyMasked,
+          prefix: null,
+        };
+
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={testData} />, {
+            wrapper: createWrapper(),
+          });
         });
+
+        expect(screen.getByText('Edit API Model')).toBeInTheDocument();
+        expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
+        expect(screen.getByTestId('update-api-model-button')).toBeInTheDocument();
+
+        const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
+        const apiKeyInput = screen.getByTestId('api-key-input');
+
+        expect(apiKeyCheckbox).toHaveProperty('checked', checkboxChecked);
+        expect(apiKeyInput).toHaveProperty('disabled', inputDisabled);
       });
-
-      // Form title
-      expect(screen.getByText('Edit API Model')).toBeInTheDocument();
-
-      // No ID field in edit mode since ID is auto-generated and immutable
-
-      // Other fields should be populated with initial data
-      expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
-
-      // API key should be empty for security
-      expect(screen.getByTestId('api-key-input')).toHaveValue('');
-
-      // Submit button should say Update
-      expect(screen.getByTestId('update-api-model-button')).toBeInTheDocument();
     });
 
-    it('updates API model successfully by fetching and adding models without API key', async () => {
+    describe('Prefix field initialization', () => {
+      it.each([
+        {
+          description: 'when prefix is set to "azure/" (has prefix)',
+          prefix: 'azure/',
+          checkboxChecked: true,
+          inputDisabled: false,
+          inputValue: 'azure/',
+        },
+        {
+          description: 'when prefix is null (no prefix)',
+          prefix: null,
+          checkboxChecked: false,
+          inputDisabled: true,
+          inputValue: '',
+        },
+        {
+          description: 'when prefix is undefined (no prefix)',
+          prefix: undefined,
+          checkboxChecked: false,
+          inputDisabled: true,
+          inputValue: '',
+        },
+      ])(
+        'renders prefix field correctly $description',
+        async ({ prefix, checkboxChecked, inputDisabled, inputValue }) => {
+          const testData: ApiModelResponse = {
+            ...mockApiModelResponse,
+            api_key_masked: '***',
+            prefix,
+          };
+
+          await act(async () => {
+            render(<ApiModelForm mode="edit" initialData={testData} />, {
+              wrapper: createWrapper(),
+            });
+          });
+
+          expect(screen.getByText('Edit API Model')).toBeInTheDocument();
+          expect(screen.getByTestId('base-url-input')).toHaveValue('https://api.openai.com/v1');
+          expect(screen.getByTestId('update-api-model-button')).toBeInTheDocument();
+
+          const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
+          const prefixInput = screen.getByTestId('prefix-input');
+
+          expect(prefixCheckbox).toHaveProperty('checked', checkboxChecked);
+          expect(prefixInput).toHaveProperty('disabled', inputDisabled);
+          expect(prefixInput).toHaveValue(inputValue);
+        }
+      );
+    });
+
+    it('performs full workflow using stored credentials: fetch, select, test, and update', async () => {
       const user = userEvent.setup();
 
       server.use(
-        // Mock fetch models to return additional models
         ...mockFetchApiModels({
           models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo', 'claude-3-sonnet'],
         }),
-        // Mock the update endpoint
+        ...mockTestApiModel({
+          success: true,
+          response: 'Test successful with stored credentials',
+        }),
         ...mockUpdateApiModel('test-api-model', {
           ...mockApiModelResponse,
-          models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'], // Updated models
+          models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'],
         })
       );
 
@@ -332,9 +423,16 @@ describe('ApiModelForm', () => {
         });
       });
 
-      // Don't provide an API key - use stored credentials
-      // Fetch additional models using stored credentials
-      await user.click(screen.getByTestId('fetch-models-button'));
+      // Verify API key checkbox is checked (has stored credentials)
+      const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
+      expect(apiKeyCheckbox).toBeChecked();
+
+      // Verify fetch button is enabled with stored credentials
+      const fetchButton = screen.getByTestId('fetch-models-button');
+      expect(fetchButton).not.toBeDisabled();
+
+      // Fetch models using stored credentials
+      await user.click(fetchButton);
 
       await waitFor(() => {
         expect(mockToast).toHaveBeenCalledWith({
@@ -343,22 +441,27 @@ describe('ApiModelForm', () => {
         });
       });
 
-      // Verify models were fetched and displayed
-      expect(screen.getByTestId('available-models')).toHaveTextContent(
-        'gpt-4, gpt-3.5-turbo, gpt-4-turbo, claude-3-sonnet'
-      );
+      // Verify available models (excluding already selected gpt-4 and gpt-3.5-turbo)
+      expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
+      expect(screen.getByTestId('available-model-claude-3-sonnet')).toBeInTheDocument();
 
-      // Add a new model (gpt-4-turbo) to the existing selection
-      await user.click(screen.getByText('Select gpt-4')); // This should select gpt-4-turbo from available models
+      // Select an additional model
+      await selectModel(user, 'gpt-4-turbo');
 
-      // The MockModelSelector will add gpt-4 when clicked, but we want to simulate adding gpt-4-turbo
-      // Let's use the "Select All" to get multiple models
-      await user.click(screen.getByText('Select All'));
+      // Test connection using stored credentials
+      const testButton = screen.getByTestId('test-connection-button');
+      expect(testButton).not.toBeDisabled();
 
-      // Verify selected models include the new one
-      expect(screen.getByTestId('selected-models')).toHaveTextContent('gpt-4, gpt-3.5-turbo');
+      await user.click(testButton);
 
-      // Submit form without providing API key
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Connection Test Successful',
+          description: 'Test successful with stored credentials',
+        });
+      });
+
+      // Update the API model
       await user.click(screen.getByTestId('update-api-model-button'));
 
       await waitFor(() => {
@@ -371,280 +474,579 @@ describe('ApiModelForm', () => {
 
       expect(pushMock).toHaveBeenCalledWith('/ui/models');
     });
+  });
 
-    it('can fetch models in edit mode without API key using stored credentials', async () => {
-      const user = userEvent.setup();
+  describe('Prefix functionality', () => {
+    describe('Create Mode', () => {
+      it('enables prefix checkbox, enters value, and shows prefixed model preview', async () => {
+        const user = userEvent.setup();
 
-      server.use(
-        ...mockFetchApiModels({
-          models: ['gpt-4', 'gpt-3.5-turbo', 'claude-3'],
-        })
-      );
+        await act(async () => {
+          render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        });
 
-      await act(async () => {
-        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
-          wrapper: createWrapper(),
+        const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
+        const prefixInput = screen.getByTestId('prefix-input');
+
+        // Verify initial state
+        expect(prefixCheckbox).not.toBeChecked();
+        expect(prefixInput).toBeDisabled();
+
+        // Enable prefix
+        await user.click(prefixCheckbox);
+
+        expect(prefixCheckbox).toBeChecked();
+        expect(prefixInput).not.toBeDisabled();
+
+        // Enter prefix value
+        await user.type(prefixInput, 'azure/');
+        expect(prefixInput).toHaveValue('azure/');
+
+        // Select model and verify prefix preview
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+
+        expect(screen.getByText(/azure\/gpt-4/i)).toBeInTheDocument();
+      });
+
+      it('creates API model with prefix when checkbox is enabled', async () => {
+        const user = userEvent.setup();
+
+        server.use(
+          ...mockCreateApiModel({
+            ...mockApiModelResponse,
+            prefix: 'azure/',
+          })
+        );
+
+        await act(async () => {
+          render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        });
+
+        await user.click(screen.getByTestId('api-key-input-checkbox'));
+        await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
+
+        await user.click(screen.getByTestId('prefix-input-checkbox'));
+        await user.type(screen.getByTestId('prefix-input'), 'azure/');
+
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+
+        await user.click(screen.getByTestId('create-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Created',
+            })
+          );
         });
       });
 
-      // Don't provide API key - should use stored model ID
-      // Base URL is already populated from initialData
+      it('sends null prefix when checkbox is unchecked', async () => {
+        const user = userEvent.setup();
 
-      // Fetch models button should be enabled (using stored credentials)
-      const fetchButton = screen.getByTestId('fetch-models-button');
-      expect(fetchButton).not.toBeDisabled();
+        server.use(
+          ...mockCreateApiModel({
+            ...mockApiModelResponse,
+            prefix: null,
+          })
+        );
 
-      await user.click(fetchButton);
+        await act(async () => {
+          render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        });
 
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Models Fetched Successfully',
-          description: 'Found 3 available models',
+        await user.click(screen.getByTestId('api-key-input-checkbox'));
+        await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
+
+        const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
+        expect(prefixCheckbox).not.toBeChecked();
+
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+
+        await user.click(screen.getByTestId('create-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Created',
+            })
+          );
         });
       });
-
-      expect(screen.getByTestId('available-models')).toHaveTextContent('gpt-4, gpt-3.5-turbo, claude-3');
     });
 
-    it('can test connection in edit mode without API key using stored credentials', async () => {
-      const user = userEvent.setup();
+    describe('Edit Mode', () => {
+      it('updates prefix value', async () => {
+        const user = userEvent.setup();
+        const dataWithPrefix: ApiModelResponse = {
+          ...mockApiModelResponse,
+          prefix: 'azure/',
+        };
 
-      server.use(
-        ...mockTestApiModel({
-          success: true,
-          response: 'Test successful with stored credentials',
-        })
-      );
+        server.use(
+          ...mockUpdateApiModel('test-api-model', {
+            ...mockApiModelResponse,
+            prefix: 'openai:',
+          })
+        );
 
-      await act(async () => {
-        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
-          wrapper: createWrapper(),
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={dataWithPrefix} />, {
+            wrapper: createWrapper(),
+          });
+        });
+
+        const prefixInput = screen.getByTestId('prefix-input');
+        expect(prefixInput).toHaveValue('azure/');
+
+        await user.clear(prefixInput);
+        await user.type(prefixInput, 'openai:');
+
+        expect(prefixInput).toHaveValue('openai:');
+
+        await user.click(screen.getByTestId('update-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Updated',
+            })
+          );
         });
       });
 
-      // Don't provide API key - should use stored model ID
-      // Models are already populated from initialData, so test button should be enabled
+      it('removes prefix by unchecking checkbox', async () => {
+        const user = userEvent.setup();
+        const dataWithPrefix: ApiModelResponse = {
+          ...mockApiModelResponse,
+          prefix: 'azure/',
+        };
 
-      const testButton = screen.getByTestId('test-connection-button');
-      expect(testButton).not.toBeDisabled();
+        server.use(
+          ...mockUpdateApiModel('test-api-model', {
+            ...mockApiModelResponse,
+            prefix: null,
+          })
+        );
 
-      await user.click(testButton);
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={dataWithPrefix} />, {
+            wrapper: createWrapper(),
+          });
+        });
 
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Connection Test Successful',
-          description: 'Test successful with stored credentials',
+        const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
+        expect(prefixCheckbox).toBeChecked();
+
+        await user.click(prefixCheckbox);
+
+        expect(prefixCheckbox).not.toBeChecked();
+        expect(screen.getByTestId('prefix-input')).toBeDisabled();
+
+        await user.click(screen.getByTestId('update-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Updated',
+            })
+          );
+        });
+      });
+
+      it('keeps prefix unchanged when checkbox stays checked', async () => {
+        const user = userEvent.setup();
+        const dataWithPrefix: ApiModelResponse = {
+          ...mockApiModelResponse,
+          prefix: 'azure/',
+        };
+
+        server.use(
+          ...mockUpdateApiModel('test-api-model', {
+            ...mockApiModelResponse,
+            prefix: 'azure/',
+          })
+        );
+
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={dataWithPrefix} />, {
+            wrapper: createWrapper(),
+          });
+        });
+
+        const prefixCheckbox = screen.getByTestId('prefix-input-checkbox');
+        const prefixInput = screen.getByTestId('prefix-input');
+
+        expect(prefixCheckbox).toBeChecked();
+        expect(prefixInput).toHaveValue('azure/');
+
+        await user.click(screen.getByTestId('update-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Updated',
+            })
+          );
         });
       });
     });
   });
 
-  describe('Model selection', () => {
-    it('handles individual model selection', async () => {
-      const user = userEvent.setup();
+  describe('API key optional scenarios', () => {
+    describe('Create Mode - Public API', () => {
+      it('performs full workflow without API key: fetch, select, test, validate, and create', async () => {
+        const user = userEvent.setup();
 
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        server.use(
+          ...mockFetchApiModels({
+            models: ['gpt-4', 'gpt-3.5-turbo'],
+          }),
+          ...mockTestApiModel({
+            success: true,
+            response: 'Test successful without API key',
+          }),
+          ...mockCreateApiModel({
+            ...mockApiModelResponse,
+            api_key_masked: null,
+          })
+        );
+
+        await act(async () => {
+          render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        });
+
+        const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
+        expect(apiKeyCheckbox).not.toBeChecked();
+
+        // Test form validation without API key - should not require API key
+        await user.click(screen.getByTestId('create-api-model-button'));
+
+        await waitFor(() => {
+          const errorMessage = screen.queryByTestId('model-selection-section-error');
+          expect(errorMessage).toBeInTheDocument();
+        });
+
+        const apiKeyError = screen.queryByTestId('api-key-input-error');
+        expect(apiKeyError).not.toBeInTheDocument();
+
+        // Fetch models without API key
+        await fetchModelsAndWait(user);
+
+        expect(screen.getByTestId('available-model-gpt-4')).toBeInTheDocument();
+        expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
+
+        // Select a model
+        await selectModel(user, 'gpt-4');
+
+        // Test connection without API key
+        const testButton = screen.getByTestId('test-connection-button');
+        expect(testButton).not.toBeDisabled();
+
+        await user.click(testButton);
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Connection Test Successful',
+            description: 'Test successful without API key',
+          });
+        });
+
+        // Create API model without API key
+        await user.click(screen.getByTestId('create-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Created',
+            })
+          );
+        });
+
+        expect(pushMock).toHaveBeenCalledWith('/ui/models');
       });
-
-      // Select a model
-      await user.click(screen.getByText('Select gpt-4'));
-
-      // Verify model appears in selected models
-      expect(screen.getByTestId('selected-models')).toHaveTextContent('gpt-4');
     });
 
-    it('handles model removal', async () => {
-      const user = userEvent.setup();
+    describe('Edit Mode - API Key Update Scenarios (Request Body Verification)', () => {
+      it.each([
+        {
+          description: 'sends {action: "set", value: "new-key"} when updating existing key with new value',
+          initialApiKeyMasked: '***' as const,
+          userActions: {
+            toggleCheckbox: false, // Keep checkbox checked
+            typeNewKey: 'sk-new-key-456',
+          },
+          expectedApiKeyRequest: { action: 'set', value: 'sk-new-key-456' },
+        },
+        {
+          description: 'sends {action: "set", value: null} when clearing existing key by unchecking checkbox',
+          initialApiKeyMasked: '***' as const,
+          userActions: {
+            toggleCheckbox: true, // Uncheck to remove key
+            typeNewKey: undefined,
+          },
+          expectedApiKeyRequest: { action: 'set', value: null },
+        },
+        {
+          description: 'sends {action: "keep"} when keeping existing key unchanged',
+          initialApiKeyMasked: '***' as const,
+          userActions: {
+            toggleCheckbox: false, // Keep checkbox checked
+            typeNewKey: undefined, // Don't type anything
+          },
+          expectedApiKeyRequest: { action: 'keep' },
+        },
+        {
+          description: 'sends {action: "set", value: "new-key"} when adding key to model without existing key',
+          initialApiKeyMasked: null,
+          userActions: {
+            toggleCheckbox: true, // Check to enable input
+            typeNewKey: 'sk-new-key-789',
+          },
+          expectedApiKeyRequest: { action: 'set', value: 'sk-new-key-789' },
+        },
+        {
+          description: 'sends {action: "set", value: null} when keeping model without key unchanged',
+          initialApiKeyMasked: null,
+          userActions: {
+            toggleCheckbox: false, // Keep unchecked
+            typeNewKey: undefined,
+          },
+          expectedApiKeyRequest: { action: 'set', value: null },
+        },
+      ])('$description', async ({ initialApiKeyMasked, userActions, expectedApiKeyRequest }) => {
+        const user = userEvent.setup();
+        const testData: ApiModelResponse = {
+          ...mockApiModelResponse,
+          api_key_masked: initialApiKeyMasked,
+        };
 
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        // Capture the request body using MSW handler
+        let capturedRequestBody: any;
+
+        server.use(
+          typedHttp.put(ENDPOINT_API_MODEL_ID, async ({ request, params, response }) => {
+            const { id } = params;
+            if (id !== 'test-api-model') return;
+
+            capturedRequestBody = await request.json();
+
+            return response(200 as const).json({
+              ...mockApiModelResponse,
+              api_key_masked: initialApiKeyMasked,
+            });
+          })
+        );
+
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={testData} />, {
+            wrapper: createWrapper(),
+          });
+        });
+
+        // Perform user actions based on parameters
+        if (userActions.toggleCheckbox) {
+          await user.click(screen.getByTestId('api-key-input-checkbox'));
+        }
+
+        if (userActions.typeNewKey) {
+          await user.type(screen.getByTestId('api-key-input'), userActions.typeNewKey);
+        }
+
+        // Submit form
+        await user.click(screen.getByTestId('update-api-model-button'));
+
+        // Wait for success
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith(
+            expect.objectContaining({
+              title: 'API Model Updated',
+            })
+          );
+        });
+
+        // Verify request body contains correct api_key field
+        expect(capturedRequestBody).toBeDefined();
+        expect(capturedRequestBody.api_key).toEqual(expectedApiKeyRequest);
+
+        expect(pushMock).toHaveBeenCalledWith('/ui/models');
       });
-
-      // First select a model
-      await user.click(screen.getByText('Select gpt-4'));
-      expect(screen.getByTestId('selected-models')).toHaveTextContent('gpt-4');
-
-      // Then remove it
-      await user.click(screen.getByText('Remove gpt-4'));
-      expect(screen.getByTestId('selected-models')).toHaveTextContent('');
     });
 
-    it('handles select all models', async () => {
-      const user = userEvent.setup();
+    describe('Edit Mode - UI Behavior Tests', () => {
+      it('toggles between keep existing key and provide new key modes', async () => {
+        const user = userEvent.setup();
 
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+            wrapper: createWrapper(),
+          });
+        });
+
+        const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
+        const apiKeyInput = screen.getByTestId('api-key-input');
+
+        expect(apiKeyCheckbox).toBeChecked();
+        expect(apiKeyInput).not.toBeDisabled();
+
+        await user.click(apiKeyCheckbox);
+
+        expect(apiKeyCheckbox).not.toBeChecked();
+        expect(apiKeyInput).toBeDisabled();
+
+        await user.click(apiKeyCheckbox);
+
+        expect(apiKeyCheckbox).toBeChecked();
+        expect(apiKeyInput).not.toBeDisabled();
       });
 
-      // Select all models
-      await user.click(screen.getByText('Select All'));
+      it('fetches models using stored credentials (type:"id")', async () => {
+        const user = userEvent.setup();
 
-      // Verify all models are selected
-      expect(screen.getByTestId('selected-models')).toHaveTextContent('gpt-4, gpt-3.5-turbo');
+        server.use(
+          ...mockFetchApiModels({
+            models: ['gpt-4', 'gpt-3.5-turbo', 'claude-3-sonnet'],
+          })
+        );
+
+        await act(async () => {
+          render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
+            wrapper: createWrapper(),
+          });
+        });
+
+        const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
+        expect(apiKeyCheckbox).toBeChecked();
+
+        await user.click(screen.getByTestId('fetch-models-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Models Fetched Successfully',
+            description: 'Found 3 available models',
+          });
+        });
+
+        expect(screen.getByTestId('available-model-claude-3-sonnet')).toBeInTheDocument();
+      });
     });
   });
 
   describe('Button states', () => {
-    it('disables fetch models button when required fields missing', async () => {
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+    describe('Create Mode', () => {
+      it('fetch button enabled with default base_url, test button disabled without models', async () => {
+        await renderCreateFormWithoutApiKey();
+
+        const fetchButton = screen.getByTestId('fetch-models-button');
+        const testButton = screen.getByTestId('test-connection-button');
+
+        expect(fetchButton).not.toBeDisabled();
+        expect(testButton).toBeDisabled();
       });
 
-      const fetchButton = screen.getByTestId('fetch-models-button');
-      expect(fetchButton).toBeDisabled();
+      it('enables test button after selecting model', async () => {
+        const user = await renderCreateFormWithoutApiKey();
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+
+        const testButton = screen.getByTestId('test-connection-button');
+        expect(testButton).not.toBeDisabled();
+      });
     });
 
-    it('disables test connection button when required fields missing', async () => {
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+    describe('Edit Mode', () => {
+      it('enables both buttons with stored credentials and initial models', async () => {
+        await renderEditFormUsingStoredCreds();
+
+        const fetchButton = screen.getByTestId('fetch-models-button');
+        const testButton = screen.getByTestId('test-connection-button');
+
+        expect(fetchButton).not.toBeDisabled();
+        expect(testButton).not.toBeDisabled();
       });
-
-      const testButton = screen.getByTestId('test-connection-button');
-      expect(testButton).toBeDisabled();
-    });
-
-    it('enables buttons when all requirements met', async () => {
-      const user = userEvent.setup();
-
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
-      });
-
-      // Fill required fields
-      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
-
-      // Fetch button should be enabled
-      const fetchButton = screen.getByTestId('fetch-models-button');
-      expect(fetchButton).not.toBeDisabled();
-
-      // Select a model
-      await user.click(screen.getByText('Select gpt-4'));
-
-      // Test button should be enabled
-      const testButton = screen.getByTestId('test-connection-button');
-      expect(testButton).not.toBeDisabled();
-    });
-
-    it('enables buttons in edit mode even without API key (uses stored credentials)', async () => {
-      await act(async () => {
-        render(<ApiModelForm mode="edit" initialData={mockApiModelResponse} />, {
-          wrapper: createWrapper(),
-        });
-      });
-
-      // In edit mode with stored model ID, fetch button should be enabled even without API key
-      const fetchButton = screen.getByTestId('fetch-models-button');
-      expect(fetchButton).not.toBeDisabled();
-
-      // Test button should be enabled because models are pre-populated from initialData
-      const testButton = screen.getByTestId('test-connection-button');
-      expect(testButton).not.toBeDisabled();
     });
   });
 
   describe('Error handling', () => {
-    it('handles fetch models error', async () => {
-      const user = userEvent.setup();
+    describe('Create Mode', () => {
+      it('handles fetch models error', async () => {
+        server.use(
+          ...mockFetchApiModelsError({
+            code: 'authentication_error',
+            message: 'Invalid API key',
+            type: 'invalid_request_error',
+          })
+        );
 
-      server.use(
-        ...mockFetchApiModelsError({
-          code: 'authentication_error',
-          message: 'Invalid API key',
-          type: 'invalid_request_error',
-        })
-      );
+        const user = await renderCreateFormWithApiKey('invalid-key');
+        await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+        await user.click(screen.getByRole('button', { name: /Fetch Models/i }));
 
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
-      });
-
-      // Fill required fields
-      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-key-input'), 'invalid-key');
-
-      // Try to fetch models
-      await user.click(screen.getByRole('button', { name: /Fetch Models/i }));
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Failed to Fetch Models',
-          description: 'Invalid API key',
-          variant: 'destructive',
-        });
-      });
-    });
-
-    it('handles test connection error', async () => {
-      const user = userEvent.setup();
-
-      server.use(
-        ...mockTestApiModelError({
-          code: 'connection_error',
-          message: 'Connection failed',
-          type: 'internal_server_error',
-        })
-      );
-
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
-      });
-
-      // Fill required fields and select model
-      await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
-      await user.type(screen.getByTestId('api-key-input'), 'invalid-key');
-      await user.click(screen.getByText('Select gpt-4'));
-
-      // Try to test connection
-      await user.click(screen.getByTestId('test-connection-button'));
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Connection Test Failed',
-          description: 'Connection failed',
-          variant: 'destructive',
-        });
-      });
-    });
-
-    it('handles form submission error', async () => {
-      const user = userEvent.setup();
-
-      server.use(
-        ...mockCreateApiModelError({
-          code: 'conflict_error',
-          message: 'API model with this ID already exists',
-          type: 'invalid_request_error',
-        }),
-        ...mockCreateApiModelError({
-          code: 'conflict_error',
-          message: 'API model with this ID already exists',
-          type: 'invalid_request_error',
-        })
-      );
-
-      await act(async () => {
-        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
-      });
-
-      // Fill the form (no ID field - it's auto-generated)
-      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
-      await user.click(screen.getByText('Select gpt-4'));
-
-      // Submit form
-      await user.click(screen.getByTestId('create-api-model-button'));
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Failed to Create API Model',
-          description: 'API model with this ID already exists',
-          variant: 'destructive',
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Failed to Fetch Models',
+            description: 'Invalid API key',
+            variant: 'destructive',
+          });
         });
       });
 
-      // Should not navigate on error
-      expect(pushMock).not.toHaveBeenCalled();
+      it('handles test connection error', async () => {
+        server.use(
+          ...mockTestApiModelError({
+            code: 'connection_error',
+            message: 'Connection failed',
+            type: 'internal_server_error',
+          })
+        );
+
+        const user = await renderCreateFormWithApiKey('invalid-key');
+        await user.type(screen.getByTestId('base-url-input'), 'https://api.openai.com/v1');
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+        await user.click(screen.getByTestId('test-connection-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Connection Test Failed',
+            description: 'Connection failed',
+            variant: 'destructive',
+          });
+        });
+      });
+
+      it('handles form submission error and stays on page', async () => {
+        server.use(
+          ...mockCreateApiModelError({
+            code: 'conflict_error',
+            message: 'API model with this ID already exists',
+            type: 'invalid_request_error',
+          }),
+          ...mockCreateApiModelError({
+            code: 'conflict_error',
+            message: 'API model with this ID already exists',
+            type: 'invalid_request_error',
+          })
+        );
+
+        const user = await renderCreateFormWithApiKey('sk-test123');
+        await fetchModelsAndWait(user);
+        await selectModel(user, 'gpt-4');
+        await user.click(screen.getByTestId('create-api-model-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Failed to Create API Model',
+            description: 'API model with this ID already exists',
+            variant: 'destructive',
+          });
+        });
+
+        expect(pushMock).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -659,6 +1061,138 @@ describe('ApiModelForm', () => {
       await user.click(screen.getByTestId('cancel-button'));
 
       expect(pushMock).toHaveBeenCalledWith('/ui/models');
+    });
+  });
+
+  describe('Fetch models network call and error handling', () => {
+    it('allows fetch models without credentials (API may return 401 if required)', async () => {
+      const user = userEvent.setup();
+
+      server.use(
+        ...mockFetchApiModels({
+          models: ['gpt-4', 'gpt-3.5-turbo'],
+        })
+      );
+
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      const fetchButton = screen.getByTestId('fetch-models-button');
+      expect(fetchButton).not.toBeDisabled();
+
+      await user.click(fetchButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Models Fetched Successfully',
+          description: 'Found 2 available models',
+        });
+      });
+    });
+
+    it('triggers network call when fetch models clicked with credentials', async () => {
+      const user = userEvent.setup();
+
+      server.use(
+        ...mockFetchApiModels({
+          models: ['gpt-4', 'gpt-3.5-turbo'],
+        })
+      );
+
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      await user.click(screen.getByTestId('api-key-input-checkbox'));
+      await user.type(screen.getByTestId('api-key-input'), 'sk-test123');
+
+      const fetchButton = screen.getByTestId('fetch-models-button');
+      await user.click(fetchButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Models Fetched Successfully',
+          description: 'Found 2 available models',
+        });
+      });
+
+      expect(screen.getByTestId('available-model-gpt-4')).toBeInTheDocument();
+      expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
+    });
+  });
+
+  describe('Full workflow: fetch → select → test connection', () => {
+    describe('Create Mode with API Key', () => {
+      it('completes full flow from fetch to test connection', async () => {
+        server.use(
+          ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo'] }),
+          ...mockTestApiModel({ success: true, response: 'Test successful!' })
+        );
+
+        const user = await renderCreateFormWithApiKey('sk-test123');
+        await user.click(screen.getByTestId('fetch-models-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Models Fetched Successfully',
+            description: 'Found 2 available models',
+          });
+        });
+
+        expect(screen.getByTestId('available-model-gpt-4')).toBeInTheDocument();
+        expect(screen.getByTestId('available-model-gpt-3.5-turbo')).toBeInTheDocument();
+
+        await selectModel(user, 'gpt-4');
+        expect(screen.getByTestId('selected-model-gpt-4')).toBeInTheDocument();
+
+        const testButton = screen.getByTestId('test-connection-button');
+        expect(testButton).not.toBeDisabled();
+
+        await user.click(testButton);
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Connection Test Successful',
+            description: 'Test successful!',
+          });
+        });
+      });
+    });
+
+    describe('Edit Mode with Stored Credentials', () => {
+      it('completes full flow using stored credentials', async () => {
+        server.use(
+          ...mockFetchApiModels({ models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'] }),
+          ...mockTestApiModel({ success: true, response: 'Connection test successful' })
+        );
+
+        const user = await renderEditFormUsingStoredCreds();
+        await user.click(screen.getByTestId('fetch-models-button'));
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Models Fetched Successfully',
+            description: 'Found 3 available models',
+          });
+        });
+
+        // In Edit mode, only gpt-4-turbo is available (gpt-4 and gpt-3.5-turbo already selected)
+        expect(screen.getByTestId('available-model-gpt-4-turbo')).toBeInTheDocument();
+
+        // Test button should already be enabled because models are already selected
+        const testButton = screen.getByTestId('test-connection-button');
+        expect(testButton).not.toBeDisabled();
+
+        await user.click(testButton);
+
+        await waitFor(() => {
+          expect(mockToast).toHaveBeenCalledWith({
+            title: 'Connection Test Successful',
+            description: 'Connection test successful',
+          });
+        });
+      });
     });
   });
 });

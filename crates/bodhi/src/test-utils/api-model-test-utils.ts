@@ -21,7 +21,13 @@ export async function selectProvider(user: ReturnType<typeof userEvent.setup>, p
 }
 
 export async function fillApiKey(user: ReturnType<typeof userEvent.setup>, apiKey: string) {
+  const apiKeyCheckbox = screen.getByTestId('api-key-input-checkbox');
   const apiKeyInput = screen.getByTestId('api-key-input');
+
+  if (!apiKeyCheckbox.getAttribute('data-state')?.includes('checked')) {
+    await user.click(apiKeyCheckbox);
+  }
+
   await user.clear(apiKeyInput);
   await user.type(apiKeyInput, apiKey);
 }

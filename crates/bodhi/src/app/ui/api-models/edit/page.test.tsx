@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe('Edit API Model Page - Page-Level Integration Tests', () => {
   describe('Page Structure and Initial Render', () => {
-    it('renders page with correct authentication and app status requirements', async () => {
+    it('renders page successfully with form elements prefilled from API data', async () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
@@ -62,33 +62,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
           id: 'test-model',
           api_format: 'openai',
           base_url: 'https://api.openai.com/v1',
-          api_key_masked: '****123',
-          models: ['gpt-3.5-turbo'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
-        ...mockApiFormatsDefault(),
-        ...mockTestApiModelSuccess(),
-        ...mockFetchApiModelsSuccess()
-      );
-
-      render(<EditApiModel />, { wrapper: createWrapper() });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-api-model-form')).toBeInTheDocument();
-        expect(screen.getByText('Edit API Model')).toBeInTheDocument();
-      });
-    });
-
-    it('loads successfully with form elements prefilled with data retrieved from API', async () => {
-      server.use(
-        ...mockAppInfoReady(),
-        ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel('test-model', {
-          id: 'test-model',
-          api_format: 'openai',
-          base_url: 'https://api.openai.com/v1',
-          api_key_masked: '****123',
+          api_key_masked: '***',
           models: ['gpt-3.5-turbo'],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -145,7 +119,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
             id: 'test-model',
             api_format: 'openai',
             base_url: 'https://api.openai.com/v1',
-            api_key_masked: '****123',
+            api_key_masked: '***',
             models: ['gpt-3.5-turbo'],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -156,7 +130,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
           id: 'test-model',
           api_format: 'openai',
           base_url: 'https://api.openai.com/v1',
-          api_key_masked: '****456',
+          api_key_masked: '***',
           models: ['gpt-4'],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -212,9 +186,13 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       // Submit the form to update
       await submitForm(user, 'update-api-model-button');
 
-      // Verify success toast
+      // Verify success toast (should be the last toast called)
       await waitFor(() => {
-        expectSuccessToast(mockToast, 'API Model Updated');
+        expect(mockToast).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            title: 'API Model Updated',
+          })
+        );
       });
 
       // Verify redirect to models page
@@ -228,15 +206,19 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       server.use(
         ...mockAppInfoReady(),
         ...mockUserLoggedIn({ role: 'resource_user' }),
-        ...mockGetApiModel('test-model', {
-          id: 'test-model',
-          api_format: 'openai',
-          base_url: 'https://api.openai.com/v1',
-          api_key_masked: '****123',
-          models: ['gpt-3.5-turbo'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
+        ...mockGetApiModel(
+          'test-model',
+          {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '***',
+            models: ['gpt-3.5-turbo'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { stub: true }
+        ),
         ...mockUpdateApiModelError('test-model'),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
@@ -278,9 +260,14 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
       // Submit the form (should fail with 500)
       await submitForm(user, 'update-api-model-button');
 
-      // Verify error toast is shown
+      // Verify error toast is shown (should be the last toast called)
       await waitFor(() => {
-        expectErrorToast(mockToast, 'Failed to Update API Model');
+        expect(mockToast).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            title: 'Failed to Update API Model',
+            variant: 'destructive',
+          })
+        );
       });
 
       // Verify NO navigation occurred (stays on same page)

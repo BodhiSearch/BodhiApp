@@ -14,6 +14,9 @@ interface ApiKeyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   helpText?: string;
   docUrl?: string;
   mode?: 'create' | 'edit' | 'setup';
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  enabledLabel?: string;
   'data-testid'?: string;
 }
 
@@ -26,6 +29,9 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
       helpText,
       docUrl,
       mode = 'create',
+      enabled,
+      onEnabledChange,
+      enabledLabel = 'Use API key',
       className = '',
       'data-testid': testId = 'api-key-input',
       ...props
@@ -61,10 +67,7 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor={testId} className="flex items-center gap-2">
-            {label}
-            {required && <Badge variant="secondary">Required</Badge>}
-          </Label>
+          <Label htmlFor={testId}>{label}</Label>
           {docUrl && (
             <Button
               type="button"
@@ -81,29 +84,44 @@ export const ApiKeyInput = forwardRef<HTMLInputElement, ApiKeyInputProps>(
           )}
         </div>
 
-        <div className="relative">
-          <Input
-            {...props}
-            ref={ref}
-            id={testId}
-            data-testid={testId}
-            type={showApiKey ? 'text' : 'password'}
-            placeholder={getPlaceholder()}
-            className={`pr-10 ${className}`}
-            autoComplete="off"
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id={`${testId}-enabled`}
+            checked={enabled}
+            onChange={(e) => onEnabledChange(e.target.checked)}
+            data-testid={`${testId}-checkbox`}
+            className="rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 h-full px-3"
-            onClick={() => setShowApiKey(!showApiKey)}
-            data-testid={`${testId}-visibility-toggle`}
-            tabIndex={-1}
-          >
-            {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="sr-only">{showApiKey ? 'Hide API key' : 'Show API key'}</span>
-          </Button>
+          <Label htmlFor={`${testId}-enabled`} className="text-sm text-muted-foreground cursor-pointer flex-shrink-0">
+            {enabledLabel}
+          </Label>
+          <div className="relative flex-1">
+            <Input
+              {...props}
+              ref={ref}
+              id={testId}
+              data-testid={testId}
+              type={showApiKey ? 'text' : 'password'}
+              placeholder={getPlaceholder()}
+              className={`pr-10 ${className}`}
+              autoComplete="off"
+              disabled={!enabled}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={() => setShowApiKey(!showApiKey)}
+              data-testid={`${testId}-visibility-toggle`}
+              tabIndex={-1}
+              disabled={!enabled}
+            >
+              {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <span className="sr-only">{showApiKey ? 'Hide API key' : 'Show API key'}</span>
+            </Button>
+          </div>
         </div>
 
         {error && (

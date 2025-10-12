@@ -22,9 +22,7 @@
   "paths": {
     "/api/chat": {
       "post": {
-        "tags": [
-          "ollama"
-        ],
+        "tags": ["ollama"],
         "summary": "Chat with Model (Ollama Compatible)",
         "description": "Creates a chat completion using Ollama API format. Supports both streaming and non-streaming responses with Ollama-specific options and response format.",
         "operationId": "chatOllamaModel",
@@ -139,28 +137,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/api/show": {
       "post": {
-        "tags": [
-          "ollama"
-        ],
+        "tags": ["ollama"],
         "summary": "Show Model Details (Ollama Compatible)",
         "description": "Retrieves detailed information about a specific model in Ollama API compatible format. Includes model parameters, template, license, and configuration details.",
         "operationId": "showOllamaModel",
@@ -261,28 +251,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/api/tags": {
       "get": {
-        "tags": [
-          "ollama"
-        ],
+        "tags": ["ollama"],
         "summary": "List Available Models (Ollama Compatible)",
         "description": "Returns a list of all available models in Ollama API compatible format. Includes model metadata such as size, modification time, and format details.",
         "operationId": "listOllamaModels",
@@ -358,28 +340,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/bodhi/v1/access-requests": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "List All Access Requests",
         "description": "List all access requests regardless of status. Requires manager or admin role.",
         "operationId": "listAllAccessRequests",
@@ -477,18 +451,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/bodhi/v1/access-requests/pending": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "List Pending Access Requests",
         "description": "List all pending access requests. Requires manager or admin role.",
         "operationId": "listPendingAccessRequests",
@@ -586,18 +556,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/bodhi/v1/access-requests/{id}/approve": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Approve Access Request",
         "description": "Approve an access request and assign a role. Requires manager or admin role.",
         "operationId": "approveAccessRequest",
@@ -681,18 +647,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/bodhi/v1/access-requests/{id}/reject": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Reject Access Request",
         "description": "Reject an access request. Requires manager or admin role.",
         "operationId": "rejectAccessRequest",
@@ -765,18 +727,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/bodhi/v1/api-models": {
       "get": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "List API Model Configurations",
         "description": "Retrieves paginated list of all configured API model aliases including external API formats like OpenAI, etc. API keys are masked in list view for security.",
         "operationId": "listApiModels",
@@ -887,26 +845,18 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       },
       "post": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Create a new API model configuration",
         "operationId": "createApiModel",
         "requestBody": {
@@ -983,28 +933,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/api-models/api-formats": {
       "get": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Get Available API Formats",
         "description": "Retrieves list of supported API formats/protocols (e.g., OpenAI).",
         "operationId": "getApiFormats",
@@ -1017,9 +959,7 @@
                   "$ref": "#/components/schemas/ApiFormatsResponse"
                 },
                 "example": {
-                  "data": [
-                    "openai"
-                  ]
+                  "data": ["openai"]
                 }
               }
             }
@@ -1067,28 +1007,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/api-models/fetch-models": {
       "post": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Fetch available models from the API",
         "operationId": "fetchApiModels",
         "requestBody": {
@@ -1155,28 +1087,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/api-models/test": {
       "post": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Test API connectivity with a prompt",
         "operationId": "testApiModel",
         "requestBody": {
@@ -1243,28 +1167,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/api-models/{id}": {
       "get": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Get API Model Configuration",
         "description": "Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.",
         "operationId": "getApiModel",
@@ -1358,26 +1274,18 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       },
       "put": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Update an existing API model configuration",
         "operationId": "updateApiModel",
         "parameters": [
@@ -1465,26 +1373,18 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       },
       "delete": {
-        "tags": [
-          "api-models"
-        ],
+        "tags": ["api-models"],
         "summary": "Delete an API model configuration",
         "operationId": "deleteApiModel",
         "parameters": [
@@ -1555,28 +1455,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/apps/request-access": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Request Resource Access",
         "description": "Requests access permissions for an application client to access this resource server's protected resources.",
         "operationId": "requestAccess",
@@ -1665,9 +1557,7 @@
     },
     "/bodhi/v1/auth/callback": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Complete OAuth Authentication",
         "description": "Completes the OAuth authentication flow by exchanging authorization code for tokens and establishing user session.",
         "operationId": "completeOAuthFlow",
@@ -1774,9 +1664,7 @@
     },
     "/bodhi/v1/auth/initiate": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Initiate OAuth Authentication",
         "description": "Initiates OAuth authentication flow. Returns OAuth authorization URL for unauthenticated users or home page URL for already authenticated users.",
         "operationId": "initiateOAuthFlow",
@@ -1874,9 +1762,7 @@
     },
     "/bodhi/v1/info": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Application Information",
         "description": "Retrieves current application version and status information including setup state",
         "operationId": "getAppInfo",
@@ -1920,9 +1806,7 @@
     },
     "/bodhi/v1/logout": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Logout User",
         "description": "Logs out the current user by destroying their session and returns redirect URL to login page",
         "operationId": "logoutUser",
@@ -1985,9 +1869,7 @@
     },
     "/bodhi/v1/modelfiles": {
       "get": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "List Local Model Files",
         "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size. Requires any authenticated user (User level permissions or higher).",
         "operationId": "listModelFiles",
@@ -2098,28 +1980,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/bodhi/v1/modelfiles/pull": {
       "get": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "List Model Download Requests",
         "description": "Retrieves paginated list of all model download requests with their current status, progress, and metadata. Includes both active downloads and completed/failed requests.",
         "operationId": "listDownloads",
@@ -2233,26 +2107,18 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       },
       "post": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Start Model File Download",
         "description": "Initiates a new model file download from HuggingFace repository. Creates a download request that can be tracked for progress. Returns existing request if download is already in progress.",
         "operationId": "pullModelFile",
@@ -2353,28 +2219,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/modelfiles/pull/{alias}": {
       "post": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Download Model by Alias",
         "description": "Initiates a model download using a predefined alias that maps to specific repository and file combinations. This provides a convenient way to download popular models without specifying exact repository details.",
         "operationId": "pullModelByAlias",
@@ -2489,28 +2347,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/modelfiles/pull/{id}": {
       "get": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Get Download Request Status",
         "description": "Retrieves the current status and progress information for a specific model download request. Includes download progress, error details, and completion status.",
         "operationId": "getDownloadStatus",
@@ -2606,28 +2456,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/models": {
       "get": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "List All Model Aliases",
         "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options. Requires any authenticated user (User level permissions or higher).",
         "operationId": "listAllModels",
@@ -2683,10 +2525,7 @@
                   "data": [
                     {
                       "alias": "llama2:chat",
-                      "context_params": [
-                        "--ctx_size",
-                        "4096"
-                      ],
+                      "context_params": ["--ctx_size", "4096"],
                       "filename": "llama-2-7b-chat.Q4_K_M.gguf",
                       "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
                       "request_params": {
@@ -2708,10 +2547,7 @@
                       "base_url": "https://api.openai.com/v1",
                       "created_at": "2024-01-01T00:00:00Z",
                       "id": "openai-gpt4",
-                      "models": [
-                        "gpt-4",
-                        "gpt-3.5-turbo"
-                      ],
+                      "models": ["gpt-4", "gpt-3.5-turbo"],
                       "source": "api",
                       "updated_at": "2024-01-01T00:00:00Z"
                     }
@@ -2766,26 +2602,18 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       },
       "post": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Create Alias",
         "operationId": "createAlias",
         "requestBody": {
@@ -2852,28 +2680,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/models/{alias}": {
       "get": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Get Model Alias Details",
         "description": "Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).",
         "operationId": "getAlias",
@@ -2901,9 +2721,7 @@
                   "chat_template": "llama2",
                   "context_params": {
                     "n_keep": 24,
-                    "stop": [
-                      "<|end_of_turn|>"
-                    ]
+                    "stop": ["<|end_of_turn|>"]
                   },
                   "filename": "llama-2-7b-chat.Q8_0.gguf",
                   "model_params": {},
@@ -2980,28 +2798,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/bodhi/v1/models/{id}": {
       "put": {
-        "tags": [
-          "models"
-        ],
+        "tags": ["models"],
         "summary": "Update Alias",
         "operationId": "updateAlias",
         "parameters": [
@@ -3080,28 +2890,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_power_user"
-            ]
+            "bearer_api_token": ["scope_token_power_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_power_user"
-            ]
+            "bearer_oauth_token": ["scope_user_power_user"]
           },
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/settings": {
       "get": {
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "summary": "List Application Settings",
         "description": "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.\n\n**Security Note:** Admin session authentication required for system configuration access.",
         "operationId": "listSettings",
@@ -3122,13 +2924,7 @@
                     "default_value": "warn",
                     "key": "BODHI_LOG_LEVEL",
                     "metadata": {
-                      "options": [
-                        "error",
-                        "warn",
-                        "info",
-                        "debug",
-                        "trace"
-                      ],
+                      "options": ["error", "warn", "info", "debug", "trace"],
                       "type": "option"
                     },
                     "source": "environment"
@@ -3191,18 +2987,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_admin"
-            ]
+            "session_auth": ["resource_admin"]
           }
         ]
       }
     },
     "/bodhi/v1/settings/{key}": {
       "put": {
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "summary": "Update Application Setting",
         "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
         "operationId": "updateSetting",
@@ -3225,9 +3017,7 @@
               "schema": {
                 "type": "object",
                 "description": "Request to update a setting value",
-                "required": [
-                  "value"
-                ],
+                "required": ["value"],
                 "properties": {
                   "value": {
                     "description": "New value for the setting (type depends on setting metadata)"
@@ -3257,13 +3047,7 @@
                   "default_value": "warn",
                   "key": "BODHI_LOG_LEVEL",
                   "metadata": {
-                    "options": [
-                      "error",
-                      "warn",
-                      "info",
-                      "debug",
-                      "trace"
-                    ],
+                    "options": ["error", "warn", "info", "debug", "trace"],
                     "type": "option"
                   },
                   "source": "settings_file"
@@ -3331,16 +3115,12 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_admin"
-            ]
+            "session_auth": ["resource_admin"]
           }
         ]
       },
       "delete": {
-        "tags": [
-          "settings"
-        ],
+        "tags": ["settings"],
         "summary": "Reset Setting to Default",
         "description": "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.\n\n**Security Note:** Admin session authentication required.",
         "operationId": "deleteSetting",
@@ -3369,13 +3149,7 @@
                   "default_value": "warn",
                   "key": "BODHI_LOG_LEVEL",
                   "metadata": {
-                    "options": [
-                      "error",
-                      "warn",
-                      "info",
-                      "debug",
-                      "trace"
-                    ],
+                    "options": ["error", "warn", "info", "debug", "trace"],
                     "type": "option"
                   },
                   "source": "default"
@@ -3443,18 +3217,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_admin"
-            ]
+            "session_auth": ["resource_admin"]
           }
         ]
       }
     },
     "/bodhi/v1/setup": {
       "post": {
-        "tags": [
-          "setup"
-        ],
+        "tags": ["setup"],
         "summary": "Setup Application",
         "description": "Initializes the application with authentication configuration and registers with the auth server",
         "operationId": "setupApp",
@@ -3512,9 +3282,7 @@
     },
     "/bodhi/v1/tokens": {
       "get": {
-        "tags": [
-          "api-keys"
-        ],
+        "tags": ["api-keys"],
         "summary": "List API Tokens",
         "description": "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.\n\n**Security Note:** Session-only authentication required to prevent information disclosure via tokens.",
         "operationId": "listApiTokens",
@@ -3637,16 +3405,12 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       },
       "post": {
-        "tags": [
-          "api-keys"
-        ],
+        "tags": ["api-keys"],
         "summary": "Create API Token",
         "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. Tokens are scoped based on user role: User role receives scope_token_user (basic access), while Admin/Manager/PowerUser roles receive scope_token_power_user (administrative access).\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
         "operationId": "createApiToken",
@@ -3659,9 +3423,7 @@
               },
               "example": {
                 "name": "My Integration Token",
-                "scopes": [
-                  "scope_token_user"
-                ]
+                "scopes": ["scope_token_user"]
               }
             }
           },
@@ -3724,18 +3486,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/tokens/{id}": {
       "put": {
-        "tags": [
-          "api-keys"
-        ],
+        "tags": ["api-keys"],
         "summary": "Update API Token",
         "description": "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.\n\n**Security Note:** Session-only authentication required to prevent token-based privilege escalation.",
         "operationId": "updateApiToken",
@@ -3846,18 +3604,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_power_user"
-            ]
+            "session_auth": ["resource_power_user"]
           }
         ]
       }
     },
     "/bodhi/v1/user": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Get Current User Information",
         "description": "Retrieves information about the currently authenticated user. This endpoint supports optional authentication - returns `logged_out` status if not authenticated, or user details with roles/scopes if authenticated via any method (session, API token, or OAuth exchange).",
         "operationId": "getCurrentUser",
@@ -3946,9 +3700,7 @@
     },
     "/bodhi/v1/user/request-access": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Request User Access",
         "description": "Authenticated users without roles can request access to the system. Only one pending request is allowed per user.",
         "operationId": "requestUserAccess",
@@ -4033,9 +3785,7 @@
     },
     "/bodhi/v1/user/request-status": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Get Access Request Status",
         "description": "Check the status of the current user's access request.",
         "operationId": "getUserAccessStatus",
@@ -4117,9 +3867,7 @@
     },
     "/bodhi/v1/users": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "List users",
         "description": "List all users with roles and status information. Available to managers and admins.",
         "operationId": "listUsers",
@@ -4203,18 +3951,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/bodhi/v1/users/{user_id}": {
       "delete": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Remove user access",
         "description": "Remove a user's access to the application. Only admins can remove users.",
         "operationId": "removeUser",
@@ -4286,18 +4030,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_admin"
-            ]
+            "session_auth": ["resource_admin"]
           }
         ]
       }
     },
     "/bodhi/v1/users/{user_id}/role": {
       "put": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Change user role",
         "description": "Assign a new role to a user. Admins can assign any role, managers can assign user/power_user/manager roles.",
         "operationId": "changeUserRole",
@@ -4379,18 +4119,14 @@
         },
         "security": [
           {
-            "session_auth": [
-              "resource_manager"
-            ]
+            "session_auth": ["resource_manager"]
           }
         ]
       }
     },
     "/health": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Health Check",
         "description": "Comprehensive health check to verify all application components are operational",
         "operationId": "healthCheck",
@@ -4433,9 +4169,7 @@
     },
     "/ping": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Ping Server",
         "description": "Simple connectivity check to verify the server is responding",
         "operationId": "pingServer",
@@ -4478,9 +4212,7 @@
     },
     "/v1/chat/completions": {
       "post": {
-        "tags": [
-          "openai"
-        ],
+        "tags": ["openai"],
         "summary": "Create Chat Completion (OpenAI Compatible)",
         "description": "Creates a chat completion response using the specified model. Supports both streaming and non-streaming responses. Fully compatible with OpenAI's chat completions API format.",
         "operationId": "createChatCompletion",
@@ -4618,28 +4350,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/v1/embeddings": {
       "post": {
-        "tags": [
-          "openai"
-        ],
+        "tags": ["openai"],
         "summary": "Create Embeddings (OpenAI Compatible)",
         "description": "Creates embeddings for the input text using the specified model. Fully compatible with OpenAI's embeddings API format.",
         "operationId": "createEmbedding",
@@ -4668,11 +4392,7 @@
                 "example": {
                   "data": [
                     {
-                      "embedding": [
-                        0.1,
-                        0.2,
-                        0.3
-                      ],
+                      "embedding": [0.1, 0.2, 0.3],
                       "index": 0,
                       "object": "embedding"
                     }
@@ -4730,28 +4450,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/v1/models": {
       "get": {
-        "tags": [
-          "openai"
-        ],
+        "tags": ["openai"],
         "summary": "List Available Models (OpenAI Compatible)",
         "description": "Returns a list of all available models in OpenAI API compatible format. Includes user aliases, model aliases, and API provider aliases that can be used with the chat completions endpoint.",
         "operationId": "listModels",
@@ -4826,28 +4538,20 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
     },
     "/v1/models/{id}": {
       "get": {
-        "tags": [
-          "openai"
-        ],
+        "tags": ["openai"],
         "summary": "Get Model Details (OpenAI Compatible)",
         "description": "Retrieves details for a specific model by ID in OpenAI API compatible format. The model ID can be a user alias, model alias, or API provider alias.",
         "operationId": "getModel",
@@ -4940,19 +4644,13 @@
         },
         "security": [
           {
-            "bearer_api_token": [
-              "scope_token_user"
-            ]
+            "bearer_api_token": ["scope_token_user"]
           },
           {
-            "bearer_oauth_token": [
-              "scope_user_user"
-            ]
+            "bearer_oauth_token": ["scope_user_user"]
           },
           {
-            "session_auth": [
-              "resource_user"
-            ]
+            "session_auth": ["resource_user"]
           }
         ]
       }
@@ -4970,15 +4668,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "source"
-                ],
+                "required": ["source"],
                 "properties": {
                   "source": {
                     "type": "string",
-                    "enum": [
-                      "user"
-                    ]
+                    "enum": ["user"]
                   }
                 }
               }
@@ -4993,15 +4687,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "source"
-                ],
+                "required": ["source"],
                 "properties": {
                   "source": {
                     "type": "string",
-                    "enum": [
-                      "model"
-                    ]
+                    "enum": ["model"]
                   }
                 }
               }
@@ -5016,15 +4706,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "source"
-                ],
+                "required": ["source"],
                 "properties": {
                   "source": {
                     "type": "string",
-                    "enum": [
-                      "api"
-                    ]
+                    "enum": ["api"]
                   }
                 }
               }
@@ -5036,14 +4722,7 @@
       },
       "ApiAlias": {
         "type": "object",
-        "required": [
-          "id",
-          "api_format",
-          "base_url",
-          "models",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "api_format", "base_url", "models", "created_at", "updated_at"],
         "properties": {
           "id": {
             "type": "string"
@@ -5061,10 +4740,7 @@
             }
           },
           "prefix": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "created_at": {
             "type": "string",
@@ -5079,17 +4755,12 @@
       "ApiFormat": {
         "type": "string",
         "description": "API format/protocol specification",
-        "enum": [
-          "openai",
-          "placeholder"
-        ]
+        "enum": ["openai", "placeholder"]
       },
       "ApiFormatsResponse": {
         "type": "object",
         "description": "Response containing available API formats",
-        "required": [
-          "data"
-        ],
+        "required": ["data"],
         "properties": {
           "data": {
             "type": "array",
@@ -5099,69 +4770,13 @@
           }
         },
         "example": {
-          "data": [
-            "openai"
-          ]
+          "data": ["openai"]
         }
-      },
-      "ApiKey": {
-        "type": [
-          "string",
-          "null"
-        ],
-        "description": "Validated API key wrapper - validates length when Some, allows None for public APIs"
-      },
-      "ApiKeyUpdateAction": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "Keep the existing API key unchanged",
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "type": "string",
-                "enum": [
-                  "keep"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "Set a new API key (or add one if none exists) - can be None for public APIs",
-            "required": [
-              "value",
-              "action"
-            ],
-            "properties": {
-              "value": {
-                "$ref": "#/components/schemas/ApiKey",
-                "description": "Set a new API key (or add one if none exists) - can be None for public APIs"
-              },
-              "action": {
-                "type": "string",
-                "enum": [
-                  "set"
-                ]
-              }
-            }
-          }
-        ],
-        "description": "Represents an API key update action for API model updates"
       },
       "ApiModelResponse": {
         "type": "object",
         "description": "Response containing API model configuration",
-        "required": [
-          "id",
-          "api_format",
-          "base_url",
-          "models",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "api_format", "base_url", "api_key_masked", "models", "created_at", "updated_at"],
         "properties": {
           "id": {
             "type": "string"
@@ -5173,10 +4788,7 @@
             "type": "string"
           },
           "api_key_masked": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "models": {
             "type": "array",
@@ -5185,10 +4797,7 @@
             }
           },
           "prefix": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "created_at": {
             "type": "string",
@@ -5205,10 +4814,7 @@
           "base_url": "https://api.openai.com/v1",
           "created_at": "2024-01-01T00:00:00Z",
           "id": "openai-gpt4",
-          "models": [
-            "gpt-4",
-            "gpt-3.5-turbo"
-          ],
+          "models": ["gpt-4", "gpt-3.5-turbo"],
           "prefix": "openai",
           "updated_at": "2024-01-01T00:00:00Z"
         }
@@ -5262,9 +4868,7 @@
       },
       "ApiTokenResponse": {
         "type": "object",
-        "required": [
-          "token"
-        ],
+        "required": ["token"],
         "properties": {
           "token": {
             "type": "string",
@@ -5278,9 +4882,7 @@
       },
       "AppAccessRequest": {
         "type": "object",
-        "required": [
-          "app_client_id"
-        ],
+        "required": ["app_client_id"],
         "properties": {
           "app_client_id": {
             "type": "string"
@@ -5289,9 +4891,7 @@
       },
       "AppAccessResponse": {
         "type": "object",
-        "required": [
-          "scope"
-        ],
+        "required": ["scope"],
         "properties": {
           "scope": {
             "type": "string"
@@ -5301,10 +4901,7 @@
       "AppInfo": {
         "type": "object",
         "description": "Application information and status",
-        "required": [
-          "version",
-          "status"
-        ],
+        "required": ["version", "status"],
         "properties": {
           "version": {
             "type": "string",
@@ -5336,19 +4933,13 @@
       },
       "AppStatus": {
         "type": "string",
-        "enum": [
-          "setup",
-          "ready",
-          "resource-admin"
-        ],
+        "enum": ["setup", "ready", "resource-admin"],
         "example": "ready"
       },
       "ApproveUserAccessRequest": {
         "type": "object",
         "description": "Request body for approving access with role assignment",
-        "required": [
-          "role"
-        ],
+        "required": ["role"],
         "properties": {
           "role": {
             "$ref": "#/components/schemas/ResourceRole",
@@ -5363,34 +4954,22 @@
         "type": "object",
         "properties": {
           "code": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "OAuth authorization code from successful authentication (required for success flow)",
             "example": "auth_code_123"
           },
           "state": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "OAuth state parameter for CSRF protection (must match initiated request)",
             "example": "random_state_456"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "OAuth error code if authentication failed (e.g., \"access_denied\")",
             "example": "access_denied"
           },
           "error_description": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Human-readable OAuth error description if authentication failed",
             "example": "The user denied the request"
           }
@@ -5408,9 +4987,7 @@
       "ChangeRoleRequest": {
         "type": "object",
         "description": "Change user role request",
-        "required": [
-          "role"
-        ],
+        "required": ["role"],
         "properties": {
           "role": {
             "type": "string",
@@ -5421,10 +4998,7 @@
       },
       "ChatChoice": {
         "type": "object",
-        "required": [
-          "index",
-          "message"
-        ],
+        "required": ["index", "message"],
         "properties": {
           "index": {
             "type": "integer",
@@ -5463,20 +5037,14 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionTokenLogprob"
             },
             "description": "A list of message content tokens with log probability information."
           },
           "refusal": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionTokenLogprob"
             }
@@ -5485,10 +5053,7 @@
       },
       "ChatChoiceStream": {
         "type": "object",
-        "required": [
-          "index",
-          "delta"
-        ],
+        "required": ["index", "delta"],
         "properties": {
           "index": {
             "type": "integer",
@@ -5525,10 +5090,7 @@
       },
       "ChatCompletionAudio": {
         "type": "object",
-        "required": [
-          "voice",
-          "format"
-        ],
+        "required": ["voice", "format"],
         "properties": {
           "voice": {
             "$ref": "#/components/schemas/ChatCompletionAudioVoice",
@@ -5542,56 +5104,33 @@
       },
       "ChatCompletionAudioFormat": {
         "type": "string",
-        "enum": [
-          "wav",
-          "mp3",
-          "flac",
-          "opus",
-          "pcm16"
-        ]
+        "enum": ["wav", "mp3", "flac", "opus", "pcm16"]
       },
       "ChatCompletionAudioVoice": {
         "type": "string",
-        "enum": [
-          "alloy",
-          "ash",
-          "ballad",
-          "coral",
-          "echo",
-          "sage",
-          "shimmer",
-          "verse"
-        ]
+        "enum": ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
       },
       "ChatCompletionFunctionCall": {
         "oneOf": [
           {
             "type": "string",
             "description": "The model does not call a function, and responds to the end-user.",
-            "enum": [
-              "none"
-            ]
+            "enum": ["none"]
           },
           {
             "type": "string",
             "description": "The model can pick between an end-user or calling a function.",
-            "enum": [
-              "auto"
-            ]
+            "enum": ["auto"]
           },
           {
             "type": "object",
             "description": "Forces the model to call the specified function.",
-            "required": [
-              "Function"
-            ],
+            "required": ["Function"],
             "properties": {
               "Function": {
                 "type": "object",
                 "description": "Forces the model to call the specified function.",
-                "required": [
-                  "name"
-                ],
+                "required": ["name"],
                 "properties": {
                   "name": {
                     "type": "string"
@@ -5604,20 +5143,14 @@
       },
       "ChatCompletionFunctions": {
         "type": "object",
-        "required": [
-          "name",
-          "parameters"
-        ],
+        "required": ["name", "parameters"],
         "properties": {
           "name": {
             "type": "string",
             "description": "The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
           },
           "description": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "A description of what the function does, used by the model to choose when and how to call the function."
           },
           "parameters": {
@@ -5628,11 +5161,7 @@
       },
       "ChatCompletionMessageToolCall": {
         "type": "object",
-        "required": [
-          "id",
-          "type",
-          "function"
-        ],
+        "required": ["id", "type", "function"],
         "properties": {
           "id": {
             "type": "string",
@@ -5650,9 +5179,7 @@
       },
       "ChatCompletionMessageToolCallChunk": {
         "type": "object",
-        "required": [
-          "index"
-        ],
+        "required": ["index"],
         "properties": {
           "index": {
             "type": "integer",
@@ -5660,10 +5187,7 @@
             "minimum": 0
           },
           "id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The ID of the tool call."
           },
           "type": {
@@ -5692,18 +5216,12 @@
       "ChatCompletionModalities": {
         "type": "string",
         "description": "Output types that you would like the model to generate for this request.\n\nMost models are capable of generating text, which is the default: `[\"text\"]`\n\nThe `gpt-4o-audio-preview` model can also be used to [generate\naudio](https://platform.openai.com/docs/guides/audio). To request that this model generate both text and audio responses, you can use: `[\"text\", \"audio\"]`",
-        "enum": [
-          "text",
-          "audio"
-        ]
+        "enum": ["text", "audio"]
       },
       "ChatCompletionNamedToolChoice": {
         "type": "object",
         "description": "Specifies a tool the model should use. Use to force the model to call a specific function.",
-        "required": [
-          "type",
-          "function"
-        ],
+        "required": ["type", "function"],
         "properties": {
           "type": {
             "$ref": "#/components/schemas/ChatCompletionToolType",
@@ -5729,17 +5247,11 @@
             ]
           },
           "refusal": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The refusal message by the assistant."
           },
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
           },
           "audio": {
@@ -5754,10 +5266,7 @@
             ]
           },
           "tool_calls": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
             }
@@ -5777,9 +5286,7 @@
       },
       "ChatCompletionRequestAssistantMessageAudio": {
         "type": "object",
-        "required": [
-          "id"
-        ],
+        "required": ["id"],
         "properties": {
           "id": {
             "type": "string",
@@ -5811,15 +5318,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "text"
-                    ]
+                    "enum": ["text"]
                   }
                 }
               }
@@ -5832,15 +5335,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "refusal"
-                    ]
+                    "enum": ["refusal"]
                   }
                 }
               }
@@ -5850,19 +5349,14 @@
       },
       "ChatCompletionRequestDeveloperMessage": {
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "properties": {
           "content": {
             "$ref": "#/components/schemas/ChatCompletionRequestDeveloperMessageContent",
             "description": "The contents of the developer message."
           },
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
           }
         }
@@ -5882,15 +5376,10 @@
       },
       "ChatCompletionRequestFunctionMessage": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "content": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The return value from the function call, to return to the model."
           },
           "name": {
@@ -5908,15 +5397,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "developer"
-                    ]
+                    "enum": ["developer"]
                   }
                 }
               }
@@ -5929,15 +5414,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "system"
-                    ]
+                    "enum": ["system"]
                   }
                 }
               }
@@ -5950,15 +5431,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "user"
-                    ]
+                    "enum": ["user"]
                   }
                 }
               }
@@ -5971,15 +5448,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "assistant"
-                    ]
+                    "enum": ["assistant"]
                   }
                 }
               }
@@ -5992,15 +5465,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "tool"
-                    ]
+                    "enum": ["tool"]
                   }
                 }
               }
@@ -6013,15 +5482,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "role"
-                ],
+                "required": ["role"],
                 "properties": {
                   "role": {
                     "type": "string",
-                    "enum": [
-                      "function"
-                    ]
+                    "enum": ["function"]
                   }
                 }
               }
@@ -6032,9 +5497,7 @@
       "ChatCompletionRequestMessageContentPartAudio": {
         "type": "object",
         "description": "Learn about [audio inputs](https://platform.openai.com/docs/guides/audio).",
-        "required": [
-          "input_audio"
-        ],
+        "required": ["input_audio"],
         "properties": {
           "input_audio": {
             "$ref": "#/components/schemas/InputAudio"
@@ -6043,9 +5506,7 @@
       },
       "ChatCompletionRequestMessageContentPartImage": {
         "type": "object",
-        "required": [
-          "image_url"
-        ],
+        "required": ["image_url"],
         "properties": {
           "image_url": {
             "$ref": "#/components/schemas/ImageUrl"
@@ -6054,9 +5515,7 @@
       },
       "ChatCompletionRequestMessageContentPartRefusal": {
         "type": "object",
-        "required": [
-          "refusal"
-        ],
+        "required": ["refusal"],
         "properties": {
           "refusal": {
             "type": "string",
@@ -6066,9 +5525,7 @@
       },
       "ChatCompletionRequestMessageContentPartText": {
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "properties": {
           "text": {
             "type": "string"
@@ -6077,19 +5534,14 @@
       },
       "ChatCompletionRequestSystemMessage": {
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "properties": {
           "content": {
             "$ref": "#/components/schemas/ChatCompletionRequestSystemMessageContent",
             "description": "The contents of the system message."
           },
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
           }
         }
@@ -6118,15 +5570,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "text"
-                    ]
+                    "enum": ["text"]
                   }
                 }
               }
@@ -6137,10 +5585,7 @@
       "ChatCompletionRequestToolMessage": {
         "type": "object",
         "description": "Tool message",
-        "required": [
-          "content",
-          "tool_call_id"
-        ],
+        "required": ["content", "tool_call_id"],
         "properties": {
           "content": {
             "$ref": "#/components/schemas/ChatCompletionRequestToolMessageContent",
@@ -6175,15 +5620,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "text"
-                    ]
+                    "enum": ["text"]
                   }
                 }
               }
@@ -6193,19 +5634,14 @@
       },
       "ChatCompletionRequestUserMessage": {
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "properties": {
           "content": {
             "$ref": "#/components/schemas/ChatCompletionRequestUserMessageContent",
             "description": "The contents of the user message."
           },
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
           }
         }
@@ -6234,15 +5670,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "text"
-                    ]
+                    "enum": ["text"]
                   }
                 }
               }
@@ -6255,15 +5687,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "image_url"
-                    ]
+                    "enum": ["image_url"]
                   }
                 }
               }
@@ -6276,15 +5704,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "type"
-                ],
+                "required": ["type"],
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": [
-                      "input_audio"
-                    ]
+                    "enum": ["input_audio"]
                   }
                 }
               }
@@ -6295,29 +5719,18 @@
       "ChatCompletionResponseMessage": {
         "type": "object",
         "description": "A chat completion message generated by the model.",
-        "required": [
-          "role"
-        ],
+        "required": ["role"],
         "properties": {
           "content": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The contents of the message."
           },
           "refusal": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The refusal message generated by the model."
           },
           "tool_calls": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
             },
@@ -6353,12 +5766,7 @@
       },
       "ChatCompletionResponseMessageAudio": {
         "type": "object",
-        "required": [
-          "id",
-          "expires_at",
-          "data",
-          "transcript"
-        ],
+        "required": ["id", "expires_at", "data", "transcript"],
         "properties": {
           "id": {
             "type": "string",
@@ -6383,9 +5791,7 @@
       "ChatCompletionStreamOptions": {
         "type": "object",
         "description": "Options for streaming response. Only set this when you set `stream: true`.",
-        "required": [
-          "include_usage"
-        ],
+        "required": ["include_usage"],
         "properties": {
           "include_usage": {
             "type": "boolean",
@@ -6398,10 +5804,7 @@
         "description": "A chat completion delta generated by streamed model responses.",
         "properties": {
           "content": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The contents of the chunk message."
           },
           "function_call": {
@@ -6416,10 +5819,7 @@
             ]
           },
           "tool_calls": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionMessageToolCallChunk"
             }
@@ -6436,21 +5836,14 @@
             ]
           },
           "refusal": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The refusal message generated by the model."
           }
         }
       },
       "ChatCompletionTokenLogprob": {
         "type": "object",
-        "required": [
-          "token",
-          "logprob",
-          "top_logprobs"
-        ],
+        "required": ["token", "logprob", "top_logprobs"],
         "properties": {
           "token": {
             "type": "string",
@@ -6462,10 +5855,7 @@
             "description": "The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely."
           },
           "bytes": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "integer",
               "format": "int32",
@@ -6484,10 +5874,7 @@
       },
       "ChatCompletionTool": {
         "type": "object",
-        "required": [
-          "type",
-          "function"
-        ],
+        "required": ["type", "function"],
         "properties": {
           "type": {
             "$ref": "#/components/schemas/ChatCompletionToolType"
@@ -6501,27 +5888,19 @@
         "oneOf": [
           {
             "type": "string",
-            "enum": [
-              "none"
-            ]
+            "enum": ["none"]
           },
           {
             "type": "string",
-            "enum": [
-              "auto"
-            ]
+            "enum": ["auto"]
           },
           {
             "type": "string",
-            "enum": [
-              "required"
-            ]
+            "enum": ["required"]
           },
           {
             "type": "object",
-            "required": [
-              "named"
-            ],
+            "required": ["named"],
             "properties": {
               "named": {
                 "$ref": "#/components/schemas/ChatCompletionNamedToolChoice"
@@ -6533,16 +5912,11 @@
       },
       "ChatCompletionToolType": {
         "type": "string",
-        "enum": [
-          "function"
-        ]
+        "enum": ["function"]
       },
       "ChatRequest": {
         "type": "object",
-        "required": [
-          "model",
-          "messages"
-        ],
+        "required": ["model", "messages"],
         "properties": {
           "model": {
             "type": "string"
@@ -6554,16 +5928,10 @@
             }
           },
           "stream": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "format": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "keep_alive": {
             "oneOf": [
@@ -6592,36 +5960,24 @@
         "description": "Breakdown of tokens used in a completion.",
         "properties": {
           "accepted_prediction_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "minimum": 0
           },
           "audio_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "Audio input tokens generated by the model.",
             "minimum": 0
           },
           "reasoning_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "Tokens generated by the model for reasoning.",
             "minimum": 0
           },
           "rejected_prediction_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": " When using Predicted Outputs, the number of tokens in the\nprediction that did not appear in the completion. However, like\nreasoning tokens, these tokens are still counted in the total\ncompletion tokens for purposes of billing, output, and context\nwindow limits.",
             "minimum": 0
@@ -6631,11 +5987,7 @@
       "CompletionUsage": {
         "type": "object",
         "description": "Usage statistics for the completion request.",
-        "required": [
-          "prompt_tokens",
-          "completion_tokens",
-          "total_tokens"
-        ],
+        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
         "properties": {
           "prompt_tokens": {
             "type": "integer",
@@ -6681,11 +6033,7 @@
       },
       "CreateAliasRequest": {
         "type": "object",
-        "required": [
-          "alias",
-          "repo",
-          "filename"
-        ],
+        "required": ["alias", "repo", "filename"],
         "properties": {
           "alias": {
             "type": "string"
@@ -6697,10 +6045,7 @@
             "type": "string"
           },
           "snapshot": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "request_params": {
             "oneOf": [
@@ -6713,10 +6058,7 @@
             ]
           },
           "context_params": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
@@ -6726,11 +6068,7 @@
       "CreateApiModelRequest": {
         "type": "object",
         "description": "Request to create a new API model configuration",
-        "required": [
-          "api_format",
-          "base_url",
-          "models"
-        ],
+        "required": ["api_format", "base_url", "models"],
         "properties": {
           "api_format": {
             "$ref": "#/components/schemas/ApiFormat",
@@ -6741,8 +6079,10 @@
             "description": "API base URL"
           },
           "api_key": {
-            "$ref": "#/components/schemas/ApiKey",
-            "description": "API key for authentication (null for public APIs)"
+            "type": "string",
+            "description": "API key for authentication (optional, will be required only if provided)",
+            "maxLength": 4096,
+            "minLength": 1
           },
           "models": {
             "type": "array",
@@ -6752,10 +6092,7 @@
             "description": "List of available models"
           },
           "prefix": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\", \"openai:\" for \"openai:gpt-4\")"
           }
         },
@@ -6763,25 +6100,17 @@
           "api_format": "openai",
           "api_key": "sk-...",
           "base_url": "https://api.openai.com/v1",
-          "models": [
-            "gpt-4",
-            "gpt-3.5-turbo"
-          ],
+          "models": ["gpt-4", "gpt-3.5-turbo"],
           "prefix": "openai"
         }
       },
       "CreateApiTokenRequest": {
         "type": "object",
         "description": "Request to create a new API token",
-        "required": [
-          "scope"
-        ],
+        "required": ["scope"],
         "properties": {
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Descriptive name for the API token (minimum 3 characters)",
             "example": "My Integration Token",
             "maxLength": 100,
@@ -6799,10 +6128,7 @@
       },
       "CreateChatCompletionRequest": {
         "type": "object",
-        "required": [
-          "messages",
-          "model"
-        ],
+        "required": ["messages", "model"],
         "properties": {
           "messages": {
             "type": "array",
@@ -6816,10 +6142,7 @@
             "description": "ID of the model to use.\nSee the [model endpoint compatibility](https://platform.openai.com/docs/models#model-endpoint-compatibility) table for details on which models work with the Chat API."
           },
           "store": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "Whether or not to store the output of this chat completion request\n\nfor use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or [evals](https://platform.openai.com/docs/guides/evals) products."
           },
           "reasoning_effort": {
@@ -6837,18 +6160,12 @@
             "description": "Developer-defined tags and values used for filtering completions in the [dashboard](https://platform.openai.com/chat-completions)."
           },
           "frequency_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float",
             "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim."
           },
           "logit_bias": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": ["object", "null"],
             "description": "Modify the likelihood of specified tokens appearing in the completion.\n\nAccepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100.\nMathematically, the bias is added to the logits generated by the model prior to sampling.\nThe exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection;\nvalues like -100 or 100 should result in a ban or exclusive selection of the relevant token.",
             "additionalProperties": {},
             "propertyNames": {
@@ -6856,54 +6173,36 @@
             }
           },
           "logprobs": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the `content` of `message`."
           },
           "top_logprobs": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability. `logprobs` must be set to `true` if this parameter is used.",
             "minimum": 0
           },
           "max_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "The maximum number of [tokens](https://platform.openai.com/tokenizer) that can be generated in the chat completion.\n\nThis value can be used to control [costs](https://openai.com/api/pricing/) for text generated via API.\nThis value is now deprecated in favor of `max_completion_tokens`, and is\nnot compatible with [o1 series models](https://platform.openai.com/docs/guides/reasoning).",
             "deprecated": true,
             "minimum": 0
           },
           "max_completion_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).",
             "minimum": 0
           },
           "n": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep `n` as `1` to minimize costs.",
             "minimum": 0
           },
           "modalities": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionModalities"
             }
@@ -6931,10 +6230,7 @@
             ]
           },
           "presence_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float",
             "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics."
           },
@@ -6950,10 +6246,7 @@
             ]
           },
           "seed": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int64",
             "description": " This feature is in Beta.\nIf specified, our system will make a best effort to sample deterministically, such that repeated requests\nwith the same `seed` and parameters should return the same result.\nDeterminism is not guaranteed, and you should refer to the `system_fingerprint` response parameter to monitor changes in the backend."
           },
@@ -6980,10 +6273,7 @@
             ]
           },
           "stream": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "If set, partial message deltas will be sent, like in ChatGPT.\nTokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)\nas they become available, with the stream terminated by a `data: [DONE]` message. [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions)."
           },
           "stream_options": {
@@ -6997,26 +6287,17 @@
             ]
           },
           "temperature": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float",
             "description": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random,\nwhile lower values like 0.2 will make it more focused and deterministic.\n\nWe generally recommend altering this or `top_p` but not both."
           },
           "top_p": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float",
             "description": "An alternative to sampling with temperature, called nucleus sampling,\nwhere the model considers the results of the tokens with top_p probability mass.\nSo 0.1 means only the tokens comprising the top 10% probability mass are considered.\n\n We generally recommend altering this or `temperature` but not both."
           },
           "tools": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionTool"
             },
@@ -7033,17 +6314,11 @@
             ]
           },
           "parallel_tool_calls": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling/parallel-function-calling) during tool use."
           },
           "user": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids)."
           },
           "web_search_options": {
@@ -7069,10 +6344,7 @@
             ]
           },
           "functions": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "$ref": "#/components/schemas/ChatCompletionFunctions"
             },
@@ -7084,13 +6356,7 @@
       "CreateChatCompletionResponse": {
         "type": "object",
         "description": "Represents a chat completion response returned by model, based on the provided input.",
-        "required": [
-          "id",
-          "choices",
-          "created",
-          "model",
-          "object"
-        ],
+        "required": ["id", "choices", "created", "model", "object"],
         "properties": {
           "id": {
             "type": "string",
@@ -7125,10 +6391,7 @@
             ]
           },
           "system_fingerprint": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "This fingerprint represents the backend configuration that the model runs with.\n\nCan be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism."
           },
           "object": {
@@ -7150,13 +6413,7 @@
       "CreateChatCompletionStreamResponse": {
         "type": "object",
         "description": "Represents a streamed chunk of a chat completion response returned by model, based on the provided input.",
-        "required": [
-          "id",
-          "choices",
-          "created",
-          "model",
-          "object"
-        ],
+        "required": ["id", "choices", "created", "model", "object"],
         "properties": {
           "id": {
             "type": "string",
@@ -7191,10 +6448,7 @@
             ]
           },
           "system_fingerprint": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "This fingerprint represents the backend configuration that the model runs with.\nCan be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism."
           },
           "object": {
@@ -7216,10 +6470,7 @@
       },
       "CreateEmbeddingRequest": {
         "type": "object",
-        "required": [
-          "model",
-          "input"
-        ],
+        "required": ["model", "input"],
         "properties": {
           "model": {
             "type": "string",
@@ -7241,17 +6492,11 @@
             ]
           },
           "user": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "A unique identifier representing your end-user, which will help OpenAI\n to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/usage-policies/end-user-ids)."
           },
           "dimensions": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "The number of dimensions the resulting output embeddings should have. Only supported in `text-embedding-3` and later models.",
             "minimum": 0
@@ -7260,12 +6505,7 @@
       },
       "CreateEmbeddingResponse": {
         "type": "object",
-        "required": [
-          "object",
-          "model",
-          "data",
-          "usage"
-        ],
+        "required": ["object", "model", "data", "usage"],
         "properties": {
           "object": {
             "type": "string"
@@ -7289,15 +6529,7 @@
       },
       "DownloadRequest": {
         "type": "object",
-        "required": [
-          "id",
-          "repo",
-          "filename",
-          "status",
-          "created_at",
-          "updated_at",
-          "started_at"
-        ],
+        "required": ["id", "repo", "filename", "status", "created_at", "updated_at", "started_at"],
         "properties": {
           "id": {
             "type": "string"
@@ -7312,10 +6544,7 @@
             "$ref": "#/components/schemas/DownloadStatus"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "created_at": {
             "type": "string",
@@ -7328,10 +6557,7 @@
             "example": "2024-11-10T04:52:06.786Z"
           },
           "total_bytes": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int64",
             "minimum": 0
           },
@@ -7349,11 +6575,7 @@
       },
       "DownloadStatus": {
         "type": "string",
-        "enum": [
-          "pending",
-          "completed",
-          "error"
-        ]
+        "enum": ["pending", "completed", "error"]
       },
       "Duration": {
         "type": "string"
@@ -7361,11 +6583,7 @@
       "Embedding": {
         "type": "object",
         "description": "Represents an embedding vector returned by embedding endpoint.",
-        "required": [
-          "index",
-          "object",
-          "embedding"
-        ],
+        "required": ["index", "object", "embedding"],
         "properties": {
           "index": {
             "type": "integer",
@@ -7421,10 +6639,7 @@
       },
       "EmbeddingUsage": {
         "type": "object",
-        "required": [
-          "prompt_tokens",
-          "total_tokens"
-        ],
+        "required": ["prompt_tokens", "total_tokens"],
         "properties": {
           "prompt_tokens": {
             "type": "integer",
@@ -7442,17 +6657,11 @@
       },
       "EncodingFormat": {
         "type": "string",
-        "enum": [
-          "float",
-          "base64"
-        ]
+        "enum": ["float", "base64"]
       },
       "ErrorBody": {
         "type": "object",
-        "required": [
-          "message",
-          "type"
-        ],
+        "required": ["message", "type"],
         "properties": {
           "message": {
             "type": "string",
@@ -7465,18 +6674,12 @@
             "example": "invalid_request_error"
           },
           "code": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Specific error code for programmatic error handling",
             "example": "validation_error"
           },
           "param": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Parameter name that caused the error (for validation errors)",
             "example": "name"
           }
@@ -7491,33 +6694,33 @@
       "FetchModelsRequest": {
         "type": "object",
         "description": "Request to fetch available models from provider",
-        "required": [
-          "base_url"
-        ],
+        "required": ["base_url"],
         "properties": {
-          "creds": {
-            "$ref": "#/components/schemas/TestCreds",
-            "description": "Credentials to use for fetching models"
+          "api_key": {
+            "type": "string",
+            "description": "API key for authentication (provide either api_key OR id, api_key takes preference if both provided)",
+            "maxLength": 4096,
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)",
+            "minLength": 1
           },
           "base_url": {
             "type": "string",
-            "description": "API base URL (required - always needed to know where to fetch models from)"
+            "description": "API base URL (optional when using id)"
           }
         },
         "example": {
-          "base_url": "http://localhost:8080/v1",
-          "creds": {
-            "type": "api_key",
-            "value": null
-          }
+          "api_key": "sk-...",
+          "base_url": "https://api.openai.com/v1"
         }
       },
       "FetchModelsResponse": {
         "type": "object",
         "description": "Response containing available models from provider",
-        "required": [
-          "models"
-        ],
+        "required": ["models"],
         "properties": {
           "models": {
             "type": "array",
@@ -7527,30 +6730,17 @@
           }
         },
         "example": {
-          "models": [
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "gpt-4-turbo"
-          ]
+          "models": ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"]
         }
       },
       "FinishReason": {
         "type": "string",
-        "enum": [
-          "stop",
-          "length",
-          "tool_calls",
-          "content_filter",
-          "function_call"
-        ]
+        "enum": ["stop", "length", "tool_calls", "content_filter", "function_call"]
       },
       "FunctionCall": {
         "type": "object",
         "description": "The name and arguments of a function that should be called, as generated by the model.",
-        "required": [
-          "name",
-          "arguments"
-        ],
+        "required": ["name", "arguments"],
         "properties": {
           "name": {
             "type": "string",
@@ -7566,26 +6756,18 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The name of the function to call."
           },
           "arguments": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The arguments to call the function with, as generated by the model in JSON format.\nNote that the model does not always generate valid JSON, and may hallucinate\nparameters not defined by your function schema. Validate the arguments in your\ncode before calling your function."
           }
         }
       },
       "FunctionName": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string",
@@ -7595,46 +6777,32 @@
       },
       "FunctionObject": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string",
             "description": "The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64."
           },
           "description": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "A description of what the function does, used by the model to choose when and how to call the function."
           },
           "parameters": {
             "description": "The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/text-generation/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.\n\nOmitting `parameters` defines a function with an empty parameter list."
           },
           "strict": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](https://platform.openai.com/docs/guides/function-calling)."
           }
         }
       },
       "ImageDetail": {
         "type": "string",
-        "enum": [
-          "auto",
-          "low",
-          "high"
-        ]
+        "enum": ["auto", "low", "high"]
       },
       "ImageUrl": {
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "properties": {
           "url": {
             "type": "string",
@@ -7655,10 +6823,7 @@
       },
       "InputAudio": {
         "type": "object",
-        "required": [
-          "data",
-          "format"
-        ],
+        "required": ["data", "format"],
         "properties": {
           "data": {
             "type": "string",
@@ -7672,17 +6837,11 @@
       },
       "InputAudioFormat": {
         "type": "string",
-        "enum": [
-          "wav",
-          "mp3"
-        ]
+        "enum": ["wav", "mp3"]
       },
       "ListModelResponse": {
         "type": "object",
-        "required": [
-          "object",
-          "data"
-        ],
+        "required": ["object", "data"],
         "properties": {
           "object": {
             "type": "string"
@@ -7692,12 +6851,7 @@
             "items": {
               "type": "object",
               "description": "Describes an OpenAI model offering that can be used with the API.",
-              "required": [
-                "id",
-                "object",
-                "created",
-                "owned_by"
-              ],
+              "required": ["id", "object", "created", "owned_by"],
               "properties": {
                 "id": {
                   "type": "string",
@@ -7727,19 +6881,13 @@
         "description": "List users query parameters",
         "properties": {
           "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "example": 1,
             "minimum": 0
           },
           "page_size": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "example": 10,
             "minimum": 0
@@ -7748,12 +6896,7 @@
       },
       "LocalModelResponse": {
         "type": "object",
-        "required": [
-          "repo",
-          "filename",
-          "snapshot",
-          "model_params"
-        ],
+        "required": ["repo", "filename", "snapshot", "model_params"],
         "properties": {
           "repo": {
             "type": "string"
@@ -7765,10 +6908,7 @@
             "type": "string"
           },
           "size": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int64",
             "minimum": 0
           },
@@ -7783,10 +6923,7 @@
       },
       "Message": {
         "type": "object",
-        "required": [
-          "role",
-          "content"
-        ],
+        "required": ["role", "content"],
         "properties": {
           "role": {
             "type": "string"
@@ -7795,10 +6932,7 @@
             "type": "string"
           },
           "images": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
@@ -7807,13 +6941,7 @@
       },
       "Model": {
         "type": "object",
-        "required": [
-          "model",
-          "modified_at",
-          "size",
-          "digest",
-          "details"
-        ],
+        "required": ["model", "modified_at", "size", "digest", "details"],
         "properties": {
           "model": {
             "type": "string"
@@ -7837,12 +6965,7 @@
       },
       "ModelAlias": {
         "type": "object",
-        "required": [
-          "alias",
-          "repo",
-          "filename",
-          "snapshot"
-        ],
+        "required": ["alias", "repo", "filename", "snapshot"],
         "properties": {
           "alias": {
             "type": "string"
@@ -7861,18 +6984,10 @@
       },
       "ModelDetails": {
         "type": "object",
-        "required": [
-          "format",
-          "family",
-          "parameter_size",
-          "quantization_level"
-        ],
+        "required": ["format", "family", "parameter_size", "quantization_level"],
         "properties": {
           "parent_model": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "format": {
             "type": "string"
@@ -7881,10 +6996,7 @@
             "type": "string"
           },
           "families": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
@@ -7900,12 +7012,7 @@
       "ModelResponse": {
         "type": "object",
         "description": "Describes an OpenAI model offering that can be used with the API.",
-        "required": [
-          "id",
-          "object",
-          "created",
-          "owned_by"
-        ],
+        "required": ["id", "object", "created", "owned_by"],
         "properties": {
           "id": {
             "type": "string",
@@ -7929,9 +7036,7 @@
       },
       "ModelsResponse": {
         "type": "object",
-        "required": [
-          "models"
-        ],
+        "required": ["models"],
         "properties": {
           "models": {
             "type": "array",
@@ -7944,10 +7049,7 @@
       "NewDownloadRequest": {
         "type": "object",
         "description": "Request to pull a model file from HuggingFace",
-        "required": [
-          "repo",
-          "filename"
-        ],
+        "required": ["repo", "filename"],
         "properties": {
           "repo": {
             "type": "string",
@@ -7971,32 +7073,20 @@
         "type": "object",
         "properties": {
           "frequency_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "max_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "minimum": 0
           },
           "presence_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "seed": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int64"
           },
           "stop": {
@@ -8006,32 +7096,21 @@
             }
           },
           "temperature": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "top_p": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "user": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         }
       },
       "OllamaError": {
         "type": "object",
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "string"
@@ -8040,9 +7119,7 @@
       },
       "OpenAIApiError": {
         "type": "object",
-        "required": [
-          "error"
-        ],
+        "required": ["error"],
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ErrorBody",
@@ -8062,213 +7139,121 @@
         "type": "object",
         "properties": {
           "num_keep": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "seed": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int64"
           },
           "num_predict": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "minimum": 0
           },
           "top_k": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "top_p": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "tfs_z": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "typical_p": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "repeat_last_n": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "temperature": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "repeat_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "presence_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "frequency_penalty": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "mirostat": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "mirostat_tau": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "mirostat_eta": {
-            "type": [
-              "number",
-              "null"
-            ],
+            "type": ["number", "null"],
             "format": "float"
           },
           "penalize_newline": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "stop": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
           },
           "numa": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "num_ctx": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "num_batch": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "num_gpu": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "main_gpu": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           },
           "low_vram": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "f16_kv": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "logits_all": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "vocab_only": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "use_mmap": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "use_mlock": {
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "type": ["boolean", "null"]
           },
           "num_thread": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32"
           }
         }
       },
       "PaginatedAliasResponse": {
         "type": "object",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8293,12 +7278,7 @@
       "PaginatedApiModelResponse": {
         "type": "object",
         "description": "Paginated response for API model listings",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8322,12 +7302,7 @@
       },
       "PaginatedApiTokenResponse": {
         "type": "object",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8351,12 +7326,7 @@
       },
       "PaginatedDownloadResponse": {
         "type": "object",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8380,12 +7350,7 @@
       },
       "PaginatedLocalModelResponse": {
         "type": "object",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8410,12 +7375,7 @@
       "PaginatedUserAccessResponse": {
         "type": "object",
         "description": "Paginated response for access requests",
-        "required": [
-          "requests",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["requests", "total", "page", "page_size"],
         "properties": {
           "requests": {
             "type": "array",
@@ -8458,12 +7418,7 @@
       },
       "PaginatedUserAliasResponse": {
         "type": "object",
-        "required": [
-          "data",
-          "total",
-          "page",
-          "page_size"
-        ],
+        "required": ["data", "total", "page", "page_size"],
         "properties": {
           "data": {
             "type": "array",
@@ -8503,10 +7458,7 @@
             "minimum": 1
           },
           "sort": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "example": "updated_at"
           },
@@ -8521,9 +7473,7 @@
       "PingResponse": {
         "type": "object",
         "description": "Response to the ping endpoint",
-        "required": [
-          "message"
-        ],
+        "required": ["message"],
         "properties": {
           "message": {
             "type": "string",
@@ -8540,10 +7490,7 @@
           {
             "type": "object",
             "description": "The type of the predicted content you want to provide. This type is\ncurrently always `content`.",
-            "required": [
-              "content",
-              "type"
-            ],
+            "required": ["content", "type"],
             "properties": {
               "content": {
                 "$ref": "#/components/schemas/PredictionContentContent",
@@ -8551,9 +7498,7 @@
               },
               "type": {
                 "type": "string",
-                "enum": [
-                  "content"
-                ]
+                "enum": ["content"]
               }
             }
           }
@@ -8581,19 +7526,13 @@
         "description": "Breakdown of tokens used in a completion.",
         "properties": {
           "audio_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "Audio input tokens present in the prompt.",
             "minimum": 0
           },
           "cached_tokens": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": ["integer", "null"],
             "format": "int32",
             "description": "Cached tokens present in the prompt.",
             "minimum": 0
@@ -8602,18 +7541,11 @@
       },
       "ReasoningEffort": {
         "type": "string",
-        "enum": [
-          "minimal",
-          "low",
-          "medium",
-          "high"
-        ]
+        "enum": ["minimal", "low", "medium", "high"]
       },
       "RedirectResponse": {
         "type": "object",
-        "required": [
-          "location"
-        ],
+        "required": ["location"],
         "properties": {
           "location": {
             "type": "string",
@@ -8627,61 +7559,43 @@
       },
       "ResourceRole": {
         "type": "string",
-        "enum": [
-          "resource_user",
-          "resource_power_user",
-          "resource_manager",
-          "resource_admin"
-        ]
+        "enum": ["resource_user", "resource_power_user", "resource_manager", "resource_admin"]
       },
       "ResponseFormat": {
         "oneOf": [
           {
             "type": "object",
             "description": "The type of response format being defined: `text`",
-            "required": [
-              "type"
-            ],
+            "required": ["type"],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "text"
-                ]
+                "enum": ["text"]
               }
             }
           },
           {
             "type": "object",
             "description": "The type of response format being defined: `json_object`",
-            "required": [
-              "type"
-            ],
+            "required": ["type"],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "json_object"
-                ]
+                "enum": ["json_object"]
               }
             }
           },
           {
             "type": "object",
             "description": "The type of response format being defined: `json_schema`",
-            "required": [
-              "json_schema",
-              "type"
-            ],
+            "required": ["json_schema", "type"],
             "properties": {
               "json_schema": {
                 "$ref": "#/components/schemas/ResponseFormatJsonSchema"
               },
               "type": {
                 "type": "string",
-                "enum": [
-                  "json_schema"
-                ]
+                "enum": ["json_schema"]
               }
             }
           }
@@ -8689,15 +7603,10 @@
       },
       "ResponseFormatJsonSchema": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "description": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "A description of what the response format is for, used by the model to determine how to respond in the format."
           },
           "name": {
@@ -8708,52 +7617,26 @@
             "description": "The schema for the response format, described as a JSON Schema object."
           },
           "strict": {
-            "type": [
-              "boolean",
-              "null"
-            ],
+            "type": ["boolean", "null"],
             "description": "Whether to enable strict schema adherence when generating the output. If set to true, the model will always follow the exact schema defined in the `schema` field. Only a subset of JSON Schema is supported when `strict` is `true`. To learn more, read the [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs)."
           }
         }
       },
       "Role": {
         "type": "string",
-        "enum": [
-          "system",
-          "user",
-          "assistant",
-          "tool",
-          "function"
-        ]
+        "enum": ["system", "user", "assistant", "tool", "function"]
       },
       "ServiceTier": {
         "type": "string",
-        "enum": [
-          "auto",
-          "default",
-          "flex",
-          "scale",
-          "priority"
-        ]
+        "enum": ["auto", "default", "flex", "scale", "priority"]
       },
       "ServiceTierResponse": {
         "type": "string",
-        "enum": [
-          "scale",
-          "default",
-          "flex",
-          "priority"
-        ]
+        "enum": ["scale", "default", "flex", "priority"]
       },
       "SettingInfo": {
         "type": "object",
-        "required": [
-          "key",
-          "current_value",
-          "default_value",
-          "source",
-          "metadata"
-        ],
+        "required": ["key", "current_value", "default_value", "source", "metadata"],
         "properties": {
           "key": {
             "type": "string"
@@ -8772,25 +7655,17 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
+            "required": ["type"],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "string"
-                ]
+                "enum": ["string"]
               }
             }
           },
           {
             "type": "object",
-            "required": [
-              "min",
-              "max",
-              "type"
-            ],
+            "required": ["min", "max", "type"],
             "properties": {
               "min": {
                 "type": "integer",
@@ -8802,32 +7677,23 @@
               },
               "type": {
                 "type": "string",
-                "enum": [
-                  "number"
-                ]
+                "enum": ["number"]
               }
             }
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
+            "required": ["type"],
             "properties": {
               "type": {
                 "type": "string",
-                "enum": [
-                  "boolean"
-                ]
+                "enum": ["boolean"]
               }
             }
           },
           {
             "type": "object",
-            "required": [
-              "options",
-              "type"
-            ],
+            "required": ["options", "type"],
             "properties": {
               "options": {
                 "type": "array",
@@ -8837,9 +7703,7 @@
               },
               "type": {
                 "type": "string",
-                "enum": [
-                  "option"
-                ]
+                "enum": ["option"]
               }
             }
           }
@@ -8847,20 +7711,12 @@
       },
       "SettingSource": {
         "type": "string",
-        "enum": [
-          "system",
-          "command_line",
-          "environment",
-          "settings_file",
-          "default"
-        ]
+        "enum": ["system", "command_line", "environment", "settings_file", "default"]
       },
       "SetupRequest": {
         "type": "object",
         "description": "Request to setup the application in authenticated mode",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string",
@@ -8870,10 +7726,7 @@
             "minLength": 10
           },
           "description": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Optional description of the server's purpose",
             "example": "My personal AI server",
             "maxLength": 500
@@ -8887,9 +7740,7 @@
       "SetupResponse": {
         "type": "object",
         "description": "Response containing the updated application status after setup",
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "properties": {
           "status": {
             "$ref": "#/components/schemas/AppStatus",
@@ -8902,9 +7753,7 @@
       },
       "ShowRequest": {
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string"
@@ -8913,15 +7762,7 @@
       },
       "ShowResponse": {
         "type": "object",
-        "required": [
-          "details",
-          "license",
-          "model_info",
-          "modelfile",
-          "modified_at",
-          "parameters",
-          "template"
-        ],
+        "required": ["details", "license", "model_info", "modelfile", "modified_at", "parameters", "template"],
         "properties": {
           "details": {
             "$ref": "#/components/schemas/ModelDetails"
@@ -8965,75 +7806,25 @@
           }
         ]
       },
-      "TestCreds": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "Look up credentials from stored API model",
-            "required": [
-              "value",
-              "type"
-            ],
-            "properties": {
-              "value": {
-                "type": "string",
-                "description": "Look up credentials from stored API model"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "id"
-                ]
-              }
-            },
-            "example": {
-              "type": "id",
-              "value": "openai-gpt4"
-            }
-          },
-          {
-            "type": "object",
-            "description": "Use direct API key (null for no authentication)",
-            "required": [
-              "value",
-              "type"
-            ],
-            "properties": {
-              "value": {
-                "$ref": "#/components/schemas/ApiKey",
-                "description": "Use direct API key (null for no authentication)"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "api_key"
-                ]
-              }
-            },
-            "example": {
-              "type": "api_key",
-              "value": "sk-1234567890abcdef"
-            }
-          }
-        ],
-        "description": "Credentials for test/fetch operations"
-      },
       "TestPromptRequest": {
         "type": "object",
         "description": "Request to test API connectivity with a prompt",
-        "required": [
-          "base_url",
-          "model",
-          "prompt"
-        ],
+        "required": ["base_url", "model", "prompt"],
         "properties": {
-          "creds": {
-            "$ref": "#/components/schemas/TestCreds",
-            "description": "Credentials to use for testing"
+          "api_key": {
+            "type": "string",
+            "description": "API key for authentication (provide either api_key OR id, api_key takes preference if both provided)",
+            "maxLength": 4096,
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)",
+            "minLength": 1
           },
           "base_url": {
             "type": "string",
-            "description": "API base URL"
+            "description": "API base URL (optional when using id)"
           },
           "model": {
             "type": "string",
@@ -9045,11 +7836,8 @@
           }
         },
         "example": {
+          "api_key": "sk-...",
           "base_url": "https://api.openai.com/v1",
-          "creds": {
-            "type": "api_key",
-            "value": "sk-..."
-          },
           "model": "gpt-4",
           "prompt": "Hello, how are you?"
         }
@@ -9057,24 +7845,16 @@
       "TestPromptResponse": {
         "type": "object",
         "description": "Response from testing API connectivity",
-        "required": [
-          "success"
-        ],
+        "required": ["success"],
         "properties": {
           "success": {
             "type": "boolean"
           },
           "response": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           }
         },
         "example": {
@@ -9086,9 +7866,7 @@
       "TokenInfo": {
         "type": "object",
         "description": "API Token information response",
-        "required": [
-          "role"
-        ],
+        "required": ["role"],
         "properties": {
           "role": {
             "$ref": "#/components/schemas/TokenScope"
@@ -9097,26 +7875,15 @@
       },
       "TokenScope": {
         "type": "string",
-        "enum": [
-          "scope_token_user",
-          "scope_token_power_user",
-          "scope_token_manager",
-          "scope_token_admin"
-        ]
+        "enum": ["scope_token_user", "scope_token_power_user", "scope_token_manager", "scope_token_admin"]
       },
       "TokenStatus": {
         "type": "string",
-        "enum": [
-          "active",
-          "inactive"
-        ]
+        "enum": ["active", "inactive"]
       },
       "TopLogprobs": {
         "type": "object",
-        "required": [
-          "token",
-          "logprob"
-        ],
+        "required": ["token", "logprob"],
         "properties": {
           "token": {
             "type": "string",
@@ -9128,10 +7895,7 @@
             "description": "The log probability of this token."
           },
           "bytes": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "integer",
               "format": "int32",
@@ -9143,10 +7907,7 @@
       },
       "UpdateAliasRequest": {
         "type": "object",
-        "required": [
-          "repo",
-          "filename"
-        ],
+        "required": ["repo", "filename"],
         "properties": {
           "repo": {
             "type": "string"
@@ -9155,10 +7916,7 @@
             "type": "string"
           },
           "snapshot": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "request_params": {
             "oneOf": [
@@ -9171,10 +7929,7 @@
             ]
           },
           "context_params": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": ["array", "null"],
             "items": {
               "type": "string"
             }
@@ -9184,11 +7939,7 @@
       "UpdateApiModelRequest": {
         "type": "object",
         "description": "Request to update an existing API model configuration",
-        "required": [
-          "api_format",
-          "base_url",
-          "models"
-        ],
+        "required": ["api_format", "base_url", "models"],
         "properties": {
           "api_format": {
             "$ref": "#/components/schemas/ApiFormat",
@@ -9199,8 +7950,10 @@
             "description": "API base URL (required)"
           },
           "api_key": {
-            "$ref": "#/components/schemas/ApiKeyUpdateAction",
-            "description": "API key update action (Keep/Set with Some or None)"
+            "type": ["string", "null"],
+            "description": "API key for authentication (optional, only update if provided for security)",
+            "maxLength": 4096,
+            "minLength": 1
           },
           "models": {
             "type": "array",
@@ -9210,33 +7963,22 @@
             "description": "List of available models (required)"
           },
           "prefix": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Optional prefix for model namespacing"
           }
         },
         "example": {
           "api_format": "openai",
-          "api_key": {
-            "action": "keep"
-          },
+          "api_key": "sk-new-key",
           "base_url": "https://api.openai.com/v1",
-          "models": [
-            "gpt-4-turbo",
-            "gpt-3.5-turbo"
-          ],
+          "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
           "prefix": "openai"
         }
       },
       "UpdateApiTokenRequest": {
         "type": "object",
         "description": "Request to update an existing API token",
-        "required": [
-          "name",
-          "status"
-        ],
+        "required": ["name", "status"],
         "properties": {
           "name": {
             "type": "string",
@@ -9258,9 +8000,7 @@
       "UpdateSettingRequest": {
         "type": "object",
         "description": "Request to update a setting value",
-        "required": [
-          "value"
-        ],
+        "required": ["value"],
         "properties": {
           "value": {
             "description": "New value for the setting (type depends on setting metadata)"
@@ -9272,14 +8012,7 @@
       },
       "UserAccessRequest": {
         "type": "object",
-        "required": [
-          "id",
-          "username",
-          "user_id",
-          "status",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "username", "user_id", "status", "created_at", "updated_at"],
         "properties": {
           "id": {
             "type": "integer",
@@ -9295,10 +8028,7 @@
             "description": "User ID (UUID) of the requesting user"
           },
           "reviewer": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": ["string", "null"]
           },
           "status": {
             "$ref": "#/components/schemas/UserAccessRequestStatus",
@@ -9318,21 +8048,12 @@
       },
       "UserAccessRequestStatus": {
         "type": "string",
-        "enum": [
-          "pending",
-          "approved",
-          "rejected"
-        ]
+        "enum": ["pending", "approved", "rejected"]
       },
       "UserAccessStatusResponse": {
         "type": "object",
         "description": "Response for checking access request status",
-        "required": [
-          "username",
-          "status",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["username", "status", "created_at", "updated_at"],
         "properties": {
           "username": {
             "type": "string",
@@ -9360,12 +8081,7 @@
       },
       "UserAlias": {
         "type": "object",
-        "required": [
-          "alias",
-          "repo",
-          "filename",
-          "snapshot"
-        ],
+        "required": ["alias", "repo", "filename", "snapshot"],
         "properties": {
           "alias": {
             "type": "string"
@@ -9439,10 +8155,7 @@
       },
       "UserInfo": {
         "type": "object",
-        "required": [
-          "user_id",
-          "username"
-        ],
+        "required": ["user_id", "username"],
         "properties": {
           "user_id": {
             "type": "string",
@@ -9453,17 +8166,11 @@
             "example": "user@example.com"
           },
           "first_name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "example": "John"
           },
           "last_name": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "example": "Doe"
           },
           "role": {
@@ -9540,15 +8247,11 @@
           {
             "type": "object",
             "description": "User is not authenticated",
-            "required": [
-              "auth_status"
-            ],
+            "required": ["auth_status"],
             "properties": {
               "auth_status": {
                 "type": "string",
-                "enum": [
-                  "logged_out"
-                ]
+                "enum": ["logged_out"]
               }
             }
           },
@@ -9560,15 +8263,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "auth_status"
-                ],
+                "required": ["auth_status"],
                 "properties": {
                   "auth_status": {
                     "type": "string",
-                    "enum": [
-                      "logged_in"
-                    ]
+                    "enum": ["logged_in"]
                   }
                 }
               }
@@ -9583,15 +8282,11 @@
               },
               {
                 "type": "object",
-                "required": [
-                  "auth_status"
-                ],
+                "required": ["auth_status"],
                 "properties": {
                   "auth_status": {
                     "type": "string",
-                    "enum": [
-                      "api_token"
-                    ]
+                    "enum": ["api_token"]
                   }
                 }
               }
@@ -9609,52 +8304,31 @@
       },
       "UserScope": {
         "type": "string",
-        "enum": [
-          "scope_user_user",
-          "scope_user_power_user",
-          "scope_user_manager",
-          "scope_user_admin"
-        ]
+        "enum": ["scope_user_user", "scope_user_power_user", "scope_user_manager", "scope_user_admin"]
       },
       "WebSearchContextSize": {
         "type": "string",
         "description": "The amount of context window space to use for the search.",
-        "enum": [
-          "low",
-          "medium",
-          "high"
-        ]
+        "enum": ["low", "medium", "high"]
       },
       "WebSearchLocation": {
         "type": "object",
         "description": "Approximate location parameters for the search.",
         "properties": {
           "country": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The two-letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1) of the user, e.g. `US`."
           },
           "region": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Free text input for the region of the user, e.g. `California`."
           },
           "city": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "Free text input for the city of the user, e.g. `San Francisco`."
           },
           "timezone": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": ["string", "null"],
             "description": "The [IANA timezone](https://timeapi.io/documentation/iana-timezones) of the user, e.g. `America/Los_Angeles`."
           }
         }
@@ -9689,10 +8363,7 @@
       },
       "WebSearchUserLocation": {
         "type": "object",
-        "required": [
-          "type",
-          "approximate"
-        ],
+        "required": ["type", "approximate"],
         "properties": {
           "type": {
             "$ref": "#/components/schemas/WebSearchUserLocationType"
@@ -9704,9 +8375,7 @@
       },
       "WebSearchUserLocationType": {
         "type": "string",
-        "enum": [
-          "approximate"
-        ]
+        "enum": ["approximate"]
       }
     },
     "securitySchemes": {

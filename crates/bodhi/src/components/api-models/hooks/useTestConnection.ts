@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTestApiModel } from '@/hooks/useApiModels';
 import { useToast } from '@/hooks/use-toast';
-import { TestPromptRequest } from '@bodhiapp/ts-client';
+import { TestPromptRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
 import { DEFAULT_TEST_PROMPT } from '../providers/constants';
 
 interface UseTestConnectionProps {
@@ -22,15 +22,12 @@ export function useTestConnection({ mode = 'create', initialData }: UseTestConne
   const { toast, dismiss } = useToast();
 
   const canTest = (data: TestConnectionData) => {
-    return Boolean(data.baseUrl && (data.apiKey || (mode === 'edit' && initialData?.id)) && data.model);
+    return Boolean(data.baseUrl && data.model);
   };
 
   const getMissingRequirements = (data: TestConnectionData) => {
     const missing = [];
     if (!data.baseUrl) missing.push('base URL');
-    if (!data.apiKey && !(mode === 'edit' && initialData?.id)) {
-      missing.push(mode === 'edit' ? 'API key (or use stored credentials)' : 'API key');
-    }
     if (!data.model) missing.push('at least one model');
     return `You need to add ${missing.join(', ')} to test connection`;
   };
@@ -43,13 +40,22 @@ export function useTestConnection({ mode = 'create', initialData }: UseTestConne
     dismiss();
     setStatus('testing');
 
+    // Build TestCreds discriminated union based on what's available
+    let creds: TestCreds | undefined;
+
+    if (data.apiKey) {
+      // Use provided API key directly
+      creds = { type: 'api_key' as const, value: data.apiKey as ApiKey };
+    } else if (data.id) {
+      // Look up stored credentials by ID
+      creds = { type: 'id' as const, value: data.id };
+    } else {
+      // No authentication (public API)
+      creds = { type: 'api_key' as const, value: null };
+    }
+
     const testData: TestPromptRequest = {
-      // In edit mode, use stored model ID if no API key provided
-      ...(data.apiKey
-        ? { api_key: data.apiKey }
-        : mode === 'edit' && initialData?.id
-          ? { id: initialData.id }
-          : { api_key: data.apiKey || '' }),
+      creds,
       base_url: data.baseUrl,
       model: data.model,
       prompt: DEFAULT_TEST_PROMPT,
