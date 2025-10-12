@@ -1,8 +1,8 @@
 use crate::{
-  ApiFormatsResponse, ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest,
-  FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
-  PaginationSortParams, PingResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
-  UpdateApiTokenRequest,
+  ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, AuthCallbackRequest,
+  CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse, LocalModelResponse,
+  PaginatedApiModelResponse, PaginationSortParams, PingResponse, TestCreds, TestPromptRequest,
+  TestPromptResponse, UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CreateAliasRequest,
@@ -263,6 +263,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ApiModelResponse,
             CreateApiModelRequest,
             UpdateApiModelRequest,
+            ApiKey,
+            ApiKeyUpdateAction,
+            TestCreds,
             TestPromptRequest,
             TestPromptResponse,
             FetchModelsRequest,

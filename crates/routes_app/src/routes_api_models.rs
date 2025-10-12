@@ -13,10 +13,7 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{
-  ApiAlias, ApiError, ApiFormat, BadRequestError, ObjValidationError, OpenAIApiError,
-  API_TAG_API_MODELS,
-};
+use objs::{ApiAlias, ApiError, ApiFormat, ObjValidationError, OpenAIApiError, API_TAG_API_MODELS};
 use server_core::RouterState;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -68,8 +65,9 @@ pub async fn list_api_models_handler(
   let page_data: Vec<ApiModelResponse> = aliases[start..end]
     .iter()
     .map(|alias| {
-      // For list view, we don't show the actual API key, just masked version
-      ApiModelResponse::from_alias(alias.clone(), None)
+      // For list view, always show masked API key indicator for security
+      // (checking individual key existence would be inefficient here)
+      ApiModelResponse::from_alias(alias.clone(), true)
     })
     .collect();
 
@@ -129,7 +127,10 @@ pub async fn get_api_model_handler(
     )))
   })?;
 
-  Ok(Json(ApiModelResponse::from_alias(api_alias, None)))
+  // Check if API key exists for this model
+  let has_api_key = db_service.get_api_key_for_alias(&id).await?.is_some();
+
+  Ok(Json(ApiModelResponse::from_alias(api_alias, has_api_key)))
 }
 
 /// Create a new API model configuration
@@ -175,13 +176,14 @@ pub async fn create_api_model_handler(
     now,
   );
 
-  // Save to database with encrypted API key
+  // Convert ApiKey to Option<String> for DB
+  let api_key_option = payload.api_key.as_option().map(|s| s.to_string());
+
   db_service
-    .create_api_model_alias(&api_alias, &payload.api_key)
+    .create_api_model_alias(&api_alias, api_key_option)
     .await?;
 
-  // Return response with masked API key
-  let response = ApiModelResponse::from_alias(api_alias, Some(payload.api_key));
+  let response = ApiModelResponse::from_alias(api_alias, payload.api_key.is_some());
 
   Ok((StatusCode::CREATED, Json(response)))
 }
@@ -239,16 +241,17 @@ pub async fn update_api_model_handler(
 
   api_alias.updated_at = time_service.utc_now();
 
-  // Update in database
+  // Convert DTO enum to service enum
+  let api_key_update = services::db::ApiKeyUpdate::from(payload.api_key.clone());
   db_service
-    .update_api_model_alias(&id, &api_alias, payload.api_key.clone())
+    .update_api_model_alias(&id, &api_alias, api_key_update)
     .await?;
 
+  // Check if API key exists after update
+  let has_api_key = db_service.get_api_key_for_alias(&id).await?.is_some();
+
   // Return response with masked API key
-  Ok(Json(ApiModelResponse::from_alias(
-    api_alias,
-    payload.api_key,
-  )))
+  Ok(Json(ApiModelResponse::from_alias(api_alias, has_api_key)))
 }
 
 /// Delete an API model configuration
@@ -319,21 +322,21 @@ pub async fn test_api_model_handler(
   let ai_api_service = state.app_service().ai_api_service();
   let db_service = state.app_service().db_service();
 
-  // Resolve API key and base URL - api_key takes preference if both are provided
-  let (api_key, base_url) = match (&payload.api_key, &payload.id) {
-    (Some(key), _) => {
-      // Use provided API key directly (takes preference over id)
-      (key.clone(), payload.base_url.clone())
+  // Resolve credentials using TestCreds enum
+  let result = match &payload.creds {
+    crate::api_models_dto::TestCreds::ApiKey(api_key) => {
+      // Use provided API key directly (or None for no authentication)
+      ai_api_service
+        .test_prompt(
+          api_key.as_option().map(|s| s.to_string()),
+          payload.base_url.trim_end_matches('/'),
+          &payload.model,
+          &payload.prompt,
+        )
+        .await
     }
-    (None, Some(id)) => {
-      // Look up stored API key and use stored base URL
-      let stored_key = db_service.get_api_key_for_alias(id).await?.ok_or_else(|| {
-        ApiError::from(objs::EntityError::NotFound(format!(
-          "API model '{}' not found",
-          id
-        )))
-      })?;
-
+    crate::api_models_dto::TestCreds::Id(id) => {
+      // Look up stored model configuration by ID
       let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
         ApiError::from(objs::EntityError::NotFound(format!(
           "API model '{}' not found",
@@ -341,26 +344,22 @@ pub async fn test_api_model_handler(
         )))
       })?;
 
-      (stored_key, api_model.base_url)
-    }
-    (None, None) => {
-      // This should not happen due to validation, but handle gracefully
-      return Err(ApiError::from(BadRequestError::new(
-        "Either api_key or id must be provided".to_string(),
-      )));
+      // Get stored key (may be None if no key configured)
+      let stored_key = db_service.get_api_key_for_alias(id).await?;
+
+      ai_api_service
+        .test_prompt(
+          stored_key,
+          api_model.base_url.trim_end_matches('/'),
+          &payload.model,
+          &payload.prompt,
+        )
+        .await
     }
   };
 
-  // Test the API connection with resolved parameters
-  match ai_api_service
-    .test_prompt(
-      &api_key,
-      base_url.trim_end_matches('/'),
-      &payload.model,
-      &payload.prompt,
-    )
-    .await
-  {
+  // Return success/failure response based on result
+  match result {
     Ok(response) => Ok(Json(TestPromptResponse::success(response))),
     Err(err) => Ok(Json(TestPromptResponse::failure(err.to_string()))),
   }
@@ -395,21 +394,19 @@ pub async fn fetch_models_handler(
   let ai_api_service = state.app_service().ai_api_service();
   let db_service = state.app_service().db_service();
 
-  // Resolve API key and base URL - api_key takes preference if both are provided
-  let (api_key, base_url) = match (&payload.api_key, &payload.id) {
-    (Some(key), _) => {
-      // Use provided API key directly (takes preference over id)
-      (key.clone(), payload.base_url.clone())
+  // Resolve credentials using TestCreds enum
+  let models = match &payload.creds {
+    crate::api_models_dto::TestCreds::ApiKey(api_key) => {
+      // Use provided API key directly (or None for no authentication)
+      ai_api_service
+        .fetch_models(
+          api_key.as_option().map(|s| s.to_string()),
+          payload.base_url.trim_end_matches('/'),
+        )
+        .await?
     }
-    (None, Some(id)) => {
-      // Look up stored API key and use stored base URL
-      let stored_key = db_service.get_api_key_for_alias(id).await?.ok_or_else(|| {
-        ApiError::from(objs::EntityError::NotFound(format!(
-          "API model '{}' not found",
-          id
-        )))
-      })?;
-
+    crate::api_models_dto::TestCreds::Id(id) => {
+      // Look up stored model configuration by ID
       let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
         ApiError::from(objs::EntityError::NotFound(format!(
           "API model '{}' not found",
@@ -417,20 +414,14 @@ pub async fn fetch_models_handler(
         )))
       })?;
 
-      (stored_key, api_model.base_url)
-    }
-    (None, None) => {
-      // This should not happen due to validation, but handle gracefully
-      return Err(ApiError::from(BadRequestError::new(
-        "Either api_key or id must be provided".to_string(),
-      )));
+      // Get stored key (may be None if no key configured)
+      let stored_key = db_service.get_api_key_for_alias(id).await?;
+
+      ai_api_service
+        .fetch_models(stored_key, api_model.base_url.trim_end_matches('/'))
+        .await?
     }
   };
-
-  // Fetch models from the API with resolved parameters
-  let models = ai_api_service
-    .fetch_models(&api_key, base_url.trim_end_matches('/'))
-    .await?;
 
   Ok(Json(FetchModelsResponse { models }))
 }
@@ -504,7 +495,7 @@ mod tests {
     id: &str,
     api_format: &str,
     base_url: &str,
-    api_key_masked: &str,
+    api_key_masked: Option<&str>,
     models: Vec<String>,
     prefix: Option<String>,
     created_at: DateTime<Utc>,
@@ -515,7 +506,7 @@ mod tests {
       id: id.to_string(),
       api_format: objs::ApiFormat::from_str(api_format).unwrap(),
       base_url: base_url.to_string(),
-      api_key_masked: api_key_masked.to_string(),
+      api_key_masked: api_key_masked.map(|s| s.to_string()),
       models,
       prefix,
       created_at,
@@ -533,7 +524,7 @@ mod tests {
       id,
       "openai",
       "https://api.openai.com/v1",
-      "***", // Masked in list view
+      Some("***"), // Masked in list view
       models,
       None, // No prefix in original seed data
       created_at,
@@ -552,7 +543,7 @@ mod tests {
       id,
       "openai",
       "https://api.openai.com/v1",
-      "***", // Masked in list view
+      Some("***"), // Masked in list view
       models,
       prefix,
       created_at,
@@ -698,7 +689,7 @@ mod tests {
     let create_request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: input_url.to_string(),
-      api_key: "sk-test123456789".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       prefix: None,
     };
@@ -717,7 +708,7 @@ mod tests {
     // Verify the response structure (note: ID is now auto-generated UUID)
     assert_eq!(api_response.api_format, objs::ApiFormat::OpenAI);
     assert_eq!(api_response.base_url, expected_url);
-    assert_eq!(api_response.api_key_masked, "sk-...456789");
+    assert_eq!(api_response.api_key_masked, Some("***".to_string()));
     assert_eq!(
       api_response.models,
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()]
@@ -753,7 +744,7 @@ mod tests {
     let create_request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "sk-test123456789".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
     };
@@ -788,22 +779,22 @@ mod tests {
       .with_secret_service()
       .build()?;
 
-    let create_request = CreateApiModelRequest {
-      api_format: OpenAI,
-      base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "".to_string(), // Invalid: empty api_key
-      models: vec!["gpt-4".to_string()],
-      prefix: None,
-    };
+    // Test with raw JSON to trigger deserialization error for empty API key
+    let json_request = json!({
+      "api_format": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "api_key": "",  // Invalid: empty api_key
+      "models": ["gpt-4"]
+    });
 
     let response = test_router(Arc::new(app_service))
-      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(json_request)?)
       .await?;
 
     // Verify response status is 400 Bad Request
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    // Verify error response contains validation error for API key length
+    // Verify error response contains validation error for API key
     let error_response = response.json::<serde_json::Value>().await?;
     let error_message = error_response["error"]["message"].as_str().unwrap();
     assert!(error_message.contains("API key must not be empty"));
@@ -829,7 +820,7 @@ mod tests {
     let create_request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
-      api_key: "sk-test123456789".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
     };
@@ -867,7 +858,7 @@ mod tests {
     let create_request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "sk-test123456789".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec![], // Invalid: empty models array
       prefix: None,
     };
@@ -915,7 +906,9 @@ mod tests {
     let update_request = UpdateApiModelRequest {
       api_format: OpenAI,
       base_url: input_url.to_string(), // Updated URL with potential trailing slashes
-      api_key: Some("sk-updated123456789".to_string()), // New API key
+      api_key: crate::api_models_dto::ApiKeyUpdateAction::Set(
+        crate::api_models_dto::ApiKey::some("sk-updated123456789".to_string()).unwrap(),
+      ), // New API key
       models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
       prefix: Some("openai".to_string()),
     };
@@ -935,11 +928,11 @@ mod tests {
     let expected_response = create_expected_response(
       "openai-gpt4",
       "openai",
-      expected_url,   // Expected URL with trailing slashes removed
-      "sk-...456789", // Updated API key masked
+      expected_url, // Expected URL with trailing slashes removed
+      Some("***"),  // Updated API key masked
       vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
       Some("openai".to_string()), // Updated prefix
-      base_time,      // Original created_at
+      base_time,    // Original created_at
       api_response.updated_at, // Use actual updated_at (FrozenTimeService returns same time)
     );
 
@@ -966,7 +959,9 @@ mod tests {
     let update_request = UpdateApiModelRequest {
       api_format: OpenAI,
       base_url: "https://api.openai.com/v2".to_string(),
-      api_key: Some("sk-updated123456789".to_string()),
+      api_key: crate::api_models_dto::ApiKeyUpdateAction::Set(
+        crate::api_models_dto::ApiKey::some("sk-updated123456789".to_string()).unwrap(),
+      ),
       models: vec!["gpt-4-turbo".to_string()],
       prefix: None,
     };
@@ -1105,7 +1100,7 @@ mod tests {
       "openai-gpt4",
       "openai",
       "https://api.openai.com/v1",
-      "***", // Masked in get view (no API key provided)
+      Some("***"), // Masked in get view (no API key provided)
       vec!["gpt-4".to_string()],
       None, // No prefix in original seed data
       base_time,
@@ -1162,30 +1157,21 @@ mod tests {
   ) -> anyhow::Result<()> {
     let now = db_service.now();
 
-    // Create request
-    let request = CreateApiModelRequest {
-      api_format: OpenAI,
-      base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "sk-test123".to_string(),
-      models: vec!["gpt-4".to_string()],
-      prefix: None,
-    };
-
     // Generate a unique ID for the test
     let test_id = Uuid::new_v4().to_string();
 
     // Create API model via database
     let api_alias = ApiAlias::new(
       test_id.clone(),
-      request.api_format,
-      request.base_url.clone(),
-      request.models.clone(),
-      request.prefix.clone(),
+      OpenAI,
+      "https://api.openai.com/v1".to_string(),
+      vec!["gpt-4".to_string()],
+      None,
       now,
     );
 
     db_service
-      .create_api_model_alias(&api_alias, &request.api_key)
+      .create_api_model_alias(&api_alias, Some("sk-test123".to_string()))
       .await?;
 
     // Verify it was created
@@ -1221,7 +1207,7 @@ mod tests {
     );
 
     db_service
-      .create_api_model_alias(&api_alias, "sk-test")
+      .create_api_model_alias(&api_alias, Some("sk-test".to_string()))
       .await?;
 
     // Verify it exists
@@ -1245,27 +1231,48 @@ mod tests {
   }
 
   #[test]
-  fn test_api_key_preference_over_id() {
-    // Test that when both api_key and id are provided, api_key is preferred
-    let test_request = TestPromptRequest {
-      api_key: Some("sk-direct-key".to_string()),
-      id: Some("stored-model-id".to_string()),
+  fn test_creds_enum_validation() {
+    use crate::api_models_dto::{ApiKey, TestCreds};
+
+    // Test with ApiKey credentials
+    let test_request_with_key = TestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello".to_string(),
     };
+    assert!(test_request_with_key.validate().is_ok());
 
-    // Validation should pass (both are provided, api_key takes preference)
-    assert!(test_request.validate().is_ok());
+    // Test with Id credentials
+    let test_request_with_id = TestPromptRequest {
+      creds: TestCreds::Id("stored-model-id".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(test_request_with_id.validate().is_ok());
 
-    let fetch_request = FetchModelsRequest {
-      api_key: Some("sk-direct-key".to_string()),
-      id: Some("stored-model-id".to_string()),
+    // Test with no authentication (ApiKey(None))
+    let test_request_no_auth = TestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(test_request_no_auth.validate().is_ok());
+
+    // Test FetchModelsRequest variants
+    let fetch_request_with_key = FetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-direct-key".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
     };
+    assert!(fetch_request_with_key.validate().is_ok());
 
-    // Validation should pass (both are provided, api_key takes preference)
-    assert!(fetch_request.validate().is_ok());
+    let fetch_request_with_id = FetchModelsRequest {
+      creds: TestCreds::Id("stored-model-id".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+    assert!(fetch_request_with_id.validate().is_ok());
   }
 
   #[rstest]

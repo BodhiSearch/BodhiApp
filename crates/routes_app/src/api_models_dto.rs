@@ -1,15 +1,112 @@
 use chrono::{DateTime, Utc};
 use objs::{ApiAlias, ApiFormat};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use utoipa::ToSchema;
-use validator::Validate;
+use validator::{Validate, ValidationError};
+
+/// Validated API key wrapper - validates length when Some, allows None for public APIs
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(transparent)]
+pub struct ApiKey(Option<String>);
+
+impl ApiKey {
+  /// Create ApiKey with no authentication
+  pub fn none() -> Self {
+    ApiKey(None)
+  }
+
+  /// Create ApiKey with validation
+  pub fn some(key: String) -> Result<Self, ValidationError> {
+    if key.is_empty() {
+      let mut err = ValidationError::new("api_key_empty");
+      err.message = Some("API key must not be empty".into());
+      return Err(err);
+    }
+    if key.len() > 4096 {
+      let mut err = ValidationError::new("api_key_too_long");
+      err.message =
+        Some(format!("API key must not exceed 4096 characters, got {}", key.len()).into());
+      return Err(err);
+    }
+    Ok(ApiKey(Some(key)))
+  }
+
+  /// Get as Option<&str>
+  pub fn as_option(&self) -> Option<&str> {
+    self.0.as_deref()
+  }
+
+  /// Check if None
+  pub fn is_none(&self) -> bool {
+    self.0.is_none()
+  }
+
+  /// Check if Some
+  pub fn is_some(&self) -> bool {
+    self.0.is_some()
+  }
+}
+
+/// Custom deserializer to validate on deserialization
+impl<'de> Deserialize<'de> for ApiKey {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+    match opt {
+      None => Ok(ApiKey::none()),
+      Some(key) => ApiKey::some(key).map_err(serde::de::Error::custom),
+    }
+  }
+}
+
+/// Credentials for test/fetch operations
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
+pub enum TestCreds {
+  /// Look up credentials from stored API model
+  #[schema(example = json!({"type": "id", "value": "openai-gpt4"}))]
+  Id(String),
+
+  /// Use direct API key (null for no authentication)
+  #[schema(example = json!({"type": "api_key", "value": "sk-1234567890abcdef"}))]
+  ApiKey(ApiKey),
+}
+
+impl Default for TestCreds {
+  fn default() -> Self {
+    TestCreds::ApiKey(ApiKey::none())
+  }
+}
+
+/// Represents an API key update action for API model updates
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[serde(tag = "action", content = "value", rename_all = "lowercase")]
+pub enum ApiKeyUpdateAction {
+  /// Keep the existing API key unchanged
+  Keep,
+  /// Set a new API key (or add one if none exists) - can be None for public APIs
+  Set(ApiKey),
+}
+
+impl From<ApiKeyUpdateAction> for services::db::ApiKeyUpdate {
+  fn from(action: ApiKeyUpdateAction) -> Self {
+    match action {
+      ApiKeyUpdateAction::Keep => services::db::ApiKeyUpdate::Keep,
+      ApiKeyUpdateAction::Set(key) => {
+        services::db::ApiKeyUpdate::Set(key.as_option().map(|s| s.to_string()))
+      }
+    }
+  }
+}
 
 /// Request to create a new API model configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-...",
+    "api_key": "sk-...",  // Optional - null or omit for public APIs
     "models": ["gpt-4", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
@@ -21,9 +118,9 @@ pub struct CreateApiModelRequest {
   #[validate(url(message = "Base URL must be a valid URL"))]
   pub base_url: String,
 
-  /// API key for authentication
-  #[validate(length(min = 1, message = "API key must not be empty"))]
-  pub api_key: String,
+  /// API key for authentication (null for public APIs)
+  #[serde(default = "ApiKey::none", skip_serializing_if = "ApiKey::is_none")]
+  pub api_key: ApiKey,
 
   /// List of available models
   #[validate(length(min = 1, message = "Models list must not be empty"))]
@@ -33,12 +130,16 @@ pub struct CreateApiModelRequest {
   pub prefix: Option<String>,
 }
 
+fn default_api_key_keep() -> ApiKeyUpdateAction {
+  ApiKeyUpdateAction::Keep
+}
+
 /// Request to update an existing API model configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
 #[schema(example = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-new-key",
+    "api_key": {"action": "keep"},
     "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
@@ -50,9 +151,9 @@ pub struct UpdateApiModelRequest {
   #[validate(url(message = "Base URL must be a valid URL"))]
   pub base_url: String,
 
-  /// API key for authentication (optional, only update if provided for security)
-  #[validate(length(min = 1, message = "API key must not be empty"))]
-  pub api_key: Option<String>,
+  /// API key update action (Keep/Set with Some or None)
+  #[serde(default = "default_api_key_keep")]
+  pub api_key: ApiKeyUpdateAction,
 
   /// List of available models (required)
   #[validate(length(min = 1, message = "Models list must not be empty"))]
@@ -64,27 +165,18 @@ pub struct UpdateApiModelRequest {
 
 /// Request to test API connectivity with a prompt
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-#[validate(schema(function = "validate_test_prompt_credentials"))]
 #[schema(example = json!({
-    "api_key": "sk-...",
+    "creds": {"type": "api_key", "value": "sk-..."},
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4",
     "prompt": "Hello, how are you?"
 }))]
 pub struct TestPromptRequest {
-  /// API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
-  #[validate(length(min = 1))]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[schema(required = false, nullable = false)]
-  pub api_key: Option<String>,
+  /// Credentials to use for testing
+  #[serde(default)]
+  pub creds: TestCreds,
 
-  /// API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
-  #[validate(length(min = 1))]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[schema(required = false, nullable = false)]
-  pub id: Option<String>,
-
-  /// API base URL (optional when using id)
+  /// API base URL
   #[validate(url)]
   pub base_url: String,
 
@@ -99,25 +191,16 @@ pub struct TestPromptRequest {
 
 /// Request to fetch available models from provider
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
-#[validate(schema(function = "validate_fetch_models_credentials"))]
 #[schema(example = json!({
-    "api_key": "sk-...",
-    "base_url": "https://api.openai.com/v1"
+    "creds": {"type": "api_key", "value": null},
+    "base_url": "http://localhost:8080/v1"
 }))]
 pub struct FetchModelsRequest {
-  /// API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
-  #[validate(length(min = 1))]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[schema(required = false, nullable = false)]
-  pub api_key: Option<String>,
+  /// Credentials to use for fetching models
+  #[serde(default)]
+  pub creds: TestCreds,
 
-  /// API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
-  #[validate(length(min = 1))]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  #[schema(required = false, nullable = false)]
-  pub id: Option<String>,
-
-  /// API base URL (optional when using id)
+  /// API base URL (required - always needed to know where to fetch models from)
   #[validate(url)]
   pub base_url: String,
 }
@@ -138,7 +221,7 @@ pub struct ApiModelResponse {
   pub id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
-  pub api_key_masked: String,
+  pub api_key_masked: Option<String>,
   pub models: Vec<String>,
   pub prefix: Option<String>,
   #[schema(value_type = String, format = "date-time")]
@@ -149,14 +232,23 @@ pub struct ApiModelResponse {
 
 impl ApiModelResponse {
   /// Create a response from an ApiModelAlias with masked API key
-  pub fn from_alias(alias: ApiAlias, api_key: Option<String>) -> Self {
+  ///
+  /// # Parameters
+  /// * `alias` - The API alias model
+  /// * `has_api_key` - Whether an API key exists for this model
+  ///
+  /// # Returns
+  /// * `api_key_masked`: `Some("***")` if key exists, `None` if no key stored
+  pub fn from_alias(alias: ApiAlias, has_api_key: bool) -> Self {
     Self {
       id: alias.id,
       api_format: alias.api_format,
       base_url: alias.base_url,
-      api_key_masked: api_key
-        .map(|k| mask_api_key(&k))
-        .unwrap_or_else(|| "***".to_string()),
+      api_key_masked: if has_api_key {
+        Some("***".to_string())
+      } else {
+        None
+      },
       models: alias.models,
       prefix: alias.prefix,
       created_at: alias.created_at,
@@ -236,42 +328,14 @@ pub fn mask_api_key(api_key: &str) -> String {
   format!("{}...{}", first_3, last_6)
 }
 
-/// Validate that at least one of api_key or id is provided for TestPromptRequest
-/// If both are provided, api_key takes preference
-fn validate_test_prompt_credentials(
-  request: &TestPromptRequest,
-) -> Result<(), validator::ValidationError> {
-  match (&request.api_key, &request.id) {
-    (None, None) => {
-      let mut error = validator::ValidationError::new("credentials_missing");
-      error.message = Some("Either api_key or id must be provided".into());
-      Err(error)
-    }
-    _ => Ok(()), // Both provided (api_key preferred) or one provided - all valid
-  }
-}
-
-/// Validate that at least one of api_key or id is provided for FetchModelsRequest
-/// If both are provided, api_key takes preference
-fn validate_fetch_models_credentials(
-  request: &FetchModelsRequest,
-) -> Result<(), validator::ValidationError> {
-  match (&request.api_key, &request.id) {
-    (None, None) => {
-      let mut error = validator::ValidationError::new("credentials_missing");
-      error.message = Some("Either api_key or id must be provided".into());
-      Err(error)
-    }
-    _ => Ok(()), // Both provided (api_key preferred) or one provided - all valid
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use super::{
-    mask_api_key, CreateApiModelRequest, FetchModelsRequest, TestPromptRequest, TestPromptResponse,
+  use crate::{
+    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequest, FetchModelsRequest, TestCreds,
+    TestPromptRequest, TestPromptResponse,
   };
   use objs::ApiFormat::OpenAI;
+  use services::db::ApiKeyUpdate;
   use validator::Validate;
 
   #[test]
@@ -287,7 +351,7 @@ mod tests {
     let request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: "not-a-url".to_string(),
-      api_key: "key".to_string(),
+      api_key: ApiKey::some("key".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
     };
@@ -297,7 +361,7 @@ mod tests {
     let valid_request = CreateApiModelRequest {
       api_format: OpenAI,
       base_url: "https://api.openai.com/v1".to_string(),
-      api_key: "sk-test".to_string(),
+      api_key: ApiKey::some("sk-test".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
     };
@@ -308,8 +372,7 @@ mod tests {
   #[test]
   fn test_prompt_request_validation() {
     let too_long = TestPromptRequest {
-      api_key: Some("sk-test".to_string()),
-      id: None,
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
@@ -317,8 +380,7 @@ mod tests {
     assert!(too_long.validate().is_err());
 
     let valid = TestPromptRequest {
-      api_key: Some("sk-test".to_string()),
-      id: None,
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello, how are you?".to_string(),
@@ -329,15 +391,13 @@ mod tests {
   #[test]
   fn test_fetch_models_request_validation() {
     let invalid = FetchModelsRequest {
-      api_key: Some("".to_string()),
-      id: None,
+      creds: TestCreds::ApiKey(ApiKey::none()),
       base_url: "not-a-url".to_string(),
     };
     assert!(invalid.validate().is_err());
 
     let valid = FetchModelsRequest {
-      api_key: Some("sk-test".to_string()),
-      id: None,
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
     };
     assert!(valid.validate().is_ok());
@@ -358,79 +418,113 @@ mod tests {
 
   #[test]
   fn test_test_prompt_request_credentials_validation() {
-    // Both api_key and id provided - should pass (api_key takes preference)
-    let both_provided = TestPromptRequest {
-      api_key: Some("sk-test".to_string()),
-      id: Some("openai-model".to_string()),
+    // ApiKey with some value - should pass
+    let with_api_key = TestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello".to_string(),
     };
-    assert!(both_provided.validate().is_ok());
+    assert!(with_api_key.validate().is_ok());
 
-    // Neither provided - should fail
-    let neither_provided = TestPromptRequest {
-      api_key: None,
-      id: None,
+    // ApiKey with None (no authentication) - should pass
+    let no_auth = TestPromptRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello".to_string(),
     };
-    assert!(neither_provided.validate().is_err());
+    assert!(no_auth.validate().is_ok());
 
-    // Only api_key provided - should pass
-    let api_key_only = TestPromptRequest {
-      api_key: Some("sk-test".to_string()),
-      id: None,
+    // Id-based credentials - should pass
+    let with_id = TestPromptRequest {
+      creds: TestCreds::Id("openai-model".to_string()),
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello".to_string(),
     };
-    assert!(api_key_only.validate().is_ok());
-
-    // Only id provided - should pass
-    let id_only = TestPromptRequest {
-      api_key: None,
-      id: Some("openai-model".to_string()),
-      base_url: "https://api.openai.com/v1".to_string(),
-      model: "gpt-4".to_string(),
-      prompt: "Hello".to_string(),
-    };
-    assert!(id_only.validate().is_ok());
+    assert!(with_id.validate().is_ok());
   }
 
   #[test]
   fn test_fetch_models_request_credentials_validation() {
-    // Both api_key and id provided - should pass (api_key takes preference)
-    let both_provided = FetchModelsRequest {
-      api_key: Some("sk-test".to_string()),
-      id: Some("openai-model".to_string()),
+    // ApiKey with some value - should pass
+    let with_api_key = FetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::some("sk-test".to_string()).unwrap()),
       base_url: "https://api.openai.com/v1".to_string(),
     };
-    assert!(both_provided.validate().is_ok());
+    assert!(with_api_key.validate().is_ok());
 
-    // Neither provided - should fail
-    let neither_provided = FetchModelsRequest {
-      api_key: None,
-      id: None,
+    // ApiKey with None (no authentication) - should pass
+    let no_auth = FetchModelsRequest {
+      creds: TestCreds::ApiKey(ApiKey::none()),
       base_url: "https://api.openai.com/v1".to_string(),
     };
-    assert!(neither_provided.validate().is_err());
+    assert!(no_auth.validate().is_ok());
 
-    // Only api_key provided - should pass
-    let api_key_only = FetchModelsRequest {
-      api_key: Some("sk-test".to_string()),
-      id: None,
+    // Id-based credentials - should pass
+    let with_id = FetchModelsRequest {
+      creds: TestCreds::Id("openai-model".to_string()),
       base_url: "https://api.openai.com/v1".to_string(),
     };
-    assert!(api_key_only.validate().is_ok());
+    assert!(with_id.validate().is_ok());
+  }
 
-    // Only id provided - should pass
-    let id_only = FetchModelsRequest {
-      api_key: None,
-      id: Some("openai-model".to_string()),
-      base_url: "https://api.openai.com/v1".to_string(),
-    };
-    assert!(id_only.validate().is_ok());
+  #[test]
+  fn test_api_key_update_action_serialization() {
+    use super::ApiKey;
+
+    let keep = ApiKeyUpdateAction::Keep;
+    assert_eq!(
+      serde_json::to_string(&keep).unwrap(),
+      r#"{"action":"keep"}"#
+    );
+
+    let set = ApiKeyUpdateAction::Set(ApiKey::some("sk-test".to_string()).unwrap());
+    assert_eq!(
+      serde_json::to_string(&set).unwrap(),
+      r#"{"action":"set","value":"sk-test"}"#
+    );
+
+    let set_none = ApiKeyUpdateAction::Set(ApiKey::none());
+    assert_eq!(
+      serde_json::to_string(&set_none).unwrap(),
+      r#"{"action":"set","value":null}"#
+    );
+  }
+
+  #[test]
+  fn test_api_key_update_action_deserialization() {
+    use super::ApiKey;
+
+    let keep: ApiKeyUpdateAction = serde_json::from_str(r#"{"action":"keep"}"#).unwrap();
+    assert_eq!(keep, ApiKeyUpdateAction::Keep);
+
+    let set: ApiKeyUpdateAction =
+      serde_json::from_str(r#"{"action":"set","value":"sk-test"}"#).unwrap();
+    assert_eq!(
+      set,
+      ApiKeyUpdateAction::Set(ApiKey::some("sk-test".to_string()).unwrap())
+    );
+
+    let set_none: ApiKeyUpdateAction =
+      serde_json::from_str(r#"{"action":"set","value":null}"#).unwrap();
+    assert_eq!(set_none, ApiKeyUpdateAction::Set(ApiKey::none()));
+  }
+
+  #[test]
+  fn test_api_key_update_action_conversion() {
+    use super::ApiKey;
+
+    let keep = ApiKeyUpdate::from(ApiKeyUpdateAction::Keep);
+    assert_eq!(keep, ApiKeyUpdate::Keep);
+
+    let set = ApiKeyUpdate::from(ApiKeyUpdateAction::Set(
+      ApiKey::some("key".to_string()).unwrap(),
+    ));
+    assert_eq!(set, ApiKeyUpdate::Set(Some("key".to_string())));
+
+    let set_none = ApiKeyUpdate::from(ApiKeyUpdateAction::Set(ApiKey::none()));
+    assert_eq!(set_none, ApiKeyUpdate::Set(None));
   }
 }
