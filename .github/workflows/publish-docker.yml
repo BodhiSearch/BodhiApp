@@ -79,6 +79,9 @@ jobs:
           - cpu
           - cuda
           - rocm
+          - cann
+          - intel
+          - musa
           # - vulkan
         include:
           - variant: cpu
@@ -98,6 +101,24 @@ jobs:
             description: 'AMD GPU acceleration'
             docker_flags: '--device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080'
             hardware_req: 'AMD GPU with ROCm 6.4+ support (AMD64 only)'
+            special_note: ''
+          - variant: cann
+            platforms: 'linux/amd64,linux/arm64'
+            description: 'Huawei Ascend NPU acceleration'
+            docker_flags: '--device=/dev/davinci0 --device=/dev/davinci_manager --device=/dev/devmm_svm --device=/dev/hisi_hdc -p 8080:8080'
+            hardware_req: 'Huawei Ascend NPU with CANN 8.1+ support (AMD64 + ARM64)'
+            special_note: '⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.'
+          - variant: intel
+            platforms: 'linux/amd64'
+            description: 'Intel GPU acceleration (SYCL)'
+            docker_flags: '--device=/dev/dri -p 8080:8080'
+            hardware_req: 'Intel GPU with OneAPI 2025.2.2+ support (AMD64 only)'
+            special_note: ''
+          - variant: musa
+            platforms: 'linux/amd64'
+            description: 'Moore Threads GPU acceleration'
+            docker_flags: '--device=/dev/musa -p 8080:8080'
+            hardware_req: 'Moore Threads GPU with MUSA rc4.3.0+ support (AMD64 only)'
             special_note: ''
           # - variant: vulkan
           #   platforms: 'linux/amd64'
@@ -434,7 +455,7 @@ jobs:
       - name: Check if at least one variant was published
         id: check
         run: |
-          VARIANTS=("cpu" "cuda" "rocm")
+          VARIANTS=("cpu" "cuda" "rocm" "cann" "intel" "musa")
           SUCCESS=false
 
           for variant in "${VARIANTS[@]}"; do
