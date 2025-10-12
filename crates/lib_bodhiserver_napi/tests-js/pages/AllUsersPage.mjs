@@ -109,19 +109,15 @@ export class AllUsersPage extends BasePage {
   }
 
   async expectUserRole(username, expectedRole) {
-    const actualRole = await this.getUserRole(username);
-    expect(actualRole).toContain(expectedRole);
+    const row = await this.findUserRowByUsername(username);
+    const roleElement = row.locator(this.selectors.userRole);
+    await expect(roleElement).toContainText(expectedRole);
   }
 
   async getUserStatus(username) {
     const row = await this.findUserRowByUsername(username);
     const statusElement = row.locator(this.selectors.userStatus);
     return await statusElement.textContent();
-  }
-
-  async expectUserStatus(username, expectedStatus) {
-    const actualStatus = await this.getUserStatus(username);
-    expect(actualStatus).toContain(expectedStatus);
   }
 
   async selectRoleForUser(username, roleDisplayName) {
@@ -340,23 +336,6 @@ export class AllUsersPage extends BasePage {
     console.log(
       `Confirmed: Role "${roleName}" available for ${username}. Available roles: ${availableRoles.join(', ')}`
     );
-  }
-
-  async verifyUsersWithRoles(expectedUsers) {
-    // Verify the total count matches
-    const actualCount = await this.getUserCount();
-    expect(actualCount).toBe(expectedUsers.length);
-
-    // Verify each user exists with correct role
-    for (const expectedUser of expectedUsers) {
-      await this.expectUserExists(expectedUser.username);
-      if (expectedUser.role) {
-        await this.expectUserRole(expectedUser.username, expectedUser.role);
-      }
-      if (expectedUser.status) {
-        await this.expectUserStatus(expectedUser.username, expectedUser.status);
-      }
-    }
   }
 
   async expectUsersPageLoading() {

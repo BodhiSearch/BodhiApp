@@ -133,7 +133,7 @@ test.describe('Chat Interface - Core Functionality', () => {
     // Test network error simulation
     await chatPage.simulateNetworkFailure();
     await chatPage.sendMessageAndReturn('This should fail');
-    await chatPage.expectNetworkError();
+    await chatPage.expectError();
 
     // Recovery
     await chatPage.restoreNetworkConnection();

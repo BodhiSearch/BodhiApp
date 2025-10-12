@@ -46,6 +46,11 @@ export class ApiModelFormComponent {
 
   // Form Field Interactions
   async fillApiKey(apiKey) {
+    const isChecked = await this.page.locator(this.selectors.useApiKeyCheckbox).isChecked();
+    if (!isChecked) {
+      await this.page.check(this.selectors.useApiKeyCheckbox);
+      await expect(this.page.locator(this.selectors.apiKeyInput)).toBeEnabled();
+    }
     await this.page.fill(this.selectors.apiKeyInput, apiKey);
   }
 
@@ -122,7 +127,7 @@ export class ApiModelFormComponent {
   }
 
   async expectFetchError() {
-    await this.waitForToast(/fetch.*failed/i);
+    await this.waitForToast(/failed.*fetch|fetch.*failed/i);
   }
 
   async expectFetchSuccess() {

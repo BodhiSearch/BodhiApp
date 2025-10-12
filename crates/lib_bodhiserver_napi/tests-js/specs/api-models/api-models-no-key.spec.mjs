@@ -10,7 +10,7 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
-import { MockOpenAIFixtures } from '@/fixtures/mockOpenAIFixtures.mjs';
+import { createMockOpenAIServer } from '@/utils/mock-openai-server.mjs';
 
 test.describe('API Models - Optional Key (Mock Server)', () => {
   let serverManager;
@@ -49,7 +49,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
     baseUrl = await serverManager.startServer();
 
-    mockOpenAIServer = MockOpenAIFixtures.createPublicMockServer();
+    mockOpenAIServer = createMockOpenAIServer({ requiresAuth: false });
     await mockOpenAIServer.start();
   });
 

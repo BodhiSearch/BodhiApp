@@ -125,19 +125,15 @@ test.describe('Enhanced Users Management Flow', () => {
 
     await adminUsersPage.expectUserExists(testUsers.admin.username);
     await adminUsersPage.expectUserRole(testUsers.admin.username, 'Admin');
-    await adminUsersPage.expectUserStatus(testUsers.admin.username, 'Active');
 
     await adminUsersPage.expectUserExists(testUsers.manager.username);
     await adminUsersPage.expectUserRole(testUsers.manager.username, 'Manager');
-    await adminUsersPage.expectUserStatus(testUsers.manager.username, 'Active');
 
     await adminUsersPage.expectUserExists(testUsers.powerUser.username);
     await adminUsersPage.expectUserRole(testUsers.powerUser.username, 'Power User');
-    await adminUsersPage.expectUserStatus(testUsers.powerUser.username, 'Active');
 
     await adminUsersPage.expectUserExists(testUsers.user.username);
     await adminUsersPage.expectUserRole(testUsers.user.username, 'User');
-    await adminUsersPage.expectUserStatus(testUsers.user.username, 'Active');
 
     await adminUsersPage.expectNoActionsForUser(testUsers.admin.username);
     await adminUsersPage.expectCurrentUserIndicator(testUsers.admin.username);

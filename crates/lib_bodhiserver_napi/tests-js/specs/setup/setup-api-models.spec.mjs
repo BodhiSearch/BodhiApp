@@ -99,10 +99,10 @@ test.describe('API Models Setup Integration', () => {
     await apiModelsPage.form.expectTestConnectionButtonDisabled();
 
     // Phase 3: Test validation and error states
-    // Clear API key and verify buttons disable
+    // Clear API key - with optional API key, Fetch Models should remain enabled
     await apiModelsPage.form.clearApiKey();
     await apiModelsPage.form.expectTestConnectionButtonDisabled();
-    await apiModelsPage.form.expectFetchModelsButtonDisabled();
+    await apiModelsPage.form.expectFetchModelsButtonEnabled();
 
     // Fill API key again for submission test
     await apiModelsPage.fillApiKey('sk-test-api-key-12345');
