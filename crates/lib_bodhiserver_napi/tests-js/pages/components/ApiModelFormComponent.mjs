@@ -13,6 +13,7 @@ export class ApiModelFormComponent {
     apiFormatSelect: '[data-testid="api-format-selector"]',
     baseUrlInput: '[data-testid="base-url-input"]',
     apiKeyInput: '[data-testid="api-key-input"]',
+    useApiKeyCheckbox: '[data-testid="api-key-input-checkbox"]',
     usePrefixCheckbox: '[data-testid="prefix-input-checkbox"]',
     prefixInput: '[data-testid="prefix-input"]',
     fetchModelsButton: '[data-testid="fetch-models-button"]',
@@ -50,6 +51,20 @@ export class ApiModelFormComponent {
 
   async clearApiKey() {
     await this.page.fill(this.selectors.apiKeyInput, '');
+  }
+
+  async checkUseApiKey() {
+    await this.page.check(this.selectors.useApiKeyCheckbox);
+    await expect(this.page.locator(this.selectors.apiKeyInput)).toBeEnabled();
+  }
+
+  async uncheckUseApiKey() {
+    await this.page.uncheck(this.selectors.useApiKeyCheckbox);
+    await expect(this.page.locator(this.selectors.apiKeyInput)).toBeDisabled();
+  }
+
+  async isUseApiKeyChecked() {
+    return await this.page.locator(this.selectors.useApiKeyCheckbox).isChecked();
   }
 
   async fillBaseUrl(baseUrl) {
@@ -101,6 +116,19 @@ export class ApiModelFormComponent {
   }
 
   // Model Management
+  async clickFetchModels() {
+    await expect(this.page.locator(this.selectors.fetchModelsButton)).toBeVisible();
+    await this.page.click(this.selectors.fetchModelsButton);
+  }
+
+  async expectFetchError() {
+    await this.waitForToast(/fetch.*failed/i);
+  }
+
+  async expectFetchSuccess() {
+    await this.waitForToast(/Models Fetched Successfully/i);
+  }
+
   async fetchAndSelectModels(models = ['gpt-4', 'gpt-3.5-turbo'], maxRetries = 1) {
     let attempt = 0;
     const maxAttempts = maxRetries + 1;

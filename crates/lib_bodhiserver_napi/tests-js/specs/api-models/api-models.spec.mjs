@@ -149,4 +149,37 @@ test.describe('API Models Integration', () => {
     // Clean up by deleting the created model
     await modelsPage.deleteModel(validationTestModelId);
   });
+
+  test('authentication error and recovery flow', async ({ page }) => {
+    const modelData = ApiModelFixtures.scenarios.BASIC_OPENAI();
+
+    await loginPage.performOAuthLogin();
+    await modelsPage.navigateToModels();
+    await modelsPage.clickNewApiModel();
+
+    await formPage.form.waitForFormReady();
+
+    await formPage.form.selectApiFormat('openai');
+    await formPage.form.expectBaseUrlValue(modelData.baseUrl);
+
+    await formPage.form.uncheckUseApiKey();
+
+    await formPage.form.clickFetchModels();
+    await formPage.form.expectFetchError();
+
+    await formPage.form.checkUseApiKey();
+    await formPage.form.fillApiKey(testData.apiKey);
+
+    await formPage.form.fetchAndSelectModels(['gpt-3.5-turbo']);
+
+    await formPage.form.testConnection();
+
+    const authTestModelId = await formPage.createModelAndCaptureId();
+
+    await modelsPage.navigateToModels();
+    await modelsPage.waitForModelsToLoad();
+    await modelsPage.verifyApiModelInList(authTestModelId, 'openai', modelData.baseUrl);
+
+    await modelsPage.deleteModel(authTestModelId);
+  });
 });
