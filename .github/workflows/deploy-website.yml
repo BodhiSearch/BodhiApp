@@ -123,8 +123,9 @@ jobs:
       - name: Extract app version from releases.json
         id: app_version
         run: |
-          VERSION=$(jq -r '.desktop.version' getbodhi.app/public/releases.json)
-          TAG=$(jq -r '.desktop.tag' getbodhi.app/public/releases.json)
+          # Extract macOS silicon specific version and tag (architecture-level)
+          VERSION=$(jq -r '.desktop.platforms.macos.silicon.version' getbodhi.app/public/releases.json)
+          TAG=$(jq -r '.desktop.platforms.macos.silicon.tag' getbodhi.app/public/releases.json)
 
           # Extract DMG checksum and URL for homebrew
           DMG_SHA256=$(jq -r '.desktop.platforms.macos.silicon.sha256 // empty' getbodhi.app/public/releases.json)
@@ -140,7 +141,7 @@ jobs:
           echo "dmg_sha256=$DMG_SHA256" >> $GITHUB_OUTPUT
           echo "dmg_url=$DMG_URL" >> $GITHUB_OUTPUT
 
-          echo "App version: $VERSION"
+          echo "App version (macOS silicon): $VERSION"
           echo "App tag: $TAG"
           echo "DMG URL: $DMG_URL"
           echo "DMG SHA256: ${DMG_SHA256:0:16}..."
