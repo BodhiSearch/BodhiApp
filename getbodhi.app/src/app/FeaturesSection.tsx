@@ -1,7 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronRight, Cpu, Database, Lock, MessageSquare, Terminal, Zap } from 'lucide-react';
+import {
+  ChevronRight,
+  Cpu,
+  Database,
+  Lock,
+  MessageSquare,
+  Terminal,
+  Zap,
+  Cloud,
+  Activity,
+  Download,
+  Settings,
+  Gauge,
+  Radio,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
@@ -25,8 +39,26 @@ const features = {
     {
       icon: <Database className="h-6 w-6 text-violet-600" />,
       title: 'Model Management',
-      description: 'One-click downloads from HuggingFace.',
+      description: 'One-click downloads from HuggingFace with real-time progress tracking.',
       href: '/docs/features/model-downloads/',
+    },
+    {
+      icon: <Cloud className="h-6 w-6 text-violet-600" />,
+      title: 'Hybrid AI Architecture',
+      description: 'Use local GGUF models alongside API providers (OpenAI, Anthropic, Groq) in one unified interface.',
+      href: '/docs/features/api-models/',
+    },
+    {
+      icon: <Radio className="h-6 w-6 text-violet-600" />,
+      title: 'Real-time Streaming',
+      description: 'Server-Sent Events provide instant response feedback with live token streaming.',
+      href: '/docs/features/chat-ui/',
+    },
+    {
+      icon: <Settings className="h-6 w-6 text-violet-600" />,
+      title: 'Advanced Configuration',
+      description: '12+ parameters for fine-tuning: temperature, top-p, frequency penalty, and more.',
+      href: '/docs/features/chat-ui/',
     },
   ],
   technicalFeatures: [
@@ -45,8 +77,26 @@ const features = {
     {
       icon: <Zap className="h-6 w-6 text-violet-600" />,
       title: 'High Performance',
-      description: 'Optimized inference with llama.cpp and GPU acceleration.',
-      href: '/docs/install/',
+      description: 'Optimized inference with llama.cpp. 8-12x speedup with GPU acceleration (CUDA, ROCm).',
+      href: '/docs/deployment/docker/',
+    },
+    {
+      icon: <Download className="h-6 w-6 text-violet-600" />,
+      title: 'Model Aliases',
+      description: 'Save and switch between inference configurations instantly without restarts.',
+      href: '/docs/features/model-alias/',
+    },
+    {
+      icon: <Gauge className="h-6 w-6 text-violet-600" />,
+      title: 'Performance Metrics',
+      description: 'Real-time statistics showing tokens per second and processing speed.',
+      href: '/docs/features/chat-ui/',
+    },
+    {
+      icon: <Activity className="h-6 w-6 text-violet-600" />,
+      title: 'Background Downloads',
+      description: 'Download models asynchronously with progress tracking and auto-resumption.',
+      href: '/docs/features/model-downloads/',
     },
   ],
 };
@@ -94,13 +144,18 @@ function FeatureCard({
   href: string;
 }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-      <Card className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="h-full"
+    >
+      <Card className="transition-all duration-300 hover:-translate-y-1 hover:shadow-lg h-full flex flex-col">
         <CardHeader>
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">{icon}</div>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow">
           <p className="text-muted-foreground">{description}</p>
         </CardContent>
         <CardFooter>

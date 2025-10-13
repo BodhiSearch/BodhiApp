@@ -1,8 +1,8 @@
 {
   "desktop": {
-    "version": "0.0.35",
-    "tag": "app/v0.0.35",
-    "released_at": "2025-10-13T03:46:10Z",
+    "version": "0.0.36",
+    "tag": "app/v0.0.36",
+    "released_at": "2025-10-13T07:56:39Z",
     "platforms": {
       "macos": {
         "silicon": {
@@ -25,9 +25,9 @@
     }
   },
   "docker": {
-    "version": "0.0.4",
-    "tag": "docker/v0.0.4",
-    "released_at": "2025-10-13T05:42:59Z",
+    "version": "0.0.5",
+    "tag": "docker/v0.0.5",
+    "released_at": "2025-10-13T07:50:40Z",
     "registry": "ghcr.io/bodhisearch/bodhiapp",
     "variants": {
       "cpu": {

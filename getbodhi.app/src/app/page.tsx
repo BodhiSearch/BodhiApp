@@ -3,6 +3,9 @@
 import { HeroSection } from './HeroSection';
 import { SocialProofSection } from './SocialProofSection';
 import { FeaturesSection } from './FeaturesSection';
+import { EnterpriseSection } from './EnterpriseSection';
+import { DeveloperToolsSection } from './DeveloperToolsSection';
+import { DeploymentSection } from './DeploymentSection';
 import { DownloadSection } from './DownloadSection';
 import { DockerSection } from './DockerSection';
 import { Footer } from './Footer';
@@ -20,6 +23,9 @@ export default function Home() {
         <HeroSection />
         <SocialProofSection />
         <FeaturesSection />
+        <EnterpriseSection />
+        <DeveloperToolsSection />
+        <DeploymentSection />
         <DownloadSection />
         <DockerSection />
       </main>

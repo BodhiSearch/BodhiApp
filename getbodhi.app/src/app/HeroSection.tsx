@@ -31,13 +31,14 @@ export function HeroSection() {
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-            Run LLMs locally, powered by{' '}
+            Your Complete AI Infrastructure:{' '}
             <span className="bg-gradient-to-r from-violet-600 to-purple-400 bg-clip-text text-transparent animate-gradient">
-              Open Source
+              Local Privacy, Cloud Power
             </span>
           </h1>
           <p className="text-xl text-muted-foreground mx-auto max-w-2xl">
-            Run LLMs locally, completely free, private and without technical hassle or setup.
+            Unified platform combining local GGUF models with API providers (OpenAI, Anthropic, Groq). Enterprise-ready
+            with user management, OAuth2 security, and production deployment options.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <DownloadButton />
