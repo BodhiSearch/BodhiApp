@@ -2,12 +2,15 @@
 # This file contains all Docker build logic for local development
 # Called from root Makefile for delegation
 
-.PHONY: help build.cpu build.cpu.amd64 build.cpu.arm64 build.cpu.multi build.cuda build.rocm build.vulkan run clean list-images
+.PHONY: help build.app-binary build.cpu build.cpu.amd64 build.cpu.arm64 build.cpu.multi build.cuda build.rocm build.vulkan run clean list-images
 .DEFAULT_GOAL := help
 
 # Default build variant (can be overridden)
 BUILD_VARIANT ?= development
 PROJECT_ROOT := $(shell dirname $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))))
+
+# App binary image tag (for local builds, we use a local tag)
+APP_BINARY_TAG ?= bodhiapp:local-app-binary-$(BUILD_VARIANT)
 
 help: ## Show this help message
 	@echo 'BodhiApp Docker Build System'
@@ -30,12 +33,32 @@ help: ## Show this help message
 	@echo '  make build.cuda BUILD_VARIANT=production  # Build production CUDA image'
 	@echo '  make run VARIANT=cpu                   # Run CPU image'
 
-build.cpu: ## Build CPU image for current platform (use PLATFORM to override)
+build.app-binary: ## Build app-binary base image (required for all variant builds)
+	@PLATFORM=$${PLATFORM:-linux/amd64} && \
+	echo "Building app-binary image for platform $$PLATFORM ($(BUILD_VARIANT) variant)..." && \
+	cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform $$PLATFORM \
+		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		-f devops/app-binary.Dockerfile \
+		-t $(APP_BINARY_TAG) .
+	@echo "✓ Built: $(APP_BINARY_TAG)"
+
+build.app-binary.multi: ## Build multi-platform app-binary image (for local registry testing)
+	@echo "Building multi-platform app-binary image ($(BUILD_VARIANT) variant)..."
+	@cd $(PROJECT_ROOT) && docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		-f devops/app-binary.Dockerfile \
+		-t $(APP_BINARY_TAG) .
+	@echo "✓ Built: $(APP_BINARY_TAG) (multi-platform: AMD64 + ARM64)"
+
+build.cpu: build.app-binary ## Build CPU image for current platform (use PLATFORM to override)
 	@PLATFORM=$${PLATFORM:-linux/amd64} && \
 	echo "Building CPU image for platform $$PLATFORM ($(BUILD_VARIANT) variant)..." && \
 	cd $(PROJECT_ROOT) && docker buildx build --load \
 		--platform $$PLATFORM \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
 		-f devops/cpu.Dockerfile \
 		-t bodhiapp:local-cpu-$(BUILD_VARIANT) .
 	@echo "✓ Built: bodhiapp:local-cpu-$(BUILD_VARIANT)"
@@ -56,29 +79,32 @@ build.cpu.multi: ## Build multi-platform CPU image (for CI/push to registry)
 	@echo "✓ Built: bodhiapp:cpu-$(BUILD_VARIANT) (multi-platform: AMD64 + ARM64)"
 
 
-build.cuda: ## Build NVIDIA CUDA GPU image (AMD64 only)
+build.cuda: build.app-binary ## Build NVIDIA CUDA GPU image (AMD64 only)
 	@echo "Building CUDA GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
 		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
 		-f devops/cuda.Dockerfile \
 		-t bodhiapp:local-cuda-$(BUILD_VARIANT) .
 	@echo "✓ Built: bodhiapp:local-cuda-$(BUILD_VARIANT)"
 
-build.rocm: ## Build AMD ROCm GPU image (AMD64 only)
+build.rocm: build.app-binary ## Build AMD ROCm GPU image (AMD64 only)
 	@echo "Building ROCm GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
 		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
 		-f devops/rocm.Dockerfile \
 		-t bodhiapp:local-rocm-$(BUILD_VARIANT) .
 	@echo "✓ Built: bodhiapp:local-rocm-$(BUILD_VARIANT)"
 
-build.vulkan: ## Build Vulkan GPU image (AMD64 only)
+build.vulkan: build.app-binary ## Build Vulkan GPU image (AMD64 only)
 	@echo "Building Vulkan GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
 		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
+		--build-arg APP_BINARY_IMAGE=$(APP_BINARY_TAG) \
 		-f devops/vulkan.Dockerfile \
 		-t bodhiapp:local-vulkan-$(BUILD_VARIANT) .
 	@echo "✓ Built: bodhiapp:local-vulkan-$(BUILD_VARIANT)"

@@ -2,89 +2,9 @@
 # Use llama.cpp CUDA base image as runtime foundation
 FROM ghcr.io/bodhisearch/llama.cpp:latest-cuda AS runtime
 
-# Build BodhiApp binary (CPU-only Rust build)
-FROM rust:1.87.0-bookworm AS builder
-
-# Build arguments for platform info and build variant
-ARG BUILD_VARIANT=production
-ARG BODHI_VERSION
-ARG BODHI_COMMIT_SHA
-ARG CI_BUILD_TARGET=x86_64-unknown-linux-gnu
-ARG CI_DEFAULT_VARIANT=cuda
-ARG CI_BUILD_VARIANTS=cuda,cpu
-ARG CI_EXEC_NAME=llama-server
-ENV BUILD_VARIANT=${BUILD_VARIANT}
-ENV CI_BUILD_TARGET=${CI_BUILD_TARGET}
-ENV CI_DEFAULT_VARIANT=${CI_DEFAULT_VARIANT}
-ENV CI_BUILD_VARIANTS=${CI_BUILD_VARIANTS}
-ENV CI_EXEC_NAME=${CI_EXEC_NAME}
-
-# Enable Rust build optimizations
-ENV CARGO_INCREMENTAL=1
-ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-ENV RUST_LOG=info
-
-# Install system dependencies for building (Node.js still needed for frontend)
-RUN apt-get update && apt-get install -y \
-    git \
-    pkg-config \
-    libssl-dev \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js (LTS version 22) - needed for frontend build
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs
-
-# Set working directory
-WORKDIR /build
-
-# === DEPENDENCY CACHING STAGE ===
-# Copy workspace configuration, filter script, and minimal crates for dependency pre-compilation
-COPY Cargo.toml Cargo.lock ./
-COPY scripts/filter-cargo-toml.py ./scripts/
-COPY crates/ci_optims/ crates/ci_optims/
-COPY async-openai/ async-openai/
-
-# Create filtered Cargo.toml for dependency-only build and generate new lock file
-RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml && \
-    mv Cargo.filtered.toml Cargo.toml && \
-    cargo generate-lockfile
-
-# Pre-compile all heavy dependencies with consistent optimization level
-RUN if [ "$BUILD_VARIANT" = "production" ]; then \
-      echo "Pre-compiling dependencies for production (release mode)..." && \
-      cargo build --release -p ci_optims; \
-    else \
-      echo "Pre-compiling dependencies for development (debug mode)..." && \
-      cargo build -p ci_optims; \
-    fi
-
-# === TS CLIENT BUILD STAGE ===
-# Copy TS client source and generate types
-COPY ts-client/ ts-client/
-COPY openapi.json ./
-RUN cd ts-client && npm ci && npm run build:openapi
-
-# === APPLICATION BUILD STAGE ===
-# Copy all crate source files and restore original Cargo.toml
-COPY crates/ crates/
-COPY xtask/ xtask/
-
-# Restore original Cargo.toml and regenerate lock file for full workspace
-COPY Cargo.toml ./
-RUN cargo generate-lockfile
-
-# Build bodhi binary with consistent optimization level
-# Note: llama_server_proc will use CI_BUILD_TARGET configuration
-RUN if [ "$BUILD_VARIANT" = "production" ]; then \
-      echo "Building bodhi binary for production (release mode)..." && \
-      cargo build --release --bin bodhi --no-default-features --features production; \
-    else \
-      echo "Building bodhi binary for development (debug mode)..." && \
-      cargo build --bin bodhi --no-default-features; \
-    fi
+# Use pre-built BodhiApp binary from app-binary base image
+ARG APP_BINARY_IMAGE
+FROM ${APP_BINARY_IMAGE} AS app-binary
 
 # === FINAL STAGE ===
 FROM runtime
@@ -92,8 +12,8 @@ FROM runtime
 # Switch to root for file operations
 USER root
 
-# Copy BodhiApp binary from builder and set ownership
-COPY --from=builder /build/target/*/bodhi /app/bodhi
+# Copy BodhiApp binary from app-binary image and set ownership
+COPY --from=app-binary /app/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
 # Configure BodhiApp environment (only keep RUST_LOG as it's not managed by SettingService)
