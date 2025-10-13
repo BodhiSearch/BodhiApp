@@ -42,8 +42,15 @@ runs:
 
         # Check if there are any local uncommitted changes
         if [[ -n $(git status --porcelain) ]]; then
-          echo "Warning: Uncommitted changes detected before rebase"
+          echo "Note: Uncommitted changes detected - will be committed after sync"
           git status --short
+
+          # Stash changes temporarily to allow rebase
+          echo "Stashing local changes"
+          git stash push -m "Temporary stash for version bump"
+          STASHED=1
+        else
+          STASHED=0
         fi
 
         # Pull latest changes with rebase to handle any upstream commits
@@ -53,6 +60,16 @@ runs:
           echo "There may be conflicts that need manual resolution"
           exit 1
         }
+
+        # Restore stashed changes if any
+        if [[ $STASHED -eq 1 ]]; then
+          echo "Restoring stashed changes"
+          git stash pop || {
+            echo "Error: Failed to restore stashed changes"
+            echo "There may be conflicts that need manual resolution"
+            exit 1
+          }
+        fi
 
     - name: Commit changes
       shell: bash
