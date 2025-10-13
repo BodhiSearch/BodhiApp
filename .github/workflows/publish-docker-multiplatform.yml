@@ -1,4 +1,4 @@
-name: Publish Docker Image (Multi-Variant)
+name: Publish Docker Image (Multi-Platform)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 # Prevent concurrent releases
 concurrency:
-  group: docker-release-${{ github.ref }}
+  group: docker-multiplatform-release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -66,7 +66,7 @@ jobs:
           echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
 
-  # Build BodhiApp binary once (used by all variants)
+  # Build BodhiApp binary once (multi-platform: used by CPU and CANN variants)
   build-app-binary:
     needs: extract-version
     runs-on: ubuntu-latest-8-cores
@@ -96,23 +96,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push app-binary image
+      - name: Build and push multi-platform app-binary image
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./devops/app-binary.Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
-            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-latest${{ needs.extract-version.outputs.image_suffix }}
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-multiplatform-${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-multiplatform-latest${{ needs.extract-version.outputs.image_suffix }}
           cache-from: |
-            type=gha,scope=app-binary-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,scope=app-binary-deps
+            type=gha,scope=app-binary-multiplatform-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,scope=app-binary-multiplatform-deps
           cache-to: |
-            type=gha,mode=max,scope=app-binary-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,mode=max,scope=app-binary-deps
+            type=gha,mode=max,scope=app-binary-multiplatform-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,mode=max,scope=app-binary-multiplatform-deps
           build-args: |
             BUILD_VARIANT=${{ needs.extract-version.outputs.build_variant }}
             BODHI_VERSION=${{ needs.extract-version.outputs.app_version }}
@@ -122,10 +122,10 @@ jobs:
       - name: Set app binary tag output
         id: set-tag
         run: |
-          APP_BINARY_TAG="${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
+          APP_BINARY_TAG="${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:app-binary-multiplatform-${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
           echo "app_binary_tag=$APP_BINARY_TAG" >> $GITHUB_OUTPUT
 
-  # Build all variants using matrix strategy
+  # Build multi-platform variants using matrix strategy
   build-variants:
     needs: [extract-version, build-app-binary]
     runs-on: ubuntu-latest-4-cores
@@ -135,42 +135,21 @@ jobs:
       fail-fast: false
       matrix:
         variant:
-          - cuda
-          - rocm
-          - vulkan
-          - musa
-          - intel
+          - cpu
+          - cann
         include:
-          - variant: cuda
-            platforms: 'linux/amd64'
-            description: 'NVIDIA GPU acceleration'
-            docker_flags: '--gpus all -p 8080:8080'
-            hardware_req: 'NVIDIA GPU with CUDA 12.4+ support (AMD64 only)'
-            special_note: ''
-          - variant: rocm
-            platforms: 'linux/amd64'
-            description: 'AMD GPU acceleration'
-            docker_flags: '--device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080'
-            hardware_req: 'AMD GPU with ROCm 6.4+ support (AMD64 only)'
-            special_note: ''
-          - variant: intel
-            platforms: 'linux/amd64'
-            description: 'Intel GPU acceleration (SYCL)'
-            docker_flags: '--device=/dev/dri -p 8080:8080'
-            hardware_req: 'Intel GPU with OneAPI 2025.2.2+ support (AMD64 only)'
-            special_note: ''
-          - variant: musa
-            platforms: 'linux/amd64'
-            description: 'Moore Threads GPU acceleration'
-            docker_flags: '--device=/dev/musa -p 8080:8080'
-            hardware_req: 'Moore Threads GPU with MUSA rc4.3.0+ support (AMD64 only)'
-            special_note: ''
-          - variant: vulkan
-            platforms: 'linux/amd64'
-            description: 'Cross-vendor GPU acceleration'
-            docker_flags: '--device=/dev/dri -p 8080:8080'
-            hardware_req: 'GPU with Vulkan API support (AMD64 only)'
-            special_note: ''
+          - variant: cpu
+            platforms: 'linux/amd64,linux/arm64'
+            description: 'Multi-platform: AMD64 + ARM64'
+            docker_flags: '-p 8080:8080'
+            hardware_req: 'x86_64 (AMD64) or ARM64 processors (auto-detected)'
+            special_note: '⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.'
+          - variant: cann
+            platforms: 'linux/amd64,linux/arm64'
+            description: 'Huawei Ascend NPU acceleration'
+            docker_flags: '--device=/dev/davinci0 --device=/dev/davinci_manager --device=/dev/devmm_svm --device=/dev/hisi_hdc -p 8080:8080'
+            hardware_req: 'Huawei Ascend NPU with CANN 8.1+ support (AMD64 + ARM64)'
+            special_note: '⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -206,11 +185,11 @@ jobs:
             ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-${{ matrix.variant }}${{ needs.extract-version.outputs.image_suffix }}
             ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-${{ matrix.variant }}${{ needs.extract-version.outputs.image_suffix }}
           cache-from: |
-            type=gha,scope=${{ matrix.variant }}-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,scope=${{ matrix.variant }}-deps
+            type=gha,scope=${{ matrix.variant }}-multiplatform-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,scope=${{ matrix.variant }}-multiplatform-deps
           cache-to: |
-            type=gha,mode=max,scope=${{ matrix.variant }}-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,mode=max,scope=${{ matrix.variant }}-deps
+            type=gha,mode=max,scope=${{ matrix.variant }}-multiplatform-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,mode=max,scope=${{ matrix.variant }}-multiplatform-deps
           build-args: |
             BUILD_VARIANT=${{ needs.extract-version.outputs.build_variant }}
             BODHI_VERSION=${{ needs.extract-version.outputs.app_version }}
@@ -292,13 +271,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-info-${{ matrix.variant }}
+          name: build-info-multiplatform-${{ matrix.variant }}
           path: build-info-${{ matrix.variant }}.json
           retention-days: 7
 
-
-  # Create release (CPU image is now built as multi-platform directly)
-  # No separate manifest creation needed as build-variants creates multi-platform images
 
   # Collect all build information into release.json artifact
   collect-release-info:
@@ -309,7 +285,7 @@ jobs:
       - name: Download all build info artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: build-info-*
+          pattern: build-info-multiplatform-*
           path: build-artifacts
           merge-multiple: false
 
@@ -361,7 +337,7 @@ jobs:
       - name: Upload release info artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-info
+          name: release-info-multiplatform
           path: release.json
           retention-days: 90
 
@@ -374,7 +350,7 @@ jobs:
       - name: Download release info artifact
         uses: actions/download-artifact@v4
         with:
-          name: release-info
+          name: release-info-multiplatform
           path: release-artifacts
 
       - name: Generate dynamic release body
@@ -393,7 +369,7 @@ jobs:
 
           # Start building the release body
           cat > release_body.md <<EOF
-          # BodhiApp Docker Images Release ${VERSION} (${BUILD_VARIANT})
+          # BodhiApp Docker Multi-Platform Images Release ${VERSION} (${BUILD_VARIANT})
 
           ## Available Variants
 
@@ -444,6 +420,7 @@ jobs:
           - **Registry**: ${REGISTRY}/${IMAGE_NAME}
           - **Version**: ${VERSION}
           - **Auth Server**: ${AUTH_SERVER}
+          - **Multi-Platform Support**: AMD64 + ARM64 architectures
 
           ## Platform Support
           EOF
@@ -474,11 +451,11 @@ jobs:
 
           ## Benefits
 
-          - **Multi-platform CPU**: Automatic architecture detection for ARM64 and AMD64
+          - **Multi-platform Support**: Automatic architecture detection for ARM64 and AMD64
           - **Faster Builds**: No llama-server compilation during build
-          - **GPU Acceleration**: Hardware-optimized variants available
-          - **Smaller Images**: Optimized runtime images
+          - **Optimized Images**: Hardware-specific optimization for CPU and CANN variants
           - **Better Caching**: Improved Docker layer caching
+          - **Consistent Base**: Shared app-binary foundation for all variants
           EOF
 
           # List failed variants if any
@@ -501,7 +478,7 @@ jobs:
       - name: Check if at least one variant was published
         id: check
         run: |
-          VARIANTS=("cuda" "rocm" "vulkan" "musa" "intel")
+          VARIANTS=("cpu" "cann")
           SUCCESS=false
 
           for variant in "${VARIANTS[@]}"; do
@@ -529,7 +506,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: 'Docker Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
+          name: 'Docker Multi-Platform Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
           body_path: release_body.md
           draft: false
           prerelease: ${{ needs.extract-version.outputs.is_development == 'true' }}
@@ -550,7 +527,7 @@ jobs:
           # Get first successful variant tag for example
           EXAMPLE_TAG=$(jq -r '.variants[] | select(.status == "success") | .tags[0]' "$RELEASE_JSON" | head -n 1)
 
-          echo "::notice title=Docker Images Published::Multi-variant images published to ${REGISTRY}/${IMAGE_NAME}"
+          echo "::notice title=Docker Multi-Platform Images Published::Multi-platform images published to ${REGISTRY}/${IMAGE_NAME}"
           echo "::notice title=Available Variants::${SUCCESSFUL_VARIANTS}"
           if [ -n "$EXAMPLE_TAG" ]; then
             echo "::notice title=Example Pull::docker pull ${EXAMPLE_TAG}"

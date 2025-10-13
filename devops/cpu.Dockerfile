@@ -1,10 +1,11 @@
 # syntax=docker/dockerfile:1
+
+ARG APP_BINARY_IMAGE
+
+FROM ${APP_BINARY_IMAGE} AS app-binary
+
 # Use llama.cpp CPU base image as runtime foundation
 FROM ghcr.io/bodhisearch/llama.cpp:latest-cpu AS runtime
-
-# Use pre-built BodhiApp binary from app-binary base image
-ARG APP_BINARY_IMAGE
-FROM ${APP_BINARY_IMAGE} AS app-binary
 
 # === FINAL STAGE ===
 FROM runtime
