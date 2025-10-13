@@ -66,6 +66,9 @@ pub enum AppServiceBuilderError {
   #[error("Service already set: {0}")]
   #[error_meta(error_type=ErrorType::InternalServer)]
   ServiceAlreadySet(String),
+  #[error("placeholder_value")]
+  #[error_meta(error_type=ErrorType::BadRequest)]
+  PlaceholderValue(String),
 }
 
 #[cfg(test)]

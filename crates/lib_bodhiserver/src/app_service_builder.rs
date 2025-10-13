@@ -330,6 +330,14 @@ impl AppServiceBuilder {
       None => {
         let app_name = self.get_app_name();
         let encryption_key = self.setting_service.encryption_key();
+
+        // Validate encryption key is not a placeholder value
+        if let Some(ref key) = encryption_key {
+          if key == "your-strong-encryption-key-here" {
+            return Err(AppServiceBuilderError::PlaceholderValue(key.to_string()))?;
+          }
+        }
+
         let encryption_key = encryption_key
           .map(|key| Ok(hash_key(&key)))
           .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;

@@ -37,7 +37,7 @@ export function generateDockerRunCommand(options: DockerRunCommandOptions): stri
     `-p ${hostPort}:${containerPort}`,
     `-e BODHI_PUBLIC_HOST=${publicHost}`,
     `-e BODHI_PUBLIC_PORT=${publicPort}`,
-    '# -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here',
+    '-e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here',
     `-v ${dataVolume}`,
     ...dockerFlags,
     `${registry}:${tag}`,

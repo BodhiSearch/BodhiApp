@@ -74,12 +74,12 @@ docker run --name bodhiapp \
   -p 1135:8080 \
   -e BODHI_PUBLIC_HOST=0.0.0.0 \
   -e BODHI_PUBLIC_PORT=1135 \
-  # -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
+  -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
   -v $(pwd)/docker-data:/data \
   ghcr.io/bodhisearch/bodhiapp:latest-cpu
 ```
 
-> **Important**: Uncomment the `BODHI_ENCRYPTION_KEY` line and provide your own strong encryption key. The container will not start without it.
+> **Important**: Replace `your-strong-encryption-key-here` with your own strong encryption key. The container will not start with the placeholder value.
 
 **Access**: Open browser to `http://localhost:1135`
 
@@ -94,13 +94,13 @@ docker run --name bodhiapp-cuda \
   -p 1135:8080 \
   -e BODHI_PUBLIC_HOST=0.0.0.0 \
   -e BODHI_PUBLIC_PORT=1135 \
-  # -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
+  -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
   -v $(pwd)/docker-data:/data \
   --gpus all \
   ghcr.io/bodhisearch/bodhiapp:latest-cuda
 ```
 
-> **Important**: Uncomment the `BODHI_ENCRYPTION_KEY` line and provide your own strong encryption key. The container will not start without it.
+> **Important**: Replace `your-strong-encryption-key-here` with your own strong encryption key. The container will not start with the placeholder value.
 
 > **Note**: The Docker images use base images from GPU vendors with required runtime libraries included. Use the `--gpus all` flag to provide GPU access to the container.
 
@@ -115,14 +115,14 @@ docker run --name bodhiapp-rocm \
   -p 1135:8080 \
   -e BODHI_PUBLIC_HOST=0.0.0.0 \
   -e BODHI_PUBLIC_PORT=1135 \
-  # -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
+  -e BODHI_ENCRYPTION_KEY=your-strong-encryption-key-here \
   -v $(pwd)/docker-data:/data \
   --device=/dev/kfd \
   --device=/dev/dri \
   ghcr.io/bodhisearch/bodhiapp:latest-rocm
 ```
 
-> **Important**: Uncomment the `BODHI_ENCRYPTION_KEY` line and provide your own strong encryption key. The container will not start without it.
+> **Important**: Replace `your-strong-encryption-key-here` with your own strong encryption key. The container will not start with the placeholder value.
 
 > **Note**: For AMD GPU device mapping, refer to [llama.cpp ROCm documentation](https://github.com/ggerganov/llama.cpp) for specific requirements.
 
