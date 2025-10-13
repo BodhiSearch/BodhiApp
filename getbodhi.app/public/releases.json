@@ -5,9 +5,9 @@
     "released_at": "2025-10-13T17:10:49Z",
     "platforms": {
       "macos": {
-        "version": "0.0.39",
-        "tag": "app/v0.0.39",
         "silicon": {
+          "version": "0.0.39",
+          "tag": "app/v0.0.39",
           "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.dmg",
           "filename": "Bodhi_App.dmg",
           "size": 32393264,
@@ -15,9 +15,9 @@
         }
       },
       "windows": {
-        "version": "0.0.39",
-        "tag": "app/v0.0.39",
         "x64": {
+          "version": "0.0.39",
+          "tag": "app/v0.0.39",
           "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.msi",
           "filename": "Bodhi_App.msi",
           "size": 26959872,
@@ -25,9 +25,9 @@
         }
       },
       "linux": {
-        "version": "0.0.39",
-        "tag": "app/v0.0.39",
         "x64": {
+          "version": "0.0.39",
+          "tag": "app/v0.0.39",
           "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.rpm",
           "filename": "Bodhi_App.rpm",
           "size": 29102840,
