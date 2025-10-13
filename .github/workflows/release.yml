@@ -237,7 +237,8 @@ jobs:
           node-version: '22'
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-      - name: Bump Version and Commit
+
+      - name: Bump version files
         shell: bash
         run: |
           CURRENT_VERSION="${{ needs.create-release.outputs.VERSION }}"
@@ -245,9 +246,11 @@ jobs:
           echo "Bumping from $CURRENT_VERSION to $NEXT_VERSION"
           make ci.update-version VERSION="$NEXT_VERSION"
           cargo update --workspace
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: bump version to $NEXT_VERSION [skip ci]"
-          git push origin main
+
+      - name: Commit and push version bump
+        uses: ./.github/actions/commit-and-push-with-retry
+        with:
+          branch: main
+          commit-message: "chore: bump version to ${{ needs.create-release.outputs.VERSION }} [skip ci]"
+          files: "-A"
 

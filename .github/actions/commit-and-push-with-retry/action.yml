@@ -1,0 +1,99 @@
+name: commit-and-push-with-retry
+description: Commit changes and push to remote with retry logic and upstream sync
+
+inputs:
+  branch:
+    description: "Branch to push to"
+    required: false
+    default: "main"
+  commit-message:
+    description: "Commit message"
+    required: true
+  files:
+    description: "Files to add (space-separated or multiline)"
+    required: true
+  max-retries:
+    description: "Maximum number of push retry attempts"
+    required: false
+    default: "3"
+  fetch-depth:
+    description: "Fetch depth for upstream sync (0 for full history)"
+    required: false
+    default: "1"
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Fetch and sync with upstream
+      shell: bash
+      run: |
+        echo "Fetching latest changes from origin/${{ inputs.branch }}"
+        if [[ "${{ inputs.fetch-depth }}" == "0" ]]; then
+          git fetch origin ${{ inputs.branch }}
+        else
+          git fetch --depth=${{ inputs.fetch-depth }} origin ${{ inputs.branch }}
+        fi
+
+        # Check if there are any local uncommitted changes
+        if [[ -n $(git status --porcelain) ]]; then
+          echo "Warning: Uncommitted changes detected before rebase"
+          git status --short
+        fi
+
+        # Pull latest changes with rebase to handle any upstream commits
+        echo "Rebasing with origin/${{ inputs.branch }}"
+        git pull --rebase origin ${{ inputs.branch }} || {
+          echo "Error: Failed to rebase with origin/${{ inputs.branch }}"
+          echo "There may be conflicts that need manual resolution"
+          exit 1
+        }
+
+    - name: Commit changes
+      shell: bash
+      run: |
+        echo "Adding files for commit"
+        # Support both space-separated and multiline file patterns
+        FILES="${{ inputs.files }}"
+        git add $FILES
+
+        # Check if there are changes to commit
+        if git diff --cached --quiet; then
+          echo "Warning: No changes to commit"
+          exit 0
+        fi
+
+        echo "Committing changes"
+        git commit -m "${{ inputs.commit-message }}"
+
+    - name: Push with retry logic
+      shell: bash
+      run: |
+        MAX_RETRIES=${{ inputs.max-retries }}
+
+        for i in $(seq 1 $MAX_RETRIES); do
+          echo "Push attempt $i/$MAX_RETRIES"
+
+          if git push origin ${{ inputs.branch }}; then
+            echo "Successfully pushed to origin/${{ inputs.branch }}"
+            exit 0
+          fi
+
+          # If this wasn't the last attempt, try to rebase and retry
+          if [[ $i -lt $MAX_RETRIES ]]; then
+            echo "Push failed, rebasing and retrying..."
+            if ! git pull --rebase origin ${{ inputs.branch }}; then
+              echo "Error: Failed to rebase after failed push"
+              echo "There may be conflicts that need manual resolution"
+              exit 1
+            fi
+          fi
+        done
+
+        echo "Error: Failed to push after $MAX_RETRIES attempts"
+        exit 1
