@@ -251,14 +251,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Uploading assets to release app/v${{ needs.create-release.outputs.VERSION }}"
-          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/Bodhi_App.* --repo ${{ github.repository }}
-      - name: Upload Checksum Files to Release
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Uploading checksum files to release app/v${{ needs.create-release.outputs.VERSION }}"
-          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/*.sha256 artifacts/checksums.json --repo ${{ github.repository }}
+          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/* --repo ${{ github.repository }}
       - name: Verify uploaded assets
         shell: bash
         env:
