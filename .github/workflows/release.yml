@@ -199,13 +199,66 @@ jobs:
             echo "  SHA256: $(shasum -a 256 "$file" | awk '{print $1}')"
             echo ""
           done
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd artifacts
+          echo "=== Generating checksums ==="
+
+          # Generate individual .sha256 sidecar files
+          for file in *; do
+            shasum -a 256 "$file" | awk '{print $1}' > "$file.sha256"
+            echo "✓ Created $file.sha256"
+          done
+
+          # Create checksums.json structure
+          cat > checksums.json << EOF
+          {
+            "version": "${{ needs.create-release.outputs.VERSION }}",
+            "tag": "app/v${{ needs.create-release.outputs.VERSION }}",
+            "released_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "checksums": {}
+          }
+          EOF
+
+          # Install jq if not available
+          if ! command -v jq &> /dev/null; then
+            echo "Installing jq..."
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          # Populate checksums.json
+          for file in Bodhi_App.*; do
+            [[ "$file" == *.sha256 ]] && continue
+            SHA=$(shasum -a 256 "$file" | awk '{print $1}')
+            SIZE=$(stat -c%s "$file")
+            URL="https://github.com/${{ github.repository }}/releases/download/app/v${{ needs.create-release.outputs.VERSION }}/$file"
+
+            # Update JSON using jq
+            jq ".checksums[\"$file\"] = {\"sha256\": \"$SHA\", \"size\": $SIZE, \"url\": \"$URL\"}" checksums.json > tmp.json && mv tmp.json checksums.json
+          done
+
+          echo ""
+          echo "=== checksums.json contents ==="
+          jq '.' checksums.json
+
+          echo ""
+          echo "=== Final artifacts to upload ==="
+          ls -lh
       - name: Upload Assets to Release
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Uploading assets to release app/v${{ needs.create-release.outputs.VERSION }}"
-          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/* --repo ${{ github.repository }}
+          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/Bodhi_App.* --repo ${{ github.repository }}
+      - name: Upload Checksum Files to Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Uploading checksum files to release app/v${{ needs.create-release.outputs.VERSION }}"
+          gh release upload "app/v${{ needs.create-release.outputs.VERSION }}" artifacts/*.sha256 artifacts/checksums.json --repo ${{ github.repository }}
       - name: Verify uploaded assets
         shell: bash
         env:

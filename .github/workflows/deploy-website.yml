@@ -108,6 +108,42 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+  update-homebrew:
+    if: startsWith(github.ref, 'refs/tags/getbodhi.app/v')
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract app version from releases.json
+        id: app_version
+        run: |
+          VERSION=$(jq -r '.desktop.version' getbodhi.app/public/releases.json)
+          TAG=$(jq -r '.desktop.tag' getbodhi.app/public/releases.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "App version to publish: $VERSION (tag: $TAG)"
+
+      - name: Trigger homebrew-apps update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
+          repository: BodhiSearch/homebrew-apps
+          event-type: app-released
+          client-payload: |
+            {
+              "version": "${{ steps.app_version.outputs.version }}",
+              "tag": "${{ steps.app_version.outputs.tag }}",
+              "checksums_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/${{ steps.app_version.outputs.tag }}/checksums.json",
+              "triggered_by": "${{ github.repository }}",
+              "workflow_run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
   bump-dev-version:
     if: startsWith(github.ref, 'refs/tags/getbodhi.app/v')
     needs: deploy
