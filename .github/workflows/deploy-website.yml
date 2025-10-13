@@ -125,9 +125,25 @@ jobs:
         run: |
           VERSION=$(jq -r '.desktop.version' getbodhi.app/public/releases.json)
           TAG=$(jq -r '.desktop.tag' getbodhi.app/public/releases.json)
+
+          # Extract DMG checksum and URL for homebrew
+          DMG_SHA256=$(jq -r '.desktop.platforms.macos.silicon.sha256 // empty' getbodhi.app/public/releases.json)
+          DMG_URL=$(jq -r '.desktop.platforms.macos.silicon.download_url' getbodhi.app/public/releases.json)
+
+          if [[ -z "$DMG_SHA256" ]]; then
+            echo "⚠ Warning: DMG checksum not found in releases.json"
+            echo "Homebrew update may fail. Ensure checksums.json exists in release."
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "App version to publish: $VERSION (tag: $TAG)"
+          echo "dmg_sha256=$DMG_SHA256" >> $GITHUB_OUTPUT
+          echo "dmg_url=$DMG_URL" >> $GITHUB_OUTPUT
+
+          echo "App version: $VERSION"
+          echo "App tag: $TAG"
+          echo "DMG URL: $DMG_URL"
+          echo "DMG SHA256: ${DMG_SHA256:0:16}..."
 
       - name: Trigger homebrew-apps update
         uses: peter-evans/repository-dispatch@v3
@@ -139,7 +155,8 @@ jobs:
             {
               "version": "${{ steps.app_version.outputs.version }}",
               "tag": "${{ steps.app_version.outputs.tag }}",
-              "checksums_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/${{ steps.app_version.outputs.tag }}/checksums.json",
+              "dmg_sha256": "${{ steps.app_version.outputs.dmg_sha256 }}",
+              "dmg_url": "${{ steps.app_version.outputs.dmg_url }}",
               "triggered_by": "${{ github.repository }}",
               "workflow_run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

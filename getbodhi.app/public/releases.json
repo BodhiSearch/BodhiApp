@@ -1,25 +1,37 @@
 {
   "desktop": {
-    "version": "0.0.36",
-    "tag": "app/v0.0.36",
-    "released_at": "2025-10-13T07:56:39Z",
+    "version": "0.0.39",
+    "tag": "app/v0.0.39",
+    "released_at": "2025-10-13T17:10:49Z",
     "platforms": {
       "macos": {
+        "version": "0.0.39",
+        "tag": "app/v0.0.39",
         "silicon": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.dmg",
-          "filename": "Bodhi.App.dmg"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.dmg",
+          "filename": "Bodhi_App.dmg",
+          "size": 32393264,
+          "sha256": "b5338d0c94595708d9e57d3224e9086e8003bd6fd7578afcb1b437a4ec8d94ec"
         }
       },
       "windows": {
+        "version": "0.0.39",
+        "tag": "app/v0.0.39",
         "x64": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.msi",
-          "filename": "Bodhi.App.msi"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.msi",
+          "filename": "Bodhi_App.msi",
+          "size": 26959872,
+          "sha256": "e7c0c2d81320ef00802338ad362645f9cd0796971f16a22cedad90b255916575"
         }
       },
       "linux": {
+        "version": "0.0.39",
+        "tag": "app/v0.0.39",
         "x64": {
-          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.32/Bodhi.App.rpm",
-          "filename": "Bodhi.App.rpm"
+          "download_url": "https://github.com/BodhiSearch/BodhiApp/releases/download/app/v0.0.39/Bodhi_App.rpm",
+          "filename": "Bodhi_App.rpm",
+          "size": 29102840,
+          "sha256": "11c8f7df20a5d6744febddc22372f87b61960b5fddbdd1a5eec50de4ca9dbcd9"
         }
       }
     }
@@ -31,6 +43,8 @@
     "registry": "ghcr.io/bodhisearch/bodhiapp",
     "variants": {
       "cpu": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-cpu",
         "platforms": [
           "linux/amd64",
@@ -41,6 +55,8 @@
         "description": "Multi-platform: AMD64 + ARM64"
       },
       "cuda": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-cuda",
         "platforms": [
           "linux/amd64"
@@ -53,6 +69,8 @@
         "gpu_type": "NVIDIA"
       },
       "rocm": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-rocm",
         "platforms": [
           "linux/amd64"
@@ -67,6 +85,8 @@
         "gpu_type": "AMD"
       },
       "vulkan": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-vulkan",
         "platforms": [
           "linux/amd64"
@@ -79,6 +99,8 @@
         "gpu_type": "Vulkan"
       },
       "intel": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-intel",
         "platforms": [
           "linux/amd64"
@@ -91,6 +113,8 @@
         "gpu_type": "Intel"
       },
       "cann": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-cann",
         "platforms": [
           "linux/amd64",
@@ -107,6 +131,8 @@
         "gpu_type": "Huawei Ascend"
       },
       "musa": {
+        "version": "0.0.5",
+        "tag": "docker/v0.0.5",
         "latest_tag": "latest-musa",
         "platforms": [
           "linux/amd64"

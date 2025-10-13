@@ -77,21 +77,21 @@ const TAG_PATTERNS = [
     platforms: [
       {
         id: 'macos',
-        assetPattern: /Bodhi[\s.]App.*\.dmg$/,
+        assetPattern: /^Bodhi_App\.dmg$/,
         envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_MACOS',
         platformKey: 'macos',
         archKey: 'silicon',
       },
       {
         id: 'windows',
-        assetPattern: /Bodhi[\s.]App.*\.msi$/,
+        assetPattern: /^Bodhi_App\.msi$/,
         envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_WINDOWS',
         platformKey: 'windows',
         archKey: 'x64',
       },
       {
         id: 'linux',
-        assetPattern: /Bodhi[\s.]App.*\.rpm$/,
+        assetPattern: /^Bodhi_App\.rpm$/,
         envVar: 'NEXT_PUBLIC_DOWNLOAD_URL_LINUX',
         platformKey: 'linux',
         archKey: 'x64',
@@ -178,6 +178,7 @@ async function fetchLatestReleases() {
                   found[platform.envVar] = {
                     url: asset.browser_download_url,
                     filename: asset.name,
+                    size: asset.size,
                     platformKey: platform.platformKey,
                     archKey: platform.archKey,
                   };
@@ -234,6 +235,83 @@ async function fetchLatestReleases() {
   return { found, desktopMetadata, dockerMetadata };
 }
 
+/**
+ * Load existing releases.json as backup
+ * @returns {object|null} - Existing releases data or null if not found
+ */
+function loadExistingReleases() {
+  try {
+    if (fs.existsSync('public/releases.json')) {
+      const content = fs.readFileSync('public/releases.json', 'utf8');
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.log(`  ⚠ Could not load existing releases.json: ${error.message}`);
+  }
+  return null;
+}
+
+/**
+ * Check if platform data is complete
+ * @param {object} platformData - Platform data object with archKey
+ * @param {string} platformName - Name of platform for logging
+ * @returns {boolean} - True if all required fields are present
+ */
+function isPlatformComplete(platformData, platformName) {
+  if (!platformData || Object.keys(platformData).length === 0) {
+    console.log(`  ⚠ ${platformName}: No data available`);
+    return false;
+  }
+
+  // Check each arch variant
+  for (const [archKey, archData] of Object.entries(platformData)) {
+    if (archKey === 'version' || archKey === 'tag') continue; // Skip metadata fields
+
+    if (!archData.download_url || !archData.filename || !archData.size) {
+      console.log(`  ⚠ ${platformName}.${archKey}: Missing required fields`);
+      return false;
+    }
+  }
+
+  console.log(`  ✓ ${platformName}: Complete`);
+  return true;
+}
+
+/**
+ * Fetch checksums.json from a release
+ * @param {string} tag - Release tag (e.g., "app/v0.0.36")
+ * @returns {Promise<object|null>} - Checksums data or null if not found
+ */
+async function fetchChecksums(tag) {
+  try {
+    console.log(`  Fetching checksums for ${tag}...`);
+    const { data: release } = await octokit.repos.getReleaseByTag({
+      owner: OWNER,
+      repo: REPO,
+      tag,
+    });
+
+    const checksumsAsset = release.assets.find((a) => a.name === 'checksums.json');
+    if (!checksumsAsset) {
+      console.log(`  ⚠ checksums.json not found for ${tag}, checksums will be omitted`);
+      return null;
+    }
+
+    const response = await fetch(checksumsAsset.browser_download_url);
+    if (!response.ok) {
+      console.log(`  ⚠ Failed to fetch checksums.json: ${response.statusText}`);
+      return null;
+    }
+
+    const checksums = await response.json();
+    console.log(`  ✓ Fetched checksums for ${Object.keys(checksums.checksums || {}).length} files`);
+    return checksums;
+  } catch (error) {
+    console.log(`  ⚠ Error fetching checksums: ${error.message}`);
+    return null;
+  }
+}
+
 function generateEnvFile(data, desktopMetadata, dockerMetadata, dryRun) {
   const lines = [
     '# Auto-generated download URLs for website',
@@ -288,27 +366,70 @@ function generateEnvFile(data, desktopMetadata, dockerMetadata, dryRun) {
   console.log('  Variables updated:', varCount);
 }
 
-function generateReleasesJson(data, desktopMetadata, dockerMetadata, dryRun) {
+async function generateReleasesJson(data, desktopMetadata, dockerMetadata, dryRun) {
   if (!desktopMetadata && !dockerMetadata) {
     console.log('\n⚠ Skipping releases.json generation - no release metadata available');
     return;
   }
 
+  console.log('\n=== Building releases.json with per-platform validation ===');
+
+  // Load existing releases as backup
+  const backup = loadExistingReleases();
   const releasesData = {};
 
-  // Build desktop platform structure
+  // Build desktop platform structure with per-platform atomicity
   if (desktopMetadata) {
-    const platforms = {};
+    console.log('\n--- Desktop Platforms ---');
+    console.log(`Latest release: ${desktopMetadata.tag} (${desktopMetadata.version})`);
+
+    // Fetch checksums from release
+    const checksumsData = await fetchChecksums(desktopMetadata.tag);
+    const checksums = checksumsData?.checksums || {};
+
+    // Build new platforms data grouped by platform
+    const newPlatforms = {};
 
     for (const value of Object.values(data)) {
       if (value.platformKey && value.archKey) {
-        if (!platforms[value.platformKey]) {
-          platforms[value.platformKey] = {};
+        if (!newPlatforms[value.platformKey]) {
+          newPlatforms[value.platformKey] = {
+            version: desktopMetadata.version,
+            tag: desktopMetadata.tag,
+          };
         }
-        platforms[value.platformKey][value.archKey] = {
+
+        // Look up checksum by filename
+        const checksumInfo = checksums[value.filename] || {};
+
+        newPlatforms[value.platformKey][value.archKey] = {
           download_url: value.url,
           filename: value.filename,
+          size: value.size,
+          ...(checksumInfo.sha256 && { sha256: checksumInfo.sha256 }),
         };
+      }
+    }
+
+    // Validate and merge with backup per platform
+    const finalPlatforms = {};
+
+    for (const platformKey of ['macos', 'windows', 'linux']) {
+      const newPlatformData = newPlatforms[platformKey];
+      const backupPlatformData = backup?.desktop?.platforms?.[platformKey];
+
+      console.log(`\nValidating ${platformKey}:`);
+
+      if (isPlatformComplete(newPlatformData, platformKey)) {
+        finalPlatforms[platformKey] = newPlatformData;
+        console.log(`  → Using new data from ${desktopMetadata.tag}`);
+      } else if (backupPlatformData) {
+        finalPlatforms[platformKey] = backupPlatformData;
+        const backupVersion = backupPlatformData.version || backup.desktop.version;
+        const backupTag = backupPlatformData.tag || backup.desktop.tag;
+        console.log(`  → Falling back to ${backupTag} (${backupVersion})`);
+      } else {
+        console.log(`  → No valid data available, skipping ${platformKey}`);
       }
     }
 
@@ -316,22 +437,27 @@ function generateReleasesJson(data, desktopMetadata, dockerMetadata, dryRun) {
       version: desktopMetadata.version,
       tag: desktopMetadata.tag,
       released_at: desktopMetadata.released_at,
-      platforms,
+      platforms: finalPlatforms,
     };
   }
 
-  // Add Docker data with static variants in display order
+  // Add Docker data with static variants and per-variant version tracking
   if (dockerMetadata) {
+    console.log('\n--- Docker Variants ---');
+    console.log(`Latest release: ${dockerMetadata.tag} (${dockerMetadata.version})`);
+
     const variants = {};
 
     // Define variant order for consistent display
     const variantOrder = ['cpu', 'cuda', 'rocm', 'vulkan', 'intel', 'cann', 'musa'];
 
-    // Generate variants in order
+    // Generate variants in order with version tracking
     for (const variantName of variantOrder) {
       const variantConfig = DOCKER_VARIANTS[variantName];
       if (variantConfig) {
         variants[variantName] = {
+          version: dockerMetadata.version,
+          tag: dockerMetadata.tag,
           latest_tag: `latest-${variantName}`,
           platforms: variantConfig.platforms,
           pull_command: `docker pull ${dockerMetadata.registry}:latest-${variantName}`,
@@ -367,13 +493,23 @@ function generateReleasesJson(data, desktopMetadata, dockerMetadata, dryRun) {
   fs.writeFileSync('public/releases.json', content);
   console.log('\n✓ Updated public/releases.json');
   console.log('  File:', 'public/releases.json');
+
   if (desktopMetadata) {
-    const platforms = Object.keys(releasesData.desktop.platforms);
-    console.log('  Desktop platforms:', platforms.length > 0 ? platforms.join(', ') : 'none');
+    console.log('\n--- Desktop Platform Sync Status ---');
+    for (const [platformKey, platformData] of Object.entries(releasesData.desktop.platforms)) {
+      const platformVersion = platformData.version || releasesData.desktop.version;
+      const platformTag = platformData.tag || releasesData.desktop.tag;
+      const isLatest = platformVersion === desktopMetadata.version;
+      const status = isLatest ? '✓ SYNCED' : '⚠ OUT OF SYNC';
+      console.log(`  ${platformKey}: ${status} (${platformTag})`);
+    }
   }
+
   if (dockerMetadata) {
+    console.log('\n--- Docker Variant Sync Status ---');
     const variants = Object.keys(releasesData.docker.variants);
-    console.log('  Docker variants:', variants.length > 0 ? variants.join(', ') : 'none');
+    console.log(`  All variants synced to ${dockerMetadata.tag}`);
+    console.log(`  Variants: ${variants.join(', ')}`);
   }
 }
 
@@ -396,7 +532,7 @@ async function main() {
     }
 
     generateEnvFile(found, desktopMetadata, dockerMetadata, dryRun);
-    generateReleasesJson(found, desktopMetadata, dockerMetadata, dryRun);
+    await generateReleasesJson(found, desktopMetadata, dockerMetadata, dryRun);
 
     if (!dryRun) {
       console.log('\nNext steps:');
