@@ -79,10 +79,10 @@ jobs:
           - cpu
           - cuda
           - rocm
-          - cann
-          - intel
+          - vulkan
           - musa
-          # - vulkan
+          - intel
+          - cann
         include:
           - variant: cpu
             platforms: 'linux/amd64,linux/arm64'
@@ -120,12 +120,12 @@ jobs:
             docker_flags: '--device=/dev/musa -p 8080:8080'
             hardware_req: 'Moore Threads GPU with MUSA rc4.3.0+ support (AMD64 only)'
             special_note: ''
-          # - variant: vulkan
-          #   platforms: 'linux/amd64'
-          #   description: 'Cross-vendor GPU acceleration'
-          #   docker_flags: '--device=/dev/dri -p 8080:8080'
-          #   hardware_req: 'GPU with Vulkan API support (AMD64 only)'
-          #   special_note: ''
+          - variant: vulkan
+            platforms: 'linux/amd64'
+            description: 'Cross-vendor GPU acceleration'
+            docker_flags: '--device=/dev/dri -p 8080:8080'
+            hardware_req: 'GPU with Vulkan API support (AMD64 only)'
+            special_note: ''
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -455,7 +455,7 @@ jobs:
       - name: Check if at least one variant was published
         id: check
         run: |
-          VARIANTS=("cpu" "cuda" "rocm" "cann" "intel" "musa")
+          VARIANTS=("cpu" "cuda" "rocm" "vulkan" "musa" "intel" "cann")
           SUCCESS=false
 
           for variant in "${VARIANTS[@]}"; do
