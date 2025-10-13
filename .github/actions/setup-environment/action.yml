@@ -4,9 +4,6 @@ inputs:
   platform:
     description: "Platform to build for"
     required: true
-  gh-pat:
-    description: "GitHub Personal Access Token for submodule access"
-    required: true
 
 runs:
   using: composite
@@ -22,14 +19,6 @@ runs:
         git config --global core.symlinks true
         git config --global core.autocrlf false
         git config --global core.eol lf
-
-    - name: Rewrite submodule URLs and checkout submodules
-      shell: bash
-      run: |
-        git config --global url.https://gh_pat:${{ inputs.gh-pat }}@github.com/.insteadOf git@github.com:
-        git submodule sync --recursive
-        git submodule update --init --recursive --depth=1
-        git config --global --unset url.https://gh_pat:${{ inputs.gh-pat }}@github.com/.insteadOf
 
     - name: Setup Python packages
       shell: bash

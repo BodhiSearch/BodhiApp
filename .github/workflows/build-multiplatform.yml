@@ -41,12 +41,14 @@ jobs:
             librsvg2-dev \
             patchelf
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
       - name: Setup environment
         uses: ./.github/actions/setup-environment
         with:
           platform: ${{ matrix.platform }}
-          gh-pat: ${{ secrets.GH_PAT }}
 
       - name: Setup models
         uses: ./.github/actions/setup-models

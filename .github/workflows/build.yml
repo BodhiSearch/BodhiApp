@@ -38,12 +38,14 @@ jobs:
             patchelf
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
 
       - name: Setup environment
         uses: ./.github/actions/setup-environment
         with:
           platform: ubuntu-latest
-          gh-pat: ${{ secrets.GH_PAT }}
 
       - name: Setup models
         uses: ./.github/actions/setup-models
@@ -94,12 +96,14 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
 
       - name: Setup environment
         uses: ./.github/actions/setup-environment
         with:
           platform: ubuntu-latest
-          gh-pat: ${{ secrets.GH_PAT }}
 
       - name: Setup models
         uses: ./.github/actions/setup-models
