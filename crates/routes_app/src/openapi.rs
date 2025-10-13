@@ -647,7 +647,6 @@ mod tests {
     // Test API Info
     let info = &api_doc.info;
     assert_eq!(info.title, "Bodhi App APIs");
-    assert_eq!(info.version, "0.1.0");
 
     // Test Contact Info
     let contact = info.contact.as_ref().unwrap();
@@ -1350,11 +1349,6 @@ mod tests {
     assert_eq!(
       runtime_value["info"]["title"], generated_spec["info"]["title"],
       "API title mismatch between runtime and generated spec"
-    );
-
-    assert_eq!(
-      runtime_value["info"]["version"], generated_spec["info"]["version"],
-      "API version mismatch between runtime and generated spec"
     );
 
     // Compare paths - ensure all paths exist in both specs

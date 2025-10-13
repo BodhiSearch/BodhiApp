@@ -5,9 +5,9 @@
 
 import { useTheme } from '@/components/ThemeProvider';
 import { Button } from '@/components/ui/button';
-import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Check, Copy } from 'lucide-react';
-import { FC, memo } from 'react';
+import { FC, memo, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -68,11 +68,20 @@ LanguageLabel.displayName = 'LanguageLabel';
 
 export const CodeBlock: FC<CodeBlockProps> = memo(({ language, value }) => {
   const { theme } = useTheme();
-  const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
+  const { showError } = useToastMessages();
+  const [isCopied, setIsCopied] = useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!isCopied) {
-      copyToClipboard(value);
+      try {
+        await navigator.clipboard.writeText(value);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch (error) {
+        console.log('Failed to copy code:', error);
+        showError('Copy Failed', 'Failed to copy code');
+        setIsCopied(false);
+      }
     }
   };
 

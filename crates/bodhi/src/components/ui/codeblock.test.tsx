@@ -1,7 +1,6 @@
 'use client';
 
 import { CodeBlock } from '@/components/ui/codeblock';
-import * as hooks from '@/hooks/use-copy-to-clipboard';
 import { fireEvent, render, screen } from '@testing-library/react';
 import fs from 'fs';
 import path from 'path';
@@ -9,17 +8,15 @@ import prettier from 'prettier';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { writeFileSync } from 'fs';
 
-// Mock the copy-to-clipboard hook with a default implementation
-vi.mock('@/hooks/use-copy-to-clipboard', () => ({
-  useCopyToClipboard: () => ({
-    isCopied: false,
-    copyToClipboard: vi.fn(),
-  }),
-}));
-
 vi.mock('@/components/ThemeProvider', () => ({
   useTheme: () => ({
     theme: 'dark',
+  }),
+}));
+
+vi.mock('@/hooks/use-toast-messages', () => ({
+  useToastMessages: () => ({
+    showError: vi.fn(),
   }),
 }));
 
@@ -62,15 +59,15 @@ describe('CodeBlock language rendering', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(() => Promise.resolve()),
+      },
+    });
   });
 
   testFiles.forEach(({ lang, file }) => {
     it(`renders ${lang} code correctly`, async () => {
-      vi.spyOn(hooks, 'useCopyToClipboard').mockImplementation(() => ({
-        isCopied: false,
-        copyToClipboard: vi.fn(),
-      }));
-
       const input = readTestFile(file);
       const expected = readTestFile(`${file}.html`);
 
@@ -103,14 +100,12 @@ describe('CodeBlock', () => {
   const mockLanguage = 'javascript';
 
   beforeEach(() => {
-    // Reset all mocks before each test
     vi.clearAllMocks();
-
-    // Mock the copy-to-clipboard hook implementation
-    vi.spyOn(hooks, 'useCopyToClipboard').mockImplementation(() => ({
-      isCopied: false,
-      copyToClipboard: vi.fn(),
-    }));
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn(() => Promise.resolve()),
+      },
+    });
   });
 
   it('renders code block with correct language and content', () => {
@@ -120,28 +115,31 @@ describe('CodeBlock', () => {
   });
 
   it('shows copy button and handles copy action', async () => {
-    const mockCopyToClipboard = vi.fn();
-    vi.spyOn(hooks, 'useCopyToClipboard').mockImplementation(() => ({
-      isCopied: false,
-      copyToClipboard: mockCopyToClipboard,
-    }));
+    const mockWriteText = vi.fn(() => Promise.resolve());
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
 
     render(<CodeBlock language={mockLanguage} value={mockCode} />);
 
     const copyButton = screen.getByRole('button', { name: /copy code/i });
     fireEvent.click(copyButton);
 
-    expect(mockCopyToClipboard).toHaveBeenCalledWith(mockCode);
+    await vi.waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith(mockCode);
+    });
   });
 
-  it('shows check icon after copying', () => {
-    vi.spyOn(hooks, 'useCopyToClipboard').mockImplementation(() => ({
-      isCopied: true,
-      copyToClipboard: vi.fn(),
-    }));
-
+  it('shows check icon after copying', async () => {
     render(<CodeBlock language={mockLanguage} value={mockCode} />);
 
-    expect(screen.getByTestId('check-icon')).toBeInTheDocument();
+    const copyButton = screen.getByRole('button', { name: /copy code/i });
+    fireEvent.click(copyButton);
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('check-icon')).toBeInTheDocument();
+    });
   });
 });
