@@ -1,8 +1,8 @@
 {
   "desktop": {
-    "version": "0.0.32",
-    "tag": "app/v0.0.32",
-    "released_at": "2025-10-10T15:36:41Z",
+    "version": "0.0.33",
+    "tag": "app/v0.0.33",
+    "released_at": "2025-10-11T02:45:59Z",
     "platforms": {
       "macos": {
         "silicon": {
@@ -27,11 +27,10 @@
   "docker": {
     "version": "0.0.3",
     "tag": "docker/v0.0.3",
-    "released_at": "2025-10-10T16:14:12Z",
+    "released_at": "2025-10-10T16:14:22Z",
     "registry": "ghcr.io/bodhisearch/bodhiapp",
     "variants": {
       "cpu": {
-        "image_tag": "0.0.3-cpu",
         "latest_tag": "latest-cpu",
         "platforms": ["linux/amd64", "linux/arm64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu",
@@ -39,7 +38,6 @@
         "description": "Multi-platform: AMD64 + ARM64"
       },
       "cuda": {
-        "image_tag": "0.0.3-cuda",
         "latest_tag": "latest-cuda",
         "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cuda",
@@ -48,13 +46,44 @@
         "gpu_type": "NVIDIA"
       },
       "rocm": {
-        "image_tag": "0.0.3-rocm",
         "latest_tag": "latest-rocm",
         "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-rocm",
         "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/kfd \\\n  --device=/dev/dri \\\n  --group-add video \\\n  ghcr.io/bodhisearch/bodhiapp:latest-rocm",
         "description": "AMD GPU acceleration",
         "gpu_type": "AMD"
+      },
+      "vulkan": {
+        "latest_tag": "latest-vulkan",
+        "platforms": ["linux/amd64"],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-vulkan",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/dri \\\n  ghcr.io/bodhisearch/bodhiapp:latest-vulkan",
+        "description": "Cross-vendor GPU acceleration",
+        "gpu_type": "Vulkan"
+      },
+      "intel": {
+        "latest_tag": "latest-intel",
+        "platforms": ["linux/amd64"],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-intel",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/dri \\\n  ghcr.io/bodhisearch/bodhiapp:latest-intel",
+        "description": "Intel GPU acceleration (SYCL)",
+        "gpu_type": "Intel"
+      },
+      "cann": {
+        "latest_tag": "latest-cann",
+        "platforms": ["linux/amd64", "linux/arm64"],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cann",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/davinci0 \\\n  --device=/dev/davinci_manager \\\n  --device=/dev/devmm_svm \\\n  --device=/dev/hisi_hdc \\\n  ghcr.io/bodhisearch/bodhiapp:latest-cann",
+        "description": "Huawei Ascend NPU acceleration",
+        "gpu_type": "Huawei Ascend"
+      },
+      "musa": {
+        "latest_tag": "latest-musa",
+        "platforms": ["linux/amd64"],
+        "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-musa",
+        "run_command": "docker run --name bodhiapp \\\n  -p 1135:1135 \\\n  -v $(pwd)/bodhi_home:/data/bodhi_home \\\n  -v $(pwd)/hf_home:/data/hf_home \\\n  --device=/dev/musa \\\n  ghcr.io/bodhisearch/bodhiapp:latest-musa",
+        "description": "Moore Threads GPU acceleration",
+        "gpu_type": "Moore Threads"
       }
     }
   }
