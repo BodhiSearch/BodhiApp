@@ -149,7 +149,7 @@ jobs:
       - name: Trigger homebrew-apps update
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GH_PAT_HOMEBREW }}
           repository: BodhiSearch/homebrew-apps
           event-type: app-released
           client-payload: |
