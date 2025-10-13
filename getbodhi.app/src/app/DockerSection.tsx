@@ -16,6 +16,7 @@ import { Cpu, Zap, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { getVariantMetadata } from '@/lib/docker-variants';
+import { generateDockerRunCommand } from '@/lib/docker-commands';
 import { useState, useEffect } from 'react';
 
 interface DockerVariant {
@@ -23,7 +24,7 @@ interface DockerVariant {
   latest_tag: string;
   platforms: string[];
   pull_command: string;
-  run_command?: string;
+  docker_flags: string[];
   gpu_type?: string;
   description?: string;
 }
@@ -261,9 +262,15 @@ export function DockerSection() {
             <CommandSection title="Pull Image" command={currentVariant.pull_command} language="bash" />
 
             {/* Run Command */}
-            {currentVariant.run_command && (
-              <CommandSection title="Run Container" command={currentVariant.run_command} language="bash" />
-            )}
+            <CommandSection
+              title="Run Container"
+              command={generateDockerRunCommand({
+                registry: dockerData.registry,
+                tag: currentVariant.latest_tag,
+                dockerFlags: currentVariant.docker_flags,
+              })}
+              language="bash"
+            />
           </motion.div>
 
           <div className="mt-12 p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">

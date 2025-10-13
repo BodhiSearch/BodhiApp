@@ -24,31 +24,31 @@ const DOCKER_VARIANTS = {
   cpu: {
     description: 'Multi-platform: AMD64 + ARM64',
     platforms: ['linux/amd64', 'linux/arm64'],
-    gpu_flags: [],
+    docker_flags: [],
   },
   cuda: {
     description: 'NVIDIA GPU acceleration',
     platforms: ['linux/amd64'],
     gpu_type: 'NVIDIA',
-    gpu_flags: ['--gpus all'],
+    docker_flags: ['--gpus all'],
   },
   rocm: {
     description: 'AMD GPU acceleration',
     platforms: ['linux/amd64'],
     gpu_type: 'AMD',
-    gpu_flags: ['--device=/dev/kfd', '--device=/dev/dri', '--group-add video'],
+    docker_flags: ['--device=/dev/kfd', '--device=/dev/dri', '--group-add video'],
   },
   intel: {
     description: 'Intel GPU acceleration (SYCL)',
     platforms: ['linux/amd64'],
     gpu_type: 'Intel',
-    gpu_flags: ['--device=/dev/dri'],
+    docker_flags: ['--device=/dev/dri'],
   },
   cann: {
     description: 'Huawei Ascend NPU acceleration',
     platforms: ['linux/amd64', 'linux/arm64'],
     gpu_type: 'Huawei Ascend',
-    gpu_flags: [
+    docker_flags: [
       '--device=/dev/davinci0',
       '--device=/dev/davinci_manager',
       '--device=/dev/devmm_svm',
@@ -59,37 +59,15 @@ const DOCKER_VARIANTS = {
     description: 'Moore Threads GPU acceleration',
     platforms: ['linux/amd64'],
     gpu_type: 'Moore Threads',
-    gpu_flags: ['--device=/dev/musa'],
+    docker_flags: ['--device=/dev/musa'],
   },
   vulkan: {
     description: 'Cross-vendor GPU acceleration',
     platforms: ['linux/amd64'],
     gpu_type: 'Vulkan',
-    gpu_flags: ['--device=/dev/dri'],
+    docker_flags: ['--device=/dev/dri'],
   },
 };
-
-/**
- * Generate docker run command for a variant
- * @param {string} variantName - Name of the variant (cpu, cuda, etc.)
- * @param {Object} variantConfig - Variant configuration from DOCKER_VARIANTS
- * @param {string} registry - Docker registry URL
- * @returns {string} Multi-line docker run command
- */
-function generateRunCommand(variantName, variantConfig, registry) {
-  const baseFlags = [
-    'docker run --name bodhiapp',
-    '-p 1135:1135',
-    '-v $(pwd)/bodhi_home:/data/bodhi_home',
-    '-v $(pwd)/hf_home:/data/hf_home',
-  ];
-
-  const flags = [...baseFlags, ...variantConfig.gpu_flags];
-  const imageTag = `${registry}:latest-${variantName}`;
-
-  // Join with line continuations
-  return flags.join(' \\\n  ') + ' \\\n  ' + imageTag;
-}
 
 // Tag patterns to search for (extensible for future artifacts)
 const TAG_PATTERNS = [
@@ -357,7 +335,7 @@ function generateReleasesJson(data, desktopMetadata, dockerMetadata, dryRun) {
           latest_tag: `latest-${variantName}`,
           platforms: variantConfig.platforms,
           pull_command: `docker pull ${dockerMetadata.registry}:latest-${variantName}`,
-          run_command: generateRunCommand(variantName, variantConfig, dockerMetadata.registry),
+          docker_flags: variantConfig.docker_flags,
           description: variantConfig.description,
           ...(variantConfig.gpu_type && { gpu_type: variantConfig.gpu_type }),
         };
