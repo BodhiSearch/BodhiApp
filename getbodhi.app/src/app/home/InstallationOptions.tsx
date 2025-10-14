@@ -74,14 +74,6 @@ function InstallationOptionsComponent({ platform }: InstallationOptionsProps) {
                   <span className="font-medium text-sm">{pm.name}</span>
                 </div>
                 <CopyableCodeBlock command={pm.command} />
-                <div className="space-y-1">
-                  {pm.benefits.map((benefit, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
-                      <span>{benefit}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             ))}
           </div>

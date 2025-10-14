@@ -12,7 +12,6 @@ if (!DOWNLOAD_URL) {
 export interface PackageManager {
   name: string;
   command: string;
-  benefits: string[];
 }
 
 export interface PlatformData {
@@ -36,7 +35,6 @@ export const PLATFORMS: Record<'macos' | 'windows' | 'linux', PlatformData> = {
       {
         name: 'Homebrew',
         command: 'brew install BodhiSearch/apps/bodhi',
-        benefits: ['Automatic updates', 'Easy uninstall'],
       },
     ],
   },
