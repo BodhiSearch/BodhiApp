@@ -1,13 +1,15 @@
 'use client';
 
+import { memo } from 'react';
 import { Github, Disc as Discord, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { SOCIAL_LINKS } from '@/lib/constants';
 
-export function Footer() {
+function FooterComponent() {
   return (
     <footer className="border-t bg-gray-50">
       <Container className="py-12">
@@ -49,7 +51,7 @@ export function Footer() {
             <nav className="flex flex-col space-y-3">
               <Button variant="link" className="h-auto justify-start p-0" asChild>
                 <Link
-                  href="https://github.com/BodhiSearch/BodhiApp"
+                  href={SOCIAL_LINKS.github}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-violet-600"
@@ -61,7 +63,7 @@ export function Footer() {
               </Button>
               <Button variant="link" className="h-auto justify-start p-0" asChild>
                 <Link
-                  href="https://discord.gg/3vur28nz82"
+                  href={SOCIAL_LINKS.discord}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-violet-600"
@@ -82,7 +84,7 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <Button variant="ghost" size="icon" asChild>
               <Link
-                href="https://github.com/BodhiSearch/BodhiApp"
+                href={SOCIAL_LINKS.github}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-violet-600"
@@ -92,7 +94,7 @@ export function Footer() {
             </Button>
             <Button variant="ghost" size="icon" asChild>
               <Link
-                href="https://discord.gg/3vur28nz82"
+                href={SOCIAL_LINKS.discord}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-violet-600"
@@ -106,3 +108,5 @@ export function Footer() {
     </footer>
   );
 }
+
+export const Footer = memo(FooterComponent);

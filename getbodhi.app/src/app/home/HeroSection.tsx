@@ -1,31 +1,28 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronRight, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import Image from 'next/image';
-import Link from 'next/link';
-import { fadeIn } from './animations';
-import { DownloadButton } from '@/components/DownloadButton';
+import { fadeIn } from '@/app/home/animations';
+import { HeroCTA } from '@/app/home/HeroCTA';
+import { useDetectedOS } from '@/hooks/usePlatformDetection';
+import { PLATFORMS, SOCIAL_LINKS } from '@/lib/constants';
 
 export function HeroSection() {
+  const detectedOS = useDetectedOS();
+  const platformData = detectedOS !== 'unknown' ? PLATFORMS[detectedOS as keyof typeof PLATFORMS] : undefined;
   return (
     <section className="py-12 sm:py-20">
       <Container>
         <motion.div {...fadeIn} className="text-center space-y-8">
           <div className="flex justify-center mb-8">
-            <a
-              href="https://www.producthunt.com/posts/bodhi-app-run-llms-locally?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-bodhi-app-run-llms-locally"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={SOCIAL_LINKS.productHunt} target="_blank" rel="noopener noreferrer">
               <img
                 src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=850615&theme=light&t=1738822645521"
                 alt="Bodhi App - Run LLMs Locally - Your Personal, Private, Powerful AI Assistant | Free & OSS"
                 width="250"
                 height="54"
-                style={{ width: '250px', height: '54px' }}
+                className="w-[250px] h-[54px]"
               />
             </a>
           </div>
@@ -36,26 +33,7 @@ export function HeroSection() {
               Local Privacy, Cloud Power
             </span>
           </h1>
-          <p className="text-xl text-muted-foreground mx-auto max-w-2xl">
-            Unified platform combining local GGUF models with API providers (OpenAI, Anthropic, Groq). Enterprise-ready
-            with user management, OAuth2 security, and production deployment options.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <DownloadButton />
-            <Button variant="outline" size="lg" className="gap-2" asChild>
-              <Link href="#download-section">
-                Download for other platforms
-                <ChevronDown className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="gap-2" asChild>
-              <Link href="https://github.com/BodhiSearch/BodhiApp" target="_blank" rel="noopener noreferrer">
-                View on GitHub
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-
+          <HeroCTA platform={detectedOS} platformData={platformData} />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

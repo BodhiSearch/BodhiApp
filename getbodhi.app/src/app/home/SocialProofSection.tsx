@@ -1,12 +1,14 @@
 'use client';
 
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Database, FileJson, Rocket } from 'lucide-react';
+import { Container } from '@/components/ui/container';
 
-export function SocialProofSection() {
+function SocialProofSectionComponent() {
   return (
     <section className="py-8 bg-white/50">
-      <div className="max-w-7xl mx-auto px-4">
+      <Container>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -26,7 +28,9 @@ export function SocialProofSection() {
             <span className="text-sm font-medium text-gray-600">OpenAI API Compatible</span>
           </div>
         </motion.div>
-      </div>
+      </Container>
     </section>
   );
 }
+
+export const SocialProofSection = memo(SocialProofSectionComponent);

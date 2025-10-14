@@ -1,14 +1,14 @@
 'use client';
 
-import { HeroSection } from './HeroSection';
-import { SocialProofSection } from './SocialProofSection';
-import { FeaturesSection } from './FeaturesSection';
-import { EnterpriseSection } from './EnterpriseSection';
-import { DeveloperToolsSection } from './DeveloperToolsSection';
-import { DeploymentSection } from './DeploymentSection';
-import { DownloadSection } from './DownloadSection';
-import { DockerSection } from './DockerSection';
-import { Footer } from './Footer';
+import { HeroSection } from '@/app/home/HeroSection';
+import { SocialProofSection } from '@/app/home/SocialProofSection';
+import { FeaturesSection } from '@/app/home/FeaturesSection';
+import { EnterpriseSection } from '@/app/home/EnterpriseSection';
+import { DeveloperToolsSection } from '@/app/home/DeveloperToolsSection';
+import { DeploymentSection } from '@/app/home/DeploymentSection';
+import { DownloadSection } from '@/app/home/DownloadSection';
+import { DockerSection } from '@/app/home/DockerSection';
+import { Footer } from '@/app/home/Footer';
 
 export default function Home() {
   return (

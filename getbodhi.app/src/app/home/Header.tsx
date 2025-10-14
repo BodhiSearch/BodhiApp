@@ -1,11 +1,13 @@
 'use client';
 
+import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Disc as Discord, Github } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SOCIAL_LINKS } from '@/lib/constants';
 
-export function Header() {
+function HeaderComponent() {
   return (
     <header className="sticky top-0 z-50 bg-white/80 border-b backdrop-blur-sm">
       <nav className="flex h-16 items-center justify-between max-w-7xl mx-auto px-4">
@@ -24,13 +26,13 @@ export function Header() {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="gap-2" asChild>
-            <Link href="https://github.com/BodhiSearch/BodhiApp" target="_blank" rel="noopener noreferrer">
+            <Link href={SOCIAL_LINKS.github} target="_blank" rel="noopener noreferrer">
               <Github className="w-4 h-4" />
               <span className="hidden sm:inline">GitHub</span>
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="gap-2" asChild>
-            <Link href="https://discord.gg/3vur28nz82" target="_blank" rel="noopener noreferrer">
+            <Link href={SOCIAL_LINKS.discord} target="_blank" rel="noopener noreferrer">
               <Discord className="w-4 h-4" />
               <span className="hidden sm:inline">Discord</span>
             </Link>
@@ -40,3 +42,5 @@ export function Header() {
     </header>
   );
 }
+
+export const Header = memo(HeaderComponent);

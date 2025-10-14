@@ -1,25 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CopyableCodeBlockProps {
   command: string;
   language?: 'bash' | 'yaml';
-  maxHeight?: string;
   className?: string;
 }
 
-export function CopyableCodeBlock({
-  command,
-  language = 'bash',
-  maxHeight = '400px',
-  className,
-}: CopyableCodeBlockProps) {
+function CopyableCodeBlockComponent({ command, language = 'bash', className }: CopyableCodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(command);
       setCopied(true);
@@ -27,20 +21,19 @@ export function CopyableCodeBlock({
     } catch (err) {
       console.error('Failed to copy:', err);
     }
-  };
+  }, [command]);
 
   return (
     <div className="relative group">
       <pre
         onClick={handleCopy}
         className={cn(
-          'relative overflow-x-auto rounded-lg border p-4 transition-all cursor-pointer',
+          'relative overflow-x-auto rounded-lg border p-4 transition-all cursor-pointer max-h-[400px]',
           'bg-slate-50 border-slate-200 hover:border-slate-300',
           'dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700',
           copied && 'border-green-500 dark:border-green-500',
           className
         )}
-        style={{ maxHeight }}
       >
         <code className="text-sm font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-all">
           {command}
@@ -58,3 +51,5 @@ export function CopyableCodeBlock({
     </div>
   );
 }
+
+export const CopyableCodeBlock = memo(CopyableCodeBlockComponent);

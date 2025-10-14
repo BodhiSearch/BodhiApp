@@ -11,35 +11,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CommandSection } from '@/components/CommandSection';
+import { CopyableCodeBlock } from '@/app/home/CopyableCodeBlock';
 import { Cpu, Zap, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { getVariantMetadata } from '@/lib/docker-variants';
 import { generateDockerRunCommand } from '@/lib/docker-commands';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
+import { fadeInUp, variantTransition } from '@/app/home/animations';
+import type { DockerData, ReleasesData } from '@/types/docker';
 
-interface DockerVariant {
-  image_tag?: string;
-  latest_tag: string;
-  platforms: string[];
-  pull_command: string;
-  docker_flags: string[];
-  gpu_type?: string;
-  description?: string;
-}
-
-interface DockerData {
-  version: string;
-  tag: string;
-  released_at: string;
-  registry: string;
-  variants: Record<string, DockerVariant>;
-}
-
-interface ReleasesData {
-  docker: DockerData;
-}
+// Helper to get complete Tailwind classes for variant colors
+const getVariantColorClasses = (color: string): { light: string; dark: string } => {
+  const colorMap: Record<string, { light: string; dark: string }> = {
+    blue: { light: 'bg-blue-100', dark: 'dark:bg-blue-900/20' },
+    green: { light: 'bg-green-100', dark: 'dark:bg-green-900/20' },
+    red: { light: 'bg-red-100', dark: 'dark:bg-red-900/20' },
+    purple: { light: 'bg-purple-100', dark: 'dark:bg-purple-900/20' },
+    indigo: { light: 'bg-indigo-100', dark: 'dark:bg-indigo-900/20' },
+    orange: { light: 'bg-orange-100', dark: 'dark:bg-orange-900/20' },
+    teal: { light: 'bg-teal-100', dark: 'dark:bg-teal-900/20' },
+    gray: { light: 'bg-gray-100', dark: 'dark:bg-gray-900/20' },
+  };
+  return colorMap[color] || { light: 'bg-gray-100', dark: 'dark:bg-gray-900/20' };
+};
 
 export function DockerSection() {
   const [dockerData, setDockerData] = useState<DockerData | null>(null);
@@ -64,6 +60,13 @@ export function DockerSection() {
       });
   }, []);
 
+  // Get all variants from dockerData (already sorted in releases.json)
+  // Must be called before any early returns to follow Rules of Hooks
+  const variantKeys = useMemo(
+    () => (dockerData?.variants ? Object.keys(dockerData.variants) : []),
+    [dockerData?.variants]
+  );
+
   if (loading) {
     return (
       <section id="docker-section" className="py-8 bg-gradient-to-b from-white to-slate-50">
@@ -84,9 +87,6 @@ export function DockerSection() {
     );
   }
 
-  // Get all variants from dockerData (already sorted in releases.json)
-  const variantKeys = Object.keys(dockerData.variants);
-
   // Ensure selectedVariant is valid, fallback to first available
   const validSelectedVariant = dockerData.variants[selectedVariant] ? selectedVariant : variantKeys[0] || 'cpu';
   const currentVariant = dockerData.variants[validSelectedVariant];
@@ -105,12 +105,7 @@ export function DockerSection() {
   return (
     <section id="docker-section" className="py-8 bg-gradient-to-b from-white to-slate-50">
       <Container>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto"
-        >
+        <motion.div {...fadeInUp} className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Deploy with Docker</h2>
           </div>
@@ -123,7 +118,11 @@ export function DockerSection() {
                   <div className="flex items-center gap-3 py-2">
                     {/* Icon */}
                     <div
-                      className={`p-2.5 rounded-lg bg-${currentMetadata.color}-100 dark:bg-${currentMetadata.color}-900/20`}
+                      className={cn(
+                        'p-2.5 rounded-lg',
+                        getVariantColorClasses(currentMetadata.color).light,
+                        getVariantColorClasses(currentMetadata.color).dark
+                      )}
                     >
                       {currentMetadata.gpuVendor ? (
                         <Zap className="h-5 w-5 text-slate-700" />
@@ -169,7 +168,7 @@ export function DockerSection() {
                       <SelectItem key={variantKey} value={variantKey} className="h-auto min-h-[4rem] cursor-pointer">
                         <div className="flex items-center gap-3 py-2 w-full">
                           {/* Icon */}
-                          <div className={`p-2 rounded-lg bg-${metadata.color}-100`}>
+                          <div className={cn('p-2 rounded-lg', getVariantColorClasses(metadata.color).light)}>
                             {metadata.gpuVendor ? (
                               <Zap className="h-4 w-4 text-slate-700" />
                             ) : (
@@ -211,13 +210,7 @@ export function DockerSection() {
           </div>
 
           {/* Variant Details - Animated */}
-          <motion.div
-            key={validSelectedVariant}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-6"
-          >
+          <motion.div key={validSelectedVariant} {...variantTransition} className="space-y-6">
             {/* Info Cards Grid */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
@@ -259,18 +252,23 @@ export function DockerSection() {
             </div>
 
             {/* Pull Command */}
-            <CommandSection title="Pull Image" command={currentVariant.pull_command} language="bash" />
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">Pull Image</h3>
+              <CopyableCodeBlock command={currentVariant.pull_command} language="bash" />
+            </div>
 
             {/* Run Command */}
-            <CommandSection
-              title="Run Container"
-              command={generateDockerRunCommand({
-                registry: dockerData.registry,
-                tag: currentVariant.latest_tag,
-                dockerFlags: currentVariant.docker_flags,
-              })}
-              language="bash"
-            />
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">Run Container</h3>
+              <CopyableCodeBlock
+                command={generateDockerRunCommand({
+                  registry: dockerData.registry,
+                  tag: currentVariant.latest_tag,
+                  dockerFlags: currentVariant.docker_flags,
+                })}
+                language="bash"
+              />
+            </div>
           </motion.div>
 
           <div className="mt-12 p-6 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">

@@ -428,10 +428,7 @@ async function buildDesktopSection(data, desktopMetadata, backup) {
   const finalPlatforms = {};
 
   // Get all known platforms from both new data and backup
-  const allPlatforms = new Set([
-    ...Object.keys(newPlatforms),
-    ...Object.keys(backup?.desktop?.platforms || {}),
-  ]);
+  const allPlatforms = new Set([...Object.keys(newPlatforms), ...Object.keys(backup?.desktop?.platforms || {})]);
 
   for (const platformKey of allPlatforms) {
     const newPlatformData = newPlatforms[platformKey] || {};
@@ -442,10 +439,7 @@ async function buildDesktopSection(data, desktopMetadata, backup) {
     finalPlatforms[platformKey] = {};
 
     // Get all known architectures for this platform
-    const allArchs = new Set([
-      ...Object.keys(newPlatformData),
-      ...Object.keys(backupPlatformData),
-    ]);
+    const allArchs = new Set([...Object.keys(newPlatformData), ...Object.keys(backupPlatformData)]);
 
     for (const archKey of allArchs) {
       const newArchData = newPlatformData[archKey];
