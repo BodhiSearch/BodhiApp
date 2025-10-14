@@ -31,14 +31,6 @@ function InstallationOptionsComponent({ platform }: InstallationOptionsProps) {
           <div className="text-sm text-muted-foreground">
             <span className="font-medium">File:</span> Bodhi_App.{platform.fileType.toLowerCase()}
           </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Architecture:</span> {platform.arch}
-          </div>
-          {platform.fileSize && (
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Size:</span> {platform.fileSize}
-            </div>
-          )}
         </div>
 
         {platform.downloadUrl ? (
