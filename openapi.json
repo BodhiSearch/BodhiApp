@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.1.0"
+    "version": "0.0.40-dev"
   },
   "servers": [
     {
@@ -1889,6 +1889,7 @@
                   "$ref": "#/components/schemas/AppInfo"
                 },
                 "example": {
+                  "commit_sha": "abc1234",
                   "status": "ready",
                   "version": "0.1.0"
                 }
@@ -5303,6 +5304,7 @@
         "description": "Application information and status",
         "required": [
           "version",
+          "commit_sha",
           "status"
         ],
         "properties": {
@@ -5311,12 +5313,18 @@
             "description": "Application version number (semantic versioning)",
             "example": "0.1.0"
           },
+          "commit_sha": {
+            "type": "string",
+            "description": "Git commit SHA of the build",
+            "example": "abc1234"
+          },
           "status": {
             "$ref": "#/components/schemas/AppStatus",
             "description": "Current application setup and operational status"
           }
         },
         "example": {
+          "commit_sha": "abc1234",
           "status": "ready",
           "version": "0.1.0"
         }

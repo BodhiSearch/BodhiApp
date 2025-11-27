@@ -102,6 +102,10 @@ export type AppInfo = {
      */
     version: string;
     /**
+     * Git commit SHA of the build
+     */
+    commit_sha: string;
+    /**
      * Current application setup and operational status
      */
     status: AppStatus;

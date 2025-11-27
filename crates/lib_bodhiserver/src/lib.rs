@@ -9,6 +9,12 @@ mod app_service_builder;
 mod error;
 mod ui_assets;
 
+/// Git commit SHA captured at build time. "undefined" if not available.
+pub const BUILD_COMMIT_SHA: &str = match option_env!("BODHI_BUILD_COMMIT_SHA") {
+  Some(sha) => sha,
+  None => "undefined",
+};
+
 pub use app_dirs_builder::*;
 pub use app_options::*;
 pub use app_service_builder::*;

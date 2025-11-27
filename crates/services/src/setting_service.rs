@@ -244,6 +244,13 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .to_string()
   }
 
+  fn commit_sha(&self) -> String {
+    self
+      .get_setting(BODHI_COMMIT_SHA)
+      .expect("BODHI_COMMIT_SHA should be set")
+      .to_string()
+  }
+
   fn auth_url(&self) -> String {
     self
       .get_setting(BODHI_AUTH_URL)

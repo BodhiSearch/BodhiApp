@@ -35,12 +35,16 @@ pub enum AppServiceError {
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[schema(example = json!({
     "version": "0.1.0",
+    "commit_sha": "abc1234",
     "status": "ready"
 }))]
 pub struct AppInfo {
   /// Application version number (semantic versioning)
   #[schema(example = "0.1.0")]
   pub version: String,
+  /// Git commit SHA of the build
+  #[schema(example = "abc1234")]
+  pub commit_sha: String,
   /// Current application setup and operational status
   #[schema(example = "ready")]
   pub status: AppStatus,
@@ -57,6 +61,7 @@ pub struct AppInfo {
         (status = 200, description = "Application information retrieved successfully", body = AppInfo,
          example = json!({
              "version": "0.1.0",
+             "commit_sha": "abc1234",
              "status": "ready"
          })),
     )
@@ -69,6 +74,7 @@ pub async fn app_info_handler(
   let setting_service = &state.app_service().setting_service();
   Ok(Json(AppInfo {
     version: setting_service.version(),
+    commit_sha: setting_service.commit_sha(),
     status,
   }))
 }
@@ -308,6 +314,7 @@ mod tests {
     SecretServiceStub::new(),
     AppInfo {
       version: "0.0.0".to_string(),
+      commit_sha: "test-sha".to_string(),
       status: AppStatus::Setup,
     }
   )]
@@ -315,6 +322,7 @@ mod tests {
     SecretServiceStub::new().with_app_status(&AppStatus::Setup),
     AppInfo {
       version: "0.0.0".to_string(),
+      commit_sha: "test-sha".to_string(),
       status: AppStatus::Setup,
     }
   )]

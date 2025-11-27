@@ -964,6 +964,7 @@ export interface components {
         /**
          * @description Application information and status
          * @example {
+         *       "commit_sha": "abc1234",
          *       "status": "ready",
          *       "version": "0.1.0"
          *     }
@@ -974,6 +975,11 @@ export interface components {
              * @example 0.1.0
              */
             version: string;
+            /**
+             * @description Git commit SHA of the build
+             * @example abc1234
+             */
+            commit_sha: string;
             /** @description Current application setup and operational status */
             status: components["schemas"]["AppStatus"];
         };
@@ -3788,6 +3794,7 @@ export interface operations {
                 };
                 content: {
                     /** @example {
+                     *       "commit_sha": "abc1234",
                      *       "status": "ready",
                      *       "version": "0.1.0"
                      *     } */

@@ -1,6 +1,6 @@
 use anyhow::{bail, Context};
 use std::{
-  env,
+  env, fs,
   path::{Path, PathBuf},
   process::{Command, Stdio},
 };
@@ -12,6 +12,9 @@ fn main() {
 }
 
 fn _main() -> anyhow::Result<()> {
+  // Capture git commit SHA at build time
+  capture_git_sha();
+
   let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   let bodhi_dir = manifest_dir.join("../bodhi");
   let project_root = manifest_dir.join("../..");
@@ -30,6 +33,29 @@ fn _main() -> anyhow::Result<()> {
   // println!("cargo:rerun-if-changed=../bodhi/next.config.js");
 
   Ok(())
+}
+
+fn capture_git_sha() {
+  // Rerun conditions for git changes
+  println!("cargo:rerun-if-changed=../../.git/HEAD");
+  if let Ok(head_ref) = fs::read_to_string("../../.git/HEAD") {
+    if head_ref.starts_with("ref: ") {
+      let ref_path = head_ref.trim_start_matches("ref: ").trim();
+      println!("cargo:rerun-if-changed=../../.git/{}", ref_path);
+    }
+  }
+
+  // Capture SHA via git command
+  let sha = Command::new("git")
+    .args(["rev-parse", "HEAD"])
+    .output()
+    .ok()
+    .filter(|output| output.status.success())
+    .and_then(|output| String::from_utf8(output.stdout).ok())
+    .map(|s| s.trim().to_string())
+    .unwrap_or_else(|| "undefined".to_string());
+
+  println!("cargo:rustc-env=BODHI_BUILD_COMMIT_SHA={}", sha);
 }
 
 fn is_ci() -> bool {

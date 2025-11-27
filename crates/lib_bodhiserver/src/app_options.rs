@@ -166,7 +166,9 @@ impl AppOptionsBuilder {
       app_version: self
         .app_version
         .ok_or_else(|| AppOptionsError::ValidationError(BODHI_VERSION.to_string()))?,
-      app_commit_sha: self.app_commit_sha.unwrap_or("not-set".to_string()),
+      app_commit_sha: self
+        .app_commit_sha
+        .unwrap_or_else(|| crate::BUILD_COMMIT_SHA.to_string()),
       auth_url: self
         .auth_url
         .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_URL.to_string()))?,
