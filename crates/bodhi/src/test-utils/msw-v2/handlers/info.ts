@@ -29,6 +29,7 @@ export function mockAppInfo(
       }
 
       const responseData: components['schemas']['AppInfo'] = {
+        commit_sha: 'not-set',
         status,
         version,
         ...rest,
