@@ -56,7 +56,15 @@ struct RequestAccessRequest {
 /// Make admin request
 #[derive(Debug, Serialize)]
 struct MakeAdminRequest {
-  username: String,
+  user_id: String,
+}
+
+/// Test user credentials for integration tests
+#[derive(Debug, Clone)]
+pub struct TestUser {
+  pub username: String,
+  pub user_id: String,
+  pub password: String,
 }
 
 /// Add user to group request
@@ -262,7 +270,7 @@ impl AuthServerTestClient {
   pub async fn make_first_resource_admin(
     &self,
     resource_service_token: &str,
-    username: &str,
+    user_id: &str,
   ) -> Result<()> {
     let make_admin_url = format!(
       "{}/realms/{}/bodhi/resources/make-resource-admin",
@@ -270,7 +278,7 @@ impl AuthServerTestClient {
     );
 
     let request_body = MakeAdminRequest {
-      username: username.to_string(),
+      user_id: user_id.to_string(),
     };
 
     let response = self
@@ -476,13 +484,11 @@ impl AuthServerTestClient {
   }
 
   /// Complete dynamic client setup following httpyac script pattern
-  pub async fn setup_dynamic_clients(
-    &self,
-    username: &str,
-    password: &str,
-  ) -> Result<DynamicClients> {
+  pub async fn setup_dynamic_clients(&self, test_user: &TestUser) -> Result<DynamicClients> {
     // Step 1: Get Dev Console User Token
-    let dev_console_token = self.get_dev_console_user_token(username, password).await?;
+    let dev_console_token = self
+      .get_dev_console_user_token(&test_user.username, &test_user.password)
+      .await?;
 
     // Step 2: Create App Client
     let app_client = self
@@ -499,7 +505,7 @@ impl AuthServerTestClient {
 
     // Step 5: Make First Resource Admin
     self
-      .make_first_resource_admin(&resource_service_token, username)
+      .make_first_resource_admin(&resource_service_token, &test_user.user_id)
       .await?;
 
     // Step 6: Request Audience Access

@@ -1,7 +1,7 @@
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   auth_middleware,
-  test_utils::{AuthServerConfig, AuthServerTestClient},
+  test_utils::{AuthServerConfig, AuthServerTestClient, TestUser},
   KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
 };
 use axum::{
@@ -133,11 +133,12 @@ fn auth_server_config() -> AuthServerConfig {
 }
 
 #[fixture]
-fn test_user() -> (String, String) {
-  (
-    std::env::var("INTEG_TEST_USERNAME").expect("INTEG_TEST_USERNAME must be set"),
-    std::env::var("INTEG_TEST_PASSWORD").expect("INTEG_TEST_PASSWORD must be set"),
-  )
+fn test_user() -> TestUser {
+  TestUser {
+    username: std::env::var("INTEG_TEST_USERNAME").expect("INTEG_TEST_USERNAME must be set"),
+    user_id: std::env::var("INTEG_TEST_USERNAME_ID").expect("INTEG_TEST_USERNAME_ID must be set"),
+    password: std::env::var("INTEG_TEST_PASSWORD").expect("INTEG_TEST_PASSWORD must be set"),
+  }
 }
 
 #[rstest]
@@ -146,14 +147,11 @@ fn test_user() -> (String, String) {
 async fn test_cross_client_token_exchange_success(
   setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
-  test_user: (String, String),
+  test_user: TestUser,
   auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let (username, password) = test_user;
   // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client
-    .setup_dynamic_clients(&username, &password)
-    .await?;
+  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
 
   // Step 2: Create test state with dynamic client credentials
   let resource_client_id = dynamic_clients.resource_client.client_id;
@@ -172,8 +170,8 @@ async fn test_cross_client_token_exchange_success(
   let user_token = auth_client
     .get_app_user_token_with_scope(
       &dynamic_clients.app_client.client_id,
-      &username,
-      &password,
+      &test_user.username,
+      &test_user.password,
       &[
         "openid",
         "email",
@@ -219,7 +217,7 @@ async fn test_cross_client_token_exchange_success(
   let token = body.token.as_ref().unwrap();
   let claims = extract_claims::<Claims>(token)?;
   assert_eq!(
-    claims.preferred_username, username,
+    claims.preferred_username, test_user.username,
     "JWT preferred_username claim should match test user"
   );
   assert_eq!(claims.azp, resource_client_id);
@@ -237,14 +235,11 @@ async fn test_cross_client_token_exchange_success(
 async fn test_cross_client_token_exchange_no_user_scope(
   setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
-  test_user: (String, String),
+  test_user: TestUser,
   auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let (username, password) = test_user;
   // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client
-    .setup_dynamic_clients(&username, &password)
-    .await?;
+  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
 
   // Step 2: Create test state with dynamic client credentials
   let resource_client_id = dynamic_clients.resource_client.client_id;
@@ -263,8 +258,8 @@ async fn test_cross_client_token_exchange_no_user_scope(
   let user_token = auth_client
     .get_app_user_token_with_scope(
       &dynamic_clients.app_client.client_id,
-      &username,
-      &password,
+      &test_user.username,
+      &test_user.password,
       &[
         "openid",
         "email",
@@ -308,14 +303,11 @@ async fn test_cross_client_token_exchange_no_user_scope(
 async fn test_cross_client_token_exchange_auth_service_error(
   setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
-  test_user: (String, String),
+  test_user: TestUser,
   auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let (username, password) = test_user;
   // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client
-    .setup_dynamic_clients(&username, &password)
-    .await?;
+  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
 
   // Step 2: Create test state with dynamic client credentials
   let state = create_test_state(
@@ -332,8 +324,8 @@ async fn test_cross_client_token_exchange_auth_service_error(
   let user_token = auth_client
     .get_app_user_token_with_scope(
       &dynamic_clients.app_client.client_id,
-      &username,
-      &password,
+      &test_user.username,
+      &test_user.password,
       &[],
     )
     .await?;
