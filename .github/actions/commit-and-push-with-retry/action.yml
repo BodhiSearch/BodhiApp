@@ -30,6 +30,36 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
+    - name: Checkout target branch
+      shell: bash
+      run: |
+        # Handle detached HEAD state (common when triggered by tags)
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        if [[ "$CURRENT_BRANCH" == "HEAD" ]] || [[ "$CURRENT_BRANCH" != "${{ inputs.branch }}" ]]; then
+          echo "Not on ${{ inputs.branch }} (current: $CURRENT_BRANCH), switching..."
+
+          # Stash any uncommitted changes before switching
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Stashing uncommitted changes before branch switch"
+            git stash push -m "Temporary stash for branch switch"
+            NEEDS_UNSTASH=1
+          else
+            NEEDS_UNSTASH=0
+          fi
+
+          git fetch origin ${{ inputs.branch }}
+          git checkout ${{ inputs.branch }}
+          git pull origin ${{ inputs.branch }}
+
+          # Restore stashed changes
+          if [[ $NEEDS_UNSTASH -eq 1 ]]; then
+            echo "Restoring stashed changes"
+            git stash pop
+          fi
+        else
+          echo "Already on branch ${{ inputs.branch }}"
+        fi
+
     - name: Fetch and sync with upstream
       shell: bash
       run: |
