@@ -96,7 +96,7 @@ jobs:
       - name: Build lib_bodhiserver to trigger frontend build
         shell: bash
         run: |
-          cargo build --release -p lib_bodhiserver
+          cargo build --release -p lib_bodhiserver --locked
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
       - name: Build and Sign Application

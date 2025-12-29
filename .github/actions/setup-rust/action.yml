@@ -38,12 +38,12 @@ runs:
       shell: pwsh
       run: |
         if (-not (Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
-          cargo install tauri-cli@^2.0.0
+          cargo install tauri-cli@^2.0.0 --locked
         }
     - name: Install Tauri CLI (Unix)
       if: inputs.platform != 'windows-latest'
       shell: bash
       run: |
         if ! command -v cargo-tauri > /dev/null 2>&1; then
-          cargo install tauri-cli@^2.0.0
+          cargo install tauri-cli@^2.0.0 --locked
         fi

@@ -76,7 +76,7 @@ jobs:
       - name: Build llama_server_proc binary
         shell: bash
         run: |
-          cargo build -p llama_server_proc
+          cargo build -p llama_server_proc --locked
         env:
           CI_DEFAULT_VARIANT: cpu
           CI_RELEASE: true
