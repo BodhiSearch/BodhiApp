@@ -109,9 +109,9 @@ export class AllUsersPage extends BasePage {
   }
 
   async expectUserRole(username, expectedRole) {
-    const row = await this.findUserRowByUsername(username);
-    const roleElement = row.locator(this.selectors.userRole);
-    await expect(roleElement).toContainText(expectedRole);
+    const roleCell = this.page.locator(`[data-testid="user-role-${username}"]`);
+    const roleElement = roleCell.locator(this.selectors.userRole);
+    await expect(roleElement).toHaveText(expectedRole);
   }
 
   async getUserStatus(username) {
