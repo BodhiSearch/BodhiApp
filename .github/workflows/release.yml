@@ -93,6 +93,10 @@ jobs:
             echo "Failed to update version"
             exit 1
           fi
+      - name: Update Cargo.lock after version change
+        shell: bash
+        run: |
+          cargo update --workspace
       - name: Build lib_bodhiserver to trigger frontend build
         shell: bash
         run: |
