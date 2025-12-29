@@ -36,7 +36,7 @@ export class TokenFixtures {
    * @param {Page} page - Playwright page object
    */
   static async mockClipboard(page) {
-    let clipboardContent = '';
+    const clipboardContent = '';
 
     await page.evaluate(() => {
       window.clipboardData = '';

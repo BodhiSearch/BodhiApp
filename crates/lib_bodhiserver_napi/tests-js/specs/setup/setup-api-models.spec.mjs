@@ -1,13 +1,13 @@
-import { test } from '@playwright/test';
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { SetupFixtures } from '@/fixtures/setupFixtures.mjs';
+import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
+import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
+import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
-import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
-import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
-import { SetupFixtures } from '@/fixtures/setupFixtures.mjs';
-import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { test } from '@playwright/test';
 
 test.describe('API Models Setup Integration', () => {
   let authServerConfig;

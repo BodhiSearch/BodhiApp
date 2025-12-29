@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class AllUsersPage extends BasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     // Page container
     usersPage: '[data-testid="users-page"]',
@@ -450,9 +446,8 @@ export class AllUsersPage extends BasePage {
 
         if (await currentUserIndicator.isVisible()) {
           return 'self';
-        } else {
-          return 'restricted';
         }
+        return 'restricted';
       } catch {
         return 'unknown';
       }

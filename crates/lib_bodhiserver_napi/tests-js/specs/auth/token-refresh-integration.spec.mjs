@@ -1,13 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
-  getTestCredentials,
   getRealmAdminCredentials,
+  getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
+import { expect, test } from '@playwright/test';
 
 /**
  * Token Refresh Integration Tests
@@ -36,9 +36,14 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
  *   npx playwright test --grep @scheduled
  */
 test.describe('Token Refresh Integration', { tag: '@scheduled' }, () => {
-  let authClient, testCredentials, authServerConfig, realmAdminCredentials;
-  let serverManager, baseUrl;
-  let resourceClient, adminToken;
+  let authClient;
+  let testCredentials;
+  let authServerConfig;
+  let realmAdminCredentials;
+  let serverManager;
+  let baseUrl;
+  let resourceClient;
+  let adminToken;
   let port;
 
   test.beforeAll(async () => {

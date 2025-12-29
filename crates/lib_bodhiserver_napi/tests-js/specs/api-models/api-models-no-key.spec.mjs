@@ -1,16 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
-import { ChatPage } from '@/pages/ChatPage.mjs';
 import { createMockOpenAIServer } from '@/utils/mock-openai-server.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('API Models - Optional Key (Mock Server)', () => {
   let serverManager;
@@ -71,7 +71,6 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
   test('complete api key lifecycle - starting with key', async ({ page }) => {
     const mockServerUrl = mockOpenAIServer.getBaseUrl();
-    let modelId;
 
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
@@ -96,7 +95,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     const testRequest = mockOpenAIServer.getLastRequest();
     expect(testRequest.headers.authorization).toBe('Bearer test-key-initial');
 
-    modelId = await formPage.createModelAndCaptureId();
+    const modelId = await formPage.createModelAndCaptureId();
 
     // Step 2: Test in chat with initial key
     await chatPage.navigateToChat();
@@ -111,8 +110,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('verify key');
     await chatPage.waitForResponseComplete();
 
-    const chatRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const chatRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const lastChatRequest = chatRequests[chatRequests.length - 1];
     expect(lastChatRequest.headers.authorization).toBe('Bearer test-key-initial');
 
@@ -141,8 +141,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('Test other model');
     await chatPage.waitForResponseComplete();
 
-    const otherModelRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const otherModelRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const otherModelRequest = otherModelRequests[otherModelRequests.length - 1];
     expect(otherModelRequest.headers.authorization).toBe('Bearer test-key-initial');
     expect(otherModelRequest.body.model).toBe('mock-gpt-3.5-turbo');
@@ -171,8 +172,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('Changed key test');
     await chatPage.waitForResponseComplete();
 
-    const changedKeyRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const changedKeyRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const changedKeyRequest = changedKeyRequests[changedKeyRequests.length - 1];
     expect(changedKeyRequest.headers.authorization).toBe('Bearer test-key-changed');
 
@@ -198,8 +200,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('No key test');
     await chatPage.waitForResponseComplete();
 
-    const noKeyRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const noKeyRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const noKeyRequest = noKeyRequests[noKeyRequests.length - 1];
     expect(noKeyRequest.headers.authorization).toBeUndefined();
 
@@ -209,7 +212,6 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
 
   test('complete api key lifecycle - starting without key', async ({ page }) => {
     const mockServerUrl = mockOpenAIServer.getBaseUrl();
-    let modelId;
 
     // Step 1: Create model WITHOUT API key
     await loginPage.performOAuthLogin();
@@ -234,7 +236,7 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     const testRequest = mockOpenAIServer.getLastRequest();
     expect(testRequest.headers.authorization).toBeUndefined();
 
-    modelId = await formPage.createModelAndCaptureId();
+    const modelId = await formPage.createModelAndCaptureId();
 
     // Step 2: Test in chat without key
     await chatPage.navigateToChat();
@@ -249,8 +251,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('verify no key');
     await chatPage.waitForResponseComplete();
 
-    const chatRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const chatRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const lastChatRequest = chatRequests[chatRequests.length - 1];
     expect(lastChatRequest.headers.authorization).toBeUndefined();
 
@@ -279,8 +282,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('Test other model');
     await chatPage.waitForResponseComplete();
 
-    const otherModelRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const otherModelRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const otherModelRequest = otherModelRequests[otherModelRequests.length - 1];
     expect(otherModelRequest.headers.authorization).toBeUndefined();
     expect(otherModelRequest.body.model).toBe('mock-gpt-3.5-turbo');
@@ -309,8 +313,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('Added key test');
     await chatPage.waitForResponseComplete();
 
-    const addedKeyRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const addedKeyRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const addedKeyRequest = addedKeyRequests[addedKeyRequests.length - 1];
     expect(addedKeyRequest.headers.authorization).toBe('Bearer test-key-added');
 
@@ -336,8 +341,9 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await chatPage.sendMessage('Back to no key');
     await chatPage.waitForResponseComplete();
 
-    const finalNoKeyRequests = mockOpenAIServer.getRequestLog()
-      .filter(r => r.path === '/v1/chat/completions');
+    const finalNoKeyRequests = mockOpenAIServer
+      .getRequestLog()
+      .filter((r) => r.path === '/v1/chat/completions');
     const finalNoKeyRequest = finalNoKeyRequests[finalNoKeyRequests.length - 1];
     expect(finalNoKeyRequest.headers.authorization).toBeUndefined();
 

@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class SetupBasePage extends BasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     setupProgress: '[data-testid="setup-progress"]',
     stepIndicator: (step) => `[data-testid="step-indicator-${step}"]`,
@@ -40,9 +36,7 @@ export class SetupBasePage extends BasePage {
         await expect(this.page.locator(selector)).toBeVisible();
         logoFound = true;
         break;
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     if (!logoFound) {

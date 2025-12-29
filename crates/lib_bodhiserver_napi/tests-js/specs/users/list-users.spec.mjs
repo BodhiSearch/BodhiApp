@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test';
 import { AllUsersPage } from '@/pages/AllUsersPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import { createAuthServerTestClient, getAuthServerConfig } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('Enhanced Users Management Flow', () => {
   let serverManager;

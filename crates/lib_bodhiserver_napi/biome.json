@@ -13,7 +13,14 @@
       "tests-js/**/*.js",
       "tests-js/**/*.mjs"
     ],
-    "ignore": ["node_modules/**", "dist/**", "build/**", "index.d.ts", "index.js"]
+    "ignore": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "index.d.ts",
+      "index.js",
+      "tests-js/extension/**"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -31,7 +38,8 @@
         "noExtraBooleanCast": "error",
         "noMultipleSpacesInRegularExpressionLiterals": "error",
         "noUselessCatch": "error",
-        "noWith": "error"
+        "noWith": "error",
+        "noStaticOnlyClass": "off"
       },
       "correctness": {
         "noConstAssign": "error",

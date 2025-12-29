@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class ChatSettingsPage extends BasePage {
   selectors = {

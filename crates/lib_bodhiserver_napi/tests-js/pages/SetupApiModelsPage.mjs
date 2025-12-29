@@ -1,6 +1,6 @@
-import { expect } from '@playwright/test';
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
 import { ApiModelFormComponent } from '@/pages/components/ApiModelFormComponent.mjs';
+import { expect } from '@playwright/test';
 
 /**
  * Page object for API Models setup operations on /ui/setup/api-models pages

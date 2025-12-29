@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function updateOptionalDependencies() {
   const packageJsonPath = path.join(process.cwd(), 'package.json');
@@ -55,7 +55,7 @@ function updateOptionalDependencies() {
   packageJson.optionalDependencies = optionalDependencies;
 
   // Write back with proper formatting
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
   console.log('\nUpdated optionalDependencies:');
   console.log(JSON.stringify(optionalDependencies, null, 2));

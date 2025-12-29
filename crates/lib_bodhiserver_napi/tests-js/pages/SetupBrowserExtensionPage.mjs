@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class SetupBrowserExtensionPage extends SetupBasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     ...this.selectors,
     pageContainer: '[data-testid="browser-extension-setup-page"]',
@@ -66,11 +62,7 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
   async expectSupportedBrowserUI() {
     // Should show extension detection UI for supported browsers
     await this.page.waitForSelector(
-      this.selectors.extensionNotFound +
-        ', ' +
-        this.selectors.extensionFound +
-        ', ' +
-        this.selectors.extensionDetecting,
+      `${this.selectors.extensionNotFound}, ${this.selectors.extensionFound}, ${this.selectors.extensionDetecting}`,
       { timeout: 5000 }
     );
   }

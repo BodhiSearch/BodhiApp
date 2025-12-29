@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { CanonicalRedirectFixtures } from '@/fixtures/canonicalRedirectFixtures.mjs';
+import { CanonicalRedirectPage } from '@/pages/CanonicalRedirectPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import { getAuthServerConfig } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { CanonicalRedirectPage } from '@/pages/CanonicalRedirectPage.mjs';
-import { CanonicalRedirectFixtures } from '@/fixtures/canonicalRedirectFixtures.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('Canonical Redirect - ENABLED', () => {
   let authServerConfig;

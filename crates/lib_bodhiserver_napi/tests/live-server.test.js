@@ -118,7 +118,7 @@ describe('Live Server Tests', () => {
       // Verify configuration is preserved
       expect(server.host()).toBe('127.0.0.1');
       expect(server.port()).toBe(27009);
-      expect(server.config.envVars['BODHI_LOG_LEVEL']).toBe('debug');
+      expect(server.config.envVars.BODHI_LOG_LEVEL).toBe('debug');
 
       await server.start();
       expect(await server.isRunning()).toBe(true);

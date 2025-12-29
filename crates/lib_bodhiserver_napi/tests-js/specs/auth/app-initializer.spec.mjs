@@ -1,12 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { getCurrentPath, randomPort, waitForSPAReady } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort, getCurrentPath, waitForSPAReady } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('App Initializer Integration', () => {
   let authServerConfig;

@@ -138,7 +138,7 @@ export class MockOpenAIServer {
 
   hasValidAuth(req) {
     const authHeader = req.headers.authorization;
-    return authHeader && authHeader.startsWith('Bearer ');
+    return authHeader?.startsWith('Bearer ');
   }
 
   getBaseUrl() {

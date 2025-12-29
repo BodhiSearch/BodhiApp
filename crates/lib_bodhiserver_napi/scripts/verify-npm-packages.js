@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
 
 const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 10000; // 10 seconds
@@ -97,7 +97,7 @@ async function verifyPackages() {
       const publishedVersion = checkPackageVersion(packageName, expectedVersion);
 
       if (publishedVersion === null) {
-        console.log(`  ❌ Not found on NPM`);
+        console.log('  ❌ Not found on NPM');
         allVerified = false;
         unverifiedPackages.push(`${packageName} (not found)`);
       } else if (publishedVersion !== expectedVersion) {

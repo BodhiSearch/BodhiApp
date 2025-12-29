@@ -48,8 +48,8 @@ describe('Configuration API Tests', () => {
       expect(config.envVars[bindings.BODHI_HOST]).toBe('localhost');
       expect(config.envVars[bindings.BODHI_PORT]).toBe('25000');
       expect(config.envVars[bindings.BODHI_LOG_LEVEL]).toBe('debug');
-      expect(config.envVars['CUSTOM_VAR']).toBe('custom_value');
-      expect(config.appSettings['test_setting']).toBe('setting_value');
+      expect(config.envVars.CUSTOM_VAR).toBe('custom_value');
+      expect(config.appSettings.test_setting).toBe('setting_value');
       expect(config.systemSettings[bindings.BODHI_VERSION]).toBe('1.0.0');
       expect(config.systemSettings[bindings.BODHI_ENV_TYPE]).toBe('development');
       expect(config.systemSettings[bindings.BODHI_APP_TYPE]).toBe('native');
@@ -80,12 +80,12 @@ describe('Configuration API Tests', () => {
       config = bindings.setSystemSetting(config, 'new_system', 'new_value');
 
       // Verify preservation
-      expect(config.envVars['EXISTING_KEY']).toBe('existing_value');
-      expect(config.envVars['NEW_KEY']).toBe('new_value');
-      expect(config.appSettings['existing_setting']).toBe('existing_value');
-      expect(config.appSettings['new_setting']).toBe('new_value');
-      expect(config.systemSettings['existing_system']).toBe('existing_value');
-      expect(config.systemSettings['new_system']).toBe('new_value');
+      expect(config.envVars.EXISTING_KEY).toBe('existing_value');
+      expect(config.envVars.NEW_KEY).toBe('new_value');
+      expect(config.appSettings.existing_setting).toBe('existing_value');
+      expect(config.appSettings.new_setting).toBe('new_value');
+      expect(config.systemSettings.existing_system).toBe('existing_value');
+      expect(config.systemSettings.new_system).toBe('new_value');
     });
   });
 
@@ -134,7 +134,7 @@ describe('Configuration API Tests', () => {
       const config = createFullTestConfig(bindings);
 
       // Verify all required sections are present
-      expect(config.envVars['HOME']).toBeDefined();
+      expect(config.envVars.HOME).toBeDefined();
       expect(config.systemSettings[bindings.BODHI_ENV_TYPE]).toBeDefined();
       expect(config.systemSettings[bindings.BODHI_VERSION]).toBeDefined();
 

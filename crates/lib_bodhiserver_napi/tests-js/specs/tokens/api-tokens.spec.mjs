@@ -1,16 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { TokensPage } from '@/pages/TokensPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
-import { TokensPage } from '@/pages/TokensPage.mjs';
-import { ChatPage } from '@/pages/ChatPage.mjs';
-import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
-import { TokenFixtures } from '@/fixtures/tokenFixtures.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('API Tokens - Complete Integration', () => {
   let authServerConfig;

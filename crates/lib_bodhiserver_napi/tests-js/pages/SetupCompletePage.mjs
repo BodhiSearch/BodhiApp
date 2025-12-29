@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class SetupCompletePage extends SetupBasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     ...this.selectors,
     setupCompleteTitle: 'text=Setup Complete',
@@ -42,9 +38,7 @@ export class SetupCompletePage extends SetupBasePage {
         await expect(this.page.locator(message)).toBeVisible();
         messageFound = true;
         break;
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     if (!messageFound) {

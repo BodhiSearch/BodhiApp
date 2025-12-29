@@ -1,6 +1,7 @@
 export class SetupFixtures {
   static createServerConfig(overrides = {}) {
-    const timestamp = Date.now();
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     return {
       serverName: `Test Bodhi Server ${timestamp}`,
       description: 'A test server for integration testing',
@@ -10,7 +11,7 @@ export class SetupFixtures {
 
   static createSetupFlowData() {
     return {
-      serverName: this.createServerConfig().serverName,
+      serverName: SetupFixtures.createServerConfig().serverName,
       skipDownloads: true, // Skip downloads for faster tests
       completeFlow: true,
     };
@@ -141,7 +142,7 @@ export class SetupFixtures {
   }
 
   static checkRequiredEnvironment() {
-    const env = this.getTestEnvironment();
+    const env = SetupFixtures.getTestEnvironment();
 
     if (!env.hasAuthServer && !process.env.INTEG_TEST_AUTH_URL) {
       console.warn('Auth server not configured for setup tests');
@@ -193,12 +194,12 @@ export class SetupFixtures {
   }
 
   static getStepByNumber(stepNumber) {
-    const steps = this.getExpectedSetupSteps();
+    const steps = SetupFixtures.getExpectedSetupSteps();
     return steps.find((step) => step.step === stepNumber);
   }
 
   static getStepByPath(path) {
-    const steps = this.getExpectedSetupSteps();
+    const steps = SetupFixtures.getExpectedSetupSteps();
     return steps.find((step) => step.path === path);
   }
 
@@ -208,7 +209,7 @@ export class SetupFixtures {
   }
 
   static createTemporarySetup() {
-    return this.scenarios.MINIMAL_SETUP();
+    return SetupFixtures.scenarios.MINIMAL_SETUP();
   }
 
   // Model download fixtures
@@ -236,7 +237,7 @@ export class SetupFixtures {
   }
 
   static getTestModel() {
-    return this.getRecommendedModels()[0]; // Return first recommended model
+    return SetupFixtures.getRecommendedModels()[0]; // Return first recommended model
   }
 
   // API Models test data
@@ -267,7 +268,7 @@ export class SetupFixtures {
   }
 
   static getTestApiProvider(providerId = 'openai') {
-    return this.getApiProviders().find((p) => p.id === providerId);
+    return SetupFixtures.getApiProviders().find((p) => p.id === providerId);
   }
 
   // Browser Extension test data
@@ -305,15 +306,15 @@ export class SetupFixtures {
   }
 
   static getTestBrowser(browserId = 'chrome') {
-    return this.getBrowserTypes().find((b) => b.id === browserId);
+    return SetupFixtures.getBrowserTypes().find((b) => b.id === browserId);
   }
 
   static getSupportedBrowsers() {
-    return this.getBrowserTypes().filter((b) => b.supported);
+    return SetupFixtures.getBrowserTypes().filter((b) => b.supported);
   }
 
   static getUnsupportedBrowsers() {
-    return this.getBrowserTypes().filter((b) => !b.supported);
+    return SetupFixtures.getBrowserTypes().filter((b) => !b.supported);
   }
 
   // Extension detection states

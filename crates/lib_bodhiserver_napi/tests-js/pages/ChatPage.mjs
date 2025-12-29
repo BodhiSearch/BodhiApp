@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class ChatPage extends BasePage {
   selectors = {
@@ -253,7 +253,7 @@ export class ChatPage extends BasePage {
         .nth(i)
         .locator(`[data-testid="${role}-message-content"]`)
         .textContent();
-      if (messageContent && messageContent.includes(expectedContent)) {
+      if (messageContent?.includes(expectedContent)) {
         found = true;
         break;
       }

@@ -1,19 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
+import { expect, test } from '@playwright/test';
 
+import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
+import { ChatHistoryPage } from '@/pages/ChatHistoryPage.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
-import { ChatPage } from '@/pages/ChatPage.mjs';
-import { ChatHistoryPage } from '@/pages/ChatHistoryPage.mjs';
-import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
-import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
 
 test.describe('Chat Interface - Core Functionality', () => {
   let authServerConfig;

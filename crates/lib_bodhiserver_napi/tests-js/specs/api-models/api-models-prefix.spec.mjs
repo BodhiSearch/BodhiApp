@@ -1,16 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
-import { ChatPage } from '@/pages/ChatPage.mjs';
-import { ApiModelFixtures } from '@/fixtures/apiModelFixtures.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('API Models Prefix Functionality', () => {
   let serverManager;

@@ -1,7 +1,7 @@
-import { mkdtempSync } from 'fs';
-import { tmpdir, networkInterfaces } from 'os';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { mkdtempSync } from 'node:fs';
+import { networkInterfaces, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Get the current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);

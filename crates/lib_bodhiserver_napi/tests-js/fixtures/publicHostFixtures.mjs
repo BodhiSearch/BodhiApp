@@ -20,7 +20,7 @@ export class PublicHostFixtures {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
-      ...this.getPublicHostConfig(port),
+      ...PublicHostFixtures.getPublicHostConfig(port),
     };
   }
 }

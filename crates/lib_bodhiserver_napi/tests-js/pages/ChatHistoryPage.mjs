@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class ChatHistoryPage extends BasePage {
   selectors = {
@@ -61,7 +61,7 @@ export class ChatHistoryPage extends BasePage {
 
     for (let i = 0; i < count; i++) {
       const buttonText = await chatButtons.nth(i).textContent();
-      if (buttonText && buttonText.includes(chatTitle)) {
+      if (buttonText?.includes(chatTitle)) {
         await chatButtons.nth(i).click();
         await this.waitForSPAReady();
         return;
@@ -114,7 +114,7 @@ export class ChatHistoryPage extends BasePage {
 
     for (let i = 0; i < count; i++) {
       const buttonText = await chatButtons.nth(i).textContent();
-      if (buttonText && buttonText.includes(chatTitle)) {
+      if (buttonText?.includes(chatTitle)) {
         const chatId = await chatButtons.nth(i).getAttribute('data-testid');
         const id = chatId.replace('chat-history-button-', '');
 

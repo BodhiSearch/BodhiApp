@@ -1,16 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { LocalModelFixtures } from '@/fixtures/localModelFixtures.mjs';
+import { ChatPage } from '@/pages/ChatPage.mjs';
+import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
-import { ChatPage } from '@/pages/ChatPage.mjs';
-import { LocalModelFixtures } from '@/fixtures/localModelFixtures.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('Local Model Alias Management - Consolidated User Journeys', () => {
   let serverManager;

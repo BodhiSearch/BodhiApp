@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class SetupWelcomePage extends SetupBasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     ...this.selectors,
     pageContainer: '[data-testid="setup-welcome-page"]',

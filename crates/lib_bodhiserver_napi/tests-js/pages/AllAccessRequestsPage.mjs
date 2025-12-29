@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { UsersManagementPage } from '@/pages/UsersManagementPage.mjs';
+import { expect } from '@playwright/test';
 
 export class AllAccessRequestsPage extends UsersManagementPage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   // Extended selectors for all requests page
   allRequestsSelectors = {
     // Page structure

@@ -1,13 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { PublicHostFixtures } from '@/fixtures/publicHostFixtures.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
+import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { randomPort, getCurrentPath } from '@/test-helpers.mjs';
-import { LoginPage } from '@/pages/LoginPage.mjs';
-import { PublicHostFixtures } from '@/fixtures/publicHostFixtures.mjs';
+import { expect, test } from '@playwright/test';
 
 test.describe('Public Host Configuration Authentication Tests', () => {
   let authServerConfig;

@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Mock data
 const mockAppInfoData: AppInfo = {
+  commit_sha: 'not-set',
   version: '0.1.0',
   status: 'ready',
 };

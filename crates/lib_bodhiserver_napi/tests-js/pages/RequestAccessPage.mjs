@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class RequestAccessPage extends BasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     requestAccessButton: '[data-testid="auth-card-action-0"]',
     authCard: '[data-testid="auth-card"]',

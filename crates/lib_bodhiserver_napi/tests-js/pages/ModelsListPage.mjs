@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class ModelsListPage extends BasePage {
   selectors = {
@@ -220,13 +220,10 @@ export class ModelsListPage extends BasePage {
         const urlText = await row.locator('td:nth-child(3)').textContent();
         const formatText = await row.locator('td:nth-child(2)').textContent();
 
-        if (urlText && urlText.includes(baseUrl) && formatText && formatText.includes(apiFormat)) {
+        if (urlText?.includes(baseUrl) && formatText && formatText.includes(apiFormat)) {
           return row;
         }
-      } catch {
-        // Skip rows that don't have the expected structure
-        continue;
-      }
+      } catch {}
     }
     return null;
   }

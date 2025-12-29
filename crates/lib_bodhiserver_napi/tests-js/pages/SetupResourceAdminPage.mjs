@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class SetupResourceAdminPage extends SetupBasePage {
   constructor(page, baseUrl, authServerConfig, testCredentials) {

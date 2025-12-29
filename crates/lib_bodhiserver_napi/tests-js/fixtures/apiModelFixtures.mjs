@@ -10,7 +10,7 @@ export class ApiModelFixtures {
   }
 
   static createTestSuite(count = 3) {
-    return Array.from({ length: count }, (_, i) => this.createModelData());
+    return Array.from({ length: count }, (_, i) => ApiModelFixtures.createModelData());
   }
 
   static getRequiredEnvVars() {
@@ -27,31 +27,31 @@ export class ApiModelFixtures {
 
   // Predefined test scenarios
   static createLifecycleTestData() {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       models: ['gpt-4', 'gpt-3.5-turbo'],
     });
   }
 
   static createMobileTestData() {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       models: ['gpt-4', 'gpt-3.5-turbo'],
     });
   }
 
   static createTabletTestData() {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       models: ['gpt-4', 'gpt-3.5-turbo'],
     });
   }
 
   static createEditTestData() {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       models: ['gpt-4'],
     });
   }
 
   static createCustomAliasData(baseUrl, models) {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       api_format: 'openai',
       baseUrl,
       models,
@@ -80,7 +80,7 @@ export class ApiModelFixtures {
 
   // Cleanup utilities
   static createTemporaryModel() {
-    return this.createModelData({
+    return ApiModelFixtures.createModelData({
       models: ['gpt-3.5-turbo'],
     });
   }
@@ -147,7 +147,7 @@ export class ApiModelFixtures {
   // Environment setup helpers
   static checkEnvironment() {
     try {
-      this.getRequiredEnvVars();
+      ApiModelFixtures.getRequiredEnvVars();
       return true;
     } catch (error) {
       console.warn(`Environment check failed: ${error.message}`);

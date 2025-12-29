@@ -1,6 +1,6 @@
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 export class BrowserWithExtension {
   constructor(options = {}) {
     this.options = {
-      headless: options.headless ?? (process.env.CI ? true : false),
+      headless: options.headless ?? !!process.env.CI,
       timeout: options.timeout ?? 30000,
       extensionPath:
         options.extensionPath ?? join(__dirname, '..', 'extension', 'bodhi-browser-ext'),

@@ -161,7 +161,7 @@ export class AuthServerTestClient {
   async createAppClient(
     devConsoleToken,
     appUrl,
-    name = 'Test App Client',
+    name = 'BodhiApp/crates/lib_bodhiserver_napi/tests-js/unknown',
     description = 'Test app client for Playwright tests',
     customRedirectUris = null
   ) {

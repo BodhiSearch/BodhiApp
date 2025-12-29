@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class TokensPage extends BasePage {
   selectors = {
@@ -205,7 +205,7 @@ export class TokensPage extends BasePage {
       const row = rows.nth(i);
       const rowText = await row.textContent();
 
-      if (rowText && rowText.includes(name)) {
+      if (rowText?.includes(name)) {
         // Found the row, extract data
         // Table structure: name (0), scope (1), status (2), created_at (3), updated_at (4)
         const cells = row.locator('td');

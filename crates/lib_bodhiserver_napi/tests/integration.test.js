@@ -37,7 +37,7 @@ describe('Integration Tests', () => {
       expect(server.host()).toBe('test-host');
       expect(server.port()).toBe(12345);
       expect(server.serverUrl()).toBe('http://test-host:12345');
-      expect(server.config.envVars['HOME']).toBeDefined();
+      expect(server.config.envVars.HOME).toBeDefined();
       expect(server.config.envVars[bindings.BODHI_HOST]).toBe('test-host');
       expect(Number.parseInt(server.config.envVars[bindings.BODHI_PORT])).toBe(12345);
     });
@@ -50,7 +50,7 @@ describe('Integration Tests', () => {
       expect(server.host()).toBe('127.0.0.1');
       expect(server.port()).toBe(28000);
       expect(server.serverUrl()).toBe('http://127.0.0.1:28000');
-      expect(server.config.envVars['HOME']).toBeDefined();
+      expect(server.config.envVars.HOME).toBeDefined();
 
       // Test immutability - values should remain constant
       const originalHost = server.host();
@@ -104,7 +104,7 @@ describe('Integration Tests', () => {
       const serverConfig = server.config;
 
       // Required environment variables
-      expect(serverConfig.envVars['HOME']).toBeDefined();
+      expect(serverConfig.envVars.HOME).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_HOST]).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_PORT]).toBeDefined();
 

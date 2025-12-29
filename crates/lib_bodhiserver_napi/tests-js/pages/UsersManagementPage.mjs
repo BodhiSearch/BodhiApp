@@ -1,11 +1,7 @@
-import { expect } from '@playwright/test';
 import { BasePage } from '@/pages/BasePage.mjs';
+import { expect } from '@playwright/test';
 
 export class UsersManagementPage extends BasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
     // Navigation
     pendingRequestsLink: 'a[href="/ui/users/pending"]',
