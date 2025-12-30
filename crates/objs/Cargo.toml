@@ -1,6 +1,6 @@
 [package]
 name = "objs"
-version = "0.0.40-dev"
+version = "0.0.41-dev"
 edition = "2021"
 
 [dependencies]
