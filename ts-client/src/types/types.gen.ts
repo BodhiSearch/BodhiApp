@@ -1033,24 +1033,7 @@ export type InputAudioFormat = 'wav' | 'mp3';
 
 export type ListModelResponse = {
     object: string;
-    data: Array<{
-        /**
-         * The model identifier, which can be referenced in the API endpoints.
-         */
-        id: string;
-        /**
-         * The object type, which is always "model".
-         */
-        object: string;
-        /**
-         * The Unix timestamp (in seconds) when the model was created.
-         */
-        created: number;
-        /**
-         * The organization that owns the model.
-         */
-        owned_by: string;
-    }>;
+    data: Array<Model>;
 };
 
 /**
@@ -1075,34 +1058,10 @@ export type Message = {
     images?: Array<string> | null;
 };
 
-export type Model = {
-    model: string;
-    modified_at: number;
-    size: number;
-    digest: string;
-    details: ModelDetails;
-};
-
-export type ModelAlias = {
-    alias: string;
-    repo: string;
-    filename: string;
-    snapshot: string;
-};
-
-export type ModelDetails = {
-    parent_model?: string | null;
-    format: string;
-    family: string;
-    families?: Array<string> | null;
-    parameter_size: string;
-    quantization_level: string;
-};
-
 /**
  * Describes an OpenAI model offering that can be used with the API.
  */
-export type ModelResponse = {
+export type Model = {
     /**
      * The model identifier, which can be referenced in the API endpoints.
      */
@@ -1121,8 +1080,24 @@ export type ModelResponse = {
     owned_by: string;
 };
 
+export type ModelAlias = {
+    alias: string;
+    repo: string;
+    filename: string;
+    snapshot: string;
+};
+
+export type ModelDetails = {
+    parent_model?: string | null;
+    format: string;
+    family: string;
+    families?: Array<string> | null;
+    parameter_size: string;
+    quantization_level: string;
+};
+
 export type ModelsResponse = {
-    models: Array<Model>;
+    models: Array<OllamaModel>;
 };
 
 /**
@@ -1152,6 +1127,14 @@ export type OaiRequestParams = {
 
 export type OllamaError = {
     error: string;
+};
+
+export type OllamaModel = {
+    model: string;
+    modified_at: number;
+    size: number;
+    digest: string;
+    details: ModelDetails;
 };
 
 export type OpenAiApiError = {
@@ -3775,7 +3758,7 @@ export type GetModelResponses = {
     /**
      * Model details
      */
-    200: ModelResponse;
+    200: Model;
 };
 
 export type GetModelResponse = GetModelResponses[keyof GetModelResponses];

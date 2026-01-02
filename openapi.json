@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.40-dev"
+    "version": "0.0.41-dev"
   },
   "servers": [
     {
@@ -4870,7 +4870,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ModelResponse"
+                  "$ref": "#/components/schemas/Model"
                 },
                 "example": {
                   "created": 1677610602,
@@ -7698,34 +7698,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "description": "Describes an OpenAI model offering that can be used with the API.",
-              "required": [
-                "id",
-                "object",
-                "created",
-                "owned_by"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "description": "The model identifier, which can be referenced in the API endpoints."
-                },
-                "object": {
-                  "type": "string",
-                  "description": "The object type, which is always \"model\"."
-                },
-                "created": {
-                  "type": "integer",
-                  "format": "int32",
-                  "description": "The Unix timestamp (in seconds) when the model was created.",
-                  "minimum": 0
-                },
-                "owned_by": {
-                  "type": "string",
-                  "description": "The organization that owns the model."
-                }
-              }
+              "$ref": "#/components/schemas/Model"
             }
           }
         }
@@ -7815,31 +7788,31 @@
       },
       "Model": {
         "type": "object",
+        "description": "Describes an OpenAI model offering that can be used with the API.",
         "required": [
-          "model",
-          "modified_at",
-          "size",
-          "digest",
-          "details"
+          "id",
+          "object",
+          "created",
+          "owned_by"
         ],
         "properties": {
-          "model": {
-            "type": "string"
+          "id": {
+            "type": "string",
+            "description": "The model identifier, which can be referenced in the API endpoints."
           },
-          "modified_at": {
+          "object": {
+            "type": "string",
+            "description": "The object type, which is always \"model\"."
+          },
+          "created": {
             "type": "integer",
             "format": "int32",
+            "description": "The Unix timestamp (in seconds) when the model was created.",
             "minimum": 0
           },
-          "size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "digest": {
-            "type": "string"
-          },
-          "details": {
-            "$ref": "#/components/schemas/ModelDetails"
+          "owned_by": {
+            "type": "string",
+            "description": "The organization that owns the model."
           }
         }
       },
@@ -7905,36 +7878,6 @@
           }
         }
       },
-      "ModelResponse": {
-        "type": "object",
-        "description": "Describes an OpenAI model offering that can be used with the API.",
-        "required": [
-          "id",
-          "object",
-          "created",
-          "owned_by"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "The model identifier, which can be referenced in the API endpoints."
-          },
-          "object": {
-            "type": "string",
-            "description": "The object type, which is always \"model\"."
-          },
-          "created": {
-            "type": "integer",
-            "format": "int32",
-            "description": "The Unix timestamp (in seconds) when the model was created.",
-            "minimum": 0
-          },
-          "owned_by": {
-            "type": "string",
-            "description": "The organization that owns the model."
-          }
-        }
-      },
       "ModelsResponse": {
         "type": "object",
         "required": [
@@ -7944,7 +7887,7 @@
           "models": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Model"
+              "$ref": "#/components/schemas/OllamaModel"
             }
           }
         }
@@ -8043,6 +7986,36 @@
         "properties": {
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "OllamaModel": {
+        "type": "object",
+        "required": [
+          "model",
+          "modified_at",
+          "size",
+          "digest",
+          "details"
+        ],
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/ModelDetails"
           }
         }
       },

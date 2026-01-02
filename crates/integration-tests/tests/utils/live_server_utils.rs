@@ -70,7 +70,8 @@ pub async fn llama2_7b_setup(
   // JWT validation fields no longer needed - using database-backed token integrity validation
   let auth_server_url = std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL not set");
   let realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
-  let test_user_id = std::env::var("INTEG_TEST_USERNAME_ID").expect("INTEG_TEST_USERNAME_ID not set");
+  let test_user_id =
+    std::env::var("INTEG_TEST_USERNAME_ID").expect("INTEG_TEST_USERNAME_ID not set");
   // Get OpenID configuration values from environment
   let config = AuthServerConfigBuilder::default()
     .auth_server_url(&auth_server_url)

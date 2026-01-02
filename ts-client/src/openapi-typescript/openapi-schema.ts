@@ -1746,19 +1746,7 @@ export interface components {
         InputAudioFormat: "wav" | "mp3";
         ListModelResponse: {
             object: string;
-            data: {
-                /** @description The model identifier, which can be referenced in the API endpoints. */
-                id: string;
-                /** @description The object type, which is always "model". */
-                object: string;
-                /**
-                 * Format: int32
-                 * @description The Unix timestamp (in seconds) when the model was created.
-                 */
-                created: number;
-                /** @description The organization that owns the model. */
-                owned_by: string;
-            }[];
+            data: components["schemas"]["Model"][];
         };
         /** @description List users query parameters */
         ListUsersParams: {
@@ -1788,14 +1776,19 @@ export interface components {
             content: string;
             images?: string[] | null;
         };
+        /** @description Describes an OpenAI model offering that can be used with the API. */
         Model: {
-            model: string;
-            /** Format: int32 */
-            modified_at: number;
-            /** Format: int64 */
-            size: number;
-            digest: string;
-            details: components["schemas"]["ModelDetails"];
+            /** @description The model identifier, which can be referenced in the API endpoints. */
+            id: string;
+            /** @description The object type, which is always "model". */
+            object: string;
+            /**
+             * Format: int32
+             * @description The Unix timestamp (in seconds) when the model was created.
+             */
+            created: number;
+            /** @description The organization that owns the model. */
+            owned_by: string;
         };
         ModelAlias: {
             alias: string;
@@ -1812,22 +1805,8 @@ export interface components {
             parameter_size: string;
             quantization_level: string;
         };
-        /** @description Describes an OpenAI model offering that can be used with the API. */
-        ModelResponse: {
-            /** @description The model identifier, which can be referenced in the API endpoints. */
-            id: string;
-            /** @description The object type, which is always "model". */
-            object: string;
-            /**
-             * Format: int32
-             * @description The Unix timestamp (in seconds) when the model was created.
-             */
-            created: number;
-            /** @description The organization that owns the model. */
-            owned_by: string;
-        };
         ModelsResponse: {
-            models: components["schemas"]["Model"][];
+            models: components["schemas"]["OllamaModel"][];
         };
         /**
          * @description Request to pull a model file from HuggingFace
@@ -1866,6 +1845,15 @@ export interface components {
         };
         OllamaError: {
             error: string;
+        };
+        OllamaModel: {
+            model: string;
+            /** Format: int32 */
+            modified_at: number;
+            /** Format: int64 */
+            size: number;
+            digest: string;
+            details: components["schemas"]["ModelDetails"];
         };
         /** @example {
          *       "error": {
@@ -6025,7 +6013,7 @@ export interface operations {
                      *       "object": "model",
                      *       "owned_by": "system"
                      *     } */
-                    "application/json": components["schemas"]["ModelResponse"];
+                    "application/json": components["schemas"]["Model"];
                 };
             };
             /** @description Invalid request parameters */

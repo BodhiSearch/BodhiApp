@@ -30,7 +30,7 @@ use async_openai::types::{
   ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
   CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
   CreateChatCompletionStreamResponse, CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding,
-  EmbeddingInput, EmbeddingUsage,
+  EmbeddingInput, EmbeddingUsage, ListModelResponse, Model,
 };
 use objs::{
   Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
@@ -39,9 +39,9 @@ use objs::{
   API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
-  ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_embeddings_handler,
-  __path_oai_model_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
-  __path_ollama_model_show_handler, __path_ollama_models_handler,
+  __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
+  __path_oai_models_handler, __path_ollama_model_chat_handler, __path_ollama_model_show_handler,
+  __path_ollama_models_handler,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -294,7 +294,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             UpdateSettingRequest,
             // openai
             ListModelResponse,
-            ModelResponse,
+            Model,
             CreateChatCompletionRequest,
             CreateChatCompletionResponse,
             CreateChatCompletionStreamResponse,

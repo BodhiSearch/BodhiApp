@@ -1,5 +1,5 @@
 use crate::ENDPOINT_OAI_MODELS;
-use async_openai::types::{ListModelResponse as OAIModelListResponse, Model as OAIModel};
+use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
   Json,
@@ -8,79 +8,6 @@ use objs::{Alias, ApiAlias, ApiError, ModelAlias, OpenAIApiError, UserAlias, API
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::{collections::HashSet, sync::Arc};
-use utoipa::openapi::ObjectBuilder;
-
-pub struct ModelResponse;
-
-impl utoipa::PartialSchema for ModelResponse {
-  fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
-    use utoipa::openapi::schema::{SchemaType, Type};
-
-    ObjectBuilder::new()
-      .property(
-        "id",
-        ObjectBuilder::new()
-          .schema_type(SchemaType::new(Type::String))
-          .description(Some(
-            "The model identifier, which can be referenced in the API endpoints.",
-          )),
-      )
-      .required("id")
-      .property(
-        "object",
-        ObjectBuilder::new()
-          .schema_type(SchemaType::new(Type::String))
-          .description(Some("The object type, which is always \"model\".")),
-      )
-      .required("object")
-      .property(
-        "created",
-        ObjectBuilder::new()
-          .schema_type(SchemaType::new(Type::Integer))
-          .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
-            utoipa::openapi::schema::KnownFormat::Int32,
-          )))
-          .description(Some(
-            "The Unix timestamp (in seconds) when the model was created.",
-          ))
-          .minimum(Some(0f64)),
-      )
-      .required("created")
-      .property(
-        "owned_by",
-        ObjectBuilder::new()
-          .schema_type(SchemaType::new(Type::String))
-          .description(Some("The organization that owns the model.")),
-      )
-      .required("owned_by")
-      .description(Some(
-        "Describes an OpenAI model offering that can be used with the API.",
-      ))
-      .into()
-  }
-}
-
-impl utoipa::ToSchema for ModelResponse {}
-
-pub struct ListModelResponse;
-
-impl utoipa::PartialSchema for ListModelResponse {
-  fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
-    use utoipa::openapi::schema::{ArrayBuilder, SchemaType, Type};
-
-    ObjectBuilder::new()
-      .property(
-        "object",
-        ObjectBuilder::new().schema_type(SchemaType::new(Type::String)),
-      )
-      .required("object")
-      .property("data", ArrayBuilder::new().items(ModelResponse::schema()))
-      .required("data")
-      .into()
-  }
-}
-
-impl utoipa::ToSchema for ListModelResponse {}
 
 /// List available models
 #[utoipa::path(
@@ -91,7 +18,7 @@ impl utoipa::ToSchema for ListModelResponse {}
     summary = "List Available Models (OpenAI Compatible)",
     description = "Returns a list of all available models in OpenAI API compatible format. Includes user aliases, model aliases, and API provider aliases that can be used with the chat completions endpoint.",
     responses(
-        (status = 200, description = "List of available models", 
+        (status = 200, description = "List of available models",
          body = ListModelResponse,
          example = json!({
              "object": "list",
@@ -119,7 +46,7 @@ impl utoipa::ToSchema for ListModelResponse {}
 )]
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<OAIModelListResponse>, ApiError> {
+) -> Result<Json<ListModelResponse>, ApiError> {
   // Get all aliases from unified DataService
   let aliases = state
     .app_service()
@@ -156,7 +83,7 @@ pub async fn oai_models_handler(
     }
   }
 
-  Ok(Json(OAIModelListResponse {
+  Ok(Json(ListModelResponse {
     object: "list".to_string(),
     data: models,
   }))
@@ -177,7 +104,7 @@ pub async fn oai_models_handler(
     ),
     responses(
         (status = 200, description = "Model details",
-         body = ModelResponse,
+         body = Model,
          example = json!({
              "id": "llama2:chat",
              "object": "model",
@@ -202,7 +129,7 @@ pub async fn oai_models_handler(
 pub async fn oai_model_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-) -> Result<Json<OAIModel>, ApiError> {
+) -> Result<Json<Model>, ApiError> {
   // Use unified DataService.find_alias
   if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
     match alias {
@@ -222,11 +149,11 @@ pub async fn oai_model_handler(
   }
 }
 
-fn user_alias_to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
+fn user_alias_to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = state.app_service().time_service().created_at(&path);
-  OAIModel {
+  Model {
     id: alias.alias,
     object: "model".to_string(),
     created,
@@ -234,7 +161,7 @@ fn user_alias_to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAI
   }
 }
 
-fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> OAIModel {
+fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
   // For auto-discovered models, construct path from HF cache structure
   // Path structure: hf_cache/models--owner--repo/snapshots/snapshot/filename
   let hf_cache = state.app_service().setting_service().hf_cache();
@@ -244,7 +171,7 @@ fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> O
     .join(&alias.snapshot)
     .join(&alias.filename);
   let created = state.app_service().time_service().created_at(&path);
-  OAIModel {
+  Model {
     id: alias.alias,
     object: "model".to_string(),
     created,
@@ -252,9 +179,9 @@ fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> O
   }
 }
 
-fn api_model_to_oai_model(model_name: String, api_alias: &ApiAlias) -> OAIModel {
+fn api_model_to_oai_model(model_name: String, api_alias: &ApiAlias) -> Model {
   let created = api_alias.created_at.timestamp() as u32;
-  OAIModel {
+  Model {
     id: model_name, // Use the individual model name, not api_alias.id
     object: "model".to_string(),
     created,

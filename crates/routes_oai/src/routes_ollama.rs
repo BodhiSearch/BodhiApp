@@ -28,6 +28,7 @@ pub struct ModelsResponse {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+#[schema(as = OllamaModel)]
 #[serde(rename_all = "snake_case")]
 pub struct Model {
   model: String,
