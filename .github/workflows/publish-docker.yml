@@ -1,6 +1,12 @@
 name: Publish Docker Image (Multi-Variant)
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker tag to build (e.g., docker-dev/v0.0.22)'
+        required: true
+        type: string
   push:
     tags:
       - 'docker/v*'
@@ -41,6 +47,12 @@ jobs:
           # Convert repository name to lowercase for Docker registry
           IMAGE_NAME=$(echo "${{ env.IMAGE_NAME_RAW }}" | tr '[:upper:]' '[:lower:]')
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+          # Use input tag if workflow_dispatch, otherwise use push tag
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            GITHUB_REF="refs/tags/${{ inputs.tag }}"
+          fi
+
           # Extract the version and variant from the tag
           if [[ $GITHUB_REF == refs/tags/docker/v* ]]; then
             TAG_VERSION=${GITHUB_REF#refs/tags/docker/v}  # Extracts just "1.2.3"

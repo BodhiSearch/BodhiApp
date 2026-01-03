@@ -296,6 +296,24 @@ check-docker-versions: ## Check latest versions of both production and developme
 	fi
 	@echo "==============================="
 
+trigger.docker: ## Trigger Docker workflow for latest docker/v* tag
+	@./scripts/trigger_workflow.js docker
+
+trigger.docker-dev: ## Trigger Docker workflow for latest docker-dev/v* tag
+	@./scripts/trigger_workflow.js docker-dev
+
+trigger.ts-client: ## Trigger ts-client workflow for latest tag
+	@./scripts/trigger_workflow.js ts-client
+
+trigger.bodhi-app-bindings: ## Trigger app-bindings workflow for latest tag
+	@./scripts/trigger_workflow.js bodhi-app-bindings
+
+trigger.app: ## Trigger app release workflow for latest tag
+	@./scripts/trigger_workflow.js app
+
+trigger.website: ## Trigger website deploy workflow for latest tag
+	@./scripts/trigger_workflow.js website
+
 update-context-symlinks: ## Update symlinks in ai-docs/context for CLAUDE.md and PACKAGE.md files
 	@echo "Updating AI context symlinks..."
 	@python3 scripts/update_context_symlinks.py
@@ -332,6 +350,7 @@ website.release: ## Create and push tag for website release
 	docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda \
 	docker.run docker.list docker.clean \
 	release-docker release-docker-dev check-docker-versions \
+	trigger.docker trigger.docker-dev trigger.ts-client trigger.bodhi-app-bindings trigger.app trigger.website \
 	update-context-symlinks update-context-symlinks-dry-run \
 	extension.download \
 	sync.docs sync.docs.check \

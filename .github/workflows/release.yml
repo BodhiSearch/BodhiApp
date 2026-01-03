@@ -6,6 +6,10 @@ on:
       - "app/v*"
   workflow_dispatch:
     inputs:
+      tag:
+        description: 'app tag to release (e.g., app/v0.0.40). Leave empty to use latest from GitHub releases.'
+        required: false
+        type: string
       draft:
         description: is a draft release?
         type: choice
@@ -72,6 +76,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Use input tag if workflow_dispatch with tag provided
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then
+            GITHUB_REF="refs/tags/${{ inputs.tag }}"
+          fi
+
           if [[ "${GITHUB_REF}" =~ ^refs/tags/app/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
           else
@@ -302,6 +311,6 @@ jobs:
         uses: ./.github/actions/commit-and-push-with-retry
         with:
           branch: main
-          commit-message: "chore: bump version to ${{ needs.create-release.outputs.VERSION }} [skip ci]"
+          commit-message: "chore: bump version to ${{ needs.create-release.outputs.VERSION }}"
           files: "-A"
 

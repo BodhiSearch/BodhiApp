@@ -5,6 +5,11 @@ on:
     tags:
       - 'bodhi-app-bindings/v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'bodhi-app-bindings tag to publish (e.g., bodhi-app-bindings/v0.0.21)'
+        required: true
+        type: string
 
 # Prevent concurrent releases
 concurrency:
@@ -103,6 +108,11 @@ jobs:
         id: version
         working-directory: ./crates/lib_bodhiserver_napi
         run: |
+          # Use input tag if workflow_dispatch, otherwise use push tag
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            GITHUB_REF="refs/tags/${{ inputs.tag }}"
+          fi
+
           # Extract the version from the tag
           TAG_VERSION=${GITHUB_REF#refs/tags/bodhi-app-bindings/v}
           echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
@@ -182,5 +192,5 @@ jobs:
         uses: ./.github/actions/commit-and-push-with-retry
         with:
           branch: main
-          commit-message: "chore: bump app-bindings version to ${{ steps.version.outputs.next_version }} after release [skip ci]"
+          commit-message: "chore: bump app-bindings version to ${{ steps.version.outputs.next_version }} after release"
           files: "crates/lib_bodhiserver_napi/package.json crates/lib_bodhiserver_napi/package-lock.json"
