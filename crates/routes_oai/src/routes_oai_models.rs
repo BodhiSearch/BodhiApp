@@ -74,9 +74,9 @@ pub async fn oai_models_handler(
       }
       Alias::Api(api_alias) => {
         // EXPAND API alias - each model in models array becomes separate entry
-        for model_name in &api_alias.models {
-          if seen_models.insert(model_name.clone()) {
-            models.push(api_model_to_oai_model(model_name.clone(), &api_alias));
+        for model_id in api_alias.matchable_models() {
+          if seen_models.insert(model_id.clone()) {
+            models.push(api_model_to_oai_model(model_id, &api_alias));
           }
         }
       }
@@ -136,12 +136,8 @@ pub async fn oai_model_handler(
       Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(state, user_alias))),
       Alias::Model(model_alias) => Ok(Json(model_alias_to_oai_model(state, model_alias))),
       Alias::Api(api_alias) => {
-        // For API alias, return the model if it exists in the models array
-        if api_alias.models.contains(&id) {
-          Ok(Json(api_model_to_oai_model(id, &api_alias)))
-        } else {
-          Err(ApiError::from(AliasNotFoundError(id)))
-        }
+        // DataService.find_alias() already verified model exists via matchable_models()
+        Ok(Json(api_model_to_oai_model(id, &api_alias)))
       }
     }
   } else {
@@ -179,10 +175,10 @@ fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> M
   }
 }
 
-fn api_model_to_oai_model(model_name: String, api_alias: &ApiAlias) -> Model {
+fn api_model_to_oai_model(model_id: String, api_alias: &ApiAlias) -> Model {
   let created = api_alias.created_at.timestamp() as u32;
   Model {
-    id: model_name, // Use the individual model name, not api_alias.id
+    id: model_id, // Use the prefixed model ID (prefix + model_name)
     object: "model".to_string(),
     created,
     owned_by: api_alias.base_url.clone(),
@@ -197,14 +193,24 @@ mod tests {
     http::{Request, StatusCode},
     Router,
   };
+  use chrono::Utc;
   use objs::{test_utils::setup_l10n, FluentLocalizationService};
+  use objs::{ApiAlias, ApiFormat};
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
-  use services::test_utils::AppServiceStubBuilder;
+  use services::{test_utils::AppServiceStubBuilder, AppService};
   use std::sync::Arc;
   use tower::ServiceExt;
+
+  fn create_router(service: Arc<dyn services::AppService>) -> Router {
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), service);
+    Router::new()
+      .route("/v1/models", axum::routing::get(oai_models_handler))
+      .route("/v1/models/{id}", axum::routing::get(oai_model_handler))
+      .with_state(Arc::new(router_state))
+  }
 
   #[fixture]
   async fn app() -> Router {
@@ -215,12 +221,7 @@ mod tests {
       .await
       .build()
       .unwrap();
-    let router_state =
-      DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
-    Router::new()
-      .route("/v1/models", axum::routing::get(oai_models_handler))
-      .route("/v1/models/{id}", axum::routing::get(oai_model_handler))
-      .with_state(Arc::new(router_state))
+    create_router(Arc::new(service))
   }
 
   #[rstest]
@@ -334,6 +335,173 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::NOT_FOUND, response.status());
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db_service = service.db_service();
+
+    let api_alias = ApiAlias::new(
+      "openai-gpt4",
+      ApiFormat::OpenAI,
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      Some("openai/".to_string()),
+      Utc::now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+      .await?;
+
+    let app = create_router(Arc::new(service));
+    let response = app
+      .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let response = response.json::<Value>().await?;
+    let data = response["data"].as_array().unwrap();
+
+    let model_ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
+    assert!(model_ids.contains(&"openai/gpt-4"));
+    assert!(model_ids.contains(&"openai/gpt-3.5-turbo"));
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db_service = service.db_service();
+
+    let api_alias = ApiAlias::new(
+      "openai-gpt4",
+      ApiFormat::OpenAI,
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string()],
+      None,
+      Utc::now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+      .await?;
+
+    let app = create_router(Arc::new(service));
+    let response = app
+      .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let response = response.json::<Value>().await?;
+    let data = response["data"].as_array().unwrap();
+
+    let model_ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
+    assert!(model_ids.contains(&"gpt-4"));
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db_service = service.db_service();
+
+    let api_alias = ApiAlias::new(
+      "openai-gpt4",
+      ApiFormat::OpenAI,
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string()],
+      Some("openai/".to_string()),
+      Utc::now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+      .await?;
+
+    let app = create_router(Arc::new(service));
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/v1/models/openai%2Fgpt-4")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let response = response.json::<Value>().await?;
+    assert_eq!(
+      json! {{
+        "id": "openai/gpt-4",
+        "object": "model",
+        "created": api_alias.created_at.timestamp() as u32,
+        "owned_by": "https://api.openai.com/v1",
+      }},
+      response
+    );
+
+    Ok(())
+  }
+
+  #[tokio::test]
+  async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db_service = service.db_service();
+
+    let api_alias = ApiAlias::new(
+      "openai-gpt4",
+      ApiFormat::OpenAI,
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string()],
+      None,
+      Utc::now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, Some("test-key".to_string()))
+      .await?;
+
+    let app = create_router(Arc::new(service));
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/v1/models/gpt-4")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let response = response.json::<Value>().await?;
+    assert_eq!(
+      json! {{
+        "id": "gpt-4",
+        "object": "model",
+        "created": api_alias.created_at.timestamp() as u32,
+        "owned_by": "https://api.openai.com/v1",
+      }},
+      response
+    );
+
     Ok(())
   }
 }
