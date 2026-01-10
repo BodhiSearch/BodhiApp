@@ -152,6 +152,72 @@ release-app-bindings: ## Create and push tag for app-bindings package release
 	git push origin "$$TAG_NAME" && \
 	echo "Tag $$TAG_NAME pushed. GitHub workflow will handle the release process."
 
+release.all: ## Release all components: ts-client, app-bindings, app, docker
+	@echo "=========================================="
+	@echo "       Unified Release: All Components"
+	@echo "=========================================="
+	$(call check_git_branch)
+	@echo ""
+	@echo "Fetching current versions..."
+	@TS_CUR=$$($(call get_npm_version,@bodhiapp/ts-client)) && \
+	AB_CUR=$$($(call get_npm_version,@bodhiapp/app-bindings)) && \
+	APP_CUR=$$($(call get_app_version)) && \
+	DOCK_CUR=$$($(call get_ghcr_docker_version,production)) && \
+	TS_NEXT=$$($(call increment_version,$$TS_CUR)) && \
+	AB_NEXT=$$($(call increment_version,$$AB_CUR)) && \
+	APP_NEXT=$$($(call increment_version,$$APP_CUR)) && \
+	DOCK_NEXT=$$($(call increment_version,$$DOCK_CUR)) && \
+	TS_TAG="ts-client/v$$TS_NEXT" && \
+	AB_TAG="bodhi-app-bindings/v$$AB_NEXT" && \
+	APP_TAG="app/v$$APP_NEXT" && \
+	DOCK_TAG="docker/v$$DOCK_NEXT" && \
+	echo "" && \
+	echo "Release Plan:" && \
+	echo "  ts-client:     $$TS_CUR -> $$TS_NEXT" && \
+	echo "  app-bindings:  $$AB_CUR -> $$AB_NEXT" && \
+	echo "  app:           $$APP_CUR -> $$APP_NEXT" && \
+	echo "  docker:        $$DOCK_CUR -> $$DOCK_NEXT" && \
+	echo "" && \
+	echo "Checking existing tags..." && \
+	$(call delete_tag_if_exists,$$TS_TAG) && \
+	$(call delete_tag_if_exists,$$AB_TAG) && \
+	$(call delete_tag_if_exists,$$APP_TAG) && \
+	$(call delete_tag_if_exists,$$DOCK_TAG) && \
+	echo "" && \
+	read -p "Create and push all release tags? [y/N] " confirm && \
+	[ "$$confirm" = "y" ] || { echo "Aborted."; exit 1; } && \
+	echo "" && \
+	echo "Creating tags on current commit..." && \
+	git tag "$$TS_TAG" && \
+	git tag "$$AB_TAG" && \
+	git tag "$$APP_TAG" && \
+	git tag "$$DOCK_TAG" && \
+	ALL_TAGS="$$TS_TAG $$AB_TAG $$APP_TAG $$DOCK_TAG" && \
+	echo "Pushing all tags atomically..." && \
+	if ! git push origin $$ALL_TAGS; then \
+		echo "Push failed! Cleaning up local tags..." && \
+		git tag -d "$$TS_TAG" 2>/dev/null || true && \
+		git tag -d "$$AB_TAG" 2>/dev/null || true && \
+		git tag -d "$$APP_TAG" 2>/dev/null || true && \
+		git tag -d "$$DOCK_TAG" 2>/dev/null || true && \
+		exit 1; \
+	fi && \
+	echo "" && \
+	echo "==========================================" && \
+	echo "           Release Complete" && \
+	echo "==========================================" && \
+	echo "Tags pushed:" && \
+	echo "  - $$TS_TAG" && \
+	echo "  - $$AB_TAG" && \
+	echo "  - $$APP_TAG" && \
+	echo "  - $$DOCK_TAG" && \
+	echo "" && \
+	echo "Workflows triggered:" && \
+	echo "  - publish-ts-client.yml" && \
+	echo "  - publish-app-bindings.yml" && \
+	echo "  - release.yml" && \
+	echo "  - publish-docker.yml + publish-docker-multiplatform.yml"
+
 ui.test:
 	cd crates/bodhi && npm run test
 
@@ -345,7 +411,7 @@ website.release: ## Create and push tag for website release
 .PHONY: test format coverage \
 	ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui \
 	ci.ts-client-check ci.ts-client-test ts-client \
-	release-app release-app-bindings \
+	release-app release-app-bindings release.all \
 	ui.test \
 	docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda \
 	docker.run docker.list docker.clean \

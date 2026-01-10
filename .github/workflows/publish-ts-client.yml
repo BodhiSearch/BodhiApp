@@ -143,3 +143,4 @@ jobs:
           branch: main
           commit-message: "chore: bump ts-client version to ${{ steps.version.outputs.next_version }} after release"
           files: "ts-client/package.json ts-client/package-lock.json"
+          bump-command: "cd ts-client && npm version ${{ steps.version.outputs.next_version }} --no-git-tag-version"

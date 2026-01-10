@@ -20,6 +20,10 @@ inputs:
     description: "Fetch depth for upstream sync (0 for full history)"
     required: false
     default: "1"
+  bump-command:
+    description: "Command to regenerate changes on retry (runs after rebase)"
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -122,6 +126,7 @@ runs:
       shell: bash
       run: |
         MAX_RETRIES=${{ inputs.max-retries }}
+        BUMP_CMD="${{ inputs.bump-command }}"
 
         for i in $(seq 1 $MAX_RETRIES); do
           echo "Push attempt $i/$MAX_RETRIES"
@@ -134,10 +139,30 @@ runs:
           # If this wasn't the last attempt, try to rebase and retry
           if [[ $i -lt $MAX_RETRIES ]]; then
             echo "Push failed, rebasing and retrying..."
+
+            # Reset the commit we just made
+            git reset --hard HEAD~1
+
+            # Sync with upstream
             if ! git pull --rebase origin ${{ inputs.branch }}; then
               echo "Error: Failed to rebase after failed push"
               echo "There may be conflicts that need manual resolution"
               exit 1
+            fi
+
+            # Re-run bump command if provided
+            if [[ -n "$BUMP_CMD" ]]; then
+              echo "Re-running bump command..."
+              eval "$BUMP_CMD"
+            fi
+
+            # Re-add and commit
+            git add ${{ inputs.files }}
+            if ! git diff --cached --quiet; then
+              git commit -m "${{ inputs.commit-message }}"
+            else
+              echo "No changes after re-bump, nothing to push"
+              exit 0
             fi
           fi
         done

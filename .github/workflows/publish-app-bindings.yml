@@ -194,3 +194,4 @@ jobs:
           branch: main
           commit-message: "chore: bump app-bindings version to ${{ steps.version.outputs.next_version }} after release"
           files: "crates/lib_bodhiserver_napi/package.json crates/lib_bodhiserver_napi/package-lock.json"
+          bump-command: "cd crates/lib_bodhiserver_napi && npm version ${{ steps.version.outputs.next_version }} --no-git-tag-version && npm install"

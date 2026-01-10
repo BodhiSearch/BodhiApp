@@ -311,6 +311,10 @@ jobs:
         uses: ./.github/actions/commit-and-push-with-retry
         with:
           branch: main
-          commit-message: "chore: bump version to ${{ needs.create-release.outputs.VERSION }}"
+          commit-message: "chore: bump version to ${{ needs.create-release.outputs.VERSION }}-dev after release"
           files: "-A"
+          bump-command: |
+            NEXT_VERSION=$(./scripts/increment_version.js "${{ needs.create-release.outputs.VERSION }}" patch dev)
+            make ci.update-version VERSION="$NEXT_VERSION"
+            cargo update --workspace
 
