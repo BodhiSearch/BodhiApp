@@ -1,20 +1,20 @@
 name: Publish Docker Image (Multi-Platform)
 
 on:
+  push:
+    tags:
+      - 'docker/v*'
+      - 'docker-dev/v*'
   workflow_dispatch:
     inputs:
       tag:
         description: 'Docker tag to build (e.g., docker-dev/v0.0.22)'
         required: true
         type: string
-  push:
-    tags:
-      - 'docker/v*'
-      - 'docker-dev/v*'
 
 # Prevent concurrent releases
 concurrency:
-  group: docker-multiplatform-release-${{ github.ref }}
+  group: publish-docker-multiplatform-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -40,7 +40,28 @@ jobs:
       image_name: ${{ steps.version.outputs.image_name }}
       app_version: ${{ steps.version.outputs.app_version }}
       commit_sha: ${{ steps.version.outputs.commit_sha }}
+      release_tag: ${{ steps.release.outputs.tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate release tag
+        uses: ./.github/actions/validate-release-tag
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          pattern: '^docker(-dev)?/v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern-description: 'docker/vX.Y.Z or docker-dev/vX.Y.Z'
+
       - name: Extract version information
         id: version
         run: |
@@ -48,10 +69,8 @@ jobs:
           IMAGE_NAME=$(echo "${{ env.IMAGE_NAME_RAW }}" | tr '[:upper:]' '[:lower:]')
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-          # Use input tag if workflow_dispatch, otherwise use push tag
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            GITHUB_REF="refs/tags/${{ inputs.tag }}"
-          fi
+          # Use the validated tag
+          GITHUB_REF="refs/tags/${{ steps.release.outputs.tag }}"
 
           # Extract the version and variant from the tag
           if [[ $GITHUB_REF == refs/tags/docker/v* ]]; then
@@ -296,7 +315,7 @@ jobs:
           # Create the base structure
           jq -n \
             --arg version "${{ needs.extract-version.outputs.tag_version }}" \
-            --arg tag "${{ github.ref_name }}" \
+            --arg tag "${{ needs.extract-version.outputs.release_tag }}" \
             --arg registry "$REGISTRY" \
             --arg image_name "${{ needs.extract-version.outputs.image_name }}" \
             --arg build_variant "${{ needs.extract-version.outputs.build_variant }}" \
@@ -505,7 +524,7 @@ jobs:
         if: steps.check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          tag_name: ${{ needs.extract-version.outputs.release_tag }}
           name: 'Docker Multi-Platform Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
           body_path: release_body.md
           draft: false

@@ -1,17 +1,15 @@
 name: Deploy Website to GitHub Pages
 
 on:
-  # Manual trigger with version input
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to deploy (x.y.z format, e.g., 0.1.0)'
-        required: true
-        type: string
-  # Auto-trigger on release tags
   push:
     tags:
       - 'getbodhi.app/v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Website tag to deploy (e.g., getbodhi.app/v0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -19,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: deploy-website-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -28,9 +26,27 @@ jobs:
     defaults:
       run:
         working-directory: getbodhi.app
+    outputs:
+      release_tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate release tag
+        uses: ./.github/actions/validate-release-tag
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          pattern: '^getbodhi.app/v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern-description: 'getbodhi.app/vX.Y.Z'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -58,14 +74,10 @@ jobs:
 
       - name: Update version and generate version.json
         run: |
-          # Determine version based on trigger type
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ inputs.version }}"
-            echo "Using workflow_dispatch version: $VERSION"
-          else
-            VERSION="${GITHUB_REF_NAME#getbodhi.app/v}"
-            echo "Using tag version: $VERSION"
-          fi
+          # Extract version from tag
+          VERSION="${{ steps.release.outputs.tag }}"
+          VERSION="${VERSION#getbodhi.app/v}"
+          echo "Using version: $VERSION"
 
           # Validate version format
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -109,7 +121,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   update-homebrew:
-    if: startsWith(github.ref, 'refs/tags/getbodhi.app/v')
+    if: needs.deploy.result == 'success'
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
@@ -163,8 +175,8 @@ jobs:
             }
 
   bump-dev-version:
-    if: startsWith(github.ref, 'refs/tags/getbodhi.app/v')
-    needs: deploy
+    if: needs.deploy.result == 'success'
+    needs: [build, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -184,7 +196,8 @@ jobs:
 
       - name: Bump to development version
         run: |
-          VERSION="${GITHUB_REF_NAME#getbodhi.app/v}"
+          TAG="${{ needs.build.outputs.release_tag }}"
+          VERSION="${TAG#getbodhi.app/v}"
           NEXT_VERSION=$(node ../scripts/increment_version.js "$VERSION" patch dev)
           echo "Bumping to development version: $NEXT_VERSION"
 

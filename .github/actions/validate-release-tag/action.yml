@@ -1,0 +1,63 @@
+name: Validate Release Tag
+description: Validates tag format and existence on remote, then extracts version
+
+inputs:
+  tag:
+    description: 'The tag to validate (e.g., ts-client/v0.1.10)'
+    required: true
+  pattern:
+    description: 'Regex pattern for tag format validation'
+    required: true
+  pattern-description:
+    description: 'Human-readable description of expected pattern (e.g., ts-client/vX.Y.Z)'
+    required: true
+
+outputs:
+  tag:
+    description: 'The validated tag'
+    value: ${{ steps.validate.outputs.tag }}
+  version:
+    description: 'Extracted version number (e.g., 0.1.10)'
+    value: ${{ steps.validate.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate tag format and existence
+      id: validate
+      shell: bash
+      run: |
+        TAG="${{ inputs.tag }}"
+        PATTERN="${{ inputs.pattern }}"
+        PATTERN_DESC="${{ inputs.pattern-description }}"
+
+        # Validate tag format
+        if ! echo "$TAG" | grep -qE "$PATTERN"; then
+          echo "::error::Invalid tag format: '$TAG'"
+          echo "::error::Expected pattern: $PATTERN_DESC"
+          echo "::error::Example: $PATTERN_DESC where X.Y.Z are semantic version numbers"
+          exit 1
+        fi
+
+        # Verify tag exists on remote
+        if ! git ls-remote --tags origin "refs/tags/$TAG" | grep -q "refs/tags/$TAG"; then
+          echo "::error::Tag '$TAG' does not exist on remote"
+          echo "::error::Please create and push the tag first: git tag $TAG && git push origin $TAG"
+          exit 1
+        fi
+
+        # Extract version by removing everything before the 'v' and the 'v' itself
+        VERSION=$(echo "$TAG" | sed -E 's/.*v([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
+
+        if [ -z "$VERSION" ] || ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "::error::Failed to extract version from tag: '$TAG'"
+          echo "::error::Expected semantic version format: X.Y.Z"
+          exit 1
+        fi
+
+        # Output validated values
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+        echo "✓ Tag validated: $TAG"
+        echo "✓ Version extracted: $VERSION"

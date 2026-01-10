@@ -7,24 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'app tag to release (e.g., app/v0.0.40). Leave empty to use latest from GitHub releases.'
-        required: false
+        description: 'app tag to release (e.g., app/v0.0.40)'
+        required: true
         type: string
-      draft:
-        description: is a draft release?
-        type: choice
-        options:
-          - "yes"
-          - "no"
-          - "no-release"
-        default: "yes"
-      prerelease:
-        description: is a prerelease?
-        type: choice
-        options:
-          - "yes"
-          - "no"
-        default: "yes"
 
 env:
   CI: true
@@ -32,7 +17,6 @@ env:
 
 jobs:
   build-and-sign:
-    if: inputs.draft != 'no-release'
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
@@ -62,34 +46,45 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
+
+      - name: Set release tag
+        id: release
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate release tag
+        uses: ./.github/actions/validate-release-tag
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          pattern: '^app/v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern-description: 'app/vX.Y.Z'
+
       - uses: ./.github/actions/setup-rust
         with:
           platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
+
       - name: setup-node
         uses: ./.github/actions/setup-node
         with:
           platform: ${{ matrix.platform }}
+
       - name: Set VERSION environment variable
         id: get_version
         shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use input tag if workflow_dispatch with tag provided
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then
-            GITHUB_REF="refs/tags/${{ inputs.tag }}"
-          fi
-
-          if [[ "${GITHUB_REF}" =~ ^refs/tags/app/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          # Extract version from tag
+          TAG="${{ steps.release.outputs.tag }}"
+          if [[ "${TAG}" =~ ^app/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
           else
-            # Use script to get latest version from GitHub releases
-            CURRENT_VERSION=$(./scripts/get_github_release_version.js BodhiSearch/BodhiApp)
-            # Increment the patch version
-            NEW_VERSION=$(echo ${CURRENT_VERSION} | awk -F. '{$3 = $3 + 1; print}' OFS=.)
-            # Set the VERSION environment variable
-            echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "::error::Failed to extract version from tag: $TAG"
+            exit 1
           fi
       - name: clean
         shell: bash
@@ -164,7 +159,6 @@ jobs:
           path: artifacts/
 
   create-release:
-    if: inputs.draft != 'no-release'
     needs: build-and-sign
     runs-on: ubuntu-latest
     permissions:
@@ -183,11 +177,10 @@ jobs:
           tag_name: "app/v${{ needs.build-and-sign.outputs.VERSION }}"
           name: "Bodhi v${{ needs.build-and-sign.outputs.VERSION }}"
           body: "See the assets to download this version and install."
-          draft: ${{ inputs.draft }}
-          prerelease: ${{ inputs.prerelease }}
+          draft: false
+          prerelease: false
 
   upload-assets:
-    if: inputs.draft != 'no-release'
     needs: [build-and-sign, create-release]
     permissions:
       contents: write
@@ -281,7 +274,6 @@ jobs:
           gh release view "app/v${{ needs.create-release.outputs.VERSION }}" --repo ${{ github.repository }} --json assets --jq '.assets[].name' | sed 's/^/  - /'
 
   bump-version:
-    if: inputs.draft != 'no-release' && inputs.draft != 'yes'
     needs: [upload-assets, create-release]
     runs-on: ubuntu-latest
     permissions:

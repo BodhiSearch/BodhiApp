@@ -13,7 +13,7 @@ on:
 
 # Prevent concurrent releases
 concurrency:
-  group: npm-napi-release-${{ github.ref }}
+  group: publish-app-bindings-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -100,21 +100,35 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Set release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate release tag
+        uses: ./.github/actions/validate-release-tag
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          pattern: '^bodhi-app-bindings/v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern-description: 'bodhi-app-bindings/vX.Y.Z'
+
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
         with:
           platform: ubuntu-latest
+
       - name: Extract version information
         id: version
         working-directory: ./crates/lib_bodhiserver_napi
         run: |
-          # Use input tag if workflow_dispatch, otherwise use push tag
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            GITHUB_REF="refs/tags/${{ inputs.tag }}"
-          fi
-
           # Extract the version from the tag
-          TAG_VERSION=${GITHUB_REF#refs/tags/bodhi-app-bindings/v}
+          TAG_VERSION="${{ steps.release.outputs.tag }}"
+          TAG_VERSION=${TAG_VERSION#bodhi-app-bindings/v}
           echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "release_version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
@@ -181,6 +195,18 @@ jobs:
         run: npm run verify-packages
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: 'app-bindings v${{ steps.version.outputs.tag_version }}'
+          body: |
+            NAPI Bindings Release v${{ steps.version.outputs.tag_version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump version and add -dev suffix
         run: |

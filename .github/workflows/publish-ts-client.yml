@@ -1,20 +1,23 @@
 name: Publish TypeScript Client
 
 on:
+  push:
+    tags:
+      - 'ts-client/v*'
   workflow_dispatch:
     inputs:
       tag:
         description: 'ts-client tag to publish (e.g., ts-client/v0.1.9)'
         required: true
         type: string
-  push:
-    tags:
-      - 'ts-client/v*'
 
 # Prevent concurrent releases
 concurrency:
-  group: npm-release-${{ github.ref }}
+  group: publish-ts-client-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  CI: true
 
 permissions:
   contents: write
@@ -31,6 +34,22 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Set release tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate release tag
+        uses: ./.github/actions/validate-release-tag
+        with:
+          tag: ${{ steps.release.outputs.tag }}
+          pattern: '^ts-client/v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern-description: 'ts-client/vX.Y.Z'
+
       - name: Set up Node
         uses: ./.github/actions/setup-node
         with:
@@ -40,13 +59,9 @@ jobs:
         id: version
         working-directory: ./ts-client
         run: |
-          # Use input tag if workflow_dispatch, otherwise use push tag
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            GITHUB_REF="refs/tags/${{ inputs.tag }}"
-          fi
-
           # Extract the version from the tag
-          TAG_VERSION=${GITHUB_REF#refs/tags/ts-client/v}
+          TAG_VERSION="${{ steps.release.outputs.tag }}"
+          TAG_VERSION=${TAG_VERSION#ts-client/v}
           echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "release_version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
@@ -98,9 +113,9 @@ jobs:
             fi
           done
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          tag_name: ${{ steps.release.outputs.tag }}
           files: |
             ts-client/dist/*
             ts-client/README.md
