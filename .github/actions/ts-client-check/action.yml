@@ -18,4 +18,4 @@ runs:
 
     - name: Check ts-client bundle
       shell: bash
-      run: make ts-client
+      run: make build.ts-client

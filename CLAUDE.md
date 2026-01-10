@@ -9,11 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make test.backend` - Run Rust backend tests (`cargo test` and `cargo test -p bodhi --features native`)
 - `make test.ui` - Run frontend tests (`cd crates/bodhi && npm install && npm test`)
 - `make test.napi` - Run NAPI bindings tests (`cd crates/lib_bodhiserver_napi && npm install && npm run test`)
-- `make ui.test` - Run UI tests (alias for frontend tests)
 
 ### Building & Packaging
 - `make ci.build` - Build Tauri desktop application
-- `make ts-client` - Build TypeScript client package with tests
+- `make build.ts-client` - Build TypeScript client package with tests
 - `cd crates/bodhi && npm run build` - Build Next.js frontend
 - `cd crates/lib_bodhiserver_napi && npm run build:release` - Build NAPI bindings
 
@@ -26,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd crates/lib_bodhiserver_napi && npm run format` - Format NAPI package
 
 ### Coverage & Analysis
-- `make coverage` - Generate code coverage report (outputs to `lcov.info`)
+- `make test.coverage` - Generate code coverage report (outputs to `lcov.info`)
 
 ### OpenAPI & Client Generation
 - `cargo run --package xtask openapi` - Generate OpenAPI specification
@@ -49,13 +48,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make docker.clean` - Remove all locally built BodhiApp Docker images
 
 ### Release Management
-- `make release-ts-client` - Create and push tag for TypeScript client package release (@bodhiapp/ts-client)
-- `make release-app-bindings` - Create and push tag for NAPI bindings release (@bodhiapp/app-bindings)
-- `make release-docker` - Create and push tag for production Docker image release
-- `make release-docker-dev` - Create and push tag for development Docker image release
-- `make check-docker-versions` - Check latest versions of Docker images from GitHub Container Registry
+- `make release.ts-client` - Create and push tag for TypeScript client package release (@bodhiapp/ts-client)
+- `make release.app-bindings` - Create and push tag for NAPI bindings release (@bodhiapp/app-bindings)
+- `make release.docker` - Create and push tag for production Docker image release
+- `make release.docker-dev` - Create and push tag for development Docker image release
+- `make docker.version-check` - Check latest versions of Docker images from GitHub Container Registry
 - `make ci.ts-client-check` - Verify TypeScript client is synchronized with OpenAPI specification
-- `make update-context-symlinks` - Update AI documentation context symlinks (CLAUDE.md/PACKAGE.md)
+- `make docs.context-update` - Update AI documentation context symlinks (CLAUDE.md/PACKAGE.md)
 
 ## Architecture Overview
 
@@ -206,7 +205,7 @@ Local AI model management integrates multiple services and external systems:
 
 **IMPORTANT: After making changes to UI components, you MUST rebuild the embedded UI:**
 
-1. `make clean.ui` - Clean the embedded UI build (removes crates/bodhi/out)
+1. `make build.ui-clean` - Clean the embedded UI build (removes crates/bodhi/out)
 2. `make build.ui` - Build the embedded UI with changes (builds Next.js and NAPI bindings)
 
 The application embeds the UI build, so changes to React components won't be visible until rebuilt. This is required for:
@@ -240,6 +239,6 @@ The application embeds the UI build, so changes to React components won't be vis
 ### Backwards Compatibility
 - Do not plan for backwards compatibility unless specifically mentioned - BodhiApp prioritizes architectural improvement over legacy support
 - Do not add timeouts for Playwright UI tests except on ChatPage which requires model warm-up time
-- if you make changes to @crates/bodhi/src/ you have to run `make rebuild.ui` in project root for playwright test to get the ui updates
+- if you make changes to @crates/bodhi/src/ you have to run `make build.ui-rebuild` in project root for playwright test to get the ui updates
 - do not add inline timeout in component test in crates/bodhi/src, instead rely on the default timeout, or modify the source/test for it so we do not have to override the default timeout
 - for ui test, do not add inline timeouts, this fix hides the actual issue

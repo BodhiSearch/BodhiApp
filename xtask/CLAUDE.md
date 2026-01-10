@@ -163,7 +163,7 @@ This output strategy ensures that each consumer receives appropriately formatted
 ## Development Integration Points
 
 ### Makefile Integration
-The crate integrates with the project's Makefile system through `make ts-client` command, which orchestrates complete TypeScript client building with tests. This provides a higher-level interface for complex build workflows.
+The crate integrates with the project's Makefile system through `make build.ts-client` command, which orchestrates complete TypeScript client building with tests. This provides a higher-level interface for complex build workflows.
 
 ### CI/CD Pipeline Integration
 xtask is designed for both manual development use and automated CI/CD execution. The automated toolchain installation ensures consistent behavior across different execution environments without requiring manual setup.

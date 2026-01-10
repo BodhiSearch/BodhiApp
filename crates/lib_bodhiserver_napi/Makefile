@@ -70,7 +70,7 @@ dev: format-rust build-debug test-js-config ## Quick development cycle
 clean: clean-rust clean-js ## Clean all build artifacts
 
 clean-rust: ## Clean Rust build artifacts
-	$(MAKE) -C ../.. clean.ui
+	$(MAKE) -C ../.. build.ui-clean
 
 clean-js: ## Clean JavaScript build artifacts and dependencies
 	rm -rf node_modules test-results playwright-report coverage .nyc_output app-bindings.*.node
