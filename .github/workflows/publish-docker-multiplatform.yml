@@ -505,7 +505,7 @@ jobs:
         if: steps.check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           name: 'Docker Multi-Platform Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
           body_path: release_body.md
           draft: false

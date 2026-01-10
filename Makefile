@@ -193,30 +193,57 @@ release.all: ## Release all components: ts-client, app-bindings, app, docker
 	git tag "$$APP_TAG" && \
 	git tag "$$DOCK_TAG" && \
 	ALL_TAGS="$$TS_TAG $$AB_TAG $$APP_TAG $$DOCK_TAG" && \
-	echo "Pushing all tags atomically..." && \
-	if ! git push origin $$ALL_TAGS; then \
-		echo "Push failed! Cleaning up local tags..." && \
-		git tag -d "$$TS_TAG" 2>/dev/null || true && \
-		git tag -d "$$AB_TAG" 2>/dev/null || true && \
-		git tag -d "$$APP_TAG" 2>/dev/null || true && \
-		git tag -d "$$DOCK_TAG" 2>/dev/null || true && \
+	echo "Pushing tags sequentially (to trigger GitHub Actions)..." && \
+	FAILED_TAGS="" && \
+	SUCCEEDED_TAGS="" && \
+	for tag in $$ALL_TAGS; do \
+		echo "  Pushing $$tag..." && \
+		if git push origin "$$tag"; then \
+			echo "  ✓ $$tag pushed" && \
+			SUCCEEDED_TAGS="$$SUCCEEDED_TAGS $$tag"; \
+		else \
+			echo "  ✗ Failed to push $$tag" && \
+			FAILED_TAGS="$$FAILED_TAGS $$tag"; \
+		fi && \
+		sleep 1; \
+	done && \
+	echo "" && \
+	echo "==========================================" && \
+	if [ -z "$$FAILED_TAGS" ]; then \
+		echo "           Release Complete" && \
+		echo "==========================================" && \
+		echo "Tags successfully pushed:" && \
+		for tag in $$SUCCEEDED_TAGS; do \
+			echo "  ✓ $$tag"; \
+		done && \
+		echo "" && \
+		echo "Workflows triggered:" && \
+		echo "  - publish-ts-client.yml" && \
+		echo "  - publish-app-bindings.yml" && \
+		echo "  - release.yml" && \
+		echo "  - publish-docker.yml + publish-docker-multiplatform.yml"; \
+	else \
+		echo "     Release Completed with Failures" && \
+		echo "==========================================" && \
+		if [ -n "$$SUCCEEDED_TAGS" ]; then \
+			echo "Tags successfully pushed:" && \
+			for tag in $$SUCCEEDED_TAGS; do \
+				echo "  ✓ $$tag"; \
+			done && \
+			echo ""; \
+		fi && \
+		echo "Tags that failed to push:" && \
+		for tag in $$FAILED_TAGS; do \
+			echo "  ✗ $$tag"; \
+		done && \
+		echo "" && \
+		echo "Please manually push failed tags:" && \
+		for tag in $$FAILED_TAGS; do \
+			echo "  git push origin $$tag"; \
+		done && \
+		echo "" && \
 		exit 1; \
-	fi && \
-	echo "" && \
-	echo "==========================================" && \
-	echo "           Release Complete" && \
-	echo "==========================================" && \
-	echo "Tags pushed:" && \
-	echo "  - $$TS_TAG" && \
-	echo "  - $$AB_TAG" && \
-	echo "  - $$APP_TAG" && \
-	echo "  - $$DOCK_TAG" && \
-	echo "" && \
-	echo "Workflows triggered:" && \
-	echo "  - publish-ts-client.yml" && \
-	echo "  - publish-app-bindings.yml" && \
-	echo "  - release.yml" && \
-	echo "  - publish-docker.yml + publish-docker-multiplatform.yml"
+	fi
 
 ui.test:
 	cd crates/bodhi && npm run test

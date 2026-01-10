@@ -107,15 +107,25 @@ Additionally, this includes a fix for concurrent version bump conflicts that occ
 5. Check each tag for existence via `delete_tag_if_exists` (4 prompts if tags exist)
 6. Final confirmation: "Create and push all release tags? [y/N]"
 7. Create all 4 tags locally on current commit
-8. **Atomic push**: `git push origin tag1 tag2 tag3 tag4`
-9. On push failure: cleanup local tags, exit with error
-10. On success: display summary of tags pushed and workflows triggered
+8. **Sequential push**: Push each tag individually with 1-second delay between pushes
+   - Required for GitHub Actions to create separate workflow runs per tag
+   - All tags still point to identical commit SHA (commit-level atomicity preserved)
+   - 1-second delay ensures webhook events are processed separately
+   - Continue pushing all tags even if some fail (no early termination)
+9. On completion: display summary of succeeded and failed pushes
+   - If all succeeded: show successful tags and triggered workflows
+   - If any failed: show both succeeded and failed tags with manual push commands
+   - Exit with error code if any push failed
+10. Local tags are preserved (not deleted) regardless of push success/failure
 
 **Key Features**:
 - Reuses existing validation and version-fetching functions
-- All tags point to identical commit SHA
-- Single git push operation (atomic)
-- Automatic cleanup on failure
+- All tags point to identical commit SHA (commit-level atomicity)
+- Sequential git push operations (required for GitHub Actions workflow triggering)
+- 1-second delay between pushes to ensure proper webhook delivery
+- Resilient push process: continues even if individual tags fail
+- Local tags preserved for manual recovery
+- Clear reporting of succeeded and failed pushes
 
 ### 2. Concurrent Version Bump Fix
 
@@ -176,8 +186,23 @@ bump-command: |
 | Validation | Use check_git_branch once | Same validation as individual targets |
 | Tag prompts | Use delete_tag_if_exists per tag | Consistent with existing UX (4 prompts if needed) |
 | Final confirmation | Yes, before creating/pushing | Extra safety for critical operation |
-| Failure cleanup | Local tags only | Simpler, safer (remote cleanup can cause issues) |
+| Push strategy | Sequential with 1s delay | Required for GitHub Actions to trigger separate workflow runs per tag |
+| Failure handling | Continue on error, report all failures | Maximize successful pushes, provide clear recovery commands |
+| Tag preservation | Keep local tags on failure | Enable manual recovery without recreating tags |
 | Bump fix | Include in this change | Solves immediate problem caused by release.all |
+
+### GitHub Actions Limitation: Sequential Push Requirement
+
+**Issue Discovered**: When pushing multiple tags atomically (`git push origin tag1 tag2 tag3 tag4`), GitHub Actions does not create separate push events for each tag. This results in workflows not being triggered.
+
+**Root Cause**: GitHub's webhook system bundles multiple tag pushes into a single event or processes only the first tag when tags are pushed simultaneously.
+
+**Solution**: Push tags sequentially with a 1-second delay between each push. This ensures:
+- Each tag push creates a separate GitHub webhook event
+- Each workflow is triggered independently
+- All tags still point to the same commit SHA (commit-level atomicity preserved)
+
+**Trade-off**: Sequential push takes ~4 seconds longer than atomic push, but ensures workflows trigger correctly.
 
 ---
 
@@ -214,16 +239,24 @@ Checking for existing tag docker/v0.0.9...
 Create and push all release tags? [y/N] y
 
 Creating tags on current commit...
-Pushing all tags atomically...
+Pushing tags sequentially (to trigger GitHub Actions)...
+  Pushing ts-client/v0.1.11...
+  ✓ ts-client/v0.1.11 pushed
+  Pushing bodhi-app-bindings/v0.0.23...
+  ✓ bodhi-app-bindings/v0.0.23 pushed
+  Pushing app/v0.0.43...
+  ✓ app/v0.0.43 pushed
+  Pushing docker/v0.0.9...
+  ✓ docker/v0.0.9 pushed
 
 ==========================================
            Release Complete
 ==========================================
-Tags pushed:
-  - ts-client/v0.1.11
-  - bodhi-app-bindings/v0.0.23
-  - app/v0.0.43
-  - docker/v0.0.9
+Tags successfully pushed:
+  ✓ ts-client/v0.1.11
+  ✓ bodhi-app-bindings/v0.0.23
+  ✓ app/v0.0.43
+  ✓ docker/v0.0.9
 
 Workflows triggered:
   - publish-ts-client.yml
@@ -234,17 +267,41 @@ Workflows triggered:
 
 ### Error Handling
 
-**If push fails**:
+**If some pushes fail** (partial failure example):
 ```
-Push failed! Cleaning up local tags...
-Deleting local tag ts-client/v0.1.11...
-Deleting local tag bodhi-app-bindings/v0.0.23...
-Deleting local tag app/v0.0.43...
-Deleting local tag docker/v0.0.9...
+Pushing tags sequentially (to trigger GitHub Actions)...
+  Pushing ts-client/v0.1.11...
+  ✓ ts-client/v0.1.11 pushed
+  Pushing bodhi-app-bindings/v0.0.23...
+  ✗ Failed to push bodhi-app-bindings/v0.0.23
+  Pushing app/v0.0.43...
+  ✓ app/v0.0.43 pushed
+  Pushing docker/v0.0.9...
+  ✓ docker/v0.0.9 pushed
+
+==========================================
+     Release Completed with Failures
+==========================================
+Tags successfully pushed:
+  ✓ ts-client/v0.1.11
+  ✓ app/v0.0.43
+  ✓ docker/v0.0.9
+
+Tags that failed to push:
+  ✗ bodhi-app-bindings/v0.0.23
+
+Please manually push failed tags:
+  git push origin bodhi-app-bindings/v0.0.23
+
 make: *** [release.all] Error 1
 ```
 
-User can investigate issue, fix it, and re-run `make release.all`.
+**Key behaviors**:
+- All tags are attempted (no early termination on first failure)
+- Local tags are preserved for manual recovery
+- Clear reporting of what succeeded and what failed
+- Manual push commands provided for failed tags
+- Successfully pushed tags trigger their workflows normally
 
 ---
 
@@ -275,7 +332,9 @@ User can investigate issue, fix it, and re-run `make release.all`.
 2. **Consistency**: All tags on identical commit
 3. **Safety**: Multiple confirmation prompts before irreversible operations
 4. **Transparency**: Clear output showing what will happen
-5. **Rollback**: Easy to revert (just delete the new target)
+5. **Resilient Error Handling**: Continues pushing all tags even if some fail
+6. **Easy Recovery**: Failed tags preserved locally with manual push commands provided
+7. **Rollback**: Easy to revert (just delete the new target)
 
 ### For CI/CD
 
