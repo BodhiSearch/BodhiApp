@@ -273,6 +273,7 @@ pub fn build_routes(
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any)
+        .allow_private_network(true)
         .allow_credentials(false),
     )
     .with_state(state);
