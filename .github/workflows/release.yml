@@ -125,6 +125,7 @@ jobs:
           appName: Bodhi App
           iconPath: src-tauri/icons
           args: "--target ${{ matrix.target }} --features native,production"
+          retryAttempts: 3
       - name: Archive Artifacts
         shell: bash
         run: |
