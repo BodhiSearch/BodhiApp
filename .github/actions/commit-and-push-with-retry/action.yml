@@ -53,7 +53,7 @@ runs:
 
           git fetch origin ${{ inputs.branch }}
           git checkout ${{ inputs.branch }}
-          git pull origin ${{ inputs.branch }}
+          git pull --rebase origin ${{ inputs.branch }}
 
           # Restore stashed changes
           if [[ $NEEDS_UNSTASH -eq 1 ]]; then
