@@ -1524,4 +1524,178 @@ mod tests {
 
     Ok(())
   }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_model_forward_all_requires_prefix(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create app service
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .with_secret_service()
+        .build()?,
+    );
+
+    // Try to create API model with forward_all=true but no prefix
+    let create_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::none(),
+      models: vec!["gpt-4".to_string()],
+      prefix: None,                  // No prefix provided
+      forward_all_with_prefix: true, // But forward_all is enabled
+    };
+
+    let response = test_router(app_service)
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .await?;
+
+    // Should return 400 Bad Request
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    // Verify error message
+    let error_body: serde_json::Value = response.json().await?;
+    assert_eq!(error_body["error"]["code"].as_str().unwrap(), "obj_validation_error-forward_all_requires_prefix");
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_model_duplicate_prefix_error(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create app service
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .with_secret_service()
+        .build()?,
+    );
+
+    // Create first API model with prefix
+    let first_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::none(),
+      models: vec!["gpt-4".to_string()],
+      prefix: Some("azure/".to_string()),
+      forward_all_with_prefix: false,
+    };
+
+    let response = test_router(app_service.clone())
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_request)?)
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Try to create second API model with same prefix
+    let second_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::none(),
+      models: vec!["claude-3".to_string()],
+      prefix: Some("azure/".to_string()), // Same prefix
+      forward_all_with_prefix: false,
+    };
+
+    let response = test_router(app_service)
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_request)?)
+      .await?;
+
+    // Should return 400 Bad Request with prefix_exists error
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let error_body: serde_json::Value = response.json().await?;
+    assert_eq!(error_body["error"]["code"], "db_error-prefix_exists");
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_model_duplicate_prefix_error(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create app service
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .with_secret_service()
+        .build()?,
+    );
+
+    // Create first API model with prefix "azure/"
+    let first_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::none(),
+      models: vec!["gpt-4".to_string()],
+      prefix: Some("azure/".to_string()),
+      forward_all_with_prefix: false,
+    };
+
+    let response = test_router(app_service.clone())
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(first_request)?)
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Create second API model with different prefix "anthropic/"
+    let second_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::none(),
+      models: vec!["claude-3".to_string()],
+      prefix: Some("anthropic/".to_string()),
+      forward_all_with_prefix: false,
+    };
+
+    let response = test_router(app_service.clone())
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(second_request)?)
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let second_model: ApiModelResponse = response.json().await?;
+    let second_model_id = second_model.id;
+
+    // Try to update second model to use first model's prefix
+    let update_request = UpdateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.anthropic.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKeyUpdateAction::Keep,
+      models: vec!["claude-3".to_string()],
+      prefix: Some("azure/".to_string()), // Trying to use existing prefix
+      forward_all_with_prefix: false,
+    };
+
+    let response = test_router(app_service)
+      .oneshot(
+        Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, second_model_id))
+          .json(update_request)?,
+      )
+      .await?;
+
+    // Should return 400 Bad Request with prefix_exists error
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let error_body: serde_json::Value = response.json().await?;
+    assert_eq!(error_body["error"]["code"], "db_error-prefix_exists");
+
+    Ok(())
+  }
 }

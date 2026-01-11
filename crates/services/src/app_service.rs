@@ -1,7 +1,7 @@
 use crate::{
   db::{DbService, TimeService},
-  AiApiService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
-  SecretService, SessionService, SettingService,
+  AiApiService, ApiModelCacheService, AuthService, CacheService, ConcurrencyService, DataService,
+  HubService, SecretService, SessionService, SettingService,
 };
 use objs::LocalizationService;
 use std::sync::Arc;
@@ -30,6 +30,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService>;
 
+  fn api_model_cache_service(&self) -> Arc<dyn ApiModelCacheService>;
+
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
 }
 
@@ -47,6 +49,7 @@ pub struct DefaultAppService {
   localization_service: Arc<dyn LocalizationService>,
   time_service: Arc<dyn TimeService>,
   ai_api_service: Arc<dyn AiApiService>,
+  api_model_cache_service: Arc<dyn ApiModelCacheService>,
   concurrency_service: Arc<dyn ConcurrencyService>,
 }
 
@@ -93,6 +96,10 @@ impl AppService for DefaultAppService {
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService> {
     self.ai_api_service.clone()
+  }
+
+  fn api_model_cache_service(&self) -> Arc<dyn ApiModelCacheService> {
+    self.api_model_cache_service.clone()
   }
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {

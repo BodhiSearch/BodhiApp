@@ -73,10 +73,33 @@ pub async fn oai_models_handler(
         }
       }
       Alias::Api(api_alias) => {
-        // EXPAND API alias - each model in models array becomes separate entry
-        for model_id in api_alias.matchable_models() {
-          if seen_models.insert(model_id.clone()) {
-            models.push(api_model_to_oai_model(model_id, &api_alias));
+        if api_alias.forward_all_with_prefix {
+          // For forward_all: use cache service to get models dynamically
+          // Cache may fail (network error) - fall back to empty list for this alias
+          if let Ok(cached_models) = state
+            .app_service()
+            .api_model_cache_service()
+            .get_models(&api_alias.id)
+            .await
+          {
+            for model_id in cached_models {
+              // Apply prefix to model IDs from cache
+              let prefixed = api_alias
+                .prefix
+                .as_ref()
+                .map(|p| format!("{}{}", p, model_id))
+                .unwrap_or(model_id);
+              if seen_models.insert(prefixed.clone()) {
+                models.push(api_model_to_oai_model(prefixed, &api_alias));
+              }
+            }
+          }
+        } else {
+          // EXPAND API alias - each model in models array becomes separate entry
+          for model_id in api_alias.matchable_models() {
+            if seen_models.insert(model_id.clone()) {
+              models.push(api_model_to_oai_model(model_id, &api_alias));
+            }
           }
         }
       }

@@ -2,11 +2,11 @@ use crate::{AppServiceBuilderError, AppStateOption};
 use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationService};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
-  DefaultAppService, DefaultSecretService, HfHubService, HubService, KeycloakAuthService,
-  KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService, SecretService,
-  SecretServiceExt, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
-  HF_TOKEN,
+  hash_key, AiApiService, ApiModelCacheService, AppService, AuthService, CacheService, DataService,
+  DefaultAiApiService, DefaultApiModelCacheService, DefaultAppService, DefaultSecretService,
+  HfHubService, HubService, KeycloakAuthService, KeyringStore, LocalConcurrencyService,
+  LocalDataService, MokaCacheService, SecretService, SecretServiceExt, SessionService,
+  SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -34,6 +34,7 @@ pub struct AppServiceBuilder {
   auth_service: Option<Arc<dyn AuthService>>,
   localization_service: Option<Arc<dyn LocalizationService>>,
   ai_api_service: Option<Arc<dyn AiApiService>>,
+  api_model_cache_service: Option<Arc<dyn ApiModelCacheService>>,
   encryption_key: Option<Vec<u8>>,
 }
 
@@ -52,6 +53,7 @@ impl AppServiceBuilder {
       auth_service: None,
       localization_service: None,
       ai_api_service: None,
+      api_model_cache_service: None,
       encryption_key: None,
     }
   }
@@ -210,6 +212,8 @@ impl AppServiceBuilder {
     let cache_service = self.get_or_build_cache_service();
     let auth_service = self.get_or_build_auth_service();
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
+    let api_model_cache_service =
+      self.get_or_build_api_model_cache_service(ai_api_service.clone(), db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
 
     // Build and return the complete app service
@@ -225,6 +229,7 @@ impl AppServiceBuilder {
       localization_service,
       time_service,
       ai_api_service,
+      api_model_cache_service,
       concurrency_service,
     );
     Ok(app_service)
@@ -394,6 +399,19 @@ impl AppServiceBuilder {
     }
 
     Arc::new(DefaultAiApiService::with_db_service(db_service))
+  }
+
+  /// Gets or builds the API model cache service.
+  fn get_or_build_api_model_cache_service(
+    &mut self,
+    ai_api_service: Arc<dyn AiApiService>,
+    db_service: Arc<dyn DbService>,
+  ) -> Arc<dyn ApiModelCacheService> {
+    if let Some(service) = self.api_model_cache_service.take() {
+      return service;
+    }
+
+    Arc::new(DefaultApiModelCacheService::new(ai_api_service, db_service))
   }
 
   /// Gets or builds the concurrency service.
