@@ -50,7 +50,7 @@ impl Alias {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{AliasSource, ApiFormat, ModelAliasBuilder, Repo, UserAliasBuilder};
+  use crate::{AliasSource, ApiAliasBuilder, ModelAliasBuilder, Repo, UserAliasBuilder};
   use anyhow::Result;
   use chrono::Utc;
   use std::str::FromStr;
@@ -92,14 +92,12 @@ mod tests {
 
   #[test]
   fn test_model_alias_api_can_serve() {
-    let api_alias = ApiAlias::new(
-      "openai",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
-      None,
-      Utc::now(),
-    );
+    let api_alias = ApiAliasBuilder::test_default()
+      .id("openai")
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()])
+      .build_with_time(Utc::now())
+      .unwrap();
 
     let model_alias = Alias::Api(api_alias);
 
@@ -145,14 +143,12 @@ mod tests {
     assert_eq!(model_deserialized.source(), AliasSource::Model);
 
     // Test Api variant
-    let api_alias = ApiAlias::new(
-      "openai",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      vec!["gpt-4".to_string()],
-      None,
-      Utc::now(),
-    );
+    let api_alias = ApiAliasBuilder::test_default()
+      .id("openai")
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .build_with_time(Utc::now())
+      .unwrap();
     let api_model = Alias::Api(api_alias);
 
     let api_json = serde_json::to_string(&api_model)?;
@@ -165,14 +161,12 @@ mod tests {
   #[test]
   fn test_model_alias_serde_tagged() -> Result<()> {
     // With tagged enum, the JSON includes a source field
-    let api_alias = ApiAlias::new(
-      "openai",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      vec!["gpt-4".to_string()],
-      None,
-      Utc::now(),
-    );
+    let api_alias = ApiAliasBuilder::test_default()
+      .id("openai")
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .build_with_time(Utc::now())
+      .unwrap();
     let api_model = Alias::Api(api_alias.clone());
 
     // The tagged enum JSON should include the source field

@@ -65,3 +65,4 @@ ai_api_service_error-not_found = received Not Found error from remote api model:
 ai_api_service_error-rate_limit = received Rate Limit from remote api model: {$var_0}
 ai_api_service_error-prompt_too_long = test prompt is longer than allowed length, allowed: {$max_length}, actual: {$actual_length}
 ai_api_service_error-model_not_found = model not found in remote api: {$var_0}
+db_error-prefix_exists = prefix '{$var_0}' already exists for another API model

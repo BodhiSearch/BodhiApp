@@ -6,6 +6,7 @@ use validator::{Validate, ValidationError};
 
 /// Validated API key wrapper - validates length when Some, allows None for public APIs
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, ToSchema)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 #[serde(transparent)]
 pub struct ApiKey(Option<String>);
 
@@ -82,9 +83,11 @@ impl Default for TestCreds {
 
 /// Represents an API key update action for API model updates
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 #[serde(tag = "action", content = "value", rename_all = "lowercase")]
 pub enum ApiKeyUpdateAction {
   /// Keep the existing API key unchanged
+  #[cfg_attr(any(test, feature = "test-utils"), default)]
   Keep,
   /// Set a new API key (or add one if none exists) - can be None for public APIs
   Set(ApiKey),
@@ -102,7 +105,7 @@ impl From<ApiKeyUpdateAction> for services::db::ApiKeyUpdate {
 }
 
 /// Request to create a new API model configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema, derive_builder::Builder)]
 #[schema(example = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
@@ -110,6 +113,8 @@ impl From<ApiKeyUpdateAction> for services::db::ApiKeyUpdate {
     "models": ["gpt-4", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
+#[builder(setter(into, strip_option), build_fn(error = objs::BuilderError))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct CreateApiModelRequest {
   /// API format/protocol (e.g., "openai")
   pub api_format: ApiFormat,
@@ -120,14 +125,22 @@ pub struct CreateApiModelRequest {
 
   /// API key for authentication (null for public APIs)
   #[serde(default = "ApiKey::none", skip_serializing_if = "ApiKey::is_none")]
+  #[builder(default = "ApiKey::none()")]
   pub api_key: ApiKey,
 
   /// List of available models
   #[validate(length(min = 1, message = "Models list must not be empty"))]
+  #[builder(default)]
   pub models: Vec<String>,
 
   /// Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4")
+  #[builder(default)]
   pub prefix: Option<String>,
+
+  /// Whether to forward all requests with this prefix (true) or only selected models (false)
+  #[serde(default)]
+  #[builder(default)]
+  pub forward_all_with_prefix: bool,
 }
 
 fn default_api_key_keep() -> ApiKeyUpdateAction {
@@ -135,7 +148,7 @@ fn default_api_key_keep() -> ApiKeyUpdateAction {
 }
 
 /// Request to update an existing API model configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema, derive_builder::Builder)]
 #[schema(example = json!({
     "api_format": "openai",
     "base_url": "https://api.openai.com/v1",
@@ -143,6 +156,8 @@ fn default_api_key_keep() -> ApiKeyUpdateAction {
     "models": ["gpt-4-turbo", "gpt-3.5-turbo"],
     "prefix": "openai"
 }))]
+#[builder(setter(into, strip_option), build_fn(error = objs::BuilderError))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct UpdateApiModelRequest {
   /// API format/protocol (required)
   pub api_format: ApiFormat,
@@ -153,14 +168,22 @@ pub struct UpdateApiModelRequest {
 
   /// API key update action (Keep/Set with Some or None)
   #[serde(default = "default_api_key_keep")]
+  #[builder(default = "default_api_key_keep()")]
   pub api_key: ApiKeyUpdateAction,
 
   /// List of available models (required)
   #[validate(length(min = 1, message = "Models list must not be empty"))]
+  #[builder(default)]
   pub models: Vec<String>,
 
   /// Optional prefix for model namespacing
+  #[builder(default)]
   pub prefix: Option<String>,
+
+  /// Whether to forward all requests with this prefix (true) or only selected models (false)
+  #[serde(default)]
+  #[builder(default)]
+  pub forward_all_with_prefix: bool,
 }
 
 /// Request to test API connectivity with a prompt
@@ -224,6 +247,7 @@ pub struct ApiModelResponse {
   pub api_key_masked: Option<String>,
   pub models: Vec<String>,
   pub prefix: Option<String>,
+  pub forward_all_with_prefix: bool,
   #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
@@ -251,6 +275,7 @@ impl ApiModelResponse {
       },
       models: alias.models,
       prefix: alias.prefix,
+      forward_all_with_prefix: alias.forward_all_with_prefix,
       created_at: alias.created_at,
       updated_at: alias.updated_at,
     }
@@ -331,8 +356,8 @@ pub fn mask_api_key(api_key: &str) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequest, FetchModelsRequest, TestCreds,
-    TestPromptRequest, TestPromptResponse,
+    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder, FetchModelsRequest,
+    TestCreds, TestPromptRequest, TestPromptResponse,
   };
   use objs::ApiFormat::OpenAI;
   use services::db::ApiKeyUpdate;
@@ -348,23 +373,23 @@ mod tests {
 
   #[test]
   fn test_create_api_model_request_validation() {
-    let request = CreateApiModelRequest {
-      api_format: OpenAI,
-      base_url: "not-a-url".to_string(),
-      api_key: ApiKey::some("key".to_string()).unwrap(),
-      models: vec!["gpt-4".to_string()],
-      prefix: None,
-    };
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("not-a-url")
+      .api_key(ApiKey::some("key".to_string()).unwrap())
+      .models(vec!["gpt-4".to_string()])
+      .build()
+      .unwrap();
 
     assert!(request.validate().is_err());
 
-    let valid_request = CreateApiModelRequest {
-      api_format: OpenAI,
-      base_url: "https://api.openai.com/v1".to_string(),
-      api_key: ApiKey::some("sk-test".to_string()).unwrap(),
-      models: vec!["gpt-4".to_string()],
-      prefix: None,
-    };
+    let valid_request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec!["gpt-4".to_string()])
+      .build()
+      .unwrap();
 
     assert!(valid_request.validate().is_ok());
   }

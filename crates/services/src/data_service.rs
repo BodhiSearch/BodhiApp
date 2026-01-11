@@ -203,11 +203,11 @@ impl DataService for LocalDataService {
 
     // Priority 3: Check API aliases (from database) - with prefix-aware routing
     if let Ok(api_aliases) = self.db_service.list_api_model_aliases().await {
-      // Use matchable_models() to check if the incoming alias matches any API alias
-      // This automatically handles both prefixed (e.g., "azure/gpt-4") and direct (e.g., "gpt-4") matches
+      // Use supports_model() to check if the incoming alias matches any API alias
+      // When forward_all_with_prefix=true, checks prefix match; otherwise checks matchable_models list
       if let Some(api) = api_aliases
         .into_iter()
-        .find(|api| api.matchable_models().contains(&alias.to_string()))
+        .find(|api| api.supports_model(alias))
       {
         return Some(Alias::Api(api));
       }
@@ -359,7 +359,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use objs::{
     test_utils::{assert_error_message, setup_l10n, temp_bodhi_home},
-    Alias, ApiFormat, AppError, FluentLocalizationService, RemoteModel, UserAlias,
+    Alias, ApiAlias, ApiFormat, AppError, FluentLocalizationService, RemoteModel, UserAlias,
   };
   use rstest::rstest;
   use std::{fs, sync::Arc};
@@ -505,12 +505,13 @@ chat_template: llama3
     );
 
     // Insert API alias with multiple models
-    let api_alias = objs::ApiAlias::new(
+    let api_alias = ApiAlias::new(
       "openai-api",
       ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       None,
+      false,
       db_service.now(),
     );
     db_service
@@ -549,12 +550,13 @@ chat_template: llama3
     );
 
     // Insert API alias with gpt-4 model
-    let api_alias = objs::ApiAlias::new(
+    let api_alias = ApiAlias::new(
       "test-api",
       ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       db_service.now(),
     );
     db_service
@@ -594,12 +596,13 @@ chat_template: llama3
     );
 
     // Insert API alias with model name that matches existing user alias
-    let api_alias = objs::ApiAlias::new(
+    let api_alias = ApiAlias::new(
       "conflicting-api",
       ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["testalias-exists:instruct".to_string()], // Same name as user alias
       None,
+      false,
       db_service.now(),
     );
     db_service
@@ -797,12 +800,13 @@ chat_template: llama3
       db_service.clone(),
     );
 
-    let test_alias = objs::ApiAlias::new(
+    let test_alias = ApiAlias::new(
       expected_id,
       ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       api_models,
       api_prefix,
+      false,
       db_service.now(),
     );
     db_service
@@ -835,12 +839,13 @@ chat_template: llama3
       db_service.clone(),
     );
 
-    let test_alias = objs::ApiAlias::new(
+    let test_alias = ApiAlias::new(
       "azure-openai",
       ApiFormat::OpenAI,
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       Some("azure/".to_string()),
+      false,
       db_service.now(),
     );
     db_service
@@ -869,12 +874,13 @@ chat_template: llama3
     );
 
     // Create API alias with prefix
-    let prefixed_alias = objs::ApiAlias::new(
+    let prefixed_alias = ApiAlias::new(
       "azure-openai",
       ApiFormat::OpenAI,
       "https://api.azure.com/v1",
       vec!["gpt-4".to_string()],
       Some("azure/".to_string()),
+      false,
       db_service.now(),
     );
     db_service

@@ -312,6 +312,18 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("get_api_key_for_alias"))
   }
 
+  async fn check_prefix_exists(
+    &self,
+    prefix: &str,
+    exclude_id: Option<String>,
+  ) -> Result<bool, DbError> {
+    self
+      .inner
+      .check_prefix_exists(prefix, exclude_id)
+      .await
+      .tap(|_| self.notify("check_prefix_exists"))
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.now
   }

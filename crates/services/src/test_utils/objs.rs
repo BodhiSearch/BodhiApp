@@ -1,6 +1,6 @@
 use crate::AppRegInfo;
 use chrono::{DateTime, Utc};
-use objs::{ApiAlias, ApiFormat};
+use objs::{ApiAlias, ApiAliasBuilder};
 use rstest::fixture;
 
 #[fixture]
@@ -17,14 +17,12 @@ pub fn create_test_api_model_alias(
   models: Vec<String>,
   created_at: DateTime<Utc>,
 ) -> ApiAlias {
-  ApiAlias::new(
-    alias,
-    ApiFormat::OpenAI,
-    "https://api.openai.com/v1",
-    models,
-    None,
-    created_at,
-  )
+  ApiAliasBuilder::test_default()
+    .id(alias)
+    .base_url("https://api.openai.com/v1")
+    .models(models)
+    .build_with_time(created_at)
+    .expect("Failed to build test ApiAlias")
 }
 
 /// Create a test ApiModelAlias with prefix for prefix-based routing tests
@@ -34,14 +32,17 @@ pub fn create_test_api_model_alias_with_prefix(
   prefix: Option<String>,
   created_at: DateTime<Utc>,
 ) -> ApiAlias {
-  ApiAlias::new(
-    alias,
-    ApiFormat::OpenAI,
-    "https://api.openai.com/v1",
-    models,
-    prefix,
-    created_at,
-  )
+  let mut builder = ApiAliasBuilder::test_default();
+  builder
+    .id(alias)
+    .base_url("https://api.openai.com/v1")
+    .models(models);
+  if let Some(p) = prefix {
+    builder.prefix(p);
+  }
+  builder
+    .build_with_time(created_at)
+    .expect("Failed to build test ApiAlias with prefix")
 }
 
 /// Seed database with test API model aliases

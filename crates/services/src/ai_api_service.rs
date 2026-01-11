@@ -482,7 +482,7 @@ mod tests {
     let url = server.url();
 
     // Create API alias with the provided parameters
-    let api_alias = ApiAlias::new(api_id, api_format, &url, models, prefix, Utc::now());
+    let api_alias = ApiAlias::new(api_id, api_format, &url, models, prefix, false, Utc::now());
 
     // Setup mock expectations
     let api_id_owned = api_id.to_string();
@@ -551,6 +551,7 @@ mod tests {
       &url,
       vec!["gpt-4".to_string()],
       None,
+      false,
       Utc::now(),
     );
 

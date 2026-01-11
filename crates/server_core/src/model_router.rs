@@ -72,7 +72,7 @@ impl ModelRouter for DefaultModelRouter {
 mod tests {
   use crate::model_router::{DefaultModelRouter, ModelRouter, ModelRouterError, RouteDestination};
   use mockall::predicate::eq;
-  use objs::{Alias, ApiAlias, ApiFormat};
+  use objs::{Alias, ApiFormat};
   use rstest::rstest;
   use services::MockDataService;
   use std::sync::Arc;
@@ -135,14 +135,14 @@ mod tests {
   #[tokio::test]
   async fn test_route_to_api_model() -> anyhow::Result<()> {
     let mut mock_data = MockDataService::new();
-    let api_alias = Alias::Api(ApiAlias::new(
-      "test-api",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      vec!["gpt-3.5-turbo".to_string()],
-      None,
-      chrono::Utc::now(),
-    ));
+    let api_alias = Alias::Api(
+      objs::ApiAliasBuilder::test_default()
+        .id("test-api")
+        .base_url("https://api.openai.com/v1")
+        .models(vec!["gpt-3.5-turbo".to_string()])
+        .build_with_time(chrono::Utc::now())
+        .unwrap(),
+    );
     mock_data
       .expect_find_alias()
       .with(eq("test-api"))

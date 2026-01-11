@@ -159,6 +159,11 @@ pub async fn create_api_model_handler(
     .validate()
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
+  // Additional validation: forward_all_with_prefix requires a non-empty prefix
+  if payload.forward_all_with_prefix && payload.prefix.as_ref().map_or(true, |p| p.is_empty()) {
+    return Err(ApiError::from(ObjValidationError::ForwardAllRequiresPrefix));
+  }
+
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
 
@@ -173,6 +178,7 @@ pub async fn create_api_model_handler(
     payload.base_url.trim_end_matches('/').to_string(),
     payload.models,
     payload.prefix,
+    payload.forward_all_with_prefix,
     now,
   );
 
@@ -218,6 +224,11 @@ pub async fn update_api_model_handler(
     .validate()
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
+  // Additional validation: forward_all_with_prefix requires a non-empty prefix
+  if payload.forward_all_with_prefix && payload.prefix.as_ref().map_or(true, |p| p.is_empty()) {
+    return Err(ApiError::from(ObjValidationError::ForwardAllRequiresPrefix));
+  }
+
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
 
@@ -238,6 +249,7 @@ pub async fn update_api_model_handler(
   } else {
     payload.prefix
   };
+  api_alias.forward_all_with_prefix = payload.forward_all_with_prefix;
 
   api_alias.updated_at = time_service.utc_now();
 
@@ -473,7 +485,9 @@ mod tests {
     Router,
   };
   use chrono::{DateTime, Utc};
-  use objs::{test_utils::setup_l10n, ApiAlias, ApiFormat::OpenAI, FluentLocalizationService};
+  use objs::{
+    test_utils::setup_l10n, ApiAliasBuilder, ApiFormat::OpenAI, FluentLocalizationService,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
@@ -509,6 +523,7 @@ mod tests {
       api_key_masked: api_key_masked.map(|s| s.to_string()),
       models,
       prefix,
+      forward_all_with_prefix: false,
       created_at,
       updated_at,
     }
@@ -692,6 +707,7 @@ mod tests {
       api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       prefix: None,
+      forward_all_with_prefix: false,
     };
 
     // Make POST request to create API model
@@ -747,6 +763,7 @@ mod tests {
       api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
+      forward_all_with_prefix: false,
     };
 
     // Make POST request to create API model (should succeed since UUIDs are unique)
@@ -823,6 +840,7 @@ mod tests {
       api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec!["gpt-4".to_string()],
       prefix: None,
+      forward_all_with_prefix: false,
     };
 
     let response = test_router(Arc::new(app_service))
@@ -861,6 +879,7 @@ mod tests {
       api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
       models: vec![], // Invalid: empty models array
       prefix: None,
+      forward_all_with_prefix: false,
     };
 
     let response = test_router(Arc::new(app_service))
@@ -911,6 +930,7 @@ mod tests {
       ), // New API key
       models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
       prefix: Some("openai".to_string()),
+      forward_all_with_prefix: false,
     };
 
     // Make PUT request to update existing API model
@@ -964,6 +984,7 @@ mod tests {
       ),
       models: vec!["gpt-4-turbo".to_string()],
       prefix: None,
+      forward_all_with_prefix: false,
     };
 
     // Make PUT request to update non-existent API model
@@ -1161,14 +1182,13 @@ mod tests {
     let test_id = Uuid::new_v4().to_string();
 
     // Create API model via database
-    let api_alias = ApiAlias::new(
-      test_id.clone(),
-      OpenAI,
-      "https://api.openai.com/v1".to_string(),
-      vec!["gpt-4".to_string()],
-      None,
-      now,
-    );
+    let api_alias = ApiAliasBuilder::test_default()
+      .id(test_id.clone())
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .build_with_time(now)
+      .unwrap();
 
     db_service
       .create_api_model_alias(&api_alias, Some("sk-test123".to_string()))
@@ -1197,14 +1217,13 @@ mod tests {
     let now = db_service.now();
 
     // Create API model
-    let api_alias = ApiAlias::new(
-      "to-delete".to_string(),
-      OpenAI,
-      "https://api.openai.com/v1".to_string(),
-      vec!["gpt-4".to_string()],
-      None,
-      now,
-    );
+    let api_alias = ApiAliasBuilder::test_default()
+      .id("to-delete")
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .build_with_time(now)
+      .unwrap();
 
     db_service
       .create_api_model_alias(&api_alias, Some("sk-test".to_string()))
@@ -1298,6 +1317,7 @@ mod tests {
       "api_key_masked": "***",
       "models": ["gpt-4"],
       "prefix": null,
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })
@@ -1324,6 +1344,7 @@ mod tests {
       "api_key_masked": "***", 
       "models": ["gpt-4"],
       "prefix": "azure/",
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })
@@ -1350,6 +1371,7 @@ mod tests {
       "api_key_masked": "***",
       "models": ["gpt-4"],
       "prefix": null,
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })
@@ -1376,6 +1398,7 @@ mod tests {
       "api_key_masked": "***",
       "models": ["gpt-4"],
       "prefix": "openai:",
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })
@@ -1402,6 +1425,7 @@ mod tests {
       "api_key_masked": "***",
       "models": ["gpt-4"],
       "prefix": null,
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })
@@ -1428,6 +1452,7 @@ mod tests {
       "api_key_masked": "***",
       "models": ["gpt-4", "gpt-3.5-turbo"],
       "prefix": null,
+      "forward_all_with_prefix": false,
       "created_at": "2024-01-01T00:00:00Z",
       "updated_at": "2024-01-01T00:00:00Z"
     })

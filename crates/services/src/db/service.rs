@@ -52,6 +52,9 @@ pub enum DbError {
   #[error("encryption_error")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
+  #[error("prefix_exists")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "db_error-prefix_exists")]
+  PrefixExists(String),
 }
 
 impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
@@ -152,6 +155,12 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
 
   async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
+
+  async fn check_prefix_exists(
+    &self,
+    prefix: &str,
+    exclude_id: Option<String>,
+  ) -> Result<bool, DbError>;
 
   fn now(&self) -> DateTime<Utc>;
 }
@@ -902,6 +911,13 @@ impl DbService for SqliteDbService {
     alias: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError> {
+    // Check prefix uniqueness if prefix is non-empty
+    if let Some(ref prefix) = alias.prefix {
+      if !prefix.is_empty() && self.check_prefix_exists(prefix, None).await? {
+        return Err(DbError::PrefixExists(prefix.clone()));
+      }
+    }
+
     let models_json = serde_json::to_string(&alias.models)
       .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
 
@@ -915,8 +931,8 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_model_aliases (id, api_format, base_url, models_json, prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO api_model_aliases (id, api_format, base_url, models_json, prefix, forward_all_with_prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#
     )
     .bind(&alias.id)
@@ -924,6 +940,7 @@ impl DbService for SqliteDbService {
     .bind(&alias.base_url)
     .bind(&models_json)
     .bind(&alias.prefix)
+    .bind(alias.forward_all_with_prefix)
     .bind(&encrypted_api_key)
     .bind(&salt)
     .bind(&nonce)
@@ -936,15 +953,23 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
-    let result = query_as::<_, (String, String, String, String, Option<String>, i64)>(
-      "SELECT id, api_format, base_url, models_json, prefix, created_at FROM api_model_aliases WHERE id = ?",
+    let result = query_as::<_, (String, String, String, String, Option<String>, bool, i64)>(
+      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, created_at FROM api_model_aliases WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((id, api_format_str, base_url, models_json, prefix, created_at)) => {
+      Some((
+        id,
+        api_format_str,
+        base_url,
+        models_json,
+        prefix,
+        forward_all_with_prefix,
+        created_at,
+      )) => {
         let api_format = api_format_str
           .parse::<ApiFormat>()
           .map_err(|e| DbError::EncryptionError(format!("Failed to parse api_format: {}", e)))?;
@@ -960,6 +985,7 @@ impl DbService for SqliteDbService {
           base_url,
           models,
           prefix,
+          forward_all_with_prefix,
           created_at,
           updated_at: created_at,
         }))
@@ -974,6 +1000,17 @@ impl DbService for SqliteDbService {
     model: &ApiAlias,
     api_key: ApiKeyUpdate,
   ) -> Result<(), DbError> {
+    // Check prefix uniqueness if prefix is non-empty
+    if let Some(ref prefix) = model.prefix {
+      if !prefix.is_empty()
+        && self
+          .check_prefix_exists(prefix, Some(id.to_string()))
+          .await?
+      {
+        return Err(DbError::PrefixExists(prefix.clone()));
+      }
+    }
+
     let models_json = serde_json::to_string(&model.models)
       .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
 
@@ -990,7 +1027,7 @@ impl DbService for SqliteDbService {
             sqlx::query(
               r#"
               UPDATE api_model_aliases
-              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, forward_all_with_prefix = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
               WHERE id = ?
               "#
             )
@@ -998,6 +1035,7 @@ impl DbService for SqliteDbService {
             .bind(&model.base_url)
             .bind(&models_json)
             .bind(&model.prefix)
+            .bind(model.forward_all_with_prefix)
             .bind(&encrypted_api_key)
             .bind(&salt)
             .bind(&nonce)
@@ -1011,7 +1049,7 @@ impl DbService for SqliteDbService {
             sqlx::query(
               r#"
               UPDATE api_model_aliases
-              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, encrypted_api_key = NULL, salt = NULL, nonce = NULL, updated_at = ?
+              SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, forward_all_with_prefix = ?, encrypted_api_key = NULL, salt = NULL, nonce = NULL, updated_at = ?
               WHERE id = ?
               "#
             )
@@ -1019,6 +1057,7 @@ impl DbService for SqliteDbService {
             .bind(&model.base_url)
             .bind(&models_json)
             .bind(&model.prefix)
+            .bind(model.forward_all_with_prefix)
             .bind(now.timestamp())
             .bind(id)
             .execute(&self.pool)
@@ -1031,7 +1070,7 @@ impl DbService for SqliteDbService {
         sqlx::query(
           r#"
           UPDATE api_model_aliases
-          SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, updated_at = ?
+          SET api_format = ?, base_url = ?, models_json = ?, prefix = ?, forward_all_with_prefix = ?, updated_at = ?
           WHERE id = ?
           "#,
         )
@@ -1039,6 +1078,7 @@ impl DbService for SqliteDbService {
         .bind(&model.base_url)
         .bind(&models_json)
         .bind(&model.prefix)
+        .bind(model.forward_all_with_prefix)
         .bind(now.timestamp())
         .bind(id)
         .execute(&self.pool)
@@ -1059,14 +1099,16 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
-    let results = query_as::<_, (String, String, String, String, Option<String>, i64)>(
-      "SELECT id, api_format, base_url, models_json, prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
+    let results = query_as::<_, (String, String, String, String, Option<String>, bool, i64)>(
+      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
     .fetch_all(&self.pool)
     .await?;
 
     let mut aliases = Vec::new();
-    for (id, api_format_str, base_url, models_json, prefix, created_at) in results {
+    for (id, api_format_str, base_url, models_json, prefix, forward_all_with_prefix, created_at) in
+      results
+    {
       let api_format = api_format_str
         .parse::<ApiFormat>()
         .map_err(|e| DbError::EncryptionError(format!("Failed to parse api_format: {}", e)))?;
@@ -1082,6 +1124,7 @@ impl DbService for SqliteDbService {
         base_url,
         models,
         prefix,
+        forward_all_with_prefix,
         created_at,
         updated_at: created_at,
       });
@@ -1120,6 +1163,30 @@ impl DbService for SqliteDbService {
         Ok(None)
       }
     }
+  }
+
+  async fn check_prefix_exists(
+    &self,
+    prefix: &str,
+    exclude_id: Option<String>,
+  ) -> Result<bool, DbError> {
+    let count: i64 = match exclude_id {
+      Some(id) => {
+        sqlx::query_scalar("SELECT COUNT(*) FROM api_model_aliases WHERE prefix = ? AND id != ?")
+          .bind(prefix)
+          .bind(id)
+          .fetch_one(&self.pool)
+          .await?
+      }
+      None => {
+        sqlx::query_scalar("SELECT COUNT(*) FROM api_model_aliases WHERE prefix = ?")
+          .bind(prefix)
+          .fetch_one(&self.pool)
+          .await?
+      }
+    };
+
+    Ok(count > 0)
   }
 
   fn now(&self) -> DateTime<Utc> {
@@ -1560,6 +1627,7 @@ mod test {
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       None,
+      false,
       now,
     );
     let api_key = "sk-test123456789";
@@ -1595,6 +1663,7 @@ mod test {
       "https://api.example.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       now,
     );
 
@@ -1628,6 +1697,7 @@ mod test {
       "https://api.anthropic.com/v1",
       vec!["claude-3".to_string()],
       None,
+      false,
       now,
     );
     let original_api_key = "sk-original123";
@@ -1674,6 +1744,7 @@ mod test {
       "https://generativelanguage.googleapis.com/v1",
       vec!["gemini-pro".to_string()],
       None,
+      false,
       now,
     );
     let api_key = "AIzaSy-test123";
@@ -1727,6 +1798,7 @@ mod test {
         "https://api.example.com/v1",
         vec!["model1".to_string()],
         None,
+        false,
         *created_at,
       );
       service
@@ -1760,6 +1832,7 @@ mod test {
       "https://api.test.com/v1",
       vec!["test-model".to_string()],
       None,
+      false,
       now,
     );
 
@@ -1792,6 +1865,7 @@ mod test {
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
       None,
+      false,
       now,
     );
     let sensitive_key = "sk-very-secret-key-12345";
@@ -1808,6 +1882,7 @@ mod test {
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
       None,
+      false,
       now,
     );
     service
@@ -1864,6 +1939,7 @@ mod test {
       "https://api.example.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       now,
     );
     let original_key = "sk-original-key-12345";
@@ -1913,6 +1989,7 @@ mod test {
       "https://api.example.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       now,
     );
 

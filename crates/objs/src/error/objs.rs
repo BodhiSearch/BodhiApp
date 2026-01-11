@@ -33,6 +33,10 @@ pub enum ObjValidationError {
   #[error("file_pattern_mismatch")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   FilePatternMismatch(String),
+
+  #[error("forward_all_requires_prefix")]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "obj_validation_error-forward_all_requires_prefix")]
+  ForwardAllRequiresPrefix,
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]

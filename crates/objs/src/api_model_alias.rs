@@ -6,27 +6,37 @@ use utoipa::ToSchema;
 #[derive(
   Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, strum::Display, strum::EnumString,
 )]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum ApiFormat {
   #[serde(rename = "openai")]
   #[strum(serialize = "openai")]
+  #[cfg_attr(any(test, feature = "test-utils"), default)]
   OpenAI,
   #[serde(rename = "placeholder")]
   #[strum(serialize = "placeholder")]
   Placeholder,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
+#[builder(setter(into, strip_option), build_fn(error = crate::BuilderError))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct ApiAlias {
   pub id: String,
   pub api_format: ApiFormat,
   pub base_url: String,
+  #[builder(default)]
   pub models: Vec<String>,
+  #[builder(default)]
   pub prefix: Option<String>,
+  #[builder(default)]
+  pub forward_all_with_prefix: bool,
   #[schema(value_type = String, format = "date-time")]
+  #[builder(setter(skip))]
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
+  #[builder(setter(skip))]
   pub updated_at: DateTime<Utc>,
 }
 
@@ -37,6 +47,7 @@ impl ApiAlias {
     base_url: impl Into<String>,
     models: Vec<String>,
     prefix: Option<String>,
+    forward_all_with_prefix: bool,
     created_at: DateTime<Utc>,
   ) -> Self {
     Self {
@@ -45,6 +56,7 @@ impl ApiAlias {
       base_url: base_url.into(),
       models,
       prefix,
+      forward_all_with_prefix,
       created_at,
       updated_at: created_at,
     }
@@ -64,6 +76,60 @@ impl ApiAlias {
       .map(|model| format!("{}{}", prefix, model))
       .collect()
   }
+
+  /// Check if this API alias supports a given model name.
+  ///
+  /// If `forward_all_with_prefix` is true, checks if the model starts with the prefix.
+  /// If `forward_all_with_prefix` is false, checks if the model is in matchable_models list.
+  pub fn supports_model(&self, model: &str) -> bool {
+    if self.forward_all_with_prefix {
+      self.prefix.as_ref().map_or(false, |p| model.starts_with(p))
+    } else {
+      self.matchable_models().contains(&model.to_string())
+    }
+  }
+}
+
+impl ApiAliasBuilder {
+  /// Build an ApiAlias with the provided timestamp for created_at and updated_at.
+  ///
+  /// This is the primary build method for ApiAlias since timestamps cannot be set through
+  /// the builder's field setters (they are marked with `#[builder(setter(skip))]`).
+  pub fn build_with_time(&self, timestamp: DateTime<Utc>) -> Result<ApiAlias, crate::BuilderError> {
+    Ok(ApiAlias {
+      id: self
+        .id
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("id"))?,
+      api_format: self
+        .api_format
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("api_format"))?,
+      base_url: self
+        .base_url
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("base_url"))?,
+      models: self.models.clone().unwrap_or_default(),
+      prefix: self.prefix.clone().unwrap_or_default(),
+      forward_all_with_prefix: self.forward_all_with_prefix.unwrap_or_default(),
+      created_at: timestamp,
+      updated_at: timestamp,
+    })
+  }
+
+  /// Create a builder pre-configured with test defaults.
+  ///
+  /// This convenience method is useful in tests to create builders with sensible defaults
+  /// that can be customized as needed.
+  #[cfg(any(test, feature = "test-utils"))]
+  pub fn test_default() -> Self {
+    let mut builder = Self::default();
+    builder
+      .id("test-id")
+      .api_format(ApiFormat::OpenAI)
+      .base_url("http://localhost:8080");
+    builder
+  }
 }
 
 impl std::fmt::Display for ApiAlias {
@@ -78,25 +144,29 @@ impl std::fmt::Display for ApiAlias {
 
 #[cfg(test)]
 mod test {
-  use super::{ApiAlias, ApiFormat};
+  use super::{ApiAlias, ApiAliasBuilder, ApiFormat};
   use chrono::Utc;
   use rstest::rstest;
 
   #[rstest]
-  #[case(None, vec!["gpt-4".to_string()])]
-  #[case(Some("azure".to_string()), vec!["gpt-4".to_string()])]
+  #[case(None, vec!["gpt-4".to_string()], false)]
+  #[case(Some("azure".to_string()), vec!["gpt-4".to_string()], false)]
+  #[case(Some("azure/".to_string()), vec!["gpt-4".to_string()], true)]
   fn test_api_model_alias_serialization(
     #[case] prefix: Option<String>,
     #[case] models: Vec<String>,
+    #[case] forward_all: bool,
   ) -> anyhow::Result<()> {
-    let alias = ApiAlias::new(
-      "test",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      models,
-      prefix,
-      Utc::now(),
-    );
+    let mut builder = ApiAliasBuilder::test_default();
+    builder
+      .id("test")
+      .base_url("https://api.openai.com/v1")
+      .models(models)
+      .forward_all_with_prefix(forward_all);
+    if let Some(p) = prefix {
+      builder.prefix(p);
+    }
+    let alias = builder.build_with_time(Utc::now())?;
 
     let serialized = serde_json::to_string(&alias)?;
     let deserialized: ApiAlias = serde_json::from_str(&serialized)?;
@@ -107,15 +177,13 @@ mod test {
 
   #[test]
   fn test_api_model_alias_with_prefix_builder() {
-    let alias = ApiAlias::new(
-      "openai",
-      ApiFormat::OpenAI,
-      "https://api.openai.com/v1",
-      vec!["gpt-4".to_string()],
-      None,
-      Utc::now(),
-    )
-    .with_prefix("openai");
+    let alias = ApiAliasBuilder::test_default()
+      .id("openai")
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .build_with_time(Utc::now())
+      .unwrap()
+      .with_prefix("openai");
 
     assert_eq!(alias.prefix, Some("openai".to_string()));
   }
@@ -129,10 +197,44 @@ mod test {
     #[case] prefix: Option<String>,
     #[case] expected: Vec<String>,
   ) {
-    let alias = ApiAlias::new("test", ApiFormat::OpenAI, "url", models, prefix, Utc::now());
+    let mut builder = ApiAliasBuilder::test_default();
+    builder.id("test").base_url("url").models(models);
+    if let Some(p) = prefix {
+      builder.prefix(p);
+    }
+    let alias = builder.build_with_time(Utc::now()).unwrap();
     let matchable = alias.matchable_models();
 
     assert_eq!(expected, matchable);
+  }
+
+  #[rstest]
+  #[case(false, Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure/gpt-4", true)]
+  #[case(false, Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure/gpt-3.5", false)]
+  #[case(true, Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure/gpt-4", true)]
+  #[case(true, Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure/gpt-3.5", true)]
+  #[case(true, Some("azure/".to_string()), vec!["gpt-4".to_string()], "openai/gpt-4", false)]
+  #[case(true, None, vec!["gpt-4".to_string()], "gpt-4", false)]
+  fn test_supports_model(
+    #[case] forward_all: bool,
+    #[case] prefix: Option<String>,
+    #[case] models: Vec<String>,
+    #[case] model_to_check: &str,
+    #[case] expected: bool,
+  ) {
+    let mut builder = ApiAliasBuilder::test_default();
+    builder
+      .id("test")
+      .base_url("url")
+      .models(models)
+      .forward_all_with_prefix(forward_all);
+    if let Some(p) = prefix {
+      builder.prefix(p);
+    }
+    let alias = builder.build_with_time(Utc::now()).unwrap();
+    let result = alias.supports_model(model_to_check);
+
+    assert_eq!(expected, result);
   }
 
   #[test]

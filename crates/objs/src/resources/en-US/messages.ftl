@@ -17,6 +17,7 @@ serde_yaml_error = error serializing/deserializing yaml: {$source}
 serde_yaml_with_path_error = error serializing/deserializing yaml: path: {$path}, {$source}
 obj_validation_error-file_pattern_mismatch = repo does not match the huggingface repo pattern 'username/repo', path: {$var_0}
 obj_validation_error-validation_errors = {$var_0}
+obj_validation_error-forward_all_requires_prefix = prefix is required when 'forward all requests with prefix' is enabled
 reqwest_error = error connecting to internal service: {$error}
 json_rejection_error = failed to parse the request body as JSON, error: {$source}
 chat_template_error-minijina_error = error rendering template: {$error}

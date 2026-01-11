@@ -354,6 +354,7 @@ mod tests {
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       Some("openai/".to_string()),
+      false,
       Utc::now(),
     );
     db_service
@@ -392,6 +393,7 @@ mod tests {
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       Utc::now(),
     );
     db_service
@@ -429,6 +431,7 @@ mod tests {
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       Some("openai/".to_string()),
+      false,
       Utc::now(),
     );
     db_service
@@ -475,6 +478,7 @@ mod tests {
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string()],
       None,
+      false,
       Utc::now(),
     );
     db_service
