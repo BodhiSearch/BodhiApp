@@ -142,6 +142,15 @@ export class ApiModelFixtures {
         models: ['gpt-4'],
         prefix: '',
       }),
+
+    FORWARD_ALL_OPENAI: () =>
+      this.createModelData({
+        api_format: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+        prefix: 'fwd/',
+        forward_all_with_prefix: true,
+        models: [], // Empty models list for forward_all mode
+      }),
   };
 
   // Environment setup helpers

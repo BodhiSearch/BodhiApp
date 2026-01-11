@@ -85,6 +85,7 @@ export function mockCreateApiModel(
     api_key_masked = '***',
     models = ['gpt-4'],
     prefix = null,
+    forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
@@ -103,6 +104,7 @@ export function mockCreateApiModel(
         api_key_masked,
         models,
         prefix,
+        forward_all_with_prefix,
         created_at,
         updated_at,
         ...rest,
@@ -154,6 +156,7 @@ export function mockGetApiModel(
     api_key_masked = '***',
     models = ['gpt-3.5-turbo'],
     prefix = null,
+    forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
@@ -180,6 +183,7 @@ export function mockGetApiModel(
         api_key_masked,
         models,
         prefix,
+        forward_all_with_prefix,
         created_at,
         updated_at,
         ...rest,
@@ -240,6 +244,7 @@ export function mockUpdateApiModel(
     api_key_masked = '***',
     models = ['gpt-4'],
     prefix = null,
+    forward_all_with_prefix = false,
     created_at = new Date().toISOString(),
     updated_at = new Date().toISOString(),
     ...rest
@@ -266,6 +271,7 @@ export function mockUpdateApiModel(
         api_key_masked,
         models,
         prefix,
+        forward_all_with_prefix,
         created_at,
         updated_at,
         ...rest,
@@ -533,6 +539,7 @@ export function mockApiModelsDefault() {
         api_key_masked: '***', // Has API key
         models: ['gpt-4', 'gpt-3.5-turbo'],
         prefix: null,
+        forward_all_with_prefix: false,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       },
@@ -591,6 +598,7 @@ export function mockCreateApiModelSuccess() {
     api_key_masked: '***', // Has API key
     models: ['gpt-4'],
     prefix: null,
+    forward_all_with_prefix: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   });

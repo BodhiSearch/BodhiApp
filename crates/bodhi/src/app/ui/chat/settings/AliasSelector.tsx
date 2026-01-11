@@ -2,27 +2,37 @@
 
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useQueryClient } from '@/hooks/useQuery';
+import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
-import { Alias } from '@bodhiapp/ts-client';
-import { HelpCircle } from 'lucide-react';
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { HelpCircle, RefreshCw } from 'lucide-react';
 
 interface AliasSelectorProps {
-  models: Alias[];
+  models: AliasResponse[];
   isLoading?: boolean;
   tooltip: string;
 }
 
 export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelectorProps) {
   const { model, setModel } = useChatSettings();
+  const queryClient = useQueryClient();
+
+  // Handle refresh button click
+  const handleRefresh = async () => {
+    // Invalidate and refetch models cache
+    await queryClient.invalidateQueries({ queryKey: ['models'] });
+  };
 
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
-    if (m.source === 'api') {
+    if (isApiAlias(m)) {
       // For API models, create entries for each individual model with prefix if exists
-      return (m.models || []).map((modelName) => {
+      return (m.models || []).map((modelName: string) => {
         const prefixedModelName = formatPrefixedModel(modelName, m.prefix);
         return {
           value: prefixedModelName,
@@ -33,8 +43,8 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
       // For local models, use the alias
       return [
         {
-          value: m.alias || '',
-          label: m.alias || '',
+          value: m.alias,
+          label: m.alias,
         },
       ];
     }
@@ -60,11 +70,28 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
               </Tooltip>
             </TooltipProvider>
           </div>
-          {model && (
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <CopyButton text={model} size="icon" variant="ghost" />
-            </div>
-          )}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleRefresh}
+                    disabled={isLoading}
+                    data-testid="refresh-models-button"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>
+                  <p className="text-sm">Refresh models</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {model && <CopyButton text={model} size="icon" variant="ghost" />}
+          </div>
         </div>
         <ComboBoxResponsive
           selectedStatus={selectedStatus}

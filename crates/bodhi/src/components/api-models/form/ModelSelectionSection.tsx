@@ -19,6 +19,7 @@ interface ModelSelectionSectionProps {
   provider?: ApiProvider | null;
   autoSelectCommon?: boolean;
   fetchStatus?: 'idle' | 'loading' | 'success' | 'error';
+  disabled?: boolean;
   'data-testid'?: string;
 }
 
@@ -36,6 +37,7 @@ export function ModelSelectionSection({
   provider,
   autoSelectCommon = false,
   fetchStatus = 'idle',
+  disabled = false,
   'data-testid': testId = 'model-selection-section',
 }: ModelSelectionSectionProps) {
   // Auto-select common models when they become available
@@ -52,10 +54,20 @@ export function ModelSelectionSection({
   });
 
   return (
-    <div className="space-y-2" data-testid={testId}>
+    <div
+      className={`space-y-2 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      data-testid={testId}
+      data-teststate={disabled ? 'disabled' : 'enabled'}
+    >
       <Label>Model Selection</Label>
 
-      {provider && (
+      {disabled && (
+        <p className="text-sm text-muted-foreground">
+          Model selection is disabled when using &quot;Forward all requests with prefix&quot; mode.
+        </p>
+      )}
+
+      {!disabled && provider && (
         <p className="text-sm text-muted-foreground">
           Select which {provider.name} models you'd like to use.
           {autoSelectCommon && provider.commonModels.length > 0 && <span> Popular models will be auto-selected.</span>}
@@ -87,7 +99,7 @@ export function ModelSelectionSection({
         </p>
       )}
 
-      {!availableModels.length && canFetch && !isFetchingModels && (
+      {!disabled && !availableModels.length && canFetch && !isFetchingModels && (
         <p className="text-xs text-muted-foreground">
           Click "Fetch Models" to discover available models from your provider.
         </p>

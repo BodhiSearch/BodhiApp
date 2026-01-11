@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
-import { Alias } from '@bodhiapp/ts-client';
+import { AliasResponse, ApiAliasResponse, UserAliasResponse, ModelAliasResponse } from '@bodhiapp/ts-client';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -43,19 +43,19 @@ export function handleSmartRedirect(location: string, router: { push: (href: str
 }
 
 /**
- * Type guard helper functions for Alias discriminated union
+ * Type guard helper functions for AliasResponse discriminated union
  */
-export const isApiAlias = (model: Alias): model is Alias & { source: 'api' } => model.source === 'api';
+export const isApiAlias = (model: AliasResponse): model is ApiAliasResponse => model.source === 'api';
 
-export const isUserAlias = (model: Alias): model is Alias & { source: 'user' } => model.source === 'user';
+export const isUserAlias = (model: AliasResponse): model is UserAliasResponse => model.source === 'user';
 
-export const isModelAlias = (model: Alias): model is Alias & { source: 'model' } => model.source === 'model';
+export const isModelAlias = (model: AliasResponse): model is ModelAliasResponse => model.source === 'model';
 
-export const isLocalAlias = (model: Alias): model is (Alias & { source: 'user' }) | (Alias & { source: 'model' }) =>
+export const isLocalAlias = (model: AliasResponse): model is UserAliasResponse | ModelAliasResponse =>
   model.source === 'user' || model.source === 'model';
 
 // Helper type for local aliases that have repo, filename, snapshot properties
-export type LocalAlias = (Alias & { source: 'user' }) | (Alias & { source: 'model' });
+export type LocalAlias = UserAliasResponse | ModelAliasResponse;
 
 // Type guard that ensures the model has local file properties
-export const hasLocalFileProperties = (model: Alias): model is LocalAlias => isLocalAlias(model);
+export const hasLocalFileProperties = (model: AliasResponse): model is LocalAlias => isLocalAlias(model);

@@ -73,34 +73,32 @@ pub async fn oai_models_handler(
         }
       }
       Alias::Api(api_alias) => {
-        if api_alias.forward_all_with_prefix {
-          // For forward_all: use cache service to get models dynamically
-          // Cache may fail (network error) - fall back to empty list for this alias
-          if let Ok(cached_models) = state
-            .app_service()
-            .api_model_cache_service()
-            .get_models(&api_alias.id)
-            .await
-          {
-            for model_id in cached_models {
-              // Apply prefix to model IDs from cache
-              let prefixed = api_alias
-                .prefix
-                .as_ref()
-                .map(|p| format!("{}{}", p, model_id))
-                .unwrap_or(model_id);
-              if seen_models.insert(prefixed.clone()) {
-                models.push(api_model_to_oai_model(prefixed, &api_alias));
+        // Use matchable_models() which returns from models_cache when forward_all=true
+        for model_id in api_alias.matchable_models() {
+          if seen_models.insert(model_id.clone()) {
+            models.push(api_model_to_oai_model(model_id, &api_alias));
+          }
+        }
+
+        // If forward_all and cache is empty/stale, spawn async refresh
+        if api_alias.forward_all_with_prefix
+          && (api_alias.is_cache_empty() || api_alias.is_cache_stale())
+        {
+          let app_service = state.app_service();
+          let alias_id = api_alias.id.clone();
+          tokio::spawn(async move {
+            let db = app_service.db_service();
+            let ai_api = app_service.ai_api_service();
+            let time_service = app_service.time_service();
+
+            if let Ok(Some(alias)) = db.get_api_model_alias(&alias_id).await {
+              let api_key = db.get_api_key_for_alias(&alias_id).await.ok().flatten();
+              if let Ok(models) = ai_api.fetch_models(api_key, &alias.base_url).await {
+                let now = time_service.utc_now();
+                let _ = db.update_api_model_cache(&alias_id, models, now).await;
               }
             }
-          }
-        } else {
-          // EXPAND API alias - each model in models array becomes separate entry
-          for model_id in api_alias.matchable_models() {
-            if seen_models.insert(model_id.clone()) {
-              models.push(api_model_to_oai_model(model_id, &api_alias));
-            }
-          }
+          });
         }
       }
     }

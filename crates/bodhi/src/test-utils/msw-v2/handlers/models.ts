@@ -80,6 +80,7 @@ export function mockModelsWithApiModel() {
         api_format: 'openai',
         base_url: 'https://api.openai.com/v1',
         models: ['gpt-4', 'gpt-3.5-turbo'],
+        forward_all_with_prefix: false,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       },

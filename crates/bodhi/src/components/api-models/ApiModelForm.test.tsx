@@ -84,6 +84,7 @@ const mockApiModelResponse: ApiModelResponse = {
   api_key_masked: '***', // Has API key
   models: ['gpt-4', 'gpt-3.5-turbo'],
   prefix: null,
+  forward_all_with_prefix: false,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
@@ -1192,6 +1193,66 @@ describe('ApiModelForm', () => {
             description: 'Connection test successful',
           });
         });
+      });
+    });
+  });
+
+  describe('ForwardModeSelector', () => {
+    it('renders with correct states and handles interactions', async () => {
+      const user = userEvent.setup();
+
+      await act(async () => {
+        render(<ApiModelForm mode="create" />, { wrapper: createWrapper() });
+      });
+
+      // ===== Test 1: Disabled state when no prefix =====
+      // Verify "Forward all" radio is disabled when no prefix
+      const forwardAllRadio = screen.getByTestId('forward-mode-selector-forward-all');
+      expect(forwardAllRadio).toBeDisabled();
+
+      // Verify "Selected models" radio is enabled
+      const forwardSelectedRadio = screen.getByTestId('forward-mode-selector-forward-selected');
+      expect(forwardSelectedRadio).toBeEnabled();
+      expect(forwardSelectedRadio).toBeChecked();
+
+      // Verify help text is shown when forward_all is disabled
+      expect(screen.getByTestId('forward-mode-selector-help')).toBeInTheDocument();
+      expect(screen.getByTestId('forward-mode-selector-help')).toHaveTextContent(/Enable prefix and provide a value/i);
+
+      // ===== Test 2: Enabled state when prefix is set =====
+      // Enable prefix
+      await user.click(screen.getByTestId('prefix-input-checkbox'));
+      await user.type(screen.getByTestId('prefix-input'), 'test/');
+
+      // Verify "Forward all" radio is now enabled
+      const forwardAllRadioEnabled = screen.getByTestId('forward-mode-selector-forward-all');
+      expect(forwardAllRadioEnabled).toBeEnabled();
+
+      // Verify help text is not shown when forward_all is enabled
+      expect(screen.queryByTestId('forward-mode-selector-help')).not.toBeInTheDocument();
+
+      // ===== Test 3: Selection behavior - Click "Forward all" =====
+      await user.click(forwardAllRadioEnabled);
+
+      // Verify forward all is now checked
+      expect(forwardAllRadioEnabled).toBeChecked();
+      expect(forwardSelectedRadio).not.toBeChecked();
+
+      // Verify model selection section is disabled (opacity-50)
+      await waitFor(() => {
+        expect(screen.getByTestId('model-selection-section')).toHaveClass(/opacity-50/);
+      });
+
+      // ===== Test 4: Selection behavior - Click "Selected models" =====
+      await user.click(forwardSelectedRadio);
+
+      // Verify selected models is now checked
+      expect(forwardSelectedRadio).toBeChecked();
+      expect(forwardAllRadioEnabled).not.toBeChecked();
+
+      // Verify model selection section is enabled (no opacity-50)
+      await waitFor(() => {
+        expect(screen.getByTestId('model-selection-section')).not.toHaveClass(/opacity-50/);
       });
     });
   });

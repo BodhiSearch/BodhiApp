@@ -12,6 +12,7 @@ import { ApiFormatSelector } from '@/components/api-models/form/ApiFormatSelecto
 import { BaseUrlInput } from '@/components/api-models/form/BaseUrlInput';
 import { ApiKeyInput } from '@/components/api-models/form/ApiKeyInput';
 import { PrefixInput } from '@/components/api-models/form/PrefixInput';
+import { ForwardModeSelector } from '@/components/api-models/form/ForwardModeSelector';
 import { ModelSelectionSection } from '@/components/api-models/form/ModelSelectionSection';
 import { FormActions } from '@/components/api-models/actions/FormActions';
 
@@ -110,6 +111,15 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             error={formLogic.errors.prefix?.message}
           />
 
+          {/* Forward Mode Selector */}
+          <ForwardModeSelector
+            forwardAll={formLogic.watchedValues.forward_all_with_prefix || false}
+            onForwardAllChange={(value) => formLogic.setValue('forward_all_with_prefix', value)}
+            prefixEnabled={formLogic.watchedValues.usePrefix}
+            prefix={formLogic.watchedValues.prefix}
+            error={formLogic.errors.forward_all_with_prefix?.message}
+          />
+
           {/* Model Selection */}
           <ModelSelectionSection
             selectedModels={formLogic.watchedValues.models || []}
@@ -124,6 +134,7 @@ export default function ApiModelForm({ mode, initialData, onSuccessRoute, onCanc
             error={formLogic.errors.models?.message}
             provider={formLogic.selectedProvider}
             fetchStatus={formLogic.fetchModels.status}
+            disabled={formLogic.watchedValues.forward_all_with_prefix || false}
           />
 
           {/* Form Actions */}

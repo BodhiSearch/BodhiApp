@@ -4,7 +4,6 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod ai_api_service;
-mod api_model_cache_service;
 mod app_service;
 mod auth_service;
 mod cache_service;
@@ -25,7 +24,6 @@ mod setting_service;
 mod token;
 
 pub use ai_api_service::*;
-pub use api_model_cache_service::*;
 pub use app_service::*;
 pub use auth_service::*;
 pub use cache_service::*;

@@ -39,7 +39,7 @@ vi.mock('@/hooks/use-chat-settings', () => ({
 
 const mockModels = [
   {
-    source: 'user' as const,
+    source: 'user',
     alias: 'gpt-4',
     repo: 'test/repo',
     filename: 'model.gguf',
@@ -49,7 +49,7 @@ const mockModels = [
     model_params: {},
   },
   {
-    source: 'user' as const,
+    source: 'user',
     alias: 'tinyllama-chat',
     repo: 'test/repo',
     filename: 'model.gguf',
@@ -62,7 +62,7 @@ const mockModels = [
 
 const mockUnifiedModels = [
   {
-    source: 'user' as const,
+    source: 'user',
     alias: 'local-model-1',
     repo: 'user/repo1',
     filename: 'model1.gguf',
@@ -72,27 +72,29 @@ const mockUnifiedModels = [
     model_params: {},
   },
   {
-    source: 'model' as const,
+    source: 'model',
     alias: 'local-model-2',
     repo: 'user/repo2',
     filename: 'model2.gguf',
     snapshot: 'def456',
   },
   {
-    source: 'api' as const,
+    source: 'api',
     id: 'openai-api',
     api_format: 'openai' as const,
     base_url: 'https://api.openai.com/v1',
     models: ['gpt-4', 'gpt-3.5-turbo'],
+    forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
   {
-    source: 'api' as const,
+    source: 'api',
     id: 'anthropic-api',
     api_format: 'openai' as const,
     base_url: 'https://api.anthropic.com/v1',
     models: ['claude-3-opus', 'claude-3-sonnet'],
+    forward_all_with_prefix: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
@@ -313,11 +315,12 @@ describe('AliasSelector', () => {
     it('handles API models with empty models array', () => {
       const apiModelWithoutModels = [
         {
-          source: 'api' as const,
+          source: 'api',
           id: 'empty-api',
           api_format: 'openai' as const,
           base_url: 'https://api.example.com/v1',
           models: [],
+          forward_all_with_prefix: false,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z',
         },

@@ -241,6 +241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/api-models/{id}/sync-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Models to Cache
+         * @description Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.
+         */
+        post: operations["syncModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/apps/request-access": {
         parameters: {
             query?: never;
@@ -859,12 +879,34 @@ export interface components {
             /** @enum {string} */
             source: "api";
         });
+        /** @description Response envelope for model aliases - hides internal implementation details
+         *     Uses untagged serialization - each variant has its own "source" field */
+        AliasResponse: components["schemas"]["UserAliasResponse"] | components["schemas"]["ModelAliasResponse"] | components["schemas"]["ApiAliasResponse"];
         ApiAlias: {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
             models: string[];
             prefix?: string | null;
+            forward_all_with_prefix: boolean;
+            models_cache: string[];
+            /** Format: date-time */
+            cache_fetched_at: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description API response for API model aliases - hides internal cache fields */
+        ApiAliasResponse: {
+            source: string;
+            id: string;
+            api_format: components["schemas"]["ApiFormat"];
+            base_url: string;
+            /** @description Models available through this alias (merged from cache for forward_all) */
+            models: string[];
+            prefix?: string | null;
+            forward_all_with_prefix: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -921,6 +963,7 @@ export interface components {
             api_key_masked?: string | null;
             models: string[];
             prefix?: string | null;
+            forward_all_with_prefix: boolean;
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -1380,6 +1423,8 @@ export interface components {
             models: string[];
             /** @description Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4") */
             prefix?: string | null;
+            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
+            forward_all_with_prefix?: boolean;
         };
         /**
          * @description Request to create a new API token
@@ -1797,6 +1842,14 @@ export interface components {
             filename: string;
             snapshot: string;
         };
+        /** @description Response for auto-discovered model aliases */
+        ModelAliasResponse: {
+            source: string;
+            alias: string;
+            repo: string;
+            filename: string;
+            snapshot: string;
+        };
         ModelDetails: {
             parent_model?: string | null;
             format: string;
@@ -1919,7 +1972,7 @@ export interface components {
             num_thread?: number | null;
         };
         PaginatedAliasResponse: {
-            data: components["schemas"]["Alias"][];
+            data: components["schemas"]["AliasResponse"][];
             total: number;
             page: number;
             page_size: number;
@@ -2254,6 +2307,8 @@ export interface components {
             models: string[];
             /** @description Optional prefix for model namespacing */
             prefix?: string | null;
+            /** @description Whether to forward all requests with this prefix (true) or only selected models (false) */
+            forward_all_with_prefix?: boolean;
         };
         /**
          * @description Request to update an existing API token
@@ -3528,6 +3583,90 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    syncModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier for the API model alias
+                 * @example openai-gpt4
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Models synced to cache successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "api_format": "openai",
+                     *       "api_key_masked": "sk-****1234",
+                     *       "base_url": "https://api.openai.com/v1",
+                     *       "created_at": "2024-01-01T00:00:00Z",
+                     *       "forward_all_with_prefix": false,
+                     *       "id": "openai-gpt4",
+                     *       "models": [
+                     *         "gpt-4",
+                     *         "gpt-3.5-turbo",
+                     *         "gpt-4-turbo"
+                     *       ],
+                     *       "prefix": null,
+                     *       "updated_at": "2024-01-01T00:00:00Z"
+                     *     } */
+                    "application/json": components["schemas"]["ApiModelResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description API model not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {

@@ -24,16 +24,16 @@ use routes_app::{
   list_api_models_handler, list_downloads_handler, list_local_modelfiles_handler,
   list_pending_requests_handler, list_settings_handler, list_tokens_handler, list_users_handler,
   logout_handler, ping_handler, pull_by_alias_handler, reject_request_handler, remove_user_handler,
-  request_access_handler, request_status_handler, setup_handler, test_api_model_handler,
-  update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
-  user_info_handler, user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses,
-  OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
-  ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS,
-  ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
-  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
-  ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
-  ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USERS, ENDPOINT_USER_INFO,
-  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  request_access_handler, request_status_handler, setup_handler, sync_models_handler,
+  test_api_model_handler, update_alias_handler, update_api_model_handler, update_setting_handler,
+  update_token_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
+  GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
+  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
+  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_REQUEST_ACCESS,
+  ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
+  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS,
+  ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
@@ -165,6 +165,10 @@ pub fn build_routes(
     .route(
       &format!("{ENDPOINT_API_MODELS}/{{id}}"),
       delete(delete_api_model_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_API_MODELS}/{{id}}/sync-models"),
+      post(sync_models_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

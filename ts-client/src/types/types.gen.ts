@@ -12,12 +12,39 @@ export type Alias = (UserAlias & {
     source: 'api';
 });
 
+/**
+ * Response envelope for model aliases - hides internal implementation details
+ * Uses untagged serialization - each variant has its own "source" field
+ */
+export type AliasResponse = UserAliasResponse | ModelAliasResponse | ApiAliasResponse;
+
 export type ApiAlias = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
     models: Array<string>;
     prefix?: string | null;
+    forward_all_with_prefix: boolean;
+    models_cache: Array<string>;
+    cache_fetched_at: string;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * API response for API model aliases - hides internal cache fields
+ */
+export type ApiAliasResponse = {
+    source: string;
+    id: string;
+    api_format: ApiFormat;
+    base_url: string;
+    /**
+     * Models available through this alias (merged from cache for forward_all)
+     */
+    models: Array<string>;
+    prefix?: string | null;
+    forward_all_with_prefix: boolean;
     created_at: string;
     updated_at: string;
 };
@@ -62,6 +89,7 @@ export type ApiModelResponse = {
     api_key_masked?: string | null;
     models: Array<string>;
     prefix?: string | null;
+    forward_all_with_prefix: boolean;
     created_at: string;
     updated_at: string;
 };
@@ -612,6 +640,10 @@ export type CreateApiModelRequest = {
      * Optional prefix for model namespacing (e.g., "azure/" for "azure/gpt-4", "openai:" for "openai:gpt-4")
      */
     prefix?: string | null;
+    /**
+     * Whether to forward all requests with this prefix (true) or only selected models (false)
+     */
+    forward_all_with_prefix?: boolean;
 };
 
 /**
@@ -1087,6 +1119,17 @@ export type ModelAlias = {
     snapshot: string;
 };
 
+/**
+ * Response for auto-discovered model aliases
+ */
+export type ModelAliasResponse = {
+    source: string;
+    alias: string;
+    repo: string;
+    filename: string;
+    snapshot: string;
+};
+
 export type ModelDetails = {
     parent_model?: string | null;
     format: string;
@@ -1177,7 +1220,7 @@ export type Options = {
 };
 
 export type PaginatedAliasResponse = {
-    data: Array<Alias>;
+    data: Array<AliasResponse>;
     total: number;
     page: number;
     page_size: number;
@@ -1521,6 +1564,10 @@ export type UpdateApiModelRequest = {
      * Optional prefix for model namespacing
      */
     prefix?: string | null;
+    /**
+     * Whether to forward all requests with this prefix (true) or only selected models (false)
+     */
+    forward_all_with_prefix?: boolean;
 };
 
 /**
@@ -2358,6 +2405,52 @@ export type UpdateApiModelResponses = {
 };
 
 export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
+
+export type SyncModelsData = {
+    body?: never;
+    path: {
+        /**
+         * Unique identifier for the API model alias
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/api-models/{id}/sync-models';
+};
+
+export type SyncModelsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * API model not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type SyncModelsError = SyncModelsErrors[keyof SyncModelsErrors];
+
+export type SyncModelsResponses = {
+    /**
+     * Models synced to cache successfully
+     */
+    200: ApiModelResponse;
+};
+
+export type SyncModelsResponse = SyncModelsResponses[keyof SyncModelsResponses];
 
 export type RequestAccessData = {
     /**

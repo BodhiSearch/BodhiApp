@@ -129,7 +129,6 @@ pub struct CreateApiModelRequest {
   pub api_key: ApiKey,
 
   /// List of available models
-  #[validate(length(min = 1, message = "Models list must not be empty"))]
   #[builder(default)]
   pub models: Vec<String>,
 
@@ -141,6 +140,33 @@ pub struct CreateApiModelRequest {
   #[serde(default)]
   #[builder(default)]
   pub forward_all_with_prefix: bool,
+}
+
+impl CreateApiModelRequest {
+  /// Custom validation for forward_all_with_prefix
+  /// Ensures that:
+  /// 1. When forward_all_with_prefix is true, prefix must be provided
+  /// 2. When forward_all_with_prefix is false, at least one model must be selected
+  pub fn validate_forward_all(&self) -> Result<(), ValidationError> {
+    if self.forward_all_with_prefix {
+      // forward_all_with_prefix is true - require prefix
+      if self.prefix.is_none() || self.prefix.as_ref().map_or(true, |p| p.trim().is_empty()) {
+        let mut err = ValidationError::new("prefix_required");
+        err.message = Some("Prefix is required when forwarding all requests with prefix".into());
+        return Err(err);
+      }
+    } else {
+      // forward_all_with_prefix is false - require at least one model
+      if self.models.is_empty() {
+        let mut err = ValidationError::new("models_required");
+        err.message =
+          Some("At least one model must be selected when not using forward_all mode".into());
+        return Err(err);
+      }
+    }
+
+    Ok(())
+  }
 }
 
 fn default_api_key_keep() -> ApiKeyUpdateAction {
@@ -172,7 +198,6 @@ pub struct UpdateApiModelRequest {
   pub api_key: ApiKeyUpdateAction,
 
   /// List of available models (required)
-  #[validate(length(min = 1, message = "Models list must not be empty"))]
   #[builder(default)]
   pub models: Vec<String>,
 
@@ -184,6 +209,33 @@ pub struct UpdateApiModelRequest {
   #[serde(default)]
   #[builder(default)]
   pub forward_all_with_prefix: bool,
+}
+
+impl UpdateApiModelRequest {
+  /// Custom validation for forward_all_with_prefix
+  /// Ensures that:
+  /// 1. When forward_all_with_prefix is true, prefix must be provided
+  /// 2. When forward_all_with_prefix is false, at least one model must be selected
+  pub fn validate_forward_all(&self) -> Result<(), ValidationError> {
+    if self.forward_all_with_prefix {
+      // forward_all_with_prefix is true - require prefix
+      if self.prefix.is_none() || self.prefix.as_ref().map_or(true, |p| p.trim().is_empty()) {
+        let mut err = ValidationError::new("prefix_required");
+        err.message = Some("Prefix is required when forwarding all requests with prefix".into());
+        return Err(err);
+      }
+    } else {
+      // forward_all_with_prefix is false - require at least one model
+      if self.models.is_empty() {
+        let mut err = ValidationError::new("models_required");
+        err.message =
+          Some("At least one model must be selected when not using forward_all mode".into());
+        return Err(err);
+      }
+    }
+
+    Ok(())
+  }
 }
 
 /// Request to test API connectivity with a prompt
@@ -264,6 +316,9 @@ impl ApiModelResponse {
   /// # Returns
   /// * `api_key_masked`: `Some("***")` if key exists, `None` if no key stored
   pub fn from_alias(alias: ApiAlias, has_api_key: bool) -> Self {
+    // get_models() returns models_cache for forward_all, models for regular aliases
+    // All models are returned WITHOUT prefix - the UI will apply the prefix
+    let models = alias.get_models().clone();
     Self {
       id: alias.id,
       api_format: alias.api_format,
@@ -273,7 +328,7 @@ impl ApiModelResponse {
       } else {
         None
       },
-      models: alias.models,
+      models,
       prefix: alias.prefix,
       forward_all_with_prefix: alias.forward_all_with_prefix,
       created_at: alias.created_at,
@@ -356,8 +411,9 @@ pub fn mask_api_key(api_key: &str) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder, FetchModelsRequest,
-    TestCreds, TestPromptRequest, TestPromptResponse,
+    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder,
+    UpdateApiModelRequestBuilder, FetchModelsRequest, TestCreds, TestPromptRequest,
+    TestPromptResponse,
   };
   use objs::ApiFormat::OpenAI;
   use services::db::ApiKeyUpdate;
@@ -551,5 +607,162 @@ mod tests {
 
     let set_none = ApiKeyUpdate::from(ApiKeyUpdateAction::Set(ApiKey::none()));
     assert_eq!(set_none, ApiKeyUpdate::Set(None));
+  }
+
+  #[test]
+  fn test_create_api_model_request_validate_forward_all_with_prefix_success() {
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec![])
+      .prefix("fwd/".to_string())
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    assert!(request.validate_forward_all().is_ok());
+  }
+
+  #[test]
+  fn test_create_api_model_request_validate_forward_all_without_prefix_fails() {
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec![])
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "prefix_required");
+  }
+
+  #[test]
+  fn test_create_api_model_request_validate_forward_all_with_empty_prefix_fails() {
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec![])
+      .prefix("   ".to_string())
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "prefix_required");
+  }
+
+  #[test]
+  fn test_create_api_model_request_validate_forward_all_disabled_with_models_success() {
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec!["gpt-4".to_string()])
+      .forward_all_with_prefix(false)
+      .build()
+      .unwrap();
+
+    assert!(request.validate_forward_all().is_ok());
+  }
+
+  #[test]
+  fn test_create_api_model_request_validate_forward_all_disabled_without_models_fails() {
+    let request = CreateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .api_key(ApiKey::some("sk-test".to_string()).unwrap())
+      .models(vec![])
+      .forward_all_with_prefix(false)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "models_required");
+  }
+
+  #[test]
+  fn test_update_api_model_request_validate_forward_all_with_prefix_success() {
+    let request = UpdateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec![])
+      .prefix("fwd/".to_string())
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    assert!(request.validate_forward_all().is_ok());
+  }
+
+  #[test]
+  fn test_update_api_model_request_validate_forward_all_without_prefix_fails() {
+    let request = UpdateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec![])
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "prefix_required");
+  }
+
+  #[test]
+  fn test_update_api_model_request_validate_forward_all_with_empty_prefix_fails() {
+    let request = UpdateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec![])
+      .prefix("  ".to_string())
+      .forward_all_with_prefix(true)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "prefix_required");
+  }
+
+  #[test]
+  fn test_update_api_model_request_validate_forward_all_disabled_with_models_success() {
+    let request = UpdateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec!["gpt-4".to_string()])
+      .forward_all_with_prefix(false)
+      .build()
+      .unwrap();
+
+    assert!(request.validate_forward_all().is_ok());
+  }
+
+  #[test]
+  fn test_update_api_model_request_validate_forward_all_disabled_without_models_fails() {
+    let request = UpdateApiModelRequestBuilder::default()
+      .api_format(OpenAI)
+      .base_url("https://api.openai.com/v1")
+      .models(vec![])
+      .forward_all_with_prefix(false)
+      .build()
+      .unwrap();
+
+    let result = request.validate_forward_all();
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code.as_ref(), "models_required");
   }
 }

@@ -304,6 +304,19 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_api_model_aliases"))
   }
 
+  async fn update_api_model_cache(
+    &self,
+    id: &str,
+    models: Vec<String>,
+    fetched_at: DateTime<Utc>,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_api_model_cache(id, models, fetched_at)
+      .await
+      .tap(|_| self.notify("update_api_model_cache"))
+  }
+
   async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError> {
     self
       .inner

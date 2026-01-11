@@ -1572,6 +1572,115 @@
         ]
       }
     },
+    "/bodhi/v1/api-models/{id}/sync-models": {
+      "post": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Sync Models to Cache",
+        "description": "Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.",
+        "operationId": "syncModels",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Unique identifier for the API model alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "openai-gpt4"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Models synced to cache successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiModelResponse"
+                },
+                "example": {
+                  "api_format": "openai",
+                  "api_key_masked": "sk-****1234",
+                  "base_url": "https://api.openai.com/v1",
+                  "created_at": "2024-01-01T00:00:00Z",
+                  "forward_all_with_prefix": false,
+                  "id": "openai-gpt4",
+                  "models": [
+                    "gpt-4",
+                    "gpt-3.5-turbo",
+                    "gpt-4-turbo"
+                  ],
+                  "prefix": null,
+                  "updated_at": "2024-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/apps/request-access": {
       "post": {
         "tags": [
@@ -5035,6 +5144,23 @@
         ],
         "description": "Flat enum representing all types of model aliases\nEach variant is identified by the source field"
       },
+      "AliasResponse": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/UserAliasResponse",
+            "description": "User-defined local model (source: \"user\")"
+          },
+          {
+            "$ref": "#/components/schemas/ModelAliasResponse",
+            "description": "Auto-discovered local model (source: \"model\")"
+          },
+          {
+            "$ref": "#/components/schemas/ApiAliasResponse",
+            "description": "Remote API model (source: \"api\")"
+          }
+        ],
+        "description": "Response envelope for model aliases - hides internal implementation details\nUses untagged serialization - each variant has its own \"source\" field"
+      },
       "ApiAlias": {
         "type": "object",
         "required": [
@@ -5042,6 +5168,9 @@
           "api_format",
           "base_url",
           "models",
+          "forward_all_with_prefix",
+          "models_cache",
+          "cache_fetched_at",
           "created_at",
           "updated_at"
         ],
@@ -5066,6 +5195,71 @@
               "string",
               "null"
             ]
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean"
+          },
+          "models_cache": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cache_fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiAliasResponse": {
+        "type": "object",
+        "description": "API response for API model aliases - hides internal cache fields",
+        "required": [
+          "source",
+          "id",
+          "api_format",
+          "base_url",
+          "models",
+          "forward_all_with_prefix",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "api_format": {
+            "$ref": "#/components/schemas/ApiFormat"
+          },
+          "base_url": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Models available through this alias (merged from cache for forward_all)"
+          },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean"
           },
           "created_at": {
             "type": "string",
@@ -5160,6 +5354,7 @@
           "api_format",
           "base_url",
           "models",
+          "forward_all_with_prefix",
           "created_at",
           "updated_at"
         ],
@@ -5190,6 +5385,9 @@
               "string",
               "null"
             ]
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean"
           },
           "created_at": {
             "type": "string",
@@ -6765,6 +6963,10 @@
               "null"
             ],
             "description": "Optional prefix for model namespacing (e.g., \"azure/\" for \"azure/gpt-4\", \"openai:\" for \"openai:gpt-4\")"
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean",
+            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
           }
         },
         "example": {
@@ -7840,6 +8042,34 @@
           }
         }
       },
+      "ModelAliasResponse": {
+        "type": "object",
+        "description": "Response for auto-discovered model aliases",
+        "required": [
+          "source",
+          "alias",
+          "repo",
+          "filename",
+          "snapshot"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        }
+      },
       "ModelDetails": {
         "type": "object",
         "required": [
@@ -8254,7 +8484,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Alias"
+              "$ref": "#/components/schemas/AliasResponse"
             }
           },
           "total": {
@@ -9196,6 +9426,10 @@
               "null"
             ],
             "description": "Optional prefix for model namespacing"
+          },
+          "forward_all_with_prefix": {
+            "type": "boolean",
+            "description": "Whether to forward all requests with this prefix (true) or only selected models (false)"
           }
         },
         "example": {

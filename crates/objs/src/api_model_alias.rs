@@ -1,6 +1,9 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+/// TTL for API model cache (24 hours)
+pub const CACHE_TTL_HOURS: i64 = 24;
 
 /// API format/protocol specification
 #[derive(
@@ -32,6 +35,11 @@ pub struct ApiAlias {
   pub prefix: Option<String>,
   #[builder(default)]
   pub forward_all_with_prefix: bool,
+  #[builder(default)]
+  pub models_cache: Vec<String>,
+  #[schema(value_type = String, format = "date-time")]
+  #[builder(setter(skip))]
+  pub cache_fetched_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time")]
   #[builder(setter(skip))]
   pub created_at: DateTime<Utc>,
@@ -50,6 +58,11 @@ impl ApiAlias {
     forward_all_with_prefix: bool,
     created_at: DateTime<Utc>,
   ) -> Self {
+    // Epoch sentinel for "never fetched"
+    let epoch = DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
+      .unwrap()
+      .with_timezone(&Utc);
+
     Self {
       id: id.into(),
       api_format,
@@ -57,6 +70,8 @@ impl ApiAlias {
       models,
       prefix,
       forward_all_with_prefix,
+      models_cache: Vec::new(),
+      cache_fetched_at: epoch,
       created_at,
       updated_at: created_at,
     }
@@ -67,11 +82,27 @@ impl ApiAlias {
     self
   }
 
+  /// Returns the appropriate models list based on the forward_all_with_prefix flag.
+  /// - If forward_all_with_prefix=true: returns models_cache (unprefixed cached models)
+  /// - If forward_all_with_prefix=false: returns models (user-specified models)
+  pub fn get_models(&self) -> &Vec<String> {
+    if self.forward_all_with_prefix {
+      &self.models_cache
+    } else {
+      &self.models
+    }
+  }
+
   pub fn matchable_models(&self) -> Vec<String> {
     let prefix = self.prefix.as_deref().unwrap_or("");
 
-    self
-      .models
+    let source = if self.forward_all_with_prefix {
+      &self.models_cache
+    } else {
+      &self.models
+    };
+
+    source
       .iter()
       .map(|model| format!("{}{}", prefix, model))
       .collect()
@@ -88,6 +119,16 @@ impl ApiAlias {
       self.matchable_models().contains(&model.to_string())
     }
   }
+
+  /// Check if the cache is stale (older than TTL).
+  pub fn is_cache_stale(&self) -> bool {
+    Utc::now() - self.cache_fetched_at > Duration::hours(CACHE_TTL_HOURS)
+  }
+
+  /// Check if the cache is empty.
+  pub fn is_cache_empty(&self) -> bool {
+    self.models_cache.is_empty()
+  }
 }
 
 impl ApiAliasBuilder {
@@ -96,6 +137,11 @@ impl ApiAliasBuilder {
   /// This is the primary build method for ApiAlias since timestamps cannot be set through
   /// the builder's field setters (they are marked with `#[builder(setter(skip))]`).
   pub fn build_with_time(&self, timestamp: DateTime<Utc>) -> Result<ApiAlias, crate::BuilderError> {
+    // Epoch sentinel for "never fetched"
+    let epoch = DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
+      .unwrap()
+      .with_timezone(&Utc);
+
     Ok(ApiAlias {
       id: self
         .id
@@ -112,6 +158,8 @@ impl ApiAliasBuilder {
       models: self.models.clone().unwrap_or_default(),
       prefix: self.prefix.clone().unwrap_or_default(),
       forward_all_with_prefix: self.forward_all_with_prefix.unwrap_or_default(),
+      models_cache: self.models_cache.clone().unwrap_or_default(),
+      cache_fetched_at: epoch,
       created_at: timestamp,
       updated_at: timestamp,
     })

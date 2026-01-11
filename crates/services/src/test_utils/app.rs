@@ -4,10 +4,10 @@ use crate::{
     test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
     TestDbService,
   },
-  AiApiService, ApiModelCacheService, AppRegInfoBuilder, AppService, AuthService, CacheService,
-  ConcurrencyService, DataService, HfHubService, HubService, LocalConcurrencyService,
-  LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
-  SessionService, SettingService, SqliteSessionService,
+  AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, ConcurrencyService,
+  DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
+  MockAuthService, MockHubService, MokaCacheService, SecretService, SessionService, SettingService,
+  SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -64,7 +64,6 @@ pub struct AppServiceStub {
   #[builder(default = "self.default_time_service()")]
   pub time_service: Option<Arc<dyn TimeService>>,
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
-  pub api_model_cache_service: Option<Arc<dyn ApiModelCacheService>>,
   #[builder(default = "self.default_concurrency_service()")]
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
 }
@@ -284,13 +283,6 @@ impl AppService for AppServiceStub {
       .ai_api_service
       .clone()
       .expect("ai_api_service not configured in test stub - call with_ai_api_service() or build with default")
-  }
-
-  fn api_model_cache_service(&self) -> Arc<dyn ApiModelCacheService> {
-    self
-      .api_model_cache_service
-      .clone()
-      .expect("api_model_cache_service not configured in test stub - call with_api_model_cache_service() or build with default")
   }
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {

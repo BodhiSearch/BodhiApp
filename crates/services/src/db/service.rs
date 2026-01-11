@@ -150,6 +150,13 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     api_key: ApiKeyUpdate,
   ) -> Result<(), DbError>;
 
+  async fn update_api_model_cache(
+    &self,
+    id: &str,
+    models: Vec<String>,
+    fetched_at: DateTime<Utc>,
+  ) -> Result<(), DbError>;
+
   async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
@@ -929,10 +936,13 @@ impl DbService for SqliteDbService {
       (None, None, None)
     };
 
+    let models_cache_json = serde_json::to_string(&alias.models_cache)
+      .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models_cache: {}", e)))?;
+
     sqlx::query(
       r#"
-      INSERT INTO api_model_aliases (id, api_format, base_url, models_json, prefix, forward_all_with_prefix, encrypted_api_key, salt, nonce, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO api_model_aliases (id, api_format, base_url, models_json, prefix, forward_all_with_prefix, models_cache_json, cache_fetched_at, encrypted_api_key, salt, nonce, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#
     )
     .bind(&alias.id)
@@ -941,6 +951,8 @@ impl DbService for SqliteDbService {
     .bind(&models_json)
     .bind(&alias.prefix)
     .bind(alias.forward_all_with_prefix)
+    .bind(&models_cache_json)
+    .bind(alias.cache_fetched_at.timestamp())
     .bind(&encrypted_api_key)
     .bind(&salt)
     .bind(&nonce)
@@ -953,8 +965,8 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
-    let result = query_as::<_, (String, String, String, String, Option<String>, bool, i64)>(
-      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, created_at FROM api_model_aliases WHERE id = ?",
+    let result = query_as::<_, (String, String, String, String, Option<String>, bool, Option<String>, i64, i64)>(
+      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, models_cache_json, cache_fetched_at, created_at FROM api_model_aliases WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
@@ -968,6 +980,8 @@ impl DbService for SqliteDbService {
         models_json,
         prefix,
         forward_all_with_prefix,
+        models_cache_json,
+        cache_fetched_at,
         created_at,
       )) => {
         let api_format = api_format_str
@@ -977,7 +991,17 @@ impl DbService for SqliteDbService {
         let models: Vec<String> = serde_json::from_str(&models_json)
           .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
+        let models_cache: Vec<String> = if let Some(cache_json) = models_cache_json {
+          serde_json::from_str(&cache_json).map_err(|e| {
+            DbError::EncryptionError(format!("Failed to deserialize models_cache: {}", e))
+          })?
+        } else {
+          Vec::new()
+        };
+
         let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
+        let cache_fetched_at =
+          chrono::DateTime::<Utc>::from_timestamp(cache_fetched_at, 0).unwrap_or_default();
 
         Ok(Some(ApiAlias {
           id,
@@ -986,6 +1010,8 @@ impl DbService for SqliteDbService {
           models,
           prefix,
           forward_all_with_prefix,
+          models_cache,
+          cache_fetched_at,
           created_at,
           updated_at: created_at,
         }))
@@ -1089,6 +1115,31 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
+  async fn update_api_model_cache(
+    &self,
+    id: &str,
+    models: Vec<String>,
+    fetched_at: DateTime<Utc>,
+  ) -> Result<(), DbError> {
+    let models_cache_json = serde_json::to_string(&models)
+      .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models_cache: {}", e)))?;
+
+    sqlx::query(
+      r#"
+      UPDATE api_model_aliases
+      SET models_cache_json = ?, cache_fetched_at = ?
+      WHERE id = ?
+      "#,
+    )
+    .bind(&models_cache_json)
+    .bind(fetched_at.timestamp())
+    .bind(id)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
+  }
+
   async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError> {
     sqlx::query("DELETE FROM api_model_aliases WHERE id = ?")
       .bind(id)
@@ -1099,15 +1150,24 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
-    let results = query_as::<_, (String, String, String, String, Option<String>, bool, i64)>(
-      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, created_at FROM api_model_aliases ORDER BY created_at DESC"
+    let results = query_as::<_, (String, String, String, String, Option<String>, bool, Option<String>, i64, i64)>(
+      "SELECT id, api_format, base_url, models_json, prefix, forward_all_with_prefix, models_cache_json, cache_fetched_at, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
     .fetch_all(&self.pool)
     .await?;
 
     let mut aliases = Vec::new();
-    for (id, api_format_str, base_url, models_json, prefix, forward_all_with_prefix, created_at) in
-      results
+    for (
+      id,
+      api_format_str,
+      base_url,
+      models_json,
+      prefix,
+      forward_all_with_prefix,
+      models_cache_json,
+      cache_fetched_at,
+      created_at,
+    ) in results
     {
       let api_format = api_format_str
         .parse::<ApiFormat>()
@@ -1116,7 +1176,17 @@ impl DbService for SqliteDbService {
       let models: Vec<String> = serde_json::from_str(&models_json)
         .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
+      let models_cache: Vec<String> = if let Some(cache_json) = models_cache_json {
+        serde_json::from_str(&cache_json).map_err(|e| {
+          DbError::EncryptionError(format!("Failed to deserialize models_cache: {}", e))
+        })?
+      } else {
+        Vec::new()
+      };
+
       let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
+      let cache_fetched_at =
+        chrono::DateTime::<Utc>::from_timestamp(cache_fetched_at, 0).unwrap_or_default();
 
       aliases.push(ApiAlias {
         id,
@@ -1125,6 +1195,8 @@ impl DbService for SqliteDbService {
         models,
         prefix,
         forward_all_with_prefix,
+        models_cache,
+        cache_fetched_at,
         created_at,
         updated_at: created_at,
       });

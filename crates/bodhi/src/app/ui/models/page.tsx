@@ -21,7 +21,7 @@ import { useDeleteApiModel } from '@/hooks/useApiModels';
 import { useModels } from '@/hooks/useModels';
 import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 import { SortState } from '@/types/models';
-import { Alias } from '@bodhiapp/ts-client';
+import { AliasResponse } from '@bodhiapp/ts-client';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import {
   Cloud,
@@ -70,10 +70,12 @@ const columns = [
     sorted: true,
     className: 'hidden lg:table-cell',
   },
+  { id: 'prefix', name: 'Prefix', sorted: true, className: 'hidden lg:table-cell' },
+  { id: 'forward_all', name: 'Forward All', sorted: false, className: 'hidden lg:table-cell' },
   { id: 'actions', name: '', sorted: false, className: 'hidden sm:table-cell' },
 ];
 
-const SourceBadge = ({ model, testIdPrefix = '' }: { model: Alias; testIdPrefix?: string }) => {
+const SourceBadge = ({ model, testIdPrefix = '' }: { model: AliasResponse; testIdPrefix?: string }) => {
   const prefix = testIdPrefix ? `${testIdPrefix}` : '';
 
   if (isApiAlias(model)) {
@@ -130,11 +132,11 @@ function ModelsPageContent() {
     setPage(1); // Reset to first page when sorting
   };
 
-  const getItemId = (model: Alias) => {
+  const getItemId = (model: AliasResponse) => {
     return isApiAlias(model) ? model.id : model.alias;
   };
 
-  const handleEdit = (model: Alias) => {
+  const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       router.push(`/ui/api-models/edit?id=${model.id}`);
     } else {
@@ -142,18 +144,18 @@ function ModelsPageContent() {
     }
   };
 
-  const handleNew = (model: Alias) => {
+  const handleNew = (model: AliasResponse) => {
     if (hasLocalFileProperties(model)) {
       router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
     }
   };
 
-  const handleChat = (model: Alias) => {
+  const handleChat = (model: AliasResponse) => {
     const modelIdentifier = isApiAlias(model) ? model.id : model.alias;
     router.push(`/ui/chat?model=${modelIdentifier}`);
   };
 
-  const handleDelete = (model: Alias) => {
+  const handleDelete = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       setDeleteModel({ id: model.id, name: model.id });
     }
@@ -186,7 +188,7 @@ function ModelsPageContent() {
     return `https://huggingface.co/${repo}/blob/main/${filename}`;
   };
 
-  const getExternalUrl = (model: Alias) => {
+  const getExternalUrl = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       return model.base_url;
     } else {
@@ -194,7 +196,7 @@ function ModelsPageContent() {
     }
   };
 
-  const actionUi = (model: Alias, testIdPrefix = '') => {
+  const actionUi = (model: AliasResponse, testIdPrefix = '') => {
     if (isApiAlias(model)) {
       // API model actions
       return (
@@ -343,7 +345,7 @@ function ModelsPageContent() {
     router.push('/ui/api-models/new');
   };
 
-  const getModelDisplayRepo = (model: Alias): string => {
+  const getModelDisplayRepo = (model: AliasResponse): string => {
     if (isApiAlias(model)) {
       return model.api_format;
     } else {
@@ -351,7 +353,7 @@ function ModelsPageContent() {
     }
   };
 
-  const getModelDisplayFilename = (model: Alias): string => {
+  const getModelDisplayFilename = (model: AliasResponse): string => {
     if (isApiAlias(model)) {
       return model.base_url;
     } else {
@@ -359,7 +361,7 @@ function ModelsPageContent() {
     }
   };
 
-  const renderRow = (model: Alias) => [
+  const renderRow = (model: AliasResponse) => [
     // Mobile view (single column with all items stacked)
     <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
       <div className="flex flex-col gap-2">
@@ -443,6 +445,36 @@ function ModelsPageContent() {
       <div className="w-fit">
         <SourceBadge model={model} />
       </div>
+    </TableCell>,
+    <TableCell
+      key="prefix"
+      className="max-w-[100px] hidden lg:table-cell"
+      data-testid={`prefix-cell-${getItemId(model)}`}
+    >
+      {isApiAlias(model) ? (
+        <CopyableContent text={model.prefix || '-'} className="text-sm" />
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      )}
+    </TableCell>,
+    <TableCell
+      key="forward_all"
+      className="max-w-[100px] hidden lg:table-cell"
+      data-testid={`forward-all-cell-${getItemId(model)}`}
+    >
+      {isApiAlias(model) ? (
+        model.forward_all_with_prefix ? (
+          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200">
+            Yes
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="bg-gray-500/10 text-gray-600 border-gray-200">
+            No
+          </Badge>
+        )
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      )}
     </TableCell>,
     <TableCell
       key="actions"

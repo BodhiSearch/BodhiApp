@@ -12,6 +12,8 @@ export class ModelsListPage extends BasePage {
     aliasCell: (modelId) => `[data-testid="alias-cell-${modelId}"]`,
     repoCell: (modelId) => `[data-testid="repo-cell-${modelId}"]`,
     filenameCell: (modelId) => `[data-testid="filename-cell-${modelId}"]`,
+    prefixCell: (modelId) => `[data-testid="prefix-cell-${modelId}"]`,
+    forwardAllCell: (modelId) => `[data-testid="forward-all-cell-${modelId}"]`,
     editButton: (modelId) => `[data-testid="edit-button-${modelId}"]:visible`,
     deleteButton: (modelId) => `[data-testid="delete-button-${modelId}"]:visible`,
     modelChatButton: (modelName) => `[data-testid="model-chat-button-${modelName}"]`,
@@ -271,5 +273,53 @@ export class ModelsListPage extends BasePage {
     } catch {
       return null;
     }
+  }
+
+  async getModelPrefix(modelId) {
+    await this.waitForSelector(this.selectors.table);
+    const prefixCell = this.page.locator(this.selectors.prefixCell(modelId));
+    await expect(prefixCell).toBeVisible();
+    const text = await prefixCell.textContent();
+    return text?.trim();
+  }
+
+  async getModelForwardAll(modelId) {
+    await this.waitForSelector(this.selectors.table);
+    const forwardAllCell = this.page.locator(this.selectors.forwardAllCell(modelId));
+    await expect(forwardAllCell).toBeVisible();
+    const text = await forwardAllCell.textContent();
+    return text?.trim();
+  }
+
+  async verifyForwardAllModel(modelId, expectedPrefix) {
+    // Verify prefix column
+    const prefix = await this.getModelPrefix(modelId);
+    expect(prefix).toBe(expectedPrefix);
+
+    // Verify forward_all column shows "Yes"
+    const forwardAll = await this.getModelForwardAll(modelId);
+    expect(forwardAll).toBe('Yes');
+  }
+
+  async getModelRow(modelId) {
+    await this.waitForSelector(this.selectors.table);
+    const modelRow = this.page.locator(this.selectors.modelRow(modelId)).first();
+    await expect(modelRow).toBeVisible();
+
+    const id = await this.page.locator(this.selectors.aliasCell(modelId)).textContent();
+    const api_format = await this.page.locator(this.selectors.repoCell(modelId)).textContent();
+    const base_url = await this.page.locator(this.selectors.filenameCell(modelId)).textContent();
+    const prefix = await this.page.locator(this.selectors.prefixCell(modelId)).textContent();
+    const forward_all = await this.page
+      .locator(this.selectors.forwardAllCell(modelId))
+      .textContent();
+
+    return {
+      id: id?.trim() || '',
+      api_format: api_format?.trim() || '',
+      base_url: base_url?.trim() || '',
+      prefix: prefix?.trim() || '',
+      forward_all: forward_all?.trim() || '',
+    };
   }
 }

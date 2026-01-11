@@ -16,6 +16,9 @@ export class ApiModelFormComponent {
     useApiKeyCheckbox: '[data-testid="api-key-input-checkbox"]',
     usePrefixCheckbox: '[data-testid="prefix-input-checkbox"]',
     prefixInput: '[data-testid="prefix-input"]',
+    forwardModeSelector: '[data-testid="forward-mode-selector"]',
+    forwardAllRadio: '[data-testid="forward-mode-selector-forward-all"]',
+    forwardSelectedRadio: '[data-testid="forward-mode-selector-forward-selected"]',
     fetchModelsButton: '[data-testid="fetch-models-button"]',
     testConnectionButton: '[data-testid="test-connection-button"]',
     createButton: '[data-testid="create-api-model-button"]',
@@ -118,6 +121,37 @@ export class ApiModelFormComponent {
       return null;
     }
     return await this.page.locator(this.selectors.prefixInput).inputValue();
+  }
+
+  // Forward All Mode methods
+  async enableForwardAll() {
+    await this.page.click(this.selectors.forwardAllRadio);
+    await expect(this.page.locator(this.selectors.forwardAllRadio)).toBeChecked();
+  }
+
+  async selectModelsMode() {
+    await this.page.click(this.selectors.forwardSelectedRadio);
+    await expect(this.page.locator(this.selectors.forwardSelectedRadio)).toBeChecked();
+  }
+
+  async isForwardAllEnabled() {
+    return await this.page.locator(this.selectors.forwardAllRadio).isChecked();
+  }
+
+  async expectForwardAllDisabled() {
+    await expect(this.page.locator(this.selectors.forwardAllRadio)).toBeDisabled();
+  }
+
+  async expectForwardAllEnabled() {
+    await expect(this.page.locator(this.selectors.forwardAllRadio)).toBeEnabled();
+  }
+
+  async expectModelSelectionState(state) {
+    // state: 'enabled' | 'disabled'
+    await expect(this.page.locator('[data-testid="model-selection-section"]')).toHaveAttribute(
+      'data-teststate',
+      state
+    );
   }
 
   // Model Management
@@ -416,5 +450,21 @@ export class ApiModelFormComponent {
 
   async expectApiKeyValue(expectedValue) {
     await this.expectValue(this.selectors.apiKeyInput, expectedValue);
+  }
+
+  async verifyForwardAllModeSelected() {
+    const forwardAllRadio = this.page.locator(this.selectors.forwardAllRadio);
+    await expect(forwardAllRadio).toBeVisible();
+    await expect(forwardAllRadio).toBeChecked();
+  }
+
+  async verifyForwardSelectedModeSelected() {
+    const forwardSelectedRadio = this.page.locator(this.selectors.forwardSelectedRadio);
+    await expect(forwardSelectedRadio).toBeVisible();
+    await expect(forwardSelectedRadio).toBeChecked();
+  }
+
+  async verifyPrefixValue(expectedPrefix) {
+    await this.expectValue(this.selectors.prefixInput, expectedPrefix);
   }
 }

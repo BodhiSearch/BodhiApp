@@ -25,13 +25,11 @@ export const createApiModelSchema = z
     api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
     base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
     api_key: z.string().optional(),
-    models: z
-      .array(z.string().min(1, 'Model name cannot be empty'))
-      .min(1, 'At least one model must be selected')
-      .max(20, 'Maximum 20 models allowed'),
+    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(20, 'Maximum 20 models allowed'),
     prefix: z.string().optional(),
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
+    forward_all_with_prefix: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     // Only validate API key when useApiKey checkbox is checked
@@ -57,6 +55,25 @@ export const createApiModelSchema = z
         });
       }
     }
+    // Validate that prefix is required when forward_all_with_prefix is true
+    if (data.forward_all_with_prefix && (!data.prefix || data.prefix.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['prefix'],
+        message: 'Prefix is required when forwarding all requests with prefix',
+      });
+    }
+    // When NOT using forward_all_with_prefix, require at least one model
+    if (!data.forward_all_with_prefix && data.models.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 1,
+        type: 'array',
+        inclusive: true,
+        path: ['models'],
+        message: 'At least one model must be selected',
+      });
+    }
   });
 
 // Zod schema for updating API models
@@ -65,13 +82,11 @@ export const updateApiModelSchema = z
     api_format: z.string().min(1, 'API format is required').max(20, 'API format must be less than 20 characters'),
     base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required'),
     api_key: z.string().optional(),
-    models: z
-      .array(z.string().min(1, 'Model name cannot be empty'))
-      .min(1, 'At least one model must be selected')
-      .max(20, 'Maximum 20 models allowed'),
+    models: z.array(z.string().min(1, 'Model name cannot be empty')).max(20, 'Maximum 20 models allowed'),
     prefix: z.string().optional(),
     usePrefix: z.boolean().default(false),
     useApiKey: z.boolean().default(false),
+    forward_all_with_prefix: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     // Only validate API key when useApiKey checkbox is checked AND user provided a value
@@ -87,6 +102,25 @@ export const updateApiModelSchema = z
           message: 'API key is too long (max 4096 characters)',
         });
       }
+    }
+    // Validate that prefix is required when forward_all_with_prefix is true
+    if (data.forward_all_with_prefix && (!data.prefix || data.prefix.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['prefix'],
+        message: 'Prefix is required when forwarding all requests with prefix',
+      });
+    }
+    // When NOT using forward_all_with_prefix, require at least one model
+    if (!data.forward_all_with_prefix && data.models.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 1,
+        type: 'array',
+        inclusive: true,
+        path: ['models'],
+        message: 'At least one model must be selected',
+      });
     }
   });
 
@@ -109,6 +143,7 @@ export const convertFormToCreateRequest = (formData: ApiModelFormData): CreateAp
   api_key: formData.useApiKey && formData.api_key ? formData.api_key : null,
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+  forward_all_with_prefix: formData.forward_all_with_prefix,
 });
 
 /**
@@ -153,6 +188,7 @@ export const convertFormToUpdateRequest = (
   })(),
   models: formData.models,
   prefix: formData.usePrefix && formData.prefix ? formData.prefix : null,
+  forward_all_with_prefix: formData.forward_all_with_prefix,
 });
 
 /**
@@ -173,6 +209,7 @@ export const convertApiToForm = (apiData: ApiModelResponse): ApiModelFormData =>
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.api_key_masked != null, // "***" = has key stored, checkbox checked
+  forward_all_with_prefix: apiData.forward_all_with_prefix || false,
 });
 
 /**
@@ -193,6 +230,7 @@ export const convertApiToUpdateForm = (apiData: ApiModelResponse): UpdateApiMode
   prefix: apiData.prefix || '',
   usePrefix: Boolean(apiData.prefix),
   useApiKey: apiData.api_key_masked != null, // "***" = has key stored, checkbox checked
+  forward_all_with_prefix: apiData.forward_all_with_prefix || false,
 });
 
 // Helper function to mask API key for display

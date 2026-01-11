@@ -185,6 +185,32 @@ export class ChatPage extends BasePage {
   }
 
   /**
+   * Open the model combobox dropdown
+   */
+  async toggleModelCombobox() {
+    await this.openSettingsPanel();
+    const trigger = this.page.locator(this.selectors.comboboxTrigger);
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+  }
+
+  /**
+   * Expect a model option to be visible in the combobox
+   */
+  async expectModelOptionVisible(modelName) {
+    const option = this.page.locator(this.selectors.comboboxOption(modelName));
+    await expect(option).toBeVisible();
+  }
+
+  /**
+   * Expect a model option to not be visible in the combobox
+   */
+  async expectModelOptionNotVisible(modelName) {
+    const option = this.page.locator(this.selectors.comboboxOption(modelName));
+    await expect(option).not.toBeVisible();
+  }
+
+  /**
    * Verify that a model is selected
    */
   async verifyModelSelected(modelName) {

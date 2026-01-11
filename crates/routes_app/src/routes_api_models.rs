@@ -159,10 +159,19 @@ pub async fn create_api_model_handler(
     .validate()
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
-  // Additional validation: forward_all_with_prefix requires a non-empty prefix
-  if payload.forward_all_with_prefix && payload.prefix.as_ref().map_or(true, |p| p.is_empty()) {
-    return Err(ApiError::from(ObjValidationError::ForwardAllRequiresPrefix));
-  }
+  // Additional validation: forward_all_with_prefix mode validation
+  payload.validate_forward_all().map_err(|e| {
+    if e.code.as_ref() == "prefix_required" {
+      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
+    } else if e.code.as_ref() == "models_required" {
+      // Convert validation error to ValidationErrors for consistency
+      let mut errors = validator::ValidationErrors::new();
+      errors.add("models", e);
+      ApiError::from(ObjValidationError::ValidationErrors(errors))
+    } else {
+      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
+    }
+  })?;
 
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
@@ -172,11 +181,18 @@ pub async fn create_api_model_handler(
 
   // Create the API model alias
   let now = time_service.utc_now();
+  // Reset models to empty if forward_all_with_prefix is true
+  let models = if payload.forward_all_with_prefix {
+    Vec::new()
+  } else {
+    payload.models
+  };
+
   let api_alias = ApiAlias::new(
     id,
     payload.api_format,
     payload.base_url.trim_end_matches('/').to_string(),
-    payload.models,
+    models,
     payload.prefix,
     payload.forward_all_with_prefix,
     now,
@@ -188,6 +204,11 @@ pub async fn create_api_model_handler(
   db_service
     .create_api_model_alias(&api_alias, api_key_option)
     .await?;
+
+  // For forward_all models, populate cache asynchronously (fire-and-forget)
+  if api_alias.forward_all_with_prefix {
+    spawn_cache_refresh(state.app_service(), api_alias.id.clone());
+  }
 
   let response = ApiModelResponse::from_alias(api_alias, payload.api_key.is_some());
 
@@ -224,10 +245,19 @@ pub async fn update_api_model_handler(
     .validate()
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
-  // Additional validation: forward_all_with_prefix requires a non-empty prefix
-  if payload.forward_all_with_prefix && payload.prefix.as_ref().map_or(true, |p| p.is_empty()) {
-    return Err(ApiError::from(ObjValidationError::ForwardAllRequiresPrefix));
-  }
+  // Additional validation: forward_all_with_prefix mode validation
+  payload.validate_forward_all().map_err(|e| {
+    if e.code.as_ref() == "prefix_required" {
+      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
+    } else if e.code.as_ref() == "models_required" {
+      // Convert validation error to ValidationErrors for consistency
+      let mut errors = validator::ValidationErrors::new();
+      errors.add("models", e);
+      ApiError::from(ObjValidationError::ValidationErrors(errors))
+    } else {
+      ApiError::from(ObjValidationError::ForwardAllRequiresPrefix)
+    }
+  })?;
 
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
@@ -464,11 +494,116 @@ pub async fn get_api_formats_handler() -> Result<Json<ApiFormatsResponse>, ApiEr
   }))
 }
 
+/// Synchronously populate cache with models for an API model alias
+///
+/// This endpoint fetches models from the external API and populates the cache synchronously.
+/// Useful for testing to ensure cache is populated before proceeding with assertions.
+#[utoipa::path(
+    post,
+    path = ENDPOINT_API_MODELS.to_owned() + "/{id}/sync-models",
+    tag = API_TAG_API_MODELS,
+    operation_id = "syncModels",
+    summary = "Sync Models to Cache",
+    description = "Synchronously fetches models from the external API and populates the cache. This ensures the cache is populated before returning. Primarily used for testing to avoid timing issues.",
+    params(
+        ("id" = String, Path, description = "Unique identifier for the API model alias", example = "openai-gpt4")
+    ),
+    responses(
+        (status = 200, description = "Models synced to cache successfully", body = ApiModelResponse,
+         example = json!({
+             "id": "openai-gpt4",
+             "api_format": "openai",
+             "base_url": "https://api.openai.com/v1",
+             "api_key_masked": "sk-****1234",
+             "models": ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"],
+             "prefix": null,
+             "forward_all_with_prefix": false,
+             "created_at": "2024-01-01T00:00:00Z",
+             "updated_at": "2024-01-01T00:00:00Z"
+         })),
+        (status = 404, description = "API model not found"),
+        (status = 500, description = "Failed to sync models")
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    )
+)]
+pub async fn sync_models_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<Json<ApiModelResponse>, ApiError> {
+  let db_service = state.app_service().db_service();
+  let ai_api_service = state.app_service().ai_api_service();
+  let time_service = state.app_service().time_service();
+
+  // Get the API alias - if not found, return error
+  let Some(api_alias) = db_service.get_api_model_alias(&id).await? else {
+    return Err(ApiError::from(objs::EntityError::NotFound(format!(
+      "API model {} not found",
+      id
+    ))));
+  };
+
+  // Get API key (optional)
+  let api_key = db_service.get_api_key_for_alias(&id).await.ok().flatten();
+
+  // Fetch models from remote API synchronously
+  let models = ai_api_service
+    .fetch_models(api_key, &api_alias.base_url)
+    .await?;
+
+  // Update cache in DB
+  let now = time_service.utc_now();
+  db_service
+    .update_api_model_cache(&id, models.clone(), now)
+    .await?;
+
+  // Get refreshed alias
+  let Some(updated_alias) = db_service.get_api_model_alias(&id).await? else {
+    return Err(ApiError::from(objs::EntityError::NotFound(format!(
+      "API model {} not found",
+      id
+    ))));
+  };
+
+  // Check if API key exists
+  let has_api_key = db_service
+    .get_api_key_for_alias(&id)
+    .await
+    .ok()
+    .flatten()
+    .is_some();
+
+  Ok(Json(ApiModelResponse::from_alias(
+    updated_alias,
+    has_api_key,
+  )))
+}
+
+/// Helper function to spawn async cache refresh for forward_all models
+fn spawn_cache_refresh(app_service: Arc<dyn services::AppService>, alias_id: String) {
+  tokio::spawn(async move {
+    let db = app_service.db_service();
+    let ai_api = app_service.ai_api_service();
+    let time_service = app_service.time_service();
+
+    if let Ok(Some(alias)) = db.get_api_model_alias(&alias_id).await {
+      let api_key = db.get_api_key_for_alias(&alias_id).await.ok().flatten();
+      if let Ok(models) = ai_api.fetch_models(api_key, &alias.base_url).await {
+        let now = time_service.utc_now();
+        let _ = db.update_api_model_cache(&alias_id, models, now).await;
+      }
+    }
+  });
+}
+
 #[cfg(test)]
 mod tests {
   use super::{
     create_api_model_handler, delete_api_model_handler, fetch_models_handler,
-    get_api_model_handler, list_api_models_handler, test_api_model_handler,
+    get_api_model_handler, list_api_models_handler, sync_models_handler, test_api_model_handler,
     update_api_model_handler,
   };
   use crate::{
@@ -485,6 +620,7 @@ mod tests {
     Router,
   };
   use chrono::{DateTime, Utc};
+  use mockall::predicate;
   use objs::{
     test_utils::setup_l10n, ApiAliasBuilder, ApiFormat::OpenAI, FluentLocalizationService,
   };
@@ -590,6 +726,10 @@ mod tests {
       .route(
         &format!("{}/fetch-models", ENDPOINT_API_MODELS),
         post(fetch_models_handler),
+      )
+      .route(
+        &format!("{}/{{id}}/sync-models", ENDPOINT_API_MODELS),
+        post(sync_models_handler),
       )
       .with_state(Arc::new(router_state))
   }
@@ -889,10 +1029,169 @@ mod tests {
     // Verify response status is 400 Bad Request
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    // Verify error response contains validation error for models length
+    // Verify error response contains validation error code
+    let error_response = response.json::<serde_json::Value>().await?;
+    let error_code = error_response["error"]["code"].as_str().unwrap();
+    assert_eq!("obj_validation_error-validation_errors", error_code);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_model_handler_forward_all_with_prefix_success(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create app service with clean database
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .with_secret_service()
+      .build()?;
+
+    let create_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
+      models: vec![], // Empty models is valid for forward_all mode
+      prefix: Some("fwd/".to_string()),
+      forward_all_with_prefix: true,
+    };
+
+    let response = test_router(Arc::new(app_service))
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .await?;
+
+    // Verify response status is 201 Created
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    // Verify the API model was created with forward_all_with_prefix=true
+    let response_body = response.json::<ApiModelResponse>().await?;
+    assert_eq!(response_body.forward_all_with_prefix, true);
+    assert_eq!(response_body.prefix, Some("fwd/".to_string()));
+    assert_eq!(response_body.models, Vec::<String>::new());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_model_handler_forward_all_without_prefix_fails(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create app service with clean database
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .with_secret_service()
+      .build()?;
+
+    let create_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123456789".to_string()).unwrap(),
+      models: vec![],
+      prefix: None, // Invalid: forward_all_with_prefix requires a prefix
+      forward_all_with_prefix: true,
+    };
+
+    let response = test_router(Arc::new(app_service))
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .await?;
+
+    // Verify response status is 400 Bad Request
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    // Verify error response contains validation error for prefix
     let error_response = response.json::<serde_json::Value>().await?;
     let error_message = error_response["error"]["message"].as_str().unwrap();
-    assert!(error_message.contains("Models list must not be empty"));
+    assert!(error_message.contains("prefix is required"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_sync_models_handler_success(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Set up mock AI API service with expectations
+    let mut mock_ai = services::MockAiApiService::new();
+    mock_ai
+      .expect_fetch_models()
+      .with(
+        predicate::eq(Some("sk-test123".to_string())),
+        predicate::eq("https://api.openai.com/v1"),
+      )
+      .returning(|_, _| {
+        Ok(vec![
+          "gpt-4".to_string(),
+          "gpt-3.5-turbo".to_string(),
+          "gpt-4-turbo".to_string(),
+        ])
+      });
+
+    // Create app service with clean database and mock AI service
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .ai_api_service(Arc::new(mock_ai))
+        .with_secret_service()
+        .build()?,
+    );
+
+    // First create an API model
+    let create_request = CreateApiModelRequest {
+      api_format: OpenAI,
+      base_url: "https://api.openai.com/v1".to_string(),
+      api_key: crate::api_models_dto::ApiKey::some("sk-test123".to_string()).unwrap(),
+      models: vec![],
+      prefix: Some("fwd/".to_string()),
+      forward_all_with_prefix: true,
+    };
+
+    let create_response = test_router(app_service.clone())
+      .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
+      .await?
+      .json::<ApiModelResponse>()
+      .await?;
+
+    // Sync models
+    let sync_response = test_router(app_service)
+      .oneshot(
+        Request::post(&format!(
+          "/bodhi/v1/api-models/{}/sync-models",
+          create_response.id
+        ))
+        .body(Body::empty())
+        .unwrap(),
+      )
+      .await?;
+
+    // Verify response status is 200 OK
+    assert_eq!(StatusCode::OK, sync_response.status());
+
+    // Verify response contains the API model with cached models (unprefixed)
+    let sync_body = sync_response.json::<ApiModelResponse>().await?;
+    assert_eq!(create_response.id, sync_body.id);
+    assert_eq!(OpenAI, sync_body.api_format);
+    // Models should be returned without prefix - UI applies prefix
+    assert_eq!(
+      vec!["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"],
+      sync_body.models
+    );
+    assert_eq!(Some("fwd/".to_string()), sync_body.prefix);
+    assert_eq!(true, sync_body.forward_all_with_prefix);
 
     Ok(())
   }
@@ -1561,7 +1860,10 @@ mod tests {
 
     // Verify error message
     let error_body: serde_json::Value = response.json().await?;
-    assert_eq!(error_body["error"]["code"].as_str().unwrap(), "obj_validation_error-forward_all_requires_prefix");
+    assert_eq!(
+      error_body["error"]["code"].as_str().unwrap(),
+      "obj_validation_error-forward_all_requires_prefix"
+    );
 
     Ok(())
   }

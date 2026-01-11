@@ -69,9 +69,9 @@ export const convertApiToForm = (apiData: LocalAlias): AliasFormData => ({
   alias: apiData.alias,
   repo: apiData.repo,
   filename: apiData.filename,
-  snapshot: apiData.source === 'user' ? apiData.snapshot : undefined,
+  snapshot: apiData.snapshot,
   request_params:
-    apiData.source === 'user' && apiData.request_params
+    apiData.source === 'user' && 'request_params' in apiData && apiData.request_params
       ? {
           frequency_penalty: apiData.request_params.frequency_penalty ?? undefined,
           max_tokens: apiData.request_params.max_tokens ?? undefined,
@@ -84,5 +84,7 @@ export const convertApiToForm = (apiData: LocalAlias): AliasFormData => ({
         }
       : {},
   context_params:
-    apiData.source === 'user' && Array.isArray(apiData.context_params) ? apiData.context_params.join('\n') : '',
+    apiData.source === 'user' && 'context_params' in apiData && Array.isArray(apiData.context_params)
+      ? apiData.context_params.join('\n')
+      : '',
 });

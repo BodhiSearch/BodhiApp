@@ -22,9 +22,9 @@ use crate::{
   __path_list_users_handler, __path_logout_handler, __path_ping_handler,
   __path_pull_by_alias_handler, __path_reject_request_handler, __path_remove_user_handler,
   __path_request_access_handler, __path_request_status_handler, __path_setup_handler,
-  __path_test_api_model_handler, __path_update_alias_handler, __path_update_api_model_handler,
-  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
-  __path_user_request_access_handler,
+  __path_sync_models_handler, __path_test_api_model_handler, __path_update_alias_handler,
+  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
+  __path_user_info_handler, __path_user_request_access_handler,
 };
 use async_openai::types::{
   ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
@@ -338,6 +338,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         create_api_model_handler,
         update_api_model_handler,
         delete_api_model_handler,
+        sync_models_handler,
         test_api_model_handler,
         fetch_models_handler,
         get_api_formats_handler,

@@ -52,6 +52,7 @@ export function useApiModelForm({
           prefix: initialData?.prefix || '',
           usePrefix: Boolean(initialData?.prefix),
           useApiKey: initialData?.api_key_masked != null, // "***" = has key, checkbox checked
+          forward_all_with_prefix: initialData?.forward_all_with_prefix || false,
         }
       : mode === 'setup'
         ? {
@@ -62,6 +63,7 @@ export function useApiModelForm({
             prefix: '',
             usePrefix: false,
             useApiKey: false,
+            forward_all_with_prefix: false,
           }
         : {
             api_format: 'openai',
@@ -71,6 +73,7 @@ export function useApiModelForm({
             prefix: '',
             usePrefix: false,
             useApiKey: false,
+            forward_all_with_prefix: false,
           },
   });
 

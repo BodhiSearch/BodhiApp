@@ -18,8 +18,8 @@ import {
   convertFormToUpdateApi,
   convertApiToForm,
 } from '@/schemas/alias';
-import { Alias } from '@bodhiapp/ts-client';
-import { hasLocalFileProperties, isUserAlias } from '@/lib/utils';
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -29,7 +29,7 @@ import { z } from 'zod';
 
 interface AliasFormProps {
   isEditMode: boolean;
-  initialData?: Alias;
+  initialData?: AliasResponse;
 }
 
 function FormFieldWithTooltip({
@@ -159,16 +159,19 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
-  const updateModel = useUpdateModel(initialData?.source === 'api' ? initialData.id : initialData?.alias || '', {
-    onSuccess: (model) => {
-      const identifier = model.source === 'api' ? model.id : model.alias;
-      showSuccess('Success', `Alias ${identifier} successfully updated`);
-      router.push('/ui/models');
-    },
-    onError: (message) => {
-      showError('Error', message);
-    },
-  });
+  const updateModel = useUpdateModel(
+    initialData ? (isApiAlias(initialData) ? initialData.id : initialData.alias) : '',
+    {
+      onSuccess: (model) => {
+        const identifier = isApiAlias(model) ? model.id : model.alias;
+        showSuccess('Success', `Alias ${identifier} successfully updated`);
+        router.push('/ui/models');
+      },
+      onError: (message) => {
+        showError('Error', message);
+      },
+    }
+  );
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {

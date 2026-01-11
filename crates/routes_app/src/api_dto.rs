@@ -1,4 +1,5 @@
-use objs::{Alias, HubFile, OAIRequestParams, UserAlias};
+use chrono::{DateTime, Utc};
+use objs::{Alias, ApiAlias, ApiFormat, HubFile, ModelAlias, OAIRequestParams, UserAlias};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::db::{ApiToken, DownloadRequest};
@@ -68,7 +69,7 @@ pub struct PaginatedUserAliasResponse {
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedAliasResponse {
-  pub data: Vec<Alias>,
+  pub data: Vec<AliasResponse>,
   pub total: usize,
   pub page: usize,
   pub page_size: usize,
@@ -104,7 +105,7 @@ impl From<HubFile> for LocalModelResponse {
 }
 
 #[allow(clippy::too_many_arguments)]
-#[derive(Serialize, Deserialize, Debug, PartialEq, derive_new::new, ToSchema)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, derive_new::new, ToSchema)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(derive_builder::Builder))]
 #[cfg_attr(
   any(test, feature = "test-utils"),
@@ -135,6 +136,85 @@ impl From<UserAlias> for UserAliasResponse {
       model_params: HashMap::new(),
       request_params: alias.request_params,
       context_params: alias.context_params,
+    }
+  }
+}
+
+/// Response for auto-discovered model aliases
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+pub struct ModelAliasResponse {
+  pub source: String,
+  pub alias: String,
+  pub repo: String,
+  pub filename: String,
+  pub snapshot: String,
+}
+
+impl From<ModelAlias> for ModelAliasResponse {
+  fn from(alias: ModelAlias) -> Self {
+    Self {
+      source: "model".to_string(),
+      alias: alias.alias,
+      repo: alias.repo.to_string(),
+      filename: alias.filename,
+      snapshot: alias.snapshot,
+    }
+  }
+}
+
+/// API response for API model aliases - hides internal cache fields
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+pub struct ApiAliasResponse {
+  pub source: String,
+  pub id: String,
+  pub api_format: ApiFormat,
+  pub base_url: String,
+  /// Models available through this alias (merged from cache for forward_all)
+  pub models: Vec<String>,
+  pub prefix: Option<String>,
+  pub forward_all_with_prefix: bool,
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: DateTime<Utc>,
+}
+
+impl From<ApiAlias> for ApiAliasResponse {
+  fn from(alias: ApiAlias) -> Self {
+    let models = alias.get_models().clone();
+    Self {
+      source: "api".to_string(),
+      id: alias.id,
+      api_format: alias.api_format,
+      base_url: alias.base_url,
+      models,
+      prefix: alias.prefix,
+      forward_all_with_prefix: alias.forward_all_with_prefix,
+      created_at: alias.created_at,
+      updated_at: alias.updated_at,
+    }
+  }
+}
+
+/// Response envelope for model aliases - hides internal implementation details
+/// Uses untagged serialization - each variant has its own "source" field
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+#[serde(untagged)]
+pub enum AliasResponse {
+  /// User-defined local model (source: "user")
+  User(UserAliasResponse),
+  /// Auto-discovered local model (source: "model")
+  Model(ModelAliasResponse),
+  /// Remote API model (source: "api")
+  Api(ApiAliasResponse),
+}
+
+impl From<Alias> for AliasResponse {
+  fn from(alias: Alias) -> Self {
+    match alias {
+      Alias::User(u) => AliasResponse::User(u.into()),
+      Alias::Model(m) => AliasResponse::Model(m.into()),
+      Alias::Api(a) => AliasResponse::Api(a.into()),
     }
   }
 }

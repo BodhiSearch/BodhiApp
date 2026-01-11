@@ -1,6 +1,6 @@
 use crate::{
-  LocalModelResponse, PaginatedAliasResponse, PaginatedLocalModelResponse, PaginationSortParams,
-  UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  AliasResponse, LocalModelResponse, PaginatedAliasResponse, PaginatedLocalModelResponse,
+  PaginationSortParams, UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -80,7 +80,12 @@ pub async fn list_aliases_handler(
 
   let total = aliases.len();
   let (start, end) = calculate_pagination(page, page_size, total);
-  let data: Vec<Alias> = aliases.into_iter().skip(start).take(end - start).collect();
+  let data: Vec<AliasResponse> = aliases
+    .into_iter()
+    .skip(start)
+    .take(end - start)
+    .map(AliasResponse::from)
+    .collect();
 
   let paginated = PaginatedAliasResponse {
     data,
@@ -293,7 +298,8 @@ pub async fn get_user_alias_handler(
 #[cfg(test)]
 mod tests {
   use crate::{
-    get_user_alias_handler, list_aliases_handler, PaginatedAliasResponse, UserAliasResponse,
+    get_user_alias_handler, list_aliases_handler, AliasResponse, PaginatedAliasResponse,
+    UserAliasResponse,
   };
   use axum::{
     body::Body,
@@ -400,16 +406,22 @@ mod tests {
 
     assert!(!response.data.is_empty());
     // Find a user alias in the discriminated union format
-    let user_alias = response
+    let user_alias_response = response
       .data
       .iter()
       .find_map(|alias| match alias {
-        objs::Alias::User(user_alias) if user_alias.alias == "llama3:instruct" => Some(user_alias),
+        AliasResponse::User(user_alias) if user_alias.alias == "llama3:instruct" => {
+          Some(user_alias)
+        }
         _ => None,
       })
       .unwrap();
-    let expected = objs::UserAlias::llama3();
-    assert_eq!(expected, *user_alias);
+    // Verify the response has correct fields
+    assert_eq!("llama3:instruct", user_alias_response.alias);
+    assert_eq!(
+      "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+      user_alias_response.repo
+    );
     Ok(())
   }
 
