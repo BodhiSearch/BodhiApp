@@ -51,8 +51,8 @@ runs:
             NEEDS_UNSTASH=0
           fi
 
-          git fetch origin ${{ inputs.branch }}
-          git checkout ${{ inputs.branch }}
+          git fetch origin refs/heads/${{ inputs.branch }}:refs/remotes/origin/${{ inputs.branch }}
+          git checkout -B ${{ inputs.branch }} origin/${{ inputs.branch }}
           git pull --rebase origin ${{ inputs.branch }}
 
           # Restore stashed changes
@@ -69,9 +69,9 @@ runs:
       run: |
         echo "Fetching latest changes from origin/${{ inputs.branch }}"
         if [[ "${{ inputs.fetch-depth }}" == "0" ]]; then
-          git fetch origin ${{ inputs.branch }}
+          git fetch origin refs/heads/${{ inputs.branch }}:refs/remotes/origin/${{ inputs.branch }}
         else
-          git fetch --depth=${{ inputs.fetch-depth }} origin ${{ inputs.branch }}
+          git fetch --depth=${{ inputs.fetch-depth }} origin refs/heads/${{ inputs.branch }}:refs/remotes/origin/${{ inputs.branch }}
         fi
 
         # Check if there are any local uncommitted changes
