@@ -1,6 +1,6 @@
 [package]
 name = "auth_middleware"
-version = "0.0.41-dev"
+version = "0.0.44-dev"
 edition = "2021"
 
 [dependencies]

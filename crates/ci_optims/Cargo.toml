@@ -1,6 +1,6 @@
 [package]
 name = "ci_optims"
-version = "0.0.41-dev"
+version = "0.0.44-dev"
 edition = "2021"
 description = "Dummy crate for pre-compiling dependencies in CI builds"
 
