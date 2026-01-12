@@ -411,9 +411,8 @@ pub fn mask_api_key(api_key: &str) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder,
-    UpdateApiModelRequestBuilder, FetchModelsRequest, TestCreds, TestPromptRequest,
-    TestPromptResponse,
+    mask_api_key, ApiKey, ApiKeyUpdateAction, CreateApiModelRequestBuilder, FetchModelsRequest,
+    TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequestBuilder,
   };
   use objs::ApiFormat::OpenAI;
   use services::db::ApiKeyUpdate;
