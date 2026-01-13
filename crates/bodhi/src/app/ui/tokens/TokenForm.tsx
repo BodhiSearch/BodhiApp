@@ -1,5 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
+
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -7,12 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useCreateToken } from '@/hooks/useApiTokens';
 import { useUser } from '@/hooks/useUsers';
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 export const createTokenSchema = z.object({
   name: z.string().optional(),

@@ -178,6 +178,7 @@ export function expectFieldValid(fieldTestId: string) {
 }
 
 // Toast message utilities - mock verification based
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function expectSuccessToast(mockToast: any, expectedTitle?: string) {
   if (expectedTitle) {
     expect(mockToast).toHaveBeenCalledWith(
@@ -194,6 +195,7 @@ export function expectSuccessToast(mockToast: any, expectedTitle?: string) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function expectErrorToast(mockToast: any, expectedTitle?: string) {
   if (expectedTitle) {
     expect(mockToast).toHaveBeenCalledWith(
@@ -213,6 +215,7 @@ export function expectErrorToast(mockToast: any, expectedTitle?: string) {
 }
 
 // Navigation utilities
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function expectNavigationCall(mockRouter: any, expectedPath: string) {
   expect(mockRouter.push).toHaveBeenCalledWith(expectedPath);
 }

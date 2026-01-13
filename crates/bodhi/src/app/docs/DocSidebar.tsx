@@ -1,12 +1,13 @@
 'use client';
 
+import { Menu } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
 import { Navigation } from '@/app/docs/Navigation';
 import type { NavItem } from '@/app/docs/types';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 export const DOCS_BASE_PATH = '/docs';
 

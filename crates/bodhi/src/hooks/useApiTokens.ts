@@ -1,6 +1,3 @@
-import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
-import { AxiosResponse, AxiosError } from 'axios';
-import { UseMutationResult } from '@/hooks/useQuery';
 import {
   ApiToken,
   ApiTokenResponse,
@@ -9,6 +6,10 @@ import {
   UpdateApiTokenRequest,
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
+import { AxiosResponse, AxiosError } from 'axios';
+
+import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
+import { UseMutationResult } from '@/hooks/useQuery';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
@@ -70,7 +71,7 @@ export function useUpdateToken(options?: {
       },
     },
     {
-      transformBody: ({ id, ...requestBody }) => requestBody,
+      transformBody: ({ id: _id, ...requestBody }) => requestBody,
     }
   );
 }

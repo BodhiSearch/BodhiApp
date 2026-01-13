@@ -1,6 +1,8 @@
-import { DocGroup } from '@/app/docs/types';
-import Link from 'next/link';
 import { memo } from 'react';
+
+import Link from 'next/link';
+
+import { DocGroup } from '@/app/docs/types';
 
 interface DocsIndexProps {
   groups: DocGroup[];

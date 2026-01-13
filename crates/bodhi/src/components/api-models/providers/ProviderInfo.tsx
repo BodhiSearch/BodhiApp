@@ -1,11 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ExternalLink, Check } from 'lucide-react';
-import { ApiProvider } from './constants';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+
+import { ApiProvider } from './constants';
 
 interface ProviderInfoProps {
   provider: ApiProvider;

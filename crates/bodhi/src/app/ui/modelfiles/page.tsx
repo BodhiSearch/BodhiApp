@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { DataTable, Pagination } from '@/components/DataTable';
-import { TableCell } from '@/components/ui/table';
+
 import { LocalModelResponse } from '@bodhiapp/ts-client';
-import { SortState } from '@/types/models';
-import { useModelFiles } from '@/hooks/useModels';
-import AppInitializer from '@/components/AppInitializer';
 import { ExternalLink, Trash2 } from 'lucide-react';
+
+import AppInitializer from '@/components/AppInitializer';
+import { CopyableContent } from '@/components/CopyableContent';
+import { DataTable, Pagination } from '@/components/DataTable';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { CopyableContent } from '@/components/CopyableContent';
+import { useModelFiles } from '@/hooks/useModels';
+import { SortState } from '@/types/models';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | null | undefined): string => {

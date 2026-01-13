@@ -1,14 +1,15 @@
-import { useAppInfo, useSetupApp } from '@/hooks/useInfo';
-import { createWrapper } from '@/tests/wrapper';
-import { createMockLoggedInUser } from '@/test-utils/mock-user';
-import { OpenAiApiError, AppInfo } from '@bodhiapp/ts-client';
+import { AppInfo } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { useAppInfo, useSetupApp } from '@/hooks/useInfo';
+import { useUser } from '@/hooks/useUsers';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import { mockSetup, mockSetupError } from '@/test-utils/msw-v2/handlers/setup';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { useUser } from '@/hooks/useUsers';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 
 // Mock data
 const mockAppInfoData: AppInfo = {

@@ -1,4 +1,7 @@
-import { vi } from 'vitest';
+import '@testing-library/jest-dom';
+import { beforeAll, afterAll, vi } from 'vitest';
+
+import apiClient from '@/lib/apiClient';
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -16,14 +19,10 @@ Object.defineProperty(window, 'matchMedia', {
 
 vi.mock('@/hooks/use-media-query', () => ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  useMediaQuery: (query: string) => {
+  useMediaQuery: (_query: string) => {
     return true;
   },
 }));
-
-import '@testing-library/jest-dom';
-import { beforeAll, afterAll } from 'vitest';
-import apiClient from '@/lib/apiClient';
 
 // Mock ResizeObserver
 class MockResizeObserver {

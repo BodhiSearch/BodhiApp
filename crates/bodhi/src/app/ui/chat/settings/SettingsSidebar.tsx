@@ -1,5 +1,7 @@
 'use client';
 
+import { HelpCircle } from 'lucide-react';
+
 import { AliasSelector } from '@/app/ui/chat/settings/AliasSelector';
 import { SettingSlider } from '@/app/ui/chat/settings/SettingSlider';
 import { StopWords } from '@/app/ui/chat/settings/StopWords';
@@ -13,7 +15,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useModels } from '@/hooks/useModels';
-import { HelpCircle } from 'lucide-react';
 
 interface SettingRowProps {
   label: string;

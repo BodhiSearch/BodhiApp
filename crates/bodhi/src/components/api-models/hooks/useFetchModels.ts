@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { useFetchApiModels } from '@/hooks/useApiModels';
-import { useToast } from '@/hooks/use-toast';
+
 import { FetchModelsRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
+
+import { useToast } from '@/hooks/use-toast';
+import { useFetchApiModels } from '@/hooks/useApiModels';
+
 import { ApiProvider } from '../providers/constants';
 
 interface UseFetchModelsProps {

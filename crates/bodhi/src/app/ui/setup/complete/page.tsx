@@ -1,14 +1,16 @@
 'use client';
 
-import AppInitializer from '@/components/AppInitializer';
-import { Button } from '@/components/ui/button';
-import { ROUTE_CHAT } from '@/lib/constants';
+import { useEffect, useState } from 'react';
+
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
+
 import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
+import AppInitializer from '@/components/AppInitializer';
+import { Button } from '@/components/ui/button';
+import { ROUTE_CHAT } from '@/lib/constants';
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },

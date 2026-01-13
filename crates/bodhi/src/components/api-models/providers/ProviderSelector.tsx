@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+
 import { ApiProvider, API_PROVIDERS } from './constants';
 import { ProviderInfo } from './ProviderInfo';
 

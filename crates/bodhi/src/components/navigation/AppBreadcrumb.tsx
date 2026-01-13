@@ -1,6 +1,7 @@
 'use client';
 
-import { useNavigation } from '@/hooks/use-navigation';
+import Image from 'next/image';
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,7 +9,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import Image from 'next/image';
+import { useNavigation } from '@/hooks/use-navigation';
 
 export function AppBreadcrumb() {
   const { currentItem } = useNavigation();

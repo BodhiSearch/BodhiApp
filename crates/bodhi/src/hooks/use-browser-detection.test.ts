@@ -4,8 +4,10 @@
 
 import { renderHook } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { useBrowserDetection } from './use-browser-detection';
+
 import * as browserUtils from '@/lib/browser-utils';
+
+import { useBrowserDetection } from './use-browser-detection';
 
 // Mock UAParser
 vi.mock('ua-parser-js', () => {

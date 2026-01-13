@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+
+import { UserInfo } from '@bodhiapp/ts-client';
+
 import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
-import { useChangeUserRole, useRemoveUser, AuthenticatedUser } from '@/hooks/useUsers';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { UserInfo } from '@bodhiapp/ts-client';
+import { useChangeUserRole, useRemoveUser, AuthenticatedUser } from '@/hooks/useUsers';
 import { getRoleLabel, getRoleBadgeVariant } from '@/lib/roles';
-import { UserActionsCell } from './UserActionsCell';
-import { RoleChangeDialog } from './RoleChangeDialog';
+
 import { RemoveUserDialog } from './RemoveUserDialog';
+import { RoleChangeDialog } from './RoleChangeDialog';
+import { UserActionsCell } from './UserActionsCell';
 
 function getRoleBadge(role: string) {
   const label = getRoleLabel(role);

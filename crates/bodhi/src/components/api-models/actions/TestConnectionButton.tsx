@@ -1,8 +1,9 @@
 'use client';
 
+import { TestTube, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { TestTube, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TestConnectionButtonProps {

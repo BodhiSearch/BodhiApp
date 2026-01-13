@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
+
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import AppInitializer from '@/components/AppInitializer';
-import ApiModelForm from '@/components/api-models/ApiModelForm';
+
 import { SetupContainer, SetupFooter } from '@/app/ui/setup/components';
 import { itemVariants } from '@/app/ui/setup/types';
+import ApiModelForm from '@/components/api-models/ApiModelForm';
+import AppInitializer from '@/components/AppInitializer';
 import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
 
 function ApiModelsSetupContent() {

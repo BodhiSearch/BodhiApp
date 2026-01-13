@@ -1,3 +1,16 @@
+import type {
+  Alias,
+  CreateAliasRequest,
+  UpdateAliasRequest,
+  PaginatedAliasResponse,
+  PaginatedLocalModelResponse,
+  PaginatedDownloadResponse,
+  DownloadRequest,
+  NewDownloadRequest,
+} from '@bodhiapp/ts-client';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   useModelFiles,
   useModels,
@@ -7,20 +20,6 @@ import {
   useDownloads,
   usePullModel,
 } from '@/hooks/useModels';
-import { createWrapper } from '@/tests/wrapper';
-import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
-import {
-  mockModels,
-  mockModelsDefault,
-  mockModelsEmpty,
-  mockModelsError,
-  mockGetModel,
-  mockGetModelNotFoundError,
-  mockCreateModel,
-  mockCreateModelError,
-  mockUpdateModel,
-  mockUpdateModelError,
-} from '@/test-utils/msw-v2/handlers/models';
 import {
   mockModelFiles,
   mockModelFilesDefault,
@@ -33,18 +32,20 @@ import {
   mockModelPullError,
   mockModelPullFileExistsError,
 } from '@/test-utils/msw-v2/handlers/modelfiles';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type {
-  Alias,
-  CreateAliasRequest,
-  UpdateAliasRequest,
-  PaginatedAliasResponse,
-  PaginatedLocalModelResponse,
-  PaginatedDownloadResponse,
-  DownloadRequest,
-  NewDownloadRequest,
-} from '@bodhiapp/ts-client';
+import {
+  mockModels,
+  mockModelsDefault,
+  mockModelsEmpty,
+  mockModelsError,
+  mockGetModel,
+  mockGetModelNotFoundError,
+  mockCreateModel,
+  mockCreateModelError,
+  mockUpdateModel,
+  mockUpdateModelError,
+} from '@/test-utils/msw-v2/handlers/models';
+import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 
 // Mock data
 const mockModelData: Alias = {

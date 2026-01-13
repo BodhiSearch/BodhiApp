@@ -1,6 +1,8 @@
-import { getPathOrder } from '@/app/docs/utils';
 import path from 'path';
+
 import { describe, expect, it } from 'vitest';
+
+import { getPathOrder } from '@/app/docs/utils';
 
 const TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'test-docs');
 

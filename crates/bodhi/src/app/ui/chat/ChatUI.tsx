@@ -1,18 +1,20 @@
 'use client';
 
+import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
+
+import { Plus } from 'lucide-react';
+
 import { ChatMessage } from '@/app/ui/chat/ChatMessage';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
+import { useSidebar } from '@/components/ui/sidebar';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
-import { Message } from '@/types/chat';
-import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
-import { Plus } from 'lucide-react';
-import { useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { cn } from '@/lib/utils';
+import { Message } from '@/types/chat';
 
 const EmptyState = () => (
   <div className="flex h-full items-center justify-center" data-testid="empty-chat-state">

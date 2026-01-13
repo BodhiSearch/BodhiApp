@@ -1,11 +1,15 @@
 'use client';
 
 import React from 'react';
-import AppInitializer from '@/components/AppInitializer';
+
+import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+
 import { ChatHistory } from '@/app/ui/chat/ChatHistory';
 import { ChatUI } from '@/app/ui/chat/ChatUI';
 import { NewChatButton } from '@/app/ui/chat/NewChatButton';
 import { SettingsSidebar } from '@/app/ui/chat/settings/SettingsSidebar';
+import AppInitializer from '@/components/AppInitializer';
 import {
   Sidebar,
   SidebarContent,
@@ -17,10 +21,8 @@ import {
 import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
-import { cn } from '@/lib/utils';
-import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { cn } from '@/lib/utils';
 
 // Define custom CSS properties for TypeScript
 const sidebarStyles = {

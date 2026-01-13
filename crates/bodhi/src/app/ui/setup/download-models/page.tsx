@@ -1,17 +1,18 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { SetupContainer, SetupCard, SetupFooter } from '@/app/ui/setup/components';
 import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
 import { ModelInfo, ModelCatalog } from '@/app/ui/setup/download-models/types';
-import { SetupContainer, SetupCard, SetupFooter } from '@/app/ui/setup/components';
 import AppInitializer from '@/components/AppInitializer';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatModelsCatalog, useEmbeddingModelsCatalog } from '@/hooks/useModelCatalog';
 import { useDownloads, usePullModel } from '@/hooks/useModels';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 export function ModelDownloadContent() {
   const router = useRouter();

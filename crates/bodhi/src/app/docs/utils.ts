@@ -1,7 +1,9 @@
-import { DocDetails, DocGroup, MetaData } from '@/app/docs/types';
 import fs from 'fs';
-import matter from 'gray-matter';
 import path from 'path';
+
+import matter from 'gray-matter';
+
+import { DocDetails, DocGroup, MetaData } from '@/app/docs/types';
 
 const MD_EXTENSION = '.md';
 const DEFAULT_ORDER = 999;

@@ -1,17 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
-import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessRequests';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { ROUTE_DEFAULT } from '@/lib/constants';
-import { useRouter } from 'next/navigation';
+import { useRequestStatus, useSubmitAccessRequest } from '@/hooks/useAccessRequests';
 import { useAuthenticatedUser } from '@/hooks/useUsers';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 
 export function RequestAccessContent() {
   const router = useRouter();
   const { data: userInfo } = useAuthenticatedUser();
-  const { data: requestStatus, isLoading: statusLoading, error: statusError } = useRequestStatus();
+  const { data: requestStatus, isLoading: statusLoading, error: _statusError } = useRequestStatus();
   const { showSuccess, showError } = useToastMessages();
 
   const { mutate: submitRequest, isLoading: isSubmitting } = useSubmitAccessRequest({

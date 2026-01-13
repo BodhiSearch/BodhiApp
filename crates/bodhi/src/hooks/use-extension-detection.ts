@@ -19,7 +19,9 @@ export function useExtensionDetection(): ExtensionDetection {
 
   const checkExtension = async () => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof window !== 'undefined' && (window as any).bodhiext) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = await (window as any).bodhiext.getExtensionId();
         setExtensionId(id);
         setStatus('installed');

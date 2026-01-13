@@ -1,11 +1,14 @@
 'use client';
 
 import { ReactNode } from 'react';
+
 import { motion } from 'framer-motion';
-import { SetupProgress } from '../SetupProgress';
+
 import { BodhiLogo } from '../BodhiLogo';
-import { useSetupContext } from './SetupProvider';
 import { SETUP_STEP_LABELS, SETUP_TOTAL_STEPS } from '../constants';
+import { SetupProgress } from '../SetupProgress';
+
+import { useSetupContext } from './SetupProvider';
 
 interface SetupContainerProps {
   children: ReactNode;

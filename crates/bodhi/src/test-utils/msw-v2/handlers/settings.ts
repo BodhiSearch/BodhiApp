@@ -1,8 +1,10 @@
 /**
  * Type-safe MSW v2 handlers for settings endpoint using openapi-msw with full schema compliance
  */
-import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useSettings';
 import { delay } from 'msw';
+
+import { ENDPOINT_SETTINGS, ENDPOINT_SETTING_KEY } from '@/hooks/useSettings';
+
 import { HttpResponse, INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
 // ============================================================================
@@ -224,7 +226,7 @@ export function mockUpdateSettingServerError(key: string) {
 export function mockUpdateSettingNetworkError(key: string, { stub }: { stub?: boolean } = {}) {
   let hasBeenCalled = false;
   return [
-    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_SETTING_KEY, async ({ params, response: _response }) => {
       // Parameter check FIRST
       if (params.key !== key) return;
 

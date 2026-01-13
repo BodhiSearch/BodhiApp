@@ -1,10 +1,11 @@
 'use client';
 
+import { Trash2 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAvailableRoles, getRoleLevel } from '@/lib/roles';
 import { AuthenticatedUser } from '@/hooks/useUsers';
-import { Trash2 } from 'lucide-react';
+import { getAvailableRoles, getRoleLevel } from '@/lib/roles';
 
 interface UserActionsCellProps {
   username: string;

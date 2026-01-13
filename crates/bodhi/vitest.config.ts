@@ -1,7 +1,8 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-// @ts-expect-error path is not typed in vitest config
 import path from 'path';
+
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
+// @ts-expect-error path is not typed in vitest config
 
 export default defineConfig({
   plugins: [react()],

@@ -1,7 +1,11 @@
 'use client';
 
+import { useState } from 'react';
+
+import { UserAccessRequest } from '@bodhiapp/ts-client';
+import { Shield, Clock } from 'lucide-react';
+
 import AppInitializer from '@/components/AppInitializer';
-import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,14 +13,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
+import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { UserAccessRequest } from '@bodhiapp/ts-client';
-import { Shield, Clock } from 'lucide-react';
-import { getAvailableRoles } from '@/lib/roles';
-import { SortState } from '@/types/models';
 import { useApproveRequest, usePendingRequests, useRejectRequest } from '@/hooks/useAccessRequests';
 import { useAuthenticatedUser } from '@/hooks/useUsers';
-import { useState } from 'react';
+import { getAvailableRoles } from '@/lib/roles';
+import { SortState } from '@/types/models';
 
 function PendingRequestRow({ request, userRole }: { request: UserAccessRequest; userRole: string }) {
   const [selectedRole, setSelectedRole] = useState<string>('resource_user');

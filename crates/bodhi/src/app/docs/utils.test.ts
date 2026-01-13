@@ -1,7 +1,9 @@
-import { getAllDocSlugs, getDocDetails, getDocsForSlug } from '@/app/docs/utils';
 import fs from 'fs';
 import path from 'path';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getAllDocSlugs, getDocDetails, getDocsForSlug } from '@/app/docs/utils';
 
 // Constants
 const TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'test-docs');

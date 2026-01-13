@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+
 import { detectBrowser, type BrowserInfo } from '@/lib/browser-utils';
 
 export function useBrowserDetection() {

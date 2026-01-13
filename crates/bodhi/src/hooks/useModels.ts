@@ -1,8 +1,4 @@
 // External imports
-import { UseMutationResult } from '@/hooks/useQuery';
-import { AxiosError, AxiosResponse } from 'axios';
-
-// Type imports
 import {
   Alias,
   CreateAliasRequest,
@@ -14,10 +10,10 @@ import {
   PaginatedLocalModelResponse,
   UpdateAliasRequest,
 } from '@bodhiapp/ts-client';
+import { AxiosError, AxiosResponse } from 'axios';
 
 // Internal imports
-import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
-import apiClient from '@/lib/apiClient';
+import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 // Constants at top
 export const BODHI_API_BASE = '/bodhi/v1';

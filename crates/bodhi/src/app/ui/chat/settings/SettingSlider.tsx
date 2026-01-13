@@ -1,11 +1,12 @@
 'use client';
 
+import { HelpCircle } from 'lucide-react';
+
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { HelpCircle } from 'lucide-react';
 
 interface SettingSliderProps {
   label: string;

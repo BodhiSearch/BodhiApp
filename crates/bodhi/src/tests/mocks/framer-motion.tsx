@@ -1,6 +1,7 @@
 import React from 'react';
 
 const createMotionComponent = (Component: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, react/display-name
   return React.forwardRef(({ children, ...props }: any, ref: any) => {
     // List of framer-motion specific props to filter out
     const motionProps = [

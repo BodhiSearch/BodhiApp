@@ -1,9 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { TestConnectionButton } from './TestConnectionButton';
 import { ReactNode } from 'react';
+
+import { Loader2 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+
+import { TestConnectionButton } from './TestConnectionButton';
 
 interface FormActionsProps {
   // Primary action (submit)

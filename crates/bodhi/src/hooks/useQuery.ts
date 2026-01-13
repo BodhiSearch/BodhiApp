@@ -1,4 +1,3 @@
-import apiClient from '@/lib/apiClient';
 import { OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
@@ -9,9 +8,9 @@ import {
   UseQueryOptions,
   UseQueryResult,
   useQuery as useReactQuery,
-  QueryClient,
-  QueryClientProvider,
 } from 'react-query';
+
+import apiClient from '@/lib/apiClient';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
@@ -48,6 +47,7 @@ export function useMutationQuery<T, V>(
   axiosConfig?: {
     headers?: Record<string, string>;
     skipCacheInvalidation?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transformBody?: (variables: V) => any;
     noBody?: boolean;
   }
@@ -59,6 +59,7 @@ export function useMutationQuery<T, V>(
       const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
 
       // Handle body transformation or no body
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let requestBody: any;
       if (axiosConfig?.noBody) {
         requestBody = undefined;

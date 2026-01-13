@@ -1,4 +1,3 @@
-import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import {
   ApiModelResponse,
   CreateApiModelRequest,
@@ -11,6 +10,8 @@ import {
   OpenAiApiError,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
+
+import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@/hooks/useQuery';
 
 // Type alias for compatibility

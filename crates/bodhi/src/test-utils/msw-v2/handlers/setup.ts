@@ -1,8 +1,10 @@
 /**
  * Type-safe MSW v2 handlers for setup endpoint using openapi-msw
  */
-import { ENDPOINT_APP_SETUP } from '@/hooks/useInfo';
 import { delay } from 'msw';
+
+import { ENDPOINT_APP_SETUP } from '@/hooks/useInfo';
+
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 /**

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useOAuthCallback } from '@/hooks/useAuth';
+
 import { AuthCallbackRequest } from '@bodhiapp/ts-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { BodhiLogoImage } from '@/app/ui/setup/BodhiLogo';
-import { handleSmartRedirect } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
+
+import { BodhiLogoImage } from '@/app/ui/setup/BodhiLogo';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useOAuthCallback } from '@/hooks/useAuth';
+import { handleSmartRedirect } from '@/lib/utils';
 
 function AuthCallbackContent() {
   const [error, setError] = useState<string | null>(null);

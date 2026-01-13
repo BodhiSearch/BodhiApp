@@ -1,9 +1,10 @@
 'use client';
 
-import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
-import { AppNavigation } from '@/components/navigation/AppNavigation';
 import { usePathname } from 'next/navigation';
 import { siGithub } from 'simple-icons';
+
+import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
+import { AppNavigation } from '@/components/navigation/AppNavigation';
 
 // Using the same URL from setup/complete/page.tsx
 const GITHUB_REPO_URL = 'https://github.com/BodhiSearch/BodhiApp';

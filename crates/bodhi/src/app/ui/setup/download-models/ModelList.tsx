@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+
 import { ChevronDown, ChevronUp, Download } from 'lucide-react';
-import { ModelInfo } from './types';
+
+import { Button } from '@/components/ui/button';
+
 import { RatingStars } from './RatingStars';
+import { ModelInfo } from './types';
 
 interface ModelListProps {
   additionalModels: Record<string, ModelInfo[]>;

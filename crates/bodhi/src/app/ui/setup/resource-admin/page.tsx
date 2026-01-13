@@ -1,14 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+
 import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
 import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { useOAuthInitiate } from '@/hooks/useAuth';
 import { handleSmartRedirect } from '@/lib/utils';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 function ResourceAdminContent() {
   const [error, setError] = useState<string | null>(null);

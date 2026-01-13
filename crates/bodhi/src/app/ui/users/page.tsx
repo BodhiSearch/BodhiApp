@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
+
+import { AlertCircle } from 'lucide-react';
+
 import AppInitializer from '@/components/AppInitializer';
-import { UserManagementTabs } from '@/components/UserManagementTabs';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { useAllUsers, useAuthenticatedUser } from '@/hooks/useUsers';
-import { AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { UserManagementTabs } from '@/components/UserManagementTabs';
 import { UsersTable } from '@/components/users/UsersTable';
+import { useAllUsers, useAuthenticatedUser } from '@/hooks/useUsers';
 
 function UsersContent() {
   const [page, setPage] = useState(1);

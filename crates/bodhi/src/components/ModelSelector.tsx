@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+
+import { X, Search, Loader2 } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Search, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ModelSelectorProps {

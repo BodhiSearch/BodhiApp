@@ -20,19 +20,20 @@
  * @see https://platform.openai.com/docs/api-reference/chat
  */
 
-import { useMutation } from '@/hooks/useQuery';
-import { AxiosError } from 'axios';
-import apiClient from '@/lib/apiClient';
-import { Message, MessageMetadata } from '@/types/chat';
 import { OpenAiApiError } from '@bodhiapp/ts-client';
-
-// Generated OpenAI-compatible types from ts-client
 import type {
   CreateChatCompletionRequest,
   ChatCompletionRequestMessage,
   CreateChatCompletionResponse,
   CreateChatCompletionStreamResponse,
 } from '@bodhiapp/ts-client';
+import { AxiosError } from 'axios';
+
+import { useMutation } from '@/hooks/useQuery';
+import apiClient from '@/lib/apiClient';
+import { Message, MessageMetadata } from '@/types/chat';
+
+// Generated OpenAI-compatible types from ts-client
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;

@@ -1,7 +1,8 @@
+import { X } from 'lucide-react';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { X } from 'lucide-react';
 
 interface UserOnboardingProps {
   storageKey: string;

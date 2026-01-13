@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+
+import { SetupContainer, SetupFooter } from '@/app/ui/setup/components';
+import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { BrowserExtensionCard } from '@/components/setup/BrowserExtensionCard';
 import { useBrowserDetection } from '@/hooks/use-browser-detection';
 import { useExtensionDetection } from '@/hooks/use-extension-detection';
-import { SetupContainer, SetupFooter } from '@/app/ui/setup/components';
-import { itemVariants } from '@/app/ui/setup/types';
-import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 import type { BrowserInfo } from '@/lib/browser-utils';
+import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 
 function BrowserExtensionSetupContent() {
   const router = useRouter();

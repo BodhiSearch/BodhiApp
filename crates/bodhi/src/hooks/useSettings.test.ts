@@ -1,8 +1,10 @@
-import { useSettings, useUpdateSetting, useDeleteSetting } from '@/hooks/useSettings';
-import { createWrapper } from '@/tests/wrapper';
-import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import { OpenAiApiError, SettingInfo } from '@bodhiapp/ts-client';
-import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import { useSettings, useUpdateSetting, useDeleteSetting } from '@/hooks/useSettings';
+import { createMockLoggedInUser } from '@/test-utils/mock-user';
 import {
   mockSettings,
   mockSettingsInternalError,
@@ -12,9 +14,8 @@ import {
   mockDeleteSettingNotFoundError,
 } from '@/test-utils/msw-v2/handlers/settings';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { AxiosError } from 'axios';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 
 // Type aliases for compatibility
 type ApiError = OpenAiApiError;

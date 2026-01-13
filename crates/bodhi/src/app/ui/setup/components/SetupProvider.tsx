@@ -1,7 +1,9 @@
 'use client';
 
 import { createContext, useContext, ReactNode } from 'react';
+
 import { usePathname } from 'next/navigation';
+
 import { SETUP_STEPS } from '../constants';
 
 interface SetupContextType {

@@ -1,11 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+
 import AliasForm from '@/app/ui/models/AliasForm';
-import { useModel } from '@/hooks/useModels';
 import AppInitializer from '@/components/AppInitializer';
-import { Loading } from '@/components/ui/Loading';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { Loading } from '@/components/ui/Loading';
+import { useModel } from '@/hooks/useModels';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();

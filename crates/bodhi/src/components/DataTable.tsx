@@ -1,8 +1,10 @@
+import React, { useState } from 'react';
+
+import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
-import React, { useState } from 'react';
 
 export interface SortState {
   column: string;

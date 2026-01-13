@@ -1,12 +1,9 @@
 // External imports
-import { UseMutationResult } from '@/hooks/useQuery';
+import { AppInfo, SetupRequest, SetupResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-// Type imports
-import { AppInfo, SetupRequest, SetupResponse, OpenAiApiError } from '@bodhiapp/ts-client';
-
 // Internal imports
-import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 
 // Constants
 export const ENDPOINT_APP_INFO = '/bodhi/v1/info';

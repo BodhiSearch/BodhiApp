@@ -1,6 +1,8 @@
 /**
  * Type-safe MSW v2 handlers for access-requests endpoints using openapi-msw
  */
+import { delay } from 'msw';
+
 import {
   ENDPOINT_ACCESS_REQUEST_APPROVE,
   ENDPOINT_ACCESS_REQUEST_REJECT,
@@ -9,7 +11,7 @@ import {
   ENDPOINT_USER_REQUEST_ACCESS,
   ENDPOINT_USER_REQUEST_STATUS,
 } from '@/hooks/useAccessRequests';
-import { delay } from 'msw';
+
 import { INTERNAL_SERVER_ERROR, typedHttp, type components } from '../setup';
 
 // =============================================================================

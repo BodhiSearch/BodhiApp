@@ -1,4 +1,3 @@
-import * as z from 'zod';
 import type {
   ApiFormat,
   ApiKey,
@@ -7,6 +6,7 @@ import type {
   CreateApiModelRequest,
   UpdateApiModelRequest,
 } from '@bodhiapp/ts-client';
+import * as z from 'zod';
 
 // API format presets for AI APIs
 export const API_FORMAT_PRESETS = {

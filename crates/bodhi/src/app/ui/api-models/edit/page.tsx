@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
+
 import { useSearchParams } from 'next/navigation';
+
 import ApiModelForm from '@/components/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
-import { useApiModel } from '@/hooks/useApiModels';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Loading } from '@/components/ui/Loading';
+import { useApiModel } from '@/hooks/useApiModels';
 
 function EditApiModelContent() {
   const searchParams = useSearchParams();

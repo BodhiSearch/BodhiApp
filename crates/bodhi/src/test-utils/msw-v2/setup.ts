@@ -37,9 +37,9 @@
  * }
  * ```
  */
-import { createOpenApiHttp } from 'openapi-msw';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { createOpenApiHttp } from 'openapi-msw';
 
 // Export types from ts-client for use in tests
 export type { components, paths } from '@bodhiapp/ts-client';
@@ -69,6 +69,8 @@ export function setupMswV2() {
 }
 
 // Type-safe response helper inspired by openapi-msw patterns
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createTypedResponse<T extends Record<string, any>>(status: number, data: T) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return HttpResponse.json(data as any, { status });
 }

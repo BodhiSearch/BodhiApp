@@ -1,10 +1,11 @@
 'use client';
 
+import { MessageSquare } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { cn } from '@/lib/utils';
-import { MessageSquare } from 'lucide-react';
 
 export const NewChatButton = () => {
   const { createNewChat } = useChatDB();

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface BenefitCardProps {

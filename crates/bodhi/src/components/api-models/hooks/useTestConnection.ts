@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { useTestApiModel } from '@/hooks/useApiModels';
-import { useToast } from '@/hooks/use-toast';
+
 import { TestPromptRequest, TestCreds, ApiKey } from '@bodhiapp/ts-client';
+
+import { useToast } from '@/hooks/use-toast';
+import { useTestApiModel } from '@/hooks/useApiModels';
+
 import { DEFAULT_TEST_PROMPT } from '../providers/constants';
 
 interface UseTestConnectionProps {
@@ -16,7 +19,7 @@ interface TestConnectionData {
   id?: string;
 }
 
-export function useTestConnection({ mode = 'create', initialData }: UseTestConnectionProps = {}) {
+export function useTestConnection({ mode: _mode = 'create', initialData: _initialData }: UseTestConnectionProps = {}) {
   const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const testMutation = useTestApiModel();
   const { toast, dismiss } = useToast();

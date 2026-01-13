@@ -1,5 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+
+import { SettingInfo } from '@bodhiapp/ts-client';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,10 +16,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useUpdateSetting } from '@/hooks/useSettings';
-import { SettingInfo } from '@bodhiapp/ts-client';
-import { useState } from 'react';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useUpdateSetting } from '@/hooks/useSettings';
 
 interface EditSettingDialogProps {
   setting: SettingInfo;

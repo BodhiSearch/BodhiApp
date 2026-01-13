@@ -1,13 +1,15 @@
 'use client';
 
+import { useState } from 'react';
+
+import { redirect, useRouter } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogoutHandler, useOAuthInitiate } from '@/hooks/useAuth';
 import { useUser } from '@/hooks/useUsers';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
-import { useState } from 'react';
-import { redirect, useRouter } from 'next/navigation';
 
 export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();

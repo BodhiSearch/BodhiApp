@@ -1,11 +1,12 @@
 'use client';
 
+import { HelpCircle } from 'lucide-react';
+
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
-import { HelpCircle } from 'lucide-react';
 
 interface SystemPromptProps {
   isLoading?: boolean;

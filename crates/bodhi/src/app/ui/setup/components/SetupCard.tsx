@@ -1,7 +1,9 @@
 'use client';
 
 import { ReactNode } from 'react';
+
 import { motion } from 'framer-motion';
+
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface SetupCardProps {

@@ -4,6 +4,7 @@
 
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { useExtensionDetection } from './use-extension-detection';
 
 describe('useExtensionDetection hook', () => {

@@ -1,10 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
+
 import { Menu, ChevronsUpDown, Sun, Moon, Monitor } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
+import Link from 'next/link';
+
+import { LoginMenu } from '@/components/LoginMenu';
+import { useTheme } from '@/components/ThemeProvider';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +17,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigation } from '@/hooks/use-navigation';
+import { cn } from '@/lib/utils';
 import { NavigationItem } from '@/types/navigation';
-import { useTheme } from '@/components/ThemeProvider';
-import { LoginMenu } from '@/components/LoginMenu';
 
 export function AppNavigation() {
   const isMobile = useIsMobile();

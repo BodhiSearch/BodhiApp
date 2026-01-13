@@ -1,13 +1,7 @@
 'use client';
 
-import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
-import AppInitializer from '@/components/AppInitializer';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useSettings } from '@/hooks/useSettings';
-import { cn } from '@/lib/utils';
+import { useState } from 'react';
+
 import { SettingInfo } from '@bodhiapp/ts-client';
 import {
   Code,
@@ -24,10 +18,18 @@ import {
   Terminal,
   ToggleLeft,
 } from 'lucide-react';
-import { useState } from 'react';
-import { ErrorPage } from '@/components/ui/ErrorPage';
-import { UserOnboarding } from '@/components/UserOnboarding';
+
+import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
+import AppInitializer from '@/components/AppInitializer';
 import { CopyButton } from '@/components/CopyButton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorPage } from '@/components/ui/ErrorPage';
+import { Skeleton } from '@/components/ui/skeleton';
+import { UserOnboarding } from '@/components/UserOnboarding';
+import { useSettings } from '@/hooks/useSettings';
+import { cn } from '@/lib/utils';
 
 type SettingConfig = {
   key: string;

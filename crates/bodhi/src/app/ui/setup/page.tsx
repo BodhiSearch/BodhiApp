@@ -1,5 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+
 import { BenefitCard } from '@/app/ui/setup/BenefitCard';
 import { SetupContainer, SetupCard } from '@/app/ui/setup/components';
 import { itemVariants } from '@/app/ui/setup/types';
@@ -10,20 +18,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSetupApp } from '@/hooks/useInfo';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import {
   FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_SETUP_DOWNLOAD_MODELS,
   ROUTE_SETUP_RESOURCE_ADMIN,
 } from '@/lib/constants';
 import { setupFormSchema, SetupFormData } from '@/schemas/objs';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 
 const benefits = [
   {

@@ -2,14 +2,16 @@
  * Manual MSW v2 handlers for chat completions endpoint
  * Updated to use types from @bodhiapp/ts-client with llama.cpp extensions
  */
-import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
-import { http, HttpResponse } from 'msw';
-import { INTERNAL_SERVER_ERROR } from '../setup';
 import type {
   CreateChatCompletionRequest,
   CreateChatCompletionResponse,
   CreateChatCompletionStreamResponse,
 } from '@bodhiapp/ts-client';
+import { http, HttpResponse } from 'msw';
+
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
+
+import { INTERNAL_SERVER_ERROR } from '../setup';
 
 /**
  * llama.cpp-specific timing extensions
@@ -26,7 +28,7 @@ type ChatCompletionResponseWithTimings = CreateChatCompletionResponse & {
   timings?: LlamaCppTimings;
 };
 
-type ChatCompletionStreamResponseWithTimings = CreateChatCompletionStreamResponse & {
+type _ChatCompletionStreamResponseWithTimings = CreateChatCompletionStreamResponse & {
   timings?: LlamaCppTimings;
 };
 
@@ -37,7 +39,7 @@ type ChatCompletionStreamResponseWithTimings = CreateChatCompletionStreamRespons
 export function mockChatCompletionsStreaming({
   chunks,
   captureRequest,
-  ...rest
+  ..._rest
 }: {
   chunks?: string[];
   captureRequest?: (req: CreateChatCompletionRequest) => void;
@@ -81,7 +83,7 @@ export function mockChatCompletions({
   response: responseConfig,
   captureRequest,
   request: requestMatch,
-  ...rest
+  ..._rest
 }: {
   response?: Partial<ChatCompletionResponseWithTimings>;
   captureRequest?: (req: CreateChatCompletionRequest) => void;
@@ -132,6 +134,7 @@ export function mockChatCompletions({
           {
             index: 0,
             message: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               role: 'resource_admin' as any, // Work around Role type mismatch in generated types
               content: 'Test response',
             },
@@ -199,7 +202,7 @@ export function mockChatCompletionsNetworkError() {
 export function mockChatCompletionsStreamingWithError({
   initialChunks,
   errorMessage = 'Server error occurred',
-  ...rest
+  ..._rest
 }: {
   initialChunks?: string[];
   errorMessage?: string;

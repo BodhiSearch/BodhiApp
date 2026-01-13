@@ -1,9 +1,14 @@
 'use client';
 
+import { ReactNode, useEffect } from 'react';
+
+import { AppStatus, OpenAiApiError } from '@bodhiapp/ts-client';
+import { useRouter } from 'next/navigation';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useAppInfo } from '@/hooks/useInfo';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useUser } from '@/hooks/useUsers';
 import {
   FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
@@ -14,10 +19,7 @@ import {
   ROUTE_REQUEST_ACCESS,
   ROUTE_LOGIN,
 } from '@/lib/constants';
-import { AppStatus, OpenAiApiError } from '@bodhiapp/ts-client';
-import { useRouter } from 'next/navigation';
-import { ReactNode, useEffect } from 'react';
-import { Role, meetsMinRole, getCleanRoleName } from '@/lib/roles';
+import { Role, meetsMinRole } from '@/lib/roles';
 
 // For backward compatibility, allow passing clean role names (admin, manager, etc.)
 type MinRole = 'user' | 'power_user' | 'manager' | 'admin';

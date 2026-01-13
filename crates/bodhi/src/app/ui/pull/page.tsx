@@ -1,5 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
+import { DownloadRequest } from '@bodhiapp/ts-client';
+
 import { PullForm } from '@/app/ui/pull/PullForm';
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination } from '@/components/DataTable';
@@ -8,9 +12,7 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useDownloads } from '@/hooks/useModels';
-import { DownloadRequest } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
-import { useEffect, useState } from 'react';
 
 const columns = [
   { id: 'repo', name: 'Repo', sorted: true },

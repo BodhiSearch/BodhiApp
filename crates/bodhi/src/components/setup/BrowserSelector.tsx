@@ -1,6 +1,7 @@
 import { FaChrome, FaFirefox, FaSafari, FaEdge } from 'react-icons/fa';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type BrowserInfo, type BrowserType, BROWSER_CONFIG } from '@/lib/browser-utils';
 
 interface BrowserSelectorProps {

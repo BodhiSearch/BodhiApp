@@ -1,9 +1,14 @@
 'use client';
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
+import { Shield } from 'lucide-react';
+
 import { CopyButton } from '@/components/CopyButton';
 import { ShowHideInput } from '@/components/ShowHideInput';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
-import { Shield } from 'lucide-react';
-import { useState } from 'react';
 
 interface TokenDialogProps {
   token: ApiTokenResponse;

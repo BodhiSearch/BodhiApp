@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fontFamily } = require('tailwindcss/defaultTheme');
 

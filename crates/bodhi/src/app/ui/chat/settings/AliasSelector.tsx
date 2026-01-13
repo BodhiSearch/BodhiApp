@@ -1,5 +1,8 @@
 'use client';
 
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { HelpCircle, RefreshCw } from 'lucide-react';
+
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';
 import { Button } from '@/components/ui/button';
@@ -9,8 +12,6 @@ import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useQueryClient } from '@/hooks/useQuery';
 import { isApiAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
-import { AliasResponse } from '@bodhiapp/ts-client';
-import { HelpCircle, RefreshCw } from 'lucide-react';
 
 interface AliasSelectorProps {
   models: AliasResponse[];

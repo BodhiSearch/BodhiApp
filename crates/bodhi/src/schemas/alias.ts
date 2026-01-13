@@ -1,5 +1,6 @@
-import * as z from 'zod';
 import type { CreateAliasRequest, UpdateAliasRequest } from '@bodhiapp/ts-client';
+import * as z from 'zod';
+
 import { type LocalAlias } from '@/lib/utils';
 
 const preprocessStop = (value: unknown) => {

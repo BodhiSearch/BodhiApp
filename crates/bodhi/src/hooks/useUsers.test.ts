@@ -1,23 +1,19 @@
-import { useUser, useAuthenticatedUser, useAllUsers, useChangeUserRole, useRemoveUser } from '@/hooks/useUsers';
-import { createWrapper } from '@/tests/wrapper';
-import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
-import { mockUsersResponse } from '@/test-fixtures/users';
-import { OpenAiApiError, UserListResponse } from '@bodhiapp/ts-client';
+import { OpenAiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { useUser, useAuthenticatedUser, useAllUsers, useChangeUserRole, useRemoveUser } from '@/hooks/useUsers';
+import { mockUsersResponse } from '@/test-fixtures/users';
+import { createMockLoggedInUser, createMockLoggedOutUser } from '@/test-utils/mock-user';
 import {
-  mockUserLoggedIn,
   mockUserLoggedOut,
   mockUserInfoError,
-  mockUsers,
-  mockUsersError,
-  mockUserRoleChange,
   mockUserRoleChangeError,
-  mockUserRemove,
   mockUserRemoveError,
 } from '@/test-utils/msw-v2/handlers/user';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { setupMswV2, server, http, HttpResponse } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 
 // Mock next/navigation
 const mockPush = vi.fn();

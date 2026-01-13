@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
+
 import { ModelSelector } from '@/components/ModelSelector';
+import { Label } from '@/components/ui/label';
+
 import { ApiProvider } from '../providers/constants';
 
 interface ModelSelectionSectionProps {
@@ -69,7 +71,7 @@ export function ModelSelectionSection({
 
       {!disabled && provider && (
         <p className="text-sm text-muted-foreground">
-          Select which {provider.name} models you'd like to use.
+          Select which {provider.name} models you&apos;d like to use.
           {autoSelectCommon && provider.commonModels.length > 0 && <span> Popular models will be auto-selected.</span>}
         </p>
       )}
@@ -101,7 +103,7 @@ export function ModelSelectionSection({
 
       {!disabled && !availableModels.length && canFetch && !isFetchingModels && (
         <p className="text-xs text-muted-foreground">
-          Click "Fetch Models" to discover available models from your provider.
+          Click &quot;Fetch Models&quot; to discover available models from your provider.
         </p>
       )}
     </div>

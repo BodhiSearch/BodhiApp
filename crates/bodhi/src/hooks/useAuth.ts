@@ -1,14 +1,14 @@
 // External imports
-import { UseMutationResult } from '@/hooks/useQuery';
-import { AxiosError, AxiosResponse } from 'axios';
 import { useCallback } from 'react';
 
 // Type imports
 import { AuthCallbackRequest, RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AxiosError, AxiosResponse } from 'axios';
+
+import { UseMutationResult } from '@/hooks/useQuery';
 
 // Internal imports
 import { useMutationQuery, useQueryClient } from './useQuery';
-import apiClient from '@/lib/apiClient';
 
 // Constants
 export const ENDPOINT_UI_LOGIN = '/ui/login';
@@ -128,7 +128,7 @@ export function useLogout(
   const queryClient = useQueryClient();
   return useMutationQuery<RedirectResponse, void>(ENDPOINT_LOGOUT, 'post', {
     ...options,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, _variables, _context) => {
       queryClient.invalidateQueries();
       if (options?.onSuccess) {
         options.onSuccess(data);

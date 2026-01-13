@@ -103,6 +103,7 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
 
   // Handle the case where second parameter is a username (string)
   if (typeof usernameOrLoggedIn === 'string') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: any = {
       auth_status: 'logged_in' as const,
       user_id: getUserId(usernameOrLoggedIn),
@@ -122,6 +123,7 @@ export const createMockUserInfo = (role?: string | null, usernameOrLoggedIn: str
 
   // Default case with role
   const username = `${role}@example.com`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: any = {
     auth_status: 'logged_in' as const,
     user_id: getUserId(username),

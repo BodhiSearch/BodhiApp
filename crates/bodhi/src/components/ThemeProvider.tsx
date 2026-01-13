@@ -1,7 +1,8 @@
 'use client';
 
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { createContext, useContext, useEffect } from 'react';
+
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 type Theme = 'dark' | 'light' | 'system';
 

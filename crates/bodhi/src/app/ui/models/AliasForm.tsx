@@ -1,5 +1,14 @@
 'use client';
 
+import React, { useEffect, useMemo, useState } from 'react';
+
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
 import { ALIAS_FORM_TOOLTIPS } from '@/app/ui/models/tooltips';
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { Button } from '@/components/ui/button';
@@ -10,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useModels';
+import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
 import {
   AliasFormData,
   createAliasFormSchema,
@@ -18,14 +28,6 @@ import {
   convertFormToUpdateApi,
   convertApiToForm,
 } from '@/schemas/alias';
-import { AliasResponse } from '@bodhiapp/ts-client';
-import { hasLocalFileProperties, isUserAlias, isApiAlias } from '@/lib/utils';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 interface AliasFormProps {
   isEditMode: boolean;

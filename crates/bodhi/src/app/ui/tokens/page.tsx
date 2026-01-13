@@ -1,5 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+
+import { ApiToken } from '@bodhiapp/ts-client';
+import { Shield } from 'lucide-react';
+
 import { CreateTokenDialog } from '@/app/ui/tokens/CreateTokenDialog';
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination, SortState } from '@/components/DataTable';
@@ -9,13 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
-import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { ApiToken, PaginatedApiTokenResponse, TokenStatus } from '@bodhiapp/ts-client';
-import { useAppInfo } from '@/hooks/useInfo';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
+import { useAppInfo } from '@/hooks/useInfo';
 import { useQueryClient } from '@/hooks/useQuery';
-import { Shield } from 'lucide-react';
-import { useState } from 'react';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -50,7 +52,7 @@ export function TokenPageContent() {
     direction: 'desc',
   });
   const { showSuccess, showError } = useToastMessages();
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   const { mutate: updateToken } = useUpdateToken({
     onSuccess: (token) => {

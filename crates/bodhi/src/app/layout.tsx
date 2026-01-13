@@ -1,13 +1,14 @@
 'use client';
 
 import { Inter as FontSans } from 'next/font/google';
+
 import '@/app/globals.css';
-import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
+import { AppHeader } from '@/components/navigation/AppHeader';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProvider, defaultNavigationItems } from '@/hooks/use-navigation';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { AppHeader } from '@/components/navigation/AppHeader';
+import { cn } from '@/lib/utils';
 
 const fontSans = FontSans({
   subsets: ['latin'],

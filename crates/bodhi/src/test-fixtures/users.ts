@@ -1,4 +1,5 @@
 import { UserInfo, UserListResponse, AppRole } from '@bodhiapp/ts-client';
+
 import { createMockLoggedInUser } from '@/test-utils/mock-user';
 
 export const mockUser1: UserInfo = {
@@ -138,7 +139,7 @@ export const createMockUsersWithRoles = (roles: string[]): UserInfo[] => {
   return roles.map((role, index) => {
     const mockUser = createMockLoggedInUser({ username: `${role}${index}@example.com`, role });
     if (mockUser.auth_status === 'logged_in') {
-      const { auth_status, ...userInfo } = mockUser;
+      const { auth_status: _auth_status, ...userInfo } = mockUser;
       return userInfo;
     }
     // Fallback for logged_out users (shouldn't happen in this context)
@@ -167,7 +168,7 @@ export const createMockUserInfos = (roles: string[]): UserInfo[] => {
 export const createMockCurrentAdminUser = (username = 'current-admin@example.com'): UserInfo => {
   const mockUser = createMockLoggedInUser({ username, role: 'resource_admin' });
   if (mockUser.auth_status === 'logged_in') {
-    const { auth_status, ...userInfo } = mockUser;
+    const { auth_status: _auth_status, ...userInfo } = mockUser;
     return userInfo;
   }
   // Fallback

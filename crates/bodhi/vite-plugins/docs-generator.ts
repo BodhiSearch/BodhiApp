@@ -1,7 +1,9 @@
-import { Plugin } from 'vite';
 import fs from 'fs';
 import path from 'path';
+
 import matter from 'gray-matter';
+import { Plugin } from 'vite';
+
 import { DocDetails, DocGroup, MetaData } from '../src/app/docs/types';
 
 const MD_EXTENSION = '.md';

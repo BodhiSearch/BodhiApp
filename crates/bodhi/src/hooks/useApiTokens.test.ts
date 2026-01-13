@@ -1,10 +1,9 @@
-import { useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
-import { createWrapper } from '@/tests/wrapper';
 import { ApiTokenResponse, PaginatedApiTokenResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
-import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+
+import { useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import {
   mockTokens,
   mockCreateToken,
@@ -13,6 +12,8 @@ import {
   mockCreateTokenError,
   mockUpdateTokenError,
 } from '@/test-utils/msw-v2/handlers/tokens';
+import { setupMswV2, server } from '@/test-utils/msw-v2/setup';
+import { createWrapper } from '@/tests/wrapper';
 
 const mockTokenResponse: ApiTokenResponse = {
   token: 'test-token-123',

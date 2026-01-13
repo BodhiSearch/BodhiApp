@@ -1,9 +1,10 @@
 'use client';
 
 import { createContext, useContext, useCallback, useState, useEffect } from 'react';
-import { Chat } from '@/types/chat';
+
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { nanoid } from '@/lib/utils';
+import { Chat } from '@/types/chat';
 
 const CHATS_STORAGE_KEY = 'chats';
 const CURRENT_CHAT_ID_KEY = 'current-chat-id';

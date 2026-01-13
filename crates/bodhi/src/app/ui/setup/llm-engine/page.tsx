@@ -1,12 +1,14 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { SetupProgress } from '@/app/ui/setup/SetupProgress';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
+import { motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, CheckCircle2, XCircle, Download } from 'lucide-react';
+
+import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 
 // Animation variants
 const containerVariants = {

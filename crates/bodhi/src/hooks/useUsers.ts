@@ -1,14 +1,12 @@
 // External imports
-import { UseQueryResult, UseMutationResult } from '@/hooks/useQuery';
-import { AxiosError, AxiosResponse } from 'axios';
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-// Type imports
 import { UserInfo, UserResponse, UserListResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AxiosError, AxiosResponse } from 'axios';
+import { useRouter } from 'next/navigation';
 
 // Internal imports
-import { useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
+import { UseQueryResult, UseMutationResult, useQuery, useMutationQuery, useQueryClient } from '@/hooks/useQuery';
 import { ROUTE_LOGIN } from '@/lib/constants';
 
 // Constants at top

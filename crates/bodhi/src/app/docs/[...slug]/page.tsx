@@ -1,9 +1,8 @@
-import { DocsIndex } from '@/app/docs/DocsIndex';
-import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 import fs from 'fs';
+import path from 'path';
+
 import matter from 'gray-matter';
 import { notFound } from 'next/navigation';
-import path from 'path';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypePrism from 'rehype-prism-plus';
 import rehypeSlug from 'rehype-slug';
@@ -12,6 +11,9 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+
+import { DocsIndex } from '@/app/docs/DocsIndex';
+import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 
 export const DOCS_ROOT_PATH = 'src/docs';
 

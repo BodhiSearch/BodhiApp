@@ -1,8 +1,9 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
+
 import { SidebarNav } from '@/app/docs/nav';
 import type { NavigationProps } from '@/app/docs/types';
-import { usePathname } from 'next/navigation';
 
 export const DOCS_BASE_PATH = '/docs';
 

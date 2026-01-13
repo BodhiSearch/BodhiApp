@@ -2,7 +2,7 @@
  * Test fixtures for chat completion testing
  * Uses types from @bodhiapp/ts-client with llama.cpp extensions
  */
-import type { CreateChatCompletionResponse, CreateChatCompletionStreamResponse } from '@bodhiapp/ts-client';
+import type { CreateChatCompletionResponse } from '@bodhiapp/ts-client';
 
 /**
  * llama.cpp-specific timing extensions
@@ -44,6 +44,7 @@ export const mockNonStreamingResponse: ChatCompletionResponseWithTimings = {
     {
       index: 0,
       message: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         role: 'resource_admin' as any, // Work around Role type mismatch in generated types
         content: 'This is a detailed test response from the AI assistant.',
       },
@@ -91,6 +92,7 @@ export const mockStandardOpenAIResponse: CreateChatCompletionResponse = {
     {
       index: 0,
       message: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         role: 'resource_admin' as any, // Work around Role type mismatch in generated types
         content: 'Standard OpenAI response without timings.',
       },

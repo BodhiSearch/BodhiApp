@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
+
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
+
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ApiTokenResponse } from '@bodhiapp/ts-client';
-import { useState } from 'react';
 
 interface CreateTokenDialogProps {
   open: boolean;

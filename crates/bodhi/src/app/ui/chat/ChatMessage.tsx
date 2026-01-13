@@ -1,8 +1,9 @@
-import { Message } from '@/types/chat';
+import { User, Bot } from 'lucide-react';
+
+import { CopyButton } from '@/components/CopyButton';
 import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
-import { User, Bot } from 'lucide-react';
-import { CopyButton } from '@/components/CopyButton';
+import { Message } from '@/types/chat';
 
 interface ChatMessageProps {
   message: Message;

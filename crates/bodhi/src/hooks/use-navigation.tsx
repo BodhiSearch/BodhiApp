@@ -1,6 +1,7 @@
 'use client';
 
-import { NavigationItem } from '@/types/navigation';
+import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
+
 import {
   Cog,
   Database,
@@ -17,7 +18,8 @@ import {
   BookText,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
+
+import { NavigationItem } from '@/types/navigation';
 
 // Rename and export the default navigation items
 export const defaultNavigationItems: NavigationItem[] = [

@@ -1,14 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+
+import { useRouter, redirect } from 'next/navigation';
+
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogoutHandler, useOAuthInitiate } from '@/hooks/useAuth';
 import { useUser } from '@/hooks/useUsers';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
-import { useState } from 'react';
-import { useRouter, redirect } from 'next/navigation';
 
 export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();

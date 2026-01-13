@@ -1,10 +1,12 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Check, RefreshCw } from 'lucide-react';
-import { BrowserSelector } from './BrowserSelector';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import type { BrowserInfo } from '@/lib/browser-utils';
+
+import { BrowserSelector } from './BrowserSelector';
 
 type ExtensionStatus = 'detecting' | 'installed' | 'not-installed';
 
