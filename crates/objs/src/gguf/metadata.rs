@@ -47,6 +47,14 @@ impl GGUFMetadata {
   pub fn metadata(&self) -> &BTreeMap<String, GGUFValue> {
     &self.metadata
   }
+
+  pub fn get(&self, key: &str) -> Option<&GGUFValue> {
+    self.metadata.get(key)
+  }
+
+  pub fn contains_key(&self, key: &str) -> bool {
+    self.metadata.contains_key(key)
+  }
 }
 
 struct GGUFReader<T: ByteOrder> {

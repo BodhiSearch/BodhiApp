@@ -36,6 +36,14 @@ impl Repo {
   pub fn path(&self) -> String {
     hf_hub::Repo::model(self.to_string()).folder_name()
   }
+
+  pub fn namespace(&self) -> &str {
+    &self.user
+  }
+
+  pub fn repo_name(&self) -> &str {
+    &self.name
+  }
 }
 
 impl FromStr for Repo {
@@ -113,6 +121,24 @@ mod test {
     let repo: Result<Repo, _> = input.parse();
     assert!(repo.is_ok());
     assert_eq!(repo.unwrap().to_string(), input);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("simple/repo", "simple", "repo")]
+  #[case(
+    "QuantFactory/Meta-Llama-3-70B-Instruct-GGUF",
+    "QuantFactory",
+    "Meta-Llama-3-70B-Instruct-GGUF"
+  )]
+  fn test_repo_namespace_and_repo_name(
+    #[case] input: &str,
+    #[case] expected_namespace: &str,
+    #[case] expected_repo_name: &str,
+  ) -> anyhow::Result<()> {
+    let repo = Repo::from_str(input)?;
+    assert_eq!(expected_namespace, repo.namespace());
+    assert_eq!(expected_repo_name, repo.repo_name());
     Ok(())
   }
 

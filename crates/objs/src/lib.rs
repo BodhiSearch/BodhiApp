@@ -10,6 +10,7 @@ mod envs;
 mod error;
 pub mod gguf;
 mod model_alias;
+mod model_metadata;
 mod user_alias;
 
 mod hub_file;
@@ -31,6 +32,7 @@ pub use api_tags::*;
 pub use envs::*;
 pub use error::*;
 pub use model_alias::*;
+pub use model_metadata::*;
 pub use user_alias::*;
 
 pub use hub_file::*;
