@@ -80,11 +80,49 @@ pub async fn list_aliases_handler(
 
   let total = aliases.len();
   let (start, end) = calculate_pagination(page, page_size, total);
-  let data: Vec<AliasResponse> = aliases
+  let paginated_aliases: Vec<Alias> = aliases.into_iter().skip(start).take(end - start).collect();
+
+  // Extract file paths from User and Model variants
+  let file_keys: Vec<(String, String, String)> = paginated_aliases
+    .iter()
+    .filter_map(|alias| match alias {
+      Alias::User(u) => Some((u.repo.to_string(), u.filename.clone(), u.snapshot.clone())),
+      Alias::Model(m) => Some((m.repo.to_string(), m.filename.clone(), m.snapshot.clone())),
+      Alias::Api(_) => None,
+    })
+    .collect();
+
+  // Batch query metadata for all file paths
+  let metadata_map = if !file_keys.is_empty() {
+    state
+      .app_service()
+      .db_service()
+      .batch_get_metadata_by_files(&file_keys)
+      .await
+      .unwrap_or_default()
+  } else {
+    std::collections::HashMap::new()
+  };
+
+  // Convert to AliasResponse and attach metadata
+  let data: Vec<AliasResponse> = paginated_aliases
     .into_iter()
-    .skip(start)
-    .take(end - start)
-    .map(AliasResponse::from)
+    .map(|alias| {
+      let response = AliasResponse::from(alias.clone());
+      // Try to find metadata for this alias
+      let key = match alias {
+        Alias::User(u) => Some((u.repo.to_string(), u.filename, u.snapshot)),
+        Alias::Model(m) => Some((m.repo.to_string(), m.filename, m.snapshot)),
+        Alias::Api(_) => None,
+      };
+      if let Some(k) = key {
+        if let Some(metadata_row) = metadata_map.get(&k) {
+          let metadata: objs::ModelMetadata = metadata_row.clone().into();
+          return response.with_metadata(Some(metadata));
+        }
+      }
+      response
+    })
     .collect();
 
   let paginated = PaginatedAliasResponse {
@@ -292,7 +330,24 @@ pub async fn get_user_alias_handler(
     .data_service()
     .find_user_alias(&alias)
     .ok_or(AliasNotFoundError(alias))?;
-  Ok(Json(UserAliasResponse::from(user_alias)))
+
+  // Query metadata for this alias
+  let metadata = state
+    .app_service()
+    .db_service()
+    .get_model_metadata_by_file(
+      &user_alias.repo.to_string(),
+      &user_alias.filename,
+      &user_alias.snapshot,
+    )
+    .await
+    .ok()
+    .flatten()
+    .map(|row| row.into());
+
+  Ok(Json(
+    UserAliasResponse::from(user_alias).with_metadata(metadata),
+  ))
 }
 
 #[cfg(test)]

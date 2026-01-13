@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
-use objs::{Alias, ApiAlias, ApiFormat, HubFile, ModelAlias, OAIRequestParams, UserAlias};
+use objs::{
+  Alias, ApiAlias, ApiFormat, HubFile, ModelAlias, ModelMetadata, OAIRequestParams, UserAlias,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::db::{ApiToken, DownloadRequest};
@@ -122,6 +124,11 @@ pub struct UserAliasResponse {
   pub model_params: HashMap<String, Value>,
   pub request_params: OAIRequestParams,
   pub context_params: Vec<String>,
+
+  /// Model metadata extracted from GGUF file (optional)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[cfg_attr(any(test, feature = "test-utils"), builder(default))]
+  pub metadata: Option<ModelMetadata>,
 }
 
 impl From<UserAlias> for UserAliasResponse {
@@ -136,7 +143,16 @@ impl From<UserAlias> for UserAliasResponse {
       model_params: HashMap::new(),
       request_params: alias.request_params,
       context_params: alias.context_params,
+      metadata: None,
     }
+  }
+}
+
+impl UserAliasResponse {
+  /// Attach model metadata to this response
+  pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
+    self.metadata = metadata;
+    self
   }
 }
 
@@ -148,6 +164,10 @@ pub struct ModelAliasResponse {
   pub repo: String,
   pub filename: String,
   pub snapshot: String,
+
+  /// Model metadata extracted from GGUF file (optional)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub metadata: Option<ModelMetadata>,
 }
 
 impl From<ModelAlias> for ModelAliasResponse {
@@ -158,7 +178,16 @@ impl From<ModelAlias> for ModelAliasResponse {
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
+      metadata: None,
     }
+  }
+}
+
+impl ModelAliasResponse {
+  /// Attach model metadata to this response
+  pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
+    self.metadata = metadata;
+    self
   }
 }
 
@@ -215,6 +244,17 @@ impl From<Alias> for AliasResponse {
       Alias::User(u) => AliasResponse::User(u.into()),
       Alias::Model(m) => AliasResponse::Model(m.into()),
       Alias::Api(a) => AliasResponse::Api(a.into()),
+    }
+  }
+}
+
+impl AliasResponse {
+  /// Attach model metadata to this response (only applies to User and Model variants)
+  pub fn with_metadata(self, metadata: Option<ModelMetadata>) -> Self {
+    match self {
+      AliasResponse::User(r) => AliasResponse::User(r.with_metadata(metadata)),
+      AliasResponse::Model(r) => AliasResponse::Model(r.with_metadata(metadata)),
+      AliasResponse::Api(r) => AliasResponse::Api(r), // API aliases don't have metadata
     }
   }
 }

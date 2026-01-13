@@ -2979,6 +2979,89 @@
         ]
       }
     },
+    "/bodhi/v1/models/refresh": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Refresh Metadata for All Models",
+        "description": "Triggers background metadata extraction for all local GGUF models. Requires PowerUser permissions. Returns immediately with 202 Accepted status. Metadata extraction happens asynchronously in the background.",
+        "operationId": "refreshAllModelMetadata",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Scope of refresh operation: \"local\" for GGUF models only",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Metadata refresh started in background",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                },
+                "example": {
+                  "num_queued": "all"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
     "/bodhi/v1/models/{alias}": {
       "get": {
         "tags": [
@@ -3199,6 +3282,161 @@
               "scope_user_power_user"
             ]
           },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/{id}/refresh": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Refresh Metadata for Single Model",
+        "description": "Extracts and updates GGUF metadata for a specific model synchronously. Requires PowerUser permissions. Returns 200 OK with updated model data including metadata.",
+        "operationId": "refreshSingleModelMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Model alias identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alias not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/queue": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get Queue Status",
+        "description": "Returns the current status of the metadata refresh queue. Requires PowerUser permissions.",
+        "operationId": "getQueueStatus",
+        "responses": {
+          "200": {
+            "description": "Queue status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatusResponse"
+                },
+                "example": {
+                  "status": "idle"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
           {
             "session_auth": [
               "resource_power_user"
@@ -6885,6 +7123,27 @@
           }
         }
       },
+      "ContextLimits": {
+        "type": "object",
+        "properties": {
+          "max_input_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "max_output_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "CreateAliasRequest": {
         "type": "object",
         "required": [
@@ -8067,6 +8326,77 @@
           },
           "snapshot": {
             "type": "string"
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelMetadata",
+                "description": "Model metadata extracted from GGUF file (optional)"
+              }
+            ]
+          }
+        }
+      },
+      "ModelArchitecture": {
+        "type": "object",
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parameter_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "quantization": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "format": {
+            "type": "string"
+          }
+        }
+      },
+      "ModelCapabilities": {
+        "type": "object",
+        "required": [
+          "tools"
+        ],
+        "properties": {
+          "vision": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "audio": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "thinking": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "tools": {
+            "$ref": "#/components/schemas/ToolCapabilities"
           }
         }
       },
@@ -8105,6 +8435,32 @@
           },
           "quantization_level": {
             "type": "string"
+          }
+        }
+      },
+      "ModelMetadata": {
+        "type": "object",
+        "description": "Model metadata for API responses",
+        "required": [
+          "capabilities",
+          "context",
+          "architecture"
+        ],
+        "properties": {
+          "capabilities": {
+            "$ref": "#/components/schemas/ModelCapabilities"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ContextLimits"
+          },
+          "architecture": {
+            "$ref": "#/components/schemas/ModelArchitecture"
+          },
+          "chat_template": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -8811,6 +9167,19 @@
           }
         }
       },
+      "QueueStatusResponse": {
+        "type": "object",
+        "description": "Response for queue status operations",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Queue status (\"idle\" or \"processing\")"
+          }
+        }
+      },
       "ReasoningEffort": {
         "type": "string",
         "enum": [
@@ -8834,6 +9203,36 @@
         },
         "example": {
           "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
+        }
+      },
+      "RefreshParams": {
+        "type": "object",
+        "description": "Query parameters for metadata refresh endpoint",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "Scope of refresh operation: \"local\" for GGUF models only"
+          }
+        }
+      },
+      "RefreshResponse": {
+        "type": "object",
+        "description": "Response for metadata refresh operations",
+        "required": [
+          "num_queued"
+        ],
+        "properties": {
+          "num_queued": {
+            "type": "string",
+            "description": "Number of models queued (\"all\" for bulk refresh, \"1\" for single)"
+          },
+          "alias": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Model alias (only for single model refresh)"
+          }
         }
       },
       "ResourceRole": {
@@ -9322,6 +9721,23 @@
           "inactive"
         ]
       },
+      "ToolCapabilities": {
+        "type": "object",
+        "properties": {
+          "function_calling": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "structured_output": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
       "TopLogprobs": {
         "type": "object",
         "required": [
@@ -9649,6 +10065,17 @@
             "items": {
               "type": "string"
             }
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelMetadata",
+                "description": "Model metadata extracted from GGUF file (optional)"
+              }
+            ]
           }
         }
       },

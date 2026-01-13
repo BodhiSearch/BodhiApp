@@ -607,6 +607,11 @@ export type CompletionUsage = {
     completion_tokens_details?: null | CompletionTokensDetails;
 };
 
+export type ContextLimits = {
+    max_input_tokens?: number | null;
+    max_output_tokens?: number | null;
+};
+
 export type CreateAliasRequest = {
     alias: string;
     repo: string;
@@ -1128,6 +1133,21 @@ export type ModelAliasResponse = {
     repo: string;
     filename: string;
     snapshot: string;
+    metadata?: null | ModelMetadata;
+};
+
+export type ModelArchitecture = {
+    family?: string | null;
+    parameter_count?: number | null;
+    quantization?: string | null;
+    format: string;
+};
+
+export type ModelCapabilities = {
+    vision?: boolean | null;
+    audio?: boolean | null;
+    thinking?: boolean | null;
+    tools: ToolCapabilities;
 };
 
 export type ModelDetails = {
@@ -1137,6 +1157,16 @@ export type ModelDetails = {
     families?: Array<string> | null;
     parameter_size: string;
     quantization_level: string;
+};
+
+/**
+ * Model metadata for API responses
+ */
+export type ModelMetadata = {
+    capabilities: ModelCapabilities;
+    context: ContextLimits;
+    architecture: ModelArchitecture;
+    chat_template?: string | null;
 };
 
 export type ModelsResponse = {
@@ -1350,6 +1380,16 @@ export type PromptTokensDetails = {
     cached_tokens?: number | null;
 };
 
+/**
+ * Response for queue status operations
+ */
+export type QueueStatusResponse = {
+    /**
+     * Queue status ("idle" or "processing")
+     */
+    status: string;
+};
+
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
 export type RedirectResponse = {
@@ -1357,6 +1397,30 @@ export type RedirectResponse = {
      * The URL to redirect to (OAuth authorization URL or application home page)
      */
     location: string;
+};
+
+/**
+ * Query parameters for metadata refresh endpoint
+ */
+export type RefreshParams = {
+    /**
+     * Scope of refresh operation: "local" for GGUF models only
+     */
+    scope?: string;
+};
+
+/**
+ * Response for metadata refresh operations
+ */
+export type RefreshResponse = {
+    /**
+     * Number of models queued ("all" for bulk refresh, "1" for single)
+     */
+    num_queued: string;
+    /**
+     * Model alias (only for single model refresh)
+     */
+    alias?: string | null;
 };
 
 export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
@@ -1517,6 +1581,11 @@ export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_
 
 export type TokenStatus = 'active' | 'inactive';
 
+export type ToolCapabilities = {
+    function_calling?: boolean | null;
+    structured_output?: boolean | null;
+};
+
 export type TopLogprobs = {
     /**
      * The token.
@@ -1664,6 +1733,7 @@ export type UserAliasResponse = {
     model_params: {};
     request_params: OaiRequestParams;
     context_params: Array<string>;
+    metadata?: null | ModelMetadata;
 };
 
 export type UserInfo = {
@@ -2982,6 +3052,48 @@ export type CreateAliasResponses = {
 
 export type CreateAliasResponse = CreateAliasResponses[keyof CreateAliasResponses];
 
+export type RefreshAllModelMetadataData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Scope of refresh operation: "local" for GGUF models only
+         */
+        scope?: string;
+    };
+    url: '/bodhi/v1/models/refresh';
+};
+
+export type RefreshAllModelMetadataErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type RefreshAllModelMetadataError = RefreshAllModelMetadataErrors[keyof RefreshAllModelMetadataErrors];
+
+export type RefreshAllModelMetadataResponses = {
+    /**
+     * Metadata refresh started in background
+     */
+    202: RefreshResponse;
+};
+
+export type RefreshAllModelMetadataResponse = RefreshAllModelMetadataResponses[keyof RefreshAllModelMetadataResponses];
+
 export type GetAliasData = {
     body?: never;
     path: {
@@ -3069,6 +3181,89 @@ export type UpdateAliasResponses = {
 };
 
 export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
+
+export type RefreshSingleModelMetadataData = {
+    body?: never;
+    path: {
+        /**
+         * Model alias identifier
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/{id}/refresh';
+};
+
+export type RefreshSingleModelMetadataErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Alias not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type RefreshSingleModelMetadataError = RefreshSingleModelMetadataErrors[keyof RefreshSingleModelMetadataErrors];
+
+export type RefreshSingleModelMetadataResponses = {
+    /**
+     * Metadata refreshed successfully
+     */
+    200: AliasResponse;
+};
+
+export type RefreshSingleModelMetadataResponse = RefreshSingleModelMetadataResponses[keyof RefreshSingleModelMetadataResponses];
+
+export type GetQueueStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/queue';
+};
+
+export type GetQueueStatusErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetQueueStatusError = GetQueueStatusErrors[keyof GetQueueStatusErrors];
+
+export type GetQueueStatusResponses = {
+    /**
+     * Queue status retrieved successfully
+     */
+    200: QueueStatusResponse;
+};
+
+export type GetQueueStatusResponse = GetQueueStatusResponses[keyof GetQueueStatusResponses];
 
 export type ListSettingsData = {
     body?: never;

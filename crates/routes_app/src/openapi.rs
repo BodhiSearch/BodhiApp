@@ -8,23 +8,25 @@ use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CreateAliasRequest,
   CreateApiTokenRequest, ListUsersParams, NewDownloadRequest, PaginatedAliasResponse,
   PaginatedApiTokenResponse, PaginatedDownloadResponse, PaginatedLocalModelResponse,
-  PaginatedUserAccessResponse, PaginatedUserAliasResponse, RedirectResponse, SetupRequest,
-  SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAccessStatusResponse,
-  UserAliasResponse, UserResponse, __path_app_info_handler, __path_approve_request_handler,
-  __path_auth_callback_handler, __path_auth_initiate_handler, __path_change_user_role_handler,
-  __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
-  __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
-  __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
-  __path_get_download_status_handler, __path_get_user_alias_handler, __path_health_handler,
-  __path_list_aliases_handler, __path_list_all_requests_handler, __path_list_api_models_handler,
-  __path_list_downloads_handler, __path_list_local_modelfiles_handler,
-  __path_list_pending_requests_handler, __path_list_settings_handler, __path_list_tokens_handler,
-  __path_list_users_handler, __path_logout_handler, __path_ping_handler,
-  __path_pull_by_alias_handler, __path_reject_request_handler, __path_remove_user_handler,
-  __path_request_access_handler, __path_request_status_handler, __path_setup_handler,
-  __path_sync_models_handler, __path_test_api_model_handler, __path_update_alias_handler,
-  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
-  __path_user_info_handler, __path_user_request_access_handler,
+  PaginatedUserAccessResponse, PaginatedUserAliasResponse, QueueStatusResponse, RedirectResponse,
+  RefreshParams, RefreshResponse, SetupRequest, SetupResponse, UpdateAliasRequest,
+  UpdateSettingRequest, UserAccessStatusResponse, UserAliasResponse, UserResponse,
+  __path_app_info_handler, __path_approve_request_handler, __path_auth_callback_handler,
+  __path_auth_initiate_handler, __path_change_user_role_handler, __path_create_alias_handler,
+  __path_create_api_model_handler, __path_create_pull_request_handler, __path_create_token_handler,
+  __path_delete_api_model_handler, __path_delete_setting_handler, __path_fetch_models_handler,
+  __path_get_api_formats_handler, __path_get_api_model_handler, __path_get_download_status_handler,
+  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
+  __path_list_all_requests_handler, __path_list_api_models_handler, __path_list_downloads_handler,
+  __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
+  __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
+  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
+  __path_queue_status_handler, __path_refresh_all_metadata_handler,
+  __path_refresh_single_metadata_handler, __path_reject_request_handler,
+  __path_remove_user_handler, __path_request_access_handler, __path_request_status_handler,
+  __path_setup_handler, __path_sync_models_handler, __path_test_api_model_handler,
+  __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
+  __path_update_token_handler, __path_user_info_handler, __path_user_request_access_handler,
 };
 use async_openai::types::{
   ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
@@ -81,6 +83,8 @@ make_ui_endpoint!(ENDPOINT_APPS_REQUEST_ACCESS, "apps/request-access");
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
+make_ui_endpoint!(ENDPOINT_MODELS_REFRESH, "models/refresh");
+make_ui_endpoint!(ENDPOINT_QUEUE, "queue");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 make_ui_endpoint!(ENDPOINT_API_MODELS, "api-models");
@@ -287,6 +291,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             DownloadRequest,
             DownloadStatus,
             NewDownloadRequest,
+            RefreshParams,
+            RefreshResponse,
+            QueueStatusResponse,
             // settings
             SettingInfo,
             SettingMetadata,
@@ -353,6 +360,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         create_pull_request_handler,
         pull_by_alias_handler,
         get_download_status_handler,
+        refresh_all_metadata_handler,
+        refresh_single_metadata_handler,
+        queue_status_handler,
 
         // Settings endpoints
         list_settings_handler,

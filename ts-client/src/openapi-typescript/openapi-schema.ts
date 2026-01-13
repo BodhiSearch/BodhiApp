@@ -466,6 +466,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/models/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Metadata for All Models
+         * @description Triggers background metadata extraction for all local GGUF models. Requires PowerUser permissions. Returns immediately with 202 Accepted status. Metadata extraction happens asynchronously in the background.
+         */
+        post: operations["refreshAllModelMetadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/models/{alias}": {
         parameters: {
             query?: never;
@@ -496,6 +516,46 @@ export interface paths {
         get?: never;
         /** Update Alias */
         put: operations["updateAlias"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Metadata for Single Model
+         * @description Extracts and updates GGUF metadata for a specific model synchronously. Requires PowerUser permissions. Returns 200 OK with updated model data including metadata.
+         */
+        post: operations["refreshSingleModelMetadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Queue Status
+         * @description Returns the current status of the metadata refresh queue. Requires PowerUser permissions.
+         */
+        get: operations["getQueueStatus"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1391,6 +1451,12 @@ export interface components {
             prompt_tokens_details?: null | components["schemas"]["PromptTokensDetails"];
             completion_tokens_details?: null | components["schemas"]["CompletionTokensDetails"];
         };
+        ContextLimits: {
+            /** Format: int64 */
+            max_input_tokens?: number | null;
+            /** Format: int64 */
+            max_output_tokens?: number | null;
+        };
         CreateAliasRequest: {
             alias: string;
             repo: string;
@@ -1849,6 +1915,20 @@ export interface components {
             repo: string;
             filename: string;
             snapshot: string;
+            metadata?: null | components["schemas"]["ModelMetadata"];
+        };
+        ModelArchitecture: {
+            family?: string | null;
+            /** Format: int64 */
+            parameter_count?: number | null;
+            quantization?: string | null;
+            format: string;
+        };
+        ModelCapabilities: {
+            vision?: boolean | null;
+            audio?: boolean | null;
+            thinking?: boolean | null;
+            tools: components["schemas"]["ToolCapabilities"];
         };
         ModelDetails: {
             parent_model?: string | null;
@@ -1857,6 +1937,13 @@ export interface components {
             families?: string[] | null;
             parameter_size: string;
             quantization_level: string;
+        };
+        /** @description Model metadata for API responses */
+        ModelMetadata: {
+            capabilities: components["schemas"]["ModelCapabilities"];
+            context: components["schemas"]["ContextLimits"];
+            architecture: components["schemas"]["ModelArchitecture"];
+            chat_template?: string | null;
         };
         ModelsResponse: {
             models: components["schemas"]["OllamaModel"][];
@@ -2095,6 +2182,11 @@ export interface components {
              */
             cached_tokens?: number | null;
         };
+        /** @description Response for queue status operations */
+        QueueStatusResponse: {
+            /** @description Queue status ("idle" or "processing") */
+            status: string;
+        };
         /** @enum {string} */
         ReasoningEffort: "minimal" | "low" | "medium" | "high";
         /** @example {
@@ -2106,6 +2198,18 @@ export interface components {
              * @example https://oauth.example.com/auth?client_id=test&redirect_uri=...
              */
             location: string;
+        };
+        /** @description Query parameters for metadata refresh endpoint */
+        RefreshParams: {
+            /** @description Scope of refresh operation: "local" for GGUF models only */
+            scope?: string;
+        };
+        /** @description Response for metadata refresh operations */
+        RefreshResponse: {
+            /** @description Number of models queued ("all" for bulk refresh, "1" for single) */
+            num_queued: string;
+            /** @description Model alias (only for single model refresh) */
+            alias?: string | null;
         };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -2263,6 +2367,10 @@ export interface components {
         TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
+        ToolCapabilities: {
+            function_calling?: boolean | null;
+            structured_output?: boolean | null;
+        };
         TopLogprobs: {
             /** @description The token. */
             token: string;
@@ -2405,6 +2513,7 @@ export interface components {
             };
             request_params: components["schemas"]["OAIRequestParams"];
             context_params: string[];
+            metadata?: null | components["schemas"]["ModelMetadata"];
         };
         UserInfo: {
             /** @example 550e8400-e29b-41d4-a716-446655440000 */
@@ -4616,6 +4725,68 @@ export interface operations {
             };
         };
     };
+    refreshAllModelMetadata: {
+        parameters: {
+            query?: {
+                /** @description Scope of refresh operation: "local" for GGUF models only */
+                scope?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Metadata refresh started in background */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "num_queued": "all"
+                     *     } */
+                    "application/json": components["schemas"]["RefreshResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     getAlias: {
         parameters: {
             query?: never;
@@ -4738,6 +4909,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    refreshSingleModelMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Model alias identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Metadata refreshed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Alias not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getQueueStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queue status retrieved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /** @example {
+                     *       "status": "idle"
+                     *     } */
+                    "application/json": components["schemas"]["QueueStatusResponse"];
                 };
             };
             /** @description Invalid request parameters */
