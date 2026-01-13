@@ -1,7 +1,9 @@
 /**
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
+import { ENDPOINT_MODELS_REFRESH, ENDPOINT_QUEUE } from '@/hooks/useModelMetadata';
 import { ENDPOINT_MODELS, ENDPOINT_MODEL_ALIAS, ENDPOINT_MODEL_ID } from '@/hooks/useModels';
+
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
 // ============================================================================
@@ -261,7 +263,7 @@ export function mockCreateModelError(
  * Mock handler for model creation internal server error
  * Uses delegation pattern
  */
-export function mockCreateModelInternalError(config: {} = {}) {
+export function mockCreateModelInternalError(_config: Record<string, never> = {}) {
   return mockCreateModelError({
     code: 'internal_server_error',
     message: 'Internal Server Error',
@@ -385,7 +387,7 @@ export function mockGetModelError(
  * Mock handler for model not found error
  * Uses delegation pattern
  */
-export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
+export function mockGetModelNotFoundError(alias: string, _config: Record<string, never> = {}) {
   return mockGetModelError(alias, {
     code: 'not_found',
     message: `Model ${alias} not found`,
@@ -398,7 +400,7 @@ export function mockGetModelNotFoundError(alias: string, config: {} = {}) {
  * Mock handler for individual model retrieval internal server error
  * Uses delegation pattern
  */
-export function mockGetModelInternalError(alias: string, config: {} = {}) {
+export function mockGetModelInternalError(alias: string, _config: Record<string, never> = {}) {
   return mockGetModelError(alias, {
     code: 'internal_error',
     message: 'Internal server error',
@@ -508,7 +510,7 @@ export function mockUpdateModelError(
  * Mock handler for model update internal server error
  * Uses delegation pattern
  */
-export function mockUpdateModelInternalError(id: string, config: {} = {}) {
+export function mockUpdateModelInternalError(id: string, _config: Record<string, never> = {}) {
   return mockUpdateModelError(id, {
     code: 'internal_server_error',
     message: 'Internal Server Error',
@@ -529,4 +531,131 @@ export function mockUpdateModelBadRequestError(id: string, config: { message?: s
     type: 'invalid_request_error',
     status: 400,
   });
+}
+
+// ============================================================================
+// Metadata Refresh Endpoints
+// ============================================================================
+
+/**
+ * Mock handler for refresh all models metadata endpoint (POST /bodhi/v1/models/refresh)
+ * Returns 202 Accepted with queue status
+ */
+export function mockRefreshAllMetadata(
+  { num_queued = 'all', alias = null }: Partial<components['schemas']['RefreshResponse']> = {},
+  { stub }: { stub?: boolean } = {}
+) {
+  let hasBeenCalled = false;
+
+  return [
+    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ response }) => {
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const responseData: components['schemas']['RefreshResponse'] = {
+        num_queued,
+        alias,
+      };
+      return response(202 as const).json(responseData);
+    }),
+  ];
+}
+
+/**
+ * Mock handler for queue status endpoint (GET /bodhi/v1/queue)
+ */
+export function mockQueueStatus(status: 'idle' | 'processing' = 'idle', { stub }: { stub?: boolean } = {}) {
+  let hasBeenCalled = false;
+
+  return [
+    typedHttp.get(ENDPOINT_QUEUE, async ({ response }) => {
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const responseData: components['schemas']['QueueStatusResponse'] = {
+        status,
+      };
+      return response(200 as const).json(responseData);
+    }),
+  ];
+}
+
+/**
+ * Mock handler for refresh single model metadata endpoint (POST /bodhi/v1/models/{id}/refresh)
+ */
+export function mockRefreshSingleMetadata(
+  alias: string,
+  {
+    repo = 'test-repo',
+    filename = 'test-file.gguf',
+    snapshot = 'abc123',
+    source = 'user',
+    metadata = null,
+    ...rest
+  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  { stub }: { stub?: boolean } = {}
+) {
+  let hasBeenCalled = false;
+
+  // Dynamic endpoint pattern for single model refresh
+  const ENDPOINT_MODEL_REFRESH = '/bodhi/v1/models/{id}/refresh';
+
+  return [
+    typedHttp.post(ENDPOINT_MODEL_REFRESH, async ({ response, params }) => {
+      const { id: paramId } = params;
+
+      // Only respond if alias matches
+      if (paramId !== alias) {
+        return; // Pass through to next handler
+      }
+
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const responseData: components['schemas']['UserAliasResponse'] = {
+        alias: paramId as string,
+        repo,
+        filename,
+        snapshot,
+        source,
+        request_params: {},
+        context_params: [],
+        model_params: {},
+        metadata,
+        ...rest,
+      };
+      return response(200 as const).json(responseData);
+    }),
+  ];
+}
+
+/**
+ * Mock handler for refresh all metadata error
+ */
+export function mockRefreshAllMetadataError(
+  {
+    code = INTERNAL_SERVER_ERROR.code,
+    message = 'Failed to refresh metadata',
+    type = INTERNAL_SERVER_ERROR.type,
+    status = INTERNAL_SERVER_ERROR.status,
+    ...rest
+  }: Partial<components['schemas']['ErrorBody']> & { status?: 400 | 401 | 403 | 500 } = {},
+  { stub }: { stub?: boolean } = {}
+) {
+  let hasBeenCalled = false;
+
+  return [
+    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ response }) => {
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const errorBody = {
+        code,
+        message,
+        type,
+        ...rest,
+      };
+      return response(status).json({ error: errorBody });
+    }),
+  ];
 }

@@ -1,7 +1,7 @@
+import { AliasResponse, ApiAliasResponse, UserAliasResponse, ModelAliasResponse } from '@bodhiapp/ts-client';
 import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
-import { AliasResponse, ApiAliasResponse, UserAliasResponse, ModelAliasResponse } from '@bodhiapp/ts-client';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -59,3 +59,7 @@ export type LocalAlias = UserAliasResponse | ModelAliasResponse;
 
 // Type guard that ensures the model has local file properties
 export const hasLocalFileProperties = (model: AliasResponse): model is LocalAlias => isLocalAlias(model);
+
+// Type guard for models that can have metadata (local models only)
+export const hasModelMetadata = (model: AliasResponse): model is UserAliasResponse | ModelAliasResponse =>
+  model.source === 'user' || model.source === 'model';

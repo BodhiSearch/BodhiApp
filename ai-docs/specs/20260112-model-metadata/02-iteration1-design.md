@@ -4,6 +4,34 @@
 **Version**: Iteration 1 (Local GGUF Models)
 **Scope**: Iteration 1 focuses on local GGUF models with extensible schema for remote API models in iteration 2
 
+---
+
+## ⚠️ IMPLEMENTATION STATUS
+
+**Implementation Completed**: 2026-01-13
+
+**This specification was IMPLEMENTED as designed** (Original Iteration 1 design).
+
+**Implementation Status Summary:**
+- ✅ **All 11 Implementation Phases Completed**: Database schema, queue status endpoint, DTO updates, refresh endpoints, batch metadata queries, GET endpoint metadata attachment, UI components, Playwright tests, OpenAPI/TypeScript client regeneration
+- ✅ **Backend Tests**: 347 tests passed, 0 failures
+- ⏳ **Playwright Tests**: Created and ready to run (not yet executed)
+- ✅ **UI Build**: ModelPreviewModal component, useModelMetadata hooks, refresh button integration
+- ✅ **OpenAPI**: Regenerated with metadata types, TypeScript client updated
+
+**Key Implementation Decisions:**
+- **Auth**: PowerUser role for refresh endpoints (not Admin)
+- **Response Format**: `{num_queued: "all" | "1"}` (breaking change from `{status, message}`)
+- **DB Key**: Composite unique constraint on (source, repo, filename, snapshot) for local models
+- **Queue Status**: `/bodhi/v1/queue` endpoint with `{status: "idle" | "processing"}`
+- **Test Data**: Synthetic GGUF files generated with full HuggingFace cache structure
+
+**Note**: [Iteration 1.2 Delta Design](./03-iteration1-2-local-model-design.md) represents research-driven improvements and was NOT implemented. It proposes nullable capabilities, GGUF-first detection, and expanded capability patterns - deferred to future iteration.
+
+**Next Steps**: Run Playwright tests to complete verification, then consider Iteration 1.2 enhancements.
+
+---
+
 ## Overview
 
 Iteration 1 extends the existing `/bodhi/v1/models` endpoint with optional model metadata. The database schema is designed to be extensible, supporting both local GGUF models (iteration 1) and remote API models (iteration 2). Core capabilities are stored at column level for efficient querying, while additional metadata is stored as JSON for flexibility. This approach maintains backwards compatibility while providing rich capability information inline, similar to OpenRouter's API design.

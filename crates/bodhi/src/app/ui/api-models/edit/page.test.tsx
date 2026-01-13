@@ -126,15 +126,19 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
           },
           { stub: true }
         ),
-        ...mockUpdateApiModel('test-model', {
-          id: 'test-model',
-          api_format: 'openai',
-          base_url: 'https://api.openai.com/v1',
-          api_key_masked: '***',
-          models: ['gpt-4'],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
+        ...mockUpdateApiModel(
+          'test-model',
+          {
+            id: 'test-model',
+            api_format: 'openai',
+            base_url: 'https://api.openai.com/v1',
+            api_key_masked: '***',
+            models: ['gpt-4'],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { stub: true }
+        ),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
         ...mockFetchApiModelsSuccess()
@@ -219,7 +223,7 @@ describe('Edit API Model Page - Page-Level Integration Tests', () => {
           },
           { stub: true }
         ),
-        ...mockUpdateApiModelError('test-model'),
+        ...mockUpdateApiModelError('test-model', {}, { stub: true }),
         ...mockApiFormatsDefault(),
         ...mockTestApiModelSuccess(),
         ...mockFetchApiModelsSuccess()

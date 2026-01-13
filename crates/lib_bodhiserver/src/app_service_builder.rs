@@ -3,10 +3,10 @@ use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationServic
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
-  DefaultAppService, DefaultSecretService, HfHubService, HubService, KeycloakAuthService,
-  KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService, SecretService,
-  SecretServiceExt, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
-  HF_TOKEN,
+  DefaultAppService, DefaultSecretService, HfHubService, HubService, InMemoryQueue,
+  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService,
+  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
+  SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -212,6 +212,24 @@ impl AppServiceBuilder {
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
 
+    // Create queue and spawn refresh worker
+    let queue = Arc::new(InMemoryQueue::new());
+    let is_processing = queue.get_is_processing();
+    let queue_producer: Arc<dyn QueueProducer> = queue.clone();
+    let queue_consumer: Arc<dyn QueueConsumer> = queue;
+
+    // Spawn refresh worker in background
+    let worker = RefreshWorker::new(
+      queue_consumer,
+      hub_service.clone(),
+      data_service.clone(),
+      db_service.clone(),
+      is_processing,
+    );
+    tokio::spawn(async move {
+      worker.run().await;
+    });
+
     // Build and return the complete app service
     let app_service = DefaultAppService::new(
       self.setting_service,
@@ -226,6 +244,7 @@ impl AppServiceBuilder {
       time_service,
       ai_api_service,
       concurrency_service,
+      queue_producer,
     );
     Ok(app_service)
   }

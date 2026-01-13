@@ -27,6 +27,33 @@ export class ModelsListPage extends BasePage {
     createAliasFromModelButton: (alias) => `[data-testid="create-alias-from-model-${alias}"]`,
     externalButton: (alias) => `[data-testid="external-button-${alias}"]`,
     chatButton: (alias) => `[data-testid="chat-button-${alias}"]`,
+    // Preview modal selectors
+    previewButton: (identifier) => `[data-testid="preview-button-${identifier}"]`,
+    previewModal: '[data-testid="model-preview-modal"]',
+    previewBasicAlias: '[data-testid="preview-basic-alias"]',
+    previewBasicRepo: '[data-testid="preview-basic-repo"]',
+    previewBasicFilename: '[data-testid="preview-basic-filename"]',
+    previewBasicSnapshot: '[data-testid="preview-basic-snapshot"]',
+    previewBasicSource: '[data-testid="preview-basic-source"]',
+    previewCapabilityVision: '[data-testid="preview-capability-vision"]',
+    previewCapabilityAudio: '[data-testid="preview-capability-audio"]',
+    previewCapabilityThinking: '[data-testid="preview-capability-thinking"]',
+    previewCapabilityFunctionCalling: '[data-testid="preview-capability-function-calling"]',
+    previewCapabilityStructuredOutput: '[data-testid="preview-capability-structured-output"]',
+    previewContextMaxInput: '[data-testid="preview-context-max-input"]',
+    previewContextMaxOutput: '[data-testid="preview-context-max-output"]',
+    previewArchitectureFormat: '[data-testid="preview-architecture-format"]',
+    previewArchitectureFamily: '[data-testid="preview-architecture-family"]',
+    previewArchitectureParameterCount: '[data-testid="preview-architecture-parameter-count"]',
+    previewArchitectureQuantization: '[data-testid="preview-architecture-quantization"]',
+    previewApiFormat: '[data-testid="preview-api-format"]',
+    previewApiBaseUrl: '[data-testid="preview-api-base-url"]',
+    previewApiPrefix: '[data-testid="preview-api-prefix"]',
+    previewApiForwardAll: '[data-testid="preview-api-forward-all"]',
+    previewApiModels: '[data-testid="preview-api-models"]',
+    // Refresh button selectors
+    refreshAllButton: '[data-testid="refresh-all-models-button"]',
+    refreshButton: (alias) => `[data-testid="refresh-button-${alias}"]`,
   };
 
   async navigateToModels() {
@@ -321,5 +348,188 @@ export class ModelsListPage extends BasePage {
       prefix: prefix?.trim() || '',
       forward_all: forward_all?.trim() || '',
     };
+  }
+
+  // Preview modal methods
+  async clickPreviewButton(identifier) {
+    const previewBtn = this.page.locator(this.selectors.previewButton(identifier));
+    await expect(previewBtn).toBeVisible();
+    await previewBtn.click();
+    await expect(this.page.locator(this.selectors.previewModal)).toBeVisible();
+  }
+
+  async closePreviewModal() {
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator(this.selectors.previewModal)).not.toBeVisible();
+  }
+
+  async verifyPreviewBasicInfo(expectedValues) {
+    await expect(this.page.locator(this.selectors.previewModal)).toBeVisible();
+
+    if (expectedValues.alias) {
+      await expect(this.page.locator(this.selectors.previewBasicAlias)).toContainText(
+        expectedValues.alias
+      );
+    }
+    if (expectedValues.repo) {
+      await expect(this.page.locator(this.selectors.previewBasicRepo)).toContainText(
+        expectedValues.repo
+      );
+    }
+    if (expectedValues.filename) {
+      await expect(this.page.locator(this.selectors.previewBasicFilename)).toContainText(
+        expectedValues.filename
+      );
+    }
+    if (expectedValues.snapshot) {
+      await expect(this.page.locator(this.selectors.previewBasicSnapshot)).toContainText(
+        expectedValues.snapshot
+      );
+    }
+    if (expectedValues.source) {
+      await expect(this.page.locator(this.selectors.previewBasicSource)).toContainText(
+        expectedValues.source
+      );
+    }
+  }
+
+  async verifyPreviewCapability(capabilityName, expectedValue) {
+    const selectorMap = {
+      vision: this.selectors.previewCapabilityVision,
+      audio: this.selectors.previewCapabilityAudio,
+      thinking: this.selectors.previewCapabilityThinking,
+      function_calling: this.selectors.previewCapabilityFunctionCalling,
+      structured_output: this.selectors.previewCapabilityStructuredOutput,
+    };
+
+    const selector = selectorMap[capabilityName];
+    const element = this.page.locator(selector);
+
+    if (expectedValue === true) {
+      await expect(element).toContainText('Supported');
+    } else if (expectedValue === false) {
+      await expect(element).toContainText('Not supported');
+    } else {
+      // If undefined, the capability should not be visible
+      await expect(element).not.toBeVisible();
+    }
+  }
+
+  async verifyPreviewContext(maxInput, maxOutput) {
+    if (maxInput) {
+      await expect(this.page.locator(this.selectors.previewContextMaxInput)).toContainText(
+        maxInput.toLocaleString()
+      );
+    }
+    if (maxOutput) {
+      await expect(this.page.locator(this.selectors.previewContextMaxOutput)).toContainText(
+        maxOutput.toLocaleString()
+      );
+    }
+  }
+
+  async verifyPreviewArchitecture(expectedValues) {
+    if (expectedValues.format) {
+      await expect(this.page.locator(this.selectors.previewArchitectureFormat)).toContainText(
+        expectedValues.format
+      );
+    }
+    if (expectedValues.family) {
+      await expect(this.page.locator(this.selectors.previewArchitectureFamily)).toContainText(
+        expectedValues.family
+      );
+    }
+    if (expectedValues.parameter_count) {
+      await expect(
+        this.page.locator(this.selectors.previewArchitectureParameterCount)
+      ).toContainText(expectedValues.parameter_count.toLocaleString());
+    }
+    if (expectedValues.quantization) {
+      await expect(this.page.locator(this.selectors.previewArchitectureQuantization)).toContainText(
+        expectedValues.quantization
+      );
+    }
+  }
+
+  async verifyPreviewApiConfig(expectedValues) {
+    await expect(this.page.locator(this.selectors.previewModal)).toBeVisible();
+
+    if (expectedValues.api_format) {
+      await expect(this.page.locator(this.selectors.previewApiFormat)).toContainText(
+        expectedValues.api_format
+      );
+    }
+    if (expectedValues.base_url) {
+      await expect(this.page.locator(this.selectors.previewApiBaseUrl)).toContainText(
+        expectedValues.base_url
+      );
+    }
+    if (expectedValues.prefix) {
+      await expect(this.page.locator(this.selectors.previewApiPrefix)).toContainText(
+        expectedValues.prefix
+      );
+    }
+    if (expectedValues.forward_all !== undefined) {
+      const expectedText = expectedValues.forward_all ? 'Enabled' : 'Disabled';
+      await expect(this.page.locator(this.selectors.previewApiForwardAll)).toContainText(
+        expectedText
+      );
+    }
+  }
+
+  // Refresh metadata methods
+  async clickRefreshAll() {
+    const refreshBtn = this.page.locator(this.selectors.refreshAllButton);
+    await expect(refreshBtn).toBeVisible();
+    await expect(refreshBtn).toBeEnabled();
+    await refreshBtn.click();
+
+    // Wait for toast notification
+    await this.waitForToast('Metadata refresh queued');
+  }
+
+  async waitForQueueIdle(maxWaitMs = 180000) {
+    // Wait for the success toast which indicates frontend has processed queue completion
+    await this.waitForToast('Metadata refresh completed', { timeout: maxWaitMs });
+    // Wait a bit more for the models list to refetch
+    await this.page.waitForTimeout(500);
+  }
+
+  async verifyRefreshButtonState(expectedState) {
+    const refreshBtn = this.page.locator(this.selectors.refreshAllButton);
+    await expect(refreshBtn).toBeVisible();
+
+    if (expectedState === 'disabled') {
+      await expect(refreshBtn).toBeDisabled();
+    } else if (expectedState === 'enabled') {
+      await expect(refreshBtn).toBeEnabled();
+    }
+  }
+
+  // Per-row refresh methods (sync refresh)
+  async clickRefreshButton(alias) {
+    const refreshBtn = this.page.locator(this.selectors.refreshButton(alias));
+    await expect(refreshBtn).toBeVisible();
+    await expect(refreshBtn).toBeEnabled();
+    await refreshBtn.click();
+
+    // Wait for toast notification
+    await this.waitForToast('Metadata refreshed successfully');
+  }
+
+  async verifyRefreshButtonStateForModel(alias, expectedState) {
+    const refreshBtn = this.page.locator(this.selectors.refreshButton(alias));
+    await expect(refreshBtn).toBeVisible();
+
+    if (expectedState === 'disabled') {
+      await expect(refreshBtn).toBeDisabled();
+    } else if (expectedState === 'enabled') {
+      await expect(refreshBtn).toBeEnabled();
+    } else if (expectedState === 'loading') {
+      // Verify spinner is showing
+      await expect(refreshBtn).toBeDisabled();
+      const spinner = refreshBtn.locator('svg.animate-spin');
+      await expect(spinner).toBeVisible();
+    }
   }
 }

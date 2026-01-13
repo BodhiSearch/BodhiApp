@@ -5,10 +5,13 @@ import {
   mockModelsInternalError,
   mockModelsWithApiModel,
   mockModelsWithSourceModel,
+  mockRefreshAllMetadata,
+  mockQueueStatus,
+  mockRefreshSingleMetadata,
 } from '@/test-utils/msw-v2/handlers/models';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { createWrapper } from '@/tests/wrapper';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -374,5 +377,122 @@ describe('ModelsPage access control', () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
     expect(pushMock).toHaveBeenCalledWith('/ui/login');
+  });
+});
+
+describe('Model Metadata Refresh', () => {
+  beforeEach(() => {
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
+  });
+
+  it('refresh all button triggers API call and shows loading state', async () => {
+    server.use(...mockRefreshAllMetadata({ num_queued: 'all' }), ...mockQueueStatus('idle', { stub: true }));
+
+    render(<ModelsPage />, { wrapper: createWrapper() });
+
+    // Wait for page to load
+    await screen.findByTestId('refresh-all-models-button');
+
+    const refreshButton = screen.getByTestId('refresh-all-models-button');
+    expect(refreshButton).toBeEnabled();
+    expect(refreshButton).toHaveTextContent('Refresh All');
+
+    await act(async () => {
+      fireEvent.click(refreshButton);
+    });
+
+    // Button should show loading state during processing
+    await waitFor(() => {
+      expect(screen.getByTestId('refresh-all-models-button')).toBeDisabled();
+    });
+  });
+
+  it('per-model refresh button triggers sync refresh and shows success toast', async () => {
+    server.use(
+      ...mockRefreshSingleMetadata('test-model', {
+        repo: 'test-repo',
+        filename: 'test-file.bin',
+        snapshot: 'abc123',
+        metadata: {
+          capabilities: { vision: false, audio: false, thinking: false, tools: {} },
+          context: {},
+          architecture: { format: 'gguf' },
+        },
+      })
+    );
+
+    render(<ModelsPage />, { wrapper: createWrapper() });
+
+    // Wait for page to load
+    await screen.findByTestId('refresh-button-test-model');
+
+    const refreshButton = screen.getByTestId('refresh-button-test-model');
+    expect(refreshButton).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(refreshButton);
+    });
+
+    // Wait for refresh to complete (the button should become enabled again)
+    await waitFor(() => {
+      expect(screen.getByTestId('refresh-button-test-model')).toBeEnabled();
+    });
+  });
+});
+
+describe('Model Preview Modal', () => {
+  beforeEach(() => {
+    server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
+  });
+
+  it('opens preview modal when preview button clicked', async () => {
+    render(<ModelsPage />, { wrapper: createWrapper() });
+
+    // Wait for page to load
+    await screen.findByTestId('preview-button-test-model');
+
+    const previewButton = screen.getByTestId('preview-button-test-model');
+
+    await act(async () => {
+      fireEvent.click(previewButton);
+    });
+
+    // Modal should be visible
+    await waitFor(() => {
+      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
+    });
+
+    // Basic info should be displayed
+    expect(screen.getByTestId('preview-basic-alias')).toHaveTextContent('test-model');
+    expect(screen.getByTestId('preview-basic-repo')).toHaveTextContent('test-repo');
+    expect(screen.getByTestId('preview-basic-filename')).toHaveTextContent('test-file.bin');
+  });
+
+  it('closes preview modal on escape key', async () => {
+    render(<ModelsPage />, { wrapper: createWrapper() });
+
+    // Wait for page to load
+    await screen.findByTestId('preview-button-test-model');
+
+    const previewButton = screen.getByTestId('preview-button-test-model');
+
+    await act(async () => {
+      fireEvent.click(previewButton);
+    });
+
+    // Modal should be visible
+    await waitFor(() => {
+      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
+    });
+
+    // Press escape to close
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+
+    // Modal should be closed
+    await waitFor(() => {
+      expect(screen.queryByTestId('model-preview-modal')).not.toBeInTheDocument();
+    });
   });
 });

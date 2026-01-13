@@ -1,5 +1,25 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+
+import { AliasResponse } from '@bodhiapp/ts-client';
+import {
+  Cloud,
+  ExternalLink,
+  Eye,
+  FilePlus2,
+  Globe,
+  Loader2,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from 'react-query';
+
 import AppInitializer from '@/components/AppInitializer';
 import { CopyableContent } from '@/components/CopyableContent';
 import { DataTable, Pagination } from '@/components/DataTable';
@@ -18,24 +38,13 @@ import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteApiModel } from '@/hooks/useApiModels';
+import { useRefreshAllMetadata, useQueueStatus, useRefreshSingleMetadata } from '@/hooks/useModelMetadata';
 import { useModels } from '@/hooks/useModels';
 import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
-import { SortState } from '@/types/models';
-import { AliasResponse } from '@bodhiapp/ts-client';
 import { formatPrefixedModel } from '@/schemas/apiModel';
-import {
-  Cloud,
-  ExternalLink,
-  FilePlus2,
-  Globe,
-  MessageSquare,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { SortState } from '@/types/models';
+
+import { ModelPreviewModal } from './components/ModelPreviewModal';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -117,9 +126,97 @@ function ModelsPageContent() {
     modelId: string;
     prefix?: string | null;
   } | null>(null);
+  const [previewModel, setPreviewModel] = useState<AliasResponse | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshingAlias, setRefreshingAlias] = useState<string | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
   const deleteApiModel = useDeleteApiModel();
+
+  const refreshAllMetadata = useRefreshAllMetadata({
+    onSuccess: (response) => {
+      setIsRefreshing(true);
+      toast({
+        title: 'Refresh queued',
+        description: `Metadata refresh queued for ${response.num_queued} models`,
+      });
+      startPollingQueue();
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const refreshSingleMetadata = useRefreshSingleMetadata({
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Metadata refreshed successfully',
+      });
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { refetch: refetchQueueStatus } = useQueueStatus({
+    enabled: false,
+  });
+
+  const startPollingQueue = () => {
+    const maxWaitMs = 180000; // 3 minutes
+    const pollIntervalMs = 1000; // Poll every second
+    const startTime = Date.now();
+
+    pollIntervalRef.current = setInterval(async () => {
+      if (Date.now() - startTime > maxWaitMs) {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setIsRefreshing(false);
+        toast({
+          title: 'Warning',
+          description: 'Metadata refresh is taking longer than expected',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data } = await refetchQueueStatus();
+      if (data?.status === 'idle') {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setIsRefreshing(false);
+        queryClient.invalidateQueries(['models']); // Refetch models with updated metadata
+        toast({
+          title: 'Success',
+          description: 'Metadata refresh completed',
+        });
+      }
+    }, pollIntervalMs);
+  };
 
   // Backend will provide combined data including API models, User aliases, and Model File aliases
   const { data, isLoading, error } = useModels(page, pageSize, sort.column, sort.direction);
@@ -201,6 +298,16 @@ function ModelsPageContent() {
       // API model actions
       return (
         <div className="flex flex-nowrap items-center gap-1 md:gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPreviewModel(model)}
+            title={`Preview model ${model.id}`}
+            className="h-8 w-8 p-0"
+            data-testid={`${testIdPrefix}preview-button-${model.id}`}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -311,6 +418,38 @@ function ModelsPageContent() {
         );
       return (
         <div className="flex flex-nowrap items-center gap-1 md:gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              setRefreshingAlias(model.alias);
+              try {
+                await refreshSingleMetadata.mutateAsync(model.alias);
+              } finally {
+                setRefreshingAlias(null);
+              }
+            }}
+            disabled={refreshingAlias === model.alias}
+            title={`Refresh metadata for ${model.alias}`}
+            className="h-8 w-8 p-0"
+            data-testid={`${testIdPrefix}refresh-button-${model.alias}`}
+          >
+            {refreshingAlias === model.alias ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPreviewModel(model)}
+            title={`Preview model ${model.alias}`}
+            className="h-8 w-8 p-0"
+            data-testid={`${testIdPrefix}preview-button-${model.alias}`}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           {actions}
           <Button
             variant="ghost"
@@ -498,6 +637,16 @@ function ModelsPageContent() {
       </UserOnboarding>
 
       <div className="flex justify-end gap-2 m2-4">
+        <Button
+          onClick={() => refreshAllMetadata.mutate()}
+          size="sm"
+          variant="outline"
+          disabled={isRefreshing || refreshAllMetadata.isLoading}
+          data-testid="refresh-all-models-button"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh All'}
+        </Button>
         <Button onClick={handleNewApiModel} size="sm" variant="outline">
           <Globe className="h-4 w-4 mr-2" />
           New API Model
@@ -564,6 +713,15 @@ function ModelsPageContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Model Preview Modal */}
+      {previewModel && (
+        <ModelPreviewModal
+          open={!!previewModel}
+          onOpenChange={(open) => !open && setPreviewModel(null)}
+          model={previewModel}
+        />
+      )}
     </div>
   );
 }
