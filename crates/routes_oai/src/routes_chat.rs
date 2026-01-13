@@ -1,7 +1,9 @@
 use crate::{ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS};
 use async_openai::types::{
-  CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
-  CreateEmbeddingRequest, CreateEmbeddingResponse,
+  chat::{
+    CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
+  },
+  embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse},
 };
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
@@ -178,10 +180,12 @@ mod test {
   use crate::routes_chat::{chat_completions_handler, embeddings_handler};
   use anyhow_trace::anyhow_trace;
   use async_openai::types::{
-    ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
-    CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
-    CreateChatCompletionStreamResponse, CreateEmbeddingRequest, CreateEmbeddingResponse,
-    EmbeddingInput,
+    chat::{
+      ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
+      CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
+      CreateChatCompletionStreamResponse,
+    },
+    embeddings::{CreateEmbeddingRequest, CreateEmbeddingResponse, EmbeddingInput},
   };
   use axum::{extract::Request, routing::post, Router};
   use futures_util::StreamExt;

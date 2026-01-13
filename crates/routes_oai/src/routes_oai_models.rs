@@ -1,5 +1,5 @@
 use crate::ENDPOINT_OAI_MODELS;
-use async_openai::types::{ListModelResponse, Model};
+use async_openai::types::models::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
   Json,

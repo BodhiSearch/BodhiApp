@@ -1,4 +1,5 @@
 use crate::{merge_server_args, ContextError, LlmEndpoint};
+use async_openai::types::chat::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
 use serde_json::Value;
@@ -218,7 +219,7 @@ impl SharedContext for DefaultSharedContext {
       // For Value, we need to deserialize, update, and re-serialize
       // This is only needed for chat completions, but we'll apply it universally
       if let Ok(mut chat_request) =
-        serde_json::from_value::<async_openai::types::CreateChatCompletionRequest>(request.clone())
+        serde_json::from_value::<CreateChatCompletionRequest>(request.clone())
       {
         user_alias.request_params.update(&mut chat_request);
         request = serde_json::to_value(chat_request)?;
@@ -368,7 +369,7 @@ mod test {
     LlmEndpoint,
   };
   use anyhow_trace::anyhow_trace;
-  use async_openai::types::CreateChatCompletionRequest;
+  use async_openai::types::chat::CreateChatCompletionRequest;
   use futures::FutureExt;
   use llama_server_proc::{
     test_utils::mock_response, LlamaServerArgsBuilder, MockServer, BUILD_TARGET, BUILD_VARIANTS,

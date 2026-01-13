@@ -29,10 +29,15 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler, __path_user_request_access_handler,
 };
 use async_openai::types::{
-  ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
-  CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
-  CreateChatCompletionStreamResponse, CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding,
-  EmbeddingInput, EmbeddingUsage, ListModelResponse, Model,
+  chat::{
+    ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
+    CompletionUsage, CreateChatCompletionRequest, CreateChatCompletionResponse,
+    CreateChatCompletionStreamResponse,
+  },
+  embeddings::{
+    CreateEmbeddingRequest, CreateEmbeddingResponse, Embedding, EmbeddingInput, EmbeddingUsage,
+  },
+  models::{ListModelResponse, Model},
 };
 use objs::{
   Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,

@@ -1163,23 +1163,46 @@ export interface components {
             finish_reason?: null | components["schemas"]["FinishReason"];
             logprobs?: null | components["schemas"]["ChatChoiceLogprobs"];
         };
+        ChatCompletionAllowedTools: {
+            /** @description Constrains the tools available to the model to a pre-defined set.
+             *
+             *     `auto` allows the model to pick from among the allowed tools and generate a
+             *     message.
+             *
+             *     `required` requires the model to call one or more of the allowed tools. */
+            mode: components["schemas"]["ToolChoiceAllowedMode"];
+            /** @description A list of tool definitions that the model should be allowed to call.
+             *
+             *     For the Chat Completions API, the list of tool definitions might look like:
+             *     ```json
+             *     [
+             *       { "type": "function", "function": { "name": "get_weather" } },
+             *       { "type": "function", "function": { "name": "get_time" } }
+             *     ]
+             *     ``` */
+            tools: unknown[];
+        };
+        ChatCompletionAllowedToolsChoice: {
+            allowed_tools: components["schemas"]["ChatCompletionAllowedTools"][];
+        };
         ChatCompletionAudio: {
-            /** @description The voice the model uses to respond. Supported voices are `ash`, `ballad`, `coral`, `sage`, and `verse` (also supported but not recommended are `alloy`, `echo`, and `shimmer`; these voices are less expressive). */
+            /** @description The voice the model uses to respond. Supported built-in voices are `alloy`, `ash`,
+             *     `ballad`, `coral`, `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`, `marin`, and `cedar`. */
             voice: components["schemas"]["ChatCompletionAudioVoice"];
-            /** @description Specifies the output audio format. Must be one of `wav`, `mp3`, `flac`, `opus`, or `pcm16`. */
+            /** @description Specifies the output audio format. Must be one of `wav`, `aac`, `mp3`, `flac`, `opus`, or `pcm16`. */
             format: components["schemas"]["ChatCompletionAudioFormat"];
         };
         /** @enum {string} */
-        ChatCompletionAudioFormat: "wav" | "mp3" | "flac" | "opus" | "pcm16";
-        /** @enum {string} */
-        ChatCompletionAudioVoice: "alloy" | "ash" | "ballad" | "coral" | "echo" | "sage" | "shimmer" | "verse";
+        ChatCompletionAudioFormat: "wav" | "aac" | "mp3" | "flac" | "opus" | "pcm16";
+        ChatCompletionAudioVoice: "alloy" | "ash" | "ballad" | "coral" | "echo" | "fable" | "nova" | "onyx" | "sage" | "shimmer" | {
+            other: string;
+        };
         ChatCompletionFunctionCall: "none" | "auto" | {
             /** @description Forces the model to call the specified function. */
             Function: {
                 name: string;
             };
         };
-        /** @deprecated */
         ChatCompletionFunctions: {
             /** @description The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64. */
             name: string;
@@ -1190,11 +1213,15 @@ export interface components {
              *     Omitting `parameters` defines a function with an empty parameter list. */
             parameters: unknown;
         };
+        ChatCompletionMessageCustomToolCall: {
+            /** @description The ID of the tool call. */
+            id: string;
+            /** @description The custom tool that the model called. */
+            custom_tool: components["schemas"]["CustomTool"];
+        };
         ChatCompletionMessageToolCall: {
             /** @description The ID of the tool call. */
             id: string;
-            /** @description The type of the tool. Currently, only `function` is supported. */
-            type: components["schemas"]["ChatCompletionToolType"];
             /** @description The function that the model called. */
             function: components["schemas"]["FunctionCall"];
         };
@@ -1203,24 +1230,22 @@ export interface components {
             index: number;
             /** @description The ID of the tool call. */
             id?: string | null;
-            type?: null | components["schemas"]["ChatCompletionToolType"];
+            type?: null | components["schemas"]["FunctionType"];
             function?: null | components["schemas"]["FunctionCallStream"];
         };
-        /**
-         * @description Output types that you would like the model to generate for this request.
-         *
-         *     Most models are capable of generating text, which is the default: `["text"]`
-         *
-         *     The `gpt-4o-audio-preview` model can also be used to [generate
-         *     audio](https://platform.openai.com/docs/guides/audio). To request that this model generate both text and audio responses, you can use: `["text", "audio"]`
-         * @enum {string}
-         */
-        ChatCompletionModalities: "text" | "audio";
+        ChatCompletionMessageToolCalls: (components["schemas"]["ChatCompletionMessageToolCall"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["ChatCompletionMessageCustomToolCall"] & {
+            /** @enum {string} */
+            type: "custom";
+        });
         /** @description Specifies a tool the model should use. Use to force the model to call a specific function. */
         ChatCompletionNamedToolChoice: {
-            /** @description The type of the tool. Currently, only `function` is supported. */
-            type: components["schemas"]["ChatCompletionToolType"];
             function: components["schemas"]["FunctionName"];
+        };
+        ChatCompletionNamedToolChoiceCustom: {
+            custom: components["schemas"]["CustomName"];
         };
         ChatCompletionRequestAssistantMessage: {
             content?: null | components["schemas"]["ChatCompletionRequestAssistantMessageContent"];
@@ -1229,7 +1254,7 @@ export interface components {
             /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
             name?: string | null;
             audio?: null | components["schemas"]["ChatCompletionRequestAssistantMessageAudio"];
-            tool_calls?: components["schemas"]["ChatCompletionMessageToolCall"][] | null;
+            tool_calls?: components["schemas"]["ChatCompletionMessageToolCalls"][] | null;
             function_call?: null | components["schemas"]["FunctionCall"];
         };
         ChatCompletionRequestAssistantMessageAudio: {
@@ -1250,7 +1275,11 @@ export interface components {
             /** @description An optional name for the participant. Provides the model information to differentiate between participants of the same role. */
             name?: string | null;
         };
-        ChatCompletionRequestDeveloperMessageContent: string | components["schemas"]["ChatCompletionRequestMessageContentPartText"][];
+        ChatCompletionRequestDeveloperMessageContent: string | components["schemas"]["ChatCompletionRequestDeveloperMessageContentPart"][];
+        ChatCompletionRequestDeveloperMessageContentPart: components["schemas"]["ChatCompletionRequestMessageContentPartText"] & {
+            /** @enum {string} */
+            type: "text";
+        };
         ChatCompletionRequestFunctionMessage: {
             /** @description The return value from the function call, to return to the model. */
             content?: string | null;
@@ -1279,6 +1308,9 @@ export interface components {
         /** @description Learn about [audio inputs](https://platform.openai.com/docs/guides/audio). */
         ChatCompletionRequestMessageContentPartAudio: {
             input_audio: components["schemas"]["InputAudio"];
+        };
+        ChatCompletionRequestMessageContentPartFile: {
+            file: components["schemas"]["FileObject"];
         };
         ChatCompletionRequestMessageContentPartImage: {
             image_url: components["schemas"]["ImageUrl"];
@@ -1328,6 +1360,9 @@ export interface components {
         }) | (components["schemas"]["ChatCompletionRequestMessageContentPartAudio"] & {
             /** @enum {string} */
             type: "input_audio";
+        }) | (components["schemas"]["ChatCompletionRequestMessageContentPartFile"] & {
+            /** @enum {string} */
+            type: "file";
         });
         /** @description A chat completion message generated by the model. */
         ChatCompletionResponseMessage: {
@@ -1336,17 +1371,23 @@ export interface components {
             /** @description The refusal message generated by the model. */
             refusal?: string | null;
             /** @description The tool calls generated by the model, such as function calls. */
-            tool_calls?: components["schemas"]["ChatCompletionMessageToolCall"][] | null;
+            tool_calls?: components["schemas"]["ChatCompletionMessageToolCalls"][] | null;
+            annotations?: components["schemas"]["ChatCompletionResponseMessageAnnotation"][] | null;
             /** @description The role of the author of this message. */
             role: components["schemas"]["Role"];
             function_call?: null | components["schemas"]["FunctionCall"];
             audio?: null | components["schemas"]["ChatCompletionResponseMessageAudio"];
         };
+        ChatCompletionResponseMessageAnnotation: {
+            url_citation: components["schemas"]["UrlCitation"];
+            /** @enum {string} */
+            type: "url_citation";
+        };
         ChatCompletionResponseMessageAudio: {
             /** @description Unique identifier for this audio response. */
             id: string;
             /**
-             * Format: int32
+             * Format: int64
              * @description The Unix timestamp (in seconds) for when this audio response will no longer be accessible on the server for use in multi-turn conversations.
              */
             expires_at: number;
@@ -1357,8 +1398,23 @@ export interface components {
         };
         /** @description Options for streaming response. Only set this when you set `stream: true`. */
         ChatCompletionStreamOptions: {
-            /** @description If set, an additional chunk will be streamed before the `data: [DONE]` message. The `usage` field on this chunk shows the token usage statistics for the entire request, and the `choices` field will always be an empty array. All other chunks will also include a `usage` field, but with a null value. */
-            include_usage: boolean;
+            /** @description If set, an additional chunk will be streamed before the `data: [DONE]`
+             *     message. The `usage` field on this chunk shows the token usage statistics
+             *     for the entire request, and the `choices` field will always be an empty
+             *     array.
+             *
+             *     All other chunks will also include a `usage` field, but with a null
+             *     value. **NOTE:** If the stream is interrupted, you may not receive the
+             *     final usage chunk which contains the total token usage for the request. */
+            include_usage?: boolean | null;
+            /** @description When true, stream obfuscation will be enabled. Stream obfuscation adds
+             *     random characters to an `obfuscation` field on streaming delta events to
+             *     normalize payload sizes as a mitigation to certain side-channel attacks.
+             *     These obfuscation fields are included by default, but add a small amount
+             *     of overhead to the data stream. You can set `include_obfuscation` to
+             *     false to optimize for bandwidth if you trust the network links between
+             *     your application and the OpenAI API. */
+            include_obfuscation?: boolean | null;
         };
         /** @description A chat completion delta generated by streamed model responses. */
         ChatCompletionStreamResponseDelta: {
@@ -1384,7 +1440,6 @@ export interface components {
             top_logprobs: components["schemas"]["TopLogprobs"][];
         };
         ChatCompletionTool: {
-            type: components["schemas"]["ChatCompletionToolType"];
             function: components["schemas"]["FunctionObject"];
         };
         /** @description Controls which (if any) tool is called by the model.
@@ -1394,11 +1449,26 @@ export interface components {
          *     Specifying a particular tool via `{"type": "function", "function": {"name": "my_function"}}` forces the model to call that tool.
          *
          *     `none` is the default when no tools are present. `auto` is the default if tools are present. */
-        ChatCompletionToolChoiceOption: "none" | "auto" | "required" | {
-            named: components["schemas"]["ChatCompletionNamedToolChoice"];
-        };
-        /** @enum {string} */
-        ChatCompletionToolType: "function";
+        ChatCompletionToolChoiceOption: (components["schemas"]["ChatCompletionAllowedToolsChoice"] & {
+            /** @enum {string} */
+            type: "allowed_tools";
+        }) | (components["schemas"]["ChatCompletionNamedToolChoice"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["ChatCompletionNamedToolChoiceCustom"] & {
+            /** @enum {string} */
+            type: "custom";
+        }) | (components["schemas"]["ToolChoiceOptions"] & {
+            /** @enum {string} */
+            type: "mode";
+        });
+        ChatCompletionTools: (components["schemas"]["ChatCompletionTool"] & {
+            /** @enum {string} */
+            type: "function";
+        }) | (components["schemas"]["CustomToolChatCompletions"] & {
+            /** @enum {string} */
+            type: "custom";
+        });
         ChatRequest: {
             model: string;
             messages: components["schemas"]["Message"][];
@@ -1509,23 +1579,73 @@ export interface components {
             scope: components["schemas"]["TokenScope"];
         };
         CreateChatCompletionRequest: {
-            /** @description A list of messages comprising the conversation so far. Depending on the [model](https://platform.openai.com/docs/models) you use, different message types (modalities) are supported, like [text](https://platform.openai.com/docs/guides/text-generation), [images](https://platform.openai.com/docs/guides/vision), and [audio](https://platform.openai.com/docs/guides/audio). */
+            /** @description A list of messages comprising the conversation so far. Depending on the
+             *     [model](https://platform.openai.com/docs/models) you use, different message types (modalities)
+             *     are supported, like [text](https://platform.openai.com/docs/guides/text-generation),
+             *     [images](https://platform.openai.com/docs/guides/vision), and
+             *     [audio](https://platform.openai.com/docs/guides/audio). */
             messages: components["schemas"]["ChatCompletionRequestMessage"][];
-            /** @description ID of the model to use.
-             *     See the [model endpoint compatibility](https://platform.openai.com/docs/models#model-endpoint-compatibility) table for details on which models work with the Chat API. */
+            /** @description Model ID used to generate the response, like `gpt-4o` or `o3`. OpenAI
+             *     offers a wide range of models with different capabilities, performance
+             *     characteristics, and price points. Refer to the
+             *     [model guide](https://platform.openai.com/docs/models)
+             *     to browse and compare available models. */
             model: string;
-            /** @description Whether or not to store the output of this chat completion request
+            /** @description Output types that you would like the model to generate. Most models are capable of generating
+             *     text, which is the default:
              *
-             *     for use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or [evals](https://platform.openai.com/docs/guides/evals) products. */
-            store?: boolean | null;
+             *     `["text"]`
+             *     The `gpt-4o-audio-preview` model can also be used to
+             *     [generate audio](https://platform.openai.com/docs/guides/audio). To request that this model
+             *     generate both text and audio responses, you can use:
+             *
+             *     `["text", "audio"]` */
+            modalities?: components["schemas"]["ResponseModalities"][] | null;
+            verbosity?: null | components["schemas"]["Verbosity"];
             reasoning_effort?: null | components["schemas"]["ReasoningEffort"];
-            /** @description Developer-defined tags and values used for filtering completions in the [dashboard](https://platform.openai.com/chat-completions). */
-            metadata?: unknown;
+            /**
+             * Format: int32
+             * @description An upper bound for the number of tokens that can be generated for a completion, including
+             *     visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
+             */
+            max_completion_tokens?: number | null;
             /**
              * Format: float
-             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on
+             *     their existing frequency in the text so far, decreasing the model's
+             *     likelihood to repeat the same line verbatim.
              */
             frequency_penalty?: number | null;
+            /**
+             * Format: float
+             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on
+             *     whether they appear in the text so far, increasing the model's likelihood
+             *     to talk about new topics.
+             */
+            presence_penalty?: number | null;
+            web_search_options?: null | components["schemas"]["WebSearchOptions"];
+            /**
+             * Format: int32
+             * @description An integer between 0 and 20 specifying the number of most likely tokens to
+             *     return at each token position, each with an associated log probability.
+             *     `logprobs` must be set to `true` if this parameter is used.
+             */
+            top_logprobs?: number | null;
+            response_format?: null | components["schemas"]["ResponseFormat"];
+            audio?: null | components["schemas"]["ChatCompletionAudio"];
+            /** @description Whether or not to store the output of this chat completion request for
+             *     use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or
+             *     [evals](https://platform.openai.com/docs/guides/evals) products.
+             *
+             *     Supports text and image inputs. Note: image inputs over 8MB will be dropped. */
+            store?: boolean | null;
+            /** @description If set to true, the model response data will be streamed to the client
+             *     as it is generated using [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format).
+             *     See the [Streaming section below](https://platform.openai.com/docs/api-reference/chat/streaming)
+             *     for more information, along with the [streaming responses](https://platform.openai.com/docs/guides/streaming-responses)
+             *     guide for more information on how to handle the streaming events. */
+            stream?: boolean | null;
+            stop?: null | components["schemas"]["StopConfiguration"];
             /** @description Modify the likelihood of specified tokens appearing in the completion.
              *
              *     Accepts a json object that maps tokens (specified by their token ID in the tokenizer) to an associated bias value from -100 to 100.
@@ -1533,59 +1653,42 @@ export interface components {
              *     The exact effect will vary per model, but values between -1 and 1 should decrease or increase likelihood of selection;
              *     values like -100 or 100 should result in a ban or exclusive selection of the relevant token. */
             logit_bias?: {
-                [key: string]: unknown;
+                [key: string]: number;
             } | null;
-            /** @description Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the `content` of `message`. */
+            /** @description Whether to return log probabilities of the output tokens or not. If true,
+             *     returns the log probabilities of each output token returned in the `content` of `message`. */
             logprobs?: boolean | null;
             /**
              * Format: int32
-             * @description An integer between 0 and 20 specifying the number of most likely tokens to return at each token position, each with an associated log probability. `logprobs` must be set to `true` if this parameter is used.
-             */
-            top_logprobs?: number | null;
-            /**
-             * Format: int32
              * @deprecated
-             * @description The maximum number of [tokens](https://platform.openai.com/tokenizer) that can be generated in the chat completion.
-             *
-             *     This value can be used to control [costs](https://openai.com/api/pricing/) for text generated via API.
+             * @description The maximum number of [tokens](https://platform.openai.com/tokenizer) that can be generated in
+             *     the chat completion. This value can be used to control [costs](https://openai.com/api/pricing/) for text generated via API.
              *     This value is now deprecated in favor of `max_completion_tokens`, and is
-             *     not compatible with [o1 series models](https://platform.openai.com/docs/guides/reasoning).
+             *     not compatible with [o-series models](https://platform.openai.com/docs/guides/reasoning).
              */
             max_tokens?: number | null;
             /**
              * Format: int32
-             * @description An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
-             */
-            max_completion_tokens?: number | null;
-            /**
-             * Format: int32
-             * @description How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep `n` as `1` to minimize costs.
+             * @description How many chat completion choices to generate for each input message. Note that you will be
+             *     charged based on the number of generated tokens across all of the choices. Keep `n` as `1` to
+             *     minimize costs.
              */
             n?: number | null;
-            modalities?: components["schemas"]["ChatCompletionModalities"][] | null;
             prediction?: null | components["schemas"]["PredictionContent"];
-            audio?: null | components["schemas"]["ChatCompletionAudio"];
-            /**
-             * Format: float
-             * @description Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-             */
-            presence_penalty?: number | null;
-            response_format?: null | components["schemas"]["ResponseFormat"];
             /**
              * Format: int64
-             * @description  This feature is in Beta.
-             *     If specified, our system will make a best effort to sample deterministically, such that repeated requests
-             *     with the same `seed` and parameters should return the same result.
-             *     Determinism is not guaranteed, and you should refer to the `system_fingerprint` response parameter to monitor changes in the backend.
+             * @deprecated
+             * @description This feature is in Beta.
+             *
+             *     If specified, our system will make a best effort to sample deterministically, such that
+             *     repeated requests with the same `seed` and parameters should return the same result.
+             *
+             *     Determinism is not guaranteed, and you should refer to the `system_fingerprint` response
+             *     parameter to monitor changes in the backend.
              */
             seed?: number | null;
-            service_tier?: null | components["schemas"]["ServiceTier"];
-            stop?: null | components["schemas"]["Stop"];
-            /** @description If set, partial message deltas will be sent, like in ChatGPT.
-             *     Tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)
-             *     as they become available, with the stream terminated by a `data: [DONE]` message. [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions). */
-            stream?: boolean | null;
             stream_options?: null | components["schemas"]["ChatCompletionStreamOptions"];
+            service_tier?: null | components["schemas"]["ServiceTier"];
             /**
              * Format: float
              * @description What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random,
@@ -1603,15 +1706,33 @@ export interface components {
              *      We generally recommend altering this or `temperature` but not both.
              */
             top_p?: number | null;
-            /** @description A list of tools the model may call. Currently, only functions are supported as a tool.
-             *     Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported. */
-            tools?: components["schemas"]["ChatCompletionTool"][] | null;
+            /** @description A list of tools the model may call. You can provide either
+             *     [custom tools](https://platform.openai.com/docs/guides/function-calling#custom-tools) or
+             *     [function tools](https://platform.openai.com/docs/guides/function-calling). */
+            tools?: components["schemas"]["ChatCompletionTools"][] | null;
             tool_choice?: null | components["schemas"]["ChatCompletionToolChoiceOption"];
-            /** @description Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling/parallel-function-calling) during tool use. */
+            /** @description Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling#configuring-parallel-function-calling)
+             *     during tool use. */
             parallel_tool_calls?: boolean | null;
-            /** @description A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids). */
+            /**
+             * @deprecated
+             * @description This field is being replaced by `safety_identifier` and `prompt_cache_key`. Use `prompt_cache_key`
+             *     instead to maintain caching optimizations.
+             *     A stable identifier for your end-users.
+             *     Used to boost cache hit rates by better bucketing similar requests and  to help OpenAI detect and
+             *     prevent abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+             */
             user?: string | null;
-            web_search_options?: null | components["schemas"]["WebSearchOptions"];
+            /** @description A stable identifier used to help detect users of your application that may be violating OpenAI's
+             *     usage policies.
+             *
+             *     The IDs should be a string that uniquely identifies each user. We recommend hashing their username
+             *     or email address, in order to avoid sending us any identifying information. [Learn
+             *     more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers). */
+            safety_identifier?: string | null;
+            /** @description Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces
+             *     the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching). */
+            prompt_cache_key?: string | null;
             function_call?: null | components["schemas"]["ChatCompletionFunctionCall"];
             /**
              * @deprecated
@@ -1620,6 +1741,7 @@ export interface components {
              *     A list of functions the model may generate JSON inputs for.
              */
             functions?: components["schemas"]["ChatCompletionFunctions"][] | null;
+            metadata?: null | components["schemas"]["Metadata"];
         };
         /** @description Represents a chat completion response returned by model, based on the provided input. */
         CreateChatCompletionResponse: {
@@ -1634,16 +1756,19 @@ export interface components {
             created: number;
             /** @description The model used for the chat completion. */
             model: string;
-            service_tier?: null | components["schemas"]["ServiceTierResponse"];
-            /** @description This fingerprint represents the backend configuration that the model runs with.
+            service_tier?: null | components["schemas"]["ServiceTier"];
+            /**
+             * @deprecated
+             * @description This fingerprint represents the backend configuration that the model runs with.
              *
-             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism. */
+             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism.
+             */
             system_fingerprint?: string | null;
             /** @description The object type, which is always `chat.completion`. */
             object: string;
             usage?: null | components["schemas"]["CompletionUsage"];
         };
-        /** @description Represents a streamed chunk of a chat completion response returned by model, based on the provided input. */
+        /** @description Represents a streamed chunk of a chat completion response returned by the model, based on the provided input. [Learn more](https://platform.openai.com/docs/guides/streaming-responses). */
         CreateChatCompletionStreamResponse: {
             /** @description A unique identifier for the chat completion. Each chunk has the same ID. */
             id: string;
@@ -1656,26 +1781,33 @@ export interface components {
             created: number;
             /** @description The model to generate the completion. */
             model: string;
-            service_tier?: null | components["schemas"]["ServiceTierResponse"];
-            /** @description This fingerprint represents the backend configuration that the model runs with.
-             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism. */
+            service_tier?: null | components["schemas"]["ServiceTier"];
+            /**
+             * @deprecated
+             * @description This fingerprint represents the backend configuration that the model runs with.
+             *     Can be used in conjunction with the `seed` request parameter to understand when backend changes have been made that might impact determinism.
+             */
             system_fingerprint?: string | null;
             /** @description The object type, which is always `chat.completion.chunk`. */
             object: string;
             usage?: null | components["schemas"]["CompletionUsage"];
         };
         CreateEmbeddingRequest: {
-            /** @description ID of the model to use. You can use the
-             *     [List models](https://platform.openai.com/docs/api-reference/models/list)
-             *     API to see all of your available models, or see our
-             *     [Model overview](https://platform.openai.com/docs/models/overview)
+            /** @description ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list)
+             *     API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models)
              *     for descriptions of them. */
             model: string;
-            /** @description Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for `text-embedding-ada-002`), cannot be an empty string, and any array must be 2048 dimensions or less. [Example Python code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for counting tokens. */
+            /** @description Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single
+             *     request, pass an array of strings or array of token arrays. The input must not exceed the max
+             *     input tokens for the model (8192 tokens for all embedding models), cannot be an empty string, and
+             *     any array must be 2048 dimensions or less. [Example Python
+             *     code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for counting tokens.
+             *     In addition to the per-input token limit, all embedding  models enforce a maximum of 300,000
+             *     tokens summed across all inputs in a  single request. */
             input: components["schemas"]["EmbeddingInput"];
             encoding_format?: null | components["schemas"]["EncodingFormat"];
-            /** @description A unique identifier representing your end-user, which will help OpenAI
-             *      to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/usage-policies/end-user-ids). */
+            /** @description A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
+             *     [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids). */
             user?: string | null;
             /**
              * Format: int32
@@ -1691,6 +1823,41 @@ export interface components {
             data: components["schemas"]["Embedding"][];
             /** @description The usage information for the request. */
             usage: components["schemas"]["EmbeddingUsage"];
+        };
+        CustomGrammarFormatParam: {
+            /** @description The grammar definition. */
+            definition: string;
+            /** @description The syntax of the grammar definition. One of `lark` or `regex`. */
+            syntax: components["schemas"]["GrammarSyntax"];
+        };
+        CustomName: {
+            /** @description The name of the custom tool to call. */
+            name: string;
+        };
+        CustomTool: {
+            /** @description The name of the custom tool to call. */
+            name: string;
+            /** @description The input for the custom tool call generated by the model. */
+            input: string;
+        };
+        CustomToolChatCompletions: {
+            custom: components["schemas"]["CustomToolProperties"];
+        };
+        CustomToolProperties: {
+            /** @description The name of the custom tool, used to identify it in tool calls. */
+            name: string;
+            /** @description Optional description of the custom tool, used to provide more context. */
+            description?: string | null;
+            /** @description The input format for the custom tool. Default is unconstrained text. */
+            format: components["schemas"]["CustomToolPropertiesFormat"];
+        };
+        CustomToolPropertiesFormat: {
+            /** @enum {string} */
+            type: "text";
+        } | {
+            grammar: components["schemas"]["CustomGrammarFormatParam"];
+            /** @enum {string} */
+            type: "grammar";
         };
         DownloadRequest: {
             id: string;
@@ -1806,6 +1973,16 @@ export interface components {
         FetchModelsResponse: {
             models: string[];
         };
+        FileObject: {
+            /** @description The base64 encoded file data, used when passing the file to the model
+             *     as a string. */
+            file_data?: string | null;
+            /** @description The ID of an uploaded file to use as input. */
+            file_id?: string | null;
+            /** @description The name of the file, used when passing the file to the model as a
+             *     string. */
+            filename?: string | null;
+        };
         /** @enum {string} */
         FinishReason: "stop" | "length" | "tool_calls" | "content_filter" | "function_call";
         /** @description The name and arguments of a function that should be called, as generated by the model. */
@@ -1840,6 +2017,10 @@ export interface components {
             /** @description Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](https://platform.openai.com/docs/guides/function-calling). */
             strict?: boolean | null;
         };
+        /** @enum {string} */
+        FunctionType: "function";
+        /** @enum {string} */
+        GrammarSyntax: "lark" | "regex";
         /** @enum {string} */
         ImageDetail: "auto" | "low" | "high";
         ImageUrl: {
@@ -1887,6 +2068,13 @@ export interface components {
             content: string;
             images?: string[] | null;
         };
+        /** @description Set of 16 key-value pairs that can be attached to an object.
+         *     This can be useful for storing additional information about the
+         *     object in a structured format, and querying for objects via API
+         *     or the dashboard. Keys are strings with a maximum length of 64
+         *     characters. Values are strings with a maximum length of 512
+         *     characters. */
+        Metadata: unknown;
         /** @description Describes an OpenAI model offering that can be used with the API. */
         Model: {
             /** @description The model identifier, which can be referenced in the API endpoints. */
@@ -2188,7 +2376,7 @@ export interface components {
             status: string;
         };
         /** @enum {string} */
-        ReasoningEffort: "minimal" | "low" | "medium" | "high";
+        ReasoningEffort: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
         /** @example {
          *       "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
          *     } */
@@ -2229,17 +2417,30 @@ export interface components {
             description?: string | null;
             /** @description The name of the response format. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64. */
             name: string;
-            /** @description The schema for the response format, described as a JSON Schema object. */
+            /** @description The schema for the response format, described as a JSON Schema object.
+             *     Learn how to build JSON schemas [here](https://json-schema.org/). */
             schema?: unknown;
-            /** @description Whether to enable strict schema adherence when generating the output. If set to true, the model will always follow the exact schema defined in the `schema` field. Only a subset of JSON Schema is supported when `strict` is `true`. To learn more, read the [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs). */
+            /** @description Whether to enable strict schema adherence when generating the output.
+             *     If set to true, the model will always follow the exact schema defined
+             *     in the `schema` field. Only a subset of JSON Schema is supported when
+             *     `strict` is `true`. To learn more, read the [Structured Outputs
+             *     guide](https://platform.openai.com/docs/guides/structured-outputs). */
             strict?: boolean | null;
         };
+        /**
+         * @description Output types that you would like the model to generate for this request.
+         *
+         *     Most models are capable of generating text, which is the default: `["text"]`
+         *
+         *     The `gpt-4o-audio-preview` model can also be used to [generate
+         *     audio](https://platform.openai.com/docs/guides/audio). To request that this model generate both text and audio responses, you can use: `["text", "audio"]`
+         * @enum {string}
+         */
+        ResponseModalities: "text" | "audio";
         /** @enum {string} */
         Role: "system" | "user" | "assistant" | "tool" | "function";
         /** @enum {string} */
         ServiceTier: "auto" | "default" | "flex" | "scale" | "priority";
-        /** @enum {string} */
-        ServiceTierResponse: "scale" | "default" | "flex" | "priority";
         SettingInfo: {
             key: string;
             current_value: unknown;
@@ -2311,7 +2512,7 @@ export interface components {
             parameters: string;
             template: string;
         };
-        Stop: string | string[];
+        StopConfiguration: string | string[];
         /** @description Credentials for test/fetch operations */
         TestCreds: {
             /** @description Look up credentials from stored API model */
@@ -2371,6 +2572,10 @@ export interface components {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
         };
+        /** @enum {string} */
+        ToolChoiceAllowedMode: "auto" | "required";
+        /** @enum {string} */
+        ToolChoiceOptions: "none" | "auto" | "required";
         TopLogprobs: {
             /** @description The token. */
             token: string;
@@ -2443,6 +2648,22 @@ export interface components {
         UpdateSettingRequest: {
             /** @description New value for the setting (type depends on setting metadata) */
             value: unknown;
+        };
+        UrlCitation: {
+            /**
+             * Format: int32
+             * @description The index of the last character of the URL citation in the message.
+             */
+            end_index: number;
+            /**
+             * Format: int32
+             * @description The index of the first character of the URL citation in the message.
+             */
+            start_index: number;
+            /** @description The title of the web resource. */
+            title: string;
+            /** @description The URL of the web resource. */
+            url: string;
         };
         UserAccessRequest: {
             /**
@@ -2576,6 +2797,11 @@ export interface components {
         });
         /** @enum {string} */
         UserScope: "scope_user_user" | "scope_user_power_user" | "scope_user_manager" | "scope_user_admin";
+        /**
+         * @description Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.
+         * @enum {string}
+         */
+        Verbosity: "low" | "medium" | "high";
         /**
          * @description The amount of context window space to use for the search.
          * @enum {string}

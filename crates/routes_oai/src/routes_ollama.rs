@@ -1,11 +1,11 @@
 use crate::{ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS};
-use async_openai::types::{
+use async_openai::types::chat::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
   ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
   ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta, CreateChatCompletionRequest,
   CreateChatCompletionResponse, CreateChatCompletionStreamResponse, FinishReason, ResponseFormat,
-  Role, Stop,
+  Role, StopConfiguration,
 };
 use axum::{
   body::Body,
@@ -355,7 +355,7 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
       presence_penalty: options.presence_penalty,
       response_format: response_format(val.format),
       seed: options.seed,
-      stop: options.stop.map(Stop::StringArray),
+      stop: options.stop.map(StopConfiguration::StringArray),
       stream: val.stream,
       temperature: options.temperature,
       top_p: options.top_p,

@@ -27,7 +27,11 @@ exclude = []
 rust-version = "1.87.0"
 
 [workspace.dependencies]
-async-openai = { path = "async-openai/async-openai" }
+async-openai = { path = "async-openai/async-openai", features = [
+  "chat-completion-types",
+  "embedding-types",
+  "model-types",
+] }
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
 llama_server_proc = { path = "crates/llama_server_proc" }
@@ -157,11 +161,11 @@ xtaskops = "0.4.2"
 
 [profile.release]
 # Optimize for binary size and build speed
-opt-level = "z"    # Optimize for size
-lto = "thin"       # Link-time optimization (thin for faster builds)
-codegen-units = 1  # Better optimization
-strip = true       # Remove debug symbols
-panic = "abort"    # Smaller binaries
+opt-level = "z"   # Optimize for size
+lto = "thin"      # Link-time optimization (thin for faster builds)
+codegen-units = 1 # Better optimization
+strip = true      # Remove debug symbols
+panic = "abort"   # Smaller binaries
 
 [profile.dev]
 # Faster development builds

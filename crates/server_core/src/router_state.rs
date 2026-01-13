@@ -158,7 +158,7 @@ mod test {
     RouterState, RouterStateError,
   };
   use anyhow_trace::anyhow_trace;
-  use async_openai::types::CreateChatCompletionRequest;
+  use async_openai::types::chat::CreateChatCompletionRequest;
   use llama_server_proc::{test_utils::mock_response, ServerError};
   use mockall::predicate::eq;
   use objs::{test_utils::temp_dir, Alias, UserAlias};

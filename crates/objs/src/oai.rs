@@ -1,5 +1,5 @@
 use crate::BuilderError;
-use async_openai::types::{CreateChatCompletionRequest, Stop};
+use async_openai::types::chat::{CreateChatCompletionRequest, StopConfiguration};
 use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -108,12 +108,14 @@ impl OAIRequestParams {
     update_if_none(&self.frequency_penalty, &mut request.frequency_penalty);
     update_if_none(&self.max_tokens, &mut request.max_completion_tokens);
     update_if_none(&self.presence_penalty, &mut request.presence_penalty);
+    #[allow(deprecated)]
     update_if_none(&self.seed, &mut request.seed);
     update_if_none(&self.temperature, &mut request.temperature);
     update_if_none(&self.top_p, &mut request.top_p);
+    #[allow(deprecated)]
     update_if_none(&self.user, &mut request.user);
     if !self.stop.is_empty() && request.stop.is_none() {
-      request.stop = Some(Stop::StringArray(self.stop.clone()));
+      request.stop = Some(StopConfiguration::StringArray(self.stop.clone()));
     }
   }
 }
@@ -126,9 +128,9 @@ fn update_if_none<T: Clone>(self_param: &Option<T>, request_param: &mut Option<T
 
 #[cfg(test)]
 mod tests {
-  use async_openai::types::CreateChatCompletionRequestArgs;
-
+  #![allow(deprecated)]
   use super::*;
+  use async_openai::types::chat::CreateChatCompletionRequestArgs;
 
   #[test]
   fn test_validate_range_neg_to_pos_2() {
@@ -191,7 +193,7 @@ mod tests {
     assert_eq!(Some(0.2), request.presence_penalty);
     assert_eq!(Some(42), request.seed);
     assert_eq!(
-      Some(Stop::StringArray(vec!["END".to_string()])),
+      Some(StopConfiguration::StringArray(vec!["END".to_string()])),
       request.stop
     );
     assert_eq!(Some(0.7), request.temperature);
