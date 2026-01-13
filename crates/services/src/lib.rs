@@ -17,6 +17,7 @@ mod macros;
 mod obj_exts;
 mod objs;
 mod progress_tracking;
+mod queue_service;
 mod secret_service;
 mod service_ext;
 mod session_service;
@@ -35,6 +36,7 @@ pub use keyring_service::*;
 // obj_exts module is currently empty after chat template removal
 pub use objs::*;
 pub use progress_tracking::*;
+pub use queue_service::*;
 pub use secret_service::*;
 pub use service_ext::*;
 pub use session_service::*;

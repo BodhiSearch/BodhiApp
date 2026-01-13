@@ -7,6 +7,8 @@ pub struct ModelMetadata {
   pub capabilities: ModelCapabilities,
   pub context: ContextLimits,
   pub architecture: ModelArchitecture,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub chat_template: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]

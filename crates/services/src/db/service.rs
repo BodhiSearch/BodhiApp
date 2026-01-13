@@ -1,12 +1,12 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
-  ApiKeyUpdate, ApiToken, DownloadRequest, DownloadStatus, SqlxError, SqlxMigrateError,
-  TokenStatus, UserAccessRequest, UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, DownloadRequest, DownloadStatus, ModelMetadataRow, SqlxError,
+  SqlxMigrateError, TokenStatus, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use objs::{impl_error_from, AppError, ErrorType};
-use objs::{ApiAlias, ApiFormat};
+use objs::{AliasSource, ApiAlias, ApiFormat};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 
@@ -168,6 +168,28 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     prefix: &str,
     exclude_id: Option<String>,
   ) -> Result<bool, DbError>;
+
+  async fn upsert_model_metadata(
+    &self,
+    metadata: &crate::db::ModelMetadataRow,
+  ) -> Result<(), DbError>;
+
+  async fn get_model_metadata_by_file(
+    &self,
+    repo: &str,
+    filename: &str,
+    snapshot: &str,
+  ) -> Result<Option<crate::db::ModelMetadataRow>, DbError>;
+
+  async fn batch_get_metadata_by_files(
+    &self,
+    files: &[(String, String, String)],
+  ) -> Result<
+    std::collections::HashMap<(String, String, String), crate::db::ModelMetadataRow>,
+    DbError,
+  >;
+
+  async fn list_model_metadata(&self) -> Result<Vec<crate::db::ModelMetadataRow>, DbError>;
 
   fn now(&self) -> DateTime<Utc>;
 }
@@ -1261,6 +1283,210 @@ impl DbService for SqliteDbService {
     Ok(count > 0)
   }
 
+  async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError> {
+    let now = self.time_service.utc_now();
+
+    // For local models (api_model_id IS NULL), we need to delete existing rows first
+    // because the UNIQUE constraint doesn't work with NULL values (NULL != NULL in SQL)
+    if metadata.api_model_id.is_none() {
+      // Delete any existing metadata for this local model
+      sqlx::query(
+        r#"
+        DELETE FROM model_metadata
+        WHERE source = ? AND repo = ? AND filename = ? AND snapshot = ? AND api_model_id IS NULL
+        "#,
+      )
+      .bind(&metadata.source)
+      .bind(&metadata.repo)
+      .bind(&metadata.filename)
+      .bind(&metadata.snapshot)
+      .execute(&self.pool)
+      .await?;
+    }
+
+    // Now insert the new/updated metadata
+    sqlx::query(
+      r#"
+      INSERT INTO model_metadata (
+        source, repo, filename, snapshot, api_model_id,
+        capabilities_vision, capabilities_audio, capabilities_thinking,
+        capabilities_function_calling, capabilities_structured_output,
+        context_max_input_tokens, context_max_output_tokens,
+        architecture, additional_metadata, chat_template,
+        extracted_at, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(source, repo, filename, snapshot, api_model_id) DO UPDATE SET
+        capabilities_vision = excluded.capabilities_vision,
+        capabilities_audio = excluded.capabilities_audio,
+        capabilities_thinking = excluded.capabilities_thinking,
+        capabilities_function_calling = excluded.capabilities_function_calling,
+        capabilities_structured_output = excluded.capabilities_structured_output,
+        context_max_input_tokens = excluded.context_max_input_tokens,
+        context_max_output_tokens = excluded.context_max_output_tokens,
+        architecture = excluded.architecture,
+        additional_metadata = excluded.additional_metadata,
+        chat_template = excluded.chat_template,
+        extracted_at = excluded.extracted_at,
+        updated_at = excluded.updated_at
+      "#,
+    )
+    .bind(&metadata.source)
+    .bind(&metadata.repo)
+    .bind(&metadata.filename)
+    .bind(&metadata.snapshot)
+    .bind(&metadata.api_model_id)
+    .bind(metadata.capabilities_vision)
+    .bind(metadata.capabilities_audio)
+    .bind(metadata.capabilities_thinking)
+    .bind(metadata.capabilities_function_calling)
+    .bind(metadata.capabilities_structured_output)
+    .bind(metadata.context_max_input_tokens)
+    .bind(metadata.context_max_output_tokens)
+    .bind(&metadata.architecture)
+    .bind(&metadata.additional_metadata)
+    .bind(&metadata.chat_template)
+    .bind(metadata.extracted_at)
+    .bind(now)
+    .bind(now)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
+  }
+
+  async fn get_model_metadata_by_file(
+    &self,
+    repo: &str,
+    filename: &str,
+    snapshot: &str,
+  ) -> Result<Option<ModelMetadataRow>, DbError> {
+    // Metadata is always stored with source='model' since it represents the physical GGUF file
+    let result = query_as::<_, ModelMetadataRow>(
+      r#"
+      SELECT
+        id, source, repo, filename, snapshot, api_model_id,
+        capabilities_vision, capabilities_audio, capabilities_thinking,
+        capabilities_function_calling, capabilities_structured_output,
+        context_max_input_tokens, context_max_output_tokens,
+        architecture, additional_metadata, chat_template,
+        extracted_at, created_at, updated_at
+      FROM model_metadata
+      WHERE source = ? AND repo = ? AND filename = ? AND snapshot = ?
+      "#,
+    )
+    .bind(AliasSource::Model.to_string())
+    .bind(repo)
+    .bind(filename)
+    .bind(snapshot)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result)
+  }
+
+  async fn batch_get_metadata_by_files(
+    &self,
+    files: &[(String, String, String)],
+  ) -> Result<std::collections::HashMap<(String, String, String), ModelMetadataRow>, DbError> {
+    use std::collections::HashMap;
+
+    if files.is_empty() {
+      return Ok(HashMap::new());
+    }
+
+    // Debug logging
+    tracing::debug!(
+      "batch_get_metadata_by_files: querying {} files",
+      files.len()
+    );
+    for (repo, filename, snapshot) in files {
+      tracing::debug!(
+        "  Query key: repo='{}', filename='{}', snapshot='{}'",
+        repo,
+        filename,
+        snapshot
+      );
+    }
+
+    // Build placeholders for IN clause: (?, ?, ?), (?, ?, ?), ...
+    let placeholders: Vec<String> = files.iter().map(|_| "(?, ?, ?)".to_string()).collect();
+    let placeholders_str = placeholders.join(", ");
+
+    // Metadata is always stored with source='model' since it represents the physical GGUF file
+    let query_str = format!(
+      r#"
+      SELECT
+        id, source, repo, filename, snapshot, api_model_id,
+        capabilities_vision, capabilities_audio, capabilities_thinking,
+        capabilities_function_calling, capabilities_structured_output,
+        context_max_input_tokens, context_max_output_tokens,
+        architecture, additional_metadata, chat_template,
+        extracted_at, created_at, updated_at
+      FROM model_metadata
+      WHERE source = ? AND (repo, filename, snapshot) IN ({})
+      "#,
+      placeholders_str
+    );
+
+    let mut query =
+      sqlx::query_as::<_, ModelMetadataRow>(&query_str).bind(AliasSource::Model.to_string());
+
+    for (repo, filename, snapshot) in files {
+      query = query.bind(repo).bind(filename).bind(snapshot);
+    }
+
+    let results = query.fetch_all(&self.pool).await?;
+
+    tracing::debug!(
+      "batch_get_metadata_by_files: found {} results",
+      results.len()
+    );
+
+    let mut map = HashMap::new();
+    for row in results {
+      if let (Some(repo), Some(filename), Some(snapshot)) =
+        (row.repo.clone(), row.filename.clone(), row.snapshot.clone())
+      {
+        tracing::debug!(
+          "  Result: source='{}', repo='{}', filename='{}', snapshot='{}'",
+          row.source,
+          repo,
+          filename,
+          snapshot
+        );
+        map.insert((repo, filename, snapshot), row);
+      }
+    }
+
+    tracing::debug!(
+      "batch_get_metadata_by_files: returning {} entries in map",
+      map.len()
+    );
+
+    Ok(map)
+  }
+
+  async fn list_model_metadata(&self) -> Result<Vec<ModelMetadataRow>, DbError> {
+    let results = query_as::<_, ModelMetadataRow>(
+      r#"
+      SELECT
+        id, source, repo, filename, snapshot, api_model_id,
+        capabilities_vision, capabilities_audio, capabilities_thinking,
+        capabilities_function_calling, capabilities_structured_output,
+        context_max_input_tokens, context_max_output_tokens,
+        architecture, additional_metadata, chat_template,
+        extracted_at, created_at, updated_at
+      FROM model_metadata
+      ORDER BY source, repo, filename
+      "#,
+    )
+    .fetch_all(&self.pool)
+    .await?;
+
+    Ok(results)
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.time_service.utc_now()
   }
@@ -1273,7 +1499,10 @@ mod test {
       ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, DownloadStatus, SqlxError,
       TokenStatus, UserAccessRequest, UserAccessRequestStatus,
     },
-    test_utils::{test_db_service, TestDbService},
+    test_utils::{
+      create_test_api_model_metadata, create_test_model_metadata, model_metadata_builder,
+      test_db_service, TestDbService,
+    },
   };
   use chrono::Utc;
   use objs::ApiAlias;
@@ -2090,6 +2319,344 @@ mod test {
       .await?
       .unwrap();
     assert_eq!(updated_base_url, model.base_url);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_batch_get_metadata_by_files_returns_inserted_data(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Insert test data with multiple rows - all with source='model' since
+    // metadata always represents the physical GGUF file
+    let test_data = vec![
+      ("test/repo1", "model1.gguf", "abc123"),
+      ("test/repo2", "model2.gguf", "def456"),
+      ("test/repo3", "model3.gguf", "ghi789"),
+    ];
+
+    for (repo, filename, snapshot) in &test_data {
+      let row = create_test_model_metadata(repo, filename, snapshot, now);
+      service.upsert_model_metadata(&row).await?;
+    }
+
+    // Verify single query works for first entry
+    let single = service
+      .get_model_metadata_by_file("test/repo1", "model1.gguf", "abc123")
+      .await?;
+    assert!(single.is_some(), "Single query should find the row");
+
+    // Test batch query with all keys
+    let keys: Vec<(String, String, String)> = test_data
+      .iter()
+      .map(|(repo, filename, snapshot)| {
+        (repo.to_string(), filename.to_string(), snapshot.to_string())
+      })
+      .collect();
+
+    let batch_result = service.batch_get_metadata_by_files(&keys).await?;
+
+    assert_eq!(3, batch_result.len(), "Batch query should return 3 results");
+
+    // Verify each key is present
+    for (repo, filename, snapshot) in &test_data {
+      let key = (repo.to_string(), filename.to_string(), snapshot.to_string());
+      assert!(
+        batch_result.contains_key(&key),
+        "Batch result should contain key {:?}",
+        key
+      );
+    }
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_batch_get_metadata_by_files_returns_empty_for_empty_input(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let keys: Vec<(String, String, String)> = vec![];
+    let result = service.batch_get_metadata_by_files(&keys).await?;
+    assert!(result.is_empty());
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_upsert_model_metadata_inserts_new_row(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut builder = model_metadata_builder(now);
+    builder
+      .source("model")
+      .repo("test/repo")
+      .filename("model.gguf")
+      .snapshot("snapshot123")
+      .capabilities_vision(1_i64)
+      .capabilities_thinking(1_i64)
+      .capabilities_function_calling(1_i64)
+      .context_max_input_tokens(8192_i64)
+      .context_max_output_tokens(4096_i64)
+      .architecture(r#"{"family":"llama","parameter_count":7000000000,"quantization":"Q4_K_M","format":"gguf"}"#)
+      .chat_template("{% for msg in messages %}{{ msg.role }}: {{ msg.content }}{% endfor %}");
+    let row = builder.build()?;
+
+    service.upsert_model_metadata(&row).await?;
+
+    let fetched = service
+      .get_model_metadata_by_file("test/repo", "model.gguf", "snapshot123")
+      .await?
+      .expect("Row should exist");
+
+    assert_eq!("model", fetched.source);
+    assert_eq!(Some("test/repo".to_string()), fetched.repo);
+    assert_eq!(Some("model.gguf".to_string()), fetched.filename);
+    assert_eq!(Some(1), fetched.capabilities_vision);
+    assert_eq!(Some(1), fetched.capabilities_thinking);
+    assert_eq!(Some(8192), fetched.context_max_input_tokens);
+    assert!(fetched.architecture.is_some());
+    assert!(fetched.chat_template.is_some());
+    assert!(fetched.chat_template.unwrap().contains("msg.role"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_upsert_model_metadata_updates_existing_row(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Insert initial row with source='model' (physical GGUF file)
+    let row = create_test_model_metadata("test/repo", "model.gguf", "snapshot123", now);
+    service.upsert_model_metadata(&row).await?;
+
+    // Update with new data (same repo/filename/snapshot)
+    let mut builder = model_metadata_builder(now);
+    builder
+      .source("model")
+      .repo("test/repo")
+      .filename("model.gguf")
+      .snapshot("snapshot123")
+      .capabilities_vision(1_i64)
+      .capabilities_thinking(1_i64)
+      .capabilities_function_calling(1_i64)
+      .context_max_input_tokens(8192_i64)
+      .context_max_output_tokens(4096_i64)
+      .architecture(r#"{"family":"llama","format":"gguf"}"#)
+      .chat_template("updated template");
+    let updated_row = builder.build()?;
+    service.upsert_model_metadata(&updated_row).await?;
+
+    // Verify update
+    let fetched = service
+      .get_model_metadata_by_file("test/repo", "model.gguf", "snapshot123")
+      .await?
+      .expect("Row should exist");
+
+    assert_eq!(Some(1), fetched.capabilities_vision);
+    assert_eq!(Some(1), fetched.capabilities_thinking);
+    assert_eq!(Some(8192), fetched.context_max_input_tokens);
+    assert_eq!(Some(4096), fetched.context_max_output_tokens);
+    assert_eq!(Some("updated template".to_string()), fetched.chat_template);
+
+    // Verify only one row exists (upsert, not insert)
+    let all = service.list_model_metadata().await?;
+    assert_eq!(1, all.len());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_upsert_model_metadata_with_api_model_id(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut builder = model_metadata_builder(now);
+    builder
+      .source("api")
+      .api_model_id("gpt-4-turbo")
+      .capabilities_vision(1_i64)
+      .capabilities_function_calling(1_i64)
+      .capabilities_structured_output(1_i64)
+      .context_max_input_tokens(128000_i64)
+      .context_max_output_tokens(4096_i64);
+    let row = builder.build()?;
+
+    service.upsert_model_metadata(&row).await?;
+
+    // Verify it's in list (API models use different path)
+    let all = service.list_model_metadata().await?;
+    assert_eq!(1, all.len());
+    assert_eq!(Some("gpt-4-turbo".to_string()), all[0].api_model_id);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_get_model_metadata_by_file_returns_none_for_nonexistent(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let result = service
+      .get_model_metadata_by_file("nonexistent/repo", "model.gguf", "snapshot")
+      .await?;
+    assert!(result.is_none());
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_get_model_metadata_by_file_filters_by_source(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Insert an API source row with repo/filename/snapshot
+    // (unusual but possible, should NOT be returned by get_model_metadata_by_file)
+    let mut builder = model_metadata_builder(now);
+    builder
+      .source("api")
+      .repo("test/repo")
+      .filename("model.gguf")
+      .snapshot("snapshot123")
+      .api_model_id("api-model-id");
+    let api_row = builder.build()?;
+    service.upsert_model_metadata(&api_row).await?;
+
+    // Should NOT find it (source filter excludes 'api')
+    let result = service
+      .get_model_metadata_by_file("test/repo", "model.gguf", "snapshot123")
+      .await?;
+    assert!(result.is_none(), "Should not find API source rows");
+
+    // Insert a 'model' source row with same repo/filename/snapshot
+    let model_row = create_test_model_metadata("test/repo", "model.gguf", "snapshot123", now);
+    service.upsert_model_metadata(&model_row).await?;
+
+    // Now should find it
+    let result = service
+      .get_model_metadata_by_file("test/repo", "model.gguf", "snapshot123")
+      .await?;
+    assert!(result.is_some(), "Should find model source rows");
+    assert_eq!("model", result.unwrap().source);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_model_metadata_returns_all_rows(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Insert multiple rows - note: for local GGUF files, source is always 'model'
+    // API source is for remote API models which have api_model_id instead of repo/filename
+    let rows = vec![
+      create_test_model_metadata("repo1", "model1.gguf", "snapshot", now),
+      create_test_model_metadata("repo2", "model2.gguf", "snapshot", now),
+      create_test_api_model_metadata("gpt-4", now),
+    ];
+
+    for row in &rows {
+      service.upsert_model_metadata(row).await?;
+    }
+
+    let all = service.list_model_metadata().await?;
+    assert_eq!(3, all.len());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_model_metadata_returns_empty_when_no_data(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let result = service.list_model_metadata().await?;
+    assert!(result.is_empty());
+    Ok(())
+  }
+
+  /// Test that metadata for the same physical GGUF file (same repo/filename/snapshot)
+  /// is stored only once with source='model', regardless of whether the request
+  /// came from a UserAlias or ModelAlias. This verifies the deduplication behavior
+  /// where UserAlias requests are translated to store under source='model'.
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_metadata_stored_with_source_model_only(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Simulate what extract_and_store_metadata does for a UserAlias:
+    // It always stores with source='model' regardless of input alias type
+    let mut builder = model_metadata_builder(now);
+    builder
+      .source("model") // Always 'model', never 'user'
+      .repo("test/repo")
+      .filename("model.gguf")
+      .snapshot("snapshot123")
+      .capabilities_vision(1_i64)
+      .capabilities_function_calling(1_i64)
+      .context_max_input_tokens(8192_i64)
+      .context_max_output_tokens(4096_i64)
+      .chat_template("test template");
+    let row = builder.build()?;
+    service.upsert_model_metadata(&row).await?;
+
+    // Query should find the row (only looks for source='model')
+    let result = service
+      .get_model_metadata_by_file("test/repo", "model.gguf", "snapshot123")
+      .await?;
+    assert!(result.is_some(), "Should find metadata for the GGUF file");
+
+    let fetched = result.unwrap();
+    assert_eq!("model", fetched.source, "Source should always be 'model'");
+    assert_eq!(Some("test template".to_string()), fetched.chat_template);
+
+    // Verify only one row exists in the database
+    let all = service.list_model_metadata().await?;
+    assert_eq!(1, all.len(), "Should have exactly one metadata row");
+    assert_eq!("model", all[0].source);
 
     Ok(())
   }

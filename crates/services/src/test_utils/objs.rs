@@ -1,4 +1,4 @@
-use crate::AppRegInfo;
+use crate::{db::ModelMetadataRowBuilder, AppRegInfo};
 use chrono::{DateTime, Utc};
 use objs::{ApiAlias, ApiAliasBuilder};
 use rstest::fixture;
@@ -94,4 +94,89 @@ pub async fn seed_test_api_models(
   }
 
   Ok(aliases)
+}
+
+// =============================================================================
+// ModelMetadataRow Test Factories
+// =============================================================================
+
+/// Creates a ModelMetadataRowBuilder pre-configured with required timestamps.
+/// Use this as a starting point and chain additional builder methods.
+pub fn model_metadata_builder(now: DateTime<Utc>) -> ModelMetadataRowBuilder {
+  let mut builder = ModelMetadataRowBuilder::default();
+  builder.extracted_at(now).created_at(now).updated_at(now);
+  builder
+}
+
+/// Creates a test ModelMetadataRow for a local GGUF model file.
+/// source is always 'model' since UserAlias and ModelAlias both reference the same physical file.
+pub fn create_test_model_metadata(
+  repo: &str,
+  filename: &str,
+  snapshot: &str,
+  now: DateTime<Utc>,
+) -> crate::db::ModelMetadataRow {
+  let mut builder = model_metadata_builder(now);
+  builder
+    .source("model")
+    .repo(repo)
+    .filename(filename)
+    .snapshot(snapshot);
+  builder
+    .build()
+    .expect("Failed to build test ModelMetadataRow")
+}
+
+/// Creates a test ModelMetadataRow for a local GGUF model with capabilities.
+pub fn create_test_model_metadata_with_capabilities(
+  repo: &str,
+  filename: &str,
+  snapshot: &str,
+  vision: bool,
+  thinking: bool,
+  function_calling: bool,
+  now: DateTime<Utc>,
+) -> crate::db::ModelMetadataRow {
+  let mut builder = model_metadata_builder(now);
+  builder
+    .source("model")
+    .repo(repo)
+    .filename(filename)
+    .snapshot(snapshot)
+    .capabilities_vision(vision as i64)
+    .capabilities_thinking(thinking as i64)
+    .capabilities_function_calling(function_calling as i64);
+  builder
+    .build()
+    .expect("Failed to build test ModelMetadataRow with capabilities")
+}
+
+/// Creates a test ModelMetadataRow for an API model (e.g., OpenAI GPT-4).
+pub fn create_test_api_model_metadata(
+  api_model_id: &str,
+  now: DateTime<Utc>,
+) -> crate::db::ModelMetadataRow {
+  let mut builder = model_metadata_builder(now);
+  builder.source("api").api_model_id(api_model_id);
+  builder
+    .build()
+    .expect("Failed to build test API ModelMetadataRow")
+}
+
+/// Creates a test ModelMetadataRow for an API model with context limits.
+pub fn create_test_api_model_metadata_with_context(
+  api_model_id: &str,
+  max_input_tokens: i64,
+  max_output_tokens: i64,
+  now: DateTime<Utc>,
+) -> crate::db::ModelMetadataRow {
+  let mut builder = model_metadata_builder(now);
+  builder
+    .source("api")
+    .api_model_id(api_model_id)
+    .context_max_input_tokens(max_input_tokens)
+    .context_max_output_tokens(max_output_tokens);
+  builder
+    .build()
+    .expect("Failed to build test API ModelMetadataRow with context")
 }

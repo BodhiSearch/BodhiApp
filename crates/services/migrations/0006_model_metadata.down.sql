@@ -1,0 +1,9 @@
+-- Drop model metadata table
+DROP INDEX IF EXISTS idx_model_metadata_function_calling;
+DROP INDEX IF EXISTS idx_model_metadata_audio;
+DROP INDEX IF EXISTS idx_model_metadata_vision;
+DROP INDEX IF EXISTS idx_model_metadata_api_model_id;
+DROP INDEX IF EXISTS idx_model_metadata_filename;
+DROP INDEX IF EXISTS idx_model_metadata_repo;
+DROP INDEX IF EXISTS idx_model_metadata_source;
+DROP TABLE IF EXISTS model_metadata;

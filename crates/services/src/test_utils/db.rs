@@ -1,6 +1,6 @@
 use crate::db::{
-  ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, SqliteDbService, TimeService,
-  UserAccessRequest, UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, ModelMetadataRow, SqliteDbService,
+  TimeService, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -335,6 +335,46 @@ impl DbService for TestDbService {
       .check_prefix_exists(prefix, exclude_id)
       .await
       .tap(|_| self.notify("check_prefix_exists"))
+  }
+
+  async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError> {
+    self
+      .inner
+      .upsert_model_metadata(metadata)
+      .await
+      .tap(|_| self.notify("upsert_model_metadata"))
+  }
+
+  async fn get_model_metadata_by_file(
+    &self,
+    repo: &str,
+    filename: &str,
+    snapshot: &str,
+  ) -> Result<Option<ModelMetadataRow>, DbError> {
+    self
+      .inner
+      .get_model_metadata_by_file(repo, filename, snapshot)
+      .await
+      .tap(|_| self.notify("get_model_metadata_by_file"))
+  }
+
+  async fn batch_get_metadata_by_files(
+    &self,
+    files: &[(String, String, String)],
+  ) -> Result<std::collections::HashMap<(String, String, String), ModelMetadataRow>, DbError> {
+    self
+      .inner
+      .batch_get_metadata_by_files(files)
+      .await
+      .tap(|_| self.notify("batch_get_metadata_by_files"))
+  }
+
+  async fn list_model_metadata(&self) -> Result<Vec<ModelMetadataRow>, DbError> {
+    self
+      .inner
+      .list_model_metadata()
+      .await
+      .tap(|_| self.notify("list_model_metadata"))
   }
 
   fn now(&self) -> DateTime<Utc> {

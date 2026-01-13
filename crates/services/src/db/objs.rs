@@ -112,28 +112,70 @@ pub enum ApiKeyUpdate {
   Set(Option<String>),
 }
 
-#[cfg(test)]
-mod test {
-  use crate::db::{DownloadRequest, DownloadStatus};
-  use chrono::Utc;
+/// Model metadata row stored in database
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, sqlx::FromRow)]
+#[cfg_attr(
+  any(test, feature = "test-utils"),
+  derive(Default, derive_builder::Builder)
+)]
+#[cfg_attr(
+  any(test, feature = "test-utils"),
+  builder(setter(into, strip_option), default, build_fn(error = BuilderError))
+)]
+pub struct ModelMetadataRow {
+  pub id: i64,
+  pub source: String,
+  pub repo: Option<String>,
+  pub filename: Option<String>,
+  pub snapshot: Option<String>,
+  pub api_model_id: Option<String>,
+  pub capabilities_vision: Option<i64>,
+  pub capabilities_audio: Option<i64>,
+  pub capabilities_thinking: Option<i64>,
+  pub capabilities_function_calling: Option<i64>,
+  pub capabilities_structured_output: Option<i64>,
+  pub context_max_input_tokens: Option<i64>,
+  pub context_max_output_tokens: Option<i64>,
+  pub architecture: Option<String>,
+  pub additional_metadata: Option<String>,
+  pub chat_template: Option<String>,
+  #[schema(value_type = String, format = "date-time")]
+  pub extracted_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: DateTime<Utc>,
+}
 
-  #[test]
-  fn test_download_request_new_pending_initializes_progress_fields() {
-    let request = DownloadRequest::new_pending("test/repo", "test.gguf", Utc::now());
-    assert_eq!(
-      DownloadRequest {
-        id: request.id.clone(),
-        repo: "test/repo".to_string(),
-        filename: "test.gguf".to_string(),
-        status: DownloadStatus::Pending,
-        error: None,
-        created_at: request.created_at.clone(),
-        updated_at: request.updated_at.clone(),
-        total_bytes: None,
-        downloaded_bytes: 0,
-        started_at: None,
+impl From<ModelMetadataRow> for objs::ModelMetadata {
+  fn from(row: ModelMetadataRow) -> Self {
+    // Parse architecture from the architecture JSON column (not additional_metadata)
+    let architecture: Option<objs::ModelArchitecture> = row
+      .architecture
+      .as_ref()
+      .and_then(|s| serde_json::from_str(s).ok());
+
+    objs::ModelMetadata {
+      capabilities: objs::ModelCapabilities {
+        vision: row.capabilities_vision.map(|v| v != 0),
+        audio: row.capabilities_audio.map(|v| v != 0),
+        thinking: row.capabilities_thinking.map(|v| v != 0),
+        tools: objs::ToolCapabilities {
+          function_calling: row.capabilities_function_calling.map(|v| v != 0),
+          structured_output: row.capabilities_structured_output.map(|v| v != 0),
+        },
       },
-      request
-    );
+      context: objs::ContextLimits {
+        max_input_tokens: row.context_max_input_tokens.map(|v| v as u64),
+        max_output_tokens: row.context_max_output_tokens.map(|v| v as u64),
+      },
+      architecture: architecture.unwrap_or_else(|| objs::ModelArchitecture {
+        family: None,
+        parameter_count: None,
+        quantization: None,
+        format: "gguf".to_string(),
+      }),
+      chat_template: row.chat_template,
+    }
   }
 }

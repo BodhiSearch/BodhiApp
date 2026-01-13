@@ -109,6 +109,7 @@ pub fn extract_metadata(metadata: &GGUFMetadata, filename: &str) -> ModelMetadat
     capabilities: extract_capabilities(metadata),
     context: extract_context(metadata),
     architecture: extract_architecture(metadata, filename),
+    chat_template: get_chat_template(metadata),
   }
 }
 
@@ -427,7 +428,7 @@ fn parse_quantization_from_filename(filename: &str) -> Option<String> {
 // =============================================================================
 
 /// Extract chat template from GGUF metadata
-fn get_chat_template(metadata: &GGUFMetadata) -> Option<String> {
+pub fn get_chat_template(metadata: &GGUFMetadata) -> Option<String> {
   metadata
     .get("tokenizer.chat_template")
     .and_then(|v| v.as_str().ok())

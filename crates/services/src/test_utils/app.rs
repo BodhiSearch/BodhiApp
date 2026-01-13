@@ -1,5 +1,6 @@
 use crate::{
   db::{DbService, TimeService},
+  queue_service::{MockQueueProducer, QueueProducer},
   test_utils::{
     test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
     TestDbService,
@@ -66,6 +67,8 @@ pub struct AppServiceStub {
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
   #[builder(default = "self.default_concurrency_service()")]
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
+  #[builder(default = "self.default_queue_producer()")]
+  pub queue_producer: Option<Arc<dyn QueueProducer>>,
 }
 
 impl AppServiceStubBuilder {
@@ -95,6 +98,10 @@ impl AppServiceStubBuilder {
 
   fn default_concurrency_service(&self) -> Option<Arc<dyn ConcurrencyService>> {
     Some(Arc::new(LocalConcurrencyService::new()))
+  }
+
+  fn default_queue_producer(&self) -> Option<Arc<dyn QueueProducer>> {
+    Some(Arc::new(MockQueueProducer::default()))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -287,5 +294,9 @@ impl AppService for AppServiceStub {
 
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService> {
     self.concurrency_service.clone().unwrap()
+  }
+
+  fn queue_producer(&self) -> Arc<dyn QueueProducer> {
+    self.queue_producer.clone().unwrap()
   }
 }
