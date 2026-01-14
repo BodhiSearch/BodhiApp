@@ -548,7 +548,15 @@ export function mockRefreshAllMetadata(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ response }) => {
+    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
+      // Parse request body
+      const body = await request.json();
+
+      // Only respond if source is 'all'
+      if (body?.source !== 'all') {
+        return; // Pass through to next handler
+      }
+
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -581,46 +589,46 @@ export function mockQueueStatus(status: 'idle' | 'processing' = 'idle', { stub }
 }
 
 /**
- * Mock handler for refresh single model metadata endpoint (POST /bodhi/v1/models/{id}/refresh)
+ * Mock handler for refresh single model metadata endpoint (POST /bodhi/v1/models/refresh)
  */
 export function mockRefreshSingleMetadata(
-  alias: string,
   {
     repo = 'test-repo',
     filename = 'test-file.gguf',
     snapshot = 'abc123',
-    source = 'user',
+    alias = `${repo}/${filename}`,
+    source: _source = 'model',
     metadata = null,
     ...rest
-  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  }: Partial<components['schemas']['ModelAliasResponse']> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
-  // Dynamic endpoint pattern for single model refresh
-  const ENDPOINT_MODEL_REFRESH = '/bodhi/v1/models/{id}/refresh';
-
   return [
-    typedHttp.post(ENDPOINT_MODEL_REFRESH, async ({ response, params }) => {
-      const { id: paramId } = params;
+    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
+      // Parse request body
+      const body = await request.json();
 
-      // Only respond if alias matches
-      if (paramId !== alias) {
+      // Only respond if body matches single refresh pattern
+      if (
+        body?.source !== 'model' ||
+        body?.repo !== repo ||
+        body?.filename !== filename ||
+        body?.snapshot !== snapshot
+      ) {
         return; // Pass through to next handler
       }
 
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      const responseData: components['schemas']['UserAliasResponse'] = {
-        alias: paramId as string,
+      const responseData: components['schemas']['ModelAliasResponse'] = {
+        alias,
         repo,
         filename,
         snapshot,
-        source,
-        request_params: {},
-        context_params: [],
-        model_params: {},
+        source: 'model',
         metadata,
         ...rest,
       };
@@ -645,7 +653,15 @@ export function mockRefreshAllMetadataError(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ response }) => {
+    typedHttp.post(ENDPOINT_MODELS_REFRESH, async ({ request, response }) => {
+      // Parse request body
+      const body = await request.json();
+
+      // Only respond if source is 'all'
+      if (body?.source !== 'all') {
+        return; // Pass through to next handler
+      }
+
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 

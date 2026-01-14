@@ -124,7 +124,7 @@ export class ModelsListPage extends BasePage {
 
     // Find the visible model chat button (handles responsive layout with multiple buttons)
     const modelChatButtons = this.page.locator(this.selectors.modelChatButton(modelName));
-    const visibleButton = modelChatButtons.locator('visible=true').first();
+    const visibleButton = modelChatButtons.filter({ visible: true }).first();
 
     await expect(visibleButton).toBeVisible();
     await visibleButton.click();
@@ -506,14 +506,27 @@ export class ModelsListPage extends BasePage {
     }
   }
 
-  // Per-row refresh methods (sync refresh)
+  // Modal refresh method (replaces per-row refresh)
   async clickRefreshButton(alias) {
-    const refreshBtn = this.page.locator(this.selectors.refreshButton(alias));
+    // Open preview modal first
+    await this.clickPreviewButton(alias);
+
+    // Wait for modal to be visible
+    await expect(this.page.locator('[data-testid="model-preview-modal"]')).toBeVisible();
+
+    // Try header button first (if metadata exists), fallback to body button
+    const headerBtn = this.page.locator('[data-testid="preview-modal-refresh-button-header"]');
+    const bodyBtn = this.page.locator('[data-testid="preview-modal-refresh-button-body"]');
+
+    const refreshBtn = (await headerBtn.isVisible()) ? headerBtn : bodyBtn;
     await expect(refreshBtn).toBeVisible();
     await expect(refreshBtn).toBeEnabled();
     await refreshBtn.click();
 
-    // Wait for toast notification
+    // Close modal first to avoid toast selector conflicts
+    await this.closePreviewModal();
+
+    // Wait for toast notification after modal is closed
     await this.waitForToast('Metadata refreshed successfully');
   }
 

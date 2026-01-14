@@ -92,6 +92,9 @@ pub struct LocalModelResponse {
   pub snapshot: String,
   pub size: Option<u64>,
   pub model_params: HashMap<String, Value>,
+  /// Model metadata extracted from GGUF file (optional)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub metadata: Option<ModelMetadata>,
 }
 
 impl From<HubFile> for LocalModelResponse {
@@ -102,7 +105,16 @@ impl From<HubFile> for LocalModelResponse {
       snapshot: model.snapshot,
       size: model.size,
       model_params: HashMap::new(),
+      metadata: None,
     }
+  }
+}
+
+impl LocalModelResponse {
+  /// Attach model metadata to this response
+  pub fn with_metadata(mut self, metadata: Option<ModelMetadata>) -> Self {
+    self.metadata = metadata;
+    self
   }
 }
 

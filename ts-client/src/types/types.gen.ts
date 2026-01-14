@@ -1298,6 +1298,7 @@ export type LocalModelResponse = {
     snapshot: string;
     size?: number | null;
     model_params: {};
+    metadata?: null | ModelMetadata;
 };
 
 export type Message = {
@@ -1621,13 +1622,24 @@ export type RedirectResponse = {
 };
 
 /**
- * Query parameters for metadata refresh endpoint
+ * Refresh request - discriminated union by source field
  */
-export type RefreshParams = {
+export type RefreshRequest = {
+    source: 'all';
+} | {
     /**
-     * Scope of refresh operation: "local" for GGUF models only
+     * Repository in format "user/repo"
      */
-    scope?: string;
+    repo: string;
+    /**
+     * Filename of the GGUF model
+     */
+    filename: string;
+    /**
+     * Snapshot/commit identifier
+     */
+    snapshot: string;
+    source: 'model';
 };
 
 /**
@@ -1643,6 +1655,11 @@ export type RefreshResponse = {
      */
     alias?: string | null;
 };
+
+/**
+ * Source type discriminator for refresh requests
+ */
+export type RefreshSource = 'all' | 'model';
 
 export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
 
@@ -3314,19 +3331,17 @@ export type CreateAliasResponses = {
 
 export type CreateAliasResponse = CreateAliasResponses[keyof CreateAliasResponses];
 
-export type RefreshAllModelMetadataData = {
-    body?: never;
+export type RefreshModelMetadataData = {
+    /**
+     * Refresh request - either bulk (source='all') or single model (source='model' with identifiers)
+     */
+    body: RefreshRequest;
     path?: never;
-    query?: {
-        /**
-         * Scope of refresh operation: "local" for GGUF models only
-         */
-        scope?: string;
-    };
+    query?: never;
     url: '/bodhi/v1/models/refresh';
 };
 
-export type RefreshAllModelMetadataErrors = {
+export type RefreshModelMetadataErrors = {
     /**
      * Invalid request parameters
      */
@@ -3340,21 +3355,29 @@ export type RefreshAllModelMetadataErrors = {
      */
     403: OpenAiApiError;
     /**
+     * Model alias not found for specified repo/filename/snapshot
+     */
+    404: unknown;
+    /**
      * Internal server error
      */
     500: OpenAiApiError;
 };
 
-export type RefreshAllModelMetadataError = RefreshAllModelMetadataErrors[keyof RefreshAllModelMetadataErrors];
+export type RefreshModelMetadataError = RefreshModelMetadataErrors[keyof RefreshModelMetadataErrors];
 
-export type RefreshAllModelMetadataResponses = {
+export type RefreshModelMetadataResponses = {
     /**
-     * Metadata refresh started in background
+     * Metadata refreshed successfully (sync mode)
+     */
+    200: ModelAliasResponse;
+    /**
+     * Metadata refresh queued in background (bulk mode)
      */
     202: RefreshResponse;
 };
 
-export type RefreshAllModelMetadataResponse = RefreshAllModelMetadataResponses[keyof RefreshAllModelMetadataResponses];
+export type RefreshModelMetadataResponse = RefreshModelMetadataResponses[keyof RefreshModelMetadataResponses];
 
 export type GetAliasData = {
     body?: never;
@@ -3443,52 +3466,6 @@ export type UpdateAliasResponses = {
 };
 
 export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
-
-export type RefreshSingleModelMetadataData = {
-    body?: never;
-    path: {
-        /**
-         * Model alias identifier
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/models/{id}/refresh';
-};
-
-export type RefreshSingleModelMetadataErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Alias not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type RefreshSingleModelMetadataError = RefreshSingleModelMetadataErrors[keyof RefreshSingleModelMetadataErrors];
-
-export type RefreshSingleModelMetadataResponses = {
-    /**
-     * Metadata refreshed successfully
-     */
-    200: AliasResponse;
-};
-
-export type RefreshSingleModelMetadataResponse = RefreshSingleModelMetadataResponses[keyof RefreshSingleModelMetadataResponses];
 
 export type GetQueueStatusData = {
     body?: never;

@@ -176,11 +176,38 @@ pub async fn list_local_modelfiles_handler(
   let total = models.len();
   let (start, end) = calculate_pagination(page, page_size, total);
 
-  let data: Vec<LocalModelResponse> = models
+  let page_models: Vec<HubFile> = models.into_iter().skip(start).take(end - start).collect();
+
+  // Batch fetch metadata for all models in this page
+  let keys: Vec<(String, String, String)> = page_models
+    .iter()
+    .map(|m| (m.repo.to_string(), m.filename.clone(), m.snapshot.clone()))
+    .collect();
+
+  let metadata_map = state
+    .app_service()
+    .db_service()
+    .batch_get_metadata_by_files(&keys)
+    .await
+    .map_err(|e| {
+      tracing::error!("Failed to batch fetch metadata: {}", e);
+      ApiError::from(objs::InternalServerError::new(
+        "Failed to fetch metadata".to_string(),
+      ))
+    })?;
+
+  // Convert to responses with metadata attached
+  let data: Vec<LocalModelResponse> = page_models
     .into_iter()
-    .skip(start)
-    .take(end - start)
-    .map(Into::into)
+    .map(|model| {
+      let key = (
+        model.repo.to_string(),
+        model.filename.clone(),
+        model.snapshot.clone(),
+      );
+      let metadata = metadata_map.get(&key).map(|row| row.clone().into());
+      LocalModelResponse::from(model).with_metadata(metadata)
+    })
     .collect();
 
   let paginated = PaginatedLocalModelResponse {

@@ -1,15 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 import type { AliasResponse, ModelMetadata } from '@bodhiapp/ts-client';
-import { CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye, EyeOff, RefreshCw, Loader2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { hasModelMetadata, isApiAlias } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
+import { useRefreshSingleMetadata } from '@/hooks/useModelMetadata';
+import { hasModelMetadata, hasLocalFileProperties, isApiAlias } from '@/lib/utils';
 
 interface ModelPreviewModalProps {
   open: boolean;
@@ -68,17 +72,101 @@ function MetadataField({ label, value, testId }: MetadataFieldProps) {
 export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewModalProps) {
   const isApiModel = isApiAlias(model);
   const isLocalModel = hasModelMetadata(model);
+  const [shouldHighlight, setShouldHighlight] = useState(false);
+  const { toast } = useToast();
+  const prevMetadataRef = useRef<ModelMetadata | null | undefined>(undefined);
 
   const metadata: ModelMetadata | null | undefined = isLocalModel ? model.metadata : undefined;
+
+  // Track metadata appearance for highlight animation
+  useEffect(() => {
+    const hadNoMetadata = !prevMetadataRef.current;
+    const nowHasMetadata = !!metadata;
+
+    if (hadNoMetadata && nowHasMetadata) {
+      // Metadata just appeared - trigger highlight
+      setShouldHighlight(true);
+      // Remove highlight after animation completes (1.5s)
+      const timer = setTimeout(() => {
+        setShouldHighlight(false);
+      }, 1500);
+
+      prevMetadataRef.current = metadata;
+      return () => clearTimeout(timer);
+    }
+
+    prevMetadataRef.current = metadata;
+    return undefined;
+  }, [metadata]);
+
+  const refreshSingleMetadata = useRefreshSingleMetadata({
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Metadata refreshed successfully',
+      });
+      // The query invalidation in the hook will cause the model data to refresh
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleRefresh = () => {
+    if (!hasLocalFileProperties(model)) return;
+
+    refreshSingleMetadata.mutate({
+      source: 'model' as const,
+      repo: model.repo,
+      filename: model.filename,
+      snapshot: model.snapshot,
+    });
+  };
+
+  const isRefreshing = refreshSingleMetadata.isLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="model-preview-modal">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Model Preview
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Model Preview
+            </div>
+            {isLocalModel && metadata?.capabilities && (
+              <TooltipProvider>
+                <Tooltip delayDuration={300}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      aria-label="Force refresh metadata for given model from GGUF file"
+                      data-testid="preview-modal-refresh-button-header"
+                      data-teststate={isRefreshing ? 'loading' : 'ready'}
+                    >
+                      {isRefreshing ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={4}>
+                    <p className="text-sm">Force refresh metadata for given model from GGUF file</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </DialogTitle>
+          <DialogDescription>View model details, capabilities, and metadata</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -172,7 +260,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
 
           {/* Capabilities Card (Local models only) */}
           {isLocalModel && metadata?.capabilities && (
-            <Card>
+            <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Capabilities</CardTitle>
               </CardHeader>
@@ -202,7 +290,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
 
           {/* Context Limits Card (Local models only) */}
           {isLocalModel && metadata?.context && (
-            <Card>
+            <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Context Limits</CardTitle>
               </CardHeader>
@@ -223,7 +311,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
 
           {/* Architecture Card (Local models only) */}
           {isLocalModel && metadata?.architecture && (
-            <Card>
+            <Card className={shouldHighlight ? 'metadata-highlight' : ''}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Architecture</CardTitle>
               </CardHeader>
@@ -256,12 +344,29 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
           {isLocalModel && !metadata && (
             <Card>
               <CardContent className="py-6">
-                <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex flex-col items-center gap-4 text-center">
                   <EyeOff className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">No metadata available for this model.</p>
-                  <p className="text-xs text-muted-foreground">
-                    Click &quot;Refresh All&quot; to extract metadata from the GGUF file.
-                  </p>
+                  <Button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    size="sm"
+                    aria-label="Force refresh metadata for given model from GGUF file"
+                    data-testid="preview-modal-refresh-button-body"
+                    data-teststate={isRefreshing ? 'loading' : 'ready'}
+                  >
+                    {isRefreshing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh Metadata
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

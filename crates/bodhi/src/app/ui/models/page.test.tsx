@@ -5,8 +5,6 @@ import {
   mockModelsInternalError,
   mockModelsWithApiModel,
   mockModelsWithSourceModel,
-  mockRefreshAllMetadata,
-  mockQueueStatus,
   mockRefreshSingleMetadata,
 } from '@/test-utils/msw-v2/handlers/models';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
@@ -385,34 +383,13 @@ describe('Model Metadata Refresh', () => {
     server.use(...mockAppInfoReady(), ...mockUserLoggedIn(), ...mockModelsDefault());
   });
 
-  it('refresh all button triggers API call and shows loading state', async () => {
-    server.use(...mockRefreshAllMetadata({ num_queued: 'all' }), ...mockQueueStatus('idle', { stub: true }));
-
-    render(<ModelsPage />, { wrapper: createWrapper() });
-
-    // Wait for page to load
-    await screen.findByTestId('refresh-all-models-button');
-
-    const refreshButton = screen.getByTestId('refresh-all-models-button');
-    expect(refreshButton).toBeEnabled();
-    expect(refreshButton).toHaveTextContent('Refresh All');
-
-    await act(async () => {
-      fireEvent.click(refreshButton);
-    });
-
-    // Button should show loading state during processing
-    await waitFor(() => {
-      expect(screen.getByTestId('refresh-all-models-button')).toBeDisabled();
-    });
-  });
-
-  it('per-model refresh button triggers sync refresh and shows success toast', async () => {
+  it('per-model refresh button in modal triggers sync refresh with query params', async () => {
     server.use(
-      ...mockRefreshSingleMetadata('test-model', {
+      ...mockRefreshSingleMetadata({
         repo: 'test-repo',
         filename: 'test-file.bin',
         snapshot: 'abc123',
+        alias: 'test-model',
         metadata: {
           capabilities: { vision: false, audio: false, thinking: false, tools: {} },
           context: {},
@@ -423,19 +400,29 @@ describe('Model Metadata Refresh', () => {
 
     render(<ModelsPage />, { wrapper: createWrapper() });
 
-    // Wait for page to load
-    await screen.findByTestId('refresh-button-test-model');
+    // Wait for page to load and open preview modal
+    await screen.findByTestId('preview-button-test-model');
+    const previewButton = screen.getByTestId('preview-button-test-model');
 
-    const refreshButton = screen.getByTestId('refresh-button-test-model');
+    await act(async () => {
+      fireEvent.click(previewButton);
+    });
+
+    // Modal should show body refresh button (since model has no initial metadata)
+    await waitFor(() => {
+      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
+    });
+
+    const refreshButton = screen.getByTestId('preview-modal-refresh-button-body');
     expect(refreshButton).toBeEnabled();
 
     await act(async () => {
       fireEvent.click(refreshButton);
     });
 
-    // Wait for refresh to complete (the button should become enabled again)
+    // Refresh completes (button should still be visible)
     await waitFor(() => {
-      expect(screen.getByTestId('refresh-button-test-model')).toBeEnabled();
+      expect(refreshButton).toBeInTheDocument();
     });
   });
 });

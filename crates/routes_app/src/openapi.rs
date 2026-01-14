@@ -9,7 +9,7 @@ use crate::{
   CreateApiTokenRequest, ListUsersParams, NewDownloadRequest, PaginatedAliasResponse,
   PaginatedApiTokenResponse, PaginatedDownloadResponse, PaginatedLocalModelResponse,
   PaginatedUserAccessResponse, PaginatedUserAliasResponse, QueueStatusResponse, RedirectResponse,
-  RefreshParams, RefreshResponse, SetupRequest, SetupResponse, UpdateAliasRequest,
+  RefreshRequest, RefreshResponse, RefreshSource, SetupRequest, SetupResponse, UpdateAliasRequest,
   UpdateSettingRequest, UserAccessStatusResponse, UserAliasResponse, UserResponse,
   __path_app_info_handler, __path_approve_request_handler, __path_auth_callback_handler,
   __path_auth_initiate_handler, __path_change_user_role_handler, __path_create_alias_handler,
@@ -21,8 +21,7 @@ use crate::{
   __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
   __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
-  __path_queue_status_handler, __path_refresh_all_metadata_handler,
-  __path_refresh_single_metadata_handler, __path_reject_request_handler,
+  __path_queue_status_handler, __path_refresh_metadata_handler, __path_reject_request_handler,
   __path_remove_user_handler, __path_request_access_handler, __path_request_status_handler,
   __path_setup_handler, __path_sync_models_handler, __path_test_api_model_handler,
   __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
@@ -296,7 +295,8 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             DownloadRequest,
             DownloadStatus,
             NewDownloadRequest,
-            RefreshParams,
+            RefreshRequest,
+            RefreshSource,
             RefreshResponse,
             QueueStatusResponse,
             // settings
@@ -365,8 +365,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         create_pull_request_handler,
         pull_by_alias_handler,
         get_download_status_handler,
-        refresh_all_metadata_handler,
-        refresh_single_metadata_handler,
+        refresh_metadata_handler,
         queue_status_handler,
 
         // Settings endpoints

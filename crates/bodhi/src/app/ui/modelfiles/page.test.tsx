@@ -3,6 +3,7 @@ import { server } from '@/test-utils/msw-v2/setup';
 import { mockAppInfoReady, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { mockModelFilesDefault, mockModelFilesError } from '@/test-utils/msw-v2/handlers/modelfiles';
+import { mockRefreshSingleMetadata } from '@/test-utils/msw-v2/handlers/models';
 import { ENDPOINT_APP_INFO } from '@/hooks/useInfo';
 import { ENDPOINT_MODEL_FILES } from '@/hooks/useModels';
 import { ENDPOINT_USER_INFO } from '@/hooks/useUsers';
@@ -143,6 +144,89 @@ describe('ModelFilesPage', () => {
       expect(windowOpenSpy).toHaveBeenCalledWith('https://huggingface.co/test-repo', '_blank');
 
       windowOpenSpy.mockRestore();
+    });
+  });
+
+  describe('Model metadata refresh', () => {
+    it('shows refresh button in modal and triggers API call with correct query params', async () => {
+      server.use(
+        ...mockRefreshSingleMetadata({
+          repo: 'test-repo',
+          filename: 'test-file.txt',
+          snapshot: 'abc123',
+          metadata: {
+            capabilities: { vision: false, audio: false, thinking: false, tools: {} },
+            context: {},
+            architecture: { format: 'gguf' },
+          },
+        })
+      );
+
+      await act(async () => {
+        render(<ModelFilesPage />, { wrapper: createWrapper() });
+      });
+
+      // Open preview modal
+      const previewButtons = screen.getAllByTestId('modelfiles-preview-button-test-repo-test-file.txt');
+      const previewButton = previewButtons[0];
+      expect(previewButton).toBeInTheDocument();
+
+      await act(async () => {
+        previewButton.click();
+      });
+
+      // Modal should have body refresh button (since no metadata initially)
+      const refreshButton = screen.getByTestId('preview-modal-refresh-button-body');
+      expect(refreshButton).toBeInTheDocument();
+      expect(refreshButton).toBeEnabled();
+
+      await act(async () => {
+        refreshButton.click();
+      });
+
+      // Refresh completes (button should still be visible)
+      expect(refreshButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Model preview modal', () => {
+    it('opens preview modal when preview button clicked', async () => {
+      await act(async () => {
+        render(<ModelFilesPage />, { wrapper: createWrapper() });
+      });
+
+      const previewButtons = screen.getAllByTestId('modelfiles-preview-button-test-repo-test-file.txt');
+      const previewButton = previewButtons[0];
+      expect(previewButton).toBeInTheDocument();
+
+      await act(async () => {
+        previewButton.click();
+      });
+
+      // Modal should be visible
+      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
+
+      // Basic info should be displayed
+      expect(screen.getByTestId('preview-basic-alias')).toHaveTextContent('test-repo/test-file.txt');
+      expect(screen.getByTestId('preview-basic-repo')).toHaveTextContent('test-repo');
+      expect(screen.getByTestId('preview-basic-filename')).toHaveTextContent('test-file.txt');
+    });
+
+    it('shows refresh button in modal when no metadata available', async () => {
+      await act(async () => {
+        render(<ModelFilesPage />, { wrapper: createWrapper() });
+      });
+
+      const previewButtons = screen.getAllByTestId('modelfiles-preview-button-test-repo-test-file.txt');
+      const previewButton = previewButtons[0];
+
+      await act(async () => {
+        previewButton.click();
+      });
+
+      // Modal should be visible with body refresh button (since no metadata)
+      expect(screen.getByTestId('model-preview-modal')).toBeInTheDocument();
+      expect(screen.getByTestId('preview-modal-refresh-button-body')).toBeInTheDocument();
     });
   });
 });

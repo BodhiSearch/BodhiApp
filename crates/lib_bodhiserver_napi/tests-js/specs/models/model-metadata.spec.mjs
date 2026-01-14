@@ -148,19 +148,139 @@ test.describe('Model Metadata Refresh and Preview', () => {
     }
   });
 
-  test('complete flow: login → refresh all models → verify metadata for each model → per-row refresh', async ({
+  test('modal refresh auto-updates metadata from models page', async ({ page }) => {
+    // Login and navigate to models page
+    await loginPage.performOAuthLogin();
+    await modelsPage.navigateToModels();
+
+    // Use a model that hasn't been processed yet (fresh database)
+    const modelData = MODEL_CAPABILITIES['qwen-vision'];
+    const modelAlias = `${modelData.repo}:${modelData.qualifier}`;
+
+    // Open preview modal
+    await modelsPage.clickPreviewButton(modelAlias);
+
+    // Modal should show "No metadata available" initially
+    const noMetadataMessage = page.locator('text=No metadata available for this model.');
+    await expect(noMetadataMessage).toBeVisible();
+
+    // Click the inline refresh button in the modal (body button since no metadata)
+    const refreshButton = page.locator('[data-testid="preview-modal-refresh-button-body"]');
+    await expect(refreshButton).toBeVisible();
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
+    await refreshButton.click();
+
+    // Wait for loading state
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'loading');
+
+    // Wait for ready state (metadata refresh completed)
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
+
+    // Modal should automatically update to show metadata (without reopening)
+    await expect(noMetadataMessage).not.toBeVisible();
+
+    // Verify metadata is now displayed with correct values
+    await modelsPage.verifyPreviewBasicInfo({
+      alias: modelAlias,
+      repo: modelData.repo,
+      filename: modelData.filename,
+      snapshot: modelData.snapshot,
+      source: 'MODEL',
+    });
+
+    // Verify detailed capability values
+    await modelsPage.verifyPreviewCapability('vision', modelData.capabilities.vision);
+    await modelsPage.verifyPreviewCapability('audio', modelData.capabilities.audio);
+    await modelsPage.verifyPreviewCapability('thinking', modelData.capabilities.thinking);
+    await modelsPage.verifyPreviewCapability(
+      'function_calling',
+      modelData.capabilities.function_calling
+    );
+    await modelsPage.verifyPreviewCapability(
+      'structured_output',
+      modelData.capabilities.structured_output
+    );
+
+    await modelsPage.closePreviewModal();
+  });
+
+  test('modal refresh auto-updates metadata from modelfiles page', async ({ page }) => {
+    // Login and navigate to modelfiles page
+    await loginPage.performOAuthLogin();
+    await page.goto(`${baseUrl}/ui/modelfiles/`);
+    await page.waitForSelector('[data-testid="modelfiles-content"]');
+
+    // Use a model that hasn't been processed yet
+    const modelData = MODEL_CAPABILITIES['phi-tools'];
+    const refreshKey = `${modelData.repo}-${modelData.filename}`;
+
+    // Open preview modal from modelfiles page
+    // There are 2 buttons due to responsive design: mobile (sm:hidden) and desktop (hidden sm:table-cell)
+    // Use last() to get the desktop version which is visible at default viewport
+    const previewButton = page
+      .locator(`[data-testid="modelfiles-preview-button-${refreshKey}"]`)
+      .last();
+    await previewButton.click();
+    await expect(page.locator('[data-testid="model-preview-modal"]')).toBeVisible();
+
+    // Modal should show "No metadata available" initially
+    const noMetadataMessage = page.locator('text=No metadata available for this model.');
+    await expect(noMetadataMessage).toBeVisible();
+
+    // Click the inline refresh button in the modal (body button since no metadata)
+    const refreshButton = page.locator('[data-testid="preview-modal-refresh-button-body"]');
+    await expect(refreshButton).toBeVisible();
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
+    await refreshButton.click();
+
+    // Wait for loading state
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'loading');
+
+    // Wait for ready state (metadata refresh completed)
+    await expect(refreshButton).toHaveAttribute('data-teststate', 'ready');
+
+    // Modal should automatically update to show metadata (without reopening)
+    await expect(noMetadataMessage).not.toBeVisible();
+
+    // Verify metadata is now displayed with correct values
+    await modelsPage.verifyPreviewBasicInfo({
+      alias: `${modelData.repo}/${modelData.filename}`,
+      repo: modelData.repo,
+      filename: modelData.filename,
+      snapshot: modelData.snapshot,
+      source: 'MODEL',
+    });
+
+    // Verify detailed capability values
+    await modelsPage.verifyPreviewCapability('vision', modelData.capabilities.vision);
+    await modelsPage.verifyPreviewCapability('audio', modelData.capabilities.audio);
+    await modelsPage.verifyPreviewCapability('thinking', modelData.capabilities.thinking);
+    await modelsPage.verifyPreviewCapability(
+      'function_calling',
+      modelData.capabilities.function_calling
+    );
+    await modelsPage.verifyPreviewCapability(
+      'structured_output',
+      modelData.capabilities.structured_output
+    );
+
+    await modelsPage.closePreviewModal();
+  });
+
+  test('complete flow: login → refresh models → verify metadata → per-row refresh', async ({
     page,
   }) => {
     // Login and navigate to models page
     await loginPage.performOAuthLogin();
     await modelsPage.navigateToModels();
 
-    await test.step('Refresh All - button disabled while processing', async () => {
-      await modelsPage.clickRefreshAll();
-      await modelsPage.verifyRefreshButtonState('disabled');
-
-      await modelsPage.waitForQueueIdle();
-      await modelsPage.verifyRefreshButtonState('enabled');
+    // Refresh all models first to populate metadata
+    await test.step('Refresh metadata for all test models', async () => {
+      for (const [, modelData] of Object.entries(MODEL_CAPABILITIES)) {
+        const modelAlias = `${modelData.repo}:${modelData.qualifier}`;
+        await modelsPage.clickRefreshButton(modelAlias);
+        await modelsPage.waitForToast('Metadata refreshed successfully');
+      }
     });
 
     await test.step('Verify llama-plain model (no capabilities)', async () => {
@@ -297,51 +417,6 @@ test.describe('Model Metadata Refresh and Preview', () => {
       await modelsPage.verifyPreviewCapability('structured_output', false);
 
       await modelsPage.closePreviewModal();
-    });
-
-    await test.step('Per-row refresh button updates metadata synchronously', async () => {
-      const modelData = MODEL_CAPABILITIES['qwen-vision'];
-      const modelAlias = `${modelData.repo}:${modelData.qualifier}`;
-
-      // Click per-row refresh button
-      await modelsPage.clickRefreshButton(modelAlias);
-
-      // Wait for success toast
-      await modelsPage.waitForToast('Metadata refreshed successfully');
-
-      // Verify button is enabled again after refresh
-      await modelsPage.verifyRefreshButtonStateForModel(modelAlias, 'enabled');
-
-      // Verify metadata is updated by checking preview
-      await modelsPage.clickPreviewButton(modelAlias);
-
-      await modelsPage.verifyPreviewBasicInfo({
-        alias: modelAlias,
-        repo: modelData.repo,
-        filename: modelData.filename,
-        snapshot: modelData.snapshot,
-      });
-
-      await modelsPage.verifyPreviewCapability('vision', true);
-      await modelsPage.verifyPreviewCapability('audio', false);
-
-      await modelsPage.closePreviewModal();
-    });
-
-    await test.step('Per-row refresh for different model type', async () => {
-      const modelData = MODEL_CAPABILITIES['llama-plain'];
-      const modelAlias = `${modelData.repo}:${modelData.qualifier}`;
-
-      const refreshBtn = page.locator(`[data-testid="refresh-button-${modelAlias}"]`);
-      await expect(refreshBtn).toBeVisible();
-
-      await refreshBtn.click();
-
-      // Wait for success toast
-      await modelsPage.waitForToast('Metadata refreshed successfully');
-
-      // Verify button is enabled again after refresh
-      await modelsPage.verifyRefreshButtonStateForModel(modelAlias, 'enabled');
     });
   });
 });

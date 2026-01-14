@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-import { LocalModelResponse } from '@bodhiapp/ts-client';
-import { ExternalLink, Trash2 } from 'lucide-react';
+import { LocalModelResponse, AliasResponse } from '@bodhiapp/ts-client';
+import { ExternalLink, Trash2, Eye } from 'lucide-react';
 
 import AppInitializer from '@/components/AppInitializer';
 import { CopyableContent } from '@/components/CopyableContent';
@@ -13,8 +13,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
+import { useToast } from '@/hooks/use-toast';
 import { useModelFiles } from '@/hooks/useModels';
+import { hasLocalFileProperties } from '@/lib/utils';
 import { SortState } from '@/types/models';
+
+import { ModelPreviewModal } from '../models/components/ModelPreviewModal';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | null | undefined): string => {
@@ -55,6 +59,7 @@ export const columns = [
 
 function ModelFilesContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [previewModel, setPreviewModel] = useState<AliasResponse | null>(null);
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -63,7 +68,33 @@ function ModelFilesContent() {
     direction: 'asc',
   });
 
+  const { toast } = useToast();
   const { data, isLoading, error } = useModelFiles(page, pageSize, sort.column, sort.direction);
+
+  // Update preview model when query data changes (after metadata refresh)
+  useEffect(() => {
+    if (previewModel && hasLocalFileProperties(previewModel) && data?.data) {
+      const updatedModelFile = data.data.find(
+        (m) =>
+          m.repo === previewModel.repo && m.filename === previewModel.filename && m.snapshot === previewModel.snapshot
+      );
+      if (updatedModelFile) {
+        // Convert to AliasResponse format
+        const updatedPreview: AliasResponse = {
+          source: 'model',
+          alias: `${updatedModelFile.repo}/${updatedModelFile.filename}`,
+          repo: updatedModelFile.repo,
+          filename: updatedModelFile.filename,
+          snapshot: updatedModelFile.snapshot,
+          metadata: updatedModelFile.metadata,
+        } as AliasResponse;
+        // Only update if metadata reference actually changed (not just object identity)
+        if (updatedModelFile.metadata !== previewModel.metadata) {
+          setPreviewModel(updatedPreview);
+        }
+      }
+    }
+  }, [data?.data, previewModel]);
 
   const toggleSort = (column: string) => {
     setSort((prevSort) => ({
@@ -105,28 +136,52 @@ function ModelFilesContent() {
   ];
 
   // Extract actions to a separate function for reuse
-  const renderActions = (modelFile: LocalModelResponse) => (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={() => setShowDeleteDialog(true)}
-        title="Delete modelfile"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={() => window.open(getHuggingFaceUrl(modelFile.repo), '_blank')}
-        title="Open in HuggingFace"
-      >
-        <ExternalLink className="h-4 w-4" />
-      </Button>
-    </>
-  );
+  const renderActions = (modelFile: LocalModelResponse) => {
+    const refreshKey = `${modelFile.repo}-${modelFile.filename}`;
+
+    // Convert LocalModelResponse to AliasResponse format for preview
+    const modelForPreview: AliasResponse = {
+      source: 'model',
+      alias: `${modelFile.repo}/${modelFile.filename}`,
+      repo: modelFile.repo,
+      filename: modelFile.filename,
+      snapshot: modelFile.snapshot,
+      metadata: modelFile.metadata,
+    } as AliasResponse;
+
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => setPreviewModel(modelForPreview)}
+          title={`Preview model ${modelFile.filename}`}
+          data-testid={`modelfiles-preview-button-${refreshKey}`}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => setShowDeleteDialog(true)}
+          title="Delete modelfile"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => window.open(getHuggingFaceUrl(modelFile.repo), '_blank')}
+          title="Open in HuggingFace"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      </>
+    );
+  };
 
   if (error) {
     const errorMessage =
@@ -169,6 +224,15 @@ function ModelFilesContent() {
           onPageChange={setPage}
         />
       </div>
+
+      {/* Model Preview Modal */}
+      {previewModel && (
+        <ModelPreviewModal
+          open={!!previewModel}
+          onOpenChange={(open) => !open && setPreviewModel(null)}
+          model={previewModel}
+        />
+      )}
     </div>
   );
 }

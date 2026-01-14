@@ -476,10 +476,16 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refresh Metadata for All Models
-         * @description Triggers background metadata extraction for all local GGUF models. Requires PowerUser permissions. Returns immediately with 202 Accepted status. Metadata extraction happens asynchronously in the background.
+         * Refresh Model Metadata
+         * @description Refresh metadata for models. Supports two modes via discriminated request body:
+         *
+         *     - Bulk async: `{"source": "all"}` triggers background extraction for all local GGUF models (202 Accepted)
+         *
+         *     - Single sync: `{"source": "model", "repo": "...", "filename": "...", "snapshot": "..."}` performs immediate extraction (200 OK)
+         *
+         *     Requires PowerUser permissions.
          */
-        post: operations["refreshAllModelMetadata"];
+        post: operations["refreshModelMetadata"];
         delete?: never;
         options?: never;
         head?: never;
@@ -517,26 +523,6 @@ export interface paths {
         /** Update Alias */
         put: operations["updateAlias"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/models/{id}/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Refresh Metadata for Single Model
-         * @description Extracts and updates GGUF metadata for a specific model synchronously. Requires PowerUser permissions. Returns 200 OK with updated model data including metadata.
-         */
-        post: operations["refreshSingleModelMetadata"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2062,6 +2048,7 @@ export interface components {
             model_params: {
                 [key: string]: unknown;
             };
+            metadata?: null | components["schemas"]["ModelMetadata"];
         };
         Message: {
             role: string;
@@ -2387,10 +2374,28 @@ export interface components {
              */
             location: string;
         };
-        /** @description Query parameters for metadata refresh endpoint */
-        RefreshParams: {
-            /** @description Scope of refresh operation: "local" for GGUF models only */
-            scope?: string;
+        /** @description Refresh request - discriminated union by source field */
+        RefreshRequest: {
+            /** @enum {string} */
+            source: "all";
+        } | {
+            /**
+             * @description Repository in format "user/repo"
+             * @example bartowski/Qwen2.5-3B-Instruct-GGUF
+             */
+            repo: string;
+            /**
+             * @description Filename of the GGUF model
+             * @example Qwen2.5-3B-Instruct-Q4_K_M.gguf
+             */
+            filename: string;
+            /**
+             * @description Snapshot/commit identifier
+             * @example 8ba1c3c3ee94ba4b86ff92a749ae687dc41fce3f
+             */
+            snapshot: string;
+            /** @enum {string} */
+            source: "model";
         };
         /** @description Response for metadata refresh operations */
         RefreshResponse: {
@@ -2399,6 +2404,11 @@ export interface components {
             /** @description Model alias (only for single model refresh) */
             alias?: string | null;
         };
+        /**
+         * @description Source type discriminator for refresh requests
+         * @enum {string}
+         */
+        RefreshSource: "all" | "model";
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
         ResponseFormat: {
@@ -4951,19 +4961,30 @@ export interface operations {
             };
         };
     };
-    refreshAllModelMetadata: {
+    refreshModelMetadata: {
         parameters: {
-            query?: {
-                /** @description Scope of refresh operation: "local" for GGUF models only */
-                scope?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Refresh request - either bulk (source='all') or single model (source='model' with identifiers) */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
         responses: {
-            /** @description Metadata refresh started in background */
+            /** @description Metadata refreshed successfully (sync mode) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelAliasResponse"];
+                };
+            };
+            /** @description Metadata refresh queued in background (bulk mode) */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -5001,6 +5022,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Model alias not found for specified repo/filename/snapshot */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {
@@ -5163,72 +5191,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    refreshSingleModelMetadata: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Model alias identifier */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Metadata refreshed successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AliasResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Alias not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Internal server error */
             500: {

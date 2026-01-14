@@ -2984,23 +2984,33 @@
         "tags": [
           "models"
         ],
-        "summary": "Refresh Metadata for All Models",
-        "description": "Triggers background metadata extraction for all local GGUF models. Requires PowerUser permissions. Returns immediately with 202 Accepted status. Metadata extraction happens asynchronously in the background.",
-        "operationId": "refreshAllModelMetadata",
-        "parameters": [
-          {
-            "name": "scope",
-            "in": "query",
-            "description": "Scope of refresh operation: \"local\" for GGUF models only",
-            "required": false,
-            "schema": {
-              "type": "string"
+        "summary": "Refresh Model Metadata",
+        "description": "Refresh metadata for models. Supports two modes via discriminated request body:\n\n- Bulk async: `{\"source\": \"all\"}` triggers background extraction for all local GGUF models (202 Accepted)\n\n- Single sync: `{\"source\": \"model\", \"repo\": \"...\", \"filename\": \"...\", \"snapshot\": \"...\"}` performs immediate extraction (200 OK)\n\nRequires PowerUser permissions.",
+        "operationId": "refreshModelMetadata",
+        "requestBody": {
+          "description": "Refresh request - either bulk (source='all') or single model (source='model' with identifiers)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
+          "200": {
+            "description": "Metadata refreshed successfully (sync mode)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAliasResponse"
+                }
+              }
+            }
+          },
           "202": {
-            "description": "Metadata refresh started in background",
+            "description": "Metadata refresh queued in background (bulk mode)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3041,6 +3051,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Model alias not found for specified repo/filename/snapshot"
           },
           "500": {
             "description": "Internal server error",
@@ -3282,89 +3295,6 @@
               "scope_user_power_user"
             ]
           },
-          {
-            "session_auth": [
-              "resource_power_user"
-            ]
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/models/{id}/refresh": {
-      "post": {
-        "tags": [
-          "models"
-        ],
-        "summary": "Refresh Metadata for Single Model",
-        "description": "Extracts and updates GGUF metadata for a specific model synchronously. Requires PowerUser permissions. Returns 200 OK with updated model data including metadata.",
-        "operationId": "refreshSingleModelMetadata",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Model alias identifier",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Metadata refreshed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AliasResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Alias not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
           {
             "session_auth": [
               "resource_power_user"
@@ -8760,6 +8690,17 @@
             "propertyNames": {
               "type": "string"
             }
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelMetadata",
+                "description": "Model metadata extracted from GGUF file (optional)"
+              }
+            ]
           }
         }
       },
@@ -9750,15 +9691,58 @@
           "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
         }
       },
-      "RefreshParams": {
-        "type": "object",
-        "description": "Query parameters for metadata refresh endpoint",
-        "properties": {
-          "scope": {
-            "type": "string",
-            "description": "Scope of refresh operation: \"local\" for GGUF models only"
+      "RefreshRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Bulk async refresh for all models - Request: {\"source\": \"all\"}",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Single sync refresh for specific model - Request: {\"source\": \"model\", \"repo\": \"...\", \"filename\": \"...\", \"snapshot\": \"...\"}",
+            "required": [
+              "repo",
+              "filename",
+              "snapshot",
+              "source"
+            ],
+            "properties": {
+              "repo": {
+                "type": "string",
+                "description": "Repository in format \"user/repo\"",
+                "example": "bartowski/Qwen2.5-3B-Instruct-GGUF"
+              },
+              "filename": {
+                "type": "string",
+                "description": "Filename of the GGUF model",
+                "example": "Qwen2.5-3B-Instruct-Q4_K_M.gguf"
+              },
+              "snapshot": {
+                "type": "string",
+                "description": "Snapshot/commit identifier",
+                "example": "8ba1c3c3ee94ba4b86ff92a749ae687dc41fce3f"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "model"
+                ]
+              }
+            }
           }
-        }
+        ],
+        "description": "Refresh request - discriminated union by source field"
       },
       "RefreshResponse": {
         "type": "object",
@@ -9779,6 +9763,14 @@
             "description": "Model alias (only for single model refresh)"
           }
         }
+      },
+      "RefreshSource": {
+        "type": "string",
+        "description": "Source type discriminator for refresh requests",
+        "enum": [
+          "all",
+          "model"
+        ]
       },
       "ResourceRole": {
         "type": "string",

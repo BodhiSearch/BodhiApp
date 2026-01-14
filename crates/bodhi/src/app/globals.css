@@ -193,3 +193,19 @@
   animation: progress-infinite 1.5s ease-in-out infinite;
   background: linear-gradient(90deg, transparent 0%, hsl(var(--primary)) 50%, transparent 100%);
 }
+
+@keyframes metadata-pulse {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: hsl(var(--primary) / 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.metadata-highlight {
+  animation: metadata-pulse 1.5s ease-in-out;
+}

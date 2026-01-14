@@ -66,7 +66,7 @@ export class ChatSettingsPage extends BasePage {
 
     // Select the model option (using visible element pattern from Phase 0)
     const modelOption = this.page.locator(this.selectors.comboboxOption(modelName));
-    const visibleOption = modelOption.locator('visible=true').first();
+    const visibleOption = modelOption.filter({ visible: true }).first();
     await expect(visibleOption).toBeVisible();
     await visibleOption.click();
 
