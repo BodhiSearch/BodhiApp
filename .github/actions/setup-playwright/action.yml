@@ -38,11 +38,11 @@ runs:
           PLAYWRIGHT_VERSION=$(npm list @playwright/test --depth=0 --json 2>/dev/null | jq -r '.dependencies["@playwright/test"].version // empty')
           if [ -z "$PLAYWRIGHT_VERSION" ] || [ "$PLAYWRIGHT_VERSION" = "null" ]; then
             # Fallback to reading from package.json
-            PLAYWRIGHT_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'] || require('./package.json').dependencies['@playwright/test']" 2>/dev/null || echo "1.48.2")
+            PLAYWRIGHT_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'] || require('./package.json').dependencies['@playwright/test']" 2>/dev/null || echo "1.57.0")
           fi
           echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> $GITHUB_ENV
         else
-          echo "PLAYWRIGHT_VERSION=1.48.2" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_VERSION=1.57.0" >> $GITHUB_ENV
         fi
 
     - name: Cache Playwright browsers
