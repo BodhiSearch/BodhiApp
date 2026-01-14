@@ -249,7 +249,7 @@ tests/data/live/huggingface/hub/
 
 ```
 tests/data/live/bodhi/
-├── aliases/phi4--mini-instruct.yaml
+├── aliases/qwen3--1.7b-instruct.yaml
 ├── logs/
 └── models.yaml
 ```
@@ -289,7 +289,7 @@ tests/data/live/bodhi/
 - Non-streaming chat completion API validation with content verification
 - Streaming chat completion testing with server-sent events parsing
 - OAuth2 authentication integration with session-based authentication
-- Model-specific testing using phi4:mini-instruct alias
+- Model-specific testing using qwen3:1.7b-instruct alias
 
 ### Library Integration Tests
 

@@ -27,7 +27,7 @@ Sophisticated environment fixtures used by downstream crates:
 
 ### Domain Object Factory Ecosystem
 Comprehensive builders enabling consistent testing across all BodhiApp layers:
-- **Repo factories**: `llama3()`, `testalias()`, `phi4_mini_instruct()` used by `HubService`, `DataService`, and route integration tests
+- **Repo factories**: `llama3()`, `testalias()` used by `HubService`, `DataService`, and route integration tests
 - **HubFile builders**: Model file representations with cache validation (`HubFileBuilder::testalias()`, `HubFileBuilder::llama3_tokenizer()`) used throughout service layer testing  
 - **Alias builders**: YAML-serializable configurations (`AliasBuilder::llama3()` with stop tokens, `AliasBuilder::testalias()`) tested across CLI, services, and route layers
 - **Error builders**: Localized error construction enabling consistent error handling tests across crates

@@ -1,5 +1,4 @@
 use crate::{merge_server_args, ContextError, LlmEndpoint};
-use async_openai::types::chat::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
 use serde_json::Value;
@@ -215,15 +214,9 @@ impl SharedContext for DefaultSharedContext {
       .path();
 
     // Apply request parameters if this is a user alias
+    // Apply directly to Value to preserve any non-standard fields (like 'name' in tool messages)
     if let Alias::User(user_alias) = &alias {
-      // For Value, we need to deserialize, update, and re-serialize
-      // This is only needed for chat completions, but we'll apply it universally
-      if let Ok(mut chat_request) =
-        serde_json::from_value::<CreateChatCompletionRequest>(request.clone())
-      {
-        user_alias.request_params.update(&mut chat_request);
-        request = serde_json::to_value(chat_request)?;
-      }
+      user_alias.request_params.apply_to_value(&mut request);
     }
 
     let input_value = request;

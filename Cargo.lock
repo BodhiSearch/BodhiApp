@@ -3132,6 +3132,7 @@ version = "0.0.44-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
+ "async-openai",
  "auth_middleware",
  "axum",
  "cookie",

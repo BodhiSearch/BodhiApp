@@ -15,8 +15,8 @@ impl Repo {
   pub const LLAMA3_Q8: &str = "Meta-Llama-3-8B-Instruct.Q8_0.gguf";
   pub const LLAMA3_TOKENIZER: &str = "meta-llama/Meta-Llama-3-8B-Instruct";
   pub const LLAMA2: &str = "TheBloke/Llama-2-7B-Chat-GGUF";
-  pub const PHI4_MINI_INSTRUCT: &str = "bartowski/microsoft_Phi-4-mini-instruct-GGUF";
-  pub const PHI4_MINI_INSTRUCT_Q4_K_M: &str = "microsoft_Phi-4-mini-instruct-Q4_K_M.gguf";
+  pub const QWEN3_1_7B_INSTRUCT: &str = "ggml-org/Qwen3-1.7B-GGUF";
+  pub const QWEN3_1_7B_Q8_0: &str = "Qwen3-1.7B-Q8_0.gguf";
   pub const LLAMA2_TOKENIZER: &str = "meta-llama/Llama-2-70b-chat-hf";
   pub const LLAMA2_FILENAME: &str = "llama-2-7b-chat.Q4_K_M.gguf";
   pub const LLAMA2_Q8: &str = "llama-2-7b-chat.Q8_0.gguf";
@@ -43,8 +43,8 @@ impl Repo {
     Repo::from_str(Self::LLAMA2).unwrap()
   }
 
-  pub fn phi4_mini_instruct() -> Repo {
-    Repo::from_str(Self::PHI4_MINI_INSTRUCT).unwrap()
+  pub fn qwen3_1_7b_instruct() -> Repo {
+    Repo::from_str(Self::QWEN3_1_7B_INSTRUCT).unwrap()
   }
 
   pub fn llama2_tokenizer() -> Repo {

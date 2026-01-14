@@ -135,7 +135,6 @@ impl Repo {
   pub const LLAMA3: &str = "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF";
   pub const LLAMA3_Q8: &str = "Meta-Llama-3-8B-Instruct.Q8_0.gguf";
   pub const LLAMA2: &str = "TheBloke/Llama-2-7B-Chat-GGUF";
-  pub const PHI4_MINI_INSTRUCT: &str = "bartowski/microsoft_Phi-4-mini-instruct-GGUF";
   pub const TINYLLAMA: &str = "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF";
   pub const TESTALIAS: &str = "MyFactory/testalias-gguf";
   pub const FAKEMODEL: &str = "FakeFactory/fakemodel-gguf";
@@ -146,10 +145,6 @@ impl Repo {
   
   pub fn testalias() -> Repo {
     Repo::from_str(Self::TESTALIAS).unwrap()
-  }
-  
-  pub fn phi4_mini_instruct() -> Repo {
-    Repo::from_str(Self::PHI4_MINI_INSTRUCT).unwrap()
   }
 }
 ```

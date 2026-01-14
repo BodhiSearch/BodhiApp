@@ -20,16 +20,20 @@ async fn server() -> LlamaServer {
     "executable path does not exist: {}",
     executable_path.display()
   );
-  let hf_cache = dirs::home_dir()
-    .unwrap()
-    .join(".cache")
-    .join("huggingface")
-    .join("hub");
+  let hf_cache = if let Ok(hf_home) = std::env::var("HF_HOME") {
+    PathBuf::from(hf_home).join("hub")
+  } else {
+    dirs::home_dir()
+      .unwrap()
+      .join(".cache")
+      .join("huggingface")
+      .join("hub")
+  };
   let model_file = HubFile::new(
     hf_cache,
-    Repo::phi4_mini_instruct(),
-    Repo::PHI4_MINI_INSTRUCT_Q4_K_M.to_string(),
-    "7ff82c2aaa4dde30121698a973765f39be5288c0".to_string(),
+    Repo::qwen3_1_7b_instruct(),
+    Repo::QWEN3_1_7B_Q8_0.to_string(),
+    "daeb8e2d528a760970442092f6bf1e55c3b659eb".to_string(),
     Some(1000),
   )
   .path();
@@ -40,8 +44,8 @@ async fn server() -> LlamaServer {
   );
   let args = LlamaServerArgsBuilder::default()
     .model(model_file)
-    .alias("phi4:mini-instruct")
-    .server_args(vec!["--verbose".to_string()])
+    .alias("qwen3:1.7b-instruct")
+    .server_args(vec!["--verbose".to_string(), "--jinja".to_string()])
     .build()
     .unwrap();
 
@@ -58,7 +62,7 @@ async fn server() -> LlamaServer {
 
 fn chat_request(stream: bool) -> Value {
   serde_json::json!({
-    "model": "phi4:mini-instruct",
+    "model": "qwen3:1.7b-instruct",
     "seed": 42,
     "stream": stream,
     "messages": [
@@ -97,7 +101,7 @@ async fn test_server_proc_chat_completions(
     expected_content,
     response
   );
-  assert_eq!("phi4:mini-instruct", response_body["model"]);
+  assert_eq!("qwen3:1.7b-instruct", response_body["model"]);
   assert_eq!("stop", response_body["choices"][0]["finish_reason"]);
 
   Ok(())

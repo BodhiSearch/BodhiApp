@@ -1,5 +1,4 @@
 use crate::BuilderError;
-use async_openai::types::chat::{CreateChatCompletionRequest, StopConfiguration};
 use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
@@ -104,33 +103,56 @@ fn validate_range<T: PartialOrd + FromStr + std::fmt::Debug + std::fmt::Display>
 }
 
 impl OAIRequestParams {
-  pub fn update(&self, request: &mut CreateChatCompletionRequest) {
-    update_if_none(&self.frequency_penalty, &mut request.frequency_penalty);
-    update_if_none(&self.max_tokens, &mut request.max_completion_tokens);
-    update_if_none(&self.presence_penalty, &mut request.presence_penalty);
-    #[allow(deprecated)]
-    update_if_none(&self.seed, &mut request.seed);
-    update_if_none(&self.temperature, &mut request.temperature);
-    update_if_none(&self.top_p, &mut request.top_p);
-    #[allow(deprecated)]
-    update_if_none(&self.user, &mut request.user);
-    if !self.stop.is_empty() && request.stop.is_none() {
-      request.stop = Some(StopConfiguration::StringArray(self.stop.clone()));
+  /// Apply request parameters directly to a JSON Value without deserializing.
+  /// This preserves any non-standard fields that may be present in the request.
+  pub fn apply_to_value(&self, request: &mut serde_json::Value) {
+    if let Some(obj) = request.as_object_mut() {
+      // Only set if not already present in request
+      if let Some(val) = &self.frequency_penalty {
+        if !obj.contains_key("frequency_penalty") {
+          obj.insert("frequency_penalty".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.max_tokens {
+        if !obj.contains_key("max_completion_tokens") && !obj.contains_key("max_tokens") {
+          obj.insert("max_completion_tokens".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.presence_penalty {
+        if !obj.contains_key("presence_penalty") {
+          obj.insert("presence_penalty".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.seed {
+        if !obj.contains_key("seed") {
+          obj.insert("seed".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.temperature {
+        if !obj.contains_key("temperature") {
+          obj.insert("temperature".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.top_p {
+        if !obj.contains_key("top_p") {
+          obj.insert("top_p".to_string(), serde_json::json!(val));
+        }
+      }
+      if let Some(val) = &self.user {
+        if !obj.contains_key("user") {
+          obj.insert("user".to_string(), serde_json::json!(val));
+        }
+      }
+      if !self.stop.is_empty() && !obj.contains_key("stop") {
+        obj.insert("stop".to_string(), serde_json::json!(self.stop));
+      }
     }
-  }
-}
-
-fn update_if_none<T: Clone>(self_param: &Option<T>, request_param: &mut Option<T>) {
-  if self_param.is_some() && request_param.is_none() {
-    request_param.clone_from(self_param);
   }
 }
 
 #[cfg(test)]
 mod tests {
-  #![allow(deprecated)]
   use super::*;
-  use async_openai::types::chat::CreateChatCompletionRequestArgs;
 
   #[test]
   fn test_validate_range_neg_to_pos_2() {
@@ -173,8 +195,8 @@ mod tests {
   }
 
   #[test]
-  fn test_oai_request_params_update() {
-    let mut request = CreateChatCompletionRequest::default();
+  fn test_oai_request_params_apply_to_value() {
+    let mut request = serde_json::json!({});
     let params = OAIRequestParams {
       frequency_penalty: Some(0.5),
       max_tokens: Some(100),
@@ -186,28 +208,57 @@ mod tests {
       user: Some("test_user".to_string()),
     };
 
-    params.update(&mut request);
+    params.apply_to_value(&mut request);
 
-    assert_eq!(Some(0.5), request.frequency_penalty);
-    assert_eq!(Some(100), request.max_completion_tokens);
-    assert_eq!(Some(0.2), request.presence_penalty);
-    assert_eq!(Some(42), request.seed);
     assert_eq!(
-      Some(StopConfiguration::StringArray(vec!["END".to_string()])),
-      request.stop
+      Some(0.5),
+      request
+        .get("frequency_penalty")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
     );
-    assert_eq!(Some(0.7), request.temperature);
-    assert_eq!(Some(0.9), request.top_p);
-    assert_eq!(Some("test_user".to_string()), request.user);
+    assert_eq!(
+      Some(100),
+      request
+        .get("max_completion_tokens")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+    );
+    assert_eq!(
+      Some(0.2),
+      request
+        .get("presence_penalty")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(Some(42), request.get("seed").and_then(|v| v.as_i64()));
+    assert_eq!(Some(&serde_json::json!(["END"])), request.get("stop"));
+    assert_eq!(
+      Some(0.7),
+      request
+        .get("temperature")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(
+      Some(0.9),
+      request
+        .get("top_p")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(
+      Some("test_user"),
+      request.get("user").and_then(|v| v.as_str())
+    );
   }
 
   #[test]
-  fn test_oai_request_params_update_partial() {
-    let mut request = CreateChatCompletionRequestArgs::default()
-      .temperature(0.5)
-      .max_completion_tokens(50_u32)
-      .build()
-      .unwrap();
+  fn test_oai_request_params_apply_to_value_partial() {
+    let mut request = serde_json::json!({
+      "temperature": 0.5,
+      "max_completion_tokens": 50
+    });
 
     let params = OAIRequestParams {
       frequency_penalty: Some(0.5),
@@ -220,16 +271,40 @@ mod tests {
       user: None,
     };
 
-    params.update(&mut request);
+    params.apply_to_value(&mut request);
 
-    assert_eq!(Some(0.5), request.frequency_penalty);
-    assert_eq!(Some(50), request.max_completion_tokens);
-    assert_eq!(None, request.presence_penalty);
-    assert_eq!(None, request.seed);
-    assert_eq!(None, request.stop);
-    assert_eq!(Some(0.5), request.temperature);
-    assert_eq!(Some(0.9), request.top_p);
-    assert_eq!(None, request.user);
+    assert_eq!(
+      Some(0.5),
+      request
+        .get("frequency_penalty")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(
+      Some(50),
+      request
+        .get("max_completion_tokens")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+    );
+    assert_eq!(None, request.get("presence_penalty"));
+    assert_eq!(None, request.get("seed"));
+    assert_eq!(None, request.get("stop"));
+    assert_eq!(
+      Some(0.5),
+      request
+        .get("temperature")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(
+      Some(0.9),
+      request
+        .get("top_p")
+        .and_then(|v| v.as_f64())
+        .map(|v| v as f32)
+    );
+    assert_eq!(None, request.get("user"));
   }
 
   #[test]

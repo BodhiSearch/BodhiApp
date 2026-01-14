@@ -1,0 +1,9 @@
+alias: qwen3:1.7b-instruct
+source: user
+repo: ggml-org/Qwen3-1.7B-GGUF
+filename: Qwen3-1.7B-Q8_0.gguf
+snapshot: daeb8e2d528a760970442092f6bf1e55c3b659eb
+request_params:
+  reasoning_effort: none
+context_params:
+  - '--jinja'

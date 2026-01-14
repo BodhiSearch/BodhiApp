@@ -7,7 +7,7 @@ use async_openai::types::{
 };
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};
+use objs::{ApiError, AppError, BadRequestError, ErrorType, API_TAG_OPENAI};
 use server_core::{LlmEndpoint, RouterState};
 use std::sync::Arc;
 
@@ -21,6 +21,38 @@ pub enum HttpError {
   #[error("serialization_error")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Serialization(#[from] serde_json::Error),
+}
+
+/// Validates basic structure of chat completion request
+fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), BadRequestError> {
+  // Validate model field exists and is a string
+  if request.get("model").and_then(|v| v.as_str()).is_none() {
+    return Err(BadRequestError::new(
+      "'model' field is required and must be a string".to_string(),
+    ));
+  }
+
+  // Validate messages field exists and is an array
+  if !request
+    .get("messages")
+    .map(|v| v.is_array())
+    .unwrap_or(false)
+  {
+    return Err(BadRequestError::new(
+      "'messages' field is required and must be an array".to_string(),
+    ));
+  }
+
+  // Validate stream field is boolean if present
+  if let Some(stream) = request.get("stream") {
+    if !stream.is_boolean() {
+      return Err(BadRequestError::new(
+        "'stream' field must be a boolean".to_string(),
+      ));
+    }
+  }
+
+  Ok(())
 }
 
 /// Create a chat completion
@@ -102,11 +134,14 @@ pub enum HttpError {
 )]
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, ApiError>,
 ) -> Result<Response, ApiError> {
-  let request_value = serde_json::to_value(request).map_err(HttpError::Serialization)?;
+  // Validate basic request structure
+  validate_chat_completion_request(&request)?;
+
+  // Forward request directly as Value (no re-serialization needed)
   let response = state
-    .forward_request(LlmEndpoint::ChatCompletions, request_value)
+    .forward_request(LlmEndpoint::ChatCompletions, request)
     .await?;
   let mut response_builder = Response::builder().status(response.status());
   if let Some(headers) = response_builder.headers_mut() {

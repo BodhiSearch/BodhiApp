@@ -136,7 +136,7 @@ Test-specific configuration with aliases and model definitions:
 ```rust
 // Bodhi configuration structure (see tests/data/live/bodhi/)
 tests/data/live/bodhi/
-├── aliases/phi4--mini-instruct.yaml
+├── aliases/qwen3--1.7b-instruct.yaml
 ├── logs/
 └── models.yaml
 
@@ -182,7 +182,7 @@ async fn test_live_chat_completions_non_streamed(
     .header("Content-Type", "application/json")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "phi4:mini-instruct",
+      "model": "qwen3:1.7b-instruct",
       "seed": 42,
       "messages": [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}]
     }))
@@ -207,7 +207,7 @@ async fn test_live_chat_completions_stream(
   
   let response = client.post(&chat_endpoint)
     .json(&serde_json::json!({
-      "model": "phi4:mini-instruct", "seed": 42, "stream": true,
+      "model": "qwen3:1.7b-instruct", "seed": 42, "stream": true,
       "messages": [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}]
     }))
     .send().await?;

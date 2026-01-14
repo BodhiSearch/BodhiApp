@@ -16,7 +16,7 @@ runs:
       id: cache-hf
       with:
         path: ${{ inputs.hf-home }}
-        key: hf-cache-phi4-mini-instruct
+        key: hf-cache-test-models-v0
         enableCrossOsArchive: true
 
     - name: Check and Download model
@@ -25,4 +25,4 @@ runs:
       env:
         HF_HOME: ${{ inputs.hf-home }}
       run: |
-        hf download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
+        hf download --revision daeb8e2d528a760970442092f6bf1e55c3b659eb ggml-org/Qwen3-1.7B-GGUF Qwen3-1.7B-Q8_0.gguf
