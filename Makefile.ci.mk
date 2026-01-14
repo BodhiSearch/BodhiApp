@@ -15,8 +15,9 @@ ci.coverage: ## Run coverage in CI environment
 	$(MAKE) test.coverage
 
 ci.build-only: ## Build without running tests for faster CI
+	cargo build -p async-openai; \
 	cargo build -p llama_server_proc; \
-	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai") | .name' | sed 's/^/-p /'); \
 	cargo build --all-features $$PACKAGES
 
 ci.build: ## Build the Tauri application
