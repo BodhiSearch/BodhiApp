@@ -3,10 +3,11 @@ use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationServic
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
-  DefaultAppService, DefaultSecretService, HfHubService, HubService, InMemoryQueue,
-  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService,
-  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
-  SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
+  DefaultAppService, DefaultExaService, DefaultSecretService, DefaultToolService, ExaService,
+  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
+  LocalConcurrencyService, LocalDataService, MokaCacheService, QueueConsumer, QueueProducer,
+  RefreshWorker, SecretService, SecretServiceExt, SessionService, SettingService,
+  SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -211,6 +212,7 @@ impl AppServiceBuilder {
     let auth_service = self.get_or_build_auth_service();
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
+    let tool_service = self.get_or_build_tool_service(db_service.clone(), time_service.clone());
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -245,6 +247,7 @@ impl AppServiceBuilder {
       ai_api_service,
       concurrency_service,
       queue_producer,
+      tool_service,
     );
     Ok(app_service)
   }
@@ -418,6 +421,23 @@ impl AppServiceBuilder {
   /// Gets or builds the concurrency service.
   fn get_or_build_concurrency_service(&mut self) -> Arc<dyn services::ConcurrencyService> {
     Arc::new(LocalConcurrencyService::new())
+  }
+
+  /// Gets or builds the tool service.
+  fn get_or_build_tool_service(
+    &mut self,
+    db_service: Arc<dyn DbService>,
+    time_service: Arc<dyn TimeService>,
+  ) -> Arc<dyn ToolService> {
+    // Create Exa service
+    let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
+
+    // Create tool service with dependencies
+    Arc::new(DefaultToolService::new(
+      db_service,
+      exa_service,
+      time_service,
+    ))
   }
 }
 

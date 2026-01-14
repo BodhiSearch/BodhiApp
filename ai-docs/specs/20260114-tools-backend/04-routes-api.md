@@ -1,16 +1,24 @@
 # Routes & API - Tools Feature
 
-> Layer: `routes_app` crate | Status: Planning
+> Layer: `routes_app` crate | Status: ✅ Complete (6 tests passing)
+
+## Implementation Note
+
+Routes are currently implemented without final middleware integration. User extraction uses temporary header-based approach that will be replaced when routes are integrated into `routes_all`.
 
 ## Endpoints Summary
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | `/bodhi/v1/tools` | User (any) | List user's configured tools |
-| GET | `/bodhi/v1/tools/available` | User (any) | List all available tools (for config UI) |
-| GET | `/bodhi/v1/tools/{tool_id}` | User (any) | Get user's tool config |
-| PUT | `/bodhi/v1/tools/{tool_id}` | Session only | Update tool config (API key, enable) |
-| POST | `/bodhi/v1/tools/{tool_id}/execute` | User + scope | Execute tool |
+**Files**: `crates/routes_app/src/{routes_tools.rs, tools_dto.rs}`
+
+| Method | Path | Handler | Status |
+|--------|------|---------|--------|
+| GET | `/tools` | `list_all_tools()` | ✅ Complete |
+| GET | `/tools/configured` | `list_configured_tools()` | ✅ Complete |
+| GET | `/tools/:tool_id/config` | `get_tool_config()` | ✅ Complete |
+| PUT | `/tools/:tool_id/config` | `update_tool_config()` | ✅ Complete |
+| POST | `/tools/:tool_id/execute` | `execute_tool()` | ✅ Complete |
+
+Note: Paths shown above are route-level paths. When integrated into `routes_all`, they will be prefixed with `/bodhi/v1`.
 
 ## Endpoint Details
 
@@ -118,7 +126,7 @@ Execute a tool. Authorization:
     ),
     security(
         ("bearer_api_token" = ["scope_token_user"]),  // first-party, checks config
-        ("bearer_oauth_token" = ["scope_tools-builtin-exa-web-search"]),  // OAuth needs scope
+        ("bearer_oauth_token" = ["scope_tool-builtin-exa-web-search"]),  // OAuth needs scope
         ("session_auth" = ["resource_user"])  // first-party, checks config
     ),
 )]

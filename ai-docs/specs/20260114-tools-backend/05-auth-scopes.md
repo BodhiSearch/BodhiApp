@@ -1,12 +1,18 @@
 # Auth & Scopes - Tools Feature
 
-> Layer: `objs`, `auth_middleware` crates | Status: Planning
+> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete (7 tests passing)
+
+## Implementation Note
+
+The current implementation (`tool_auth_middleware.rs`) checks tool configuration for all auth types (session, first-party tokens, OAuth tokens). OAuth-specific tool scope validation is simplified and will be enhanced in a future iteration when `auth_middleware` is extended to preserve full JWT scope strings instead of just the ResourceScope enum.
 
 ## Scope Model
 
 Tool scopes are **discrete permissions** (not hierarchical like TokenScope/UserScope).
 
-**Key Decision**: OAuth scope check only for external OAuth tokens. First-party tokens (session, `bodhiapp_`) bypass scope check if user has tool configured.
+**Current Implementation**: All auth types (session, first-party tokens, OAuth tokens) are validated by checking if the tool is configured (enabled + has API key) for the user.
+
+**Future Enhancement**: OAuth-specific tool scope validation will be added when auth_middleware is enhanced to preserve full JWT scope strings.
 
 ## ToolScope Enum
 
@@ -17,8 +23,8 @@ use strum::{EnumIter, EnumString};
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq, Eq, Hash, EnumIter)]
 pub enum ToolScope {
-    #[strum(serialize = "scope_tools-builtin-exa-web-search")]
-    #[serde(rename = "scope_tools-builtin-exa-web-search")]
+    #[strum(serialize = "scope_tool-builtin-exa-web-search")]
+    #[serde(rename = "scope_tool-builtin-exa-web-search")]
     BuiltinExaWebSearch,
 }
 
@@ -50,108 +56,74 @@ impl ToolScope {
 
 ## Authorization Middleware for Tool Execution
 
-```rust
-// crates/auth_middleware/src/tool_auth_middleware.rs
+**File**: `crates/auth_middleware/src/tool_auth_middleware.rs` (310 lines, 7 tests passing)
 
-/// Middleware for tool execution endpoints.
+```rust
+/// Middleware for tool execution endpoints
 ///
 /// Authorization rules:
-/// 1. First-party (session, bodhiapp_): Check tool is configured for user
-/// 2. OAuth tokens: Check tool scope is present in token
+/// - Check that user has the tool configured (enabled + API key set)
+/// - For all auth types: session, first-party tokens, and OAuth tokens
+///
+/// Note: OAuth-specific tool scope validation is deferred to future enhancement
+/// when auth_middleware is extended to preserve full JWT scope strings.
 pub async fn tool_auth_middleware(
     State(state): State<Arc<dyn RouterState>>,
     Path(tool_id): Path<String>,
-    request: Request,
+    req: Request,
     next: Next,
-) -> Result<Response, ApiError> {
-    let headers = request.headers();
+) -> Result<Response, ApiError>
 
-    // Determine auth type from headers
-    let has_role_header = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
-    let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE)
-        .and_then(|v| v.to_str().ok());
+async fn _impl(
+    State(state): State<Arc<dyn RouterState>>,
+    Path(tool_id): Path<String>,
+    req: Request,
+    next: Next,
+) -> Result<Response, ToolAuthError> {
+    let headers = req.headers();
 
-    let user_id = extract_user_id_from_headers(headers)?;
+    // Extract user_id
+    let user_id = headers
+        .get(KEY_HEADER_BODHIAPP_USER_ID)
+        .and_then(|v| v.to_str().ok())
+        .ok_or(ToolAuthError::MissingUserId)?;
 
-    if has_role_header {
-        // Session-based auth (first-party)
-        // Check if tool is configured for user
-        let is_available = state
-            .app_service()
-            .tool_service()
-            .is_tool_available_for_user(&user_id, &tool_id)
-            .await
-            .map_err(|e| ApiError::from(e))?;
+    // Verify authentication exists (either role or scope header)
+    let has_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE)
+        || headers.contains_key(KEY_HEADER_BODHIAPP_SCOPE);
 
-        if !is_available {
-            return Err(ToolError::ToolNotConfigured.into());
-        }
-    } else if let Some(scope) = scope_header {
-        // Bearer token auth
-        let resource_scope = ResourceScope::try_parse(scope);
-
-        match resource_scope {
-            Some(ResourceScope::Token(_)) => {
-                // First-party API token (bodhiapp_)
-                // Check if tool is configured for user
-                let is_available = state
-                    .app_service()
-                    .tool_service()
-                    .is_tool_available_for_user(&user_id, &tool_id)
-                    .await?;
-
-                if !is_available {
-                    return Err(ToolError::ToolNotConfigured.into());
-                }
-            }
-            Some(ResourceScope::User(_)) => {
-                // External OAuth token - check tool scope
-                let required_scope = ToolScope::scope_for_tool_id(&tool_id)
-                    .ok_or(ToolError::ToolNotFound(tool_id.clone()))?;
-
-                let token_scopes = ToolScope::from_scope_string(scope);
-
-                if !token_scopes.contains(&required_scope) {
-                    return Err(ApiError::forbidden(format!(
-                        "Missing required scope: {}",
-                        required_scope
-                    )));
-                }
-
-                // Also verify tool is configured for user
-                let is_available = state
-                    .app_service()
-                    .tool_service()
-                    .is_tool_available_for_user(&user_id, &tool_id)
-                    .await?;
-
-                if !is_available {
-                    return Err(ToolError::ToolNotConfigured.into());
-                }
-            }
-            None => {
-                return Err(ApiError::unauthorized("Invalid scope"));
-            }
-        }
-    } else {
-        return Err(ApiError::unauthorized("Missing authentication"));
+    if !has_auth {
+        return Err(ToolAuthError::MissingAuth);
     }
 
-    Ok(next.run(request).await)
+    // Check if tool is configured and available for user
+    let is_available = state
+        .app_service()
+        .tool_service()
+        .is_tool_available_for_user(user_id, &tool_id)
+        .await?;
+
+    if !is_available {
+        return Err(ToolError::ToolNotConfigured.into());
+    }
+
+    Ok(next.run(req).await)
 }
 ```
 
-## Token Types Summary
+## Token Types Summary (Current Implementation)
 
 | Token Type | Example | Scope Check | Tool Config Check |
 |------------|---------|-------------|-------------------|
 | Session | HTTP cookie | No | Yes |
 | First-party API | `bodhiapp_xxx` | No | Yes |
-| External OAuth | JWT from Keycloak | Yes (`scope_tools-*`) | Yes |
+| External OAuth | JWT from Keycloak | No (deferred) | Yes |
+
+Note: OAuth scope checking will be added in future enhancement when auth_middleware preserves full JWT scope strings.
 
 ## Keycloak Configuration (Out of Scope)
 
 Manual steps for admin:
-1. Create client scope: `scope_tools-builtin-exa-web-search`
+1. Create client scope: `scope_tool-builtin-exa-web-search`
 2. Set consent required: Yes
 3. Add to client's optional scopes

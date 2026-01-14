@@ -1,6 +1,6 @@
 # Tools Backend Implementation - Overview
 
-> Status: Planning | Created: 2026-01-14
+> Status: Backend Complete (Phases 1-7) | Frontend Pending (Phases 8-9) | Updated: 2026-01-14
 
 ## Goal
 
@@ -12,7 +12,7 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 - Built-in Exa web search tool (`builtin-exa-web-search`)
 - Tool configuration UI at `/ui/tools` and `/ui/tools/builtin-exa-web-search`
 - API endpoints: `GET /bodhi/v1/tools`, `POST /bodhi/v1/tools/{tool_id}/execute`
-- OAuth scope: `scope_tools-builtin-exa-web-search` for third-party app authorization
+- OAuth scope: `scope_tool-builtin-exa-web-search` for third-party app authorization
 - Per-user encrypted API key storage for Exa
 
 ### Future Phases
@@ -42,15 +42,27 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 3. Backend validates (OAuth scope OR first-party + configured), executes tool, returns result
 4. Frontend sends tool results back to LLM
 
-## Key Files (to be created/modified)
+## Implementation Status
 
-| Layer | Crate | Files |
-|-------|-------|-------|
-| Domain | `objs` | `tool_scope.rs`, `tool_definition.rs`, `tool_config.rs` |
-| Database | `services` | `migrations/0007_tools_config.up.sql`, `db/tool_service.rs` |
-| Service | `services` | `tool_service.rs`, `exa_service.rs` |
-| Routes | `routes_app` | `routes_tools.rs`, `tools_dto.rs` |
-| Auth | `auth_middleware` | Update scope validation |
+**✅ Completed (Phases 1-7)**:
+- 49 passing tests across all backend layers
+- ~2,000 lines of new code
+- Full backend API ready for frontend integration
+
+**📝 Pending (Phases 8-9)**:
+- Frontend UI pages (`/ui/tools`)
+- Integration and E2E tests
+
+## Key Files (created/modified)
+
+| Layer | Crate | Files | Status |
+|-------|-------|-------|--------|
+| Domain | `objs` | `tools.rs` (consolidated) | ✅ Complete |
+| Database | `services` | `migrations/0007_tools_config.{up,down}.sql`, `db/service.rs` | ✅ Complete |
+| Service | `services` | `tool_service.rs`, `exa_service.rs` | ✅ Complete |
+| Routes | `routes_app` | `routes_tools.rs`, `tools_dto.rs` | ✅ Complete |
+| Auth | `auth_middleware` | `tool_auth_middleware.rs` | ✅ Complete |
+| Frontend | `bodhi` | `/ui/tools` pages, navigation | ⏳ Pending |
 
 ## Related Documents
 

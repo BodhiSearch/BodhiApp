@@ -19,8 +19,10 @@ mod routes_models_metadata;
 mod routes_pull;
 mod routes_settings;
 mod routes_setup;
+mod routes_tools;
 mod routes_user;
 mod routes_users_list;
+mod tools_dto;
 mod utils;
 
 pub use api_dto::*;
@@ -39,8 +41,10 @@ pub use routes_models_metadata::*;
 pub use routes_pull::*;
 pub use routes_settings::*;
 pub use routes_setup::*;
+pub use routes_tools::*;
 pub use routes_user::*;
 pub use routes_users_list::*;
+pub use tools_dto::*;
 
 pub mod l10n {
   use include_dir::Dir;

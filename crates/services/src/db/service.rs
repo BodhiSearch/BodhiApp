@@ -191,7 +191,27 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_model_metadata(&self) -> Result<Vec<crate::db::ModelMetadataRow>, DbError>;
 
+  // Tool configuration management
+  async fn get_user_tool_config(
+    &self,
+    user_id: &str,
+    tool_id: &str,
+  ) -> Result<Option<crate::db::UserToolConfigRow>, DbError>;
+
+  async fn upsert_user_tool_config(
+    &self,
+    config: &crate::db::UserToolConfigRow,
+  ) -> Result<crate::db::UserToolConfigRow, DbError>;
+
+  async fn list_user_tool_configs(
+    &self,
+    user_id: &str,
+  ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError>;
+
   fn now(&self) -> DateTime<Utc>;
+
+  /// Get the encryption key for encrypting/decrypting sensitive data
+  fn encryption_key(&self) -> &[u8];
 }
 
 #[derive(Debug, Clone, new)]
@@ -1487,8 +1507,156 @@ impl DbService for SqliteDbService {
     Ok(results)
   }
 
+  // ============================================================================
+  // Tool configuration management
+  // ============================================================================
+
+  async fn get_user_tool_config(
+    &self,
+    user_id: &str,
+    tool_id: &str,
+  ) -> Result<Option<crate::db::UserToolConfigRow>, DbError> {
+    let result = sqlx::query_as::<_, (i64, String, String, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, tool_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM user_tool_configs WHERE user_id = ? AND tool_id = ?",
+    )
+    .bind(user_id)
+    .bind(tool_id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(id, user_id, tool_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)| {
+        crate::db::UserToolConfigRow {
+          id,
+          user_id,
+          tool_id,
+          enabled: enabled != 0,
+          encrypted_api_key,
+          salt,
+          nonce,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn upsert_user_tool_config(
+    &self,
+    config: &crate::db::UserToolConfigRow,
+  ) -> Result<crate::db::UserToolConfigRow, DbError> {
+    let enabled = if config.enabled { 1 } else { 0 };
+
+    // Check if config exists
+    let existing = self
+      .get_user_tool_config(&config.user_id, &config.tool_id)
+      .await?;
+
+    let id = if let Some(existing) = existing {
+      // Update existing config
+      sqlx::query(
+        r#"
+        UPDATE user_tool_configs
+        SET enabled = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+        WHERE user_id = ? AND tool_id = ?
+        "#,
+      )
+      .bind(enabled)
+      .bind(&config.encrypted_api_key)
+      .bind(&config.salt)
+      .bind(&config.nonce)
+      .bind(config.updated_at)
+      .bind(&config.user_id)
+      .bind(&config.tool_id)
+      .execute(&self.pool)
+      .await?;
+
+      existing.id
+    } else {
+      // Insert new config
+      let result = sqlx::query(
+        r#"
+        INSERT INTO user_tool_configs (user_id, tool_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+      )
+      .bind(&config.user_id)
+      .bind(&config.tool_id)
+      .bind(enabled)
+      .bind(&config.encrypted_api_key)
+      .bind(&config.salt)
+      .bind(&config.nonce)
+      .bind(config.created_at)
+      .bind(config.updated_at)
+      .execute(&self.pool)
+      .await?;
+
+      result.last_insert_rowid()
+    };
+
+    // Return the updated/inserted config
+    Ok(crate::db::UserToolConfigRow {
+      id,
+      user_id: config.user_id.clone(),
+      tool_id: config.tool_id.clone(),
+      enabled: config.enabled,
+      encrypted_api_key: config.encrypted_api_key.clone(),
+      salt: config.salt.clone(),
+      nonce: config.nonce.clone(),
+      created_at: config.created_at,
+      updated_at: config.updated_at,
+    })
+  }
+
+  async fn list_user_tool_configs(
+    &self,
+    user_id: &str,
+  ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError> {
+    let results = sqlx::query_as::<_, (i64, String, String, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, tool_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM user_tool_configs WHERE user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_all(&self.pool)
+    .await?;
+
+    Ok(
+      results
+        .into_iter()
+        .map(
+          |(
+            id,
+            user_id,
+            tool_id,
+            enabled,
+            encrypted_api_key,
+            salt,
+            nonce,
+            created_at,
+            updated_at,
+          )| {
+            crate::db::UserToolConfigRow {
+              id,
+              user_id,
+              tool_id,
+              enabled: enabled != 0,
+              encrypted_api_key,
+              salt,
+              nonce,
+              created_at,
+              updated_at,
+            }
+          },
+        )
+        .collect(),
+    )
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.time_service.utc_now()
+  }
+
+  fn encryption_key(&self) -> &[u8] {
+    &self.encryption_key
   }
 }
 
@@ -2657,6 +2825,271 @@ mod test {
     let all = service.list_model_metadata().await?;
     assert_eq!(1, all.len(), "Should have exactly one metadata row");
     assert_eq!("model", all[0].source);
+
+    Ok(())
+  }
+
+  // ============================================================================
+  // Tool configuration tests
+  // ============================================================================
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_upsert_user_tool_config_creates_new(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let now_ts = now.timestamp();
+
+    let config = crate::db::UserToolConfigRow {
+      id: 0, // Will be set by database
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some("encrypted".to_string()),
+      salt: Some("salt".to_string()),
+      nonce: Some("nonce".to_string()),
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    let result = service.upsert_user_tool_config(&config).await?;
+
+    assert!(result.id > 0);
+    assert_eq!("user123", result.user_id);
+    assert_eq!("builtin-exa-web-search", result.tool_id);
+    assert!(result.enabled);
+    assert_eq!(Some("encrypted".to_string()), result.encrypted_api_key);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_upsert_user_tool_config_updates_existing(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let now_ts = now.timestamp();
+
+    // Create initial config
+    let config = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: false,
+      encrypted_api_key: None,
+      salt: None,
+      nonce: None,
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    let created = service.upsert_user_tool_config(&config).await?;
+
+    // Update config
+    let updated_config = crate::db::UserToolConfigRow {
+      id: created.id,
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some("encrypted".to_string()),
+      salt: Some("salt".to_string()),
+      nonce: Some("nonce".to_string()),
+      created_at: now_ts,
+      updated_at: now_ts + 100,
+    };
+
+    let result = service.upsert_user_tool_config(&updated_config).await?;
+
+    assert_eq!(created.id, result.id);
+    assert!(result.enabled);
+    assert_eq!(Some("encrypted".to_string()), result.encrypted_api_key);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_get_user_tool_config_returns_config(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let now_ts = now.timestamp();
+
+    let config = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some("encrypted".to_string()),
+      salt: Some("salt".to_string()),
+      nonce: Some("nonce".to_string()),
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    service.upsert_user_tool_config(&config).await?;
+
+    let result = service
+      .get_user_tool_config("user123", "builtin-exa-web-search")
+      .await?;
+
+    assert!(result.is_some());
+    let result = result.unwrap();
+    assert_eq!("user123", result.user_id);
+    assert_eq!("builtin-exa-web-search", result.tool_id);
+    assert!(result.enabled);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_get_user_tool_config_returns_none_for_nonexistent(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let result = service
+      .get_user_tool_config("user123", "nonexistent-tool")
+      .await?;
+
+    assert!(result.is_none());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_user_tool_configs_returns_all_for_user(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let now_ts = now.timestamp();
+
+    // Create configs for user123
+    let config1 = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some("encrypted1".to_string()),
+      salt: Some("salt1".to_string()),
+      nonce: Some("nonce1".to_string()),
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    let config2 = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user123".to_string(),
+      tool_id: "another-tool".to_string(),
+      enabled: false,
+      encrypted_api_key: None,
+      salt: None,
+      nonce: None,
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    // Create config for different user
+    let config3 = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user456".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some("encrypted3".to_string()),
+      salt: Some("salt3".to_string()),
+      nonce: Some("nonce3".to_string()),
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    service.upsert_user_tool_config(&config1).await?;
+    service.upsert_user_tool_config(&config2).await?;
+    service.upsert_user_tool_config(&config3).await?;
+
+    let results = service.list_user_tool_configs("user123").await?;
+
+    assert_eq!(2, results.len());
+    assert!(results.iter().all(|r| r.user_id == "user123"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_user_tool_configs_returns_empty_for_user_with_no_configs(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let results = service.list_user_tool_configs("user123").await?;
+
+    assert!(results.is_empty());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_user_tool_config_encryption_roundtrip(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let now_ts = now.timestamp();
+
+    // Use encryption functions directly (same as api_model_aliases pattern)
+    let api_key = "sk-test1234567890";
+    let (encrypted, salt, nonce) =
+      crate::db::encryption::encrypt_api_key(&service.encryption_key, api_key)?;
+
+    let config = crate::db::UserToolConfigRow {
+      id: 0,
+      user_id: "user123".to_string(),
+      tool_id: "builtin-exa-web-search".to_string(),
+      enabled: true,
+      encrypted_api_key: Some(encrypted.clone()),
+      salt: Some(salt.clone()),
+      nonce: Some(nonce.clone()),
+      created_at: now_ts,
+      updated_at: now_ts,
+    };
+
+    service.upsert_user_tool_config(&config).await?;
+
+    let retrieved = service
+      .get_user_tool_config("user123", "builtin-exa-web-search")
+      .await?
+      .unwrap();
+
+    // Decrypt and verify
+    let decrypted = crate::db::encryption::decrypt_api_key(
+      &service.encryption_key,
+      &retrieved.encrypted_api_key.unwrap(),
+      &retrieved.salt.unwrap(),
+      &retrieved.nonce.unwrap(),
+    )?;
+
+    assert_eq!(api_key, decrypted);
 
     Ok(())
   }

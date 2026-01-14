@@ -1,6 +1,6 @@
 # Service Layer - Tools Feature
 
-> Layer: `services` crate | Status: Planning
+> Layer: `services` crate | Status: ✅ Complete (13 tests passing: 6 ExaService + 7 ToolService)
 
 ## ToolService Trait
 

@@ -1,7 +1,7 @@
 use crate::{
   db::{DbService, TimeService},
   AiApiService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
-  QueueProducer, SecretService, SessionService, SettingService,
+  QueueProducer, SecretService, SessionService, SettingService, ToolService,
 };
 use objs::LocalizationService;
 use std::sync::Arc;
@@ -34,6 +34,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer>;
 
+  fn tool_service(&self) -> Arc<dyn ToolService>;
+
   fn queue_status(&self) -> String {
     self.queue_producer().queue_status()
   }
@@ -55,6 +57,7 @@ pub struct DefaultAppService {
   ai_api_service: Arc<dyn AiApiService>,
   concurrency_service: Arc<dyn ConcurrencyService>,
   queue_producer: Arc<dyn QueueProducer>,
+  tool_service: Arc<dyn ToolService>,
 }
 
 impl AppService for DefaultAppService {
@@ -108,5 +111,9 @@ impl AppService for DefaultAppService {
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer> {
     self.queue_producer.clone()
+  }
+
+  fn tool_service(&self) -> Arc<dyn ToolService> {
+    self.tool_service.clone()
   }
 }

@@ -1,6 +1,6 @@
 # UI Pages - Tools Feature
 
-> Layer: `crates/bodhi` (Next.js) | Status: Planning
+> Layer: `crates/bodhi` (Next.js) | Status: ⏳ Pending
 
 ## Navigation
 
@@ -185,7 +185,7 @@ export const toolHandlers = [
           description: 'Search the web using Exa AI',
           configured: false,
           enabled: false,
-          scope_required: 'scope_tools-builtin-exa-web-search',
+          scope_required: 'scope_tool-builtin-exa-web-search',
         },
       ],
     });
@@ -196,7 +196,7 @@ export const toolHandlers = [
       tool_id: params.toolId,
       enabled: false,
       has_api_key: false,
-      scope_required: 'scope_tools-builtin-exa-web-search',
+      scope_required: 'scope_tool-builtin-exa-web-search',
     });
   }),
 
@@ -206,7 +206,7 @@ export const toolHandlers = [
       tool_id: params.toolId,
       enabled: body.enabled,
       has_api_key: !!body.api_key,
-      scope_required: 'scope_tools-builtin-exa-web-search',
+      scope_required: 'scope_tool-builtin-exa-web-search',
     });
   }),
 

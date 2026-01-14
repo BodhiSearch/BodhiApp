@@ -7,12 +7,14 @@ mod api_auth_middleware;
 mod auth_middleware;
 mod canonical_url_middleware;
 mod token_service;
+mod tool_auth_middleware;
 mod utils;
 
 pub use api_auth_middleware::api_auth_middleware;
 pub use auth_middleware::*;
 pub use canonical_url_middleware::canonical_url_middleware;
 pub use token_service::*;
+pub use tool_auth_middleware::tool_auth_middleware;
 pub use utils::*;
 
 pub mod l10n {

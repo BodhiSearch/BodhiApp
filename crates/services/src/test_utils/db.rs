@@ -28,9 +28,9 @@ pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> Tes
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
   let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
-  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key);
+  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
   db_service.migrate().await.unwrap();
-  TestDbService::new(shared_temp_dir, db_service, now)
+  TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
 }
 
 #[derive(Debug)]
@@ -58,16 +58,23 @@ pub struct TestDbService {
   inner: SqliteDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
+  pub encryption_key: Vec<u8>,
 }
 
 impl TestDbService {
-  pub fn new(_temp_dir: Arc<TempDir>, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
+  pub fn new(
+    _temp_dir: Arc<TempDir>,
+    inner: SqliteDbService,
+    now: DateTime<Utc>,
+    encryption_key: Vec<u8>,
+  ) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService {
       _temp_dir,
       inner,
       event_sender,
       now,
+      encryption_key,
     }
   }
 
@@ -377,7 +384,45 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_model_metadata"))
   }
 
+  async fn get_user_tool_config(
+    &self,
+    user_id: &str,
+    tool_id: &str,
+  ) -> Result<Option<crate::db::UserToolConfigRow>, DbError> {
+    self
+      .inner
+      .get_user_tool_config(user_id, tool_id)
+      .await
+      .tap(|_| self.notify("get_user_tool_config"))
+  }
+
+  async fn upsert_user_tool_config(
+    &self,
+    config: &crate::db::UserToolConfigRow,
+  ) -> Result<crate::db::UserToolConfigRow, DbError> {
+    self
+      .inner
+      .upsert_user_tool_config(config)
+      .await
+      .tap(|_| self.notify("upsert_user_tool_config"))
+  }
+
+  async fn list_user_tool_configs(
+    &self,
+    user_id: &str,
+  ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError> {
+    self
+      .inner
+      .list_user_tool_configs(user_id)
+      .await
+      .tap(|_| self.notify("list_user_tool_configs"))
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.now
+  }
+
+  fn encryption_key(&self) -> &[u8] {
+    &self.encryption_key
   }
 }

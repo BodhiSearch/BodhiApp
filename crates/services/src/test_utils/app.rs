@@ -7,8 +7,8 @@ use crate::{
   },
   AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, ConcurrencyService,
   DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
-  MockAuthService, MockHubService, MokaCacheService, SecretService, SessionService, SettingService,
-  SqliteSessionService,
+  MockAuthService, MockHubService, MockToolService, MokaCacheService, SecretService,
+  SessionService, SettingService, SqliteSessionService, ToolService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -69,6 +69,8 @@ pub struct AppServiceStub {
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
   #[builder(default = "self.default_queue_producer()")]
   pub queue_producer: Option<Arc<dyn QueueProducer>>,
+  #[builder(default = "self.default_tool_service()")]
+  pub tool_service: Option<Arc<dyn ToolService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -102,6 +104,10 @@ impl AppServiceStubBuilder {
 
   fn default_queue_producer(&self) -> Option<Arc<dyn QueueProducer>> {
     Some(Arc::new(MockQueueProducer::default()))
+  }
+
+  fn default_tool_service(&self) -> Option<Arc<dyn ToolService>> {
+    Some(Arc::new(MockToolService::default()))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -226,6 +232,11 @@ impl AppServiceStubBuilder {
     self.secret_service = Some(Some(Arc::new(secret_service)));
     self
   }
+
+  pub fn with_tool_service(&mut self, tool_service: Arc<dyn ToolService>) -> &mut Self {
+    self.tool_service = Some(Some(tool_service));
+    self
+  }
 }
 
 impl AppServiceStub {
@@ -298,5 +309,9 @@ impl AppService for AppServiceStub {
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer> {
     self.queue_producer.clone().unwrap()
+  }
+
+  fn tool_service(&self) -> Arc<dyn ToolService> {
+    self.tool_service.clone().unwrap()
   }
 }

@@ -179,3 +179,20 @@ impl From<ModelMetadataRow> for objs::ModelMetadata {
     }
   }
 }
+
+// ============================================================================
+// UserToolConfigRow - Database row for user tool configuration
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UserToolConfigRow {
+  pub id: i64,
+  pub user_id: String,
+  pub tool_id: String,
+  pub enabled: bool,
+  pub encrypted_api_key: Option<String>,
+  pub salt: Option<String>,
+  pub nonce: Option<String>,
+  pub created_at: i64,
+  pub updated_at: i64,
+}

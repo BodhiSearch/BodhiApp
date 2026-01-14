@@ -1,8 +1,10 @@
 # Database Schema - Tools Feature
 
-> Layer: `services` crate migrations | Status: Planning
+> Layer: `services` crate migrations | Status: ✅ Complete (7 tests passing)
 
 ## Migration: 0007_tools_config
+
+**Files**: `crates/services/migrations/0007_tools_config.{up,down}.sql`
 
 ### Up Migration
 

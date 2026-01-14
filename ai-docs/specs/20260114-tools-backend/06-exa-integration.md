@@ -1,6 +1,8 @@
 # Exa API Integration
 
-> Layer: `services` crate | Status: Planning
+> Layer: `services` crate | Status: ✅ Complete (6 tests passing)
+
+**File**: `crates/services/src/exa_service.rs` (331 lines)
 
 ## Exa Search API
 
