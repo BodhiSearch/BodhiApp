@@ -1,27 +1,37 @@
 use crate::tools_dto::{
-  ExecuteToolRequest, GetToolConfigResponse, ListToolsResponse, UpdateToolConfigRequest,
+  AppToolConfigResponse, EnhancedToolConfigResponse, ExecuteToolRequest, ListToolsResponse,
+  ToolListItem, UpdateToolConfigRequest, UserToolConfigSummary,
 };
+use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
 use axum::{
   extract::{Path, State},
   http::HeaderMap,
-  routing::{get, post, put},
+  routing::{delete, get, post, put},
   Json, Router,
 };
 use objs::{ApiError, ToolExecutionResponse};
 use server_core::RouterState;
 use std::sync::Arc;
 
-// Temporary helper until Phase 7 integrates proper auth middleware
-// In Phase 7, this will be replaced with proper Claims extraction
+// Extract user_id from headers (set by auth middleware)
 fn extract_user_id_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
-  // This is a placeholder - Phase 7 will add proper middleware that extracts Claims
-  // For now, routes will compile but require auth middleware to be functional
   headers
-    .get("x-user-id")
+    .get(KEY_HEADER_BODHIAPP_USER_ID)
     .and_then(|v| v.to_str().ok())
     .map(|s| s.to_string())
     .ok_or_else(|| {
       objs::BadRequestError::new("User ID not found in request headers".to_string()).into()
+    })
+}
+
+// Extract access token from headers (for admin operations)
+fn extract_token_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
+  headers
+    .get(KEY_HEADER_BODHIAPP_TOKEN)
+    .and_then(|v| v.to_str().ok())
+    .map(|s| s.to_string())
+    .ok_or_else(|| {
+      objs::BadRequestError::new("Access token not found in request headers".to_string()).into()
     })
 }
 
@@ -36,6 +46,9 @@ pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
     .route("/tools/:tool_id/config", get(get_tool_config))
     .route("/tools/:tool_id/config", put(update_tool_config))
     .route("/tools/:tool_id/execute", post(execute_tool))
+    // Admin routes for app-level tool configuration
+    .route("/tools/:tool_id/app-config", put(enable_app_tool))
+    .route("/tools/:tool_id/app-config", delete(disable_app_tool))
     .with_state(state)
 }
 
@@ -43,25 +56,60 @@ pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
 // Handlers
 // ============================================================================
 
-/// List all available tool definitions (for UI)
+/// List all available tool definitions with app-enabled status (for UI)
 #[utoipa::path(
   get,
   path = "/tools",
   tag = "tools",
   responses(
-    (status = 200, description = "List of all available tools", body = ListToolsResponse),
+    (status = 200, description = "List of all available tools with status", body = ListToolsResponse),
   ),
   security(("bearer" = []))
 )]
 async fn list_all_tools(
   State(state): State<Arc<dyn RouterState>>,
+  headers: HeaderMap,
 ) -> Result<Json<ListToolsResponse>, ApiError> {
-  let tools = state
-    .app_service()
-    .tool_service()
-    .list_all_tool_definitions();
+  let tool_service = state.app_service().tool_service();
+  let tools = tool_service.list_all_tool_definitions();
 
-  Ok(Json(ListToolsResponse { tools }))
+  // Get user_id if available (for user config summary)
+  let user_id = extract_user_id_from_headers(&headers).ok();
+
+  // Build enhanced tool list with app-enabled status
+  let mut items = Vec::new();
+  for tool in tools {
+    let tool_id = &tool.function.name;
+
+    // Get app-level enabled status
+    let app_enabled = tool_service
+      .is_tool_enabled_for_app(tool_id)
+      .await
+      .unwrap_or(false);
+
+    // Get user config summary if user_id is available
+    let user_config = if let Some(ref uid) = user_id {
+      tool_service
+        .get_user_tool_config(uid, tool_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|c| UserToolConfigSummary {
+          enabled: c.enabled,
+          has_api_key: true, // If we got a config, assume API key was validated
+        })
+    } else {
+      None
+    };
+
+    items.push(ToolListItem {
+      definition: tool,
+      app_enabled,
+      user_config,
+    });
+  }
+
+  Ok(Json(ListToolsResponse { tools: items }))
 }
 
 /// List configured and enabled tools for current user
@@ -79,16 +127,34 @@ async fn list_configured_tools(
   headers: HeaderMap,
 ) -> Result<Json<ListToolsResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
-  let tools = state
-    .app_service()
-    .tool_service()
-    .list_tools_for_user(&user_id)
-    .await?;
+  let tool_service = state.app_service().tool_service();
+  let tools = tool_service.list_tools_for_user(&user_id).await?;
 
-  Ok(Json(ListToolsResponse { tools }))
+  // Build enhanced tool list - these are already configured tools
+  let mut items = Vec::new();
+  for tool in tools {
+    let tool_id = &tool.function.name;
+
+    // Get app-level enabled status
+    let app_enabled = tool_service
+      .is_tool_enabled_for_app(tool_id)
+      .await
+      .unwrap_or(false);
+
+    items.push(ToolListItem {
+      definition: tool,
+      app_enabled,
+      user_config: Some(UserToolConfigSummary {
+        enabled: true,
+        has_api_key: true,
+      }),
+    });
+  }
+
+  Ok(Json(ListToolsResponse { tools: items }))
 }
 
-/// Get user's configuration for a specific tool
+/// Get user's configuration for a specific tool (with app-level status)
 #[utoipa::path(
   get,
   path = "/tools/{tool_id}/config",
@@ -97,7 +163,7 @@ async fn list_configured_tools(
     ("tool_id" = String, Path, description = "Tool identifier")
   ),
   responses(
-    (status = 200, description = "Tool configuration", body = GetToolConfigResponse),
+    (status = 200, description = "Tool configuration with app status", body = EnhancedToolConfigResponse),
     (status = 404, description = "Tool not found"),
   ),
   security(("bearer" = []))
@@ -106,11 +172,17 @@ async fn get_tool_config(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
-) -> Result<Json<GetToolConfigResponse>, ApiError> {
+) -> Result<Json<EnhancedToolConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
-  let config = state
-    .app_service()
-    .tool_service()
+  let tool_service = state.app_service().tool_service();
+
+  // Get app-level enabled status
+  let app_enabled = tool_service
+    .is_tool_enabled_for_app(&tool_id)
+    .await
+    .unwrap_or(false);
+
+  let config = tool_service
     .get_user_tool_config(&user_id, &tool_id)
     .await?;
 
@@ -120,7 +192,7 @@ async fn get_tool_config(
       // Return default config if not found
       let now = chrono::Utc::now();
       objs::UserToolConfig {
-        tool_id,
+        tool_id: tool_id.clone(),
         enabled: false,
         created_at: now,
         updated_at: now,
@@ -128,7 +200,11 @@ async fn get_tool_config(
     }
   };
 
-  Ok(Json(GetToolConfigResponse { config }))
+  Ok(Json(EnhancedToolConfigResponse {
+    tool_id,
+    app_enabled,
+    config,
+  }))
 }
 
 /// Update user's tool configuration
@@ -141,7 +217,7 @@ async fn get_tool_config(
   ),
   request_body = UpdateToolConfigRequest,
   responses(
-    (status = 200, description = "Updated tool configuration", body = GetToolConfigResponse),
+    (status = 200, description = "Updated tool configuration", body = EnhancedToolConfigResponse),
     (status = 404, description = "Tool not found"),
   ),
   security(("bearer" = []))
@@ -151,15 +227,25 @@ async fn update_tool_config(
   Path(tool_id): Path<String>,
   headers: HeaderMap,
   Json(request): Json<UpdateToolConfigRequest>,
-) -> Result<Json<GetToolConfigResponse>, ApiError> {
+) -> Result<Json<EnhancedToolConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
-  let config = state
-    .app_service()
-    .tool_service()
+  let tool_service = state.app_service().tool_service();
+
+  // Get app-level enabled status
+  let app_enabled = tool_service
+    .is_tool_enabled_for_app(&tool_id)
+    .await
+    .unwrap_or(false);
+
+  let config = tool_service
     .update_user_tool_config(&user_id, &tool_id, request.enabled, request.api_key)
     .await?;
 
-  Ok(Json(GetToolConfigResponse { config }))
+  Ok(Json(EnhancedToolConfigResponse {
+    tool_id,
+    app_enabled,
+    config,
+  }))
 }
 
 /// Execute a tool for the user
@@ -192,6 +278,74 @@ async fn execute_tool(
     .await?;
 
   Ok(Json(response))
+}
+
+// ============================================================================
+// Admin Handlers (App-level tool configuration)
+// ============================================================================
+
+/// Enable a tool for this app instance (admin only)
+#[utoipa::path(
+  put,
+  path = "/tools/{tool_id}/app-config",
+  tag = "tools",
+  params(
+    ("tool_id" = String, Path, description = "Tool identifier")
+  ),
+  responses(
+    (status = 200, description = "Tool enabled for app instance", body = AppToolConfigResponse),
+    (status = 403, description = "Admin access required"),
+    (status = 404, description = "Tool not found"),
+  ),
+  security(("bearer" = []))
+)]
+async fn enable_app_tool(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(tool_id): Path<String>,
+  headers: HeaderMap,
+) -> Result<Json<AppToolConfigResponse>, ApiError> {
+  let user_id = extract_user_id_from_headers(&headers)?;
+  let admin_token = extract_token_from_headers(&headers)?;
+
+  let config = state
+    .app_service()
+    .tool_service()
+    .set_app_tool_enabled(&admin_token, &tool_id, true, &user_id)
+    .await?;
+
+  Ok(Json(AppToolConfigResponse { config }))
+}
+
+/// Disable a tool for this app instance (admin only)
+#[utoipa::path(
+  delete,
+  path = "/tools/{tool_id}/app-config",
+  tag = "tools",
+  params(
+    ("tool_id" = String, Path, description = "Tool identifier")
+  ),
+  responses(
+    (status = 200, description = "Tool disabled for app instance", body = AppToolConfigResponse),
+    (status = 403, description = "Admin access required"),
+    (status = 404, description = "Tool not found"),
+  ),
+  security(("bearer" = []))
+)]
+async fn disable_app_tool(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(tool_id): Path<String>,
+  headers: HeaderMap,
+) -> Result<Json<AppToolConfigResponse>, ApiError> {
+  let user_id = extract_user_id_from_headers(&headers)?;
+  let admin_token = extract_token_from_headers(&headers)?;
+
+  let config = state
+    .app_service()
+    .tool_service()
+    .set_app_tool_enabled(&admin_token, &tool_id, false, &user_id)
+    .await?;
+
+  Ok(Json(AppToolConfigResponse { config }))
 }
 
 #[cfg(test)]

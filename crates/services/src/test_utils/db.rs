@@ -1,6 +1,6 @@
 use crate::db::{
-  ApiKeyUpdate, ApiToken, DbError, DbService, DownloadRequest, ModelMetadataRow, SqliteDbService,
-  TimeService, UserAccessRequest, UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, AppToolConfigRow, DbError, DbService, DownloadRequest, ModelMetadataRow,
+  SqliteDbService, TimeService, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -416,6 +416,33 @@ impl DbService for TestDbService {
       .list_user_tool_configs(user_id)
       .await
       .tap(|_| self.notify("list_user_tool_configs"))
+  }
+
+  async fn get_app_tool_config(&self, tool_id: &str) -> Result<Option<AppToolConfigRow>, DbError> {
+    self
+      .inner
+      .get_app_tool_config(tool_id)
+      .await
+      .tap(|_| self.notify("get_app_tool_config"))
+  }
+
+  async fn upsert_app_tool_config(
+    &self,
+    config: &AppToolConfigRow,
+  ) -> Result<AppToolConfigRow, DbError> {
+    self
+      .inner
+      .upsert_app_tool_config(config)
+      .await
+      .tap(|_| self.notify("upsert_app_tool_config"))
+  }
+
+  async fn list_app_tool_configs(&self) -> Result<Vec<AppToolConfigRow>, DbError> {
+    self
+      .inner
+      .list_app_tool_configs()
+      .await
+      .tap(|_| self.notify("list_app_tool_configs"))
   }
 
   fn now(&self) -> DateTime<Utc> {

@@ -1,6 +1,6 @@
 # Tools Backend Implementation - Overview
 
-> Status: Backend Complete (Phases 1-7) | Frontend Pending (Phases 8-9) | Updated: 2026-01-14
+> Status: Backend Complete (Phases 1-7.5) | Frontend Pending (Phases 8-9) | Updated: 2026-01-14
 
 ## Goal
 
@@ -14,6 +14,7 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 - API endpoints: `GET /bodhi/v1/tools`, `POST /bodhi/v1/tools/{tool_id}/execute`
 - OAuth scope: `scope_tool-builtin-exa-web-search` for third-party app authorization
 - Per-user encrypted API key storage for Exa
+- **App-level tool enable/disable** (admin controls tool availability for all users)
 
 ### Future Phases
 - Dynamic tool registration
@@ -24,9 +25,10 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Config scope | Per-user | Each user provides their own Exa API key |
-| Tool visibility | Only configured | Users only see tools they've enabled with API key |
+| Config scope | Two-tier | App-level (admin) + User-level (individual API keys) |
+| Tool visibility | Show all, indicate status | Users see all tools; disabled tools shown but not configurable |
 | Scope check | OAuth tokens only | First-party (session, bodhiapp_) bypass if tool configured |
+| App-level sync | Keycloak source of truth | DB failure after Keycloak success still returns success |
 | UI navigation | Sidebar menu | New top-level "Tools" item in sidebar |
 | Error detail | Detailed | Pass through Exa errors to LLM/frontend |
 | Endpoint path | `/bodhi/v1/tools/{id}/execute` | RESTful resource with action verb |
@@ -45,9 +47,14 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 ## Implementation Status
 
 **✅ Completed (Phases 1-7)**:
-- 49 passing tests across all backend layers
-- ~2,000 lines of new code
+- 49 passing tests across backend layers
 - Full backend API ready for frontend integration
+
+**✅ Completed (Phase 7.5)**:
+- App-level tool enable/disable (admin controls) - 9 tests
+- Keycloak client scope sync (contract defined)
+- Two-tier authorization model
+- Total: 58 passing tests, ~3,300 lines of new/modified code
 
 **📝 Pending (Phases 8-9)**:
 - Frontend UI pages (`/ui/tools`)
@@ -71,8 +78,11 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 - [03-service-layer.md](./03-service-layer.md) - Business logic
 - [04-routes-api.md](./04-routes-api.md) - HTTP endpoints
 - [05-auth-scopes.md](./05-auth-scopes.md) - OAuth scope integration
+- [05.5-app-level-tool-config.md](./05.5-app-level-tool-config.md) - App-level tool enable/disable
 - [06-exa-integration.md](./06-exa-integration.md) - Exa API specifics
 - [07-ui-pages.md](./07-ui-pages.md) - Frontend pages
+- [08-implementation-phases.md](./08-implementation-phases.md) - Phase tracking
+- [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract
 
 ## Open Questions
 

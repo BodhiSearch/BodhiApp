@@ -1,9 +1,11 @@
-use crate::db::{DbError, DbService, TimeService, UserToolConfigRow};
+use crate::auth_service::AuthService;
+use crate::db::{AppToolConfigRow, DbError, DbService, TimeService, UserToolConfigRow};
 use crate::exa_service::{ExaError, ExaService};
+use crate::AuthServiceError;
 use chrono::DateTime;
 use objs::{
-  AppError, ErrorType, FunctionDefinition, ToolDefinition, ToolExecutionRequest,
-  ToolExecutionResponse, UserToolConfig,
+  AppError, AppToolConfig, ErrorType, FunctionDefinition, ToolDefinition, ToolExecutionRequest,
+  ToolExecutionResponse, ToolScope, UserToolConfig,
 };
 use serde_json::json;
 use std::fmt::Debug;
@@ -32,11 +34,18 @@ pub enum ToolError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   ExecutionFailed(String),
 
+  #[error("app_disabled")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ToolAppDisabled,
+
   #[error(transparent)]
   DbError(#[from] DbError),
 
   #[error(transparent)]
   ExaError(#[from] ExaError),
+
+  #[error(transparent)]
+  AuthServiceError(#[from] AuthServiceError),
 }
 
 // ============================================================================
@@ -76,12 +85,35 @@ pub trait ToolService: Debug + Send + Sync {
     request: ToolExecutionRequest,
   ) -> Result<ToolExecutionResponse, ToolError>;
 
-  /// Check if tool is available for user (enabled + has API key)
+  /// Check if tool is available for user (app enabled + user enabled + has API key)
   async fn is_tool_available_for_user(
     &self,
     user_id: &str,
     tool_id: &str,
   ) -> Result<bool, ToolError>;
+
+  // ============================================================================
+  // App-level tool configuration (admin-controlled)
+  // ============================================================================
+
+  /// Get app-level tool config by ID
+  async fn get_app_tool_config(&self, tool_id: &str) -> Result<Option<AppToolConfig>, ToolError>;
+
+  /// Check if tool is enabled at app level
+  async fn is_tool_enabled_for_app(&self, tool_id: &str) -> Result<bool, ToolError>;
+
+  /// Set app-level tool enabled status (admin only)
+  /// This calls Keycloak to sync the client scope, then updates local DB
+  async fn set_app_tool_enabled(
+    &self,
+    admin_token: &str,
+    tool_id: &str,
+    enabled: bool,
+    updated_by: &str,
+  ) -> Result<AppToolConfig, ToolError>;
+
+  /// List all app-level tool configs
+  async fn list_app_tool_configs(&self) -> Result<Vec<AppToolConfig>, ToolError>;
 }
 
 // ============================================================================
@@ -93,6 +125,7 @@ pub struct DefaultToolService {
   db_service: Arc<dyn DbService>,
   exa_service: Arc<dyn ExaService>,
   time_service: Arc<dyn TimeService>,
+  auth_service: Arc<dyn AuthService>,
 }
 
 impl DefaultToolService {
@@ -100,11 +133,13 @@ impl DefaultToolService {
     db_service: Arc<dyn DbService>,
     exa_service: Arc<dyn ExaService>,
     time_service: Arc<dyn TimeService>,
+    auth_service: Arc<dyn AuthService>,
   ) -> Self {
     Self {
       db_service,
       exa_service,
       time_service,
+      auth_service,
     }
   }
 
@@ -141,6 +176,17 @@ impl DefaultToolService {
     UserToolConfig {
       tool_id: row.tool_id,
       enabled: row.enabled,
+      created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+      updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+    }
+  }
+
+  /// Convert app tool config row to public model
+  fn app_row_to_config(row: AppToolConfigRow) -> AppToolConfig {
+    AppToolConfig {
+      tool_id: row.tool_id,
+      enabled: row.enabled,
+      updated_by: row.updated_by,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
@@ -290,6 +336,12 @@ impl ToolService for DefaultToolService {
     user_id: &str,
     tool_id: &str,
   ) -> Result<bool, ToolError> {
+    // Check app-level first
+    if !self.is_tool_enabled_for_app(tool_id).await? {
+      return Ok(false);
+    }
+
+    // Then check user-level
     let config = self
       .db_service
       .get_user_tool_config(user_id, tool_id)
@@ -299,6 +351,105 @@ impl ToolService for DefaultToolService {
       Some(c) => c.enabled && c.encrypted_api_key.is_some(),
       None => false,
     })
+  }
+
+  // ============================================================================
+  // App-level tool configuration (admin-controlled)
+  // ============================================================================
+
+  async fn get_app_tool_config(&self, tool_id: &str) -> Result<Option<AppToolConfig>, ToolError> {
+    // Verify tool exists
+    if !Self::builtin_tool_definitions()
+      .iter()
+      .any(|def| def.function.name == tool_id)
+    {
+      return Err(ToolError::ToolNotFound(tool_id.to_string()));
+    }
+
+    let config = self.db_service.get_app_tool_config(tool_id).await?;
+    Ok(config.map(Self::app_row_to_config))
+  }
+
+  async fn is_tool_enabled_for_app(&self, tool_id: &str) -> Result<bool, ToolError> {
+    let config = self.db_service.get_app_tool_config(tool_id).await?;
+    // No row means disabled (default state)
+    Ok(config.map(|c| c.enabled).unwrap_or(false))
+  }
+
+  async fn set_app_tool_enabled(
+    &self,
+    admin_token: &str,
+    tool_id: &str,
+    enabled: bool,
+    updated_by: &str,
+  ) -> Result<AppToolConfig, ToolError> {
+    // Verify tool exists
+    if !Self::builtin_tool_definitions()
+      .iter()
+      .any(|def| def.function.name == tool_id)
+    {
+      return Err(ToolError::ToolNotFound(tool_id.to_string()));
+    }
+
+    // Get the tool scope string
+    let tool_scope = ToolScope::scope_for_tool_id(tool_id)
+      .ok_or_else(|| ToolError::ToolNotFound(tool_id.to_string()))?
+      .to_string();
+
+    // Call Keycloak first
+    if enabled {
+      self
+        .auth_service
+        .enable_tool_scope(admin_token, &tool_scope)
+        .await?;
+    } else {
+      self
+        .auth_service
+        .disable_tool_scope(admin_token, &tool_scope)
+        .await?;
+    }
+
+    // On Keycloak success, update local DB
+    let now = self.time_service.utc_now();
+    let now_ts = now.timestamp();
+
+    // Get existing config
+    let existing = self.db_service.get_app_tool_config(tool_id).await?;
+
+    let config = AppToolConfigRow {
+      id: existing.as_ref().map(|e| e.id).unwrap_or(0),
+      tool_id: tool_id.to_string(),
+      enabled,
+      updated_by: updated_by.to_string(),
+      created_at: existing.as_ref().map(|e| e.created_at).unwrap_or(now_ts),
+      updated_at: now_ts,
+    };
+
+    // Note: If DB write fails after Keycloak success, we log but return success
+    // as Keycloak is the source of truth (per spec requirement)
+    match self.db_service.upsert_app_tool_config(&config).await {
+      Ok(result) => Ok(Self::app_row_to_config(result)),
+      Err(e) => {
+        tracing::error!(
+          "DB write failed after Keycloak success for tool {}: {}. Keycloak state is source of truth.",
+          tool_id,
+          e
+        );
+        // Return a synthetic config since Keycloak succeeded
+        Ok(AppToolConfig {
+          tool_id: tool_id.to_string(),
+          enabled,
+          updated_by: updated_by.to_string(),
+          created_at: DateTime::from_timestamp(config.created_at, 0).unwrap(),
+          updated_at: DateTime::from_timestamp(now_ts, 0).unwrap(),
+        })
+      }
+    }
+  }
+
+  async fn list_app_tool_configs(&self) -> Result<Vec<AppToolConfig>, ToolError> {
+    let configs = self.db_service.list_app_tool_configs().await?;
+    Ok(configs.into_iter().map(Self::app_row_to_config).collect())
   }
 }
 
@@ -354,6 +505,7 @@ impl DefaultToolService {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::auth_service::MockAuthService;
   use crate::db::{MockDbService, MockTimeService};
   use crate::exa_service::MockExaService;
   use mockall::predicate::*;
@@ -364,10 +516,12 @@ mod tests {
     let db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
     // No expectations needed for list_all
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let defs = service.list_all_tool_definitions();
 
     assert_eq!(1, defs.len());
@@ -380,6 +534,7 @@ mod tests {
     let mut db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
     db.expect_list_user_tool_configs()
       .with(eq("user123"))
@@ -410,7 +565,8 @@ mod tests {
         ])
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let tools = service.list_tools_for_user("user123").await?;
 
     assert_eq!(1, tools.len());
@@ -425,6 +581,7 @@ mod tests {
     let mut db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
     db.expect_get_user_tool_config()
       .with(eq("user123"), eq("builtin-exa-web-search"))
@@ -442,7 +599,8 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let config = service
       .get_user_tool_config("user123", "builtin-exa-web-search")
       .await?;
@@ -461,8 +619,10 @@ mod tests {
     let db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let result = service
       .get_user_tool_config("user123", "unknown-tool")
       .await;
@@ -475,11 +635,27 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_is_tool_available_returns_true_when_enabled_with_key() -> anyhow::Result<()> {
+  async fn test_is_tool_available_returns_true_when_app_and_user_enabled() -> anyhow::Result<()> {
     let mut db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
+    // App-level check
+    db.expect_get_app_tool_config()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| {
+        Ok(Some(crate::db::AppToolConfigRow {
+          id: 1,
+          tool_id: "builtin-exa-web-search".to_string(),
+          enabled: true,
+          updated_by: "admin".to_string(),
+          created_at: 1700000000,
+          updated_at: 1700000000,
+        }))
+      });
+
+    // User-level check
     db.expect_get_user_tool_config()
       .with(eq("user123"), eq("builtin-exa-web-search"))
       .returning(|_, _| {
@@ -496,7 +672,8 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let available = service
       .is_tool_available_for_user("user123", "builtin-exa-web-search")
       .await?;
@@ -508,11 +685,60 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_is_tool_available_returns_false_when_disabled() -> anyhow::Result<()> {
+  async fn test_is_tool_available_returns_false_when_app_disabled() -> anyhow::Result<()> {
     let mut db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
+    // App-level disabled - should short circuit, never check user config
+    db.expect_get_app_tool_config()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| {
+        Ok(Some(crate::db::AppToolConfigRow {
+          id: 1,
+          tool_id: "builtin-exa-web-search".to_string(),
+          enabled: false,
+          updated_by: "admin".to_string(),
+          created_at: 1700000000,
+          updated_at: 1700000000,
+        }))
+      });
+
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
+    let available = service
+      .is_tool_available_for_user("user123", "builtin-exa-web-search")
+      .await?;
+
+    assert!(!available);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_is_tool_available_returns_false_when_user_disabled() -> anyhow::Result<()> {
+    let mut db = MockDbService::new();
+    let exa = MockExaService::new();
+    let time = MockTimeService::new();
+    let auth = MockAuthService::new();
+
+    // App-level enabled
+    db.expect_get_app_tool_config()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| {
+        Ok(Some(crate::db::AppToolConfigRow {
+          id: 1,
+          tool_id: "builtin-exa-web-search".to_string(),
+          enabled: true,
+          updated_by: "admin".to_string(),
+          created_at: 1700000000,
+          updated_at: 1700000000,
+        }))
+      });
+
+    // User-level disabled
     db.expect_get_user_tool_config()
       .with(eq("user123"), eq("builtin-exa-web-search"))
       .returning(|_, _| {
@@ -529,7 +755,8 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let available = service
       .is_tool_available_for_user("user123", "builtin-exa-web-search")
       .await?;
@@ -545,7 +772,23 @@ mod tests {
     let mut db = MockDbService::new();
     let exa = MockExaService::new();
     let time = MockTimeService::new();
+    let auth = MockAuthService::new();
 
+    // App-level enabled
+    db.expect_get_app_tool_config()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| {
+        Ok(Some(crate::db::AppToolConfigRow {
+          id: 1,
+          tool_id: "builtin-exa-web-search".to_string(),
+          enabled: true,
+          updated_by: "admin".to_string(),
+          created_at: 1700000000,
+          updated_at: 1700000000,
+        }))
+      });
+
+    // User enabled but no API key
     db.expect_get_user_tool_config()
       .with(eq("user123"), eq("builtin-exa-web-search"))
       .returning(|_, _| {
@@ -562,7 +805,32 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
+    let available = service
+      .is_tool_available_for_user("user123", "builtin-exa-web-search")
+      .await?;
+
+    assert!(!available);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_is_tool_available_returns_false_when_no_app_config() -> anyhow::Result<()> {
+    let mut db = MockDbService::new();
+    let exa = MockExaService::new();
+    let time = MockTimeService::new();
+    let auth = MockAuthService::new();
+
+    // No app config means disabled
+    db.expect_get_app_tool_config()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| Ok(None));
+
+    let service =
+      DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), Arc::new(auth));
     let available = service
       .is_tool_available_for_user("user123", "builtin-exa-web-search")
       .await?;

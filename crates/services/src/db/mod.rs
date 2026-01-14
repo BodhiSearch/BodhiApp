@@ -1,4 +1,4 @@
-mod encryption;
+pub mod encryption;
 mod error;
 mod objs;
 mod service;

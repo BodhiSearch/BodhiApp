@@ -23,3 +23,16 @@ CREATE INDEX IF NOT EXISTS idx_user_tool_configs_tool_id ON user_tool_configs(to
 
 -- Create index on enabled for filtering enabled tools
 CREATE INDEX IF NOT EXISTS idx_user_tool_configs_enabled ON user_tool_configs(enabled);
+
+-- Create the app_tool_configs table for app-level tool configuration (admin-controlled)
+CREATE TABLE IF NOT EXISTS app_tool_configs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_id TEXT NOT NULL UNIQUE,        -- e.g., "builtin-exa-web-search"
+    enabled INTEGER NOT NULL DEFAULT 0,  -- boolean as integer
+    updated_by TEXT NOT NULL,            -- user_id of admin who last updated
+    created_at INTEGER NOT NULL,         -- Unix timestamp
+    updated_at INTEGER NOT NULL
+);
+
+-- Create index on tool_id for faster lookups
+CREATE INDEX IF NOT EXISTS idx_app_tool_configs_tool_id ON app_tool_configs(tool_id);

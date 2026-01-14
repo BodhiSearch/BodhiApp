@@ -1,4 +1,4 @@
-use objs::{ToolDefinition, ToolExecutionRequest, UserToolConfig};
+use objs::{AppToolConfig, ToolDefinition, ToolExecutionRequest, UserToolConfig};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -29,10 +29,10 @@ pub struct ExecuteToolRequest {
 // Response DTOs
 // ============================================================================
 
-/// Response with list of tool definitions
+/// Response with list of tool definitions (enhanced with status)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsResponse {
-  pub tools: Vec<ToolDefinition>,
+  pub tools: Vec<ToolListItem>,
 }
 
 /// Response with single tool configuration
@@ -45,6 +45,57 @@ pub struct GetToolConfigResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolConfigsResponse {
   pub configs: Vec<UserToolConfig>,
+}
+
+// ============================================================================
+// App-level Tool Configuration DTOs
+// ============================================================================
+
+/// Response with app-level tool configuration
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AppToolConfigResponse {
+  /// The app-level tool configuration
+  #[serde(flatten)]
+  pub config: AppToolConfig,
+}
+
+/// Response with list of app-level tool configurations
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ListAppToolConfigsResponse {
+  pub configs: Vec<AppToolConfig>,
+}
+
+/// Enhanced tool list item with app-level and user-level status
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ToolListItem {
+  /// Tool definition
+  #[serde(flatten)]
+  pub definition: ToolDefinition,
+  /// Whether the tool is enabled at app level (admin-controlled)
+  pub app_enabled: bool,
+  /// User's configuration for this tool (if any)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub user_config: Option<UserToolConfigSummary>,
+}
+
+/// Summary of user's tool configuration (for list responses)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct UserToolConfigSummary {
+  /// Whether the user has enabled this tool
+  pub enabled: bool,
+  /// Whether the user has configured an API key
+  pub has_api_key: bool,
+}
+
+/// Enhanced tool config response with app-level status
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct EnhancedToolConfigResponse {
+  /// Tool identifier
+  pub tool_id: String,
+  /// Whether the tool is enabled at app level
+  pub app_enabled: bool,
+  /// User's configuration
+  pub config: UserToolConfig,
 }
 
 // ============================================================================

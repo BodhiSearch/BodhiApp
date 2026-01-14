@@ -208,6 +208,19 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     user_id: &str,
   ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError>;
 
+  // App-level tool configuration management
+  async fn get_app_tool_config(
+    &self,
+    tool_id: &str,
+  ) -> Result<Option<crate::db::AppToolConfigRow>, DbError>;
+
+  async fn upsert_app_tool_config(
+    &self,
+    config: &crate::db::AppToolConfigRow,
+  ) -> Result<crate::db::AppToolConfigRow, DbError>;
+
+  async fn list_app_tool_configs(&self) -> Result<Vec<crate::db::AppToolConfigRow>, DbError>;
+
   fn now(&self) -> DateTime<Utc>;
 
   /// Get the encryption key for encrypting/decrypting sensitive data
@@ -1642,6 +1655,115 @@ impl DbService for SqliteDbService {
               encrypted_api_key,
               salt,
               nonce,
+              created_at,
+              updated_at,
+            }
+          },
+        )
+        .collect(),
+    )
+  }
+
+  // ============================================================================
+  // App-level tool configuration management
+  // ============================================================================
+
+  async fn get_app_tool_config(
+    &self,
+    tool_id: &str,
+  ) -> Result<Option<crate::db::AppToolConfigRow>, DbError> {
+    let result = sqlx::query_as::<_, (i64, String, i64, String, i64, i64)>(
+      "SELECT id, tool_id, enabled, updated_by, created_at, updated_at FROM app_tool_configs WHERE tool_id = ?",
+    )
+    .bind(tool_id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(id, tool_id, enabled, updated_by, created_at, updated_at)| crate::db::AppToolConfigRow {
+        id,
+        tool_id,
+        enabled: enabled != 0,
+        updated_by,
+        created_at,
+        updated_at,
+      },
+    ))
+  }
+
+  async fn upsert_app_tool_config(
+    &self,
+    config: &crate::db::AppToolConfigRow,
+  ) -> Result<crate::db::AppToolConfigRow, DbError> {
+    let enabled = if config.enabled { 1 } else { 0 };
+
+    // Check if config exists
+    let existing = self.get_app_tool_config(&config.tool_id).await?;
+
+    let id = if let Some(existing) = existing {
+      // Update existing config
+      sqlx::query(
+        r#"
+        UPDATE app_tool_configs
+        SET enabled = ?, updated_by = ?, updated_at = ?
+        WHERE tool_id = ?
+        "#,
+      )
+      .bind(enabled)
+      .bind(&config.updated_by)
+      .bind(config.updated_at)
+      .bind(&config.tool_id)
+      .execute(&self.pool)
+      .await?;
+
+      existing.id
+    } else {
+      // Insert new config
+      let result = sqlx::query(
+        r#"
+        INSERT INTO app_tool_configs (tool_id, enabled, updated_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        "#,
+      )
+      .bind(&config.tool_id)
+      .bind(enabled)
+      .bind(&config.updated_by)
+      .bind(config.created_at)
+      .bind(config.updated_at)
+      .execute(&self.pool)
+      .await?;
+
+      result.last_insert_rowid()
+    };
+
+    // Return the updated/inserted config
+    Ok(crate::db::AppToolConfigRow {
+      id,
+      tool_id: config.tool_id.clone(),
+      enabled: config.enabled,
+      updated_by: config.updated_by.clone(),
+      created_at: config.created_at,
+      updated_at: config.updated_at,
+    })
+  }
+
+  async fn list_app_tool_configs(&self) -> Result<Vec<crate::db::AppToolConfigRow>, DbError> {
+    let results = sqlx::query_as::<_, (i64, String, i64, String, i64, i64)>(
+      "SELECT id, tool_id, enabled, updated_by, created_at, updated_at FROM app_tool_configs ORDER BY tool_id",
+    )
+    .fetch_all(&self.pool)
+    .await?;
+
+    Ok(
+      results
+        .into_iter()
+        .map(
+          |(id, tool_id, enabled, updated_by, created_at, updated_at)| {
+            crate::db::AppToolConfigRow {
+              id,
+              tool_id,
+              enabled: enabled != 0,
+              updated_by,
               created_at,
               updated_at,
             }

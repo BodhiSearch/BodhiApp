@@ -108,6 +108,27 @@ pub struct UserToolConfig {
 }
 
 // ============================================================================
+// AppToolConfig - App-level tool configuration (public API model)
+// ============================================================================
+
+/// App-level configuration for a tool (admin-controlled)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct AppToolConfig {
+  /// Tool identifier (e.g., "builtin-exa-web-search")
+  pub tool_id: String,
+  /// Whether the tool is enabled for this app instance
+  pub enabled: bool,
+  /// User ID of the admin who last updated this configuration
+  pub updated_by: String,
+  /// When this configuration was created
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub created_at: DateTime<Utc>,
+  /// When this configuration was last updated
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
 // ToolExecution - Request/Response for tool execution
 // ============================================================================
 

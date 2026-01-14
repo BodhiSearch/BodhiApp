@@ -95,6 +95,12 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     page: Option<u32>,
     page_size: Option<u32>,
   ) -> Result<UserListResponse>;
+
+  /// Enable a tool scope for the app client (add client scope)
+  async fn enable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()>;
+
+  /// Disable a tool scope for the app client (remove client scope)
+  async fn disable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -717,6 +723,50 @@ impl AuthService for KeycloakAuthService {
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("GET", &endpoint, "auth_service", &error.error);
+      Err(error.into())
+    }
+  }
+
+  async fn enable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()> {
+    let endpoint = format!("{}/resources/tools", self.auth_api_url());
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .bearer_auth(admin_token)
+      .json(&serde_json::json!({ "tool_scope": tool_scope }))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error.error);
+      Err(error.into())
+    }
+  }
+
+  async fn disable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()> {
+    let encoded_scope = urlencoding::encode(tool_scope);
+    let endpoint = format!("{}/resources/tools/{}", self.auth_api_url(), encoded_scope);
+    log::log_http_request("DELETE", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .delete(&endpoint)
+      .bearer_auth(admin_token)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      log::log_http_error("DELETE", &endpoint, "auth_service", &error.error);
       Err(error.into())
     }
   }

@@ -196,3 +196,17 @@ pub struct UserToolConfigRow {
   pub created_at: i64,
   pub updated_at: i64,
 }
+
+// ============================================================================
+// AppToolConfigRow - Database row for app-level tool configuration
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppToolConfigRow {
+  pub id: i64,
+  pub tool_id: String,
+  pub enabled: bool,
+  pub updated_by: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
