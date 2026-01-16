@@ -89,7 +89,8 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 - [05.5-app-level-tool-config.md](./05.5-app-level-tool-config.md) - App-level tool enable/disable (partially superseded by 05.6)
 - [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) - External app OAuth tool access (Phase 7.6)
 - [06-exa-integration.md](./06-exa-integration.md) - Exa API specifics
-- [07-ui-pages.md](./07-ui-pages.md) - Frontend pages
+- [07-ui-pages.md](./07-ui-pages.md) - Frontend tool configuration pages
+- [07.1-ui-chat-integration.md](./07.1-ui-chat-integration.md) - Chat UI web search integration
 - [08-implementation-phases.md](./08-implementation-phases.md) - Phase tracking
 - [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract
 - [10-pending-items.md](./10-pending-items.md) - Security enhancements and pending requirements

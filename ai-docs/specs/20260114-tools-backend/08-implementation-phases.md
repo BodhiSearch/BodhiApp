@@ -464,25 +464,73 @@ Integration:
 
 ---
 
-## Next Steps
+## Phase 8: Frontend UI - Tool Configuration ⏳ PENDING
 
-### Immediate (Phase 8):
-1. Create `/ui/tools` list page with tool cards
-2. Create `/ui/tools/[toolId]` configuration page
-3. Add "Tools" entry to sidebar navigation
-4. Create MSW mocks for all tool endpoints
-5. Write component tests
+**Goal**: Create tool configuration pages for users to manage their tools.
 
-### Following (Phase 9):
+**Spec**: See [07-ui-pages.md](./07-ui-pages.md)
+
+**Files to create:**
+- `crates/bodhi/src/app/ui/tools/page.tsx` - Tool list page
+- `crates/bodhi/src/app/ui/tools/[toolId]/page.tsx` - Tool config page
+- `crates/bodhi/src/hooks/use-tools.ts` - Tool API hooks
+
+**Files to modify:**
+- Sidebar navigation - Add "Tools" menu item
+- MSW handlers - Add tool endpoint mocks
+
+---
+
+## Phase 8.1: Chat UI - Web Search Integration ⏳ PENDING
+
+**Goal**: Integrate web search tool with `/ui/chat` for agentic search capabilities.
+
+**Spec**: See [07.1-ui-chat-integration.md](./07.1-ui-chat-integration.md)
+
+**Prerequisites**: Phase 8 (tool configuration) must be complete.
+
+**Key Features:**
+- Web search toggle in chat input area
+- Toggle disabled with tooltip when tool unavailable
+- Tool call display (collapsible JSON request/response)
+- Agentic loop: detect tool calls → execute → send results back to LLM
+
+**Files to create:**
+- `crates/bodhi/src/app/ui/chat/WebSearchToggle.tsx`
+- `crates/bodhi/src/app/ui/chat/ToolCallMessage.tsx`
+- `crates/bodhi/src/hooks/use-tool-status.ts`
+
+**Files to modify:**
+- `crates/bodhi/src/hooks/use-chat-settings.tsx` - Add webSearch_enabled
+- `crates/bodhi/src/hooks/use-chat.tsx` - Add tool call handling loop
+- `crates/bodhi/src/hooks/use-chat-completions.ts` - Handle tool_calls in response
+- `crates/bodhi/src/app/ui/chat/ChatUI.tsx` - Add toggle
+- `crates/bodhi/src/app/ui/chat/ChatMessage.tsx` - Add tool call display
+- `crates/bodhi/src/types/chat.ts` - Extend Message type for tools
+
+**E2E Tests:**
+- `crates/lib_bodhiserver_napi/tests-js/specs/tools/chat-with-web-search.spec.mjs`
+
+---
+
+## Phase 9: Integration Tests ⏳ PENDING
+
+**Goal**: End-to-end testing of tool features.
+
+**Test Cases:**
 1. Backend integration tests with test database
 2. Frontend E2E tests with Playwright
 3. Real Exa API testing (optional, requires API key)
 4. Performance testing for tool execution
+5. Chat with web search agentic loop tests
 
-### Future Enhancements:
-1. OAuth tool scope validation (requires auth_middleware enhancement)
-2. Additional builtin tools (web scraping, image search, etc.)
-3. Dynamic tool registration
-4. Custom user-defined tools
-5. Tool usage analytics
-6. Tool result caching
+---
+
+## Future Enhancements
+
+1. Additional builtin tools (web scraping, image search, etc.)
+2. Dynamic tool registration
+3. Custom user-defined tools
+4. Tool usage analytics
+5. Tool result caching
+6. Token-level tool access restrictions (see [10-pending-items.md](./10-pending-items.md))
