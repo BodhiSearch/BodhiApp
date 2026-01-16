@@ -272,7 +272,7 @@ export interface paths {
         put?: never;
         /**
          * Request Resource Access
-         * @description Requests access permissions for an application client to access this resource server's protected resources.
+         * @description Requests access permissions for an application client to access this resource server's protected resources. Supports caching via optional version parameter.
          */
         post: operations["requestAccess"];
         delete?: never;
@@ -1046,9 +1046,20 @@ export interface components {
         };
         AppAccessRequest: {
             app_client_id: string;
+            /** @description Optional version for cache lookup - if matches cached config, skips auth server call */
+            version?: string | null;
         };
         AppAccessResponse: {
             scope: string;
+            /** @description List of tools the app-client is configured to access */
+            tools?: components["schemas"]["AppClientTool"][];
+            /** @description Version of app-client's tool configuration on auth server */
+            app_client_config_version: string;
+        };
+        /** @description Tool configuration from app-client registration */
+        AppClientTool: {
+            tool_id: string;
+            tool_scope: string;
         };
         /**
          * @description Application information and status
@@ -4035,7 +4046,8 @@ export interface operations {
         requestBody: {
             content: {
                 /** @example {
-                 *       "app_client_id": "my_app_client_123"
+                 *       "app_client_id": "my_app_client_123",
+                 *       "version": "v1.0.0"
                  *     } */
                 "application/json": components["schemas"]["AppAccessRequest"];
             };
@@ -4048,7 +4060,14 @@ export interface operations {
                 };
                 content: {
                     /** @example {
-                     *       "scope": "scope_resource_bodhi-server"
+                     *       "app_client_config_version": "v1.0.0",
+                     *       "scope": "scope_resource_bodhi-server",
+                     *       "tools": [
+                     *         {
+                     *           "tool_id": "builtin-exa-web-search",
+                     *           "tool_scope": "scope_tool-builtin-exa-web-search"
+                     *         }
+                     *       ]
                      *     } */
                     "application/json": components["schemas"]["AppAccessResponse"];
                 };

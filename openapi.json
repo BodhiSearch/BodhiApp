@@ -1687,7 +1687,7 @@
           "auth"
         ],
         "summary": "Request Resource Access",
-        "description": "Requests access permissions for an application client to access this resource server's protected resources.",
+        "description": "Requests access permissions for an application client to access this resource server's protected resources. Supports caching via optional version parameter.",
         "operationId": "requestAccess",
         "requestBody": {
           "description": "Application client requesting access",
@@ -1697,7 +1697,8 @@
                 "$ref": "#/components/schemas/AppAccessRequest"
               },
               "example": {
-                "app_client_id": "my_app_client_123"
+                "app_client_id": "my_app_client_123",
+                "version": "v1.0.0"
               }
             }
           },
@@ -1712,7 +1713,14 @@
                   "$ref": "#/components/schemas/AppAccessResponse"
                 },
                 "example": {
-                  "scope": "scope_resource_bodhi-server"
+                  "app_client_config_version": "v1.0.0",
+                  "scope": "scope_resource_bodhi-server",
+                  "tools": [
+                    {
+                      "tool_id": "builtin-exa-web-search",
+                      "tool_scope": "scope_tool-builtin-exa-web-search"
+                    }
+                  ]
                 }
               }
             }
@@ -5651,16 +5659,51 @@
         "properties": {
           "app_client_id": {
             "type": "string"
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional version for cache lookup - if matches cached config, skips auth server call"
           }
         }
       },
       "AppAccessResponse": {
         "type": "object",
         "required": [
-          "scope"
+          "scope",
+          "app_client_config_version"
         ],
         "properties": {
           "scope": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppClientTool"
+            },
+            "description": "List of tools the app-client is configured to access"
+          },
+          "app_client_config_version": {
+            "type": "string",
+            "description": "Version of app-client's tool configuration on auth server"
+          }
+        }
+      },
+      "AppClientTool": {
+        "type": "object",
+        "description": "Tool configuration from app-client registration",
+        "required": [
+          "tool_id",
+          "tool_scope"
+        ],
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          },
+          "tool_scope": {
             "type": "string"
           }
         }

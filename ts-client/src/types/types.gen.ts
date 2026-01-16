@@ -115,10 +115,30 @@ export type ApiTokenResponse = {
 
 export type AppAccessRequest = {
     app_client_id: string;
+    /**
+     * Optional version for cache lookup - if matches cached config, skips auth server call
+     */
+    version?: string | null;
 };
 
 export type AppAccessResponse = {
     scope: string;
+    /**
+     * List of tools the app-client is configured to access
+     */
+    tools?: Array<AppClientTool>;
+    /**
+     * Version of app-client's tool configuration on auth server
+     */
+    app_client_config_version: string;
+};
+
+/**
+ * Tool configuration from app-client registration
+ */
+export type AppClientTool = {
+    tool_id: string;
+    tool_scope: string;
 };
 
 /**
