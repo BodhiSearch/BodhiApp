@@ -1,6 +1,6 @@
 # Tools Backend Implementation - Overview
 
-> Status: Backend Complete (Phases 1-7.5) | Frontend Pending (Phases 8-9) | Updated: 2026-01-14
+> Status: Backend Phases 1-7.5 Complete, Phase 7.6 In Progress | Frontend Pending (Phases 8-9) | Updated: 2026-01-15
 
 ## Goal
 
@@ -25,10 +25,11 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Config scope | Two-tier | App-level (admin) + User-level (individual API keys) |
+| Config scope | Three-tier for OAuth | App-level (admin) + App-client (registered) + User-level (API keys) |
 | Tool visibility | Show all, indicate status | Users see all tools; disabled tools shown but not configurable |
-| Scope check | OAuth tokens only | First-party (session, bodhiapp_) bypass if tool configured |
-| App-level sync | Keycloak source of truth | DB failure after Keycloak success still returns success |
+| Scope check | OAuth: 4 checks, Session: 2 checks | OAuth needs app, app-client, scope, user; Session needs app, user |
+| App-level config | Local DB only | No Keycloak sync for app-level enable/disable |
+| App-client cache | DB with version key | Cache Keycloak /resources/request-access response |
 | UI navigation | Sidebar menu | New top-level "Tools" item in sidebar |
 | Error detail | Detailed | Pass through Exa errors to LLM/frontend |
 | Endpoint path | `/bodhi/v1/tools/{id}/execute` | RESTful resource with action verb |
@@ -52,9 +53,16 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 
 **✅ Completed (Phase 7.5)**:
 - App-level tool enable/disable (admin controls) - 9 tests
-- Keycloak client scope sync (contract defined)
-- Two-tier authorization model
+- ~~Keycloak client scope sync~~ (removed in 7.6 - incorrect approach)
+- Two-tier authorization model for session/first-party
 - Total: 58 passing tests, ~3,300 lines of new/modified code
+
+**🔄 In Progress (Phase 7.6)**:
+- External app tool access via OAuth scopes
+- Token exchange preserves `scope_tool-*`
+- App-client tool config caching from Keycloak
+- Four-tier authorization for OAuth tokens
+- See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md)
 
 **📝 Pending (Phases 8-9)**:
 - Frontend UI pages (`/ui/tools`)
@@ -78,11 +86,29 @@ Implement built-in tool support for Bodhi App backend, starting with Exa web sea
 - [03-service-layer.md](./03-service-layer.md) - Business logic
 - [04-routes-api.md](./04-routes-api.md) - HTTP endpoints
 - [05-auth-scopes.md](./05-auth-scopes.md) - OAuth scope integration
-- [05.5-app-level-tool-config.md](./05.5-app-level-tool-config.md) - App-level tool enable/disable
+- [05.5-app-level-tool-config.md](./05.5-app-level-tool-config.md) - App-level tool enable/disable (partially superseded by 05.6)
+- [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) - External app OAuth tool access (Phase 7.6)
 - [06-exa-integration.md](./06-exa-integration.md) - Exa API specifics
 - [07-ui-pages.md](./07-ui-pages.md) - Frontend pages
 - [08-implementation-phases.md](./08-implementation-phases.md) - Phase tracking
 - [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract
+- [10-pending-items.md](./10-pending-items.md) - Security enhancements and pending requirements
+
+## Security Considerations
+
+### Authorization Model
+
+| Auth Type | App Check | App-Client Check | Scope Check | User Config Check | Status |
+|-----------|-----------|------------------|-------------|-------------------|--------|
+| Session | ✅ | ❌ | ❌ | ✅ | ✅ Accepted (BodhiApp frontend only) |
+| First-party Token | ✅ | ❌ | ❌ | ✅ | 🔴 **Pending restriction** |
+| External OAuth | ✅ | ✅ | ✅ | ✅ | ✅ Fully secured |
+
+**Session auth** is unrestricted by design - only BodhiApp's own frontend uses sessions, and users have explicitly configured their API keys.
+
+**First-party tokens** need restriction - see [10-pending-items.md](./10-pending-items.md) for the requirement to block tool access by default for API tokens.
+
+**External OAuth** is fully secured with 4-tier authorization.
 
 ## Open Questions
 

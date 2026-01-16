@@ -174,13 +174,17 @@ impl DefaultTokenService {
       ))?;
     }
 
-    // Extract user scopes from the external token for exchange
+    // Extract user scopes and tool scopes from the external token for exchange
+    // scope_user_* are user-level permissions
+    // scope_tool-* are tool access permissions from external apps
     let mut scopes: Vec<&str> = claims
       .scope
       .split_whitespace()
-      .filter(|s| s.starts_with("scope_user_"))
+      .filter(|s| s.starts_with("scope_user_") || s.starts_with("scope_tool-"))
       .collect();
-    if scopes.is_empty() {
+    // Need at least one user scope for basic access
+    let has_user_scope = scopes.iter().any(|s| s.starts_with("scope_user_"));
+    if !has_user_scope {
       return Err(TokenError::ScopeEmpty)?;
     }
     scopes.extend(["openid", "email", "profile", "roles"]);

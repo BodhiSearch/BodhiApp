@@ -20,8 +20,8 @@ use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_T
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
-  extract_claims, AppAccessRequest, AppAccessResponse, AppStatus, Claims, SecretServiceExt,
-  CHAT_PATH, DOWNLOAD_MODELS_PATH,
+  db::AppClientToolConfigRow, extract_claims, AppAccessRequest, AppAccessResponse, AppClientTool,
+  AppStatus, Claims, SecretServiceExt, CHAT_PATH, DOWNLOAD_MODELS_PATH,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -389,18 +389,21 @@ pub async fn logout_handler(
     tag = API_TAG_AUTH,
     operation_id = "requestAccess",
     summary = "Request Resource Access",
-    description = "Requests access permissions for an application client to access this resource server's protected resources.",
+    description = "Requests access permissions for an application client to access this resource server's protected resources. Supports caching via optional version parameter.",
     request_body(
         content = AppAccessRequest,
         description = "Application client requesting access",
         example = json!({
-            "app_client_id": "my_app_client_123"
+            "app_client_id": "my_app_client_123",
+            "version": "v1.0.0"
         })
     ),
     responses(
         (status = 200, description = "Access granted successfully", body = AppAccessResponse,
          example = json!({
-             "scope": "scope_resource_bodhi-server"
+             "scope": "scope_resource_bodhi-server",
+             "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+             "app_client_config_version": "v1.0.0"
          })),
     ),
     security(
@@ -417,14 +420,34 @@ pub async fn request_access_handler(
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let auth_service = app_service.auth_service();
+  let db_service = app_service.db_service();
 
   // Get app registration info
   let app_reg_info = secret_service
     .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
 
-  // Delegate to auth service
-  let scope = auth_service
+  // Check cache if version is provided
+  if let Some(ref version) = request.version {
+    if let Ok(Some(cached)) = db_service
+      .get_app_client_tool_config(&request.app_client_id)
+      .await
+    {
+      if &cached.config_version == version {
+        // Cache hit - return cached data
+        let tools: Vec<AppClientTool> =
+          serde_json::from_str(&cached.tools_json).unwrap_or_default();
+        return Ok(Json(AppAccessResponse {
+          scope: cached.resource_scope,
+          tools,
+          app_client_config_version: cached.config_version,
+        }));
+      }
+    }
+  }
+
+  // Cache miss or no version provided - call auth server
+  let auth_response = auth_service
     .request_access(
       &app_reg_info.client_id,
       &app_reg_info.client_secret,
@@ -432,7 +455,45 @@ pub async fn request_access_handler(
     )
     .await?;
 
-  Ok(Json(AppAccessResponse { scope }))
+  // Log if version mismatch
+  if let Some(ref version) = request.version {
+    if version != &auth_response.app_client_config_version {
+      tracing::warn!(
+        "App client {} sent version {} but auth server returned version {}",
+        request.app_client_id,
+        version,
+        auth_response.app_client_config_version
+      );
+    }
+  }
+
+  // Store/update cache
+  let tools_json = serde_json::to_string(&auth_response.tools).unwrap_or_else(|_| "[]".to_string());
+  let now = db_service.now().timestamp();
+  let config_row = AppClientToolConfigRow {
+    id: 0, // Will be set by DB
+    app_client_id: request.app_client_id.clone(),
+    config_version: auth_response.app_client_config_version.clone(),
+    tools_json,
+    resource_scope: auth_response.scope.clone(),
+    created_at: now,
+    updated_at: now,
+  };
+
+  if let Err(e) = db_service.upsert_app_client_tool_config(&config_row).await {
+    tracing::warn!(
+      "Failed to cache app client tool config for {}: {}",
+      request.app_client_id,
+      e
+    );
+    // Don't fail the request if caching fails
+  }
+
+  Ok(Json(AppAccessResponse {
+    scope: auth_response.scope,
+    tools: auth_response.tools,
+    app_client_config_version: auth_response.app_client_config_version,
+  }))
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -1285,12 +1346,12 @@ mod tests {
   ) -> anyhow::Result<()> {
     let (token, _) = token;
     let mut server = Server::new_async().await;
-    let keycloak_url = server.url();
+    let auth_server_url = server.url();
     let id = Id::default();
     let state = generate_random_string(32); // Use simple random state like the actual implementation
     let app_service =
-      setup_app_service_resource_admin(&temp_bodhi_home, &id, &keycloak_url, &state).await?;
-    setup_keycloak_mocks_resource_admin(&mut server, &token).await;
+      setup_app_service_resource_admin(&temp_bodhi_home, &id, &auth_server_url, &state).await?;
+    setup_auth_server_mocks_resource_admin(&mut server, &token).await;
     let result = execute_auth_callback(&id, app_service.clone(), &state).await?;
     assert_login_callback_result_resource_admin(result, app_service).await?;
     Ok(())
@@ -1299,7 +1360,7 @@ mod tests {
   async fn setup_app_service_resource_admin(
     temp_bodhi_home: &TempDir,
     id: &Id,
-    keycloak_url: &str,
+    auth_server_url: &str,
     state: &str,
   ) -> anyhow::Result<Arc<AppServiceStub>> {
     let dbfile = temp_bodhi_home.path().join("test.db");
@@ -1322,13 +1383,13 @@ mod tests {
       })
       .with_app_status(&AppStatus::ResourceAdmin);
     let secret_service = Arc::new(secret_service);
-    let auth_service = Arc::new(test_auth_service(keycloak_url));
+    let auth_service = Arc::new(test_auth_service(auth_server_url));
     let setting_service = Arc::new(
       SettingServiceStub::default().append_settings(HashMap::from([
         (BODHI_SCHEME.to_string(), "http".to_string()),
         (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
         (BODHI_PORT.to_string(), "3000".to_string()),
-        (BODHI_AUTH_URL.to_string(), keycloak_url.to_string()),
+        (BODHI_AUTH_URL.to_string(), auth_server_url.to_string()),
       ])),
     );
     let app_service = AppServiceStubBuilder::default()
@@ -1340,7 +1401,7 @@ mod tests {
     Ok(Arc::new(app_service))
   }
 
-  async fn setup_keycloak_mocks_resource_admin(server: &mut Server, token: &str) {
+  async fn setup_auth_server_mocks_resource_admin(server: &mut Server, token: &str) {
     // Mock token endpoint for code exchange
     let code_verifier = PkceCodeVerifier::new("test_pkce_verifier".to_string());
     let code_secret = code_verifier.secret();
@@ -1502,7 +1563,14 @@ mod tests {
       .match_header("Authorization", "Bearer test_access_token")
       .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
       .with_status(200)
-      .with_body(json!({"scope": expected_scope}).to_string())
+      .with_body(
+        json!({
+          "scope": expected_scope,
+          "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+          "app_client_config_version": "v1.0.0"
+        })
+        .to_string(),
+      )
       .create();
 
     let dbfile = temp_bodhi_home.path().join("test.db");
@@ -1516,6 +1584,8 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .auth_service(auth_service)
+      .with_db_service()
+      .await
       .build_session_service(dbfile)
       .await
       .build()?;
@@ -1538,6 +1608,7 @@ mod tests {
     assert_eq!(StatusCode::OK, resp.status());
     let body: AppAccessResponse = resp.json().await?;
     assert_eq!(expected_scope, body.scope);
+    assert_eq!("v1.0.0", body.app_client_config_version);
 
     token_mock.assert();
     access_mock.assert();
@@ -1554,6 +1625,8 @@ mod tests {
     let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready); // No app_reg_info set
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_db_service()
+      .await
       .build_session_service(dbfile)
       .await
       .build()?;
@@ -1633,6 +1706,8 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .auth_service(auth_service)
+      .with_db_service()
+      .await
       .build_session_service(dbfile)
       .await
       .build()?;

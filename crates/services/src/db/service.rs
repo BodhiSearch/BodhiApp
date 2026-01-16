@@ -221,6 +221,20 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_app_tool_configs(&self) -> Result<Vec<crate::db::AppToolConfigRow>, DbError>;
 
+  // ============================================================================
+  // App-Client Tool Config (cached from Keycloak /resources/request-access)
+  // ============================================================================
+
+  async fn get_app_client_tool_config(
+    &self,
+    app_client_id: &str,
+  ) -> Result<Option<crate::db::AppClientToolConfigRow>, DbError>;
+
+  async fn upsert_app_client_tool_config(
+    &self,
+    config: &crate::db::AppClientToolConfigRow,
+  ) -> Result<crate::db::AppClientToolConfigRow, DbError>;
+
   fn now(&self) -> DateTime<Utc>;
 
   /// Get the encryption key for encrypting/decrypting sensitive data
@@ -1771,6 +1785,68 @@ impl DbService for SqliteDbService {
         )
         .collect(),
     )
+  }
+
+  async fn get_app_client_tool_config(
+    &self,
+    app_client_id: &str,
+  ) -> Result<Option<crate::db::AppClientToolConfigRow>, DbError> {
+    let result = sqlx::query_as::<_, (i64, String, String, String, String, i64, i64)>(
+      "SELECT id, app_client_id, config_version, tools_json, resource_scope, created_at, updated_at 
+       FROM app_client_tool_configs WHERE app_client_id = ?",
+    )
+    .bind(app_client_id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(id, app_client_id, config_version, tools_json, resource_scope, created_at, updated_at)| {
+        crate::db::AppClientToolConfigRow {
+          id,
+          app_client_id,
+          config_version,
+          tools_json,
+          resource_scope,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn upsert_app_client_tool_config(
+    &self,
+    config: &crate::db::AppClientToolConfigRow,
+  ) -> Result<crate::db::AppClientToolConfigRow, DbError> {
+    // SQLite upsert - insert or replace based on unique app_client_id
+    let result = sqlx::query_as::<_, (i64, String, String, String, String, i64, i64)>(
+      "INSERT INTO app_client_tool_configs (app_client_id, config_version, tools_json, resource_scope, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(app_client_id) DO UPDATE SET
+         config_version = excluded.config_version,
+         tools_json = excluded.tools_json,
+         resource_scope = excluded.resource_scope,
+         updated_at = excluded.updated_at
+       RETURNING id, app_client_id, config_version, tools_json, resource_scope, created_at, updated_at",
+    )
+    .bind(&config.app_client_id)
+    .bind(&config.config_version)
+    .bind(&config.tools_json)
+    .bind(&config.resource_scope)
+    .bind(config.created_at)
+    .bind(config.updated_at)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(crate::db::AppClientToolConfigRow {
+      id: result.0,
+      app_client_id: result.1,
+      config_version: result.2,
+      tools_json: result.3,
+      resource_scope: result.4,
+      created_at: result.5,
+      updated_at: result.6,
+    })
   }
 
   fn now(&self) -> DateTime<Utc> {

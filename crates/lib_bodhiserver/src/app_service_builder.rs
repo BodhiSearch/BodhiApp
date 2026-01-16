@@ -212,11 +212,7 @@ impl AppServiceBuilder {
     let auth_service = self.get_or_build_auth_service();
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
-    let tool_service = self.get_or_build_tool_service(
-      db_service.clone(),
-      time_service.clone(),
-      auth_service.clone(),
-    );
+    let tool_service = self.get_or_build_tool_service(db_service.clone(), time_service.clone());
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -432,7 +428,6 @@ impl AppServiceBuilder {
     &mut self,
     db_service: Arc<dyn DbService>,
     time_service: Arc<dyn TimeService>,
-    auth_service: Arc<dyn AuthService>,
   ) -> Arc<dyn ToolService> {
     // Create Exa service
     let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
@@ -442,7 +437,6 @@ impl AppServiceBuilder {
       db_service,
       exa_service,
       time_service,
-      auth_service,
     ))
   }
 }

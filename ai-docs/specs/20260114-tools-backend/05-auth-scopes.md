@@ -1,18 +1,24 @@
 # Auth & Scopes - Tools Feature
 
-> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete (7 tests passing)
+> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete (7 tests passing) | Updated in Phase 7.6
 
 ## Implementation Note
 
-The current implementation (`tool_auth_middleware.rs`) checks tool configuration for all auth types (session, first-party tokens, OAuth tokens). OAuth-specific tool scope validation is simplified and will be enhanced in a future iteration when `auth_middleware` is extended to preserve full JWT scope strings instead of just the ResourceScope enum.
+> **Phase 7.6 Update**: OAuth-specific tool scope validation is now implemented. See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) for details.
+
+The `tool_auth_middleware.rs` now handles different authorization flows:
+- **Session/First-party**: Two-tier (app-level + user config)
+- **External OAuth**: Four-tier (app-level + app-client + scope + user)
 
 ## Scope Model
 
 Tool scopes are **discrete permissions** (not hierarchical like TokenScope/UserScope).
 
-**Current Implementation**: All auth types (session, first-party tokens, OAuth tokens) are validated by checking if the tool is configured (enabled + has API key) for the user.
+**Session/First-party**: Validated by checking if tool is configured (enabled + has API key) for the user.
 
-**Future Enhancement**: OAuth-specific tool scope validation will be added when auth_middleware is enhanced to preserve full JWT scope strings.
+**External OAuth (Phase 7.6)**: Additionally validates:
+1. App-client is registered for the tool (via cached `/resources/request-access` response)
+2. Token contains the required `scope_tool-*` claim
 
 ## ToolScope Enum
 
@@ -111,19 +117,28 @@ async fn _impl(
 }
 ```
 
-## Token Types Summary (Current Implementation)
+## Token Types Summary
 
-| Token Type | Example | Scope Check | Tool Config Check |
-|------------|---------|-------------|-------------------|
-| Session | HTTP cookie | No | Yes |
-| First-party API | `bodhiapp_xxx` | No | Yes |
-| External OAuth | JWT from Keycloak | No (deferred) | Yes |
+| Token Type | Example | App Check | App-Client Check | Scope Check | User Config Check |
+|------------|---------|-----------|------------------|-------------|-------------------|
+| Session | HTTP cookie | Yes | No | No | Yes |
+| First-party API | `bodhiapp_xxx` | Yes | No | No | Yes |
+| External OAuth | JWT from Keycloak | Yes | Yes | Yes | Yes |
 
-Note: OAuth scope checking will be added in future enhancement when auth_middleware preserves full JWT scope strings.
+**Phase 7.6**: OAuth scope checking is now implemented via:
+- `X-BodhiApp-Tool-Scopes` header (space-separated tool scopes from token)
+- `X-BodhiApp-Azp` header (authorized party / app-client ID)
 
-## Keycloak Configuration (Out of Scope)
+## Keycloak Configuration
 
-Manual steps for admin:
-1. Create client scope: `scope_tool-builtin-exa-web-search`
-2. Set consent required: Yes
-3. Add to client's optional scopes
+Tool scopes are configured on app-clients via developer portal:
+1. Client scope `scope_tool-builtin-exa-web-search` exists in realm
+2. App-client has `bodhi.tools` attribute listing allowed tools
+3. App-client has tool scope in optional scopes
+
+See [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) for full Keycloak integration details.
+
+## Related Documents
+
+- [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) - Full OAuth tool authorization flow
+- [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract

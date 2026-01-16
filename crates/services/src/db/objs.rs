@@ -210,3 +210,18 @@ pub struct AppToolConfigRow {
   pub created_at: i64,
   pub updated_at: i64,
 }
+
+// ============================================================================
+// AppClientToolConfigRow - Database row for cached app-client tool configuration
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppClientToolConfigRow {
+  pub id: i64,
+  pub app_client_id: String,
+  pub config_version: String,
+  pub tools_json: String,
+  pub resource_scope: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}

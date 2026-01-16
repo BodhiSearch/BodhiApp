@@ -384,7 +384,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         ollama_model_show_handler,
         ollama_model_chat_handler,
 
-        // Access request endpoints
+        // User request endpoints
         user_request_access_handler,
         request_status_handler,
         list_pending_requests_handler,

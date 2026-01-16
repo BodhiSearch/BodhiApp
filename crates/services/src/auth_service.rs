@@ -83,7 +83,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     client_id: &str,
     client_secret: &str,
     app_client_id: &str,
-  ) -> Result<String>;
+  ) -> Result<RequestAccessResponse>;
 
   async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
@@ -95,12 +95,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     page: Option<u32>,
     page_size: Option<u32>,
   ) -> Result<UserListResponse>;
-
-  /// Enable a tool scope for the app client (add client scope)
-  async fn enable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()>;
-
-  /// Disable a tool scope for the app client (remove client scope)
-  async fn disable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -200,11 +194,41 @@ pub struct RegisterClientRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AppAccessRequest {
   pub app_client_id: String,
+  /// Optional version for cache lookup - if matches cached config, skips auth server call
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub version: Option<String>,
+}
+
+/// Tool configuration from app-client registration
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct AppClientTool {
+  pub tool_id: String,
+  pub tool_scope: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AppAccessResponse {
   pub scope: String,
+  /// List of tools the app-client is configured to access
+  #[serde(default)]
+  pub tools: Vec<AppClientTool>,
+  /// Version of app-client's tool configuration on auth server
+  pub app_client_config_version: String,
+}
+
+/// Internal request to auth server (without version field)
+#[derive(Debug, Serialize, Deserialize)]
+struct RequestAccessRequest {
+  pub app_client_id: String,
+}
+
+/// Response from auth server /resources/request-access
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RequestAccessResponse {
+  pub scope: String,
+  #[serde(default)]
+  pub tools: Vec<AppClientTool>,
+  pub app_client_config_version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -585,14 +609,13 @@ impl AuthService for KeycloakAuthService {
     client_id: &str,
     client_secret: &str,
     app_client_id: &str,
-  ) -> Result<String> {
-    // TODO: cache the request_access request from the app client so we avoid a check on auth server
+  ) -> Result<RequestAccessResponse> {
     // Get client access token
     let access_token = self
       .get_client_access_token(client_id, client_secret)
       .await?;
 
-    // Make API call to request access - corrected endpoint
+    // Make API call to request access
     let endpoint = format!(
       "{}/realms/{}/bodhi/resources/request-access",
       self.auth_url, self.realm
@@ -603,7 +626,7 @@ impl AuthService for KeycloakAuthService {
       .client
       .post(&endpoint)
       .bearer_auth(access_token.secret())
-      .json(&AppAccessRequest {
+      .json(&RequestAccessRequest {
         app_client_id: app_client_id.to_string(),
       })
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
@@ -611,8 +634,7 @@ impl AuthService for KeycloakAuthService {
       .await?;
 
     if response.status().is_success() {
-      let response_body: AppAccessResponse = response.json().await?;
-      Ok(response_body.scope)
+      Ok(response.json().await?)
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error.error);
@@ -723,50 +745,6 @@ impl AuthService for KeycloakAuthService {
     } else {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("GET", &endpoint, "auth_service", &error.error);
-      Err(error.into())
-    }
-  }
-
-  async fn enable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()> {
-    let endpoint = format!("{}/resources/tools", self.auth_api_url());
-    log::log_http_request("POST", &endpoint, "auth_service", None);
-
-    let response = self
-      .client
-      .post(&endpoint)
-      .bearer_auth(admin_token)
-      .json(&serde_json::json!({ "tool_scope": tool_scope }))
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    if response.status().is_success() {
-      Ok(())
-    } else {
-      let error = response.json::<KeycloakError>().await?;
-      log::log_http_error("POST", &endpoint, "auth_service", &error.error);
-      Err(error.into())
-    }
-  }
-
-  async fn disable_tool_scope(&self, admin_token: &str, tool_scope: &str) -> Result<()> {
-    let encoded_scope = urlencoding::encode(tool_scope);
-    let endpoint = format!("{}/resources/tools/{}", self.auth_api_url(), encoded_scope);
-    log::log_http_request("DELETE", &endpoint, "auth_service", None);
-
-    let response = self
-      .client
-      .delete(&endpoint)
-      .bearer_auth(admin_token)
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    if response.status().is_success() {
-      Ok(())
-    } else {
-      let error = response.json::<KeycloakError>().await?;
-      log::log_http_error("DELETE", &endpoint, "auth_service", &error.error);
       Err(error.into())
     }
   }
@@ -1151,7 +1129,14 @@ mod tests {
       .match_header("Authorization", "Bearer test_access_token")
       .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
       .with_status(200)
-      .with_body(json!({"scope": "scope_resource_test-resource-server"}).to_string())
+      .with_body(
+        json!({
+          "scope": "scope_resource_test-resource-server",
+          "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+          "app_client_config_version": "v1.0.0"
+        })
+        .to_string(),
+      )
       .create();
 
     let service = test_auth_service(&url);
@@ -1160,8 +1145,11 @@ mod tests {
       .await;
 
     assert!(result.is_ok());
-    let scope = result.unwrap();
-    assert_eq!(scope, "scope_resource_test-resource-server");
+    let response = result.unwrap();
+    assert_eq!(response.scope, "scope_resource_test-resource-server");
+    assert_eq!(response.tools.len(), 1);
+    assert_eq!(response.tools[0].tool_id, "builtin-exa-web-search");
+    assert_eq!(response.app_client_config_version, "v1.0.0");
     token_mock.assert();
     access_mock.assert();
 

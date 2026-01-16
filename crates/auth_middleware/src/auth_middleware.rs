@@ -11,8 +11,8 @@ use objs::{
 };
 use server_core::RouterState;
 use services::{
-  db::DbError, extract_claims, AppStatus, AuthServiceError, SecretServiceError, TokenError,
-  UserIdClaims,
+  db::DbError, extract_claims, AppStatus, AuthServiceError, ScopeClaims, SecretServiceError,
+  TokenError, UserIdClaims,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -34,6 +34,9 @@ pub const KEY_HEADER_BODHIAPP_USERNAME: &str = bodhi_header!("Username");
 pub const KEY_HEADER_BODHIAPP_ROLE: &str = bodhi_header!("Role");
 pub const KEY_HEADER_BODHIAPP_SCOPE: &str = bodhi_header!("Scope");
 pub const KEY_HEADER_BODHIAPP_USER_ID: &str = bodhi_header!("User-Id");
+// Phase 7.6: External app tool authorization headers
+pub const KEY_HEADER_BODHIAPP_TOOL_SCOPES: &str = bodhi_header!("Tool-Scopes");
+pub const KEY_HEADER_BODHIAPP_AZP: &str = bodhi_header!("Azp");
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
@@ -152,6 +155,28 @@ pub async fn auth_middleware(
       KEY_HEADER_BODHIAPP_SCOPE,
       resource_scope.to_string().parse().unwrap(),
     );
+
+    // Extract and set tool scopes and azp from the exchanged token (Phase 7.6)
+    // These are used by tool_auth_middleware for external app tool authorization
+    if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+      // Extract tool scopes (space-separated, matches JWT scope format)
+      let tool_scopes: Vec<&str> = scope_claims
+        .scope
+        .split_whitespace()
+        .filter(|s| s.starts_with("scope_tool-"))
+        .collect();
+      if !tool_scopes.is_empty() {
+        req.headers_mut().insert(
+          KEY_HEADER_BODHIAPP_TOOL_SCOPES,
+          tool_scopes.join(" ").parse().unwrap(),
+        );
+      }
+      // Set azp (authorized party / app-client ID)
+      req
+        .headers_mut()
+        .insert(KEY_HEADER_BODHIAPP_AZP, scope_claims.azp.parse().unwrap());
+    }
+
     Ok(next.run(req).await)
   } else if is_same_origin(&_headers) {
     // Check for token in session
@@ -231,6 +256,23 @@ pub async fn inject_optional_auth_info(
           KEY_HEADER_BODHIAPP_SCOPE,
           resource_scope.to_string().parse().unwrap(),
         );
+        // Extract and set tool scopes and azp from the exchanged token (Phase 7.6)
+        if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+          let tool_scopes: Vec<&str> = scope_claims
+            .scope
+            .split_whitespace()
+            .filter(|s| s.starts_with("scope_tool-"))
+            .collect();
+          if !tool_scopes.is_empty() {
+            req.headers_mut().insert(
+              KEY_HEADER_BODHIAPP_TOOL_SCOPES,
+              tool_scopes.join(" ").parse().unwrap(),
+            );
+          }
+          req
+            .headers_mut()
+            .insert(KEY_HEADER_BODHIAPP_AZP, scope_claims.azp.parse().unwrap());
+        }
       }
     }
   } else if is_same_origin(req.headers()) {

@@ -26,7 +26,7 @@ export class OAuth2ApiHelper {
     });
 
     if (response.status !== 200) {
-      throw new Error(`Failed to request access: ${response.status}`);
+      throw new Error(`Failed to request access: ${response.status}, ${await response.text()}`);
     }
 
     return await response.json();

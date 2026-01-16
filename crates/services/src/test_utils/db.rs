@@ -445,6 +445,28 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_app_tool_configs"))
   }
 
+  async fn get_app_client_tool_config(
+    &self,
+    app_client_id: &str,
+  ) -> Result<Option<crate::db::AppClientToolConfigRow>, DbError> {
+    self
+      .inner
+      .get_app_client_tool_config(app_client_id)
+      .await
+      .tap(|_| self.notify("get_app_client_tool_config"))
+  }
+
+  async fn upsert_app_client_tool_config(
+    &self,
+    config: &crate::db::AppClientToolConfigRow,
+  ) -> Result<crate::db::AppClientToolConfigRow, DbError> {
+    self
+      .inner
+      .upsert_app_client_tool_config(config)
+      .await
+      .tap(|_| self.notify("upsert_app_client_tool_config"))
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.now
   }

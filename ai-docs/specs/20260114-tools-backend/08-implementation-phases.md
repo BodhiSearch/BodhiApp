@@ -1,6 +1,6 @@
 # Implementation Phases
 
-> Status: Phases 1-7.5 Complete | Phases 8-9 Pending | Updated: 2026-01-14
+> Status: Phases 1-7.5 Complete | Phase 7.6 In Progress | Phases 8-9 Pending | Updated: 2026-01-15
 
 ## Phase Completion Summary
 
@@ -13,11 +13,12 @@
 | 5. AppService Integration | ✅ Complete | - | ToolService as 14th parameter |
 | 6. API Routes | ✅ Complete | 6 passing | 5 endpoints in routes_app |
 | 7. Auth Middleware | ✅ Complete | 7 passing | Configuration checking |
-| 7.5. App-Level Tool Config | ✅ Complete | 9 passing | Admin enable/disable, Keycloak sync |
+| 7.5. App-Level Tool Config | ✅ Complete | 9 passing | Admin enable/disable, ~~Keycloak sync~~ |
+| 7.6. External App Tool Access | 🔄 In Progress | - | OAuth scope-based auth, fixes 7.5 Keycloak |
 | 8. Frontend UI | ⏳ Pending | - | `/ui/tools` pages |
 | 9. Integration Tests | ⏳ Pending | - | E2E and integration tests |
 
-**Total**: 58 passing tests, ~3,300 lines of new/modified code
+**Total**: 58 passing tests, ~3,300 lines of new/modified code (before Phase 7.6)
 
 ---
 
@@ -311,13 +312,14 @@ Integration:
 - `PUT /tools/:tool_id/app-config` - Admin enables tool for app (requires `ResourceRole::Admin`)
 - `DELETE /tools/:tool_id/app-config` - Admin disables tool for app (requires `ResourceRole::Admin`)
 
-**Keycloak Integration:**
-- `POST /realms/{realm}/bodhi/resources/tools` - Enable tool scope (201 Created / 200 OK)
-- `DELETE /realms/{realm}/bodhi/resources/tools/{encoded_scope}` - Disable tool scope (200 OK)
+**~~Keycloak Integration~~ (Removed in Phase 7.6):**
+- ~~`POST /realms/{realm}/bodhi/resources/tools` - Enable tool scope~~
+- ~~`DELETE /realms/{realm}/bodhi/resources/tools/{encoded_scope}` - Disable tool scope~~
+- **Note**: This was incorrect. See Phase 7.6 for corrected approach.
 
 **Key Design Decisions:**
-- Two-tier auth: `app_enabled AND user_enabled AND has_api_key`
-- Keycloak is source of truth (DB failure after Keycloak success returns success)
+- Two-tier auth for session: `app_enabled AND user_enabled AND has_api_key`
+- ~~Keycloak is source of truth~~ (Removed - local DB only for app-level)
 - Default state: disabled (no row = false)
 - Admin token passthrough (no exchange)
 
@@ -328,6 +330,47 @@ Integration:
 - `is_tool_available_returns_false_when_no_api_key`
 - `is_tool_available_returns_true_when_app_and_user_enabled`
 - And 4 more covering tool service functionality
+
+---
+
+## Phase 7.6: External App Tool Access 🔄 IN PROGRESS
+
+**Goal**: Fix Phase 7.5's incorrect Keycloak integration and implement proper OAuth scope-based authorization for external apps.
+
+**Spec**: See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) for full details.
+
+**Keycloak Extension**: Already implemented and deployed to `main-id.getbodhi.app`.
+
+**Changes from 7.5:**
+- Remove `enable_tool_scope()` / `disable_tool_scope()` from AuthService
+- App-level config now local DB only (no Keycloak sync)
+- Add app-client tool config caching from `/resources/request-access`
+
+**New Features:**
+- Token exchange preserves `scope_tool-*` scopes
+- New headers: `X-BodhiApp-Tool-Scopes`, `X-BodhiApp-Azp`
+- `/apps/request-access` returns tools array and caches response
+- Four-tier auth for OAuth: app-level → app-client → scope → user
+
+**Files to create:**
+- `crates/services/migrations/0008_app_client_tool_configs.up.sql`
+- `crates/services/migrations/0008_app_client_tool_configs.down.sql`
+
+**Files to modify:**
+- `crates/services/src/auth_service.rs` - Remove tool scope methods
+- `crates/services/src/tool_service.rs` - Add app-client methods, remove Keycloak calls
+- `crates/services/src/db/service.rs` - Add CRUD for app_client_tool_configs
+- `crates/auth_middleware/src/token_service.rs` - Preserve scope_tool-*
+- `crates/auth_middleware/src/lib.rs` - Add new headers
+- `crates/auth_middleware/src/tool_auth_middleware.rs` - Full auth logic rewrite
+- `crates/routes_app/src/routes_login.rs` - Update /apps/request-access
+
+**Authorization Flow:**
+
+| Auth Type | Check 1 | Check 2 | Check 3 | Check 4 |
+|-----------|---------|---------|---------|---------|
+| Session/First-party | app_tool_configs | - | - | user_tool_configs |
+| External OAuth | app_tool_configs | app_client_tool_configs | scope_tool-* | user_tool_configs |
 
 ---
 
