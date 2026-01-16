@@ -418,6 +418,14 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_user_tool_configs"))
   }
 
+  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_user_tool_config(user_id, tool_id)
+      .await
+      .tap(|_| self.notify("delete_user_tool_config"))
+  }
+
   async fn get_app_tool_config(&self, tool_id: &str) -> Result<Option<AppToolConfigRow>, DbError> {
     self
       .inner

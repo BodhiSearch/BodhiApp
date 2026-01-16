@@ -36,3 +36,7 @@ CREATE TABLE IF NOT EXISTS app_tool_configs (
 
 -- Create index on tool_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_app_tool_configs_tool_id ON app_tool_configs(tool_id);
+
+-- Seed default tool config (web search enabled by default for setup)
+INSERT INTO app_tool_configs (tool_id, enabled, updated_by, created_at, updated_at)
+VALUES ('builtin-exa-web-search', 1, 'system', strftime('%s', 'now'), strftime('%s', 'now'));

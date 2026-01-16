@@ -72,6 +72,9 @@ pub trait ToolService: Debug + Send + Sync {
     api_key: Option<String>,
   ) -> Result<UserToolConfig, ToolError>;
 
+  /// Delete user's tool config (clears API key)
+  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), ToolError>;
+
   /// Execute a tool for user
   async fn execute_tool(
     &self,
@@ -299,6 +302,23 @@ impl ToolService for DefaultToolService {
 
     let result = self.db_service.upsert_user_tool_config(&config).await?;
     Ok(Self::row_to_config(result))
+  }
+
+  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), ToolError> {
+    // Verify tool exists
+    if !Self::builtin_tool_definitions()
+      .iter()
+      .any(|def| def.function.name == tool_id)
+    {
+      return Err(ToolError::ToolNotFound(tool_id.to_string()));
+    }
+
+    self
+      .db_service
+      .delete_user_tool_config(user_id, tool_id)
+      .await?;
+
+    Ok(())
   }
 
   async fn execute_tool(

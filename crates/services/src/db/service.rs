@@ -208,6 +208,8 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     user_id: &str,
   ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError>;
 
+  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), DbError>;
+
   // App-level tool configuration management
   async fn get_app_tool_config(
     &self,
@@ -1676,6 +1678,16 @@ impl DbService for SqliteDbService {
         )
         .collect(),
     )
+  }
+
+  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM user_tool_configs WHERE user_id = ? AND tool_id = ?")
+      .bind(user_id)
+      .bind(tool_id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
   }
 
   // ============================================================================
