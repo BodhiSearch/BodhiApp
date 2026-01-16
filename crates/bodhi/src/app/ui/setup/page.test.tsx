@@ -220,7 +220,7 @@ describe('Setup Page', () => {
     expect(screen.getByText(/Your Personal AI Hub/i)).toBeInTheDocument();
 
     // Check setup progress
-    expect(screen.getByText('Step 1 of 6')).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
   });
 
   it('should display NEW badges on new features', async () => {

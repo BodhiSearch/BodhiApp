@@ -80,25 +80,26 @@ describe('SetupProgress', () => {
 
   describe('step labels', () => {
     it('displays step labels when provided', () => {
-      render(<SetupProgress currentStep={1} totalSteps={6} stepLabels={SETUP_STEP_LABELS} />);
+      render(<SetupProgress currentStep={1} totalSteps={7} stepLabels={SETUP_STEP_LABELS} />);
       expect(screen.getByText('Get Started')).toBeInTheDocument();
       expect(screen.getByText('Login & Setup')).toBeInTheDocument();
       expect(screen.getByText('Local Models')).toBeInTheDocument();
       expect(screen.getByText('API Models')).toBeInTheDocument();
+      expect(screen.getByText('Tools')).toBeInTheDocument();
       expect(screen.getByText('Extension')).toBeInTheDocument();
       expect(screen.getByText('All Done!')).toBeInTheDocument();
     });
 
     it('works without step labels', () => {
-      render(<SetupProgress currentStep={1} totalSteps={6} />);
+      render(<SetupProgress currentStep={1} totalSteps={7} />);
       const steps = screen.getAllByTestId(/^step-indicator-/);
-      expect(steps).toHaveLength(6);
+      expect(steps).toHaveLength(7);
       expect(screen.queryByText('Get Started')).not.toBeInTheDocument();
     });
 
     it('handles mismatched label count gracefully', () => {
       const shortLabels = ['Step 1', 'Step 2'];
-      render(<SetupProgress currentStep={1} totalSteps={6} stepLabels={shortLabels} />);
+      render(<SetupProgress currentStep={1} totalSteps={7} stepLabels={shortLabels} />);
       expect(screen.getByText('Step 1')).toBeInTheDocument();
       expect(screen.getByText('Step 2')).toBeInTheDocument();
       expect(screen.queryByText('Step 3')).not.toBeInTheDocument();

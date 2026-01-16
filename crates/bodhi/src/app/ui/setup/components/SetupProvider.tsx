@@ -22,6 +22,7 @@ export function SetupProvider({ children }: { children: ReactNode }) {
     if (path.includes('/setup/resource-admin')) return SETUP_STEPS.RESOURCE_ADMIN;
     if (path.includes('/setup/download-models')) return SETUP_STEPS.DOWNLOAD_MODELS;
     if (path.includes('/setup/api-models')) return SETUP_STEPS.API_MODELS;
+    if (path.includes('/setup/tools')) return SETUP_STEPS.TOOLS;
     if (path.includes('/setup/browser-extension')) return SETUP_STEPS.BROWSER_EXTENSION;
     if (path.includes('/setup/complete')) return SETUP_STEPS.COMPLETE;
     return SETUP_STEPS.WELCOME;

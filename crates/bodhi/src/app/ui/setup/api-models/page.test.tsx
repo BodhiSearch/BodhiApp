@@ -106,7 +106,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
 
       // Verify setup progress is rendered (mocked component)
       expect(screen.getByTestId('setup-progress')).toBeInTheDocument();
-      expect(screen.getByTestId('setup-progress')).toHaveTextContent('Step 4 of 6 - API Models');
+      expect(screen.getByTestId('setup-progress')).toHaveTextContent('Step 4 of 7 - API Models');
 
       // Verify logo is rendered (mocked component)
       expect(screen.getByTestId('bodhi-logo')).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       await user.click(skipButton);
 
       // Verify navigation to setup browser extension
-      expect(mockPush).toHaveBeenCalledWith('/ui/setup/browser-extension');
+      expect(mockPush).toHaveBeenCalledWith('/ui/setup/tools');
       expect(mockPush).toHaveBeenCalledTimes(1);
 
       // Verify no form submission occurred (no toast notifications)
@@ -298,7 +298,7 @@ describe('Setup API Models Page - Page-Level Integration Tests', () => {
       });
 
       // Verify redirect to setup browser extension (NOT to complete or models page)
-      expect(mockPush).toHaveBeenCalledWith('/ui/setup/browser-extension');
+      expect(mockPush).toHaveBeenCalledWith('/ui/setup/tools');
       expect(mockPush).not.toHaveBeenCalledWith('/ui/setup/complete');
       expect(mockPush).not.toHaveBeenCalledWith('/ui/models');
     });

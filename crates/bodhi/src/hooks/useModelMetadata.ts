@@ -16,19 +16,15 @@ export function useRefreshAllMetadata(options?: {
   onSuccess?: (response: RefreshResponse) => void;
   onError?: (message: string) => void;
 }) {
-  return useMutationQuery<RefreshResponse, { source: 'all' }>(
-    ENDPOINT_MODELS_REFRESH,
-    'post',
-    {
-      onSuccess: (response) => {
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
-        options?.onError?.(message);
-      },
-    }
-  );
+  return useMutationQuery<RefreshResponse, { source: 'all' }>(ENDPOINT_MODELS_REFRESH, 'post', {
+    onSuccess: (response) => {
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to refresh metadata';
+      options?.onError?.(message);
+    },
+  });
 }
 
 /**
@@ -40,10 +36,7 @@ export function useRefreshSingleMetadata(options?: {
 }) {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<
-    AliasResponse,
-    { source: 'model'; repo: string; filename: string; snapshot: string }
-  >(
+  return useMutationQuery<AliasResponse, { source: 'model'; repo: string; filename: string; snapshot: string }>(
     ENDPOINT_MODELS_REFRESH,
     'post',
     {

@@ -152,11 +152,7 @@ export function ModelPreviewModal({ open, onOpenChange, model }: ModelPreviewMod
                       data-testid="preview-modal-refresh-button-header"
                       data-teststate={isRefreshing ? 'loading' : 'ready'}
                     >
-                      {isRefreshing ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-5 w-5" />
-                      )}
+                      {isRefreshing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent sideOffset={4}>

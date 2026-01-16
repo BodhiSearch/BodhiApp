@@ -16,6 +16,7 @@ import {
   Users,
   BookOpen,
   BookText,
+  Wrench,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -84,6 +85,21 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/ui/tokens/',
         description: 'Manage API access tokens',
         icon: Key,
+      },
+      {
+        title: 'Tools',
+        href: '/ui/tools/',
+        description: 'Configure AI tools',
+        icon: Wrench,
+        items: [
+          {
+            title: 'Edit Tool',
+            href: '/ui/tools/edit/',
+            description: 'Edit a tool',
+            icon: Wrench,
+            skip: true,
+          },
+        ],
       },
       {
         title: 'Manage Users',

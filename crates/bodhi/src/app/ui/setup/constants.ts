@@ -1,5 +1,5 @@
 /**
- * Setup flow constants for the 6-step onboarding process
+ * Setup flow constants for the 7-step onboarding process
  */
 
 export const SETUP_STEPS = {
@@ -7,8 +7,9 @@ export const SETUP_STEPS = {
   RESOURCE_ADMIN: 2,
   DOWNLOAD_MODELS: 3,
   API_MODELS: 4,
-  BROWSER_EXTENSION: 5,
-  COMPLETE: 6,
+  TOOLS: 5,
+  BROWSER_EXTENSION: 6,
+  COMPLETE: 7,
 } as const;
 
 export const SETUP_STEP_LABELS = [
@@ -16,10 +17,11 @@ export const SETUP_STEP_LABELS = [
   'Login & Setup',
   'Local Models',
   'API Models',
+  'Tools',
   'Extension',
   'All Done!',
 ];
 
-export const SETUP_TOTAL_STEPS = 6;
+export const SETUP_TOTAL_STEPS = 7;
 
 export type SetupStep = (typeof SETUP_STEPS)[keyof typeof SETUP_STEPS];

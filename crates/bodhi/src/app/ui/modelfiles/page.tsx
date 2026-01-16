@@ -68,7 +68,6 @@ function ModelFilesContent() {
     direction: 'asc',
   });
 
-  const { toast } = useToast();
   const { data, isLoading, error } = useModelFiles(page, pageSize, sort.column, sort.direction);
 
   // Update preview model when query data changes (after metadata refresh)
