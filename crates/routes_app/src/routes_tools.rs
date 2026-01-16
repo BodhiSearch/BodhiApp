@@ -36,19 +36,28 @@ fn extract_token_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
 }
 
 // ============================================================================
+// Endpoint Constants
+// ============================================================================
+
+pub const ENDPOINT_TOOLS: &str = "/bodhi/v1/tools";
+
+// ============================================================================
 // Router Configuration
 // ============================================================================
 
 pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
   Router::new()
-    .route("/tools", get(list_all_tools))
-    .route("/tools/configured", get(list_configured_tools))
-    .route("/tools/:tool_id/config", get(get_tool_config))
-    .route("/tools/:tool_id/config", put(update_tool_config))
-    .route("/tools/:tool_id/execute", post(execute_tool))
+    .route("/tools", get(list_all_tools_handler))
+    .route("/tools/:tool_id/config", get(get_tool_config_handler))
+    .route("/tools/:tool_id/config", put(update_tool_config_handler))
+    .route("/tools/:tool_id/config", delete(delete_tool_config_handler))
+    .route("/tools/:tool_id/execute", post(execute_tool_handler))
     // Admin routes for app-level tool configuration
-    .route("/tools/:tool_id/app-config", put(enable_app_tool))
-    .route("/tools/:tool_id/app-config", delete(disable_app_tool))
+    .route("/tools/:tool_id/app-config", put(enable_app_tool_handler))
+    .route(
+      "/tools/:tool_id/app-config",
+      delete(disable_app_tool_handler),
+    )
     .with_state(state)
 }
 
@@ -66,7 +75,7 @@ pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
   ),
   security(("bearer" = []))
 )]
-async fn list_all_tools(
+pub async fn list_all_tools_handler(
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
 ) -> Result<Json<ListToolsResponse>, ApiError> {
@@ -112,48 +121,6 @@ async fn list_all_tools(
   Ok(Json(ListToolsResponse { tools: items }))
 }
 
-/// List configured and enabled tools for current user
-#[utoipa::path(
-  get,
-  path = "/tools/configured",
-  tag = "tools",
-  responses(
-    (status = 200, description = "List of configured tools for user", body = ListToolsResponse),
-  ),
-  security(("bearer" = []))
-)]
-async fn list_configured_tools(
-  State(state): State<Arc<dyn RouterState>>,
-  headers: HeaderMap,
-) -> Result<Json<ListToolsResponse>, ApiError> {
-  let user_id = extract_user_id_from_headers(&headers)?;
-  let tool_service = state.app_service().tool_service();
-  let tools = tool_service.list_tools_for_user(&user_id).await?;
-
-  // Build enhanced tool list - these are already configured tools
-  let mut items = Vec::new();
-  for tool in tools {
-    let tool_id = &tool.function.name;
-
-    // Get app-level enabled status
-    let app_enabled = tool_service
-      .is_tool_enabled_for_app(tool_id)
-      .await
-      .unwrap_or(false);
-
-    items.push(ToolListItem {
-      definition: tool,
-      app_enabled,
-      user_config: Some(UserToolConfigSummary {
-        enabled: true,
-        has_api_key: true,
-      }),
-    });
-  }
-
-  Ok(Json(ListToolsResponse { tools: items }))
-}
-
 /// Get user's configuration for a specific tool (with app-level status)
 #[utoipa::path(
   get,
@@ -168,7 +135,7 @@ async fn list_configured_tools(
   ),
   security(("bearer" = []))
 )]
-async fn get_tool_config(
+pub async fn get_tool_config_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
@@ -218,11 +185,12 @@ async fn get_tool_config(
   request_body = UpdateToolConfigRequest,
   responses(
     (status = 200, description = "Updated tool configuration", body = EnhancedToolConfigResponse),
+    (status = 400, description = "Tool is disabled at app level"),
     (status = 404, description = "Tool not found"),
   ),
   security(("bearer" = []))
 )]
-async fn update_tool_config(
+pub async fn update_tool_config_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
@@ -237,6 +205,14 @@ async fn update_tool_config(
     .await
     .unwrap_or(false);
 
+  // Reject update if tool is disabled at app level
+  if !app_enabled {
+    return Err(
+      objs::BadRequestError::new("Tool is disabled at app level. Enable it first.".to_string())
+        .into(),
+    );
+  }
+
   let config = tool_service
     .update_user_tool_config(&user_id, &tool_id, request.enabled, request.api_key)
     .await?;
@@ -246,6 +222,35 @@ async fn update_tool_config(
     app_enabled,
     config,
   }))
+}
+
+/// Delete user's tool configuration (clears API key)
+#[utoipa::path(
+  delete,
+  path = "/tools/{tool_id}/config",
+  tag = "tools",
+  params(
+    ("tool_id" = String, Path, description = "Tool identifier")
+  ),
+  responses(
+    (status = 204, description = "Tool configuration deleted"),
+    (status = 404, description = "Tool not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn delete_tool_config_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(tool_id): Path<String>,
+  headers: HeaderMap,
+) -> Result<axum::http::StatusCode, ApiError> {
+  let user_id = extract_user_id_from_headers(&headers)?;
+  let tool_service = state.app_service().tool_service();
+
+  tool_service
+    .delete_user_tool_config(&user_id, &tool_id)
+    .await?;
+
+  Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 /// Execute a tool for the user
@@ -264,16 +269,26 @@ async fn update_tool_config(
   ),
   security(("bearer" = []))
 )]
-async fn execute_tool(
+pub async fn execute_tool_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
   Json(request): Json<ExecuteToolRequest>,
 ) -> Result<Json<ToolExecutionResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
-  let response = state
-    .app_service()
-    .tool_service()
+  let tool_service = state.app_service().tool_service();
+
+  // Check if tool is enabled at app level
+  let app_enabled = tool_service
+    .is_tool_enabled_for_app(&tool_id)
+    .await
+    .unwrap_or(false);
+
+  if !app_enabled {
+    return Err(objs::BadRequestError::new("Tool is disabled at app level.".to_string()).into());
+  }
+
+  let response = tool_service
     .execute_tool(&user_id, &tool_id, request.into())
     .await?;
 
@@ -299,7 +314,7 @@ async fn execute_tool(
   ),
   security(("bearer" = []))
 )]
-async fn enable_app_tool(
+pub async fn enable_app_tool_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
@@ -331,7 +346,7 @@ async fn enable_app_tool(
   ),
   security(("bearer" = []))
 )]
-async fn disable_app_tool(
+pub async fn disable_app_tool_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(tool_id): Path<String>,
   headers: HeaderMap,
@@ -351,7 +366,22 @@ async fn disable_app_tool(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
+  use axum::{
+    http::{Request, StatusCode},
+    routing::put,
+    Router,
+  };
+  use mockall::predicate::eq;
+  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::rstest;
+  use server_core::{
+    test_utils::{RequestTestExt, ResponseTestExt},
+    DefaultRouterState, MockSharedContext,
+  };
+  use services::{test_utils::AppServiceStubBuilder, MockToolService};
+  use std::sync::Arc;
+  use tower::ServiceExt;
 
   // Note: These handlers require Claims extractor which needs the full auth middleware stack.
   // Integration tests in Phase 9 will test the complete flow with authentication.
@@ -377,5 +407,107 @@ mod tests {
     let json = serde_json::to_value(&req).unwrap();
     assert_eq!("call_123", json["tool_call_id"]);
     assert_eq!("test", json["arguments"]["query"]);
+  }
+
+  fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
+    Router::new()
+      .route("/tools/{tool_id}/config", put(update_tool_config_handler))
+      .with_state(Arc::new(router_state))
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_update_tool_config_returns_400_when_app_disabled(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Setup mock tool service that returns app_enabled = false
+    let mut mock_tool_service = MockToolService::new();
+    mock_tool_service
+      .expect_is_tool_enabled_for_app()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| Ok(false));
+
+    let app_service = AppServiceStubBuilder::default()
+      .with_tool_service(Arc::new(mock_tool_service))
+      .build()?;
+
+    let router = test_router(Arc::new(app_service));
+
+    let resp = router
+      .oneshot(
+        Request::put("/tools/builtin-exa-web-search/config")
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "test-user-id")
+          .json(serde_json::json!({
+            "enabled": true,
+            "api_key": "test-api-key"
+          }))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, resp.status());
+    let body: serde_json::Value = resp.json().await?;
+    assert!(body["error"]["message"]
+      .as_str()
+      .unwrap()
+      .contains("disabled at app level"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_update_tool_config_succeeds_when_app_enabled(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Setup mock tool service that returns app_enabled = true
+    let mut mock_tool_service = MockToolService::new();
+    mock_tool_service
+      .expect_is_tool_enabled_for_app()
+      .with(eq("builtin-exa-web-search"))
+      .returning(|_| Ok(true));
+
+    // Mock the update call
+    mock_tool_service
+      .expect_update_user_tool_config()
+      .with(
+        eq("test-user-id"),
+        eq("builtin-exa-web-search"),
+        eq(true),
+        eq(Some("test-api-key".to_string())),
+      )
+      .returning(|_, tool_id, enabled, _| {
+        Ok(objs::UserToolConfig {
+          tool_id: tool_id.to_string(),
+          enabled,
+          created_at: chrono::Utc::now(),
+          updated_at: chrono::Utc::now(),
+        })
+      });
+
+    let app_service = AppServiceStubBuilder::default()
+      .with_tool_service(Arc::new(mock_tool_service))
+      .build()?;
+
+    let router = test_router(Arc::new(app_service));
+
+    let resp = router
+      .oneshot(
+        Request::put("/tools/builtin-exa-web-search/config")
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "test-user-id")
+          .json(serde_json::json!({
+            "enabled": true,
+            "api_key": "test-api-key"
+          }))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, resp.status());
+    let body: EnhancedToolConfigResponse = resp.json().await?;
+    assert_eq!("builtin-exa-web-search", body.tool_id);
+    assert!(body.app_enabled);
+    assert!(body.config.enabled);
+
+    Ok(())
   }
 }
