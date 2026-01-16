@@ -1,19 +1,33 @@
 # UI Pages - Tools Feature
 
-> Layer: `crates/bodhi` (Next.js) | Status: ⏳ Pending
+> Layer: `crates/bodhi` (Next.js) | Status: ✅ Completed (Phase 8)
+
+## Implementation Summary
+
+Phase 8 implementation completed with the following:
+- Tools list page at `/ui/tools` with DataTable display
+- Tool configuration page at `/ui/tools/edit?toolid=xxx`
+- Setup flow integration as Step 5 (7-step flow)
+- Separate form components for config (`ToolConfigForm`) and setup (`SetupToolsForm`)
+- Admin controls for app-level enable/disable with confirmation dialogs
+- Full test coverage (unit tests + MSW handlers)
+- E2E test page objects and setup flow updates
+
+See `ai-docs/specs/20260114-tools-backend/phase-8-implementation.md` for detailed implementation notes.
 
 ## Navigation
 
-Add "Tools" item to sidebar navigation (top-level).
+Tools item added under Settings group (between API Tokens and Manage Users).
 
 ### Sidebar Entry
 
 ```tsx
-// crates/bodhi/src/components/sidebar.tsx (or equivalent)
+// crates/bodhi/src/hooks/use-navigation.tsx
 {
-  name: 'Tools',
-  href: '/ui/tools',
-  icon: WrenchIcon,  // or similar
+  title: 'Tools',
+  href: '/ui/tools/',
+  description: 'Configure AI tools',
+  icon: Wrench,
 }
 ```
 
@@ -21,210 +35,86 @@ Add "Tools" item to sidebar navigation (top-level).
 
 ### /ui/tools - Tools List
 
-Lists all available tools with configuration status.
+Lists all available tools with configuration status. Uses DataTable for display with status badges.
 
-```tsx
-// crates/bodhi/src/app/ui/tools/page.tsx
+**File:** `crates/bodhi/src/app/ui/tools/page.tsx`
 
-export default function ToolsPage() {
-  const { data: tools } = useQuery({
-    queryKey: ['available-tools'],
-    queryFn: () => fetch('/bodhi/v1/tools/available').then(r => r.json()),
-  });
+**Status Badges:**
+- **Enabled** (green): `app_enabled && configured && enabled`
+- **Configured** (yellow): `app_enabled && configured && !enabled`
+- **Not Configured** (gray): `app_enabled && !configured`
+- **App Disabled** (red): `!app_enabled`
 
-  return (
-    <div>
-      <h1>Tools</h1>
-      <p>Configure tools to enhance AI capabilities.</p>
+### /ui/tools/edit?toolid=xxx - Tool Configuration
 
-      <div className="grid gap-4">
-        {tools?.tools.map((tool) => (
-          <ToolCard
-            key={tool.tool_id}
-            tool={tool}
-            href={`/ui/tools/${tool.tool_id}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+Configuration page for individual tool. Uses query parameter (not dynamic route) for static export compatibility.
 
-function ToolCard({ tool, href }) {
-  return (
-    <Link href={href}>
-      <Card>
-        <CardHeader>
-          <CardTitle>{tool.name}</CardTitle>
-          <CardDescription>{tool.description}</CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Badge variant={tool.enabled ? 'success' : 'secondary'}>
-            {tool.enabled ? 'Enabled' : 'Not Configured'}
-          </Badge>
-        </CardFooter>
-      </Card>
-    </Link>
-  );
-}
-```
+**File:** `crates/bodhi/src/app/ui/tools/edit/page.tsx`
 
-### /ui/tools/[tool_id] - Tool Configuration
+**Component:** `ToolConfigForm` (`crates/bodhi/src/app/ui/tools/ToolConfigForm.tsx`)
 
-Configuration page for individual tool.
+**Features:**
+- Fetches backend state, shows loading skeleton
+- Admin section visible only for `resource_admin` users
+- App-level enable/disable toggle with confirmation dialogs
+- API key input (password field) with external link to exa.ai
+- Enable toggle (disabled until API key configured)
+- Clear API Key button with confirmation dialog
+- Form disabled when app-level is disabled
 
-```tsx
-// crates/bodhi/src/app/ui/tools/[toolId]/page.tsx
+### /ui/setup/tools - Setup Step 5
 
-export default function ToolConfigPage({ params }: { params: { toolId: string } }) {
-  const { toolId } = params;
+Setup flow integration for first-time tool configuration.
 
-  const { data: config } = useQuery({
-    queryKey: ['tool-config', toolId],
-    queryFn: () => fetch(`/bodhi/v1/tools/${toolId}`).then(r => r.json()),
-  });
+**File:** `crates/bodhi/src/app/ui/setup/tools/page.tsx`
 
-  const updateMutation = useMutation({
-    mutationFn: (data: UpdateToolConfigRequest) =>
-      fetch(`/bodhi/v1/tools/${toolId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['tool-config', toolId]);
-      toast.success('Tool configuration saved');
-    },
-  });
+**Component:** `SetupToolsForm` (`crates/bodhi/src/app/ui/setup/tools/SetupToolsForm.tsx`)
 
-  const [enabled, setEnabled] = useState(config?.enabled ?? false);
-  const [apiKey, setApiKey] = useState('');
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      enabled,
-      api_key: apiKey || undefined,
-    });
-  };
-
-  return (
-    <div>
-      <h1>Exa Web Search</h1>
-      <p>Configure Exa AI for web search capabilities.</p>
-
-      <Card>
-        <CardContent className="space-y-4">
-          {/* API Key Input */}
-          <div>
-            <Label htmlFor="api-key">Exa API Key</Label>
-            <Input
-              id="api-key"
-              type="password"
-              placeholder={config?.has_api_key ? '••••••••' : 'Enter your Exa API key'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              data-testid="exa-api-key-input"
-            />
-            <p className="text-sm text-muted-foreground">
-              Get your API key from{' '}
-              <a href="https://exa.ai" target="_blank" rel="noopener noreferrer">
-                exa.ai
-              </a>
-            </p>
-          </div>
-
-          {/* Enable Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="enabled">Enable Tool</Label>
-            <Switch
-              id="enabled"
-              checked={enabled}
-              onCheckedChange={setEnabled}
-              disabled={!config?.has_api_key && !apiKey}
-              data-testid="exa-enabled-toggle"
-            />
-          </div>
-        </CardContent>
-
-        <CardFooter>
-          <Button
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-            data-testid="save-tool-config"
-          >
-            {updateMutation.isPending ? 'Saving...' : 'Save'}
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}
-```
+**Features:**
+- Renders immediately with defaults (optimistic rendering)
+- App toggle always visible (setup is admin-only context)
+- Auto-enables tool when user enters API key (UX improvement)
+- Applies backend state when loaded (discards local changes)
+- No Clear API Key button (fresh setup)
+- Skip option to proceed without configuration
 
 ## Data Test IDs
 
 | Element | data-testid |
 |---------|-------------|
-| API key input | `exa-api-key-input` |
-| Enable toggle | `exa-enabled-toggle` |
+| Tools page | `tools-page` |
+| Tool edit page | `tool-edit-page` |
+| Tool config form | `tool-config-form` |
+| API key input | `tool-api-key-input` |
+| Enable toggle | `tool-enabled-toggle` |
+| App enabled toggle | `app-enabled-toggle` |
 | Save button | `save-tool-config` |
-| Tool card | `tool-card-{tool_id}` |
+| Clear API key button | `clear-api-key-button` |
+| App disabled message | `app-disabled-message` |
+| Skip button (setup) | `skip-tools-setup` |
+| Tools setup page | `tools-setup-page` |
+
+## API Hooks
+
+**File:** `crates/bodhi/src/hooks/useTools.ts`
+
+| Hook | Purpose |
+|------|---------|
+| `useAvailableTools` | Fetch all tools with status |
+| `useToolConfig` | Fetch tool configuration (no retry on 404) |
+| `useUpdateToolConfig` | Update user's tool config |
+| `useDeleteToolConfig` | Delete user's tool config (clear API key) |
+| `useSetAppToolEnabled` | Enable tool at app level (admin) |
+| `useSetAppToolDisabled` | Disable tool at app level (admin) |
 
 ## MSW Mocks (for tests)
 
-```typescript
-// crates/bodhi/src/mocks/handlers.ts
+**File:** `crates/bodhi/src/test-utils/msw-v2/handlers/tools.ts`
 
-export const toolHandlers = [
-  http.get('/bodhi/v1/tools/available', () => {
-    return HttpResponse.json({
-      tools: [
-        {
-          tool_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
-          description: 'Search the web using Exa AI',
-          configured: false,
-          enabled: false,
-          scope_required: 'scope_tool-builtin-exa-web-search',
-        },
-      ],
-    });
-  }),
-
-  http.get('/bodhi/v1/tools/:toolId', ({ params }) => {
-    return HttpResponse.json({
-      tool_id: params.toolId,
-      enabled: false,
-      has_api_key: false,
-      scope_required: 'scope_tool-builtin-exa-web-search',
-    });
-  }),
-
-  http.put('/bodhi/v1/tools/:toolId', async ({ request }) => {
-    const body = await request.json();
-    return HttpResponse.json({
-      tool_id: params.toolId,
-      enabled: body.enabled,
-      has_api_key: !!body.api_key,
-      scope_required: 'scope_tool-builtin-exa-web-search',
-    });
-  }),
-
-  // Mock Exa execution for chat flow tests
-  http.post('/bodhi/v1/tools/:toolId/execute', async ({ request }) => {
-    const body = await request.json();
-    return HttpResponse.json({
-      tool_call_id: body.tool_call_id,
-      result: {
-        results: [
-          {
-            title: 'Mock Search Result',
-            url: 'https://example.com',
-            snippet: 'Mock snippet for testing',
-          },
-        ],
-      },
-    });
-  }),
-];
-```
+Handlers for:
+- `GET /bodhi/v1/tools` - List all tools
+- `GET /bodhi/v1/tools/:tool_id/config` - Get tool config
+- `PUT /bodhi/v1/tools/:tool_id/config` - Update tool config
+- `DELETE /bodhi/v1/tools/:tool_id/config` - Delete tool config
+- `PUT /bodhi/v1/tools/:tool_id/app-config` - Enable app tool
+- `DELETE /bodhi/v1/tools/:tool_id/app-config` - Disable app tool

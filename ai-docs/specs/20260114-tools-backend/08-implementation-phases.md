@@ -1,6 +1,6 @@
 # Implementation Phases
 
-> Status: Phases 1-7.5 Complete | Phase 7.6 In Progress | Phases 8-9 Pending | Updated: 2026-01-15
+> Status: Phases 1-8, 7.6 Complete | Phase 8.1, 9 Pending | Updated: 2026-01-16
 
 ## Phase Completion Summary
 
@@ -9,16 +9,17 @@
 | 1. Domain Objects | ✅ Complete | 16 passing | Consolidated into `tools.rs` |
 | 2. Database | ✅ Complete | 7 passing | Migration 0007, CRUD with encryption |
 | 3. Exa Service | ✅ Complete | 6 passing | HTTP client, 30s timeout |
-| 4. Tool Service | ✅ Complete | 7 passing | Builtin registry, execution logic |
+| 4. Tool Service | ✅ Complete | 10 passing | Builtin registry, execution logic, app-client checks |
 | 5. AppService Integration | ✅ Complete | - | ToolService as 14th parameter |
 | 6. API Routes | ✅ Complete | 6 passing | 5 endpoints in routes_app |
-| 7. Auth Middleware | ✅ Complete | 7 passing | Configuration checking |
+| 7. Auth Middleware | ✅ Complete | 10 passing | Configuration + OAuth scope checking |
 | 7.5. App-Level Tool Config | ✅ Complete | 9 passing | Admin enable/disable, ~~Keycloak sync~~ |
-| 7.6. External App Tool Access | 🔄 In Progress | - | OAuth scope-based auth, fixes 7.5 Keycloak |
-| 8. Frontend UI | ⏳ Pending | - | `/ui/tools` pages |
-| 9. Integration Tests | ⏳ Pending | - | E2E and integration tests |
+| 7.6. External App Tool Access | ✅ Complete | 13 passing | OAuth scope-based auth, fixes 7.5 |
+| 8. Frontend UI | ✅ Complete | 42+ passing | `/ui/tools` pages, setup step 5, E2E tests |
+| 8.1. Chat UI Integration | ⏳ Pending | - | Agentic search in chat |
+| 9. Integration Tests | ⏳ Pending | - | Additional E2E and integration tests |
 
-**Total**: 58 passing tests, ~3,300 lines of new/modified code (before Phase 7.6)
+**Total**: 100+ passing tests, ~4,000 lines of new/modified code
 
 ---
 
@@ -64,6 +65,8 @@ async fn upsert_user_tool_config(&self, config: &UserToolConfigRow)
     -> Result<UserToolConfigRow, DbError>;
 async fn list_user_tool_configs(&self, user_id: &str) 
     -> Result<Vec<UserToolConfigRow>, DbError>;
+async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) 
+    -> Result<(), DbError>;
 ```
 
 **Implementation details:**
@@ -148,6 +151,8 @@ pub trait ToolService: Debug + Send + Sync {
         -> Result<Option<UserToolConfig>, ToolError>;
     async fn update_user_tool_config(&self, user_id: &str, tool_id: &str, 
         enabled: bool, api_key: Option<String>) -> Result<UserToolConfig, ToolError>;
+    async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) 
+        -> Result<(), ToolError>;
     async fn execute_tool(&self, user_id: &str, tool_id: &str, 
         request: ToolExecutionRequest) -> Result<ToolExecutionResponse, ToolError>;
     async fn is_tool_available_for_user(&self, user_id: &str, tool_id: &str) 
@@ -195,8 +200,8 @@ pub trait ToolService: Debug + Send + Sync {
 ## Phase 6: API Routes ✅ COMPLETE
 
 **Files created:**
-- `crates/routes_app/src/routes_tools.rs` (228 lines)
-- `crates/routes_app/src/tools_dto.rs` (158 lines)
+- `crates/routes_app/src/routes_tools.rs` (516 lines)
+- `crates/routes_app/src/tools_dto.rs` (181 lines)
 
 **Files modified:**
 - `crates/routes_app/src/lib.rs` - Add module exports
@@ -205,28 +210,34 @@ pub trait ToolService: Debug + Send + Sync {
 ```rust
 pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
     Router::new()
-        .route("/tools", get(list_all_tools))
-        .route("/tools/configured", get(list_configured_tools))
-        .route("/tools/:tool_id/config", get(get_tool_config))
-        .route("/tools/:tool_id/config", put(update_tool_config))
-        .route("/tools/:tool_id/execute", post(execute_tool))
+        .route("/tools", get(list_all_tools_handler))
+        .route("/tools/:tool_id/config", get(get_tool_config_handler))
+        .route("/tools/:tool_id/config", put(update_tool_config_handler))
+        .route("/tools/:tool_id/config", delete(delete_tool_config_handler))
+        .route("/tools/:tool_id/execute", post(execute_tool_handler))
+        .route("/tools/:tool_id/app-config", put(enable_app_tool_handler))
+        .route("/tools/:tool_id/app-config", delete(disable_app_tool_handler))
         .with_state(state)
 }
 ```
 
+**API-Level Validation:**
+- `PUT /tools/:tool_id/config` returns 400 if app-level disabled
+- `POST /tools/:tool_id/execute` returns 400 if app-level disabled
+- `DELETE /tools/:tool_id/config` always allowed (cleanup)
+
 **DTOs:**
-- `ListToolsResponse` - OpenAI-compatible list format
-- `GetToolConfigResponse` - Config without API key
+- `ListToolsResponse` - OpenAI-compatible list format with app_enabled status
+- `EnhancedToolConfigResponse` - Config with app_enabled status
 - `UpdateToolConfigRequest` - Enable/disable + optional API key
 - `ExecuteToolRequest` - tool_call_id + arguments
+- `AppToolConfigResponse` - Admin response for app-level changes
 - Re-export `ToolExecutionResponse` from objs
 
 **Tests:** 6 passing
-- All 5 handler endpoints tested
+- All handler endpoints tested
 - Request/response validation
-- Error cases (not found, not configured)
-
-**Note:** Routes use temporary header-based user extraction. Will be replaced when integrated into `routes_all` with proper middleware.
+- Error cases (not found, not configured, app disabled)
 
 ---
 
@@ -261,8 +272,6 @@ pub async fn tool_auth_middleware(
 3. Check tool is configured for user via `ToolService::is_tool_available_for_user()`
 4. Allow if configured, reject with ToolNotConfigured otherwise
 
-**Implementation note:** Simplified from original spec. OAuth-specific tool scope validation deferred to future enhancement when auth_middleware preserves full JWT scope strings.
-
 **Tests:** 7 passing
 - Session auth + tool configured → pass
 - Session auth + tool not configured → reject
@@ -280,12 +289,10 @@ pub async fn tool_auth_middleware(
 
 **Spec**: See [05.5-app-level-tool-config.md](./05.5-app-level-tool-config.md) for full details.
 
-**Keycloak Contract**: See [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) for Keycloak extension API contract.
-
 **Files created/modified:**
 
 Database:
-- `crates/services/migrations/0007_tools_config.up.sql` - Added `app_tool_configs` table
+- `crates/services/migrations/0007_tools_config.up.sql` - Added `app_tool_configs` table with seed data
 - `crates/services/migrations/0007_tools_config.down.sql` - Added drop statement
 - `crates/services/src/db/objs.rs` - Added `AppToolConfigRow`
 - `crates/services/src/db/service.rs` - Added CRUD methods (`get_app_tool_config`, `upsert_app_tool_config`, `list_app_tool_configs`)
@@ -294,9 +301,6 @@ Database:
 Domain:
 - `crates/objs/src/tools.rs` - Added `AppToolConfig` struct
 
-Auth Service:
-- `crates/services/src/auth_service.rs` - Added `enable_tool_scope()`, `disable_tool_scope()` to trait and `KeycloakAuthService`
-
 Tool Service:
 - `crates/services/src/tool_service.rs` - Added `get_app_tool_config()`, `is_tool_enabled_for_app()`, `set_app_tool_enabled()`, `list_app_tool_configs()`, modified `is_tool_available_for_user()` to check app-level first
 
@@ -304,23 +308,14 @@ Routes:
 - `crates/routes_app/src/routes_tools.rs` - Added admin routes, enriched existing responses with `app_enabled`
 - `crates/routes_app/src/tools_dto.rs` - Added `AppToolConfigResponse`, `ToolListItem`, `UserToolConfigSummary`, `EnhancedToolConfigResponse`
 
-Integration:
-- `crates/lib_bodhiserver/src/app_service_builder.rs` - Updated to pass `auth_service` to `ToolService`
-- `crates/services/src/test_utils/db.rs` - Added app config test helpers
-
 **API Endpoints:**
 - `PUT /tools/:tool_id/app-config` - Admin enables tool for app (requires `ResourceRole::Admin`)
 - `DELETE /tools/:tool_id/app-config` - Admin disables tool for app (requires `ResourceRole::Admin`)
 
-**~~Keycloak Integration~~ (Removed in Phase 7.6):**
-- ~~`POST /realms/{realm}/bodhi/resources/tools` - Enable tool scope~~
-- ~~`DELETE /realms/{realm}/bodhi/resources/tools/{encoded_scope}` - Disable tool scope~~
-- **Note**: This was incorrect. See Phase 7.6 for corrected approach.
-
 **Key Design Decisions:**
 - Two-tier auth for session: `app_enabled AND user_enabled AND has_api_key`
-- ~~Keycloak is source of truth~~ (Removed - local DB only for app-level)
-- Default state: disabled (no row = false)
+- Local DB only for app-level config (no auth server sync)
+- Default state: enabled via migration seed data
 - Admin token passthrough (no exchange)
 
 **Tests:** 9 passing
@@ -333,37 +328,32 @@ Integration:
 
 ---
 
-## Phase 7.6: External App Tool Access 🔄 IN PROGRESS
+## Phase 7.6: External App Tool Access ✅ COMPLETE
 
-**Goal**: Fix Phase 7.5's incorrect Keycloak integration and implement proper OAuth scope-based authorization for external apps.
+**Completed: January 2026**
 
-**Spec**: See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) for full details.
+See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) and [phase-7.6-implementation.md](./phase-7.6-implementation.md) for details.
 
-**Keycloak Extension**: Already implemented and deployed to `main-id.getbodhi.app`.
-
-**Changes from 7.5:**
-- Remove `enable_tool_scope()` / `disable_tool_scope()` from AuthService
-- App-level config now local DB only (no Keycloak sync)
-- Add app-client tool config caching from `/resources/request-access`
-
-**New Features:**
+**Key deliverables:**
+- Removed incorrect `enable_tool_scope()` / `disable_tool_scope()` from AuthService
+- App-level config now local DB only (no auth server sync)
 - Token exchange preserves `scope_tool-*` scopes
 - New headers: `X-BodhiApp-Tool-Scopes`, `X-BodhiApp-Azp`
 - `/apps/request-access` returns tools array and caches response
 - Four-tier auth for OAuth: app-level → app-client → scope → user
 
-**Files to create:**
+**Files created:**
 - `crates/services/migrations/0008_app_client_tool_configs.up.sql`
 - `crates/services/migrations/0008_app_client_tool_configs.down.sql`
 
-**Files to modify:**
-- `crates/services/src/auth_service.rs` - Remove tool scope methods
-- `crates/services/src/tool_service.rs` - Add app-client methods, remove Keycloak calls
-- `crates/services/src/db/service.rs` - Add CRUD for app_client_tool_configs
-- `crates/auth_middleware/src/token_service.rs` - Preserve scope_tool-*
-- `crates/auth_middleware/src/lib.rs` - Add new headers
-- `crates/auth_middleware/src/tool_auth_middleware.rs` - Full auth logic rewrite
-- `crates/routes_app/src/routes_login.rs` - Update /apps/request-access
+**Files modified:**
+- `crates/services/src/auth_service.rs` - Removed tool scope methods, updated response types
+- `crates/services/src/tool_service.rs` - Added `is_app_client_registered_for_tool`, removed auth server calls
+- `crates/services/src/db/service.rs` - Added CRUD for app_client_tool_configs
+- `crates/auth_middleware/src/token_service.rs` - Preserved scope_tool-* in exchange
+- `crates/auth_middleware/src/auth_middleware.rs` - Added header injection
+- `crates/auth_middleware/src/tool_auth_middleware.rs` - Full 4-tier auth logic
+- `crates/routes_app/src/routes_login.rs` - Updated /apps/request-access with caching
 
 **Authorization Flow:**
 
@@ -372,112 +362,40 @@ Integration:
 | Session/First-party | app_tool_configs | - | - | user_tool_configs |
 | External OAuth | app_tool_configs | app_client_tool_configs | scope_tool-* | user_tool_configs |
 
----
-
-## Phase 8: Frontend UI ⏳ PENDING
-
-**Files to create:**
-- `crates/bodhi/src/app/ui/tools/page.tsx` - Tools list page
-- `crates/bodhi/src/app/ui/tools/[toolId]/page.tsx` - Tool config page
-- MSW mocks in `crates/bodhi/src/mocks/` for API endpoints
-
-**Files to modify:**
-- Navigation component - Add "Tools" sidebar entry
-
-**Components needed:**
-- `ToolCard` - Display tool with config status
-- Tool configuration form with API key input and enable toggle
-- React Query hooks for API integration
-
-**Tests to add:**
-- Page component tests
-- Form validation tests
-- Navigation integration test
-
-**Data test IDs:**
-- `exa-api-key-input`
-- `exa-enabled-toggle`
-- `save-tool-config`
-- `tool-card-{tool_id}`
+**Tests:** 13 passing (3 for request-access, 10 for tool_auth_middleware)
 
 ---
 
-## Phase 9: Integration Tests ⏳ PENDING
+## Phase 8: Frontend UI ✅ COMPLETE
 
-**Backend integration tests:**
-- `crates/integration-tests/tests/test_tools_integration.rs` (NEW)
-  - Full flow: configure → enable → execute
-  - Real Exa API test (conditional on EXA_API_KEY env var)
-  - OAuth scope rejection (when implemented)
+**Completed: January 2026**
 
-**Frontend E2E tests:**
-- `crates/lib_bodhiserver_napi/js-tests/tools.spec.mjs` (NEW)
-  - Navigate to /ui/tools
-  - Configure Exa API key
-  - Enable tool
-  - Verify tool in available tools list
-  - Execute tool via API (if EXA_API_KEY env set)
+See [phase-8-implementation.md](./phase-8-implementation.md) for detailed implementation notes.
 
-**Test coverage goals:**
-- Backend: 100% of new service logic
-- Routes: All 5 endpoints
-- Auth: All authentication scenarios
-- Frontend: Key user flows
-
----
-
-## Implementation Statistics
-
-**Lines of code:**
-- New files: ~2,500 lines across 8 files
-- Modified files: ~800 lines across 14 files
-- Total: ~3,300 lines changed/added
-
-**Test coverage:**
-- 58 passing tests across backend layers (49 + 9 from Phase 7.5)
-- 100% of implemented functionality tested
-- Integration tests pending (Phase 9)
+**Key deliverables:**
+- Tools list page at `/ui/tools` with DataTable display
+- Tool configuration page at `/ui/tools/edit?toolid=xxx`
+- Setup flow integration as Step 5 (7-step flow)
+- Separate form components: `ToolConfigForm` (config page) and `SetupToolsForm` (setup page)
+- Admin controls for app-level enable/disable with confirmation dialogs
+- Full test coverage (unit tests + MSW handlers + E2E tests)
 
 **Files created:**
-1. `crates/objs/src/tools.rs` (includes `AppToolConfig`)
-2. `crates/services/migrations/0007_tools_config.up.sql` (includes `app_tool_configs` table)
-3. `crates/services/migrations/0007_tools_config.down.sql`
-4. `crates/services/src/exa_service.rs`
-5. `crates/services/src/tool_service.rs` (expanded with app-level methods)
-6. `crates/routes_app/src/tools_dto.rs` (expanded with app config DTOs)
-7. `crates/routes_app/src/routes_tools.rs` (expanded with admin routes)
-8. `crates/auth_middleware/src/tool_auth_middleware.rs`
+- `crates/bodhi/src/hooks/useTools.ts`
+- `crates/bodhi/src/app/ui/tools/ToolConfigForm.tsx`
+- `crates/bodhi/src/app/ui/tools/page.tsx`
+- `crates/bodhi/src/app/ui/tools/edit/page.tsx`
+- `crates/bodhi/src/app/ui/setup/tools/SetupToolsForm.tsx`
+- `crates/bodhi/src/app/ui/setup/tools/page.tsx`
+- `crates/bodhi/src/test-utils/msw-v2/handlers/tools.ts`
+- E2E page objects (`SetupToolsPage.mjs`, `ToolsPage.mjs`)
+- E2E specs (`setup-tools.spec.mjs`, `tools-config.spec.mjs`)
 
 **Files modified:**
-1. `crates/objs/src/lib.rs`
-2. `crates/services/src/lib.rs`
-3. `crates/services/src/db/objs.rs` (added `AppToolConfigRow`)
-4. `crates/services/src/db/service.rs` (added app_tool_configs CRUD)
-5. `crates/services/src/db/mod.rs` (made encryption public)
-6. `crates/services/src/app_service.rs`
-7. `crates/services/src/auth_service.rs` (added tool scope methods)
-8. `crates/services/src/test_utils/app.rs`
-9. `crates/services/src/test_utils/db.rs` (added app config helpers)
-10. `crates/lib_bodhiserver/src/app_service_builder.rs` (pass auth_service to ToolService)
-11. `crates/routes_app/src/lib.rs`
-12. `crates/auth_middleware/src/lib.rs`
+- Setup constants (7 steps), SetupProvider, navigation, api-models page routing
+- All setup flow E2E tests updated for new step 5
 
----
-
-## Phase 8: Frontend UI - Tool Configuration ⏳ PENDING
-
-**Goal**: Create tool configuration pages for users to manage their tools.
-
-**Spec**: See [07-ui-pages.md](./07-ui-pages.md)
-
-**Files to create:**
-- `crates/bodhi/src/app/ui/tools/page.tsx` - Tool list page
-- `crates/bodhi/src/app/ui/tools/[toolId]/page.tsx` - Tool config page
-- `crates/bodhi/src/hooks/use-tools.ts` - Tool API hooks
-
-**Files to modify:**
-- Sidebar navigation - Add "Tools" menu item
-- MSW handlers - Add tool endpoint mocks
+**Tests:** 42+ passing (unit tests) + E2E tests
 
 ---
 
@@ -515,14 +433,66 @@ Integration:
 
 ## Phase 9: Integration Tests ⏳ PENDING
 
-**Goal**: End-to-end testing of tool features.
+**Goal**: Additional end-to-end testing of tool features.
 
 **Test Cases:**
 1. Backend integration tests with test database
-2. Frontend E2E tests with Playwright
+2. Additional frontend E2E tests with Playwright
 3. Real Exa API testing (optional, requires API key)
 4. Performance testing for tool execution
 5. Chat with web search agentic loop tests
+
+---
+
+## Implementation Statistics
+
+**Lines of code:**
+- New files: ~3,000 lines across frontend and backend
+- Modified files: ~1,000 lines across existing files
+- Total: ~4,000 lines changed/added
+
+**Test coverage:**
+- 100+ passing tests across all layers
+- Backend: 71+ tests
+- Frontend: 42+ unit tests
+- E2E: Setup flow and tools config tests
+
+**Files created:**
+1. `crates/objs/src/tools.rs` (includes `AppToolConfig`)
+2. `crates/services/migrations/0007_tools_config.up.sql` (includes `app_tool_configs` table with seed)
+3. `crates/services/migrations/0007_tools_config.down.sql`
+4. `crates/services/migrations/0008_app_client_tool_configs.up.sql`
+5. `crates/services/migrations/0008_app_client_tool_configs.down.sql`
+6. `crates/services/src/exa_service.rs`
+7. `crates/services/src/tool_service.rs` (expanded with app-level methods)
+8. `crates/routes_app/src/tools_dto.rs` (expanded with app config DTOs)
+9. `crates/routes_app/src/routes_tools.rs` (expanded with admin routes)
+10. `crates/auth_middleware/src/tool_auth_middleware.rs`
+11. `crates/bodhi/src/hooks/useTools.ts`
+12. `crates/bodhi/src/app/ui/tools/ToolConfigForm.tsx`
+13. `crates/bodhi/src/app/ui/tools/page.tsx`
+14. `crates/bodhi/src/app/ui/tools/edit/page.tsx`
+15. `crates/bodhi/src/app/ui/setup/tools/SetupToolsForm.tsx`
+16. `crates/bodhi/src/app/ui/setup/tools/page.tsx`
+17. `crates/bodhi/src/test-utils/msw-v2/handlers/tools.ts`
+18. E2E page objects and specs
+
+**Files modified:**
+1. `crates/objs/src/lib.rs`
+2. `crates/services/src/lib.rs`
+3. `crates/services/src/db/objs.rs` (added `AppToolConfigRow`)
+4. `crates/services/src/db/service.rs` (added app_tool_configs CRUD)
+5. `crates/services/src/db/mod.rs` (made encryption public)
+6. `crates/services/src/app_service.rs`
+7. `crates/services/src/test_utils/app.rs`
+8. `crates/services/src/test_utils/db.rs` (added app config helpers)
+9. `crates/lib_bodhiserver/src/app_service_builder.rs`
+10. `crates/routes_app/src/lib.rs`
+11. `crates/auth_middleware/src/lib.rs`
+12. `crates/auth_middleware/src/token_service.rs`
+13. `crates/auth_middleware/src/auth_middleware.rs`
+14. Setup flow frontend files (constants, provider, navigation, api-models)
+15. E2E setup flow tests
 
 ---
 
