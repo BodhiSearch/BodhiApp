@@ -27,11 +27,11 @@ export class SetupBrowserExtensionPage extends SetupBasePage {
   async expectBrowserExtensionPage() {
     await this.expectVisible(this.selectors.pageContainer);
     await this.expectVisible(this.selectors.welcomeTitle);
-    await this.expectStepIndicator(5);
-    await this.expectStepStatus(5, 'current');
+    await this.expectStepIndicator(6);
+    await this.expectStepStatus(6, 'current');
 
     // Verify step label is visible
-    await this.expectVisible(this.selectors.stepLabel(5));
+    await this.expectVisible(this.selectors.stepLabel(6));
   }
 
   async expectBrowserSelectorPresent() {

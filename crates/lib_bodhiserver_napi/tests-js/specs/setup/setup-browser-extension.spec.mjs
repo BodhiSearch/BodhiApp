@@ -3,6 +3,7 @@ import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import {
@@ -24,6 +25,7 @@ test.describe('Browser Extension Setup Integration', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
+  let toolsPage;
   let browserExtensionPage;
 
   test.beforeAll(async () => {
@@ -46,6 +48,7 @@ test.describe('Browser Extension Setup Integration', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
+    toolsPage = new SetupToolsPage(page, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(page, baseUrl);
   });
 
@@ -76,6 +79,11 @@ test.describe('Browser Extension Setup Integration', () => {
     await page.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
     await apiModelsPage.skipApiSetup();
 
+    // Complete tools page (skip)
+    await page.waitForURL((url) => url.pathname === '/ui/setup/tools/');
+    await toolsPage.expectToolsPage();
+    await toolsPage.skipToolsSetup();
+
     // Should now be at browser extension page
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
   }
@@ -86,7 +94,7 @@ test.describe('Browser Extension Setup Integration', () => {
 
     // Verify we're on the browser extension page with correct step indicator
     await browserExtensionPage.expectBrowserExtensionPage();
-    await browserExtensionPage.expectStepIndicator(5);
+    await browserExtensionPage.expectStepIndicator(6);
 
     // Verify page structure elements are present
     await browserExtensionPage.expectBrowserSelectorPresent();

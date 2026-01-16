@@ -169,4 +169,11 @@ export class SetupApiModelsPage extends SetupBasePage {
     // Wait for successful navigation to browser extension page (setup flow)
     await this.expectNavigationToBrowserExtension();
   }
+
+  async createModelAndNavigateToTools() {
+    await this.page.click(this.form.selectors.createButton);
+
+    // Wait for successful navigation to tools page (setup flow)
+    await this.expectNavigationToTools();
+  }
 }

@@ -3,6 +3,7 @@ import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
@@ -23,6 +24,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
+  let toolsPage;
   let browserExtensionPage;
 
   test.beforeAll(async () => {
@@ -53,6 +55,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(extensionPage, baseUrl);
     apiModelsPage = new SetupApiModelsPage(extensionPage, baseUrl);
+    toolsPage = new SetupToolsPage(extensionPage, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(extensionPage, baseUrl);
   });
 
@@ -81,6 +84,10 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
     await apiModelsPage.skipApiSetup();
 
+    await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/tools/');
+    await toolsPage.expectToolsPage();
+    await toolsPage.skipToolsSetup();
+
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
   }
 
@@ -88,7 +95,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     await navigateToBrowserExtensionPage();
 
     await browserExtensionPage.expectBrowserExtensionPage();
-    await browserExtensionPage.expectStepIndicator(5);
+    await browserExtensionPage.expectStepIndicator(6);
 
     await browserExtensionPage.expectBrowserSelectorPresent();
     await browserExtensionPage.expectHelpSection();
@@ -107,7 +114,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
 
     await browserExtensionPage.expectBrowserExtensionPage();
-    await browserExtensionPage.expectStepIndicator(5);
+    await browserExtensionPage.expectStepIndicator(6);
 
     await expect(extensionPage.locator('[data-testid="extension-found"]')).toBeVisible();
   });

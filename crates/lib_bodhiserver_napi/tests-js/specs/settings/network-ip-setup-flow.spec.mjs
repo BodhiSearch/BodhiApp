@@ -6,6 +6,7 @@ import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs
 import { SetupCompletePage } from '@/pages/SetupCompletePage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
+import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, getLocalNetworkIP, randomPort } from '@/test-helpers.mjs';
 import {
@@ -59,6 +60,7 @@ test.describe('Network IP Authentication Setup Flow', () => {
       );
       const downloadModelsPage = new SetupDownloadModelsPage(page, networkUrl);
       const apiModelsPage = new SetupApiModelsPage(page, networkUrl);
+      const toolsPage = new SetupToolsPage(page, networkUrl);
       const browserExtensionPage = new SetupBrowserExtensionPage(page, networkUrl);
       const completePage = new SetupCompletePage(page, networkUrl);
       const chatPage = new ChatPage(page);
@@ -84,11 +86,15 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await apiModelsPage.expectApiModelsPage();
       await apiModelsPage.skipApiSetup();
 
-      // Step 5: Browser Extension page
+      // Step 5: Tools page
+      await toolsPage.expectToolsPage();
+      await toolsPage.skipToolsSetup();
+
+      // Step 6: Browser Extension page
       await browserExtensionPage.expectBrowserExtensionPage();
       await browserExtensionPage.clickContinue();
 
-      // Step 6: Setup completion
+      // Step 7: Setup completion
       await completePage.expectSetupCompletePage();
       await completePage.clickStartUsingApp();
 
@@ -152,6 +158,7 @@ test.describe('Network IP Authentication Setup Flow', () => {
       );
       const downloadModelsPage = new SetupDownloadModelsPage(page, localhostUrl);
       const apiModelsPage = new SetupApiModelsPage(page, localhostUrl);
+      const toolsPage = new SetupToolsPage(page, localhostUrl);
       const browserExtensionPage = new SetupBrowserExtensionPage(page, localhostUrl);
       const completePage = new SetupCompletePage(page, localhostUrl);
 
@@ -172,6 +179,9 @@ test.describe('Network IP Authentication Setup Flow', () => {
 
       await apiModelsPage.expectApiModelsPage();
       await apiModelsPage.skipApiSetup();
+
+      await toolsPage.expectToolsPage();
+      await toolsPage.skipToolsSetup();
 
       await browserExtensionPage.expectBrowserExtensionPage();
       await browserExtensionPage.clickContinue();
