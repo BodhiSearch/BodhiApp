@@ -1,43 +1,40 @@
-# UI Pages - Tools Feature
+# UI Pages - Toolsets Feature
 
-> Layer: `crates/bodhi` (Next.js) | Status: ✅ Completed (Phase 8)
+> Layer: `crates/bodhi` (Next.js) | Status: ✅ Complete
 
 ## Implementation Summary
 
-Phase 8 implementation completed with the following:
-- Tools list page at `/ui/tools` with DataTable display
-- Tool configuration page at `/ui/tools/edit?toolid=xxx`
+- Toolsets list page at `/ui/toolsets` with DataTable display
+- Toolset configuration page at `/ui/toolsets/edit?toolsetid=xxx`
 - Setup flow integration as Step 5 (7-step flow)
-- Separate form components for config (`ToolConfigForm`) and setup (`SetupToolsForm`)
+- Separate form components for config (`ToolsetConfigForm`) and setup (`SetupToolsetsForm`)
 - Admin controls for app-level enable/disable with confirmation dialogs
 - Full test coverage (unit tests + MSW handlers)
 - E2E test page objects and setup flow updates
 
-See `ai-docs/specs/20260114-tools-backend/phase-8-implementation.md` for detailed implementation notes.
-
 ## Navigation
 
-Tools item added under Settings group (between API Tokens and Manage Users).
+Toolsets item added under Settings group (between API Tokens and Manage Users).
 
 ### Sidebar Entry
 
 ```tsx
 // crates/bodhi/src/hooks/use-navigation.tsx
 {
-  title: 'Tools',
-  href: '/ui/tools/',
-  description: 'Configure AI tools',
+  title: 'Toolsets',
+  href: '/ui/toolsets/',
+  description: 'Configure AI toolsets',
   icon: Wrench,
 }
 ```
 
 ## Pages
 
-### /ui/tools - Tools List
+### /ui/toolsets - Toolsets List
 
-Lists all available tools with configuration status. Uses DataTable for display with status badges.
+Lists all available toolsets with their tools and configuration status. Uses DataTable for display with status badges.
 
-**File:** `crates/bodhi/src/app/ui/tools/page.tsx`
+**File:** `crates/bodhi/src/app/ui/toolsets/page.tsx`
 
 **Status Badges:**
 - **Enabled** (green): `app_enabled && configured && enabled`
@@ -45,13 +42,18 @@ Lists all available tools with configuration status. Uses DataTable for display 
 - **Not Configured** (gray): `app_enabled && !configured`
 - **App Disabled** (red): `!app_enabled`
 
-### /ui/tools/edit?toolid=xxx - Tool Configuration
+**Toolset Display:**
+- Shows toolset name and description
+- Shows count of available tools (e.g., "4 tools")
+- Expandable to see individual tool names
 
-Configuration page for individual tool. Uses query parameter (not dynamic route) for static export compatibility.
+### /ui/toolsets/edit?toolsetid=xxx - Toolset Configuration
 
-**File:** `crates/bodhi/src/app/ui/tools/edit/page.tsx`
+Configuration page for individual toolset. Uses query parameter (not dynamic route) for static export compatibility.
 
-**Component:** `ToolConfigForm` (`crates/bodhi/src/app/ui/tools/ToolConfigForm.tsx`)
+**File:** `crates/bodhi/src/app/ui/toolsets/edit/page.tsx`
+
+**Component:** `ToolsetConfigForm` (`crates/bodhi/src/app/ui/toolsets/ToolsetConfigForm.tsx`)
 
 **Features:**
 - Fetches backend state, shows loading skeleton
@@ -61,19 +63,20 @@ Configuration page for individual tool. Uses query parameter (not dynamic route)
 - Enable toggle (disabled until API key configured)
 - Clear API Key button with confirmation dialog
 - Form disabled when app-level is disabled
+- Shows list of tools provided by this toolset
 
-### /ui/setup/tools - Setup Step 5
+### /ui/setup/toolsets - Setup Step 5
 
-Setup flow integration for first-time tool configuration.
+Setup flow integration for first-time toolset configuration.
 
-**File:** `crates/bodhi/src/app/ui/setup/tools/page.tsx`
+**File:** `crates/bodhi/src/app/ui/setup/toolsets/page.tsx`
 
-**Component:** `SetupToolsForm` (`crates/bodhi/src/app/ui/setup/tools/SetupToolsForm.tsx`)
+**Component:** `SetupToolsetsForm` (`crates/bodhi/src/app/ui/setup/toolsets/SetupToolsetsForm.tsx`)
 
 **Features:**
 - Renders immediately with defaults (optimistic rendering)
 - App toggle always visible (setup is admin-only context)
-- Auto-enables tool when user enters API key (UX improvement)
+- Auto-enables toolset when user enters API key (UX improvement)
 - Applies backend state when loaded (discards local changes)
 - No Clear API Key button (fresh setup)
 - Skip option to proceed without configuration
@@ -82,39 +85,81 @@ Setup flow integration for first-time tool configuration.
 
 | Element | data-testid |
 |---------|-------------|
-| Tools page | `tools-page` |
-| Tool edit page | `tool-edit-page` |
-| Tool config form | `tool-config-form` |
-| API key input | `tool-api-key-input` |
-| Enable toggle | `tool-enabled-toggle` |
+| Toolsets page | `toolsets-page` |
+| Toolset edit page | `toolset-edit-page` |
+| Toolset config form | `toolset-config-form` |
+| API key input | `toolset-api-key-input` |
+| Enable toggle | `toolset-enabled-toggle` |
 | App enabled toggle | `app-enabled-toggle` |
-| Save button | `save-tool-config` |
+| Save button | `save-toolset-config` |
 | Clear API key button | `clear-api-key-button` |
 | App disabled message | `app-disabled-message` |
-| Skip button (setup) | `skip-tools-setup` |
-| Tools setup page | `tools-setup-page` |
+| Skip button (setup) | `skip-toolsets-setup` |
+| Toolsets setup page | `toolsets-setup-page` |
+| Tools list | `toolset-tools-list` |
 
 ## API Hooks
 
-**File:** `crates/bodhi/src/hooks/useTools.ts`
+**File:** `crates/bodhi/src/hooks/useToolsets.ts`
 
 | Hook | Purpose |
 |------|---------|
-| `useAvailableTools` | Fetch all tools with status |
-| `useToolConfig` | Fetch tool configuration (no retry on 404) |
-| `useUpdateToolConfig` | Update user's tool config |
-| `useDeleteToolConfig` | Delete user's tool config (clear API key) |
-| `useSetAppToolEnabled` | Enable tool at app level (admin) |
-| `useSetAppToolDisabled` | Disable tool at app level (admin) |
+| `useAvailableToolsets` | Fetch all toolsets with status and tools |
+| `useToolsetConfig` | Fetch toolset configuration (no retry on 404) |
+| `useUpdateToolsetConfig` | Update user's toolset config |
+| `useDeleteToolsetConfig` | Delete user's toolset config (clear API key) |
+| `useSetAppToolsetEnabled` | Enable toolset at app level (admin) |
+| `useSetAppToolsetDisabled` | Disable toolset at app level (admin) |
 
 ## MSW Mocks (for tests)
 
-**File:** `crates/bodhi/src/test-utils/msw-v2/handlers/tools.ts`
+**File:** `crates/bodhi/src/test-utils/msw-v2/handlers/toolsets.ts`
 
 Handlers for:
-- `GET /bodhi/v1/tools` - List all tools
-- `GET /bodhi/v1/tools/:tool_id/config` - Get tool config
-- `PUT /bodhi/v1/tools/:tool_id/config` - Update tool config
-- `DELETE /bodhi/v1/tools/:tool_id/config` - Delete tool config
-- `PUT /bodhi/v1/tools/:tool_id/app-config` - Enable app tool
-- `DELETE /bodhi/v1/tools/:tool_id/app-config` - Disable app tool
+- `GET /bodhi/v1/toolsets` - List all toolsets with tools
+- `GET /bodhi/v1/toolsets/:toolset_id/config` - Get toolset config
+- `PUT /bodhi/v1/toolsets/:toolset_id/config` - Update toolset config
+- `DELETE /bodhi/v1/toolsets/:toolset_id/config` - Delete toolset config
+- `PUT /bodhi/v1/toolsets/:toolset_id/app-config` - Enable app toolset
+- `DELETE /bodhi/v1/toolsets/:toolset_id/app-config` - Disable app toolset
+
+## Types
+
+```typescript
+// crates/bodhi/src/hooks/useToolsets.ts
+
+export interface ToolDefinition {
+  type: string;
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export interface ToolsetListItem {
+  toolset_id: string;
+  name: string;
+  description: string;
+  app_enabled: boolean;
+  user_config?: { enabled: boolean; has_api_key: boolean };
+  tools: ToolDefinition[];
+}
+
+export interface ListToolsetsResponse {
+  toolsets: ToolsetListItem[];
+}
+
+export interface UserToolsetConfig {
+  toolset_id: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnhancedToolsetConfigResponse {
+  toolset_id: string;
+  app_enabled: boolean;
+  config: UserToolsetConfig;
+}
+```

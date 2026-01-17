@@ -1,58 +1,50 @@
-# Auth & Scopes - Tools Feature
+# Auth & Scopes - Toolsets Feature
 
-> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete (7 tests passing) | Updated in Phase 7.6
-
-## Implementation Note
-
-> **Phase 7.6 Update**: OAuth-specific tool scope validation is now implemented. See [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) for details.
-
-The `tool_auth_middleware.rs` now handles different authorization flows:
-- **Session/First-party**: Two-tier (app-level + user config)
-- **External OAuth**: Four-tier (app-level + app-client + scope + user)
+> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete
 
 ## Scope Model
 
-Tool scopes are **discrete permissions** (not hierarchical like TokenScope/UserScope).
+Toolset scopes are **discrete permissions** (not hierarchical like TokenScope/UserScope). One scope grants access to all tools within that toolset.
 
-**Session/First-party**: Validated by checking if tool is configured (enabled + has API key) for the user.
+**Session/First-party**: Validated by checking if toolset is configured (enabled + has API key) for the user.
 
-**External OAuth (Phase 7.6)**: Additionally validates:
-1. App-client is registered for the tool (via cached `/resources/request-access` response)
-2. Token contains the required `scope_tool-*` claim
+**External OAuth**: Additionally validates:
+1. App-client is registered for the toolset (via cached `/resources/request-access` response)
+2. Token contains the required `scope_toolset-*` claim
 
-## ToolScope Enum
+## ToolsetScope Enum
 
 ```rust
-// crates/objs/src/tool_scope.rs
+// crates/objs/src/toolsets.rs
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, EnumString};
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq, Eq, Hash, EnumIter)]
-pub enum ToolScope {
-    #[strum(serialize = "scope_tool-builtin-exa-web-search")]
-    #[serde(rename = "scope_tool-builtin-exa-web-search")]
+pub enum ToolsetScope {
+    #[strum(serialize = "scope_toolset-builtin-exa-web-search")]
+    #[serde(rename = "scope_toolset-builtin-exa-web-search")]
     BuiltinExaWebSearch,
 }
 
-impl ToolScope {
-    /// Extract tool scopes from space-separated scope string
+impl ToolsetScope {
+    /// Extract toolset scopes from space-separated scope string
     pub fn from_scope_string(scope: &str) -> Vec<Self> {
         scope
             .split_whitespace()
-            .filter_map(|s| s.parse::<ToolScope>().ok())
+            .filter_map(|s| s.parse::<ToolsetScope>().ok())
             .collect()
     }
 
-    /// Get corresponding tool_id
-    pub fn tool_id(&self) -> &'static str {
+    /// Get corresponding toolset_id
+    pub fn toolset_id(&self) -> &'static str {
         match self {
             Self::BuiltinExaWebSearch => "builtin-exa-web-search",
         }
     }
 
-    /// Get scope string for tool_id
-    pub fn scope_for_tool_id(tool_id: &str) -> Option<Self> {
-        match tool_id {
+    /// Get scope for toolset_id
+    pub fn scope_for_toolset_id(toolset_id: &str) -> Option<Self> {
+        match toolset_id {
             "builtin-exa-web-search" => Some(Self::BuiltinExaWebSearch),
             _ => None,
         }
@@ -60,57 +52,64 @@ impl ToolScope {
 }
 ```
 
-## Authorization Middleware for Tool Execution
+## Authorization Middleware for Toolset Execution
 
-**File**: `crates/auth_middleware/src/tool_auth_middleware.rs` (310 lines, 7 tests passing)
+**File**: `crates/auth_middleware/src/toolset_auth_middleware.rs`
 
 ```rust
-/// Middleware for tool execution endpoints
+/// Middleware for toolset execution endpoints
 ///
 /// Authorization rules:
-/// - Check that user has the tool configured (enabled + API key set)
-/// - For all auth types: session, first-party tokens, and OAuth tokens
-///
-/// Note: OAuth-specific tool scope validation is deferred to future enhancement
-/// when auth_middleware is extended to preserve full JWT scope strings.
-pub async fn tool_auth_middleware(
+/// - Session/First-party: Check app-level + user config
+/// - OAuth: Check app-level + app-client registration + scope + user config
+pub async fn toolset_auth_middleware(
     State(state): State<Arc<dyn RouterState>>,
-    Path(tool_id): Path<String>,
+    Path(toolset_id): Path<String>,
     req: Request,
     next: Next,
 ) -> Result<Response, ApiError>
 
 async fn _impl(
     State(state): State<Arc<dyn RouterState>>,
-    Path(tool_id): Path<String>,
+    Path(toolset_id): Path<String>,
     req: Request,
     next: Next,
-) -> Result<Response, ToolAuthError> {
+) -> Result<Response, ToolsetAuthError> {
     let headers = req.headers();
+    let user_id = extract_user_id(headers)?;
+    
+    // Determine auth type
+    let is_session_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
+    let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE).unwrap_or("");
+    let is_first_party_token = scope_header.starts_with("scope_token_");
+    let is_oauth_auth = scope_header.starts_with("scope_user_") && !is_session_auth;
 
-    // Extract user_id
-    let user_id = headers
-        .get(KEY_HEADER_BODHIAPP_USER_ID)
-        .and_then(|v| v.to_str().ok())
-        .ok_or(ToolAuthError::MissingUserId)?;
+    let toolset_service = state.app_service().toolset_service();
 
-    // Verify authentication exists (either role or scope header)
-    let has_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE)
-        || headers.contains_key(KEY_HEADER_BODHIAPP_SCOPE);
-
-    if !has_auth {
-        return Err(ToolAuthError::MissingAuth);
+    // 1. Check app-level enabled (all auth types)
+    if !toolset_service.is_toolset_enabled_for_app(&toolset_id).await? {
+        return Err(ToolsetError::ToolsetAppDisabled.into());
     }
 
-    // Check if tool is configured and available for user
-    let is_available = state
-        .app_service()
-        .tool_service()
-        .is_tool_available_for_user(user_id, &tool_id)
-        .await?;
+    if is_oauth_auth {
+        // 2. Check app-client registered for toolset
+        let azp = headers.get(KEY_HEADER_BODHIAPP_AZP)?;
+        if !toolset_service.is_app_client_registered_for_toolset(azp, &toolset_id).await? {
+            return Err(ToolsetAuthError::AppClientNotRegistered);
+        }
+        
+        // 3. Check scope_toolset-* in token
+        let toolset_scopes_header = headers.get(KEY_HEADER_BODHIAPP_TOOLSET_SCOPES).unwrap_or("");
+        let required_scope = ToolsetScope::scope_for_toolset_id(&toolset_id)
+            .ok_or(ToolsetError::ToolsetNotFound(toolset_id.clone()))?;
+        if !toolset_scopes_header.split_whitespace().any(|s| s == required_scope.to_string()) {
+            return Err(ToolsetAuthError::MissingToolsetScope);
+        }
+    }
 
-    if !is_available {
-        return Err(ToolError::ToolNotConfigured.into());
+    // 4. Check user has toolset configured (API key required for execution)
+    if !toolset_service.is_toolset_available_for_user(user_id, &toolset_id).await? {
+        return Err(ToolsetError::ToolsetNotConfigured.into());
     }
 
     Ok(next.run(req).await)
@@ -125,20 +124,59 @@ async fn _impl(
 | First-party API | `bodhiapp_xxx` | Yes | No | No | Yes |
 | External OAuth | JWT from Keycloak | Yes | Yes | Yes | Yes |
 
-**Phase 7.6**: OAuth scope checking is now implemented via:
-- `X-BodhiApp-Tool-Scopes` header (space-separated tool scopes from token)
-- `X-BodhiApp-Azp` header (authorized party / app-client ID)
+## Header Constants
+
+```rust
+pub const KEY_HEADER_BODHIAPP_TOOLSET_SCOPES: &str = "X-BodhiApp-Toolset-Scopes";
+pub const KEY_HEADER_BODHIAPP_AZP: &str = "X-BodhiApp-Azp";
+```
+
+These headers are injected after token exchange for OAuth tokens:
+- `X-BodhiApp-Toolset-Scopes`: Space-separated toolset scopes from token
+- `X-BodhiApp-Azp`: Authorized party (app-client ID)
+
+## Error Types
+
+```rust
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ToolsetAuthError {
+    #[error("missing_user_id")]
+    #[error_meta(error_type = ErrorType::Unauthorized)]
+    MissingUserId,
+
+    #[error("missing_auth")]
+    #[error_meta(error_type = ErrorType::Unauthorized)]
+    MissingAuth,
+
+    #[error("app_client_not_registered")]
+    #[error_meta(error_type = ErrorType::Forbidden)]
+    AppClientNotRegistered,
+
+    #[error("missing_toolset_scope")]
+    #[error_meta(error_type = ErrorType::Forbidden)]
+    MissingToolsetScope,
+
+    #[error("missing_azp_header")]
+    #[error_meta(error_type = ErrorType::Forbidden)]
+    MissingAzpHeader,
+
+    #[error(transparent)]
+    ToolsetError(#[from] ToolsetError),
+}
+```
 
 ## Keycloak Configuration
 
-Tool scopes are configured on app-clients via developer portal:
-1. Client scope `scope_tool-builtin-exa-web-search` exists in realm
-2. App-client has `bodhi.tools` attribute listing allowed tools
-3. App-client has tool scope in optional scopes
+Toolset scopes are configured on app-clients via developer portal:
+1. Client scope `scope_toolset-builtin-exa-web-search` exists in realm
+2. App-client has `bodhi.toolsets` attribute listing allowed toolsets
+3. App-client has toolset scope in optional scopes
 
 See [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) for full Keycloak integration details.
 
 ## Related Documents
 
-- [05.6-external-app-tool-access.md](./05.6-external-app-tool-access.md) - Full OAuth tool authorization flow
+- [05.5-app-level-toolset-config.md](./05.5-app-level-toolset-config.md) - App-level toolset enable/disable
+- [05.6-external-app-toolset-access.md](./05.6-external-app-toolset-access.md) - Full OAuth toolset authorization flow
 - [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract

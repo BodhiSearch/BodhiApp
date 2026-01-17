@@ -1,58 +1,35 @@
 # Exa API Integration
 
-> Layer: `services` crate | Status: ✅ Complete (6 tests passing)
+> Layer: `services` crate | Status: ✅ Complete
 
-**File**: `crates/services/src/exa_service.rs` (331 lines)
+**File**: `crates/services/src/exa_service.rs`
 
-## Exa Search API
+## Exa Toolset Overview
 
-**Endpoint**: `POST https://api.exa.ai/search`
+The `builtin-exa-web-search` toolset provides 4 tools powered by the Exa AI API:
 
-**Headers**:
-```
-x-api-key: <API_KEY>
-Content-Type: application/json
-```
+| Tool | Exa Endpoint | Description |
+|------|--------------|-------------|
+| `search` | `POST /search` | Semantic web search |
+| `find_similar` | `POST /findSimilar` | Find pages similar to URL |
+| `get_contents` | `POST /contents` | Get full page contents |
+| `answer` | `POST /answer` | AI-generated answer from search |
 
-**Request Body**:
-```json
-{
-  "query": "search query",
-  "type": "neural",
-  "useAutoprompt": true,
-  "numResults": 5,
-  "contents": {
-    "text": true,
-    "highlights": true
-  }
-}
-```
+## API Configuration
 
-**Response**:
-```json
-{
-  "results": [
-    {
-      "title": "Page Title",
-      "url": "https://example.com",
-      "publishedDate": "2024-01-15",
-      "author": "Author Name",
-      "score": 0.95,
-      "text": "Full text content...",
-      "highlights": ["relevant snippet..."]
-    }
-  ],
-  "autopromptString": "optimized query"
-}
-```
+**Base URL**: `https://api.exa.ai`
+**Timeout**: 30 seconds
+**Authentication**: `x-api-key` header
 
-## Tool Definition (OpenAI format)
+## Tool Definitions (OpenAI Format)
+
+### search
 
 ```json
 {
   "type": "function",
   "function": {
-    "name": "builtin-exa-web-search",
+    "name": "toolset__builtin-exa-web-search__search",
     "description": "Search the web for current information using Exa AI semantic search. Returns relevant web pages with titles, URLs, and content snippets.",
     "parameters": {
       "type": "object",
@@ -63,7 +40,98 @@ Content-Type: application/json
         },
         "num_results": {
           "type": "integer",
-          "description": "Number of results to return (default: 5, max: 10)"
+          "description": "Number of results to return (default: 5, max: 10)",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        }
+      },
+      "required": ["query"]
+    }
+  }
+}
+```
+
+### find_similar
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "toolset__builtin-exa-web-search__find_similar",
+    "description": "Find web pages similar to a given URL. Useful for finding related content, competitor pages, or similar articles.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The URL to find similar pages for"
+        },
+        "num_results": {
+          "type": "integer",
+          "description": "Number of similar results to return (default: 5, max: 10)",
+          "default": 5
+        },
+        "exclude_source_domain": {
+          "type": "boolean",
+          "description": "Exclude results from the same domain as the input URL",
+          "default": true
+        }
+      },
+      "required": ["url"]
+    }
+  }
+}
+```
+
+### get_contents
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "toolset__builtin-exa-web-search__get_contents",
+    "description": "Get the full contents of web pages by their URLs. Returns cleaned text content from the pages.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "urls": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of URLs to get contents from (max: 10)",
+          "maxItems": 10
+        },
+        "max_characters": {
+          "type": "integer",
+          "description": "Maximum characters to return per page (default: 3000)",
+          "default": 3000
+        }
+      },
+      "required": ["urls"]
+    }
+  }
+}
+```
+
+### answer
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "toolset__builtin-exa-web-search__answer",
+    "description": "Get an AI-generated answer to a question based on web search results. Combines search with answer synthesis.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "The question to answer using web search"
+        },
+        "num_results": {
+          "type": "integer",
+          "description": "Number of search results to use for generating the answer (default: 5)",
+          "default": 5
         }
       },
       "required": ["query"]
@@ -77,26 +145,62 @@ Content-Type: application/json
 ```rust
 // crates/services/src/exa_service.rs
 
-const EXA_API_URL: &str = "https://api.exa.ai/search";
+const EXA_BASE_URL: &str = "https://api.exa.ai";
 const EXA_TIMEOUT_SECS: u64 = 30;
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ExaSearchRequest {
-    query: String,
-    #[serde(rename = "type")]
-    search_type: String,
-    use_autoprompt: bool,
-    num_results: u32,
-    contents: ExaContents,
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait::async_trait]
+pub trait ExaService: std::fmt::Debug + Send + Sync {
+    async fn search(
+        &self,
+        api_key: &str,
+        query: &str,
+        num_results: Option<u32>,
+    ) -> Result<ExaSearchResponse, ExaError>;
+
+    async fn find_similar(
+        &self,
+        api_key: &str,
+        url: &str,
+        num_results: Option<u32>,
+        exclude_source_domain: Option<bool>,
+    ) -> Result<ExaSearchResponse, ExaError>;
+
+    async fn get_contents(
+        &self,
+        api_key: &str,
+        urls: Vec<String>,
+        max_characters: Option<u32>,
+    ) -> Result<ExaContentsResponse, ExaError>;
+
+    async fn answer(
+        &self,
+        api_key: &str,
+        query: &str,
+        num_results: Option<u32>,
+    ) -> Result<ExaAnswerResponse, ExaError>;
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct ExaContents {
-    text: bool,
-    highlights: bool,
+#[derive(Debug)]
+pub struct DefaultExaService {
+    client: reqwest::Client,
 }
 
+impl DefaultExaService {
+    pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(EXA_TIMEOUT_SECS))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        Self { client }
+    }
+}
+```
+
+## Response Types
+
+```rust
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExaSearchResult {
@@ -117,105 +221,46 @@ pub struct ExaSearchResponse {
     pub autoprompt_string: Option<String>,
 }
 
-#[derive(Debug)]
-pub struct DefaultExaService {
-    client: reqwest::Client,
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaContentsResponse {
+    pub results: Vec<ExaContentResult>,
 }
 
-impl DefaultExaService {
-    pub fn new() -> Self {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(EXA_TIMEOUT_SECS))
-            .build()
-            .expect("Failed to create HTTP client");
-
-        Self { client }
-    }
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaContentResult {
+    pub url: String,
+    pub title: Option<String>,
+    pub text: String,
 }
 
-#[async_trait::async_trait]
-impl ExaService for DefaultExaService {
-    async fn search(
-        &self,
-        api_key: &str,
-        query: &str,
-        num_results: Option<u32>,
-    ) -> Result<ExaSearchResponse, ExaError> {
-        let request = ExaSearchRequest {
-            query: query.to_string(),
-            search_type: "neural".to_string(),
-            use_autoprompt: true,
-            num_results: num_results.unwrap_or(5).min(10),
-            contents: ExaContents {
-                text: true,
-                highlights: true,
-            },
-        };
-
-        let response = self
-            .client
-            .post(EXA_API_URL)
-            .header("x-api-key", api_key)
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    ExaError::Timeout
-                } else {
-                    ExaError::RequestFailed(e.to_string())
-                }
-            })?;
-
-        let status = response.status();
-
-        if status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(ExaError::InvalidApiKey);
-        }
-
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-            return Err(ExaError::RateLimited);
-        }
-
-        if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(ExaError::RequestFailed(format!(
-                "HTTP {}: {}",
-                status,
-                error_text
-            )));
-        }
-
-        response
-            .json::<ExaSearchResponse>()
-            .await
-            .map_err(|e| ExaError::RequestFailed(format!("Parse error: {}", e)))
-    }
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaAnswerResponse {
+    pub answer: String,
+    pub sources: Vec<ExaSearchResult>,
 }
 ```
 
 ## Tool Execution Response Format
 
-Tool execution returns result as JSON that LLM can interpret:
+Tool execution returns result as JSON for LLM:
 
+**Success:**
 ```json
 {
   "tool_call_id": "call_abc123",
   "result": {
     "results": [
-      {
-        "title": "Page Title",
-        "url": "https://example.com",
-        "snippet": "relevant text..."
-      }
+      { "title": "Page Title", "url": "https://example.com", "snippet": "..." }
     ],
     "query_used": "optimized query"
   }
 }
 ```
 
-On error:
+**Error:**
 ```json
 {
   "tool_call_id": "call_abc123",
@@ -224,33 +269,52 @@ On error:
 }
 ```
 
+## Error Handling
+
+```rust
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ExaError {
+    #[error("exa_request_failed: {0}")]
+    #[error_meta(error_type = ErrorType::BadGateway)]
+    RequestFailed(String),
+
+    #[error("exa_rate_limited")]
+    #[error_meta(error_type = ErrorType::TooManyRequests)]
+    RateLimited,
+
+    #[error("exa_invalid_api_key")]
+    #[error_meta(error_type = ErrorType::Unauthorized)]
+    InvalidApiKey,
+
+    #[error("exa_timeout")]
+    #[error_meta(error_type = ErrorType::GatewayTimeout)]
+    Timeout,
+}
+```
+
+HTTP status mapping:
+- 401 → `InvalidApiKey`
+- 429 → `RateLimited`
+- Timeout → `Timeout`
+- Other errors → `RequestFailed`
+
 ## Testing
 
 ### Unit Tests (mock Exa)
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use mockall::predicate::*;
-
-    #[tokio::test]
-    async fn test_search_success() {
-        let mut mock = MockExaService::new();
-        mock.expect_search()
-            .with(eq("test-key"), eq("rust programming"), eq(Some(5)))
-            .returning(|_, _, _| Ok(ExaSearchResponse {
-                results: vec![ExaSearchResult {
-                    title: "Rust Programming".to_string(),
-                    url: "https://rust-lang.org".to_string(),
-                    // ...
-                }],
-                autoprompt_string: Some("rust programming language".to_string()),
-            }));
-        // ...
-    }
+#[tokio::test]
+async fn test_search_success() {
+    let mut mock = MockExaService::new();
+    mock.expect_search()
+        .with(eq("test-key"), eq("rust programming"), eq(Some(5)))
+        .returning(|_, _, _| Ok(ExaSearchResponse {
+            results: vec![...],
+            autoprompt_string: Some("rust programming language".to_string()),
+        }));
 }
 ```
 
 ### E2E Tests (real API)
 - Provide `EXA_API_KEY` environment variable
-- MSW mock for frontend tests in `crates/bodhi`
+- MSW mock for frontend tests
