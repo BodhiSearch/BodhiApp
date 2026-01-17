@@ -82,7 +82,7 @@ test.describe('Chat Interface - Core Functionality', () => {
     await chatPage.verifyChatEmpty();
 
     // Select model and ask two simple, direct questions
-    await chatSettingsPage.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettingsPage.selectModelQwen();
 
     // Question 1: Simple factual question
     await chatPage.sendMessage('What is 2+2?');
@@ -101,7 +101,7 @@ test.describe('Chat Interface - Core Functionality', () => {
   test('multi-chat management and error handling @integration', async ({ page }) => {
     await loginPage.performOAuthLogin();
     await chatPage.navigateToChat();
-    await chatSettingsPage.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettingsPage.selectModelQwen();
 
     // Create multiple chats with simple conversations
     const testMessages = ['Hello first chat', 'Hello second chat', 'Hello third chat'];

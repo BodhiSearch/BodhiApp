@@ -1,4 +1,4 @@
-import { LocalModelFixtures } from '@/fixtures/localModelFixtures.mjs';
+import { LocalModelFixtures, QWEN_MODEL } from '@/fixtures/localModelFixtures.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
@@ -121,8 +121,8 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     await formPage.waitForFormReady();
 
     const formData = await formPage.getFormData();
-    expect(formData.repo).toBe('bartowski/microsoft_Phi-4-mini-instruct-GGUF');
-    expect(formData.filename).toBe('microsoft_Phi-4-mini-instruct-Q4_K_M.gguf');
+    expect(formData.repo).toBe(QWEN_MODEL.repo);
+    expect(formData.filename).toBe(QWEN_MODEL.filename);
 
     // Fill in just the alias name and create
     await formPage.fillBasicInfo(secondaryData.alias, '', ''); // Only fill alias, repo/filename pre-filled
@@ -131,8 +131,8 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     // Verify secondary alias appears in list
     await modelsPage.verifyLocalModelInList(
       secondaryData.alias,
-      'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-      'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+      QWEN_MODEL.repo,
+      QWEN_MODEL.filename,
       'user'
     );
 
@@ -195,8 +195,8 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     );
     await modelsPage.verifyLocalModelInList(
       secondaryData.alias,
-      'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-      'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+      QWEN_MODEL.repo,
+      QWEN_MODEL.filename,
       'user'
     );
     await modelsPage.verifyLocalModelInList(

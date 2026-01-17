@@ -2,6 +2,9 @@ import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
 export class ChatSettingsPage extends BasePage {
+  // Default test model - centralized for easy migration
+  static QWEN_MODEL = 'ggml-org/Qwen3-1.7B-GGUF:Q8_0';
+
   selectors = {
     // Settings panel
     settingsSidebar: '[data-testid="settings-sidebar"]',
@@ -52,6 +55,14 @@ export class ChatSettingsPage extends BasePage {
   }
 
   // Model selection
+
+  /**
+   * Select the default Qwen3 test model
+   * Centralized method to avoid hardcoding model names across tests
+   */
+  async selectModelQwen() {
+    await this.selectModel(ChatSettingsPage.QWEN_MODEL);
+  }
 
   /**
    * Select a model from the dropdown

@@ -114,7 +114,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await chatSettings.verifyApiTokenSettings(true, true);
 
     // Step 12: Select a model
-    await chatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettings.selectModelQwen();
 
     // Step 13-14: Send a test message and verify successful response
     await chatPage.sendMessage('What is 2+2?');
@@ -222,7 +222,7 @@ test.describe('API Tokens - Complete Integration', () => {
 
     await userChatPage.navigateToChat();
     await userChatSettings.setApiToken(true, userToken);
-    await userChatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await userChatSettings.selectModelQwen();
     await userChatPage.sendMessage('Hello');
     await userChatPage.waitForResponseComplete();
 
@@ -318,7 +318,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await chatSettings.setApiToken(true, '');
 
     // Select model first
-    await chatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettings.selectModelQwen();
 
     // Attempt to send message with no token
     await chatPage.sendMessageAndReturn('Test message');
@@ -333,7 +333,7 @@ test.describe('API Tokens - Complete Integration', () => {
 
     // Step 6-8: Enter invalid token format and verify error
     await chatSettings.setApiToken(true, invalidTokens.invalidFormat);
-    await chatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettings.selectModelQwen();
     await chatPage.sendMessageAndReturn('Another test');
     await chatPage.expectError();
 
@@ -344,7 +344,7 @@ test.describe('API Tokens - Complete Integration', () => {
 
     // Step 9-11: Enter valid format but non-existent token
     await chatSettings.setApiToken(true, invalidTokens.nonExistent);
-    await chatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettings.selectModelQwen();
     await chatPage.sendMessageAndReturn('Yet another test');
     await chatPage.expectError();
 
@@ -360,7 +360,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
     await chatSettings.setApiToken(true, validToken);
-    await chatSettings.selectModel('bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M');
+    await chatSettings.selectModelQwen();
     await chatPage.sendMessage('What is 3+3?');
     await chatPage.waitForResponseComplete();
     await chatPage.waitForResponse('6');

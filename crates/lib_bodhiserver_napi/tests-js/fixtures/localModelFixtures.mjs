@@ -1,4 +1,14 @@
 /**
+ * Default test model - centralized for easy migration
+ * Used across test fixtures and assertions
+ */
+export const QWEN_MODEL = {
+  repo: 'ggml-org/Qwen3-1.7B-GGUF',
+  filename: 'Qwen3-1.7B-Q8_0.gguf',
+  alias: 'ggml-org/Qwen3-1.7B-GGUF:Q8_0',
+};
+
+/**
  * Test fixtures for local model alias testing
  * Provides consistent test data for model alias creation and management
  */
@@ -12,8 +22,8 @@ export const LocalModelFixtures = {
 
     return {
       alias: `context-test-${timestamp}`,
-      repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-      filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+      repo: QWEN_MODEL.repo,
+      filename: QWEN_MODEL.filename,
       contextParams:
         '--ctx-size 4096\n--parallel 4\n--threads 8\n--gpu-layers 20\n--rope-freq-base 10000',
       requestParams: {
@@ -33,8 +43,8 @@ export const LocalModelFixtures = {
     const timestamp = Date.now();
     return {
       alias: `chat-test-${timestamp}`,
-      repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-      filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+      repo: QWEN_MODEL.repo,
+      filename: QWEN_MODEL.filename,
       contextParams: '--ctx-size 2048\n--parallel 1', // Minimal for fast testing
       requestParams: {
         temperature: 0.1, // Low temperature for more deterministic responses
@@ -59,8 +69,8 @@ export const LocalModelFixtures = {
       // Primary alias for main lifecycle testing
       primaryAlias: {
         alias: `lifecycle-primary-${timestamp}-${randomSuffix}`,
-        repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-        filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+        repo: QWEN_MODEL.repo,
+        filename: QWEN_MODEL.filename,
         contextParams: '--ctx-size 4096\n--parallel 4\n--threads 8',
         requestParams: {
           temperature: 0.7,
@@ -89,7 +99,7 @@ export const LocalModelFixtures = {
       secondaryAlias: {
         alias: `lifecycle-secondary-${timestamp}-${randomSuffix}`,
         // Will be pre-populated from existing model file
-        sourceModelAlias: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF:Q4_K_M',
+        sourceModelAlias: QWEN_MODEL.alias,
       },
 
       // Chat testing data
@@ -101,8 +111,8 @@ export const LocalModelFixtures = {
       // Context parameters testing
       contextParamsTest: {
         alias: `context-test-${timestamp}-${randomSuffix}`,
-        repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-        filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+        repo: QWEN_MODEL.repo,
+        filename: QWEN_MODEL.filename,
         advancedParams:
           '--ctx-size 4096\n--parallel 4\n--threads 8\n--gpu-layers 20\n--rope-freq-base 10000',
       },
@@ -122,8 +132,8 @@ export const LocalModelFixtures = {
       missingFields: {
         missingAlias: {
           alias: '',
-          repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-          filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+          repo: QWEN_MODEL.repo,
+          filename: QWEN_MODEL.filename,
         },
         missingRepo: {
           alias: `missing-repo-${timestamp}`,
@@ -132,7 +142,7 @@ export const LocalModelFixtures = {
         },
         missingFilename: {
           alias: `missing-filename-${timestamp}`,
-          repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
+          repo: QWEN_MODEL.repo,
           filename: '', // Empty filename should trigger validation
         },
       },
@@ -141,15 +151,15 @@ export const LocalModelFixtures = {
       duplicateTest: {
         baseAlias: `duplicate-base-${timestamp}`,
         duplicateAlias: `duplicate-base-${timestamp}`, // Same as base
-        repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-        filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+        repo: QWEN_MODEL.repo,
+        filename: QWEN_MODEL.filename,
       },
 
       // Test data for successful creation after validation
       validTest: {
         alias: `validation-test-${timestamp}`,
-        repo: 'bartowski/microsoft_Phi-4-mini-instruct-GGUF',
-        filename: 'microsoft_Phi-4-mini-instruct-Q4_K_M.gguf',
+        repo: QWEN_MODEL.repo,
+        filename: QWEN_MODEL.filename,
         contextParams: '--ctx-size 2048\n--parallel 2',
         requestParams: {
           temperature: 0.5,

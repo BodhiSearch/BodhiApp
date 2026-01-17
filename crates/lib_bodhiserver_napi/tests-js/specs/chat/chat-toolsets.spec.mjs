@@ -174,9 +174,7 @@ test.describe('Chat Interface - Toolsets Integration', () => {
     // If the toolset is not configured, checkbox should be disabled
     if (isDisabled) {
       // Hover over the toolset item to show tooltip
-      const exaItem = popoverContent.locator(
-        '[data-testid="toolset-item-builtin-exa-web-search"]'
-      );
+      const exaItem = popoverContent.locator('[data-testid="toolset-item-builtin-exa-web-search"]');
       await exaItem.hover();
 
       // Wait for tooltip to appear and verify it has content
