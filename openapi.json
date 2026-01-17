@@ -1717,8 +1717,8 @@
                   "scope": "scope_resource_bodhi-server",
                   "toolsets": [
                     {
-                      "toolset_id": "builtin-exa-web-search",
-                      "toolset_scope": "scope_toolset-builtin-exa-web-search"
+                      "id": "builtin-exa-web-search",
+                      "scope": "scope_toolset-builtin-exa-web-search"
                     }
                   ]
                 }
@@ -6258,14 +6258,14 @@
         "type": "object",
         "description": "Toolset configuration from app-client registration",
         "required": [
-          "toolset_id",
-          "toolset_scope"
+          "id",
+          "scope"
         ],
         "properties": {
-          "toolset_id": {
+          "id": {
             "type": "string"
           },
-          "toolset_scope": {
+          "scope": {
             "type": "string"
           }
         }

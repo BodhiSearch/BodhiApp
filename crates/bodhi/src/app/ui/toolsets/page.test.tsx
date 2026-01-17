@@ -73,17 +73,24 @@ describe('ToolsetsPage - Toolsets List Display', () => {
     server.use(
       ...mockAvailableToolsets([
         {
-          type: 'function',
-          function: {
-            name: 'builtin-exa-web-search',
-            description: 'Search the web using Exa AI',
-            parameters: { type: 'object', properties: {} },
-          },
+          toolset_id: 'builtin-exa-web-search',
+          name: 'Exa Web Search',
+          description: 'Search the web using Exa AI',
           app_enabled: true,
           user_config: {
             enabled: true,
             has_api_key: true,
           },
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search the web',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
         },
       ])
     );
@@ -104,17 +111,24 @@ describe('ToolsetsPage - Toolsets List Display', () => {
     server.use(
       ...mockAvailableToolsets([
         {
-          type: 'function',
-          function: {
-            name: 'builtin-exa-web-search',
-            description: 'Search the web using Exa AI',
-            parameters: { type: 'object', properties: {} },
-          },
+          toolset_id: 'builtin-exa-web-search',
+          name: 'Exa Web Search',
+          description: 'Search the web using Exa AI',
           app_enabled: true,
           user_config: {
             enabled: false,
             has_api_key: true,
           },
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search the web',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
         },
       ])
     );
@@ -134,14 +148,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
     server.use(
       ...mockAvailableToolsets([
         {
-          type: 'function',
-          function: {
-            name: 'builtin-exa-web-search',
-            description: 'Search the web using Exa AI',
-            parameters: { type: 'object', properties: {} },
-          },
+          toolset_id: 'builtin-exa-web-search',
+          name: 'Exa Web Search',
+          description: 'Search the web using Exa AI',
           app_enabled: true,
           user_config: undefined,
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search the web',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
         },
       ])
     );
@@ -161,14 +182,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
     server.use(
       ...mockAvailableToolsets([
         {
-          type: 'function',
-          function: {
-            name: 'builtin-exa-web-search',
-            description: 'Search the web using Exa AI',
-            parameters: { type: 'object', properties: {} },
-          },
+          toolset_id: 'builtin-exa-web-search',
+          name: 'Exa Web Search',
+          description: 'Search the web using Exa AI',
           app_enabled: false,
           user_config: undefined,
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search the web',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
         },
       ])
     );
@@ -189,14 +217,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
     server.use(
       ...mockAvailableToolsets([
         {
-          type: 'function',
-          function: {
-            name: 'builtin-exa-web-search',
-            description: 'Search the web using Exa AI',
-            parameters: { type: 'object', properties: {} },
-          },
+          toolset_id: 'builtin-exa-web-search',
+          name: 'Exa Web Search',
+          description: 'Search the web using Exa AI',
           app_enabled: true,
           user_config: undefined,
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search the web',
+                parameters: { type: 'object', properties: {} },
+              },
+            },
+          ],
         },
       ])
     );

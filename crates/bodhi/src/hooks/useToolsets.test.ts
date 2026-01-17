@@ -28,23 +28,30 @@ import { createWrapper } from '@/tests/wrapper';
 const mockToolsetsResponse: ListToolsetsResponse = {
   toolsets: [
     {
-      type: 'function',
-      function: {
-        name: 'builtin-exa-web-search',
-        description: 'Search the web using Exa AI for real-time information',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-          },
-          required: ['query'],
-        },
-      },
+      toolset_id: 'builtin-exa-web-search',
+      name: 'Exa Web Search',
+      description: 'Search the web using Exa AI for real-time information',
       app_enabled: true,
       user_config: {
         enabled: true,
         has_api_key: true,
       },
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'search',
+            description: 'Search the web',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'Search query' },
+              },
+              required: ['query'],
+            },
+          },
+        },
+      ],
     },
   ],
 };
@@ -77,7 +84,7 @@ describe('useAvailableToolsets', () => {
     });
 
     expect(result.current.data?.toolsets).toHaveLength(1);
-    expect(result.current.data?.toolsets[0].function.name).toBe('builtin-exa-web-search');
+    expect(result.current.data?.toolsets[0].toolset_id).toBe('builtin-exa-web-search');
   });
 
   it('handles error response', async () => {

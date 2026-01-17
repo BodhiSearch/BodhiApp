@@ -402,7 +402,7 @@ pub async fn logout_handler(
         (status = 200, description = "Access granted successfully", body = AppAccessResponse,
          example = json!({
              "scope": "scope_resource_bodhi-server",
-             "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
+             "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}],
              "app_client_config_version": "v1.0.0"
          })),
     ),
@@ -1570,7 +1570,7 @@ mod tests {
       .with_body(
         json!({
           "scope": expected_scope,
-          "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
+          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}],
           "app_client_config_version": "v1.0.0"
         })
         .to_string(),

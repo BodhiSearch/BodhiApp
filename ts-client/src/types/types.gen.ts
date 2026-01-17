@@ -137,8 +137,8 @@ export type AppAccessResponse = {
  * Toolset configuration from app-client registration
  */
 export type AppClientToolset = {
-    toolset_id: string;
-    toolset_scope: string;
+    id: string;
+    scope: string;
 };
 
 /**

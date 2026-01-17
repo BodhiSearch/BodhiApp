@@ -202,8 +202,8 @@ pub struct AppAccessRequest {
 /// Toolset configuration from app-client registration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct AppClientToolset {
-  pub toolset_id: String,
-  pub toolset_scope: String,
+  pub id: String,
+  pub scope: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -1132,7 +1132,7 @@ mod tests {
       .with_body(
         json!({
           "scope": "scope_resource_test-resource-server",
-          "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
+          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}],
           "app_client_config_version": "v1.0.0"
         })
         .to_string(),
@@ -1148,7 +1148,7 @@ mod tests {
     let response = result.unwrap();
     assert_eq!(response.scope, "scope_resource_test-resource-server");
     assert_eq!(response.toolsets.len(), 1);
-    assert_eq!(response.toolsets[0].toolset_id, "builtin-exa-web-search");
+    assert_eq!(response.toolsets[0].id, "builtin-exa-web-search");
     assert_eq!(response.app_client_config_version, "v1.0.0");
     token_mock.assert();
     access_mock.assert();

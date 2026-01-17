@@ -1129,8 +1129,8 @@ export interface components {
         };
         /** @description Toolset configuration from app-client registration */
         AppClientToolset: {
-            toolset_id: string;
-            toolset_scope: string;
+            id: string;
+            scope: string;
         };
         /**
          * @description Application information and status
@@ -4252,8 +4252,8 @@ export interface operations {
                      *       "scope": "scope_resource_bodhi-server",
                      *       "toolsets": [
                      *         {
-                     *           "toolset_id": "builtin-exa-web-search",
-                     *           "toolset_scope": "scope_toolset-builtin-exa-web-search"
+                     *           "id": "builtin-exa-web-search",
+                     *           "scope": "scope_toolset-builtin-exa-web-search"
                      *         }
                      *       ]
                      *     } */
