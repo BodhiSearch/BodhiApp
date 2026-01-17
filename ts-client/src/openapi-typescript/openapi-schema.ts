@@ -883,7 +883,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/toolsets/{toolset_id}/execute": {
+    "/toolsets/{toolset_id}/execute/{method}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2048,8 +2048,8 @@ export interface components {
         ExecuteToolsetRequest: {
             /** @description Tool call ID from LLM */
             tool_call_id: string;
-            /** @description Function arguments as JSON */
-            arguments: unknown;
+            /** @description Function parameters as JSON */
+            params: unknown;
         };
         /**
          * @description Request to fetch available models from provider
@@ -2110,7 +2110,7 @@ export interface components {
         };
         /** @description Function definition within a tool */
         FunctionDefinition: {
-            /** @description Fully qualified tool name: toolset__{toolset_id}__{tool_name} */
+            /** @description Simple tool name (e.g., "search", "findSimilar"). Frontend composes fully qualified name. */
             name: string;
             /** @description Human-readable description for LLM */
             description: string;
@@ -2158,7 +2158,7 @@ export interface components {
         };
         /** @description Response with list of toolset definitions (enhanced with status) */
         ListToolsetsResponse: {
-            toolsets: components["schemas"]["ToolsetListItem"][];
+            toolsets: components["schemas"]["ToolsetWithTools"][];
         };
         /** @description List users query parameters */
         ListUsersParams: {
@@ -2737,11 +2737,19 @@ export interface components {
             /** @description Error message, if execution failed */
             error?: string | null;
         };
-        /** @description Enhanced toolset list item with app-level and user-level status */
-        ToolsetListItem: components["schemas"]["ToolDefinition"] & {
+        /** @description Toolset with app-level and user-level configuration status (API response model) */
+        ToolsetWithTools: {
+            /** @description Unique toolset identifier (e.g., "builtin-exa-web-search") */
+            toolset_id: string;
+            /** @description Human-readable name (e.g., "Exa Web Search") */
+            name: string;
+            /** @description Description of the toolset */
+            description: string;
             /** @description Whether the toolset is enabled at app level (admin-controlled) */
             app_enabled: boolean;
             user_config?: null | components["schemas"]["UserToolsetConfigSummary"];
+            /** @description Tools provided by this toolset */
+            tools: components["schemas"]["ToolDefinition"][];
         };
         TopLogprobs: {
             /** @description The token. */
@@ -6924,6 +6932,8 @@ export interface operations {
             path: {
                 /** @description Toolset identifier */
                 toolset_id: string;
+                /** @description Tool method name (e.g., search, findSimilar, contents, answer) */
+                method: string;
             };
             cookie?: never;
         };
@@ -6969,7 +6979,7 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Toolset not found */
+            /** @description Toolset or method not found */
             404: {
                 headers: {
                     [name: string]: unknown;

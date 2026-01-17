@@ -1234,9 +1234,9 @@ export type ExecuteToolsetRequest = {
      */
     tool_call_id: string;
     /**
-     * Function arguments as JSON
+     * Function parameters as JSON
      */
-    arguments: unknown;
+    params: unknown;
 };
 
 /**
@@ -1312,7 +1312,7 @@ export type FunctionCallStream = {
  */
 export type FunctionDefinition = {
     /**
-     * Fully qualified tool name: toolset__{toolset_id}__{tool_name}
+     * Simple tool name (e.g., "search", "findSimilar"). Frontend composes fully qualified name.
      */
     name: string;
     /**
@@ -1389,7 +1389,7 @@ export type ListModelResponse = {
  * Response with list of toolset definitions (enhanced with status)
  */
 export type ListToolsetsResponse = {
-    toolsets: Array<ToolsetListItem>;
+    toolsets: Array<ToolsetWithTools>;
 };
 
 /**
@@ -1983,14 +1983,30 @@ export type ToolsetExecutionResponse = {
 };
 
 /**
- * Enhanced toolset list item with app-level and user-level status
+ * Toolset with app-level and user-level configuration status (API response model)
  */
-export type ToolsetListItem = ToolDefinition & {
+export type ToolsetWithTools = {
+    /**
+     * Unique toolset identifier (e.g., "builtin-exa-web-search")
+     */
+    toolset_id: string;
+    /**
+     * Human-readable name (e.g., "Exa Web Search")
+     */
+    name: string;
+    /**
+     * Description of the toolset
+     */
+    description: string;
     /**
      * Whether the toolset is enabled at app level (admin-controlled)
      */
     app_enabled: boolean;
     user_config?: null | UserToolsetConfigSummary;
+    /**
+     * Tools provided by this toolset
+     */
+    tools: Array<ToolDefinition>;
 };
 
 export type TopLogprobs = {
@@ -4606,9 +4622,13 @@ export type ExecuteToolsetHandlerData = {
          * Toolset identifier
          */
         toolset_id: string;
+        /**
+         * Tool method name (e.g., search, findSimilar, contents, answer)
+         */
+        method: string;
     };
     query?: never;
-    url: '/toolsets/{toolset_id}/execute';
+    url: '/toolsets/{toolset_id}/execute/{method}';
 };
 
 export type ExecuteToolsetHandlerErrors = {
@@ -4625,7 +4645,7 @@ export type ExecuteToolsetHandlerErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Toolset not found
+     * Toolset or method not found
      */
     404: unknown;
     /**

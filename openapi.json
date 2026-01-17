@@ -5225,7 +5225,7 @@
         ]
       }
     },
-    "/toolsets/{toolset_id}/execute": {
+    "/toolsets/{toolset_id}/execute/{method}": {
       "post": {
         "tags": [
           "toolsets"
@@ -5237,6 +5237,15 @@
             "name": "toolset_id",
             "in": "path",
             "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "method",
+            "in": "path",
+            "description": "Tool method name (e.g., search, findSimilar, contents, answer)",
             "required": true,
             "schema": {
               "type": "string"
@@ -5295,7 +5304,7 @@
             }
           },
           "404": {
-            "description": "Toolset not found"
+            "description": "Toolset or method not found"
           },
           "500": {
             "description": "Internal server error",
@@ -9058,15 +9067,15 @@
         "description": "Request to execute a toolset",
         "required": [
           "tool_call_id",
-          "arguments"
+          "params"
         ],
         "properties": {
           "tool_call_id": {
             "type": "string",
             "description": "Tool call ID from LLM"
           },
-          "arguments": {
-            "description": "Function arguments as JSON"
+          "params": {
+            "description": "Function parameters as JSON"
           }
         }
       },
@@ -9200,7 +9209,7 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "Fully qualified tool name: toolset__{toolset_id}__{tool_name}"
+            "description": "Simple tool name (e.g., \"search\", \"findSimilar\"). Frontend composes fully qualified name."
           },
           "description": {
             "type": "string",
@@ -9348,7 +9357,7 @@
           "toolsets": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ToolsetListItem"
+              "$ref": "#/components/schemas/ToolsetWithTools"
             }
           }
         }
@@ -11049,37 +11058,52 @@
           }
         }
       },
-      "ToolsetListItem": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ToolDefinition",
-            "description": "Toolset definition"
-          },
-          {
-            "type": "object",
-            "required": [
-              "app_enabled"
-            ],
-            "properties": {
-              "app_enabled": {
-                "type": "boolean",
-                "description": "Whether the toolset is enabled at app level (admin-controlled)"
-              },
-              "user_config": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/UserToolsetConfigSummary",
-                    "description": "User's configuration for this toolset (if any)"
-                  }
-                ]
-              }
-            }
-          }
+      "ToolsetWithTools": {
+        "type": "object",
+        "description": "Toolset with app-level and user-level configuration status (API response model)",
+        "required": [
+          "toolset_id",
+          "name",
+          "description",
+          "app_enabled",
+          "tools"
         ],
-        "description": "Enhanced toolset list item with app-level and user-level status"
+        "properties": {
+          "toolset_id": {
+            "type": "string",
+            "description": "Unique toolset identifier (e.g., \"builtin-exa-web-search\")"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name (e.g., \"Exa Web Search\")"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the toolset"
+          },
+          "app_enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset is enabled at app level (admin-controlled)"
+          },
+          "user_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UserToolsetConfigSummary",
+                "description": "User's configuration for this toolset (if any)"
+              }
+            ]
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolDefinition"
+            },
+            "description": "Tools provided by this toolset"
+          }
+        }
       },
       "TopLogprobs": {
         "type": "object",
