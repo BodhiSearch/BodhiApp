@@ -494,12 +494,12 @@ impl DefaultToolService {
     api_key: &str,
     request: ToolsetExecutionRequest,
   ) -> Result<ToolsetExecutionResponse, ToolsetError> {
-    // Parse arguments
-    let query = request.arguments["query"]
+    // Parse parameters
+    let query = request.params["query"]
       .as_str()
       .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'query' parameter".to_string()))?;
 
-    let num_results = request.arguments["num_results"].as_u64().map(|n| n as u32);
+    let num_results = request.params["num_results"].as_u64().map(|n| n as u32);
 
     // Call Exa service
     match self.exa_service.search(api_key, query, num_results).await {

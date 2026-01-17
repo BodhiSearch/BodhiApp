@@ -2,7 +2,10 @@ use objs::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-const EXA_API_URL: &str = "https://api.exa.ai/search";
+const EXA_SEARCH_URL: &str = "https://api.exa.ai/search";
+const EXA_FIND_SIMILAR_URL: &str = "https://api.exa.ai/findSimilar";
+const EXA_CONTENTS_URL: &str = "https://api.exa.ai/contents";
+const EXA_ANSWER_URL: &str = "https://api.exa.ai/answer";
 const EXA_TIMEOUT_SECS: u64 = 30;
 
 // ============================================================================
@@ -43,6 +46,30 @@ pub trait ExaService: Debug + Send + Sync {
     query: &str,
     num_results: Option<u32>,
   ) -> Result<ExaSearchResponse, ExaError>;
+
+  /// Find pages similar to a given URL
+  async fn find_similar(
+    &self,
+    api_key: &str,
+    url: &str,
+    num_results: Option<u32>,
+  ) -> Result<ExaFindSimilarResponse, ExaError>;
+
+  /// Get contents of specific web pages
+  async fn get_contents(
+    &self,
+    api_key: &str,
+    urls: Vec<String>,
+    text: bool,
+  ) -> Result<ExaContentsResponse, ExaError>;
+
+  /// Get AI-powered answer to a query
+  async fn answer(
+    &self,
+    api_key: &str,
+    query: &str,
+    text: bool,
+  ) -> Result<ExaAnswerResponse, ExaError>;
 }
 
 // ============================================================================
@@ -84,6 +111,59 @@ pub struct ExaSearchResult {
 pub struct ExaSearchResponse {
   pub results: Vec<ExaSearchResult>,
   pub autoprompt_string: Option<String>,
+}
+
+// FindSimilar API
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExaFindSimilarRequest {
+  url: String,
+  num_results: u32,
+  contents: ExaContents,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaFindSimilarResponse {
+  pub results: Vec<ExaSearchResult>,
+}
+
+// Contents API
+
+#[derive(Debug, Clone, Serialize)]
+struct ExaGetContentsRequest {
+  urls: Vec<String>,
+  text: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaContentsResponse {
+  pub results: Vec<ExaContentResult>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaContentResult {
+  pub url: String,
+  pub title: Option<String>,
+  pub text: Option<String>,
+}
+
+// Answer API
+
+#[derive(Debug, Clone, Serialize)]
+struct ExaAnswerRequest {
+  query: String,
+  text: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExaAnswerResponse {
+  pub answer: String,
+  pub results: Vec<ExaSearchResult>,
 }
 
 // ============================================================================
@@ -133,7 +213,7 @@ impl ExaService for DefaultExaService {
 
     let response = self
       .client
-      .post(EXA_API_URL)
+      .post(EXA_SEARCH_URL)
       .header("x-api-key", api_key)
       .header("Content-Type", "application/json")
       .json(&request)
@@ -167,6 +247,160 @@ impl ExaService for DefaultExaService {
 
     response
       .json::<ExaSearchResponse>()
+      .await
+      .map_err(|e| ExaError::RequestFailed(format!("Parse error: {}", e)))
+  }
+
+  async fn find_similar(
+    &self,
+    api_key: &str,
+    url: &str,
+    num_results: Option<u32>,
+  ) -> Result<ExaFindSimilarResponse, ExaError> {
+    let request = ExaFindSimilarRequest {
+      url: url.to_string(),
+      num_results: num_results.unwrap_or(5).min(10),
+      contents: ExaContents {
+        text: true,
+        highlights: true,
+      },
+    };
+
+    let response = self
+      .client
+      .post(EXA_FIND_SIMILAR_URL)
+      .header("x-api-key", api_key)
+      .header("Content-Type", "application/json")
+      .json(&request)
+      .send()
+      .await
+      .map_err(|e| {
+        if e.is_timeout() {
+          ExaError::Timeout
+        } else {
+          ExaError::RequestFailed(e.to_string())
+        }
+      })?;
+
+    let status = response.status();
+
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+      return Err(ExaError::InvalidApiKey);
+    }
+
+    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+      return Err(ExaError::RateLimited);
+    }
+
+    if !status.is_success() {
+      let error_text = response.text().await.unwrap_or_default();
+      return Err(ExaError::RequestFailed(format!(
+        "HTTP {}: {}",
+        status, error_text
+      )));
+    }
+
+    response
+      .json::<ExaFindSimilarResponse>()
+      .await
+      .map_err(|e| ExaError::RequestFailed(format!("Parse error: {}", e)))
+  }
+
+  async fn get_contents(
+    &self,
+    api_key: &str,
+    urls: Vec<String>,
+    text: bool,
+  ) -> Result<ExaContentsResponse, ExaError> {
+    let request = ExaGetContentsRequest { urls, text };
+
+    let response = self
+      .client
+      .post(EXA_CONTENTS_URL)
+      .header("x-api-key", api_key)
+      .header("Content-Type", "application/json")
+      .json(&request)
+      .send()
+      .await
+      .map_err(|e| {
+        if e.is_timeout() {
+          ExaError::Timeout
+        } else {
+          ExaError::RequestFailed(e.to_string())
+        }
+      })?;
+
+    let status = response.status();
+
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+      return Err(ExaError::InvalidApiKey);
+    }
+
+    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+      return Err(ExaError::RateLimited);
+    }
+
+    if !status.is_success() {
+      let error_text = response.text().await.unwrap_or_default();
+      return Err(ExaError::RequestFailed(format!(
+        "HTTP {}: {}",
+        status, error_text
+      )));
+    }
+
+    response
+      .json::<ExaContentsResponse>()
+      .await
+      .map_err(|e| ExaError::RequestFailed(format!("Parse error: {}", e)))
+  }
+
+  async fn answer(
+    &self,
+    api_key: &str,
+    query: &str,
+    text: bool,
+  ) -> Result<ExaAnswerResponse, ExaError> {
+    let request = ExaAnswerRequest {
+      query: query.to_string(),
+      text,
+    };
+
+    let response = self
+      .client
+      .post(EXA_ANSWER_URL)
+      .header("x-api-key", api_key)
+      .header("Content-Type", "application/json")
+      .json(&request)
+      .send()
+      .await
+      .map_err(|e| {
+        if e.is_timeout() {
+          ExaError::Timeout
+        } else {
+          ExaError::RequestFailed(e.to_string())
+        }
+      })?;
+
+    let status = response.status();
+
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+      return Err(ExaError::InvalidApiKey);
+    }
+
+    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+      return Err(ExaError::RateLimited);
+    }
+
+    if !status.is_success() {
+      let error_text = response.text().await.unwrap_or_default();
+      return Err(ExaError::RequestFailed(format!(
+        "HTTP {}: {}",
+        status, error_text
+      )));
+    }
+
+    response
+      .json::<ExaAnswerResponse>()
       .await
       .map_err(|e| ExaError::RequestFailed(format!("Parse error: {}", e)))
   }
@@ -374,51 +608,159 @@ mod tests {
   }
 
   #[rstest]
-  fn test_exa_search_request_serialization() -> anyhow::Result<()> {
-    let request = ExaSearchRequest {
-      query: "test query".to_string(),
-      search_type: "neural".to_string(),
-      use_autoprompt: true,
-      num_results: 10,
-      contents: ExaContents {
-        text: true,
-        highlights: true,
-      },
-    };
+  #[tokio::test]
+  async fn test_exa_find_similar_success() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
 
-    let json = serde_json::to_value(&request)?;
-    assert_eq!("test query", json["query"]);
-    assert_eq!("neural", json["type"]);
-    assert_eq!(true, json["useAutoprompt"]);
-    assert_eq!(10, json["numResults"]);
+    let _mock = server
+      .mock("POST", "/findSimilar")
+      .match_header("x-api-key", "test-key")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "results": [
+            {
+              "title": "Similar Page",
+              "url": "https://similar.com",
+              "publishedDate": "2024-01-15",
+              "author": "Author",
+              "score": 0.92,
+              "text": "Similar content",
+              "highlights": ["similar"]
+            }
+          ]
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    let client = reqwest::Client::builder()
+      .timeout(std::time::Duration::from_secs(30))
+      .build()?;
+
+    let response = client
+      .post(server.url() + "/findSimilar")
+      .header("x-api-key", "test-key")
+      .header("Content-Type", "application/json")
+      .json(&ExaFindSimilarRequest {
+        url: "https://example.com".to_string(),
+        num_results: 5,
+        contents: ExaContents {
+          text: true,
+          highlights: true,
+        },
+      })
+      .send()
+      .await?;
+
+    assert_eq!(200, response.status());
+    let result: ExaFindSimilarResponse = response.json().await?;
+    assert_eq!(1, result.results.len());
+    assert_eq!("Similar Page", result.results[0].title);
 
     Ok(())
   }
 
   #[rstest]
-  fn test_exa_search_response_deserialization() -> anyhow::Result<()> {
-    let json = json!({
-      "results": [
-        {
-          "title": "Test Title",
-          "url": "https://example.com",
-          "publishedDate": "2024-01-15",
-          "author": "Test Author",
-          "score": 0.9,
-          "text": "Test content",
-          "highlights": ["test"]
-        }
-      ],
-      "autopromptString": "optimized query"
-    });
+  #[tokio::test]
+  async fn test_exa_get_contents_success() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
 
-    let response: ExaSearchResponse = serde_json::from_value(json)?;
-    assert_eq!(1, response.results.len());
-    assert_eq!("Test Title", response.results[0].title);
-    assert_eq!(
-      Some("optimized query".to_string()),
-      response.autoprompt_string
-    );
+    let _mock = server
+      .mock("POST", "/contents")
+      .match_header("x-api-key", "test-key")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "results": [
+            {
+              "url": "https://example.com",
+              "title": "Example Page",
+              "text": "Page content here"
+            }
+          ]
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    let client = reqwest::Client::builder()
+      .timeout(std::time::Duration::from_secs(30))
+      .build()?;
+
+    let response = client
+      .post(server.url() + "/contents")
+      .header("x-api-key", "test-key")
+      .header("Content-Type", "application/json")
+      .json(&ExaGetContentsRequest {
+        urls: vec!["https://example.com".to_string()],
+        text: true,
+      })
+      .send()
+      .await?;
+
+    assert_eq!(200, response.status());
+    let result: ExaContentsResponse = response.json().await?;
+    assert_eq!(1, result.results.len());
+    assert_eq!("https://example.com", result.results[0].url);
+    assert_eq!(Some("Example Page".to_string()), result.results[0].title);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_exa_answer_success() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/answer")
+      .match_header("x-api-key", "test-key")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "answer": "The answer is 42",
+          "results": [
+            {
+              "title": "Source Page",
+              "url": "https://source.com",
+              "publishedDate": "2024-01-15",
+              "author": "Author",
+              "score": 0.95,
+              "text": "Source text",
+              "highlights": ["answer"]
+            }
+          ]
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    let client = reqwest::Client::builder()
+      .timeout(std::time::Duration::from_secs(30))
+      .build()?;
+
+    let response = client
+      .post(server.url() + "/answer")
+      .header("x-api-key", "test-key")
+      .header("Content-Type", "application/json")
+      .json(&ExaAnswerRequest {
+        query: "what is the answer".to_string(),
+        text: true,
+      })
+      .send()
+      .await?;
+
+    assert_eq!(200, response.status());
+    let result: ExaAnswerResponse = response.json().await?;
+    assert_eq!("The answer is 42", result.answer);
+    assert_eq!(1, result.results.len());
 
     Ok(())
   }
