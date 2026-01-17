@@ -2,23 +2,23 @@ import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
 /**
- * Page object for Tools management on /ui/tools pages
+ * Page object for Toolsets management on /ui/toolsets pages
  */
-export class ToolsPage extends BasePage {
+export class ToolsetsPage extends BasePage {
   selectors = {
-    pageContainer: '[data-testid="tools-page"]',
-    toolsTable: '[data-testid="tools-table"]',
-    toolRow: (toolId) => `[data-testid="tool-name-${toolId}"]`,
-    toolStatus: (toolId) => `[data-testid="tool-status-${toolId}"]`,
-    toolEditButton: (toolId) => `[data-testid="tool-edit-button-${toolId}"]`,
+    pageContainer: '[data-testid="toolsets-page"]',
+    toolsetsTable: '[data-testid="toolsets-table"]',
+    toolsetRow: (toolsetId) => `[data-testid="toolset-name-${toolsetId}"]`,
+    toolsetStatus: (toolsetId) => `[data-testid="toolset-status-${toolsetId}"]`,
+    toolsetEditButton: (toolsetId) => `[data-testid="toolset-edit-button-${toolsetId}"]`,
     // Edit page selectors
-    editPageContainer: '[data-testid="tool-edit-page"]',
-    toolConfigForm: '[data-testid="tool-config-form"]',
-    apiKeyInput: '[data-testid="tool-api-key-input"]',
-    enabledToggle: '[data-testid="tool-enabled-toggle"]',
+    editPageContainer: '[data-testid="toolset-edit-page"]',
+    toolsetConfigForm: '[data-testid="toolset-config-form"]',
+    apiKeyInput: '[data-testid="toolset-api-key-input"]',
+    enabledToggle: '[data-testid="toolset-enabled-toggle"]',
     appEnabledToggle: '[data-testid="app-enabled-toggle"]',
     clearApiKeyButton: '[data-testid="clear-api-key-button"]',
-    saveButton: '[data-testid="save-tool-config"]',
+    saveButton: '[data-testid="save-toolset-config"]',
     // Admin
     appEnableCheckbox: '[data-testid="app-enable-checkbox"]',
     // Badges
@@ -29,41 +29,41 @@ export class ToolsPage extends BasePage {
   };
 
   // List page methods
-  async navigateToToolsList() {
-    await this.navigate('/ui/tools/');
+  async navigateToToolsetsList() {
+    await this.navigate('/ui/toolsets/');
     await this.waitForSPAReady();
   }
 
-  async expectToolsListPage() {
+  async expectToolsetsListPage() {
     // Increase timeout for page to load after OAuth redirect
     await expect(this.page.locator(this.selectors.pageContainer)).toBeVisible({ timeout: 15000 });
   }
 
-  async expectToolListed(toolId, expectedStatus = null) {
-    await this.expectVisible(this.selectors.toolRow(toolId));
+  async expectToolsetListed(toolsetId, expectedStatus = null) {
+    await this.expectVisible(this.selectors.toolsetRow(toolsetId));
 
     if (expectedStatus) {
-      const statusCell = this.page.locator(this.selectors.toolStatus(toolId));
+      const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
       await expect(statusCell).toContainText(expectedStatus);
     }
   }
 
-  async clickEditTool(toolId) {
-    await this.page.click(this.selectors.toolEditButton(toolId));
-    await this.page.waitForURL(/\/ui\/tools\/edit/);
+  async clickEditToolset(toolsetId) {
+    await this.page.click(this.selectors.toolsetEditButton(toolsetId));
+    await this.page.waitForURL(/\/ui\/toolsets\/edit/);
     await this.waitForSPAReady();
   }
 
   // Edit page methods
-  async navigateToToolEdit(toolId) {
-    await this.navigate(`/ui/tools/edit?toolid=${toolId}`);
+  async navigateToToolsetEdit(toolsetId) {
+    await this.navigate(`/ui/toolsets/edit?toolset_id=${toolsetId}`);
     await this.waitForSPAReady();
   }
 
-  async expectToolEditPage() {
+  async expectToolsetEditPage() {
     // Increase timeout for page to load
     await expect(this.page.locator(this.selectors.editPageContainer)).toBeVisible();
-    await expect(this.page.locator(this.selectors.toolConfigForm)).toBeVisible();
+    await expect(this.page.locator(this.selectors.toolsetConfigForm)).toBeVisible();
   }
 
   async expectFormLoaded() {
@@ -85,7 +85,9 @@ export class ToolsPage extends BasePage {
   }
 
   async waitForFormState(state) {
-    await this.page.waitForSelector(`${this.selectors.toolConfigForm}[data-form-state="${state}"]`);
+    await this.page.waitForSelector(
+      `${this.selectors.toolsetConfigForm}[data-form-state="${state}"]`
+    );
   }
 
   async clearApiKey() {
@@ -112,30 +114,30 @@ export class ToolsPage extends BasePage {
   }
 
   // Status expectations
-  async expectToolEnabled(toolId) {
-    const statusCell = this.page.locator(this.selectors.toolStatus(toolId));
+  async expectToolsetEnabled(toolsetId) {
+    const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
     await expect(statusCell).toContainText('Enabled');
   }
 
-  async expectToolConfigured(toolId) {
-    const statusCell = this.page.locator(this.selectors.toolStatus(toolId));
+  async expectToolsetConfigured(toolsetId) {
+    const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
     await expect(statusCell).toContainText('Configured');
   }
 
-  async expectToolNotConfigured(toolId) {
-    const statusCell = this.page.locator(this.selectors.toolStatus(toolId));
+  async expectToolsetNotConfigured(toolsetId) {
+    const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
     await expect(statusCell).toContainText('Not Configured');
   }
 
-  async expectToolAppDisabled(toolId) {
-    const statusCell = this.page.locator(this.selectors.toolStatus(toolId));
+  async expectToolsetAppDisabled(toolsetId) {
+    const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
     await expect(statusCell).toContainText('App Disabled');
   }
 
   // Complete workflow methods
-  async configureToolWithApiKey(toolId, apiKey) {
-    await this.navigateToToolEdit(toolId);
-    await this.expectToolEditPage();
+  async configureToolsetWithApiKey(toolsetId, apiKey) {
+    await this.navigateToToolsetEdit(toolsetId);
+    await this.expectToolsetEditPage();
     await this.expectFormLoaded();
     await this.fillApiKey(apiKey);
     await this.toggleEnabled();

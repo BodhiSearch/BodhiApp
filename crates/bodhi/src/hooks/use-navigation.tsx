@@ -87,15 +87,15 @@ export const defaultNavigationItems: NavigationItem[] = [
         icon: Key,
       },
       {
-        title: 'Tools',
-        href: '/ui/tools/',
-        description: 'Configure AI tools',
+        title: 'Toolsets',
+        href: '/ui/toolsets/',
+        description: 'Configure AI toolsets',
         icon: Wrench,
         items: [
           {
-            title: 'Edit Tool',
-            href: '/ui/tools/edit/',
-            description: 'Edit a tool',
+            title: 'Edit Toolset',
+            href: '/ui/toolsets/edit/',
+            description: 'Edit a toolset',
             icon: Wrench,
             skip: true,
           },

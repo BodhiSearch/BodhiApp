@@ -3,7 +3,7 @@ import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
+import { SetupToolsetsPage } from '@/pages/SetupToolsetsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
@@ -24,7 +24,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
-  let toolsPage;
+  let toolsetsPage;
   let browserExtensionPage;
 
   test.beforeAll(async () => {
@@ -55,7 +55,7 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(extensionPage, baseUrl);
     apiModelsPage = new SetupApiModelsPage(extensionPage, baseUrl);
-    toolsPage = new SetupToolsPage(extensionPage, baseUrl);
+    toolsetsPage = new SetupToolsetsPage(extensionPage, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(extensionPage, baseUrl);
   });
 
@@ -84,9 +84,9 @@ test.describe('Browser Extension Detection with Chrome Extension', () => {
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
     await apiModelsPage.skipApiSetup();
 
-    await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/tools/');
-    await toolsPage.expectToolsPage();
-    await toolsPage.skipToolsSetup();
+    await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/toolsets/');
+    await toolsetsPage.expectToolsetsPage();
+    await toolsetsPage.skipToolsetsSetup();
 
     await extensionPage.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
   }

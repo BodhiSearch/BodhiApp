@@ -2,30 +2,30 @@ import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
 import { expect } from '@playwright/test';
 
 /**
- * Page object for Tools setup operations on /ui/setup/tools page
+ * Page object for Toolsets setup operations on /ui/setup/toolsets page
  *
- * The setup tools page uses optimistic rendering:
+ * The setup toolsets page uses optimistic rendering:
  * - Form renders immediately without waiting for backend
  * - Enable for Server toggle defaults to OFF
  * - Form is disabled when Enable for Server is OFF
  * - Backend state is applied when fetched, overwriting local state
  */
-export class SetupToolsPage extends SetupBasePage {
+export class SetupToolsetsPage extends SetupBasePage {
   selectors = {
     ...this.selectors,
-    pageContainer: '[data-testid="tools-setup-page"]',
-    toolConfigForm: '[data-testid="tool-config-form"]',
-    apiKeyInput: '[data-testid="tool-api-key-input"]',
-    enabledToggle: '[data-testid="tool-enabled-toggle"]',
+    pageContainer: '[data-testid="toolsets-setup-page"]',
+    toolsetConfigForm: '[data-testid="toolset-config-form"]',
+    apiKeyInput: '[data-testid="toolset-api-key-input"]',
+    enabledToggle: '[data-testid="toolset-enabled-toggle"]',
     appEnabledToggle: '[data-testid="app-enabled-toggle"]',
     appDisabledMessage: '[data-testid="app-disabled-message"]',
-    saveButton: '[data-testid="save-tool-config"]',
-    skipButton: '[data-testid="skip-tools-setup"]',
-    welcomeTitle: 'text=Configure Tools',
+    saveButton: '[data-testid="save-toolset-config"]',
+    skipButton: '[data-testid="skip-toolsets-setup"]',
+    welcomeTitle: 'text=Configure Toolsets',
     exaLink: 'a[href*="exa.ai"]',
     // Dialog selectors for confirmation
-    enableDialogTitle: 'text=Enable Tool for Server',
-    disableDialogTitle: 'text=Disable Tool for Server',
+    enableDialogTitle: 'text=Enable Toolset for Server',
+    disableDialogTitle: 'text=Disable Toolset for Server',
     dialogEnableButton: 'button:has-text("Enable")',
     dialogDisableButton: 'button:has-text("Disable")',
     dialogCancelButton: 'button:has-text("Cancel")',
@@ -35,23 +35,23 @@ export class SetupToolsPage extends SetupBasePage {
   };
 
   // Navigation and page state methods
-  async navigateToToolsSetup() {
-    await this.navigateToSetupStep('/ui/setup/tools/', 5);
+  async navigateToToolsetsSetup() {
+    await this.navigateToSetupStep('/ui/setup/toolsets/', 5);
   }
 
-  async expectToolsPage() {
+  async expectToolsetsPage() {
     await this.expectVisible(this.selectors.pageContainer);
     await this.expectVisible(this.selectors.welcomeTitle);
-    await this.expectSetupStep(5, '/ui/setup/tools/');
+    await this.expectSetupStep(5, '/ui/setup/toolsets/');
   }
 
-  async expectToBeOnToolsSetupPage() {
-    await this.expectSetupStep(5, '/ui/setup/tools/');
+  async expectToBeOnToolsetsSetupPage() {
+    await this.expectSetupStep(5, '/ui/setup/toolsets/');
   }
 
   async expectInitialFormState() {
     // Form should be visible immediately (optimistic rendering)
-    await this.expectVisible(this.selectors.toolConfigForm);
+    await this.expectVisible(this.selectors.toolsetConfigForm);
     await this.expectVisible(this.selectors.appEnabledToggle);
     await this.expectVisible(this.selectors.apiKeyInput);
     await this.expectVisible(this.selectors.enabledToggle);
@@ -105,36 +105,36 @@ export class SetupToolsPage extends SetupBasePage {
   }
 
   /**
-   * Enable the tool for server (clicks toggle and confirms dialog)
+   * Enable the toolset for server (clicks toggle and confirms dialog)
    */
-  async enableAppTool() {
+  async enableAppToolset() {
     await this.page.click(this.selectors.appEnabledToggle);
     // Wait for confirmation dialog
     await this.expectVisible(this.selectors.enableDialogTitle);
     // Click Enable button in dialog
     await this.page.click(this.selectors.dialogEnableButton);
     // Wait for dialog to close and toast to appear
-    await this.waitForToast('Tool enabled for server');
+    await this.waitForToast('Toolset enabled for server');
   }
 
   /**
-   * Disable the tool for server (clicks toggle and confirms dialog)
+   * Disable the toolset for server (clicks toggle and confirms dialog)
    */
-  async disableAppTool() {
+  async disableAppToolset() {
     await this.page.click(this.selectors.appEnabledToggle);
     // Wait for confirmation dialog
     await this.expectVisible(this.selectors.disableDialogTitle);
     // Click Disable button in dialog
     await this.page.click(this.selectors.dialogDisableButton);
     // Wait for dialog to close and toast to appear
-    await this.waitForToast('Tool disabled for server');
+    await this.waitForToast('Toolset disabled for server');
   }
 
   async submitForm() {
     await this.page.click(this.selectors.saveButton);
   }
 
-  async skipToolsSetup() {
+  async skipToolsetsSetup() {
     await this.expectVisible(this.selectors.skipButton);
     await this.page.click(this.selectors.skipButton);
   }
@@ -145,11 +145,11 @@ export class SetupToolsPage extends SetupBasePage {
   }
 
   // Complete setup workflow
-  async completeToolsSetup(options = {}) {
+  async completeToolsetsSetup(options = {}) {
     const { apiKey = '', skipSetup = true, enableForServer = true } = options;
 
     if (skipSetup || !apiKey) {
-      await this.skipToolsSetup();
+      await this.skipToolsetsSetup();
       return;
     }
 
@@ -158,10 +158,10 @@ export class SetupToolsPage extends SetupBasePage {
 
     // Enable for server if needed (opens confirmation dialog)
     if (enableForServer) {
-      await this.enableAppTool();
+      await this.enableAppToolset();
     }
 
-    // Fill API key (this auto-enables the tool toggle)
+    // Fill API key (this auto-enables the toolset toggle)
     await this.fillApiKey(apiKey);
 
     // Submit

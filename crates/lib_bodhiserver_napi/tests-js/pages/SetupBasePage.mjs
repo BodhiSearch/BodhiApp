@@ -96,7 +96,7 @@ export class SetupBasePage extends BasePage {
   }
 
   async expectNavigationToTools() {
-    await this.expectNavigationToSetupStep('/ui/setup/tools/', 5);
+    await this.expectNavigationToSetupStep('/ui/setup/toolsets/', 5);
   }
 
   async expectNavigationToBrowserExtension() {

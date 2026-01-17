@@ -4,14 +4,15 @@ import { useSearchParams } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
-import { ToolConfigForm } from '../ToolConfigForm';
 
-function EditToolContent() {
+import { ToolsetConfigForm } from '../ToolsetConfigForm';
+
+function EditToolsetContent() {
   const searchParams = useSearchParams();
-  const toolId = searchParams?.get('toolid');
+  const toolsetId = searchParams?.get('toolset_id');
 
-  if (!toolId) {
-    return <ErrorPage title="Not Found" message="Tool ID is required" />;
+  if (!toolsetId) {
+    return <ErrorPage title="Not Found" message="Toolset ID is required" />;
   }
 
   const handleSuccess = () => {
@@ -19,16 +20,16 @@ function EditToolContent() {
   };
 
   return (
-    <div className="container mx-auto p-4" data-testid="tool-edit-page">
-      <ToolConfigForm toolId={toolId} onSuccess={handleSuccess} />
+    <div className="container mx-auto p-4" data-testid="toolset-edit-page">
+      <ToolsetConfigForm toolsetId={toolsetId} onSuccess={handleSuccess} />
     </div>
   );
 }
 
-export default function EditToolPage() {
+export default function EditToolsetPage() {
   return (
     <AppInitializer authenticated={true} allowedStatus="ready">
-      <EditToolContent />
+      <EditToolsetContent />
     </AppInitializer>
   );
 }

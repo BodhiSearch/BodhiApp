@@ -27,6 +27,17 @@ use crate::{
   __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
   __path_update_token_handler, __path_user_info_handler, __path_user_request_access_handler,
 };
+// Toolsets DTOs and handlers
+use crate::toolsets_dto::{
+  AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
+  ListToolsetsResponse, ToolsetListItem, UpdateToolsetConfigRequest, UserToolsetConfigSummary,
+};
+use crate::{
+  __path_delete_toolset_config_handler, __path_disable_app_toolset_handler,
+  __path_enable_app_toolset_handler, __path_execute_toolset_handler,
+  __path_get_toolset_config_handler, __path_list_all_toolsets_handler,
+  __path_update_toolset_config_handler,
+};
 use async_openai::types::{
   chat::{
     ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
@@ -39,10 +50,11 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
-  SettingMetadata, SettingSource, TokenScope, UserInfo, UserScope, API_TAG_API_KEYS,
+  Alias, ApiFormat, AppRole, AppToolsetConfig, OAIRequestParams, OpenAIApiError, ResourceRole,
+  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition,
+  ToolsetExecutionResponse, UserInfo, UserScope, UserToolsetConfig, API_TAG_API_KEYS,
   API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use routes_oai::{
   __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
@@ -226,6 +238,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_API_MODELS, description = "Remote AI API model configuration"),
         (name = API_TAG_MODELS, description = "Model files and aliases"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
+        (name = API_TAG_TOOLSETS, description = "AI toolsets configuration and execution"),
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
     ),
@@ -320,6 +333,18 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             Embedding,
             EmbeddingInput,
             EmbeddingUsage,
+            // toolsets
+            ListToolsetsResponse,
+            ToolsetListItem,
+            UserToolsetConfigSummary,
+            EnhancedToolsetConfigResponse,
+            UpdateToolsetConfigRequest,
+            AppToolsetConfigResponse,
+            ExecuteToolsetRequest,
+            ToolDefinition,
+            UserToolsetConfig,
+            AppToolsetConfig,
+            ToolsetExecutionResponse,
         ),
         responses( ),
     ),
@@ -395,7 +420,16 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         // User management endpoints
         list_users_handler,
         change_user_role_handler,
-        remove_user_handler
+        remove_user_handler,
+
+        // Toolsets endpoints
+        list_all_toolsets_handler,
+        get_toolset_config_handler,
+        update_toolset_config_handler,
+        delete_toolset_config_handler,
+        execute_toolset_handler,
+        enable_app_toolset_handler,
+        disable_app_toolset_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

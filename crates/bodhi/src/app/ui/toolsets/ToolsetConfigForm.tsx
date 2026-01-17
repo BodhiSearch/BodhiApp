@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ExternalLink, Info, Loader2 } from 'lucide-react';
 
@@ -23,17 +23,17 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
-  useToolConfig,
-  useUpdateToolConfig,
-  useDeleteToolConfig,
-  useSetAppToolEnabled,
-  useSetAppToolDisabled,
-} from '@/hooks/useTools';
+  useDeleteToolsetConfig,
+  useSetAppToolsetDisabled,
+  useSetAppToolsetEnabled,
+  useToolsetConfig,
+  useUpdateToolsetConfig,
+} from '@/hooks/useToolsets';
 import { useUser } from '@/hooks/useUsers';
 import { cn } from '@/lib/utils';
 
-// Tool metadata - hardcoded for now (can be moved to registry later)
-const TOOL_METADATA: Record<string, { name: string; description: string; apiKeyUrl: string }> = {
+// Toolset metadata - hardcoded for now (can be moved to registry later)
+const TOOLSET_METADATA: Record<string, { name: string; description: string; apiKeyUrl: string }> = {
   'builtin-exa-web-search': {
     name: 'Exa Web Search',
     description: 'Search the web using Exa AI for real-time information',
@@ -41,28 +41,28 @@ const TOOL_METADATA: Record<string, { name: string; description: string; apiKeyU
   },
 };
 
-interface ToolConfigFormProps {
-  toolId: string;
+interface ToolsetConfigFormProps {
+  toolsetId: string;
   onSuccess?: () => void;
 }
 
-export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
+export function ToolsetConfigForm({ toolsetId, onSuccess }: ToolsetConfigFormProps) {
   const { toast } = useToast();
   const { data: userInfo } = useUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo?.role === 'resource_admin';
 
-  // Fetch tool config
-  const { data: toolConfig, isLoading: isLoadingConfig, error: configError, refetch } = useToolConfig(toolId);
+  // Fetch toolset config
+  const { data: toolsetConfig, isLoading: isLoadingConfig, error: configError, refetch } = useToolsetConfig(toolsetId);
 
   // Treat 404 as "no config exists" - not an error
   const is404Error = configError?.response?.status === 404;
 
   // Mutations
-  const updateConfig = useUpdateToolConfig({
+  const updateConfig = useUpdateToolsetConfig({
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Tool configuration saved',
+        description: 'Toolset configuration saved',
       });
       setFormState('saved');
       refetch();
@@ -78,7 +78,7 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
     },
   });
 
-  const deleteConfig = useDeleteToolConfig({
+  const deleteConfig = useDeleteToolsetConfig({
     onSuccess: () => {
       toast({
         title: 'Success',
@@ -95,11 +95,11 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
     },
   });
 
-  const enableAppTool = useSetAppToolEnabled({
+  const enableAppToolset = useSetAppToolsetEnabled({
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Tool enabled for all users',
+        description: 'Toolset enabled for all users',
       });
       refetch();
     },
@@ -112,11 +112,11 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
     },
   });
 
-  const disableAppTool = useSetAppToolDisabled({
+  const disableAppToolset = useSetAppToolsetDisabled({
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Tool disabled for all users',
+        description: 'Toolset disabled for all users',
       });
       refetch();
     },
@@ -141,36 +141,36 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
 
   // Sync form state with loaded config
   useEffect(() => {
-    if (toolConfig?.config) {
-      setEnabled(toolConfig.config.enabled);
+    if (toolsetConfig?.config) {
+      setEnabled(toolsetConfig.config.enabled);
     }
-  }, [toolConfig]);
+  }, [toolsetConfig]);
 
-  const toolMeta = TOOL_METADATA[toolId] || {
-    name: toolId,
-    description: 'Tool configuration',
+  const toolsetMeta = TOOLSET_METADATA[toolsetId] || {
+    name: toolsetId,
+    description: 'Toolset configuration',
     apiKeyUrl: '#',
   };
 
   // App-level enabled state from backend
-  const isAppEnabled = toolConfig?.app_enabled ?? false;
+  const isAppEnabled = toolsetConfig?.app_enabled ?? false;
 
   // Check if user has configured API key - only true if we have actual config data with enabled field
-  const hasApiKey = toolConfig?.config !== undefined && toolConfig.config.enabled !== undefined;
+  const hasApiKey = toolsetConfig?.config !== undefined && toolsetConfig.config.enabled !== undefined;
 
   // Form should be disabled when app-level is disabled
   const isFormDisabled = !isAppEnabled;
 
   const isSaving = updateConfig.isLoading || deleteConfig.isLoading;
-  const isAppToggling = enableAppTool.isLoading || disableAppTool.isLoading;
+  const isAppToggling = enableAppToolset.isLoading || disableAppToolset.isLoading;
 
   // Show loading while fetching config
   const shouldShowLoading = isLoadingConfig && !is404Error;
 
   const handleSave = () => {
     setFormState('saving');
-    const request: { toolId: string; enabled: boolean; api_key?: string } = {
-      toolId,
+    const request: { toolsetId: string; enabled: boolean; api_key?: string } = {
+      toolsetId,
       enabled,
     };
 
@@ -183,19 +183,19 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
   };
 
   const handleClearApiKey = () => {
-    deleteConfig.mutate({ toolId });
+    deleteConfig.mutate({ toolsetId });
     setShowClearDialog(false);
     setApiKey('');
     setEnabled(false);
   };
 
   const handleAppEnableConfirm = () => {
-    enableAppTool.mutate({ toolId });
+    enableAppToolset.mutate({ toolsetId });
     setShowAppEnableDialog(false);
   };
 
   const handleAppDisableConfirm = () => {
-    disableAppTool.mutate({ toolId });
+    disableAppToolset.mutate({ toolsetId });
     setShowAppDisableDialog(false);
   };
 
@@ -212,10 +212,10 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
 
   return (
     <TooltipProvider>
-      <Card className="w-full" data-testid="tool-config-form" data-form-state={formState}>
+      <Card className="w-full" data-testid="toolset-config-form" data-form-state={formState}>
         <CardHeader>
-          <CardTitle>{toolMeta.name}</CardTitle>
-          <CardDescription>{toolMeta.description}</CardDescription>
+          <CardTitle>{toolsetMeta.name}</CardTitle>
+          <CardDescription>{toolsetMeta.description}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -232,7 +232,7 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
                       <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Enable/disable {toolMeta.name} tool for this server</p>
+                      <p>Enable/disable {toolsetMeta.name} toolset for this server</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -266,8 +266,8 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
               data-testid="app-disabled-message"
             >
               {isAdmin
-                ? 'Enable the tool for this server to configure it.'
-                : 'This tool is disabled by administrator. Contact your admin to enable it.'}
+                ? 'Enable the toolset for this server to configure it.'
+                : 'This toolset is disabled by administrator. Contact your admin to enable it.'}
             </div>
           )}
 
@@ -284,7 +284,7 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   disabled={isFormDisabled || isSaving}
-                  data-testid="tool-api-key-input"
+                  data-testid="toolset-api-key-input"
                 />
                 {hasApiKey && (
                   <Button
@@ -302,12 +302,12 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
                 <p className="text-sm text-muted-foreground">
                   Get your API key from{' '}
                   <a
-                    href={toolMeta.apiKeyUrl}
+                    href={toolsetMeta.apiKeyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    {toolMeta.apiKeyUrl.replace('https://', '')}
+                    {toolsetMeta.apiKeyUrl.replace('https://', '')}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </p>
@@ -317,13 +317,13 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
 
             {/* Enable Toggle */}
             <div className="flex items-center justify-between">
-              <Label htmlFor="enabled">Enable Tool</Label>
+              <Label htmlFor="enabled">Enable Toolset</Label>
               <Switch
                 id="enabled"
                 checked={enabled}
                 onCheckedChange={setEnabled}
                 disabled={isFormDisabled || isSaving || (!hasApiKey && !apiKey.trim())}
-                data-testid="tool-enabled-toggle"
+                data-testid="toolset-enabled-toggle"
               />
             </div>
           </div>
@@ -333,7 +333,7 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
           <Button
             onClick={handleSave}
             disabled={isFormDisabled || isSaving || !apiKey.trim()}
-            data-testid="save-tool-config"
+            data-testid="save-toolset-config"
           >
             {isSaving ? (
               <>
@@ -353,7 +353,8 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear API Key</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove your API key and disable the tool. You will need to configure it again to use this tool.
+              This will remove your API key and disable the toolset. You will need to configure it again to use this
+              toolset.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -367,10 +368,10 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
       <AlertDialog open={showAppEnableDialog} onOpenChange={setShowAppEnableDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Enable Tool for Server</AlertDialogTitle>
+            <AlertDialogTitle>Enable Toolset for Server</AlertDialogTitle>
             <AlertDialogDescription>
-              This will enable {toolMeta.name} for all users on this server. Users will still need to configure their
-              own API keys to use the tool.
+              This will enable {toolsetMeta.name} for all users on this server. Users will still need to configure their
+              own API keys to use the toolset.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -384,10 +385,10 @@ export function ToolConfigForm({ toolId, onSuccess }: ToolConfigFormProps) {
       <AlertDialog open={showAppDisableDialog} onOpenChange={setShowAppDisableDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disable Tool for Server</AlertDialogTitle>
+            <AlertDialogTitle>Disable Toolset for Server</AlertDialogTitle>
             <AlertDialogDescription>
-              This will disable {toolMeta.name} for all users on this server. Users will not be able to use this tool
-              until it is re-enabled.
+              This will disable {toolsetMeta.name} for all users on this server. Users will not be able to use this
+              toolset until it is re-enabled.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

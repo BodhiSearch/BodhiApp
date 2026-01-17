@@ -4762,6 +4762,559 @@
         }
       }
     },
+    "/toolsets": {
+      "get": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "List all available toolset definitions with app-enabled status (for UI)",
+        "operationId": "list_all_toolsets_handler",
+        "responses": {
+          "200": {
+            "description": "List of all available toolsets with status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListToolsetsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/toolsets/{toolset_id}/app-config": {
+      "put": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Enable a toolset for this app instance (admin only)",
+        "operationId": "enable_app_toolset_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Toolset enabled for app instance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppToolsetConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Disable a toolset for this app instance (admin only)",
+        "operationId": "disable_app_toolset_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Toolset disabled for app instance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppToolsetConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/toolsets/{toolset_id}/config": {
+      "get": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Get user's configuration for a specific toolset (with app-level status)",
+        "operationId": "get_toolset_config_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Toolset configuration with app status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancedToolsetConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Update user's toolset configuration",
+        "operationId": "update_toolset_config_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateToolsetConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated toolset configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancedToolsetConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Delete user's toolset configuration (clears API key)",
+        "operationId": "delete_toolset_config_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Toolset configuration deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/toolsets/{toolset_id}/execute": {
+      "post": {
+        "tags": [
+          "toolsets"
+        ],
+        "summary": "Execute a toolset for the user",
+        "operationId": "execute_toolset_handler",
+        "parameters": [
+          {
+            "name": "toolset_id",
+            "in": "path",
+            "description": "Toolset identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteToolsetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Toolset execution result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolsetExecutionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Toolset not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/v1/chat/completions": {
       "post": {
         "tags": [
@@ -5759,6 +6312,52 @@
           "resource-admin"
         ],
         "example": "ready"
+      },
+      "AppToolsetConfig": {
+        "type": "object",
+        "description": "App-level configuration for a toolset (admin-controlled)",
+        "required": [
+          "toolset_id",
+          "enabled",
+          "updated_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "toolset_id": {
+            "type": "string",
+            "description": "Toolset identifier (e.g., \"builtin-exa-web-search\")"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset is enabled for this app instance"
+          },
+          "updated_by": {
+            "type": "string",
+            "description": "User ID of the admin who last updated this configuration"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this configuration was created",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this configuration was last updated",
+            "example": "2024-11-10T04:52:06.786Z"
+          }
+        }
+      },
+      "AppToolsetConfigResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AppToolsetConfig",
+            "description": "The app-level toolset configuration"
+          }
+        ],
+        "description": "Response with app-level toolset configuration"
       },
       "ApproveUserAccessRequest": {
         "type": "object",
@@ -8390,6 +8989,29 @@
           "base64"
         ]
       },
+      "EnhancedToolsetConfigResponse": {
+        "type": "object",
+        "description": "Enhanced toolset config response with app-level status",
+        "required": [
+          "toolset_id",
+          "app_enabled",
+          "config"
+        ],
+        "properties": {
+          "toolset_id": {
+            "type": "string",
+            "description": "Toolset identifier"
+          },
+          "app_enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset is enabled at app level"
+          },
+          "config": {
+            "$ref": "#/components/schemas/UserToolsetConfig",
+            "description": "User's configuration"
+          }
+        }
+      },
       "ErrorBody": {
         "type": "object",
         "required": [
@@ -8429,6 +9051,23 @@
           "message": "Validation failed: name is required",
           "param": "name",
           "type": "invalid_request_error"
+        }
+      },
+      "ExecuteToolsetRequest": {
+        "type": "object",
+        "description": "Request to execute a toolset",
+        "required": [
+          "tool_call_id",
+          "arguments"
+        ],
+        "properties": {
+          "tool_call_id": {
+            "type": "string",
+            "description": "Tool call ID from LLM"
+          },
+          "arguments": {
+            "description": "Function arguments as JSON"
+          }
         }
       },
       "FetchModelsRequest": {
@@ -8547,6 +9186,28 @@
               "null"
             ],
             "description": "The arguments to call the function with, as generated by the model in JSON format.\nNote that the model does not always generate valid JSON, and may hallucinate\nparameters not defined by your function schema. Validate the arguments in your\ncode before calling your function."
+          }
+        }
+      },
+      "FunctionDefinition": {
+        "type": "object",
+        "description": "Function definition within a tool",
+        "required": [
+          "name",
+          "description",
+          "parameters"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Fully qualified tool name: toolset__{toolset_id}__{tool_name}"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description for LLM"
+          },
+          "parameters": {
+            "description": "JSON Schema for function parameters"
           }
         }
       },
@@ -8673,6 +9334,21 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Model"
+            }
+          }
+        }
+      },
+      "ListToolsetsResponse": {
+        "type": "object",
+        "description": "Response with list of toolset definitions (enhanced with status)",
+        "required": [
+          "toolsets"
+        ],
+        "properties": {
+          "toolsets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolsetListItem"
             }
           }
         }
@@ -10332,6 +11008,79 @@
           "required"
         ]
       },
+      "ToolDefinition": {
+        "type": "object",
+        "description": "Tool definition in OpenAI format for LLM function calling.\nTool name follows Claude MCP convention: toolset__{toolset_id}__{tool_name}",
+        "required": [
+          "type",
+          "function"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of tool (always \"function\" for now)"
+          },
+          "function": {
+            "$ref": "#/components/schemas/FunctionDefinition",
+            "description": "Function definition details"
+          }
+        }
+      },
+      "ToolsetExecutionResponse": {
+        "type": "object",
+        "description": "Response from toolset tool execution (to send back to LLM)",
+        "required": [
+          "tool_call_id"
+        ],
+        "properties": {
+          "tool_call_id": {
+            "type": "string",
+            "description": "Tool call ID this response is for"
+          },
+          "result": {
+            "description": "Successful result (JSON), if any"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Error message, if execution failed"
+          }
+        }
+      },
+      "ToolsetListItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ToolDefinition",
+            "description": "Toolset definition"
+          },
+          {
+            "type": "object",
+            "required": [
+              "app_enabled"
+            ],
+            "properties": {
+              "app_enabled": {
+                "type": "boolean",
+                "description": "Whether the toolset is enabled at app level (admin-controlled)"
+              },
+              "user_config": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UserToolsetConfigSummary",
+                    "description": "User's configuration for this toolset (if any)"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Enhanced toolset list item with app-level and user-level status"
+      },
       "TopLogprobs": {
         "type": "object",
         "required": [
@@ -10493,6 +11242,26 @@
         },
         "example": {
           "value": "debug"
+        }
+      },
+      "UpdateToolsetConfigRequest": {
+        "type": "object",
+        "description": "Request to update a user's toolset configuration",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset is enabled for this user"
+          },
+          "api_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional API key for the toolset (will be encrypted)"
+          }
         }
       },
       "UrlCitation": {
@@ -10883,6 +11652,56 @@
           "scope_user_admin"
         ]
       },
+      "UserToolsetConfig": {
+        "type": "object",
+        "description": "User's configuration for a specific toolset (API model - no sensitive data).\nAPI key is stored at toolset level (one key for all tools in toolset).",
+        "required": [
+          "toolset_id",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "toolset_id": {
+            "type": "string",
+            "description": "Toolset identifier (e.g., \"builtin-exa-web-search\")"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset is enabled for this user"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this configuration was created",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this configuration was last updated",
+            "example": "2024-11-10T04:52:06.786Z"
+          }
+        }
+      },
+      "UserToolsetConfigSummary": {
+        "type": "object",
+        "description": "Summary of user's toolset configuration (for list responses)",
+        "required": [
+          "enabled",
+          "has_api_key"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the user has enabled this toolset"
+          },
+          "has_api_key": {
+            "type": "boolean",
+            "description": "Whether the user has configured an API key"
+          }
+        }
+      },
       "Verbosity": {
         "type": "string",
         "description": "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.",
@@ -11044,6 +11863,10 @@
     {
       "name": "settings",
       "description": "Application settings management"
+    },
+    {
+      "name": "toolsets",
+      "description": "AI toolsets configuration and execution"
     },
     {
       "name": "openai",

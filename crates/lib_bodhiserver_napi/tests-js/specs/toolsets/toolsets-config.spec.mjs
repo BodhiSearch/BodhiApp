@@ -1,6 +1,6 @@
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { ToolsPage } from '@/pages/ToolsPage.mjs';
-import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
+import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
@@ -10,21 +10,21 @@ import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
 /**
- * Tools Configuration E2E Tests
+ * Toolsets Configuration E2E Tests
  *
- * These tests verify the tools configuration UI for managing AI tools.
+ * These tests verify the toolsets configuration UI for managing AI toolsets.
  *
  * NOTE: When EXA_API_KEY is provided in the environment, the tests will
- * configure the Exa Web Search tool with a real API key and verify it's enabled.
+ * configure the Exa Web Search toolset with a real API key and verify it's enabled.
  */
-test.describe('Tools Configuration', () => {
+test.describe('Toolsets Configuration', () => {
   let authServerConfig;
   let testCredentials;
   let serverManager;
   let baseUrl;
   let authClient;
   let resourceClient;
-  let toolsPage;
+  let toolsetsPage;
   let loginPage;
 
   test.beforeAll(async () => {
@@ -62,70 +62,70 @@ test.describe('Tools Configuration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    toolsPage = new ToolsPage(page, baseUrl);
+    toolsetsPage = new ToolsetsPage(page, baseUrl);
     loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
   });
 
-  test('displays tools list page with Exa Web Search tool', async ({ page }) => {
+  test('displays toolsets list page with Exa Web Search toolset', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsPage.navigateToToolsList();
-    await toolsPage.expectToolsListPage();
+    await toolsetsPage.navigateToToolsetsList();
+    await toolsetsPage.expectToolsetsListPage();
 
     // Verify Exa Web Search is listed
-    await toolsPage.expectToolListed('builtin-exa-web-search');
+    await toolsetsPage.expectToolsetListed('builtin-exa-web-search');
   });
 
-  test('navigates to tool edit page from list', async ({ page }) => {
+  test('navigates to toolset edit page from list', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsPage.navigateToToolsList();
-    await toolsPage.expectToolsListPage();
+    await toolsetsPage.navigateToToolsetsList();
+    await toolsetsPage.expectToolsetsListPage();
 
     // Click edit button
-    await toolsPage.clickEditTool('builtin-exa-web-search');
+    await toolsetsPage.clickEditToolset('builtin-exa-web-search');
 
     // Should be on edit page (path may have trailing slash)
-    await toolsPage.expectToolEditPage();
+    await toolsetsPage.expectToolsetEditPage();
   });
 
-  test('displays tool configuration form', async ({ page }) => {
+  test('displays toolset configuration form', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsPage.navigateToToolEdit('builtin-exa-web-search');
-    await toolsPage.expectToolEditPage();
-    await toolsPage.expectFormLoaded();
+    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
+    await toolsetsPage.expectToolsetEditPage();
+    await toolsetsPage.expectFormLoaded();
   });
 
   test('shows admin toggle for resource_admin users', async ({ page }) => {
     // Login first (as admin - already set up in beforeAll)
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsPage.navigateToToolEdit('builtin-exa-web-search');
-    await toolsPage.expectToolEditPage();
+    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
+    await toolsetsPage.expectToolsetEditPage();
 
     // Admin should see the app enable toggle
-    await toolsPage.expectAdminToggle();
+    await toolsetsPage.expectAdminToggle();
   });
 
   test('shows confirmation dialog when toggling app enable', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsPage.navigateToToolEdit('builtin-exa-web-search');
-    await toolsPage.expectToolEditPage();
+    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
+    await toolsetsPage.expectToolsetEditPage();
 
     // Click the toggle to disable
-    await toolsPage.toggleAppEnabled();
+    await toolsetsPage.toggleAppEnabled();
 
     // Should show confirmation dialog
-    await expect(page.locator('text=Disable Tool for Server')).toBeVisible();
+    await expect(page.locator('text=Disable Toolset for Server')).toBeVisible();
   });
 
-  test('configures tool with real API key', async ({ page }) => {
+  test('configures toolset with real API key', async ({ page }) => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeUndefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
@@ -133,14 +133,14 @@ test.describe('Tools Configuration', () => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    // Configure the tool with the real API key
-    await toolsPage.configureToolWithApiKey('builtin-exa-web-search', exaApiKey);
+    // Configure the toolset with the real API key
+    await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
 
     // Wait for form to be saved
-    await toolsPage.waitForFormState('saved');
+    await toolsetsPage.waitForFormState('saved');
 
     // Navigate back to list and verify status
-    await toolsPage.navigateToToolsList();
-    await toolsPage.expectToolEnabled('builtin-exa-web-search');
+    await toolsetsPage.navigateToToolsetsList();
+    await toolsetsPage.expectToolsetEnabled('builtin-exa-web-search');
   });
 });

@@ -3,23 +3,20 @@ import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
+import { SetupToolsetsPage } from '@/pages/SetupToolsetsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
 /**
- * Tools Setup E2E Tests
+ * Toolsets Setup E2E Tests
  *
- * These tests verify the tools setup page in the onboarding flow.
+ * These tests verify the toolsets setup page in the onboarding flow.
  * The happy path test requires EXA_API_KEY environment variable.
  */
-test.describe('Tools Setup Integration', () => {
+test.describe('Toolsets Setup Integration', () => {
   let authServerConfig;
   let testCredentials;
   let serverManager;
@@ -30,7 +27,7 @@ test.describe('Tools Setup Integration', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
-  let toolsPage;
+  let toolsetsPage;
   let browserExtensionPage;
 
   test.beforeAll(async () => {
@@ -53,7 +50,7 @@ test.describe('Tools Setup Integration', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
-    toolsPage = new SetupToolsPage(page, baseUrl);
+    toolsetsPage = new SetupToolsetsPage(page, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(page, baseUrl);
   });
 
@@ -63,8 +60,8 @@ test.describe('Tools Setup Integration', () => {
     }
   });
 
-  async function navigateToToolsPage(page) {
-    // Navigate through the setup flow to reach tools page
+  async function navigateToToolsetsPage(page) {
+    // Navigate through the setup flow to reach toolsets page
     await page.goto(baseUrl);
     await page.waitForURL((url) => url.pathname === '/ui/setup/');
 
@@ -84,56 +81,56 @@ test.describe('Tools Setup Integration', () => {
     await page.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
     await apiModelsPage.skipApiSetup();
 
-    // Should now be at tools page
-    await page.waitForURL((url) => url.pathname === '/ui/setup/tools/');
+    // Should now be at toolsets page
+    await page.waitForURL((url) => url.pathname === '/ui/setup/toolsets/');
   }
 
-  test('Tools Setup Page - displays correctly and can skip', async ({ page }) => {
-    await navigateToToolsPage(page);
+  test('Toolsets Setup Page - displays correctly and can skip', async ({ page }) => {
+    await navigateToToolsetsPage(page);
 
-    // Verify we're on the tools page with correct step indicator
-    await toolsPage.expectToolsPage();
-    await toolsPage.expectStepIndicator(5);
+    // Verify we're on the toolsets page with correct step indicator
+    await toolsetsPage.expectToolsetsPage();
+    await toolsetsPage.expectStepIndicator(5);
 
     // Verify form structure
-    await toolsPage.expectInitialFormState();
+    await toolsetsPage.expectInitialFormState();
 
-    // The migration seed enables the tool by default, so after backend state is fetched,
+    // The migration seed enables the toolset by default, so after backend state is fetched,
     // the toggle should be ON and form should be enabled
-    await toolsPage.expectAppToggleOn();
-    await toolsPage.expectNoAppDisabledMessage();
-    await toolsPage.expectFormEnabled();
+    await toolsetsPage.expectAppToggleOn();
+    await toolsetsPage.expectNoAppDisabledMessage();
+    await toolsetsPage.expectFormEnabled();
 
-    // Skip tools setup
-    await toolsPage.skipToolsSetup();
+    // Skip toolsets setup
+    await toolsetsPage.skipToolsetsSetup();
 
     // Should navigate to browser extension page
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
     expect(getCurrentPath(page)).toBe('/ui/setup/browser-extension/');
   });
 
-  test('Tools Setup - configures Exa Web Search with API key', async ({ page }) => {
+  test('Toolsets Setup - configures Exa Web Search with API key', async ({ page }) => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeUndefined();
 
-    await navigateToToolsPage(page);
+    await navigateToToolsetsPage(page);
 
-    // Verify we're on the tools page
-    await toolsPage.expectToolsPage();
-    await toolsPage.expectStepIndicator(5);
+    // Verify we're on the toolsets page
+    await toolsetsPage.expectToolsetsPage();
+    await toolsetsPage.expectStepIndicator(5);
 
-    // The migration seed enables the tool by default
-    await toolsPage.expectAppToggleOn();
-    await toolsPage.expectFormEnabled();
+    // The migration seed enables the toolset by default
+    await toolsetsPage.expectAppToggleOn();
+    await toolsetsPage.expectFormEnabled();
 
-    // Fill in API key (this auto-enables the tool toggle)
-    await toolsPage.fillApiKey(exaApiKey);
+    // Fill in API key (this auto-enables the toolset toggle)
+    await toolsetsPage.fillApiKey(exaApiKey);
 
     // Submit the form
-    await toolsPage.submitForm();
+    await toolsetsPage.submitForm();
 
     // Wait for success toast
-    await toolsPage.waitForToast('Tool configuration saved');
+    await toolsetsPage.waitForToast('Toolset configuration saved');
 
     // Should navigate to browser extension page after success
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');

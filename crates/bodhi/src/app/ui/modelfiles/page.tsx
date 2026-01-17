@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { useToast } from '@/hooks/use-toast';
 import { useModelFiles } from '@/hooks/useModels';
 import { hasLocalFileProperties } from '@/lib/utils';
 import { SortState } from '@/types/models';

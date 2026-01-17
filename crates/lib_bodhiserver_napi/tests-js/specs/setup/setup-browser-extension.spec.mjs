@@ -3,7 +3,7 @@ import { SetupApiModelsPage } from '@/pages/SetupApiModelsPage.mjs';
 import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
+import { SetupToolsetsPage } from '@/pages/SetupToolsetsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import {
@@ -25,7 +25,7 @@ test.describe('Browser Extension Setup Integration', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
-  let toolsPage;
+  let toolsetsPage;
   let browserExtensionPage;
 
   test.beforeAll(async () => {
@@ -48,7 +48,7 @@ test.describe('Browser Extension Setup Integration', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
-    toolsPage = new SetupToolsPage(page, baseUrl);
+    toolsetsPage = new SetupToolsetsPage(page, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(page, baseUrl);
   });
 
@@ -79,10 +79,10 @@ test.describe('Browser Extension Setup Integration', () => {
     await page.waitForURL((url) => url.pathname === '/ui/setup/api-models/');
     await apiModelsPage.skipApiSetup();
 
-    // Complete tools page (skip)
-    await page.waitForURL((url) => url.pathname === '/ui/setup/tools/');
-    await toolsPage.expectToolsPage();
-    await toolsPage.skipToolsSetup();
+    // Complete toolsets page (skip)
+    await page.waitForURL((url) => url.pathname === '/ui/setup/toolsets/');
+    await toolsetsPage.expectToolsetsPage();
+    await toolsetsPage.skipToolsetsSetup();
 
     // Should now be at browser extension page
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');

@@ -1,19 +1,19 @@
 /**
- * ToolsPage Component Tests
+ * ToolsetsPage Component Tests
  *
- * Purpose: Verify tools management page functionality with comprehensive
- * scenario-based testing covering tool listing and navigation patterns.
+ * Purpose: Verify toolsets management page functionality with comprehensive
+ * scenario-based testing covering toolset listing and navigation patterns.
  *
  * Focus Areas:
- * - Tools list display with status badges
- * - Navigation to tool configuration page
+ * - Toolsets list display with status badges
+ * - Navigation to toolset configuration page
  * - Authentication and app initialization states
  * - Error handling
  */
 
-import ToolsPage from '@/app/ui/tools/page';
+import ToolsetsPage from '@/app/ui/toolsets/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockAvailableTools, mockAvailableToolsError } from '@/test-utils/msw-v2/handlers/tools';
+import { mockAvailableToolsets, mockAvailableToolsetsError } from '@/test-utils/msw-v2/handlers/toolsets';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -38,12 +38,12 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-describe('ToolsPage - Authentication & Initialization', () => {
+describe('ToolsetsPage - Authentication & Initialization', () => {
   it('redirects to /ui/setup if status is setup', async () => {
     server.use(...mockAppInfo({ status: 'setup' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
@@ -55,7 +55,7 @@ describe('ToolsPage - Authentication & Initialization', () => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedOut());
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
@@ -64,14 +64,14 @@ describe('ToolsPage - Authentication & Initialization', () => {
   });
 });
 
-describe('ToolsPage - Tools List Display', () => {
+describe('ToolsetsPage - Toolsets List Display', () => {
   beforeEach(() => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
   });
 
-  it('displays tools list with enabled status badge', async () => {
+  it('displays toolsets list with enabled status badge', async () => {
     server.use(
-      ...mockAvailableTools([
+      ...mockAvailableToolsets([
         {
           type: 'function',
           function: {
@@ -89,20 +89,20 @@ describe('ToolsPage - Tools List Display', () => {
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Exa Web Search')).toBeInTheDocument();
     expect(screen.getByText('Enabled')).toBeInTheDocument();
   });
 
-  it('displays tools list with configured status badge', async () => {
+  it('displays toolsets list with configured status badge', async () => {
     server.use(
-      ...mockAvailableTools([
+      ...mockAvailableToolsets([
         {
           type: 'function',
           function: {
@@ -120,19 +120,19 @@ describe('ToolsPage - Tools List Display', () => {
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Configured')).toBeInTheDocument();
   });
 
-  it('displays tools list with not configured status badge', async () => {
+  it('displays toolsets list with not configured status badge', async () => {
     server.use(
-      ...mockAvailableTools([
+      ...mockAvailableToolsets([
         {
           type: 'function',
           function: {
@@ -147,19 +147,19 @@ describe('ToolsPage - Tools List Display', () => {
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Not Configured')).toBeInTheDocument();
   });
 
-  it('displays tools list with app disabled status badge', async () => {
+  it('displays toolsets list with app disabled status badge', async () => {
     server.use(
-      ...mockAvailableTools([
+      ...mockAvailableToolsets([
         {
           type: 'function',
           function: {
@@ -174,11 +174,11 @@ describe('ToolsPage - Tools List Display', () => {
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
     expect(screen.getByText('App Disabled')).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('ToolsPage - Tools List Display', () => {
   it('navigates to edit page when edit button is clicked', async () => {
     const user = userEvent.setup();
     server.use(
-      ...mockAvailableTools([
+      ...mockAvailableToolsets([
         {
           type: 'function',
           function: {
@@ -202,53 +202,53 @@ describe('ToolsPage - Tools List Display', () => {
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    const editButton = screen.getByTestId('tool-edit-button-builtin-exa-web-search');
+    const editButton = screen.getByTestId('toolset-edit-button-builtin-exa-web-search');
     await user.click(editButton);
 
-    expect(pushMock).toHaveBeenCalledWith('/ui/tools/edit?toolid=builtin-exa-web-search');
+    expect(pushMock).toHaveBeenCalledWith('/ui/toolsets/edit?toolset_id=builtin-exa-web-search');
   });
 
-  it('displays empty state when no tools available', async () => {
-    server.use(...mockAvailableTools([]));
+  it('displays empty state when no toolsets available', async () => {
+    server.use(...mockAvailableToolsets([]));
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('tools-page')).toBeInTheDocument();
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('No tools available')).toBeInTheDocument();
+    expect(screen.getByText('No toolsets available')).toBeInTheDocument();
   });
 });
 
-describe('ToolsPage - Error Handling', () => {
+describe('ToolsetsPage - Error Handling', () => {
   beforeEach(() => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
   });
 
-  it('displays error message when tools fetch fails', async () => {
+  it('displays error message when toolsets fetch fails', async () => {
     server.use(
-      ...mockAvailableToolsError({
-        message: 'Failed to load tools',
+      ...mockAvailableToolsetsError({
+        message: 'Failed to load toolsets',
         status: 500,
       })
     );
 
     await act(async () => {
-      render(<ToolsPage />, { wrapper: createWrapper() });
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load tools')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load toolsets')).toBeInTheDocument();
     });
   });
 });

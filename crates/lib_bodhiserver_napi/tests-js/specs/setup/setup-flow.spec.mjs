@@ -4,7 +4,7 @@ import { SetupBrowserExtensionPage } from '@/pages/SetupBrowserExtensionPage.mjs
 import { SetupCompletePage } from '@/pages/SetupCompletePage.mjs';
 import { SetupDownloadModelsPage } from '@/pages/SetupDownloadModelsPage.mjs';
 import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupToolsPage } from '@/pages/SetupToolsPage.mjs';
+import { SetupToolsetsPage } from '@/pages/SetupToolsetsPage.mjs';
 import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
 import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
 import {
@@ -26,7 +26,7 @@ test.describe('First-Time Setup Flow Integration', () => {
   let resourceAdminPage;
   let downloadModelsPage;
   let apiModelsPage;
-  let toolsPage;
+  let toolsetsPage;
   let browserExtensionPage;
   let completePage;
 
@@ -49,7 +49,7 @@ test.describe('First-Time Setup Flow Integration', () => {
     );
     downloadModelsPage = new SetupDownloadModelsPage(page, baseUrl);
     apiModelsPage = new SetupApiModelsPage(page, baseUrl);
-    toolsPage = new SetupToolsPage(page, baseUrl);
+    toolsetsPage = new SetupToolsetsPage(page, baseUrl);
     browserExtensionPage = new SetupBrowserExtensionPage(page, baseUrl);
     completePage = new SetupCompletePage(page, baseUrl);
   });
@@ -94,12 +94,12 @@ test.describe('First-Time Setup Flow Integration', () => {
     await apiModelsPage.expectInitialFormState();
     await apiModelsPage.skipApiSetup();
 
-    // Step 5: Tools setup using page object
-    await page.waitForURL((url) => url.pathname === '/ui/setup/tools/');
-    await toolsPage.expectToolsPage();
-    await toolsPage.expectStepIndicator(5);
-    // Skip tools setup
-    await toolsPage.skipToolsSetup();
+    // Step 5: Toolsets setup using page object
+    await page.waitForURL((url) => url.pathname === '/ui/setup/toolsets/');
+    await toolsetsPage.expectToolsetsPage();
+    await toolsetsPage.expectStepIndicator(5);
+    // Skip toolsets setup
+    await toolsetsPage.skipToolsetsSetup();
 
     // Step 6: Browser Extension setup using page object
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');

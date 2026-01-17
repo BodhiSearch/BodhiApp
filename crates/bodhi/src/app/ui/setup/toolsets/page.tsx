@@ -8,9 +8,9 @@ import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { ROUTE_SETUP_BROWSER_EXTENSION } from '@/lib/constants';
 
-import { SetupToolsForm } from './SetupToolsForm';
+import { SetupToolsetForm } from './SetupToolsetForm';
 
-function ToolsSetupContent() {
+function ToolsetsSetupContent() {
   const router = useRouter();
 
   const handleSuccess = () => {
@@ -23,10 +23,10 @@ function ToolsSetupContent() {
 
   return (
     <SetupContainer>
-      <div data-testid="tools-setup-page">
-        {/* Main Tool Config Form */}
+      <div data-testid="toolsets-setup-page">
+        {/* Main Toolset Config Form */}
         <motion.div variants={itemVariants}>
-          <SetupToolsForm toolId="builtin-exa-web-search" onSuccess={handleSuccess} />
+          <SetupToolsetForm toolsetId="builtin-exa-web-search" onSuccess={handleSuccess} />
         </motion.div>
 
         {/* Footer with clarification and Continue button - mt-4 for consistent padding */}
@@ -36,7 +36,7 @@ function ToolsSetupContent() {
             subText="Web search enhances AI with real-time information from the internet."
             onContinue={handleSkip}
             buttonLabel="Continue"
-            buttonTestId="skip-tools-setup"
+            buttonTestId="skip-toolsets-setup"
           />
         </motion.div>
       </div>
@@ -44,10 +44,10 @@ function ToolsSetupContent() {
   );
 }
 
-export default function ToolsSetupPage() {
+export default function ToolsetsSetupPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <ToolsSetupContent />
+      <ToolsetsSetupContent />
     </AppInitializer>
   );
 }
