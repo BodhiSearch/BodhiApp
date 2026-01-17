@@ -124,21 +124,21 @@ export type AppAccessRequest = {
 export type AppAccessResponse = {
     scope: string;
     /**
-     * List of tools the app-client is configured to access
+     * List of toolsets the app-client is configured to access
      */
-    tools?: Array<AppClientTool>;
+    toolsets?: Array<AppClientToolset>;
     /**
-     * Version of app-client's tool configuration on auth server
+     * Version of app-client's toolset configuration on auth server
      */
     app_client_config_version: string;
 };
 
 /**
- * Tool configuration from app-client registration
+ * Toolset configuration from app-client registration
  */
-export type AppClientTool = {
-    tool_id: string;
-    tool_scope: string;
+export type AppClientToolset = {
+    toolset_id: string;
+    toolset_scope: string;
 };
 
 /**

@@ -156,19 +156,19 @@ pub async fn auth_middleware(
       resource_scope.to_string().parse().unwrap(),
     );
 
-    // Extract and set tool scopes and azp from the exchanged token (Phase 7.6)
-    // These are used by tool_auth_middleware for external app tool authorization
+    // Extract and set toolset scopes and azp from the exchanged token
+    // These are used by toolset_auth_middleware for external app toolset authorization
     if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-      // Extract tool scopes (space-separated, matches JWT scope format)
-      let tool_scopes: Vec<&str> = scope_claims
+      // Extract toolset scopes (space-separated, matches JWT scope format)
+      let toolset_scopes: Vec<&str> = scope_claims
         .scope
         .split_whitespace()
-        .filter(|s| s.starts_with("scope_tool-"))
+        .filter(|s| s.starts_with("scope_toolset-"))
         .collect();
-      if !tool_scopes.is_empty() {
+      if !toolset_scopes.is_empty() {
         req.headers_mut().insert(
           KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-          tool_scopes.join(" ").parse().unwrap(),
+          toolset_scopes.join(" ").parse().unwrap(),
         );
       }
       // Set azp (authorized party / app-client ID)
@@ -256,17 +256,17 @@ pub async fn inject_optional_auth_info(
           KEY_HEADER_BODHIAPP_SCOPE,
           resource_scope.to_string().parse().unwrap(),
         );
-        // Extract and set tool scopes and azp from the exchanged token (Phase 7.6)
+        // Extract and set toolset scopes and azp from the exchanged token
         if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-          let tool_scopes: Vec<&str> = scope_claims
+          let toolset_scopes: Vec<&str> = scope_claims
             .scope
             .split_whitespace()
-            .filter(|s| s.starts_with("scope_tool-"))
+            .filter(|s| s.starts_with("scope_toolset-"))
             .collect();
-          if !tool_scopes.is_empty() {
+          if !toolset_scopes.is_empty() {
             req.headers_mut().insert(
               KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-              tool_scopes.join(" ").parse().unwrap(),
+              toolset_scopes.join(" ").parse().unwrap(),
             );
           }
           req

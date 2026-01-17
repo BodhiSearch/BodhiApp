@@ -20,8 +20,8 @@ use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_T
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
-  db::AppClientToolConfigRow, extract_claims, AppAccessRequest, AppAccessResponse, AppClientTool,
-  AppStatus, Claims, SecretServiceExt, CHAT_PATH, DOWNLOAD_MODELS_PATH,
+  db::AppClientToolsetConfigRow, extract_claims, AppAccessRequest, AppAccessResponse,
+  AppClientToolset, AppStatus, Claims, SecretServiceExt, CHAT_PATH, DOWNLOAD_MODELS_PATH,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -402,7 +402,7 @@ pub async fn logout_handler(
         (status = 200, description = "Access granted successfully", body = AppAccessResponse,
          example = json!({
              "scope": "scope_resource_bodhi-server",
-             "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+             "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
              "app_client_config_version": "v1.0.0"
          })),
     ),
@@ -430,16 +430,16 @@ pub async fn request_access_handler(
   // Check cache if version is provided
   if let Some(ref version) = request.version {
     if let Ok(Some(cached)) = db_service
-      .get_app_client_tool_config(&request.app_client_id)
+      .get_app_client_toolset_config(&request.app_client_id)
       .await
     {
       if &cached.config_version == version {
         // Cache hit - return cached data
-        let tools: Vec<AppClientTool> =
-          serde_json::from_str(&cached.tools_json).unwrap_or_default();
+        let toolsets: Vec<AppClientToolset> =
+          serde_json::from_str(&cached.toolsets_json).unwrap_or_default();
         return Ok(Json(AppAccessResponse {
           scope: cached.resource_scope,
-          tools,
+          toolsets,
           app_client_config_version: cached.config_version,
         }));
       }
@@ -468,21 +468,25 @@ pub async fn request_access_handler(
   }
 
   // Store/update cache
-  let tools_json = serde_json::to_string(&auth_response.tools).unwrap_or_else(|_| "[]".to_string());
+  let toolsets_json =
+    serde_json::to_string(&auth_response.toolsets).unwrap_or_else(|_| "[]".to_string());
   let now = db_service.now().timestamp();
-  let config_row = AppClientToolConfigRow {
+  let config_row = AppClientToolsetConfigRow {
     id: 0, // Will be set by DB
     app_client_id: request.app_client_id.clone(),
     config_version: auth_response.app_client_config_version.clone(),
-    tools_json,
+    toolsets_json,
     resource_scope: auth_response.scope.clone(),
     created_at: now,
     updated_at: now,
   };
 
-  if let Err(e) = db_service.upsert_app_client_tool_config(&config_row).await {
+  if let Err(e) = db_service
+    .upsert_app_client_toolset_config(&config_row)
+    .await
+  {
     tracing::warn!(
-      "Failed to cache app client tool config for {}: {}",
+      "Failed to cache app client toolset config for {}: {}",
       request.app_client_id,
       e
     );
@@ -491,7 +495,7 @@ pub async fn request_access_handler(
 
   Ok(Json(AppAccessResponse {
     scope: auth_response.scope,
-    tools: auth_response.tools,
+    toolsets: auth_response.toolsets,
     app_client_config_version: auth_response.app_client_config_version,
   }))
 }
@@ -1566,7 +1570,7 @@ mod tests {
       .with_body(
         json!({
           "scope": expected_scope,
-          "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+          "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
           "app_client_config_version": "v1.0.0"
         })
         .to_string(),

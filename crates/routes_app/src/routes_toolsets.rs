@@ -1,6 +1,6 @@
-use crate::tools_dto::{
-  AppToolConfigResponse, EnhancedToolConfigResponse, ExecuteToolRequest, ListToolsResponse,
-  ToolListItem, UpdateToolConfigRequest, UserToolConfigSummary,
+use crate::toolsets_dto::{
+  AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
+  ListToolsetsResponse, ToolsetListItem, UpdateToolsetConfigRequest, UserToolsetConfigSummary,
 };
 use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
 use axum::{
@@ -9,7 +9,7 @@ use axum::{
   routing::{delete, get, post, put},
   Json, Router,
 };
-use objs::{ApiError, ToolExecutionResponse};
+use objs::{ApiError, ToolsetExecutionResponse};
 use server_core::RouterState;
 use std::sync::Arc;
 
@@ -39,24 +39,39 @@ fn extract_token_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
 // Endpoint Constants
 // ============================================================================
 
-pub const ENDPOINT_TOOLS: &str = "/bodhi/v1/tools";
+pub const ENDPOINT_TOOLSETS: &str = "/bodhi/v1/toolsets";
 
 // ============================================================================
 // Router Configuration
 // ============================================================================
 
-pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
+pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
   Router::new()
-    .route("/tools", get(list_all_tools_handler))
-    .route("/tools/:tool_id/config", get(get_tool_config_handler))
-    .route("/tools/:tool_id/config", put(update_tool_config_handler))
-    .route("/tools/:tool_id/config", delete(delete_tool_config_handler))
-    .route("/tools/:tool_id/execute", post(execute_tool_handler))
-    // Admin routes for app-level tool configuration
-    .route("/tools/:tool_id/app-config", put(enable_app_tool_handler))
+    .route("/toolsets", get(list_all_toolsets_handler))
     .route(
-      "/tools/:tool_id/app-config",
-      delete(disable_app_tool_handler),
+      "/toolsets/:toolset_id/config",
+      get(get_toolset_config_handler),
+    )
+    .route(
+      "/toolsets/:toolset_id/config",
+      put(update_toolset_config_handler),
+    )
+    .route(
+      "/toolsets/:toolset_id/config",
+      delete(delete_toolset_config_handler),
+    )
+    .route(
+      "/toolsets/:toolset_id/execute",
+      post(execute_toolset_handler),
+    )
+    // Admin routes for app-level toolset configuration
+    .route(
+      "/toolsets/:toolset_id/app-config",
+      put(enable_app_toolset_handler),
+    )
+    .route(
+      "/toolsets/:toolset_id/app-config",
+      delete(disable_app_toolset_handler),
     )
     .with_state(state)
 }
@@ -65,45 +80,45 @@ pub fn routes_tools(state: Arc<dyn RouterState>) -> Router {
 // Handlers
 // ============================================================================
 
-/// List all available tool definitions with app-enabled status (for UI)
+/// List all available toolset definitions with app-enabled status (for UI)
 #[utoipa::path(
   get,
-  path = "/tools",
-  tag = "tools",
+  path = "/toolsets",
+  tag = "toolsets",
   responses(
-    (status = 200, description = "List of all available tools with status", body = ListToolsResponse),
+    (status = 200, description = "List of all available toolsets with status", body = ListToolsetsResponse),
   ),
   security(("bearer" = []))
 )]
-pub async fn list_all_tools_handler(
+pub async fn list_all_toolsets_handler(
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
-) -> Result<Json<ListToolsResponse>, ApiError> {
+) -> Result<Json<ListToolsetsResponse>, ApiError> {
   let tool_service = state.app_service().tool_service();
   let tools = tool_service.list_all_tool_definitions();
 
   // Get user_id if available (for user config summary)
   let user_id = extract_user_id_from_headers(&headers).ok();
 
-  // Build enhanced tool list with app-enabled status
+  // Build enhanced toolset list with app-enabled status
   let mut items = Vec::new();
   for tool in tools {
-    let tool_id = &tool.function.name;
+    let toolset_id = &tool.function.name;
 
     // Get app-level enabled status
     let app_enabled = tool_service
-      .is_tool_enabled_for_app(tool_id)
+      .is_toolset_enabled_for_app(toolset_id)
       .await
       .unwrap_or(false);
 
     // Get user config summary if user_id is available
     let user_config = if let Some(ref uid) = user_id {
       tool_service
-        .get_user_tool_config(uid, tool_id)
+        .get_user_toolset_config(uid, toolset_id)
         .await
         .ok()
         .flatten()
-        .map(|c| UserToolConfigSummary {
+        .map(|c| UserToolsetConfigSummary {
           enabled: c.enabled,
           has_api_key: true, // If we got a config, assume API key was validated
         })
@@ -111,46 +126,46 @@ pub async fn list_all_tools_handler(
       None
     };
 
-    items.push(ToolListItem {
+    items.push(ToolsetListItem {
       definition: tool,
       app_enabled,
       user_config,
     });
   }
 
-  Ok(Json(ListToolsResponse { tools: items }))
+  Ok(Json(ListToolsetsResponse { toolsets: items }))
 }
 
-/// Get user's configuration for a specific tool (with app-level status)
+/// Get user's configuration for a specific toolset (with app-level status)
 #[utoipa::path(
   get,
-  path = "/tools/{tool_id}/config",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/config",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
   responses(
-    (status = 200, description = "Tool configuration with app status", body = EnhancedToolConfigResponse),
-    (status = 404, description = "Tool not found"),
+    (status = 200, description = "Toolset configuration with app status", body = EnhancedToolsetConfigResponse),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn get_tool_config_handler(
+pub async fn get_toolset_config_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
-) -> Result<Json<EnhancedToolConfigResponse>, ApiError> {
+) -> Result<Json<EnhancedToolsetConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   // Get app-level enabled status
   let app_enabled = tool_service
-    .is_tool_enabled_for_app(&tool_id)
+    .is_toolset_enabled_for_app(&toolset_id)
     .await
     .unwrap_or(false);
 
   let config = tool_service
-    .get_user_tool_config(&user_id, &tool_id)
+    .get_user_toolset_config(&user_id, &toolset_id)
     .await?;
 
   let config = match config {
@@ -158,8 +173,8 @@ pub async fn get_tool_config_handler(
     None => {
       // Return default config if not found
       let now = chrono::Utc::now();
-      objs::UserToolConfig {
-        tool_id: tool_id.clone(),
+      objs::UserToolsetConfig {
+        toolset_id: toolset_id.clone(),
         enabled: false,
         created_at: now,
         updated_at: now,
@@ -167,200 +182,200 @@ pub async fn get_tool_config_handler(
     }
   };
 
-  Ok(Json(EnhancedToolConfigResponse {
-    tool_id,
+  Ok(Json(EnhancedToolsetConfigResponse {
+    toolset_id,
     app_enabled,
     config,
   }))
 }
 
-/// Update user's tool configuration
+/// Update user's toolset configuration
 #[utoipa::path(
   put,
-  path = "/tools/{tool_id}/config",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/config",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
-  request_body = UpdateToolConfigRequest,
+  request_body = UpdateToolsetConfigRequest,
   responses(
-    (status = 200, description = "Updated tool configuration", body = EnhancedToolConfigResponse),
-    (status = 400, description = "Tool is disabled at app level"),
-    (status = 404, description = "Tool not found"),
+    (status = 200, description = "Updated toolset configuration", body = EnhancedToolsetConfigResponse),
+    (status = 400, description = "Toolset is disabled at app level"),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn update_tool_config_handler(
+pub async fn update_toolset_config_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
-  Json(request): Json<UpdateToolConfigRequest>,
-) -> Result<Json<EnhancedToolConfigResponse>, ApiError> {
+  Json(request): Json<UpdateToolsetConfigRequest>,
+) -> Result<Json<EnhancedToolsetConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   // Get app-level enabled status
   let app_enabled = tool_service
-    .is_tool_enabled_for_app(&tool_id)
+    .is_toolset_enabled_for_app(&toolset_id)
     .await
     .unwrap_or(false);
 
-  // Reject update if tool is disabled at app level
+  // Reject update if toolset is disabled at app level
   if !app_enabled {
     return Err(
-      objs::BadRequestError::new("Tool is disabled at app level. Enable it first.".to_string())
+      objs::BadRequestError::new("Toolset is disabled at app level. Enable it first.".to_string())
         .into(),
     );
   }
 
   let config = tool_service
-    .update_user_tool_config(&user_id, &tool_id, request.enabled, request.api_key)
+    .update_user_toolset_config(&user_id, &toolset_id, request.enabled, request.api_key)
     .await?;
 
-  Ok(Json(EnhancedToolConfigResponse {
-    tool_id,
+  Ok(Json(EnhancedToolsetConfigResponse {
+    toolset_id,
     app_enabled,
     config,
   }))
 }
 
-/// Delete user's tool configuration (clears API key)
+/// Delete user's toolset configuration (clears API key)
 #[utoipa::path(
   delete,
-  path = "/tools/{tool_id}/config",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/config",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
   responses(
-    (status = 204, description = "Tool configuration deleted"),
-    (status = 404, description = "Tool not found"),
+    (status = 204, description = "Toolset configuration deleted"),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn delete_tool_config_handler(
+pub async fn delete_toolset_config_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
 ) -> Result<axum::http::StatusCode, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   tool_service
-    .delete_user_tool_config(&user_id, &tool_id)
+    .delete_user_toolset_config(&user_id, &toolset_id)
     .await?;
 
   Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
-/// Execute a tool for the user
+/// Execute a toolset for the user
 #[utoipa::path(
   post,
-  path = "/tools/{tool_id}/execute",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/execute",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
-  request_body = ExecuteToolRequest,
+  request_body = ExecuteToolsetRequest,
   responses(
-    (status = 200, description = "Tool execution result", body = ToolExecutionResponse),
-    (status = 400, description = "Tool not configured or disabled"),
-    (status = 404, description = "Tool not found"),
+    (status = 200, description = "Toolset execution result", body = ToolsetExecutionResponse),
+    (status = 400, description = "Toolset not configured or disabled"),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn execute_tool_handler(
+pub async fn execute_toolset_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
-  Json(request): Json<ExecuteToolRequest>,
-) -> Result<Json<ToolExecutionResponse>, ApiError> {
+  Json(request): Json<ExecuteToolsetRequest>,
+) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
-  // Check if tool is enabled at app level
+  // Check if toolset is enabled at app level
   let app_enabled = tool_service
-    .is_tool_enabled_for_app(&tool_id)
+    .is_toolset_enabled_for_app(&toolset_id)
     .await
     .unwrap_or(false);
 
   if !app_enabled {
-    return Err(objs::BadRequestError::new("Tool is disabled at app level.".to_string()).into());
+    return Err(objs::BadRequestError::new("Toolset is disabled at app level.".to_string()).into());
   }
 
   let response = tool_service
-    .execute_tool(&user_id, &tool_id, request.into())
+    .execute_toolset_tool(&user_id, &toolset_id, request.into())
     .await?;
 
   Ok(Json(response))
 }
 
 // ============================================================================
-// Admin Handlers (App-level tool configuration)
+// Admin Handlers (App-level toolset configuration)
 // ============================================================================
 
-/// Enable a tool for this app instance (admin only)
+/// Enable a toolset for this app instance (admin only)
 #[utoipa::path(
   put,
-  path = "/tools/{tool_id}/app-config",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/app-config",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
   responses(
-    (status = 200, description = "Tool enabled for app instance", body = AppToolConfigResponse),
+    (status = 200, description = "Toolset enabled for app instance", body = AppToolsetConfigResponse),
     (status = 403, description = "Admin access required"),
-    (status = 404, description = "Tool not found"),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn enable_app_tool_handler(
+pub async fn enable_app_toolset_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
-) -> Result<Json<AppToolConfigResponse>, ApiError> {
+) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let admin_token = extract_token_from_headers(&headers)?;
 
   let config = state
     .app_service()
     .tool_service()
-    .set_app_tool_enabled(&admin_token, &tool_id, true, &user_id)
+    .set_app_toolset_enabled(&admin_token, &toolset_id, true, &user_id)
     .await?;
 
-  Ok(Json(AppToolConfigResponse { config }))
+  Ok(Json(AppToolsetConfigResponse { config }))
 }
 
-/// Disable a tool for this app instance (admin only)
+/// Disable a toolset for this app instance (admin only)
 #[utoipa::path(
   delete,
-  path = "/tools/{tool_id}/app-config",
-  tag = "tools",
+  path = "/toolsets/{toolset_id}/app-config",
+  tag = "toolsets",
   params(
-    ("tool_id" = String, Path, description = "Tool identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier")
   ),
   responses(
-    (status = 200, description = "Tool disabled for app instance", body = AppToolConfigResponse),
+    (status = 200, description = "Toolset disabled for app instance", body = AppToolsetConfigResponse),
     (status = 403, description = "Admin access required"),
-    (status = 404, description = "Tool not found"),
+    (status = 404, description = "Toolset not found"),
   ),
   security(("bearer" = []))
 )]
-pub async fn disable_app_tool_handler(
+pub async fn disable_app_toolset_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(tool_id): Path<String>,
+  Path(toolset_id): Path<String>,
   headers: HeaderMap,
-) -> Result<Json<AppToolConfigResponse>, ApiError> {
+) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
   let user_id = extract_user_id_from_headers(&headers)?;
   let admin_token = extract_token_from_headers(&headers)?;
 
   let config = state
     .app_service()
     .tool_service()
-    .set_app_tool_enabled(&admin_token, &tool_id, false, &user_id)
+    .set_app_toolset_enabled(&admin_token, &toolset_id, false, &user_id)
     .await?;
 
-  Ok(Json(AppToolConfigResponse { config }))
+  Ok(Json(AppToolsetConfigResponse { config }))
 }
 
 #[cfg(test)]
@@ -383,13 +398,9 @@ mod tests {
   use std::sync::Arc;
   use tower::ServiceExt;
 
-  // Note: These handlers require Claims extractor which needs the full auth middleware stack.
-  // Integration tests in Phase 9 will test the complete flow with authentication.
-  // Unit tests here focus on DTO serialization/deserialization.
-
   #[rstest]
-  fn test_update_tool_config_request_serialization() {
-    let req = UpdateToolConfigRequest {
+  fn test_update_toolset_config_request_serialization() {
+    let req = UpdateToolsetConfigRequest {
       enabled: true,
       api_key: Some("test-key".to_string()),
     };
@@ -399,8 +410,8 @@ mod tests {
   }
 
   #[rstest]
-  fn test_execute_tool_request_serialization() {
-    let req = ExecuteToolRequest {
+  fn test_execute_toolset_request_serialization() {
+    let req = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
       arguments: serde_json::json!({"query": "test"}),
     };
@@ -412,19 +423,22 @@ mod tests {
   fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
     let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
     Router::new()
-      .route("/tools/{tool_id}/config", put(update_tool_config_handler))
+      .route(
+        "/toolsets/{toolset_id}/config",
+        put(update_toolset_config_handler),
+      )
       .with_state(Arc::new(router_state))
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_update_tool_config_returns_400_when_app_disabled(
+  async fn test_update_toolset_config_returns_400_when_app_disabled(
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     // Setup mock tool service that returns app_enabled = false
     let mut mock_tool_service = MockToolService::new();
     mock_tool_service
-      .expect_is_tool_enabled_for_app()
+      .expect_is_toolset_enabled_for_app()
       .with(eq("builtin-exa-web-search"))
       .returning(|_| Ok(false));
 
@@ -436,7 +450,7 @@ mod tests {
 
     let resp = router
       .oneshot(
-        Request::put("/tools/builtin-exa-web-search/config")
+        Request::put("/toolsets/builtin-exa-web-search/config")
           .header(KEY_HEADER_BODHIAPP_USER_ID, "test-user-id")
           .json(serde_json::json!({
             "enabled": true,
@@ -457,28 +471,28 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_update_tool_config_succeeds_when_app_enabled(
+  async fn test_update_toolset_config_succeeds_when_app_enabled(
     #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     // Setup mock tool service that returns app_enabled = true
     let mut mock_tool_service = MockToolService::new();
     mock_tool_service
-      .expect_is_tool_enabled_for_app()
+      .expect_is_toolset_enabled_for_app()
       .with(eq("builtin-exa-web-search"))
       .returning(|_| Ok(true));
 
     // Mock the update call
     mock_tool_service
-      .expect_update_user_tool_config()
+      .expect_update_user_toolset_config()
       .with(
         eq("test-user-id"),
         eq("builtin-exa-web-search"),
         eq(true),
         eq(Some("test-api-key".to_string())),
       )
-      .returning(|_, tool_id, enabled, _| {
-        Ok(objs::UserToolConfig {
-          tool_id: tool_id.to_string(),
+      .returning(|_, toolset_id, enabled, _| {
+        Ok(objs::UserToolsetConfig {
+          toolset_id: toolset_id.to_string(),
           enabled,
           created_at: chrono::Utc::now(),
           updated_at: chrono::Utc::now(),
@@ -493,7 +507,7 @@ mod tests {
 
     let resp = router
       .oneshot(
-        Request::put("/tools/builtin-exa-web-search/config")
+        Request::put("/toolsets/builtin-exa-web-search/config")
           .header(KEY_HEADER_BODHIAPP_USER_ID, "test-user-id")
           .json(serde_json::json!({
             "enabled": true,
@@ -503,8 +517,8 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::OK, resp.status());
-    let body: EnhancedToolConfigResponse = resp.json().await?;
-    assert_eq!("builtin-exa-web-search", body.tool_id);
+    let body: EnhancedToolsetConfigResponse = resp.json().await?;
+    assert_eq!("builtin-exa-web-search", body.toolset_id);
     assert!(body.app_enabled);
     assert!(body.config.enabled);
 

@@ -1,4 +1,4 @@
-use objs::{AppToolConfig, ToolDefinition, ToolExecutionRequest, UserToolConfig};
+use objs::{AppToolsetConfig, ToolDefinition, ToolsetExecutionRequest, UserToolsetConfig};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -6,19 +6,19 @@ use utoipa::ToSchema;
 // Request DTOs
 // ============================================================================
 
-/// Request to update a user's tool configuration
+/// Request to update a user's toolset configuration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct UpdateToolConfigRequest {
-  /// Whether the tool is enabled for this user
+pub struct UpdateToolsetConfigRequest {
+  /// Whether the toolset is enabled for this user
   pub enabled: bool,
-  /// Optional API key for the tool (will be encrypted)
+  /// Optional API key for the toolset (will be encrypted)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub api_key: Option<String>,
 }
 
-/// Request to execute a tool
+/// Request to execute a toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteToolRequest {
+pub struct ExecuteToolsetRequest {
   /// Tool call ID from LLM
   pub tool_call_id: String,
   /// Function arguments as JSON
@@ -29,81 +29,81 @@ pub struct ExecuteToolRequest {
 // Response DTOs
 // ============================================================================
 
-/// Response with list of tool definitions (enhanced with status)
+/// Response with list of toolset definitions (enhanced with status)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ListToolsResponse {
-  pub tools: Vec<ToolListItem>,
+pub struct ListToolsetsResponse {
+  pub toolsets: Vec<ToolsetListItem>,
 }
 
-/// Response with single tool configuration
+/// Response with single toolset configuration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct GetToolConfigResponse {
-  pub config: UserToolConfig,
+pub struct GetToolsetConfigResponse {
+  pub config: UserToolsetConfig,
 }
 
-/// Response with list of user tool configurations
+/// Response with list of user toolset configurations
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ListToolConfigsResponse {
-  pub configs: Vec<UserToolConfig>,
+pub struct ListToolsetConfigsResponse {
+  pub configs: Vec<UserToolsetConfig>,
 }
 
 // ============================================================================
-// App-level Tool Configuration DTOs
+// App-level Toolset Configuration DTOs
 // ============================================================================
 
-/// Response with app-level tool configuration
+/// Response with app-level toolset configuration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct AppToolConfigResponse {
-  /// The app-level tool configuration
+pub struct AppToolsetConfigResponse {
+  /// The app-level toolset configuration
   #[serde(flatten)]
-  pub config: AppToolConfig,
+  pub config: AppToolsetConfig,
 }
 
-/// Response with list of app-level tool configurations
+/// Response with list of app-level toolset configurations
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ListAppToolConfigsResponse {
-  pub configs: Vec<AppToolConfig>,
+pub struct ListAppToolsetConfigsResponse {
+  pub configs: Vec<AppToolsetConfig>,
 }
 
-/// Enhanced tool list item with app-level and user-level status
+/// Enhanced toolset list item with app-level and user-level status
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolListItem {
-  /// Tool definition
+pub struct ToolsetListItem {
+  /// Toolset definition
   #[serde(flatten)]
   pub definition: ToolDefinition,
-  /// Whether the tool is enabled at app level (admin-controlled)
+  /// Whether the toolset is enabled at app level (admin-controlled)
   pub app_enabled: bool,
-  /// User's configuration for this tool (if any)
+  /// User's configuration for this toolset (if any)
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub user_config: Option<UserToolConfigSummary>,
+  pub user_config: Option<UserToolsetConfigSummary>,
 }
 
-/// Summary of user's tool configuration (for list responses)
+/// Summary of user's toolset configuration (for list responses)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct UserToolConfigSummary {
-  /// Whether the user has enabled this tool
+pub struct UserToolsetConfigSummary {
+  /// Whether the user has enabled this toolset
   pub enabled: bool,
   /// Whether the user has configured an API key
   pub has_api_key: bool,
 }
 
-/// Enhanced tool config response with app-level status
+/// Enhanced toolset config response with app-level status
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct EnhancedToolConfigResponse {
-  /// Tool identifier
-  pub tool_id: String,
-  /// Whether the tool is enabled at app level
+pub struct EnhancedToolsetConfigResponse {
+  /// Toolset identifier
+  pub toolset_id: String,
+  /// Whether the toolset is enabled at app level
   pub app_enabled: bool,
   /// User's configuration
-  pub config: UserToolConfig,
+  pub config: UserToolsetConfig,
 }
 
 // ============================================================================
 // Conversion Implementations
 // ============================================================================
 
-impl From<ToolExecutionRequest> for ExecuteToolRequest {
-  fn from(req: ToolExecutionRequest) -> Self {
+impl From<ToolsetExecutionRequest> for ExecuteToolsetRequest {
+  fn from(req: ToolsetExecutionRequest) -> Self {
     Self {
       tool_call_id: req.tool_call_id,
       arguments: req.arguments,
@@ -111,10 +111,11 @@ impl From<ToolExecutionRequest> for ExecuteToolRequest {
   }
 }
 
-impl From<ExecuteToolRequest> for ToolExecutionRequest {
-  fn from(req: ExecuteToolRequest) -> Self {
+impl From<ExecuteToolsetRequest> for ToolsetExecutionRequest {
+  fn from(req: ExecuteToolsetRequest) -> Self {
     Self {
       tool_call_id: req.tool_call_id,
+      tool_name: String::new(), // Will be set by the handler based on toolset_id
       arguments: req.arguments,
     }
   }
@@ -127,8 +128,8 @@ mod tests {
   use serde_json::json;
 
   #[rstest]
-  fn test_update_tool_config_request_serialization() {
-    let req = UpdateToolConfigRequest {
+  fn test_update_toolset_config_request_serialization() {
+    let req = UpdateToolsetConfigRequest {
       enabled: true,
       api_key: Some("sk-test123".to_string()),
     };
@@ -139,8 +140,8 @@ mod tests {
   }
 
   #[rstest]
-  fn test_update_tool_config_request_without_api_key() {
-    let req = UpdateToolConfigRequest {
+  fn test_update_toolset_config_request_without_api_key() {
+    let req = UpdateToolsetConfigRequest {
       enabled: false,
       api_key: None,
     };
@@ -151,8 +152,8 @@ mod tests {
   }
 
   #[rstest]
-  fn test_execute_tool_request_serialization() {
-    let req = ExecuteToolRequest {
+  fn test_execute_toolset_request_serialization() {
+    let req = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
       arguments: json!({"query": "test query", "num_results": 5}),
     };
@@ -164,17 +165,17 @@ mod tests {
   }
 
   #[rstest]
-  fn test_execute_tool_request_conversion() {
-    let dto = ExecuteToolRequest {
+  fn test_execute_toolset_request_conversion() {
+    let dto = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
       arguments: json!({"query": "test"}),
     };
 
-    let domain: ToolExecutionRequest = dto.clone().into();
+    let domain: ToolsetExecutionRequest = dto.clone().into();
     assert_eq!("call_123", domain.tool_call_id);
     assert_eq!(json!({"query": "test"}), domain.arguments);
 
-    let back: ExecuteToolRequest = domain.into();
+    let back: ExecuteToolsetRequest = domain.into();
     assert_eq!(dto.tool_call_id, back.tool_call_id);
   }
 }

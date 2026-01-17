@@ -1051,15 +1051,15 @@ export interface components {
         };
         AppAccessResponse: {
             scope: string;
-            /** @description List of tools the app-client is configured to access */
-            tools?: components["schemas"]["AppClientTool"][];
-            /** @description Version of app-client's tool configuration on auth server */
+            /** @description List of toolsets the app-client is configured to access */
+            toolsets?: components["schemas"]["AppClientToolset"][];
+            /** @description Version of app-client's toolset configuration on auth server */
             app_client_config_version: string;
         };
-        /** @description Tool configuration from app-client registration */
-        AppClientTool: {
-            tool_id: string;
-            tool_scope: string;
+        /** @description Toolset configuration from app-client registration */
+        AppClientToolset: {
+            toolset_id: string;
+            toolset_scope: string;
         };
         /**
          * @description Application information and status
@@ -4062,10 +4062,10 @@ export interface operations {
                     /** @example {
                      *       "app_client_config_version": "v1.0.0",
                      *       "scope": "scope_resource_bodhi-server",
-                     *       "tools": [
+                     *       "toolsets": [
                      *         {
-                     *           "tool_id": "builtin-exa-web-search",
-                     *           "tool_scope": "scope_tool-builtin-exa-web-search"
+                     *           "toolset_id": "builtin-exa-web-search",
+                     *           "toolset_scope": "scope_toolset-builtin-exa-web-search"
                      *         }
                      *       ]
                      *     } */
