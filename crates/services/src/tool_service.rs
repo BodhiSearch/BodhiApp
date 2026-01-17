@@ -3,7 +3,8 @@ use crate::exa_service::{ExaError, ExaService};
 use chrono::DateTime;
 use objs::{
   AppError, AppToolsetConfig, ErrorType, FunctionDefinition, ToolDefinition,
-  ToolsetExecutionRequest, ToolsetExecutionResponse, UserToolsetConfig,
+  ToolsetExecutionRequest, ToolsetExecutionResponse, ToolsetWithTools, UserToolsetConfig,
+  UserToolsetConfigSummary,
 };
 use serde_json::json;
 use std::fmt::Debug;
@@ -19,6 +20,10 @@ pub enum ToolsetError {
   #[error("not_found")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ToolsetNotFound(String),
+
+  #[error("method_not_found")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  MethodNotFound(String),
 
   #[error("not_configured")]
   #[error_meta(error_type = ErrorType::BadRequest)]
@@ -56,6 +61,12 @@ pub trait ToolService: Debug + Send + Sync {
   /// Get all available tool definitions (for UI listing)
   fn list_all_tool_definitions(&self) -> Vec<ToolDefinition>;
 
+  /// List all available toolsets with their tools (nested structure)
+  async fn list_all_toolsets(
+    &self,
+    user_id: Option<String>,
+  ) -> Result<Vec<ToolsetWithTools>, ToolsetError>;
+
   /// Get user's toolset config by ID
   async fn get_user_toolset_config(
     &self,
@@ -84,6 +95,7 @@ pub trait ToolService: Debug + Send + Sync {
     &self,
     user_id: &str,
     toolset_id: &str,
+    method: &str,
     request: ToolsetExecutionRequest,
   ) -> Result<ToolsetExecutionResponse, ToolsetError>;
 
@@ -185,6 +197,103 @@ impl DefaultToolService {
     }]
   }
 
+  /// Static registry of built-in toolsets with nested tools
+  fn builtin_toolsets() -> Vec<(
+    String,
+    String,
+    String,
+    Vec<(&'static str, &'static str, serde_json::Value)>,
+  )> {
+    vec![(
+      "builtin-exa-web-search".to_string(),
+      "Exa Web Search".to_string(),
+      "Search and analyze web content using Exa AI".to_string(),
+      vec![
+        (
+          "search",
+          "Search the web for current information using Exa AI semantic search. Returns relevant web pages with titles, URLs, and content snippets.",
+          json!({
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "The search query to find relevant web pages"
+              },
+              "num_results": {
+                "type": "integer",
+                "description": "Number of results to return (default: 5, max: 10)",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 5
+              }
+            },
+            "required": ["query"]
+          }),
+        ),
+        (
+          "findSimilar",
+          "Find web pages similar to a given URL using Exa AI. Returns pages with similar content and topics.",
+          json!({
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The URL to find similar pages for"
+              },
+              "num_results": {
+                "type": "integer",
+                "description": "Number of results to return (default: 5, max: 10)",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 5
+              }
+            },
+            "required": ["url"]
+          }),
+        ),
+        (
+          "contents",
+          "Get the full text content of specific web pages using Exa AI. Returns the main content of each URL.",
+          json!({
+            "type": "object",
+            "properties": {
+              "urls": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of URLs to get content for"
+              },
+              "text": {
+                "type": "boolean",
+                "description": "Whether to include text content (default: true)",
+                "default": true
+              }
+            },
+            "required": ["urls"]
+          }),
+        ),
+        (
+          "answer",
+          "Get an AI-powered answer to a question using Exa AI. Returns a direct answer with supporting sources.",
+          json!({
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "The question to get an answer for"
+              },
+              "text": {
+                "type": "boolean",
+                "description": "Whether to include supporting text (default: true)",
+                "default": true
+              }
+            },
+            "required": ["query"]
+          }),
+        ),
+      ],
+    )]
+  }
+
   /// Convert database row to public config model
   fn row_to_config(row: UserToolsetConfigRow) -> UserToolsetConfig {
     UserToolsetConfig {
@@ -231,6 +340,68 @@ impl ToolService for DefaultToolService {
 
   fn list_all_tool_definitions(&self) -> Vec<ToolDefinition> {
     Self::builtin_tool_definitions()
+  }
+
+  async fn list_all_toolsets(
+    &self,
+    user_id: Option<String>,
+  ) -> Result<Vec<ToolsetWithTools>, ToolsetError> {
+    let mut result = Vec::new();
+
+    for (toolset_id, name, description, tools) in Self::builtin_toolsets() {
+      // Get app-level enabled status
+      let app_enabled = self
+        .is_toolset_enabled_for_app(&toolset_id)
+        .await
+        .unwrap_or(false);
+
+      // Get user config summary if user_id is provided
+      let user_config = if let Some(ref uid) = user_id {
+        // Get user config
+        let config_result = self.get_user_toolset_config(uid, &toolset_id).await;
+        if let Ok(Some(config)) = config_result {
+          // Check if API key exists by querying DB directly
+          let row = self
+            .db_service
+            .get_user_toolset_config(uid, &toolset_id)
+            .await
+            .ok()
+            .flatten();
+          Some(UserToolsetConfigSummary {
+            enabled: config.enabled,
+            has_api_key: row.map(|r| r.encrypted_api_key.is_some()).unwrap_or(false),
+          })
+        } else {
+          None
+        }
+      } else {
+        None
+      };
+
+      // Build tool definitions
+      let tool_definitions: Vec<ToolDefinition> = tools
+        .iter()
+        .map(|(name, description, parameters)| ToolDefinition {
+          tool_type: "function".to_string(),
+          function: FunctionDefinition {
+            name: name.to_string(),
+            description: description.to_string(),
+            parameters: parameters.clone(),
+          },
+        })
+        .collect();
+
+      result.push(ToolsetWithTools {
+        toolset_id,
+        name,
+        description,
+        app_enabled,
+        user_config,
+        tools: tool_definitions,
+      });
+    }
+
+    Ok(result)
   }
 
   async fn get_user_toolset_config(
@@ -336,6 +507,7 @@ impl ToolService for DefaultToolService {
     &self,
     user_id: &str,
     toolset_id: &str,
+    method: &str,
     request: ToolsetExecutionRequest,
   ) -> Result<ToolsetExecutionResponse, ToolsetError> {
     // Verify toolset is available for user
@@ -344,6 +516,20 @@ impl ToolService for DefaultToolService {
       .await?
     {
       return Err(ToolsetError::ToolsetNotConfigured);
+    }
+
+    // Verify method exists in toolset
+    let valid_methods: Vec<String> = Self::builtin_toolsets()
+      .iter()
+      .find(|(id, _, _, _)| id == toolset_id)
+      .map(|(_, _, _, tools)| tools.iter().map(|(name, _, _)| name.to_string()).collect())
+      .unwrap_or_default();
+
+    if !valid_methods.contains(&method.to_string()) {
+      return Err(ToolsetError::MethodNotFound(format!(
+        "Method '{}' not found in toolset '{}'",
+        method, toolset_id
+      )));
     }
 
     // Get decrypted API key
@@ -362,9 +548,9 @@ impl ToolService for DefaultToolService {
     let api_key = crate::db::encryption::decrypt_api_key(master_key, &encrypted, &salt, &nonce)
       .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
-    // Execute based on toolset type
+    // Execute based on toolset and method
     match toolset_id {
-      "builtin-exa-web-search" => self.execute_exa_search(&api_key, request).await,
+      "builtin-exa-web-search" => self.execute_exa_method(&api_key, method, request).await,
       _ => Err(ToolsetError::ToolsetNotFound(toolset_id.to_string())),
     }
   }
@@ -489,50 +675,175 @@ impl ToolService for DefaultToolService {
 }
 
 impl DefaultToolService {
-  async fn execute_exa_search(
+  async fn execute_exa_method(
     &self,
     api_key: &str,
+    method: &str,
     request: ToolsetExecutionRequest,
   ) -> Result<ToolsetExecutionResponse, ToolsetError> {
-    // Parse parameters
-    let query = request.params["query"]
-      .as_str()
-      .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'query' parameter".to_string()))?;
+    match method {
+      "search" => {
+        let query = request.params["query"]
+          .as_str()
+          .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'query' parameter".to_string()))?;
+        let num_results = request.params["num_results"].as_u64().map(|n| n as u32);
 
-    let num_results = request.params["num_results"].as_u64().map(|n| n as u32);
+        match self.exa_service.search(api_key, query, num_results).await {
+          Ok(response) => {
+            let results: Vec<_> = response
+              .results
+              .into_iter()
+              .map(|r| {
+                json!({
+                  "title": r.title,
+                  "url": r.url,
+                  "snippet": r.highlights.join(" ... "),
+                  "published_date": r.published_date,
+                  "score": r.score,
+                })
+              })
+              .collect();
 
-    // Call Exa service
-    match self.exa_service.search(api_key, query, num_results).await {
-      Ok(response) => {
-        // Format results for LLM
-        let results: Vec<_> = response
-          .results
-          .into_iter()
-          .map(|r| {
-            json!({
-              "title": r.title,
-              "url": r.url,
-              "snippet": r.highlights.join(" ... "),
-              "published_date": r.published_date,
-              "score": r.score,
+            Ok(ToolsetExecutionResponse {
+              tool_call_id: request.tool_call_id,
+              result: Some(json!({
+                "results": results,
+                "query_used": response.autoprompt_string,
+              })),
+              error: None,
             })
-          })
-          .collect();
-
-        Ok(ToolsetExecutionResponse {
-          tool_call_id: request.tool_call_id,
-          result: Some(json!({
-            "results": results,
-            "query_used": response.autoprompt_string,
-          })),
-          error: None,
-        })
+          }
+          Err(e) => Ok(ToolsetExecutionResponse {
+            tool_call_id: request.tool_call_id,
+            result: None,
+            error: Some(e.to_string()),
+          }),
+        }
       }
-      Err(e) => Ok(ToolsetExecutionResponse {
-        tool_call_id: request.tool_call_id,
-        result: None,
-        error: Some(e.to_string()),
-      }),
+      "findSimilar" => {
+        let url = request.params["url"]
+          .as_str()
+          .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'url' parameter".to_string()))?;
+        let num_results = request.params["num_results"].as_u64().map(|n| n as u32);
+
+        match self
+          .exa_service
+          .find_similar(api_key, url, num_results)
+          .await
+        {
+          Ok(response) => {
+            let results: Vec<_> = response
+              .results
+              .into_iter()
+              .map(|r| {
+                json!({
+                  "title": r.title,
+                  "url": r.url,
+                  "snippet": r.highlights.join(" ... "),
+                  "published_date": r.published_date,
+                  "score": r.score,
+                })
+              })
+              .collect();
+
+            Ok(ToolsetExecutionResponse {
+              tool_call_id: request.tool_call_id,
+              result: Some(json!({"results": results})),
+              error: None,
+            })
+          }
+          Err(e) => Ok(ToolsetExecutionResponse {
+            tool_call_id: request.tool_call_id,
+            result: None,
+            error: Some(e.to_string()),
+          }),
+        }
+      }
+      "contents" => {
+        let urls_array = request.params["urls"]
+          .as_array()
+          .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'urls' parameter".to_string()))?;
+        let urls: Vec<String> = urls_array
+          .iter()
+          .filter_map(|v| v.as_str().map(String::from))
+          .collect();
+        let text = request
+          .params
+          .get("text")
+          .and_then(|v| v.as_bool())
+          .unwrap_or(true);
+
+        match self.exa_service.get_contents(api_key, urls, text).await {
+          Ok(response) => {
+            let results: Vec<_> = response
+              .results
+              .into_iter()
+              .map(|r| {
+                json!({
+                  "url": r.url,
+                  "title": r.title,
+                  "text": r.text,
+                })
+              })
+              .collect();
+
+            Ok(ToolsetExecutionResponse {
+              tool_call_id: request.tool_call_id,
+              result: Some(json!({"results": results})),
+              error: None,
+            })
+          }
+          Err(e) => Ok(ToolsetExecutionResponse {
+            tool_call_id: request.tool_call_id,
+            result: None,
+            error: Some(e.to_string()),
+          }),
+        }
+      }
+      "answer" => {
+        let query = request.params["query"]
+          .as_str()
+          .ok_or_else(|| ToolsetError::ExecutionFailed("Missing 'query' parameter".to_string()))?;
+        let text = request
+          .params
+          .get("text")
+          .and_then(|v| v.as_bool())
+          .unwrap_or(true);
+
+        match self.exa_service.answer(api_key, query, text).await {
+          Ok(response) => {
+            let sources: Vec<_> = response
+              .results
+              .into_iter()
+              .map(|r| {
+                json!({
+                  "title": r.title,
+                  "url": r.url,
+                  "snippet": r.highlights.join(" ... "),
+                })
+              })
+              .collect();
+
+            Ok(ToolsetExecutionResponse {
+              tool_call_id: request.tool_call_id,
+              result: Some(json!({
+                "answer": response.answer,
+                "sources": sources,
+              })),
+              error: None,
+            })
+          }
+          Err(e) => Ok(ToolsetExecutionResponse {
+            tool_call_id: request.tool_call_id,
+            result: None,
+            error: Some(e.to_string()),
+          }),
+        }
+      }
+      _ => Err(ToolsetError::MethodNotFound(format!(
+        "Unknown method: {}",
+        method
+      ))),
     }
   }
 }
