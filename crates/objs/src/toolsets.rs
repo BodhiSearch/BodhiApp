@@ -112,6 +112,24 @@ pub struct ToolsetDefinition {
   pub tools: Vec<ToolDefinition>,
 }
 
+/// Toolset with app-level and user-level configuration status (API response model)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct ToolsetWithTools {
+  /// Unique toolset identifier (e.g., "builtin-exa-web-search")
+  pub toolset_id: String,
+  /// Human-readable name (e.g., "Exa Web Search")
+  pub name: String,
+  /// Description of the toolset
+  pub description: String,
+  /// Whether the toolset is enabled at app level (admin-controlled)
+  pub app_enabled: bool,
+  /// User's configuration for this toolset (if any)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub user_config: Option<UserToolsetConfigSummary>,
+  /// Tools provided by this toolset
+  pub tools: Vec<ToolDefinition>,
+}
+
 // ============================================================================
 // ToolDefinition - OpenAI-compatible tool definition format
 // ============================================================================
@@ -130,7 +148,7 @@ pub struct ToolDefinition {
 /// Function definition within a tool
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct FunctionDefinition {
-  /// Fully qualified tool name: toolset__{toolset_id}__{tool_name}
+  /// Simple tool name (e.g., "search", "findSimilar"). Frontend composes fully qualified name.
   pub name: String,
   /// Human-readable description for LLM
   pub description: String,
@@ -156,6 +174,15 @@ pub struct UserToolsetConfig {
   /// When this configuration was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
+}
+
+/// Summary of user's toolset configuration (for list responses)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct UserToolsetConfigSummary {
+  /// Whether the user has enabled this toolset
+  pub enabled: bool,
+  /// Whether the user has configured an API key
+  pub has_api_key: bool,
 }
 
 // ============================================================================
@@ -188,10 +215,8 @@ pub struct AppToolsetConfig {
 pub struct ToolsetExecutionRequest {
   /// Unique identifier for this tool call (from LLM response)
   pub tool_call_id: String,
-  /// Fully qualified tool name: toolset__{toolset_id}__{tool_name}
-  pub tool_name: String,
-  /// Function arguments as JSON
-  pub arguments: serde_json::Value,
+  /// Function parameters as JSON
+  pub params: serde_json::Value,
 }
 
 /// Response from toolset tool execution (to send back to LLM)

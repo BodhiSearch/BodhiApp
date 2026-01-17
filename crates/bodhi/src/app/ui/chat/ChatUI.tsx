@@ -5,6 +5,7 @@ import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
 import { Plus } from 'lucide-react';
 
 import { ChatMessage } from '@/app/ui/chat/ChatMessage';
+import { ToolsetsPopover } from '@/app/ui/chat/ToolsetsPopover';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -13,6 +14,8 @@ import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useToolsetSelection } from '@/hooks/use-toolset-selection';
+import { useAvailableToolsets } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
 
@@ -32,6 +35,8 @@ interface ChatInputProps {
   streamLoading: boolean;
   inputRef: RefObject<HTMLTextAreaElement>;
   isModelSelected: boolean;
+  enabledToolsets: string[];
+  onToggleToolset: (toolsetId: string) => void;
 }
 
 const ChatInput = memo(function ChatInput({
@@ -41,6 +46,8 @@ const ChatInput = memo(function ChatInput({
   streamLoading,
   inputRef,
   isModelSelected,
+  enabledToolsets,
+  onToggleToolset,
 }: ChatInputProps) {
   const { createNewChat } = useChatDB();
   const getTestId = useResponsiveTestId();
@@ -55,24 +62,33 @@ const ChatInput = memo(function ChatInput({
           className="relative flex items-center rounded-lg border bg-background shadow-sm"
           data-testid={getTestId('chat-input-container')}
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute left-2 h-8 w-8"
-            onClick={createNewChat}
-            data-testid={getTestId('new-chat-inline-button')}
-          >
-            <Plus className="h-5 w-5" />
-            <span className="sr-only">New chat</span>
-          </Button>
+          {/* Left side buttons container */}
+          <div className="absolute left-2 flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={createNewChat}
+              data-testid={getTestId('new-chat-inline-button')}
+            >
+              <Plus className="h-5 w-5" />
+              <span className="sr-only">New chat</span>
+            </Button>
+
+            <ToolsetsPopover
+              enabledToolsets={enabledToolsets}
+              onToggleToolset={onToggleToolset}
+              disabled={streamLoading}
+            />
+          </div>
 
           <form onSubmit={handleSubmit} className="flex w-full items-center" data-testid={getTestId('chat-form')}>
             <textarea
               ref={inputRef}
               data-testid={getTestId('chat-input')}
               className={cn(
-                'flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:opacity-50',
+                'flex-1 resize-none bg-transparent pl-24 pr-12 py-3 text-sm outline-none disabled:opacity-50',
                 !isModelSelected && 'ring-2 ring-destructive'
               )}
               rows={1}
@@ -123,6 +139,7 @@ interface MessageListProps {
   userMessage: Message;
   assistantMessage: Message;
   isStreaming: boolean;
+  isExecutingTools: boolean;
 }
 
 const MessageList = memo(function MessageList({
@@ -130,13 +147,27 @@ const MessageList = memo(function MessageList({
   userMessage,
   assistantMessage,
   isStreaming,
+  isExecutingTools,
 }: MessageListProps) {
   const hasCurrentUserMessage = userMessage.content.length > 0;
-  const hasCurrentAssistantMessage = assistantMessage.content.length > 0;
+  const hasCurrentAssistantMessage =
+    assistantMessage.content.length > 0 || (assistantMessage.tool_calls?.length ?? 0) > 0;
+
+  // Combine persisted messages with current streaming message for tool result lookup
+  const allMessages = [
+    ...messages,
+    ...(userMessage.content ? [userMessage] : []),
+    ...(hasCurrentAssistantMessage ? [assistantMessage] : []),
+  ];
 
   return (
     <div className="space-y-2 py-2" data-testid="message-list">
       {messages.map((message, i) => {
+        // Skip tool messages - they are rendered inside ToolCallMessage
+        if (message.role === 'tool') {
+          return null;
+        }
+
         const isLastMessage = i === messages.length - 1;
         const isUser = message.role === 'user';
 
@@ -150,20 +181,30 @@ const MessageList = memo(function MessageList({
         // Latest message logic: only applies to the last message of each type if no current messages
         const isLatest = isLastMessage && !hasCurrentUserMessage && !hasCurrentAssistantMessage;
 
-        return <ChatMessage key={`history-${i}`} message={message} isLatest={isLatest} isArchived={isArchived} />;
+        return (
+          <ChatMessage
+            key={`history-${i}`}
+            message={message}
+            isLatest={isLatest}
+            isArchived={isArchived}
+            allMessages={allMessages}
+          />
+        );
       })}
 
       {userMessage.content && (
         <ChatMessage key="user-current" message={userMessage} isLatest={true} isArchived={false} />
       )}
 
-      {assistantMessage.content && (
+      {hasCurrentAssistantMessage && (
         <ChatMessage
           key="assistant-current"
           message={assistantMessage}
           isStreaming={isStreaming}
           isLatest={!isStreaming}
           isArchived={false}
+          allMessages={allMessages}
+          isExecutingTools={isExecutingTools}
           data-testid="streaming-message"
         />
       )}
@@ -177,9 +218,31 @@ export function ChatUI() {
   const { showError } = useToastMessages();
   const { model } = useChatSettings();
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
-  const { input, setInput, isLoading: streamLoading, append, userMessage, assistantMessage } = useChat();
+
+  // Toolset selection
+  const { enabledToolsets, toggleToolset } = useToolsetSelection();
+  const { data: toolsetsResponse } = useAvailableToolsets();
+  const availableToolsets = toolsetsResponse?.toolsets || [];
+
+  // Chat with toolsets support
+  const {
+    input,
+    setInput,
+    isLoading: streamLoading,
+    append,
+    userMessage,
+    assistantMessage,
+    pendingToolCalls,
+  } = useChat({
+    enabledToolsets,
+    availableToolsets,
+  });
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const getTestId = useResponsiveTestId();
+
+  // Check if tools are being executed (have pending tool calls but no results yet)
+  const isExecutingTools = pendingToolCalls.length > 0;
 
   useEffect(() => {
     if (!streamLoading && inputRef.current) {
@@ -222,6 +285,7 @@ export function ChatUI() {
                 userMessage={userMessage}
                 assistantMessage={assistantMessage}
                 isStreaming={streamLoading}
+                isExecutingTools={isExecutingTools}
               />
             )}
           </div>
@@ -234,6 +298,8 @@ export function ChatUI() {
         streamLoading={streamLoading}
         inputRef={inputRef}
         isModelSelected={!!model}
+        enabledToolsets={enabledToolsets}
+        onToggleToolset={toggleToolset}
       />
     </div>
   );

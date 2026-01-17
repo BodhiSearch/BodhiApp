@@ -3,13 +3,16 @@
  * Updated to use types from @bodhiapp/ts-client with llama.cpp extensions
  */
 import type {
+  ChatCompletionMessageToolCallChunk,
   CreateChatCompletionRequest,
   CreateChatCompletionResponse,
   CreateChatCompletionStreamResponse,
+  FinishReason,
 } from '@bodhiapp/ts-client';
 import { http, HttpResponse } from 'msw';
 
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/use-chat-completions';
+import { ToolCall } from '@/types/chat';
 
 import { INTERNAL_SERVER_ERROR } from '../setup';
 
@@ -232,6 +235,183 @@ export function mockChatCompletionsStreamingWithError({
       });
 
       return response;
+    }),
+  ];
+}
+
+// ============================================================================
+// Tool Call Streaming Helpers
+// ============================================================================
+
+/**
+ * Create streaming chunks for a tool call response.
+ * Simulates how tool calls are streamed incrementally.
+ */
+export function createToolCallStreamChunks(
+  toolCalls: Array<{ id: string; name: string; arguments: string }>,
+  finishReason: FinishReason = 'tool_calls'
+): string[] {
+  const chunks: string[] = [];
+
+  // Send tool calls incrementally (by index)
+  toolCalls.forEach((tc, index) => {
+    // First chunk: id and name
+    const firstChunk: { choices: [{ delta: { tool_calls: ChatCompletionMessageToolCallChunk[] } }] } = {
+      choices: [
+        {
+          delta: {
+            tool_calls: [
+              {
+                index,
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.name,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    chunks.push(JSON.stringify(firstChunk));
+
+    // Second chunk: arguments (could be split into multiple chunks in real scenario)
+    const argsChunk: { choices: [{ delta: { tool_calls: ChatCompletionMessageToolCallChunk[] } }] } = {
+      choices: [
+        {
+          delta: {
+            tool_calls: [
+              {
+                index,
+                function: {
+                  arguments: tc.arguments,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    chunks.push(JSON.stringify(argsChunk));
+  });
+
+  // Final chunk with finish_reason
+  const finishChunk = {
+    choices: [
+      {
+        delta: {},
+        finish_reason: finishReason,
+      },
+    ],
+  };
+  chunks.push(JSON.stringify(finishChunk));
+
+  return chunks;
+}
+
+/**
+ * Create streaming chat completion handler with tool calls
+ */
+export function mockChatCompletionsStreamingWithToolCalls({
+  toolCalls,
+  contentChunks,
+  finishReason = 'tool_calls',
+  captureRequest,
+}: {
+  toolCalls: Array<{ id: string; name: string; arguments: string }>;
+  contentChunks?: string[];
+  finishReason?: FinishReason;
+  captureRequest?: (req: CreateChatCompletionRequest) => void;
+}) {
+  return [
+    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
+      const requestData = (await request.json()) as CreateChatCompletionRequest;
+
+      if (captureRequest) {
+        captureRequest(requestData);
+      }
+
+      const allChunks: string[] = [];
+
+      // Add content chunks first if provided
+      if (contentChunks) {
+        contentChunks.forEach((content) => {
+          allChunks.push(JSON.stringify({ choices: [{ delta: { content } }] }));
+        });
+      }
+
+      // Add tool call chunks
+      allChunks.push(...createToolCallStreamChunks(toolCalls, finishReason));
+
+      // Add [DONE]
+      allChunks.push('[DONE]');
+
+      const responseBody = allChunks.map((chunk) => `data: ${chunk}\n\n`).join('');
+
+      return new Response(responseBody, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }),
+  ];
+}
+
+/**
+ * Create non-streaming chat completion handler with tool calls
+ */
+export function mockChatCompletionsWithToolCalls({
+  toolCalls,
+  content,
+  finishReason = 'tool_calls',
+  captureRequest,
+}: {
+  toolCalls: ToolCall[];
+  content?: string;
+  finishReason?: FinishReason;
+  captureRequest?: (req: CreateChatCompletionRequest) => void;
+}) {
+  return [
+    http.post(ENDPOINT_OAI_CHAT_COMPLETIONS, async ({ request }) => {
+      const requestData = (await request.json()) as CreateChatCompletionRequest;
+
+      if (captureRequest) {
+        captureRequest(requestData);
+      }
+
+      const responseData: ChatCompletionResponseWithTimings = {
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
+        created: Date.now(),
+        model: requestData.model,
+        choices: [
+          {
+            index: 0,
+            message: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              role: 'resource_admin' as any,
+              content: content || null,
+              tool_calls: toolCalls.map((tc) => ({
+                id: tc.id,
+                type: 'function' as const,
+                function: tc.function,
+              })),
+            },
+            finish_reason: finishReason,
+          },
+        ],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 5,
+          total_tokens: 15,
+        },
+      };
+
+      return HttpResponse.json(responseData);
     }),
   ];
 }

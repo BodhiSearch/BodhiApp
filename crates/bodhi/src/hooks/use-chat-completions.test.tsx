@@ -83,8 +83,11 @@ describe('useChatCompletion', () => {
       );
       expect(onFinish).toHaveBeenCalledWith(
         expect.objectContaining({
-          content: 'The day that comes after Monday is Tuesday.',
-          role: 'assistant',
+          message: expect.objectContaining({
+            content: 'The day that comes after Monday is Tuesday.',
+            role: 'assistant',
+          }),
+          finishReason: 'stop',
         })
       );
       expect(result.current.isLoading).toBe(false);
@@ -143,8 +146,12 @@ describe('useChatCompletion', () => {
       expect(onDelta).toHaveBeenCalledWith(' is');
       expect(onDelta).toHaveBeenCalledWith(' Tuesday.');
       expect(onFinish).toHaveBeenCalledWith({
-        role: 'assistant',
-        content: ' The day that comes after Monday is Tuesday.',
+        message: {
+          role: 'assistant',
+          content: ' The day that comes after Monday is Tuesday.',
+        },
+        finishReason: null,
+        toolCalls: undefined,
       });
     });
 
@@ -194,8 +201,12 @@ describe('useChatCompletion', () => {
 
       // Current behavior: Stream continues and finishes with partial content
       expect(onFinish).toHaveBeenCalledWith({
-        role: 'assistant',
-        content: 'Hello',
+        message: {
+          role: 'assistant',
+          content: 'Hello',
+        },
+        finishReason: null,
+        toolCalls: undefined,
       });
 
       // Current behavior: Error in stream is not reported
@@ -270,7 +281,10 @@ describe('useChatCompletion', () => {
       );
       expect(onFinish).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: expectedMetadata,
+          message: expect.objectContaining({
+            metadata: expectedMetadata,
+          }),
+          finishReason: 'stop',
         })
       );
     });
@@ -307,20 +321,24 @@ describe('useChatCompletion', () => {
       expect(onDelta).toHaveBeenCalledWith('Hello');
       expect(onDelta).toHaveBeenCalledWith(' world');
       expect(onFinish).toHaveBeenCalledWith({
-        role: 'assistant',
-        content: 'Hello world',
-        metadata: {
-          model: 'test-model',
-          usage: {
-            completion_tokens: 16,
-            prompt_tokens: 5,
-            total_tokens: 21,
-          },
-          timings: {
-            prompt_per_second: 41.7157,
-            predicted_per_second: 31.04,
+        message: {
+          role: 'assistant',
+          content: 'Hello world',
+          metadata: {
+            model: 'test-model',
+            usage: {
+              completion_tokens: 16,
+              prompt_tokens: 5,
+              total_tokens: 21,
+            },
+            timings: {
+              prompt_per_second: 41.7157,
+              predicted_per_second: 31.04,
+            },
           },
         },
+        finishReason: 'stop',
+        toolCalls: undefined,
       });
     });
 
@@ -372,8 +390,11 @@ describe('useChatCompletion', () => {
       );
       expect(onFinish).toHaveBeenCalledWith(
         expect.objectContaining({
-          content: 'Test response',
-          role: 'assistant',
+          message: expect.objectContaining({
+            content: 'Test response',
+            role: 'assistant',
+          }),
+          finishReason: 'stop',
         })
       );
     });

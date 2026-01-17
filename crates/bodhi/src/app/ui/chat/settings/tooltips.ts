@@ -14,6 +14,8 @@ export const SETTINGS_TOOLTIPS = {
   maxTokens: "Maximum length of AI's response. Higher values allow longer responses.",
   presencePenalty: 'Positive values encourage the AI to discuss new topics rather than staying on current ones.',
   frequencyPenalty: 'Positive values reduce repetition of words and phrases in responses.',
+  maxToolIterations:
+    'Maximum number of tool call rounds before the AI must provide a final response. Prevents infinite tool loops.',
 } as const;
 /* prettier-ignore-end */
 /* eslint-enable */

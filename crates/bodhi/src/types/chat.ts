@@ -11,10 +11,23 @@ export interface MessageMetadata {
   };
 }
 
+export interface ToolCallFunction {
+  name: string;
+  arguments: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: ToolCallFunction;
+}
+
 export interface Message {
   id?: string;
   content: string;
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
   metadata?: MessageMetadata;
 }
 
@@ -26,6 +39,7 @@ export interface Chat {
   updatedAt?: number;
   model?: string;
   settings?: ChatSettings;
+  enabledToolsets?: string[];
 }
 
 export interface ChatSettings {

@@ -40,4 +40,4 @@ CREATE INDEX IF NOT EXISTS idx_app_toolset_configs_toolset_id ON app_toolset_con
 
 -- Seed default toolset config (web search enabled by default for setup)
 INSERT INTO app_toolset_configs (toolset_id, enabled, updated_by, created_at, updated_at)
-VALUES ('builtin-exa-web-search', 1, 'system', strftime('%s', 'now'), strftime('%s', 'now'));
+VALUES ('builtin-exa-web-search', 0, 'system', strftime('%s', 'now'), strftime('%s', 'now'));

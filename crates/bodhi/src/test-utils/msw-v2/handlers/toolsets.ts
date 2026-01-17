@@ -4,7 +4,9 @@
 import {
   AppToolsetConfigResponse,
   EnhancedToolsetConfigResponse,
+  ExecuteToolsetRequest,
   ListToolsetsResponse,
+  ToolsetExecutionResponse,
   ToolsetListItem,
 } from '@bodhiapp/ts-client';
 
@@ -203,6 +205,70 @@ export function mockSetAppToolsetDisabled(
         updated_at: new Date().toISOString(),
       };
       return HttpResponse.json(responseData);
+    }),
+  ];
+}
+
+// ============================================================================
+// Tool Execution Handlers
+// ============================================================================
+
+/**
+ * Mock handler for POST /toolsets/:toolsetId/execute (execute tool)
+ */
+export function mockToolsetExecute(
+  toolsetId: string = 'builtin-exa-web-search',
+  responseOverride?: Partial<ToolsetExecutionResponse> | ((req: ExecuteToolsetRequest) => ToolsetExecutionResponse),
+  { stub }: { stub?: boolean } = {}
+) {
+  let hasBeenCalled = false;
+  return [
+    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute`, async ({ params, request }) => {
+      if (params.toolsetId !== toolsetId) return;
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const body = (await request.json()) as ExecuteToolsetRequest;
+
+      let responseData: ToolsetExecutionResponse;
+      if (typeof responseOverride === 'function') {
+        responseData = responseOverride(body);
+      } else {
+        responseData = {
+          tool_call_id: body.tool_call_id,
+          result: { success: true, data: 'Mock result' },
+          ...responseOverride,
+        };
+      }
+
+      return HttpResponse.json(responseData);
+    }),
+  ];
+}
+
+/**
+ * Mock handler for tool execution that returns an error
+ */
+export function mockToolsetExecuteError(
+  toolsetId: string = 'builtin-exa-web-search',
+  { errorMessage = 'Tool execution failed', status = 500 }: { errorMessage?: string; status?: number } = {},
+  { stub }: { stub?: boolean } = {}
+) {
+  let hasBeenCalled = false;
+  return [
+    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute`, async ({ params, request }) => {
+      if (params.toolsetId !== toolsetId) return;
+      if (hasBeenCalled && !stub) return;
+      hasBeenCalled = true;
+
+      const body = (await request.json()) as ExecuteToolsetRequest;
+
+      const responseData: ToolsetExecutionResponse = {
+        tool_call_id: body.tool_call_id,
+        error: errorMessage,
+      };
+
+      return HttpResponse.json(responseData, { status });
     }),
   ];
 }

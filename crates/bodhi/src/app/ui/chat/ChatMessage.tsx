@@ -1,5 +1,6 @@
 import { User, Bot } from 'lucide-react';
 
+import { ToolCallsDisplay } from '@/app/ui/chat/ToolCallMessage';
 import { CopyButton } from '@/components/CopyButton';
 import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
@@ -10,11 +11,29 @@ interface ChatMessageProps {
   isStreaming?: boolean;
   isLatest?: boolean;
   isArchived?: boolean;
+  /** All messages in the conversation (for finding tool results) */
+  allMessages?: Message[];
+  /** Whether tools are currently being executed */
+  isExecutingTools?: boolean;
 }
 
-export function ChatMessage({ message, isStreaming = false, isLatest = false, isArchived = false }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  isStreaming = false,
+  isLatest = false,
+  isArchived = false,
+  allMessages = [],
+  isExecutingTools = false,
+}: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const isAssistant = message.role === 'assistant';
+  const isTool = message.role === 'tool';
   const metadata = message.metadata;
+
+  // Skip rendering tool messages - they are displayed nested under ToolCallMessage
+  if (isTool) {
+    return null;
+  }
 
   const formatNumber = (num: number) => num.toFixed(2);
 
@@ -31,6 +50,9 @@ export function ChatMessage({ message, isStreaming = false, isLatest = false, is
       return '';
     }
   };
+
+  // Check if this assistant message has tool calls
+  const hasToolCalls = isAssistant && message.tool_calls && message.tool_calls.length > 0;
 
   return (
     <div
@@ -55,9 +77,17 @@ export function ChatMessage({ message, isStreaming = false, isLatest = false, is
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium mb-1.5">{isUser ? 'You' : 'Assistant'}</div>
 
-        <div data-testid={`${isUser ? 'user' : isStreaming ? 'streaming' : 'assistant'}-message-content`}>
-          <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
-        </div>
+        {/* Tool calls display (before content, as they are executed first) */}
+        {hasToolCalls && (
+          <ToolCallsDisplay toolCalls={message.tool_calls!} messages={allMessages} isExecuting={isExecutingTools} />
+        )}
+
+        {/* Message content */}
+        {message.content && (
+          <div data-testid={`${isUser ? 'user' : isStreaming ? 'streaming' : 'assistant'}-message-content`}>
+            <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
+          </div>
+        )}
 
         {!isUser && !isStreaming && (
           <div
@@ -79,11 +109,13 @@ export function ChatMessage({ message, isStreaming = false, isLatest = false, is
                 </div>
               )}
             </div>
-            <CopyButton
-              text={message.content}
-              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-              showToast={true}
-            />
+            {message.content && (
+              <CopyButton
+                text={message.content}
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                showToast={true}
+              />
+            )}
           </div>
         )}
       </div>

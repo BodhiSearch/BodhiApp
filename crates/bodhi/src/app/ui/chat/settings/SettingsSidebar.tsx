@@ -114,6 +114,32 @@ export function SettingsSidebar() {
               />
             </div>
 
+            <div className="space-y-2">
+              <SettingRow
+                label="Max Tool Iterations"
+                tooltip={SETTINGS_TOOLTIPS.maxToolIterations}
+                htmlFor="max-tool-iterations-enabled"
+              >
+                <Switch
+                  id="max-tool-iterations-enabled"
+                  checked={settings.maxToolIterations_enabled}
+                  onCheckedChange={settings.setMaxToolIterationsEnabled}
+                  disabled={isLoading}
+                  size="sm"
+                />
+              </SettingRow>
+              <Input
+                type="number"
+                id="max-tool-iterations"
+                data-testid="max-tool-iterations-input"
+                value={settings.maxToolIterations ?? 5}
+                onChange={(e) => settings.setMaxToolIterations(parseInt(e.target.value) || 5)}
+                min={1}
+                max={20}
+                disabled={isLoading || !settings.maxToolIterations_enabled}
+              />
+            </div>
+
             <SystemPrompt isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.systemPrompt} />
             <StopWords isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.stopWords} />
 

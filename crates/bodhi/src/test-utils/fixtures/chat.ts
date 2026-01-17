@@ -106,3 +106,128 @@ export const mockStandardOpenAIResponse: CreateChatCompletionResponse = {
   },
   // No timings field - standard OpenAI response
 };
+
+// ============================================================================
+// Tool Call Fixtures
+// ============================================================================
+
+/**
+ * Mock tool call for web search
+ */
+export const mockToolCallWebSearch = {
+  id: 'call_web_search_123',
+  name: 'toolset__builtin-exa-web-search__search',
+  arguments: JSON.stringify({ query: 'AI news 2024', num_results: 5 }),
+};
+
+/**
+ * Mock tool call for a different tool
+ */
+export const mockToolCallCalculator = {
+  id: 'call_calc_456',
+  name: 'toolset__builtin-calculator__calculate',
+  arguments: JSON.stringify({ expression: '2 + 2' }),
+};
+
+/**
+ * Streaming chunks for tool call response
+ */
+export const mockStreamingChunksWithToolCalls = [
+  // First tool call - id and name
+  '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_web_search_123","type":"function","function":{"name":"toolset__builtin-exa-web-search__search"}}]}}]}',
+  // First tool call - arguments
+  '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"query\\":"}}]}}]}',
+  '{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\\"AI news 2024\\"}"}}]}}]}',
+  // Finish reason: tool_calls
+  '{"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}',
+  '[DONE]',
+];
+
+/**
+ * Streaming chunks for final response after tool execution
+ */
+export const mockStreamingChunksFinalResponse = [
+  '{"choices":[{"index":0,"delta":{"role":"assistant","content":""}}]}',
+  '{"choices":[{"index":0,"delta":{"content":"Based on"}}]}',
+  '{"choices":[{"index":0,"delta":{"content":" the search"}}]}',
+  '{"choices":[{"index":0,"delta":{"content":" results,"}}]}',
+  '{"choices":[{"index":0,"delta":{"content":" here is"}}]}',
+  '{"choices":[{"index":0,"delta":{"content":" the latest"}}]}',
+  '{"choices":[{"index":0,"delta":{"content":" AI news."}}]}',
+  '{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":50,"completion_tokens":30,"total_tokens":80}}',
+  '[DONE]',
+];
+
+/**
+ * Mock tool execution result
+ */
+export const mockToolExecutionResult = {
+  tool_call_id: 'call_web_search_123',
+  result: {
+    results: [
+      { title: 'AI News Article 1', url: 'https://example.com/1', snippet: 'Latest AI developments...' },
+      { title: 'AI News Article 2', url: 'https://example.com/2', snippet: 'Breaking news in AI...' },
+    ],
+  },
+};
+
+/**
+ * Mock tool execution error
+ */
+export const mockToolExecutionError = {
+  tool_call_id: 'call_web_search_123',
+  error: 'API rate limit exceeded',
+};
+
+/**
+ * Mock available toolset item (configured and enabled)
+ */
+export const mockToolsetListItemConfigured = {
+  type: 'function' as const,
+  function: {
+    name: 'toolset__builtin-exa-web-search__search',
+    description: 'Search the web using Exa AI for real-time information',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query',
+        },
+        num_results: {
+          type: 'number',
+          description: 'Number of results to return (default: 5)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  app_enabled: true,
+  user_config: {
+    enabled: true,
+    has_api_key: true,
+  },
+};
+
+/**
+ * Mock available toolset item (not configured)
+ */
+export const mockToolsetListItemNotConfigured = {
+  type: 'function' as const,
+  function: {
+    name: 'toolset__builtin-calculator__calculate',
+    description: 'Perform mathematical calculations',
+    parameters: {
+      type: 'object',
+      properties: {
+        expression: {
+          type: 'string',
+          description: 'Mathematical expression to evaluate',
+        },
+      },
+      required: ['expression'],
+    },
+  },
+  app_enabled: true,
+  user_config: null,
+};
