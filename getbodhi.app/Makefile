@@ -30,7 +30,7 @@ lint.fix: ## Lint code and fix errors
 	@npm run lint:fix
 
 # Include shared release utilities from parent directory
-include ../scripts/release.mk
+include ../Makefile.release.mk
 
 release.precheck: sync.docs.check ## Pre-release validation checks
 	@echo "==> Running release prechecks..."
