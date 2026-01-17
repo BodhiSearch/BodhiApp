@@ -133,7 +133,7 @@ pub fn build_routes(
       delete(delete_toolset_config_handler),
     )
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/execute"),
+      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/execute/{{method}}"),
       post(execute_toolset_handler),
     )
     .route_layer(from_fn_with_state(

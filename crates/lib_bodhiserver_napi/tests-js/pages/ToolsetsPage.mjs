@@ -139,8 +139,21 @@ export class ToolsetsPage extends BasePage {
     await this.navigateToToolsetEdit(toolsetId);
     await this.expectToolsetEditPage();
     await this.expectFormLoaded();
+
+    const appToggle = this.page.locator(this.selectors.appEnabledToggle);
+    const isAppEnabled = await appToggle.getAttribute('data-state');
+    if (isAppEnabled !== 'checked') {
+      await this.toggleAppEnabled();
+      await this.confirmAppEnable();
+    }
+
+    const userToggle = this.page.locator(this.selectors.enabledToggle);
+    const isUserEnabled = await userToggle.getAttribute('data-state');
+    if (isUserEnabled !== 'checked') {
+      await this.toggleEnabled();
+    }
+
     await this.fillApiKey(apiKey);
-    await this.toggleEnabled();
     await this.saveConfig();
   }
 }

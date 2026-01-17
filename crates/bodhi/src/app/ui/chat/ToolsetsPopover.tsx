@@ -1,8 +1,9 @@
 'use client';
 
-import { ToolsetListItem } from '@bodhiapp/ts-client';
-import { Wrench } from 'lucide-react';
 import { useState } from 'react';
+
+import { ToolsetWithTools } from '@bodhiapp/ts-client';
+import { Wrench, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,18 +14,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAvailableToolsets } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 
-import { parseToolsetId, parseToolName } from '../../../hooks/use-chat';
-
 interface ToolsetsPopoverProps {
-  enabledToolsets: string[];
-  onToggleToolset: (toolsetId: string) => void;
+  enabledTools: Record<string, string[]>;
+  onToggleTool: (toolsetId: string, toolName: string) => void;
+  onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
   disabled?: boolean;
 }
 
 /**
  * Get the reason why a toolset is unavailable for use.
  */
-function getUnavailableReason(toolset: ToolsetListItem): string | null {
+function getUnavailableReason(toolset: ToolsetWithTools): string | null {
   if (!toolset.app_enabled) {
     return 'Disabled by administrator';
   }
@@ -43,116 +43,176 @@ function getUnavailableReason(toolset: ToolsetListItem): string | null {
 /**
  * Check if a toolset is available for use in chat.
  */
-function isToolsetAvailable(toolset: ToolsetListItem): boolean {
+function isToolsetAvailable(toolset: ToolsetWithTools): boolean {
   return (
     toolset.app_enabled && toolset.user_config != null && toolset.user_config.enabled && toolset.user_config.has_api_key
   );
 }
 
 /**
- * Extract unique toolset IDs from available toolsets.
- * Each toolset may have multiple tools, but we group by toolset ID.
+ * Calculate tri-state checkbox state for toolset.
  */
-function groupToolsetsByToolsetId(
-  toolsets: ToolsetListItem[]
-): Map<string, { name: string; tools: ToolsetListItem[] }> {
-  const grouped = new Map<string, { name: string; tools: ToolsetListItem[] }>();
-
-  for (const toolset of toolsets) {
-    const toolsetId = parseToolsetId(toolset.function.name);
-    if (!toolsetId) continue;
-
-    const existing = grouped.get(toolsetId);
-    if (existing) {
-      existing.tools.push(toolset);
-    } else {
-      // Use the toolset ID as display name (formatted)
-      const displayName = toolsetId
-        .replace(/^builtin-/, '')
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-
-      grouped.set(toolsetId, {
-        name: displayName,
-        tools: [toolset],
-      });
-    }
-  }
-
-  return grouped;
+function getCheckboxState(
+  toolsetId: string,
+  totalTools: number,
+  enabledTools: Record<string, string[]>
+): 'checked' | 'unchecked' | 'indeterminate' {
+  const enabledCount = enabledTools[toolsetId]?.length || 0;
+  if (enabledCount === 0) return 'unchecked';
+  if (enabledCount === totalTools) return 'checked';
+  return 'indeterminate';
 }
 
-interface ToolsetCheckboxItemProps {
-  toolsetId: string;
-  displayName: string;
-  tools: ToolsetListItem[];
-  isEnabled: boolean;
-  onToggle: (toolsetId: string) => void;
+interface ToolsetItemProps {
+  toolset: ToolsetWithTools;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  enabledTools: Record<string, string[]>;
+  onToggleTool: (toolsetId: string, toolName: string) => void;
+  onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
 }
 
-function ToolsetCheckboxItem({ toolsetId, displayName, tools, isEnabled, onToggle }: ToolsetCheckboxItemProps) {
-  // Use the first tool to determine availability (all tools in a toolset share the same status)
-  const firstTool = tools[0];
-  const unavailableReason = getUnavailableReason(firstTool);
-  const isAvailable = isToolsetAvailable(firstTool);
+function ToolsetItem({
+  toolset,
+  isExpanded,
+  onToggleExpand,
+  enabledTools,
+  onToggleTool,
+  onToggleToolset,
+}: ToolsetItemProps) {
+  const unavailableReason = getUnavailableReason(toolset);
+  const isAvailable = isToolsetAvailable(toolset);
+  const allToolNames = toolset.tools.map((tool) => tool.function.name);
+  const enabledCount = enabledTools[toolset.toolset_id]?.length || 0;
+  const checkboxState = getCheckboxState(toolset.toolset_id, toolset.tools.length, enabledTools);
 
-  const checkbox = (
+  const parentRow = (
     <div
-      className={cn('flex items-center space-x-3 rounded-md p-2', !isAvailable && 'opacity-50 cursor-not-allowed')}
-      data-testid={`toolset-item-${toolsetId}`}
+      className={cn(
+        'flex items-center space-x-2 rounded-md p-2 hover:bg-accent',
+        !isAvailable && 'opacity-50 cursor-not-allowed'
+      )}
+      data-testid={`toolset-row-${toolset.toolset_id}`}
     >
+      {/* Expand/collapse chevron */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-4 w-4 p-0 hover:bg-transparent"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleExpand();
+        }}
+        disabled={!isAvailable}
+        data-testid={`toolset-expand-${toolset.toolset_id}`}
+      >
+        {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </Button>
+
+      {/* Parent checkbox (tri-state) */}
       <Checkbox
-        id={`toolset-${toolsetId}`}
-        data-testid={`toolset-checkbox-${toolsetId}`}
-        checked={isEnabled && isAvailable}
+        id={`toolset-${toolset.toolset_id}`}
+        data-testid={`toolset-checkbox-${toolset.toolset_id}`}
+        checked={checkboxState === 'checked'}
+        data-state={checkboxState}
         disabled={!isAvailable}
         onCheckedChange={() => {
           if (isAvailable) {
-            onToggle(toolsetId);
+            onToggleToolset(toolset.toolset_id, allToolNames);
           }
         }}
       />
+
+      {/* Toolset name and count */}
       <div className="flex-1 min-w-0">
         <Label
-          htmlFor={`toolset-${toolsetId}`}
+          htmlFor={`toolset-${toolset.toolset_id}`}
           className={cn('text-sm font-medium cursor-pointer', !isAvailable && 'cursor-not-allowed')}
         >
-          {displayName}
+          {toolset.name}
         </Label>
-        <p className="text-xs text-muted-foreground">{tools.length} tool(s)</p>
+        <p className="text-xs text-muted-foreground">
+          ({enabledCount}/{toolset.tools.length})
+        </p>
       </div>
     </div>
   );
 
-  if (unavailableReason) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>{checkbox}</TooltipTrigger>
-          <TooltipContent>
-            <p>{unavailableReason}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
+  const rowWithTooltip = unavailableReason ? (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>{parentRow}</TooltipTrigger>
+        <TooltipContent>
+          <p>{unavailableReason}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    parentRow
+  );
 
-  return checkbox;
+  return (
+    <div data-testid={`toolset-item-${toolset.toolset_id}`}>
+      {rowWithTooltip}
+      {/* Expanded child tools */}
+      {isExpanded && isAvailable && (
+        <div className="ml-6 space-y-1 mt-1">
+          {toolset.tools.map((tool) => {
+            const isToolEnabled = enabledTools[toolset.toolset_id]?.includes(tool.function.name) || false;
+            return (
+              <div
+                key={tool.function.name}
+                className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent"
+                data-testid={`tool-row-${toolset.toolset_id}-${tool.function.name}`}
+              >
+                <Checkbox
+                  id={`tool-${toolset.toolset_id}-${tool.function.name}`}
+                  data-testid={`tool-checkbox-${toolset.toolset_id}-${tool.function.name}`}
+                  checked={isToolEnabled}
+                  onCheckedChange={() => onToggleTool(toolset.toolset_id, tool.function.name)}
+                />
+                <Label
+                  htmlFor={`tool-${toolset.toolset_id}-${tool.function.name}`}
+                  className="text-sm cursor-pointer flex-1"
+                >
+                  {tool.function.name}
+                </Label>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export function ToolsetsPopover({ enabledToolsets, onToggleToolset, disabled = false }: ToolsetsPopoverProps) {
+export function ToolsetsPopover({
+  enabledTools,
+  onToggleTool,
+  onToggleToolset,
+  disabled = false,
+}: ToolsetsPopoverProps) {
   const [open, setOpen] = useState(false);
+  const [expandedToolsets, setExpandedToolsets] = useState<Set<string>>(new Set());
   const { data: toolsetsResponse, isLoading } = useAvailableToolsets();
 
   const toolsets = toolsetsResponse?.toolsets || [];
-  const groupedToolsets = groupToolsetsByToolsetId(toolsets);
 
-  // Count only toolsets that are both enabled AND available
-  const enabledCount = enabledToolsets.filter((id) => {
-    const group = groupedToolsets.get(id);
-    return group && group.tools.length > 0 && isToolsetAvailable(group.tools[0]);
-  }).length;
+  // Count total enabled tools across all toolsets
+  const enabledCount = Object.values(enabledTools).reduce((sum, tools) => sum + tools.length, 0);
+
+  const toggleExpand = (toolsetId: string) => {
+    setExpandedToolsets((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolsetId)) {
+        next.delete(toolsetId);
+      } else {
+        next.add(toolsetId);
+      }
+      return next;
+    });
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -178,23 +238,24 @@ export function ToolsetsPopover({ enabledToolsets, onToggleToolset, disabled = f
           <span className="sr-only">Configure toolsets</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="start" side="top" data-testid="toolsets-popover-content">
+      <PopoverContent className="w-80 p-2" align="start" side="top" data-testid="toolsets-popover-content">
         <div className="space-y-1">
           <h4 className="font-medium text-sm px-2 py-1">Toolsets</h4>
           {isLoading ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">Loading...</div>
-          ) : groupedToolsets.size === 0 ? (
+          ) : toolsets.length === 0 ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">No toolsets available</div>
           ) : (
             <div className="space-y-1">
-              {Array.from(groupedToolsets.entries()).map(([toolsetId, { name, tools }]) => (
-                <ToolsetCheckboxItem
-                  key={toolsetId}
-                  toolsetId={toolsetId}
-                  displayName={name}
-                  tools={tools}
-                  isEnabled={enabledToolsets.includes(toolsetId)}
-                  onToggle={onToggleToolset}
+              {toolsets.map((toolset) => (
+                <ToolsetItem
+                  key={toolset.toolset_id}
+                  toolset={toolset}
+                  isExpanded={expandedToolsets.has(toolset.toolset_id)}
+                  onToggleExpand={() => toggleExpand(toolset.toolset_id)}
+                  enabledTools={enabledTools}
+                  onToggleTool={onToggleTool}
+                  onToggleToolset={onToggleToolset}
                 />
               ))}
             </div>

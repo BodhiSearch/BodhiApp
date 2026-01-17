@@ -118,7 +118,12 @@ test.describe('Toolsets Configuration', () => {
     await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
     await toolsetsPage.expectToolsetEditPage();
 
-    // Click the toggle to disable
+    // First enable the toolset (it starts disabled)
+    await toolsetsPage.toggleAppEnabled();
+    await expect(page.locator('text=Enable Toolset for Server')).toBeVisible();
+    await toolsetsPage.confirmAppEnable();
+
+    // Now toggle again to disable and verify disable dialog
     await toolsetsPage.toggleAppEnabled();
 
     // Should show confirmation dialog

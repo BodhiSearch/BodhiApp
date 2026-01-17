@@ -1,7 +1,8 @@
 'use client';
 
-import { ToolsetListItem, ToolsetExecutionResponse } from '@bodhiapp/ts-client';
 import { useCallback, useRef, useState } from 'react';
+
+import { ToolsetWithTools, ToolsetExecutionResponse, ToolDefinition } from '@bodhiapp/ts-client';
 
 import { CompletionResult, useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
@@ -41,9 +42,10 @@ async function executeToolCall(
   headers: Record<string, string>
 ): Promise<Message> {
   const toolsetId = parseToolsetId(toolCall.function.name);
+  const method = parseToolName(toolCall.function.name);
   const baseUrl =
     apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-  const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/execute`;
+  const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/execute/${method}`;
 
   try {
     const response = await fetch(url, {
@@ -54,7 +56,7 @@ async function executeToolCall(
       },
       body: JSON.stringify({
         tool_call_id: toolCall.id,
-        arguments: JSON.parse(toolCall.function.arguments),
+        params: JSON.parse(toolCall.function.arguments),
       }),
       signal,
     });
@@ -109,23 +111,38 @@ async function executeToolCalls(
 }
 
 /**
- * Build tools array for API request from enabled toolsets.
+ * Build tools array for API request from enabled tools.
+ * Flattens nested toolsets and composes tool names as toolset__{id}__{method}.
  */
-function buildToolsArray(enabledToolsets: string[], availableToolsets: ToolsetListItem[]): ToolsetListItem[] {
-  return availableToolsets.filter((toolset) => {
-    // Extract toolset ID from tool name (toolset__{id}__{name})
-    const toolsetId = parseToolsetId(toolset.function.name);
-    return enabledToolsets.includes(toolsetId);
-  });
+function buildToolsArray(
+  enabledTools: Record<string, string[]>,
+  availableToolsets: ToolsetWithTools[]
+): ToolDefinition[] {
+  const result: ToolDefinition[] = [];
+  for (const toolset of availableToolsets) {
+    const enabledToolNames = enabledTools[toolset.toolset_id] || [];
+    for (const tool of toolset.tools) {
+      if (enabledToolNames.includes(tool.function.name)) {
+        result.push({
+          type: 'function',
+          function: {
+            ...tool.function,
+            name: `toolset__${toolset.toolset_id}__${tool.function.name}`,
+          },
+        });
+      }
+    }
+  }
+  return result;
 }
 
 export interface UseChatOptions {
-  enabledToolsets?: string[];
-  availableToolsets?: ToolsetListItem[];
+  enabledTools?: Record<string, string[]>;
+  availableToolsets?: ToolsetWithTools[];
 }
 
 export function useChat(options?: UseChatOptions) {
-  const { enabledToolsets = [], availableToolsets = [] } = options || {};
+  const { enabledTools = {}, availableToolsets = [] } = options || {};
 
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -182,8 +199,8 @@ export function useChat(options?: UseChatOptions) {
       let iteration = 0;
       const maxIterations = chatSettings.maxToolIterations_enabled ? (chatSettings.maxToolIterations ?? 5) : 5;
 
-      // Build tools array from enabled toolsets
-      const tools = enabledToolsets.length > 0 ? buildToolsArray(enabledToolsets, availableToolsets) : [];
+      // Build tools array from enabled tools
+      const tools = Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, availableToolsets) : [];
 
       const headers: Record<string, string> = {};
       if (chatSettings.api_token_enabled) {
@@ -299,7 +316,7 @@ export function useChat(options?: UseChatOptions) {
             messages: conversationMessages,
             createdAt: chatIdRef.createdAt,
             updatedAt: Date.now(),
-            enabledToolsets: enabledToolsets.length > 0 ? enabledToolsets : undefined,
+            enabledTools: Object.keys(enabledTools).length > 0 ? enabledTools : undefined,
           });
 
           if (!currentChat) {
@@ -335,7 +352,7 @@ export function useChat(options?: UseChatOptions) {
       showError,
       setCurrentChatId,
       resetToPreSubmissionState,
-      enabledToolsets,
+      enabledTools,
       availableToolsets,
     ]
   );

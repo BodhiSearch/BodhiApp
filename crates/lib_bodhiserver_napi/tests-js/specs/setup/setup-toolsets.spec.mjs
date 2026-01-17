@@ -95,11 +95,11 @@ test.describe('Toolsets Setup Integration', () => {
     // Verify form structure
     await toolsetsPage.expectInitialFormState();
 
-    // The migration seed enables the toolset by default, so after backend state is fetched,
-    // the toggle should be ON and form should be enabled
-    await toolsetsPage.expectAppToggleOn();
-    await toolsetsPage.expectNoAppDisabledMessage();
-    await toolsetsPage.expectFormEnabled();
+    // The migration seed disables the toolset by default, so after backend state is fetched,
+    // the toggle should be OFF and form should be disabled
+    await toolsetsPage.expectAppToggleOff();
+    await toolsetsPage.expectAppDisabledMessage();
+    await toolsetsPage.expectFormDisabled();
 
     // Skip toolsets setup
     await toolsetsPage.skipToolsetsSetup();
@@ -119,7 +119,12 @@ test.describe('Toolsets Setup Integration', () => {
     await toolsetsPage.expectToolsetsPage();
     await toolsetsPage.expectStepIndicator(5);
 
-    // The migration seed enables the toolset by default
+    // The migration seed disables the toolset by default
+    await toolsetsPage.expectAppToggleOff();
+    await toolsetsPage.expectFormDisabled();
+
+    // Enable the toolset for server first
+    await toolsetsPage.enableAppToolset();
     await toolsetsPage.expectAppToggleOn();
     await toolsetsPage.expectFormEnabled();
 

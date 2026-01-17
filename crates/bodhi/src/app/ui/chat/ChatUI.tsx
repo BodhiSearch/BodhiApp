@@ -35,8 +35,9 @@ interface ChatInputProps {
   streamLoading: boolean;
   inputRef: RefObject<HTMLTextAreaElement>;
   isModelSelected: boolean;
-  enabledToolsets: string[];
-  onToggleToolset: (toolsetId: string) => void;
+  enabledTools: Record<string, string[]>;
+  onToggleTool: (toolsetId: string, toolName: string) => void;
+  onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
 }
 
 const ChatInput = memo(function ChatInput({
@@ -46,7 +47,8 @@ const ChatInput = memo(function ChatInput({
   streamLoading,
   inputRef,
   isModelSelected,
-  enabledToolsets,
+  enabledTools,
+  onToggleTool,
   onToggleToolset,
 }: ChatInputProps) {
   const { createNewChat } = useChatDB();
@@ -77,7 +79,8 @@ const ChatInput = memo(function ChatInput({
             </Button>
 
             <ToolsetsPopover
-              enabledToolsets={enabledToolsets}
+              enabledTools={enabledTools}
+              onToggleTool={onToggleTool}
               onToggleToolset={onToggleToolset}
               disabled={streamLoading}
             />
@@ -220,7 +223,7 @@ export function ChatUI() {
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
 
   // Toolset selection
-  const { enabledToolsets, toggleToolset } = useToolsetSelection();
+  const { enabledTools, toggleTool, toggleToolset } = useToolsetSelection();
   const { data: toolsetsResponse } = useAvailableToolsets();
   const availableToolsets = toolsetsResponse?.toolsets || [];
 
@@ -234,7 +237,7 @@ export function ChatUI() {
     assistantMessage,
     pendingToolCalls,
   } = useChat({
-    enabledToolsets,
+    enabledTools,
     availableToolsets,
   });
 
@@ -298,7 +301,8 @@ export function ChatUI() {
         streamLoading={streamLoading}
         inputRef={inputRef}
         isModelSelected={!!model}
-        enabledToolsets={enabledToolsets}
+        enabledTools={enabledTools}
+        onToggleTool={toggleTool}
         onToggleToolset={toggleToolset}
       />
     </div>

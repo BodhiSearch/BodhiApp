@@ -39,7 +39,7 @@ export interface Chat {
   updatedAt?: number;
   model?: string;
   settings?: ChatSettings;
-  enabledToolsets?: string[];
+  enabledTools?: Record<string, string[]>;
 }
 
 export interface ChatSettings {

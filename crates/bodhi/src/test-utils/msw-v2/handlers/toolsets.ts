@@ -7,7 +7,7 @@ import {
   ExecuteToolsetRequest,
   ListToolsetsResponse,
   ToolsetExecutionResponse,
-  ToolsetListItem,
+  ToolsetWithTools,
 } from '@bodhiapp/ts-client';
 
 import { TOOLSETS_ENDPOINT } from '@/hooks/useToolsets';
@@ -18,32 +18,35 @@ import { http, HttpResponse, INTERNAL_SERVER_ERROR } from '../setup';
 // Default Test Data
 // ============================================================================
 
-const DEFAULT_TOOLSET_DEFINITION = {
-  type: 'function' as const,
-  function: {
-    name: 'builtin-exa-web-search',
-    description: 'Search the web using Exa AI for real-time information',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search query',
-        },
-        num_results: {
-          type: 'number',
-          description: 'Number of results to return (default: 5)',
-        },
-      },
-      required: ['query'],
-    },
-  },
-};
-
-const DEFAULT_TOOLSET_LIST_ITEM: ToolsetListItem = {
-  ...DEFAULT_TOOLSET_DEFINITION,
+const DEFAULT_TOOLSET_WITH_TOOLS: ToolsetWithTools = {
+  toolset_id: 'builtin-exa-web-search',
+  name: 'Exa Web Search',
+  description: 'Search the web using Exa AI',
   app_enabled: true,
   user_config: undefined,
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'search',
+        description: 'Search the web using Exa AI for real-time information',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Search query',
+            },
+            num_results: {
+              type: 'number',
+              description: 'Number of results to return (default: 5)',
+            },
+          },
+          required: ['query'],
+        },
+      },
+    },
+  ],
 };
 
 // ============================================================================
@@ -54,7 +57,7 @@ const DEFAULT_TOOLSET_LIST_ITEM: ToolsetListItem = {
  * Mock handler for GET /toolsets (list all available toolsets)
  */
 export function mockAvailableToolsets(
-  toolsets: ToolsetListItem[] = [DEFAULT_TOOLSET_LIST_ITEM],
+  toolsets: ToolsetWithTools[] = [DEFAULT_TOOLSET_WITH_TOOLS],
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -214,17 +217,18 @@ export function mockSetAppToolsetDisabled(
 // ============================================================================
 
 /**
- * Mock handler for POST /toolsets/:toolsetId/execute (execute tool)
+ * Mock handler for POST /toolsets/:toolsetId/execute/:method (execute tool method)
  */
 export function mockToolsetExecute(
   toolsetId: string = 'builtin-exa-web-search',
+  method: string = 'search',
   responseOverride?: Partial<ToolsetExecutionResponse> | ((req: ExecuteToolsetRequest) => ToolsetExecutionResponse),
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
-    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute`, async ({ params, request }) => {
-      if (params.toolsetId !== toolsetId) return;
+    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute/:method`, async ({ params, request }) => {
+      if (params.toolsetId !== toolsetId || params.method !== method) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -251,13 +255,14 @@ export function mockToolsetExecute(
  */
 export function mockToolsetExecuteError(
   toolsetId: string = 'builtin-exa-web-search',
+  method: string = 'search',
   { errorMessage = 'Tool execution failed', status = 500 }: { errorMessage?: string; status?: number } = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
   return [
-    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute`, async ({ params, request }) => {
-      if (params.toolsetId !== toolsetId) return;
+    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute/:method`, async ({ params, request }) => {
+      if (params.toolsetId !== toolsetId || params.method !== method) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -399,15 +404,15 @@ export function mockToolsetsDefault() {
  * Mock a toolset as fully configured and enabled
  */
 export function mockToolsetConfigured(toolsetId: string = 'builtin-exa-web-search') {
-  const toolsetItem: ToolsetListItem = {
-    ...DEFAULT_TOOLSET_DEFINITION,
+  const toolsetItem: ToolsetWithTools = {
+    ...DEFAULT_TOOLSET_WITH_TOOLS,
+    toolset_id: toolsetId,
     app_enabled: true,
     user_config: {
       enabled: true,
       has_api_key: true,
     },
   };
-  toolsetItem.function.name = toolsetId;
 
   return [
     ...mockAvailableToolsets([toolsetItem], { stub: true }),
@@ -431,12 +436,12 @@ export function mockToolsetConfigured(toolsetId: string = 'builtin-exa-web-searc
  * Mock a toolset as app-disabled
  */
 export function mockToolsetAppDisabled(toolsetId: string = 'builtin-exa-web-search') {
-  const toolsetItem: ToolsetListItem = {
-    ...DEFAULT_TOOLSET_DEFINITION,
+  const toolsetItem: ToolsetWithTools = {
+    ...DEFAULT_TOOLSET_WITH_TOOLS,
+    toolset_id: toolsetId,
     app_enabled: false,
     user_config: undefined,
   };
-  toolsetItem.function.name = toolsetId;
 
   return [
     ...mockAvailableToolsets([toolsetItem], { stub: true }),

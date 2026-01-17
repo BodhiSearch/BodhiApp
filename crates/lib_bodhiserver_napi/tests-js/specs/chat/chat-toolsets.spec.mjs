@@ -272,7 +272,7 @@ test.describe('Chat Interface - Toolsets Integration', () => {
     // Verify badge shows count
     const badge = page.locator('[data-testid="toolsets-badge"]');
     await expect(badge).toBeVisible();
-    await expect(badge).toContainText('1');
+    await expect(badge).toContainText('4');
 
     // Reopen popover
     await toolsetsButton.click();
@@ -323,6 +323,6 @@ test.describe('Chat Interface - Toolsets Integration', () => {
     // Verify badge appears with count
     const badge = page.locator('[data-testid="toolsets-badge"]');
     await expect(badge).toBeVisible();
-    await expect(badge).toContainText('1');
+    await expect(badge).toContainText('4');
   });
 });

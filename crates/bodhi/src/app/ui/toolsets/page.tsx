@@ -11,7 +11,9 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { ToolsetListItem, useAvailableToolsets } from '@/hooks/useToolsets';
+import { useAvailableToolsets } from '@/hooks/useToolsets';
+
+import type { ToolsetWithTools } from '@bodhiapp/ts-client';
 
 // Toolset metadata - hardcoded for now
 const TOOLSET_METADATA: Record<string, { name: string; description: string }> = {
@@ -28,7 +30,7 @@ const columns = [
   { id: 'actions', name: '', sorted: false },
 ];
 
-function getToolsetStatus(toolset: ToolsetListItem): {
+function getToolsetStatus(toolset: ToolsetWithTools): {
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
 } {
@@ -58,11 +60,11 @@ function ToolsetsPageContent() {
     router.push(`/ui/toolsets/edit?toolset_id=${toolsetId}`);
   };
 
-  const renderRow = (toolset: ToolsetListItem) => {
-    const toolsetId = toolset.function.name;
+  const renderRow = (toolset: ToolsetWithTools) => {
+    const toolsetId = toolset.toolset_id;
     const meta = TOOLSET_METADATA[toolsetId] || {
-      name: toolsetId,
-      description: toolset.function.description,
+      name: toolset.name,
+      description: toolset.description,
     };
     const status = getToolsetStatus(toolset);
 
@@ -129,7 +131,7 @@ function ToolsetsPageContent() {
           columns={columns}
           loading={isLoading}
           renderRow={renderRow}
-          getItemId={(toolset) => toolset.function.name}
+          getItemId={(toolset) => toolset.toolset_id}
           sort={{ column: 'name', direction: 'asc' }}
           onSortChange={() => {}}
           data-testid="toolsets-table"

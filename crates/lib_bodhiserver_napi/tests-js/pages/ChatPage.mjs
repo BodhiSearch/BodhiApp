@@ -38,6 +38,12 @@ export class ChatPage extends BasePage {
     settingsSidebar: '[data-testid="settings-sidebar"]',
     settingsToggle: '[data-testid="settings-toggle-button"]',
     chatHistoryToggle: '[data-testid="chat-history-toggle"]',
+
+    // Tool call elements
+    toolCallMessage: '[data-testid="tool-call-message"]',
+    toolCallExpand: '[data-testid="tool-call-expand"]',
+    toolCallStatus: '[data-testid="tool-call-status"]',
+    toolCallContent: '[data-testid="tool-call-content"]',
   };
 
   /**
@@ -478,5 +484,56 @@ export class ChatPage extends BasePage {
     const messageInput = this.page.locator(this.selectors.messageInput);
     await expect(messageInput).toBeVisible();
     await expect(messageInput).not.toHaveAttribute('placeholder', 'Please select a model first');
+  }
+
+  // Tool call operations
+
+  /**
+   * Wait for tool call message to appear in chat
+   */
+  async waitForToolCall() {
+    await expect(this.page.locator(this.selectors.toolCallMessage).first()).toBeVisible({
+      timeout: 30000,
+    });
+  }
+
+  /**
+   * Expand the first tool call collapsed section
+   */
+  async expandToolCall() {
+    const toolCallExpand = this.page.locator(this.selectors.toolCallExpand).first();
+    await toolCallExpand.click();
+    await expect(this.page.locator(this.selectors.toolCallContent).first()).toBeVisible();
+  }
+
+  /**
+   * Get the arguments JSON from expanded tool call
+   */
+  async getToolCallArguments() {
+    const content = this.page.locator(this.selectors.toolCallContent).first();
+    const argumentsPre = content.locator('pre').first();
+    return await argumentsPre.textContent();
+  }
+
+  /**
+   * Wait for tool call to complete (status changes from "Calling..." to "Completed")
+   */
+  async waitForToolCallComplete() {
+    const status = this.page.locator(this.selectors.toolCallStatus).first();
+    await expect(status).toContainText('Completed', { timeout: 60000 });
+  }
+
+  /**
+   * Wait for agentic response to complete (includes tool execution + final response)
+   */
+  async waitForAgenticResponseComplete() {
+    // First wait for tool call to appear
+    await this.waitForToolCall();
+
+    // Wait for tool call to complete
+    await this.waitForToolCallComplete();
+
+    // Wait for final response from model
+    await this.waitForResponseComplete();
   }
 }

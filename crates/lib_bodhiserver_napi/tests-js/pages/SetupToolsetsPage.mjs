@@ -74,7 +74,9 @@ export class SetupToolsetsPage extends SetupBasePage {
   async expectAppToggleOn() {
     const toggle = this.page.locator(this.selectors.appEnabledToggle);
     await expect(toggle).toBeChecked();
-    await this.expectVisible(this.selectors.enabledBadge);
+    // Scope the badge selector to the form to avoid matching toast messages
+    const form = this.page.locator(this.selectors.toolsetConfigForm);
+    await expect(form.locator(this.selectors.enabledBadge)).toBeVisible();
   }
 
   async expectAppDisabledMessage() {

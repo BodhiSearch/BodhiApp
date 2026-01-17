@@ -2,7 +2,7 @@
  * Test fixtures for chat completion testing
  * Uses types from @bodhiapp/ts-client with llama.cpp extensions
  */
-import type { CreateChatCompletionResponse } from '@bodhiapp/ts-client';
+import type { CreateChatCompletionResponse, ToolsetWithTools } from '@bodhiapp/ts-client';
 
 /**
  * llama.cpp-specific timing extensions
@@ -180,54 +180,124 @@ export const mockToolExecutionError = {
 };
 
 /**
- * Mock available toolset item (configured and enabled)
+ * Mock toolset with nested tools (configured and enabled)
  */
-export const mockToolsetListItemConfigured = {
-  type: 'function' as const,
-  function: {
-    name: 'toolset__builtin-exa-web-search__search',
-    description: 'Search the web using Exa AI for real-time information',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search query',
-        },
-        num_results: {
-          type: 'number',
-          description: 'Number of results to return (default: 5)',
-        },
-      },
-      required: ['query'],
-    },
-  },
+export const mockToolsetWithTools: ToolsetWithTools = {
+  toolset_id: 'builtin-exa-web-search',
+  name: 'Exa Web Search',
+  description: 'Search the web using Exa AI',
   app_enabled: true,
   user_config: {
     enabled: true,
     has_api_key: true,
   },
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'search',
+        description: 'Search the web using Exa AI for real-time information',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Search query',
+            },
+            num_results: {
+              type: 'number',
+              description: 'Number of results to return (default: 5)',
+            },
+          },
+          required: ['query'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'findSimilar',
+        description: 'Find similar pages to a given URL',
+        parameters: {
+          type: 'object',
+          properties: {
+            url: {
+              type: 'string',
+              description: 'URL to find similar pages for',
+            },
+            num_results: {
+              type: 'number',
+              description: 'Number of results to return (default: 5)',
+            },
+          },
+          required: ['url'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'contents',
+        description: 'Get contents of URLs',
+        parameters: {
+          type: 'object',
+          properties: {
+            urls: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'URLs to get contents for',
+            },
+          },
+          required: ['urls'],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'answer',
+        description: 'Get an answer to a question from Exa',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Question to answer',
+            },
+          },
+          required: ['query'],
+        },
+      },
+    },
+  ],
 };
 
 /**
- * Mock available toolset item (not configured)
+ * Mock toolset not configured (missing API key)
  */
-export const mockToolsetListItemNotConfigured = {
-  type: 'function' as const,
-  function: {
-    name: 'toolset__builtin-calculator__calculate',
-    description: 'Perform mathematical calculations',
-    parameters: {
-      type: 'object',
-      properties: {
-        expression: {
-          type: 'string',
-          description: 'Mathematical expression to evaluate',
-        },
-      },
-      required: ['expression'],
-    },
-  },
+export const mockToolsetWithToolsNotConfigured: ToolsetWithTools = {
+  toolset_id: 'builtin-calculator',
+  name: 'Calculator',
+  description: 'Perform mathematical calculations',
   app_enabled: true,
   user_config: null,
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'calculate',
+        description: 'Perform mathematical calculations',
+        parameters: {
+          type: 'object',
+          properties: {
+            expression: {
+              type: 'string',
+              description: 'Mathematical expression to evaluate',
+            },
+          },
+          required: ['expression'],
+        },
+      },
+    },
+  ],
 };
