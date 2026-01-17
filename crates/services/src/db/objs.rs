@@ -181,14 +181,14 @@ impl From<ModelMetadataRow> for objs::ModelMetadata {
 }
 
 // ============================================================================
-// UserToolConfigRow - Database row for user tool configuration
+// UserToolsetConfigRow - Database row for user toolset configuration
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UserToolConfigRow {
+pub struct UserToolsetConfigRow {
   pub id: i64,
   pub user_id: String,
-  pub tool_id: String,
+  pub toolset_id: String,
   pub enabled: bool,
   pub encrypted_api_key: Option<String>,
   pub salt: Option<String>,
@@ -198,13 +198,13 @@ pub struct UserToolConfigRow {
 }
 
 // ============================================================================
-// AppToolConfigRow - Database row for app-level tool configuration
+// AppToolsetConfigRow - Database row for app-level toolset configuration
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AppToolConfigRow {
+pub struct AppToolsetConfigRow {
   pub id: i64,
-  pub tool_id: String,
+  pub toolset_id: String,
   pub enabled: bool,
   pub updated_by: String,
   pub created_at: i64,
@@ -212,15 +212,15 @@ pub struct AppToolConfigRow {
 }
 
 // ============================================================================
-// AppClientToolConfigRow - Database row for cached app-client tool configuration
+// AppClientToolsetConfigRow - Database row for cached app-client toolset configuration
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct AppClientToolConfigRow {
+pub struct AppClientToolsetConfigRow {
   pub id: i64,
   pub app_client_id: String,
   pub config_version: String,
-  pub tools_json: String,
+  pub toolsets_json: String,
   pub resource_scope: String,
   pub created_at: i64,
   pub updated_at: i64,

@@ -199,20 +199,20 @@ pub struct AppAccessRequest {
   pub version: Option<String>,
 }
 
-/// Tool configuration from app-client registration
+/// Toolset configuration from app-client registration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppClientTool {
-  pub tool_id: String,
-  pub tool_scope: String,
+pub struct AppClientToolset {
+  pub toolset_id: String,
+  pub toolset_scope: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AppAccessResponse {
   pub scope: String,
-  /// List of tools the app-client is configured to access
+  /// List of toolsets the app-client is configured to access
   #[serde(default)]
-  pub tools: Vec<AppClientTool>,
-  /// Version of app-client's tool configuration on auth server
+  pub toolsets: Vec<AppClientToolset>,
+  /// Version of app-client's toolset configuration on auth server
   pub app_client_config_version: String,
 }
 
@@ -227,7 +227,7 @@ struct RequestAccessRequest {
 pub struct RequestAccessResponse {
   pub scope: String,
   #[serde(default)]
-  pub tools: Vec<AppClientTool>,
+  pub toolsets: Vec<AppClientToolset>,
   pub app_client_config_version: String,
 }
 
@@ -1132,7 +1132,7 @@ mod tests {
       .with_body(
         json!({
           "scope": "scope_resource_test-resource-server",
-          "tools": [{"tool_id": "builtin-exa-web-search", "tool_scope": "scope_tool-builtin-exa-web-search"}],
+          "toolsets": [{"toolset_id": "builtin-exa-web-search", "toolset_scope": "scope_toolset-builtin-exa-web-search"}],
           "app_client_config_version": "v1.0.0"
         })
         .to_string(),
@@ -1147,8 +1147,8 @@ mod tests {
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(response.scope, "scope_resource_test-resource-server");
-    assert_eq!(response.tools.len(), 1);
-    assert_eq!(response.tools[0].tool_id, "builtin-exa-web-search");
+    assert_eq!(response.toolsets.len(), 1);
+    assert_eq!(response.toolsets[0].toolset_id, "builtin-exa-web-search");
     assert_eq!(response.app_client_config_version, "v1.0.0");
     token_mock.assert();
     access_mock.assert();

@@ -1,6 +1,6 @@
 use crate::db::{
-  ApiKeyUpdate, ApiToken, AppToolConfigRow, DbError, DbService, DownloadRequest, ModelMetadataRow,
-  SqliteDbService, TimeService, UserAccessRequest, UserAccessRequestStatus,
+  ApiKeyUpdate, ApiToken, AppToolsetConfigRow, DbError, DbService, DownloadRequest,
+  ModelMetadataRow, SqliteDbService, TimeService, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -384,95 +384,102 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_model_metadata"))
   }
 
-  async fn get_user_tool_config(
+  async fn get_user_toolset_config(
     &self,
     user_id: &str,
-    tool_id: &str,
-  ) -> Result<Option<crate::db::UserToolConfigRow>, DbError> {
+    toolset_id: &str,
+  ) -> Result<Option<crate::db::UserToolsetConfigRow>, DbError> {
     self
       .inner
-      .get_user_tool_config(user_id, tool_id)
+      .get_user_toolset_config(user_id, toolset_id)
       .await
-      .tap(|_| self.notify("get_user_tool_config"))
+      .tap(|_| self.notify("get_user_toolset_config"))
   }
 
-  async fn upsert_user_tool_config(
+  async fn upsert_user_toolset_config(
     &self,
-    config: &crate::db::UserToolConfigRow,
-  ) -> Result<crate::db::UserToolConfigRow, DbError> {
+    config: &crate::db::UserToolsetConfigRow,
+  ) -> Result<crate::db::UserToolsetConfigRow, DbError> {
     self
       .inner
-      .upsert_user_tool_config(config)
+      .upsert_user_toolset_config(config)
       .await
-      .tap(|_| self.notify("upsert_user_tool_config"))
+      .tap(|_| self.notify("upsert_user_toolset_config"))
   }
 
-  async fn list_user_tool_configs(
+  async fn list_user_toolset_configs(
     &self,
     user_id: &str,
-  ) -> Result<Vec<crate::db::UserToolConfigRow>, DbError> {
+  ) -> Result<Vec<crate::db::UserToolsetConfigRow>, DbError> {
     self
       .inner
-      .list_user_tool_configs(user_id)
+      .list_user_toolset_configs(user_id)
       .await
-      .tap(|_| self.notify("list_user_tool_configs"))
+      .tap(|_| self.notify("list_user_toolset_configs"))
   }
 
-  async fn delete_user_tool_config(&self, user_id: &str, tool_id: &str) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_user_tool_config(user_id, tool_id)
-      .await
-      .tap(|_| self.notify("delete_user_tool_config"))
-  }
-
-  async fn get_app_tool_config(&self, tool_id: &str) -> Result<Option<AppToolConfigRow>, DbError> {
-    self
-      .inner
-      .get_app_tool_config(tool_id)
-      .await
-      .tap(|_| self.notify("get_app_tool_config"))
-  }
-
-  async fn upsert_app_tool_config(
+  async fn delete_user_toolset_config(
     &self,
-    config: &AppToolConfigRow,
-  ) -> Result<AppToolConfigRow, DbError> {
+    user_id: &str,
+    toolset_id: &str,
+  ) -> Result<(), DbError> {
     self
       .inner
-      .upsert_app_tool_config(config)
+      .delete_user_toolset_config(user_id, toolset_id)
       .await
-      .tap(|_| self.notify("upsert_app_tool_config"))
+      .tap(|_| self.notify("delete_user_toolset_config"))
   }
 
-  async fn list_app_tool_configs(&self) -> Result<Vec<AppToolConfigRow>, DbError> {
+  async fn get_app_toolset_config(
+    &self,
+    toolset_id: &str,
+  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
     self
       .inner
-      .list_app_tool_configs()
+      .get_app_toolset_config(toolset_id)
       .await
-      .tap(|_| self.notify("list_app_tool_configs"))
+      .tap(|_| self.notify("get_app_toolset_config"))
   }
 
-  async fn get_app_client_tool_config(
+  async fn upsert_app_toolset_config(
+    &self,
+    config: &AppToolsetConfigRow,
+  ) -> Result<AppToolsetConfigRow, DbError> {
+    self
+      .inner
+      .upsert_app_toolset_config(config)
+      .await
+      .tap(|_| self.notify("upsert_app_toolset_config"))
+  }
+
+  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError> {
+    self
+      .inner
+      .list_app_toolset_configs()
+      .await
+      .tap(|_| self.notify("list_app_toolset_configs"))
+  }
+
+  async fn get_app_client_toolset_config(
     &self,
     app_client_id: &str,
-  ) -> Result<Option<crate::db::AppClientToolConfigRow>, DbError> {
+  ) -> Result<Option<crate::db::AppClientToolsetConfigRow>, DbError> {
     self
       .inner
-      .get_app_client_tool_config(app_client_id)
+      .get_app_client_toolset_config(app_client_id)
       .await
-      .tap(|_| self.notify("get_app_client_tool_config"))
+      .tap(|_| self.notify("get_app_client_toolset_config"))
   }
 
-  async fn upsert_app_client_tool_config(
+  async fn upsert_app_client_toolset_config(
     &self,
-    config: &crate::db::AppClientToolConfigRow,
-  ) -> Result<crate::db::AppClientToolConfigRow, DbError> {
+    config: &crate::db::AppClientToolsetConfigRow,
+  ) -> Result<crate::db::AppClientToolsetConfigRow, DbError> {
     self
       .inner
-      .upsert_app_client_tool_config(config)
+      .upsert_app_client_toolset_config(config)
       .await
-      .tap(|_| self.notify("upsert_app_client_tool_config"))
+      .tap(|_| self.notify("upsert_app_client_toolset_config"))
   }
 
   fn now(&self) -> DateTime<Utc> {
