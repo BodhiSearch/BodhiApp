@@ -1,6 +1,6 @@
 use crate::toolsets_dto::{
   AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
-  ListToolsetsResponse, ToolsetListItem, UpdateToolsetConfigRequest, UserToolsetConfigSummary,
+  ListToolsetsResponse, UpdateToolsetConfigRequest,
 };
 use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
 use axum::{
@@ -61,7 +61,7 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
       delete(delete_toolset_config_handler),
     )
     .route(
-      "/toolsets/:toolset_id/execute",
+      "/toolsets/:toolset_id/execute/:method",
       post(execute_toolset_handler),
     )
     // Admin routes for app-level toolset configuration
@@ -95,45 +95,14 @@ pub async fn list_all_toolsets_handler(
   headers: HeaderMap,
 ) -> Result<Json<ListToolsetsResponse>, ApiError> {
   let tool_service = state.app_service().tool_service();
-  let tools = tool_service.list_all_tool_definitions();
 
   // Get user_id if available (for user config summary)
   let user_id = extract_user_id_from_headers(&headers).ok();
 
-  // Build enhanced toolset list with app-enabled status
-  let mut items = Vec::new();
-  for tool in tools {
-    let toolset_id = &tool.function.name;
+  // Use the new list_all_toolsets method that returns nested structure
+  let toolsets = tool_service.list_all_toolsets(user_id).await?;
 
-    // Get app-level enabled status
-    let app_enabled = tool_service
-      .is_toolset_enabled_for_app(toolset_id)
-      .await
-      .unwrap_or(false);
-
-    // Get user config summary if user_id is available
-    let user_config = if let Some(ref uid) = user_id {
-      tool_service
-        .get_user_toolset_config(uid, toolset_id)
-        .await
-        .ok()
-        .flatten()
-        .map(|c| UserToolsetConfigSummary {
-          enabled: c.enabled,
-          has_api_key: true, // If we got a config, assume API key was validated
-        })
-    } else {
-      None
-    };
-
-    items.push(ToolsetListItem {
-      definition: tool,
-      app_enabled,
-      user_config,
-    });
-  }
-
-  Ok(Json(ListToolsetsResponse { toolsets: items }))
+  Ok(Json(ListToolsetsResponse { toolsets }))
 }
 
 /// Get user's configuration for a specific toolset (with app-level status)
@@ -271,22 +240,23 @@ pub async fn delete_toolset_config_handler(
 /// Execute a toolset for the user
 #[utoipa::path(
   post,
-  path = "/toolsets/{toolset_id}/execute",
+  path = "/toolsets/{toolset_id}/execute/{method}",
   tag = "toolsets",
   params(
-    ("toolset_id" = String, Path, description = "Toolset identifier")
+    ("toolset_id" = String, Path, description = "Toolset identifier"),
+    ("method" = String, Path, description = "Tool method name (e.g., search, findSimilar, contents, answer)")
   ),
   request_body = ExecuteToolsetRequest,
   responses(
     (status = 200, description = "Toolset execution result", body = ToolsetExecutionResponse),
     (status = 400, description = "Toolset not configured or disabled"),
-    (status = 404, description = "Toolset not found"),
+    (status = 404, description = "Toolset or method not found"),
   ),
   security(("bearer" = []))
 )]
 pub async fn execute_toolset_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(toolset_id): Path<String>,
+  Path((toolset_id, method)): Path<(String, String)>,
   headers: HeaderMap,
   Json(request): Json<ExecuteToolsetRequest>,
 ) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
@@ -304,7 +274,7 @@ pub async fn execute_toolset_handler(
   }
 
   let response = tool_service
-    .execute_toolset_tool(&user_id, &toolset_id, request.into())
+    .execute_toolset_tool(&user_id, &toolset_id, &method, request.into())
     .await?;
 
   Ok(Json(response))
@@ -413,11 +383,11 @@ mod tests {
   fn test_execute_toolset_request_serialization() {
     let req = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
-      arguments: serde_json::json!({"query": "test"}),
+      params: serde_json::json!({"query": "test"}),
     };
     let json = serde_json::to_value(&req).unwrap();
     assert_eq!("call_123", json["tool_call_id"]);
-    assert_eq!("test", json["arguments"]["query"]);
+    assert_eq!("test", json["params"]["query"]);
   }
 
   fn test_router(app_service: Arc<dyn services::AppService>) -> Router {

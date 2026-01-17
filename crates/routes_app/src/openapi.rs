@@ -30,7 +30,7 @@ use crate::{
 // Toolsets DTOs and handlers
 use crate::toolsets_dto::{
   AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
-  ListToolsetsResponse, ToolsetListItem, UpdateToolsetConfigRequest, UserToolsetConfigSummary,
+  ListToolsetsResponse, UpdateToolsetConfigRequest,
 };
 use crate::{
   __path_delete_toolset_config_handler, __path_disable_app_toolset_handler,
@@ -52,9 +52,10 @@ use async_openai::types::{
 use objs::{
   Alias, ApiFormat, AppRole, AppToolsetConfig, OAIRequestParams, OpenAIApiError, ResourceRole,
   SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition,
-  ToolsetExecutionResponse, UserInfo, UserScope, UserToolsetConfig, API_TAG_API_KEYS,
-  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  ToolsetExecutionResponse, ToolsetWithTools, UserInfo, UserScope, UserToolsetConfig,
+  UserToolsetConfigSummary, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS,
+  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  API_TAG_TOOLSETS,
 };
 use routes_oai::{
   __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
@@ -335,7 +336,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             EmbeddingUsage,
             // toolsets
             ListToolsetsResponse,
-            ToolsetListItem,
+            ToolsetWithTools,
             UserToolsetConfigSummary,
             EnhancedToolsetConfigResponse,
             UpdateToolsetConfigRequest,

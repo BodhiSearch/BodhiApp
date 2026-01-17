@@ -1,4 +1,4 @@
-use objs::{AppToolsetConfig, ToolDefinition, ToolsetExecutionRequest, UserToolsetConfig};
+use objs::{AppToolsetConfig, ToolsetExecutionRequest, ToolsetWithTools, UserToolsetConfig};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -21,8 +21,8 @@ pub struct UpdateToolsetConfigRequest {
 pub struct ExecuteToolsetRequest {
   /// Tool call ID from LLM
   pub tool_call_id: String,
-  /// Function arguments as JSON
-  pub arguments: serde_json::Value,
+  /// Function parameters as JSON
+  pub params: serde_json::Value,
 }
 
 // ============================================================================
@@ -32,7 +32,7 @@ pub struct ExecuteToolsetRequest {
 /// Response with list of toolset definitions (enhanced with status)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
-  pub toolsets: Vec<ToolsetListItem>,
+  pub toolsets: Vec<ToolsetWithTools>,
 }
 
 /// Response with single toolset configuration
@@ -65,28 +65,6 @@ pub struct ListAppToolsetConfigsResponse {
   pub configs: Vec<AppToolsetConfig>,
 }
 
-/// Enhanced toolset list item with app-level and user-level status
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolsetListItem {
-  /// Toolset definition
-  #[serde(flatten)]
-  pub definition: ToolDefinition,
-  /// Whether the toolset is enabled at app level (admin-controlled)
-  pub app_enabled: bool,
-  /// User's configuration for this toolset (if any)
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub user_config: Option<UserToolsetConfigSummary>,
-}
-
-/// Summary of user's toolset configuration (for list responses)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct UserToolsetConfigSummary {
-  /// Whether the user has enabled this toolset
-  pub enabled: bool,
-  /// Whether the user has configured an API key
-  pub has_api_key: bool,
-}
-
 /// Enhanced toolset config response with app-level status
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct EnhancedToolsetConfigResponse {
@@ -106,7 +84,7 @@ impl From<ToolsetExecutionRequest> for ExecuteToolsetRequest {
   fn from(req: ToolsetExecutionRequest) -> Self {
     Self {
       tool_call_id: req.tool_call_id,
-      arguments: req.arguments,
+      params: req.params,
     }
   }
 }
@@ -115,8 +93,7 @@ impl From<ExecuteToolsetRequest> for ToolsetExecutionRequest {
   fn from(req: ExecuteToolsetRequest) -> Self {
     Self {
       tool_call_id: req.tool_call_id,
-      tool_name: String::new(), // Will be set by the handler based on toolset_id
-      arguments: req.arguments,
+      params: req.params,
     }
   }
 }
@@ -155,25 +132,25 @@ mod tests {
   fn test_execute_toolset_request_serialization() {
     let req = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
-      arguments: json!({"query": "test query", "num_results": 5}),
+      params: json!({"query": "test query", "num_results": 5}),
     };
 
     let json = serde_json::to_value(&req).unwrap();
     assert_eq!("call_123", json["tool_call_id"]);
-    assert_eq!("test query", json["arguments"]["query"]);
-    assert_eq!(5, json["arguments"]["num_results"]);
+    assert_eq!("test query", json["params"]["query"]);
+    assert_eq!(5, json["params"]["num_results"]);
   }
 
   #[rstest]
   fn test_execute_toolset_request_conversion() {
     let dto = ExecuteToolsetRequest {
       tool_call_id: "call_123".to_string(),
-      arguments: json!({"query": "test"}),
+      params: json!({"query": "test"}),
     };
 
     let domain: ToolsetExecutionRequest = dto.clone().into();
     assert_eq!("call_123", domain.tool_call_id);
-    assert_eq!(json!({"query": "test"}), domain.arguments);
+    assert_eq!(json!({"query": "test"}), domain.params);
 
     let back: ExecuteToolsetRequest = domain.into();
     assert_eq!(dto.tool_call_id, back.tool_call_id);
