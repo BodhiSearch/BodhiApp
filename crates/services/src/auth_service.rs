@@ -83,6 +83,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     client_id: &str,
     client_secret: &str,
     app_client_id: &str,
+    toolset_scope_ids: Option<Vec<String>>,
   ) -> Result<RequestAccessResponse>;
 
   async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
@@ -197,6 +198,9 @@ pub struct AppAccessRequest {
   /// Optional version for cache lookup - if matches cached config, skips auth server call
   #[serde(skip_serializing_if = "Option::is_none")]
   pub version: Option<String>,
+  /// Optional toolset scope IDs to register with resource-client for token exchange
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub toolset_scope_ids: Option<Vec<String>>,
 }
 
 /// Toolset configuration from app-client registration
@@ -204,6 +208,12 @@ pub struct AppAccessRequest {
 pub struct AppClientToolset {
   pub id: String,
   pub scope: String,
+  /// Keycloak client scope UUID for cache validation
+  #[serde(default)]
+  pub scope_id: String,
+  /// True if scope has been added to resource-client as optional scope
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub added_to_resource_client: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -220,6 +230,9 @@ pub struct AppAccessResponse {
 #[derive(Debug, Serialize, Deserialize)]
 struct RequestAccessRequest {
   pub app_client_id: String,
+  /// Toolset scope IDs to add as optional scopes on resource-client
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub toolset_scope_ids: Option<Vec<String>>,
 }
 
 /// Response from auth server /resources/request-access
@@ -609,6 +622,7 @@ impl AuthService for KeycloakAuthService {
     client_id: &str,
     client_secret: &str,
     app_client_id: &str,
+    toolset_scope_ids: Option<Vec<String>>,
   ) -> Result<RequestAccessResponse> {
     // Get client access token
     let access_token = self
@@ -628,6 +642,7 @@ impl AuthService for KeycloakAuthService {
       .bearer_auth(access_token.secret())
       .json(&RequestAccessRequest {
         app_client_id: app_client_id.to_string(),
+        toolset_scope_ids,
       })
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
@@ -1141,7 +1156,7 @@ mod tests {
 
     let service = test_auth_service(&url);
     let result = service
-      .request_access(client_id, client_secret, app_client_id)
+      .request_access(client_id, client_secret, app_client_id, None)
       .await;
 
     assert!(result.is_ok());
@@ -1189,7 +1204,7 @@ mod tests {
 
     let service = test_auth_service(&url);
     let result = service
-      .request_access(client_id, client_secret, app_client_id)
+      .request_access(client_id, client_secret, app_client_id, None)
       .await;
 
     assert!(result.is_err());

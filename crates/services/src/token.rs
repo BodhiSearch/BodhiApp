@@ -69,6 +69,7 @@ pub struct UserIdClaims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ScopeClaims {
   pub iss: String,
+  pub sub: String,
   pub azp: String,
   pub aud: Option<String>,
   pub exp: u64,

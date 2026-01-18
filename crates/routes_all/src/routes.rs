@@ -118,8 +118,22 @@ pub fn build_routes(
       get(get_user_alias_handler),
     )
     .route(ENDPOINT_MODEL_FILES, get(list_local_modelfiles_handler))
-    // Toolsets APIs
-    .route(ENDPOINT_TOOLSETS, get(list_all_toolsets_handler))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(
+          ResourceRole::User,
+          Some(TokenScope::User),
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
+      },
+    ));
+
+  // Session-only user APIs for toolset config (no API tokens, no OAuth)
+  let user_session_apis = Router::new()
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/config"),
       get(get_toolset_config_handler),
@@ -132,6 +146,14 @@ pub fn build_routes(
       &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/config"),
       delete(delete_toolset_config_handler),
     )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
+    ));
+
+  // OAuth-allowed toolset APIs (list + execute) - session and OAuth tokens, NOT API tokens
+  let user_oauth_apis = Router::new()
+    .route(ENDPOINT_TOOLSETS, get(list_all_toolsets_handler))
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/execute/{{method}}"),
       post(execute_toolset_handler),
@@ -141,7 +163,7 @@ pub fn build_routes(
       move |state, req, next| {
         api_auth_middleware(
           ResourceRole::User,
-          Some(TokenScope::User),
+          None,
           Some(UserScope::User),
           state,
           req,
@@ -283,6 +305,8 @@ pub fn build_routes(
   // Combine all protected APIs
   let protected_apis = Router::new()
     .merge(user_apis)
+    .merge(user_session_apis)
+    .merge(user_oauth_apis)
     .merge(power_user_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)

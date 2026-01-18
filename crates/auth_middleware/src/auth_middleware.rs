@@ -147,6 +147,7 @@ pub async fn auth_middleware(
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
     let (access_token, resource_scope) = token_service.validate_bearer_token(header).await?;
+    tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
     req
       .headers_mut()
       .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
@@ -156,21 +157,28 @@ pub async fn auth_middleware(
       resource_scope.to_string().parse().unwrap(),
     );
 
-    // Extract and set toolset scopes and azp from the exchanged token
+    // Extract and set toolset scopes, user_id, and azp from the exchanged token
     // These are used by toolset_auth_middleware for external app toolset authorization
     if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+      tracing::debug!(azp = %scope_claims.azp, "auth_middleware: extracted scope claims from token");
       // Extract toolset scopes (space-separated, matches JWT scope format)
       let toolset_scopes: Vec<&str> = scope_claims
         .scope
         .split_whitespace()
         .filter(|s| s.starts_with("scope_toolset-"))
         .collect();
+      tracing::debug!(?toolset_scopes, "auth_middleware: extracted toolset scopes");
       if !toolset_scopes.is_empty() {
         req.headers_mut().insert(
           KEY_HEADER_BODHIAPP_TOOL_SCOPES,
           toolset_scopes.join(" ").parse().unwrap(),
         );
       }
+      // Set user_id from sub claim (required for toolset execution)
+      req.headers_mut().insert(
+        KEY_HEADER_BODHIAPP_USER_ID,
+        scope_claims.sub.parse().unwrap(),
+      );
       // Set azp (authorized party / app-client ID)
       req
         .headers_mut()

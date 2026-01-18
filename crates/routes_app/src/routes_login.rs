@@ -434,24 +434,41 @@ pub async fn request_access_handler(
       .await
     {
       if &cached.config_version == version {
-        // Cache hit - return cached data
+        // Version matches - check if all requested scope_ids are already added to resource-client
         let toolsets: Vec<AppClientToolset> =
           serde_json::from_str(&cached.toolsets_json).unwrap_or_default();
-        return Ok(Json(AppAccessResponse {
-          scope: cached.resource_scope,
-          toolsets,
-          app_client_config_version: cached.config_version,
-        }));
+
+        let all_scopes_added = if let Some(ref requested_scope_ids) = request.toolset_scope_ids {
+          // Check if all requested scope_ids have added_to_resource_client=true
+          requested_scope_ids.iter().all(|requested_id| {
+            toolsets
+              .iter()
+              .any(|t| &t.scope_id == requested_id && t.added_to_resource_client == Some(true))
+          })
+        } else {
+          // No toolset_scope_ids requested - cache hit
+          true
+        };
+
+        if all_scopes_added {
+          // Full cache hit - return cached data
+          return Ok(Json(AppAccessResponse {
+            scope: cached.resource_scope,
+            toolsets,
+            app_client_config_version: cached.config_version,
+          }));
+        }
       }
     }
   }
 
-  // Cache miss or no version provided - call auth server
+  // Cache miss or scope_ids not yet added - call auth server with toolset_scope_ids
   let auth_response = auth_service
     .request_access(
       &app_reg_info.client_id,
       &app_reg_info.client_secret,
       &request.app_client_id,
+      request.toolset_scope_ids.clone(),
     )
     .await?;
 
@@ -1570,7 +1587,12 @@ mod tests {
       .with_body(
         json!({
           "scope": expected_scope,
-          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}],
+          "toolsets": [{
+            "id": "builtin-exa-web-search",
+            "scope": "scope_toolset-builtin-exa-web-search",
+            "scope_id": "test-scope-uuid-123",
+            "added_to_resource_client": true
+          }],
           "app_client_config_version": "v1.0.0"
         })
         .to_string(),

@@ -42,8 +42,10 @@ pub enum ToolsetAuthError {
 /// Middleware for toolset execution endpoints
 ///
 /// Authorization rules depend on auth type:
-/// - Session/First-party (has ROLE header): Check app-level + user config
-/// - External OAuth (has SCOPE but no ROLE): Check app-level + app-client + scope + user config
+/// - Session (has ROLE header): Check app-level + user config
+/// - External OAuth (has SCOPE starting with "scope_user_"): Check app-level + app-client + scope + user config
+///
+/// Note: API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
 pub async fn toolset_auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
   Path(toolset_id): Path<String>,
@@ -69,8 +71,9 @@ async fn _impl(
 
   // Determine auth type:
   // - Session auth: has ROLE header (from session tokens)
-  // - First-party token: has SCOPE header starting with "scope_token_" (from bodhiapp_ API keys)
   // - OAuth (external app): has SCOPE header starting with "scope_user_" (from OAuth tokens)
+  //
+  // Note: API tokens (scope_token_*) are blocked at route level and won't reach here.
   let is_session_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
 
   let scope_header = headers
@@ -78,10 +81,9 @@ async fn _impl(
     .and_then(|v| v.to_str().ok())
     .unwrap_or("");
 
-  let is_first_party_token = scope_header.starts_with("scope_token_");
   let is_oauth_auth = scope_header.starts_with("scope_user_") && !is_session_auth;
 
-  if !is_session_auth && !is_first_party_token && !is_oauth_auth {
+  if !is_session_auth && !is_oauth_auth {
     return Err(ToolsetAuthError::MissingAuth);
   }
 
@@ -151,9 +153,7 @@ mod tests {
     routing::post,
     Router,
   };
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, ResourceRole, TokenScope, UserScope,
-  };
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, ResourceRole, UserScope};
   use rstest::rstest;
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{test_utils::AppServiceStubBuilder, MockToolService};
@@ -288,107 +288,8 @@ mod tests {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
   }
 
-  #[rstest]
-  #[tokio::test]
-  async fn test_first_party_token_auth_toolset_available(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    // First-party token (TokenScope) is treated same as session auth
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(true));
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_first_party_token_auth_toolset_not_configured(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(false));
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_first_party_token_auth_app_disabled(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(false));
-    // Should not reach is_toolset_available_for_user since app check fails
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-  }
+  // Note: First-party API tokens (bodhiapp_*) are now blocked at route level.
+  // E2E tests verify this behavior in toolsets-auth-restrictions.spec.mjs
 
   #[rstest]
   #[tokio::test]

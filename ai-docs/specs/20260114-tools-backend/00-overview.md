@@ -116,6 +116,7 @@ builtin-exa-web-search      ->   toolset__builtin-exa-web-search__search
 - [07.1-ui-chat-integration.md](./07.1-ui-chat-integration.md) - Chat UI toolsets integration
 - [08-implementation-phases.md](./08-implementation-phases.md) - Phase tracking
 - [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract
+- [09.1-keycloak-toolset-scope-transfer.md](./09.1-keycloak-toolset-scope-transfer.md) - Keycloak feature: toolset scope transfer for token exchange
 - [10-pending-items.md](./10-pending-items.md) - Security enhancements and pending requirements
 
 ## Security Considerations

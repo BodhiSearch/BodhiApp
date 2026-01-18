@@ -104,7 +104,6 @@ app.clear: ## Clear the app data folders
 
 app.run: ## Run the BodhiApp
 	BODHI_ENCRYPTION_KEY=dummy-key \
-	  HF_HOME=./hf-home \
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.cache/bodhi-dev-makefile \

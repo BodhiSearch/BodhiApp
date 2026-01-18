@@ -2,14 +2,17 @@ use crate::toolsets_dto::{
   AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
   ListToolsetsResponse, UpdateToolsetConfigRequest,
 };
-use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
+use auth_middleware::{
+  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+  KEY_HEADER_BODHIAPP_TOOL_SCOPES, KEY_HEADER_BODHIAPP_USER_ID,
+};
 use axum::{
   extract::{Path, State},
   http::HeaderMap,
   routing::{delete, get, post, put},
   Json, Router,
 };
-use objs::{ApiError, ToolsetExecutionResponse};
+use objs::{ApiError, ResourceScope, TokenScope, ToolsetExecutionResponse, ToolsetScope};
 use server_core::RouterState;
 use std::sync::Arc;
 
@@ -81,6 +84,9 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
 // ============================================================================
 
 /// List all available toolset definitions with app-enabled status (for UI)
+///
+/// For OAuth tokens, filters toolsets based on scope_toolset-* scopes in the token.
+/// For session auth, returns all toolsets.
 #[utoipa::path(
   get,
   path = "/toolsets",
@@ -94,6 +100,7 @@ pub async fn list_all_toolsets_handler(
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
 ) -> Result<Json<ListToolsetsResponse>, ApiError> {
+  tracing::debug!("list_all_toolsets_handler");
   let tool_service = state.app_service().tool_service();
 
   // Get user_id if available (for user config summary)
@@ -102,7 +109,52 @@ pub async fn list_all_toolsets_handler(
   // Use the new list_all_toolsets method that returns nested structure
   let toolsets = tool_service.list_all_toolsets(user_id).await?;
 
-  Ok(Json(ListToolsetsResponse { toolsets }))
+  // Determine auth type from headers:
+  // - KEY_HEADER_BODHIAPP_ROLE present -> Session auth
+  // - KEY_HEADER_BODHIAPP_SCOPE starts with "scope_token_" -> API token (first-party)
+  // - KEY_HEADER_BODHIAPP_SCOPE starts with "scope_user_" -> OAuth exchanged token (third-party)
+  if headers.contains_key(KEY_HEADER_BODHIAPP_ROLE) {
+    return Ok(Json(ListToolsetsResponse { toolsets }));
+  }
+
+  let scope_header = ResourceScope::try_parse(
+    headers
+      .get(KEY_HEADER_BODHIAPP_SCOPE)
+      .and_then(|v| v.to_str().ok())
+      .unwrap_or(""),
+  )
+  .unwrap_or(ResourceScope::Token(TokenScope::User));
+
+  let is_token_exchange = matches!(scope_header, ResourceScope::User(_));
+
+  if is_token_exchange {
+    // OAuth (exchanged token) - filter by toolset scopes in token
+    let toolset_scopes_header = headers
+      .get(KEY_HEADER_BODHIAPP_TOOL_SCOPES)
+      .and_then(|v| v.to_str().ok())
+      .unwrap_or("");
+
+    let allowed_scopes = ToolsetScope::from_scope_string(toolset_scopes_header);
+    let allowed_toolset_ids: std::collections::HashSet<&str> =
+      allowed_scopes.iter().map(|s| s.toolset_id()).collect();
+
+    tracing::debug!(
+      ?allowed_toolset_ids,
+      "filtering toolsets by toolset scopes in token"
+    );
+
+    let filtered_toolsets = toolsets
+      .into_iter()
+      .filter(|t| allowed_toolset_ids.contains(t.toolset_id.as_str()))
+      .collect();
+
+    Ok(Json(ListToolsetsResponse {
+      toolsets: filtered_toolsets,
+    }))
+  } else {
+    // Session auth or API token - return all toolsets
+    Ok(Json(ListToolsetsResponse { toolsets }))
+  }
 }
 
 /// Get user's configuration for a specific toolset (with app-level status)

@@ -8,13 +8,21 @@ export class OAuth2ApiHelper {
     return await this.authClient.getDevConsoleToken(username, password);
   }
 
-  async createAppClient(devConsoleToken, port, clientName, description, redirectUris) {
+  async createAppClient(
+    devConsoleToken,
+    port,
+    clientName,
+    description,
+    redirectUris,
+    toolsetScopeIds = []
+  ) {
     return await this.authClient.createAppClient(
       devConsoleToken,
       port,
       clientName,
       description,
-      redirectUris
+      redirectUris,
+      toolsetScopeIds
     );
   }
 

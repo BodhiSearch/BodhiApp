@@ -1,6 +1,6 @@
 # Pending Items - Toolsets Backend
 
-> Status: Tracking | Updated: 2026-01-17
+> Status: Tracking | Updated: 2026-01-18
 
 ## Overview
 
@@ -8,70 +8,43 @@ Pending security enhancements and feature requirements for the toolsets backend.
 
 ---
 
-## Security Enhancements
+## Completed Security Enhancements
 
 ### 1. Restrict Toolset Access for First-Party API Tokens
 
 **Priority:** 🔴 High  
-**Status:** Pending
+**Status:** ✅ Completed
 
-#### Problem Statement
+#### Solution Implemented
 
-Currently, first-party API tokens (`bodhiapp_*` tokens with `TokenScope`) have the same unrestricted toolset access as session authentication. Any user who creates an API token can use it to execute tools if they have the toolset configured.
+API tokens (`bodhiapp_*`) are now **completely blocked** from ALL toolset endpoints at the route level. This is simpler and more secure than adding granular permissions.
 
-This is a security concern because:
-- API tokens are designed for programmatic access with limited scope
-- Token leakage should not grant full toolset execution capabilities
-- Toolsets execute external API calls with user's personal API keys (e.g., Exa)
+#### Implementation Details
 
-#### Current Behavior
+**Route-level blocking** in `crates/routes_all/src/routes.rs`:
+- Toolset config endpoints (`GET/PUT/DELETE /toolsets/{id}/config`) → `user_session_apis` (session-only)
+- Toolset list and execute endpoints (`GET /toolsets`, `POST /execute`) → `user_oauth_apis` (session + OAuth only)
 
-```
-First-party token auth (bodhiapp_*):
-├── Check app_toolset_configs (admin enabled)
-├── Check user_toolset_configs (user enabled + API key)
-└── ✅ Toolset execution allowed (NO scope check)
-```
+**API Token behavior:**
+- ALL toolset endpoints return 401 Unauthorized for API tokens
+- No migration needed - existing tokens simply cannot access toolsets
 
-#### Required Behavior
+**OAuth Token behavior:**
+- List endpoint (`GET /toolsets`) → Returns toolsets filtered by `scope_toolset-*` scopes in token
+- Execute endpoint (`POST /execute`) → Requires matching `scope_toolset-*` scope
+- Config endpoints → Blocked (401) - session-only for security
 
-```
-First-party token auth (bodhiapp_*):
-├── Check app_toolset_configs (admin enabled)
-├── Check token has toolset execution permission ← NEW
-├── Check user_toolset_configs (user enabled + API key)
-└── Toolset execution allowed only if all checks pass
-```
+#### Access Matrix
 
-#### Acceptance Criteria
+| Auth Type | List | Get Config | Put/Delete Config | Execute |
+|-----------|------|------------|-------------------|---------|
+| Session | All toolsets | Allowed | Allowed | Allowed |
+| API Token | 401 | 401 | 401 | 401 |
+| OAuth | Filtered by scope | 401 | 401 | With scope check |
 
-- [ ] By default, newly created API tokens do NOT have toolset execution permission
-- [ ] Toolset execution with first-party token returns 403 Forbidden unless explicitly granted
-- [ ] Admin/user can grant toolset execution permission when creating tokens
-- [ ] Existing tokens should be migrated to NOT have toolset permission
-- [ ] Error message clearly indicates token lacks toolset permission
+#### E2E Tests
 
-#### Implementation Options
-
-**Option A: New TokenScope variant**
-```rust
-pub enum TokenScope {
-  User,        // No toolset access
-  Admin,       // No toolset access  
-  UserToolsets,  // User access + toolsets
-  AdminToolsets, // Admin access + toolsets
-}
-```
-
-**Option B: Separate toolset permission flag**
-- Add `toolset_access: bool` to API token storage
-- Check flag in `toolset_auth_middleware`
-
-#### Related Files
-
-- `crates/auth_middleware/src/toolset_auth_middleware.rs`
-- `crates/services/src/db/objs.rs`
-- `crates/routes_app/src/routes_api_token.rs`
+See `crates/lib_bodhiserver_napi/tests-js/specs/toolsets/toolsets-auth-restrictions.spec.mjs`
 
 ---
 
@@ -85,6 +58,16 @@ Session authentication will continue to have unrestricted toolset access. This i
 2. The user is directly interacting with their own BodhiApp instance
 3. User has explicitly configured their API key (implicit consent)
 4. Toolset availability is already admin-gated at app-level
+
+### API Tokens - Full Block vs Granular Permissions
+
+**Decision:** Full block (all toolset endpoints return 401 for API tokens)
+
+**Rationale:**
+- Simpler implementation - no token schema changes needed
+- More secure - token leakage cannot compromise toolset access
+- API tokens are primarily for chat completions, not tool execution
+- Users who need programmatic toolset access can use OAuth flow
 
 ---
 

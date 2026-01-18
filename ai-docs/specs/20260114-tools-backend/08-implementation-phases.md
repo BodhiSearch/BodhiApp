@@ -1,6 +1,6 @@
 # Implementation Phases
 
-> Status: Phases 1-8 Complete | Phase 8.1, 9 Pending | Updated: 2026-01-17
+> Status: Phases 1-8.1 Complete | Phase 9 Pending | Updated: 2026-01-18
 
 ## Phase Completion Summary
 
@@ -11,13 +11,13 @@
 | 3. Exa Service | ✅ Complete | 4 methods: search, find_similar, get_contents, answer |
 | 4. Toolset Service | ✅ Complete | ToolsetService trait, execution logic |
 | 5. AppService Integration | ✅ Complete | ToolsetService integration |
-| 6. API Routes | ✅ Complete | `/toolsets` endpoints |
+| 6. API Routes | ✅ Complete | `/toolsets` endpoints with `/execute/{method}` |
 | 7. Auth Middleware | ✅ Complete | toolset_auth_middleware with 4-tier OAuth |
 | 7.5. App-Level Toolset Config | ✅ Complete | Admin enable/disable |
 | 7.6. External App Toolset Access | ✅ Complete | OAuth scope-based auth |
 | 8. Frontend UI | ✅ Complete | `/ui/toolsets` pages, setup step 5 |
-| 8.1. Chat UI Integration | ⏳ Pending | Toolsets dropdown in chat |
-| 9. Integration Tests | ⏳ Pending | Additional E2E tests |
+| 8.1. Chat UI Integration | ✅ Complete | Toolsets popover with per-tool selection, agentic loop |
+| 9. Integration Tests | ⏳ Pending | Additional E2E tests with real Exa API |
 
 ---
 
@@ -176,27 +176,40 @@ pub trait ToolsetService: Debug + Send + Sync {
 
 ---
 
-## Phase 8.1: Chat UI - Toolsets Integration ⏳ PENDING
+## Phase 8.1: Chat UI - Toolsets Integration ✅ COMPLETE
 
-**Goal**: Integrate toolsets with `/ui/chat` via toolsets dropdown.
+**Goal**: Integrate toolsets with `/ui/chat` via toolsets dropdown with individual tool selection.
 
 **Spec**: See [07.1-ui-chat-integration.md](./07.1-ui-chat-integration.md)
 
+**Files created:**
+- `crates/bodhi/src/app/ui/chat/ToolsetsPopover.tsx` - Expandable popover with nested checkboxes
+- `crates/bodhi/src/app/ui/chat/ToolCallMessage.tsx` - Collapsible tool call display
+- `crates/bodhi/src/hooks/use-toolset-selection.ts` - Per-chat tool selection management
+
 **Key Features:**
-- Toolsets popover (icon button) in chat input area
-- Checkbox for each configured toolset
-- Tool call display (collapsible)
-- Agentic loop: detect tool calls → execute → send results back
+- Toolsets popover with per-tool selection (tri-state parent checkbox)
+- Tool selection stored as `Record<string, string[]>` (toolset_id → tool names)
+- Badge shows total enabled tool count across all toolsets
+- Agentic loop with parallel tool execution via `Promise.allSettled`
+- Max iterations setting (default: 5) with warning injection
+- Tool call display with status badges and JSON preview
+- LocalStorage inheritance for new chats
+- AbortController support for cancellation
+
+**E2E Tests:**
+- `chat-toolsets.spec.mjs` - UI tests for popover and settings
+- `chat-agentic.spec.mjs` - Full agentic flow with Exa (requires INTEG_TEST_EXA_API_KEY)
 
 ---
 
 ## Phase 9: Integration Tests ⏳ PENDING
 
 **Test Cases:**
-1. Backend integration tests with test database
-2. Frontend E2E tests with Playwright
-3. Real Exa API testing (optional)
-4. Chat with toolsets agentic loop tests
+1. ✅ Backend integration test: `test_live_agentic_chat_with_exa.rs` (requires INTEG_TEST_EXA_API_KEY)
+2. ✅ Frontend unit tests: MSW handlers for toolsets and tool execution
+3. ✅ E2E tests: `chat-toolsets.spec.mjs`, `chat-agentic.spec.mjs`
+4. ⏳ Additional coverage for error scenarios and edge cases
 
 ---
 
@@ -206,10 +219,14 @@ pub trait ToolsetService: Debug + Send + Sync {
 |-------|-------|
 | Domain | `crates/objs/src/toolsets.rs` |
 | Database | `crates/services/migrations/0009_toolsets_schema.{up,down}.sql` |
-| Service | `crates/services/src/toolset_service.rs`, `exa_service.rs` |
+| Service | `crates/services/src/tool_service.rs`, `exa_service.rs` |
 | Routes | `crates/routes_app/src/routes_toolsets.rs`, `toolsets_dto.rs` |
 | Auth | `crates/auth_middleware/src/toolset_auth_middleware.rs` |
-| Frontend Hooks | `crates/bodhi/src/hooks/useToolsets.ts` |
+| Frontend Hooks | `crates/bodhi/src/hooks/useToolsets.ts`, `use-toolset-selection.ts` |
 | Frontend Pages | `crates/bodhi/src/app/ui/toolsets/` |
 | Frontend Setup | `crates/bodhi/src/app/ui/setup/toolsets/` |
+| Chat Components | `crates/bodhi/src/app/ui/chat/ToolsetsPopover.tsx`, `ToolCallMessage.tsx` |
+| Chat Hooks | `crates/bodhi/src/hooks/use-chat.tsx`, `use-chat-completions.ts` |
 | MSW | `crates/bodhi/src/test-utils/msw-v2/handlers/toolsets.ts` |
+| E2E Tests | `crates/lib_bodhiserver_napi/tests-js/specs/chat/chat-*.spec.mjs` |
+| Integration Tests | `crates/integration-tests/tests/test_live_agentic_chat_with_exa.rs` |

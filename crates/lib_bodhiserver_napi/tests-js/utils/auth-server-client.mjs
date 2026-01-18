@@ -6,10 +6,16 @@ export function getAuthServerConfig() {
     authUrl: process.env.INTEG_TEST_MAIN_AUTH_URL,
     authRealm: process.env.INTEG_TEST_AUTH_REALM,
     devConsoleClientSecret: process.env.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET,
+    toolsetScopeExaWebSearchId: process.env.INTEG_TEST_SCOPE_TOOLSET_EXA_WEB_SEARCH_ID,
   };
 
   // Validate required environment variables
-  const requiredVars = ['authUrl', 'authRealm', 'devConsoleClientSecret'];
+  const requiredVars = [
+    'authUrl',
+    'authRealm',
+    'devConsoleClientSecret',
+    'toolsetScopeExaWebSearchId',
+  ];
   for (const varName of requiredVars) {
     if (!config[varName]) {
       throw new Error(`Required environment variable missing: ${varName.toUpperCase()}`);
@@ -156,6 +162,7 @@ export class AuthServerTestClient {
    * @param {string} name - Client name
    * @param {string} description - Client description
    * @param {string[]} customRedirectUris - Custom redirect URIs (optional)
+   * @param {string[]} toolsetScopeIds - Toolset scope UUIDs to add during creation (optional)
    * @returns {Promise<Object>} Created app client info
    */
   async createAppClient(
@@ -163,12 +170,25 @@ export class AuthServerTestClient {
     appUrl,
     name = 'BodhiApp/crates/lib_bodhiserver_napi/tests-js/unknown',
     description = 'Test app client for Playwright tests',
-    customRedirectUris = null
+    customRedirectUris = null,
+    toolsetScopeIds = []
   ) {
     const appsUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/apps`;
 
     // Use custom redirect URIs if provided, otherwise use default ones
     const redirectUris = customRedirectUris || [`${appUrl}/ui/auth/callback`];
+
+    // Build request body
+    const requestBody = {
+      name,
+      description,
+      redirect_uris: redirectUris,
+    };
+
+    // Include toolset_scope_ids if provided
+    if (toolsetScopeIds && toolsetScopeIds.length > 0) {
+      requestBody.toolset_scope_ids = toolsetScopeIds;
+    }
 
     const response = await fetch(appsUrl, {
       method: 'POST',
@@ -176,11 +196,7 @@ export class AuthServerTestClient {
         Authorization: `Bearer ${devConsoleToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        name,
-        description,
-        redirect_uris: redirectUris,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -193,6 +209,8 @@ export class AuthServerTestClient {
     const data = await response.json();
     return {
       clientId: data.client_id,
+      toolsets: data.toolsets || [],
+      configVersion: data.config_version,
     };
   }
 
