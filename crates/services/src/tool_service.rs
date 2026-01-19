@@ -1189,7 +1189,7 @@ mod tests {
         Ok(Some(crate::db::AppClientToolsetConfigRow {
           id: 1,
           app_client_id: "external-app".to_string(),
-          config_version: "v1.0.0".to_string(),
+          config_version: Some("v1.0.0".to_string()),
           toolsets_json: r#"[{"toolset_id":"builtin-exa-web-search","toolset_scope":"scope_toolset-builtin-exa-web-search"}]"#.to_string(),
           resource_scope: "scope_resource-bodhi".to_string(),
           created_at: 0,
@@ -1220,7 +1220,7 @@ mod tests {
         Ok(Some(crate::db::AppClientToolsetConfigRow {
           id: 1,
           app_client_id: "external-app".to_string(),
-          config_version: "v1.0.0".to_string(),
+          config_version: Some("v1.0.0".to_string()),
           toolsets_json:
             r#"[{"toolset_id":"other-toolset","toolset_scope":"scope_toolset-other-toolset"}]"#
               .to_string(),

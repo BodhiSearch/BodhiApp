@@ -223,7 +223,8 @@ pub struct AppAccessResponse {
   #[serde(default)]
   pub toolsets: Vec<AppClientToolset>,
   /// Version of app-client's toolset configuration on auth server
-  pub app_client_config_version: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub app_client_config_version: Option<String>,
 }
 
 /// Internal request to auth server (without version field)
@@ -241,7 +242,8 @@ pub struct RequestAccessResponse {
   pub scope: String,
   #[serde(default)]
   pub toolsets: Vec<AppClientToolset>,
-  pub app_client_config_version: String,
+  #[serde(default)]
+  pub app_client_config_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1164,7 +1166,65 @@ mod tests {
     assert_eq!(response.scope, "scope_resource_test-resource-server");
     assert_eq!(response.toolsets.len(), 1);
     assert_eq!(response.toolsets[0].id, "builtin-exa-web-search");
-    assert_eq!(response.app_client_config_version, "v1.0.0");
+    assert_eq!(
+      Some("v1.0.0".to_string()),
+      response.app_client_config_version
+    );
+    token_mock.assert();
+    access_mock.assert();
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_request_access_without_config_version() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let client_id = "test_client_id";
+    let client_secret = "test_client_secret";
+    let app_client_id = "test_app_client_id";
+
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_header("Content-Type", "application/x-www-form-urlencoded")
+      .with_status(200)
+      .with_body(
+        json!({
+          "access_token": "test_access_token",
+          "token_type": "Bearer",
+          "expires_in": 3600
+        })
+        .to_string(),
+      )
+      .create();
+
+    let access_mock = server
+      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
+      .match_header("Authorization", "Bearer test_access_token")
+      .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
+      .with_status(200)
+      .with_body(
+        json!({
+          "scope": "scope_resource_test-resource-server",
+          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}]
+        })
+        .to_string(),
+      )
+      .create();
+
+    let service = test_auth_service(&url);
+    let result = service
+      .request_access(client_id, client_secret, app_client_id, None)
+      .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(response.scope, "scope_resource_test-resource-server");
+    assert_eq!(response.toolsets.len(), 1);
+    assert_eq!(response.toolsets[0].id, "builtin-exa-web-search");
+    assert_eq!(None, response.app_client_config_version);
     token_mock.assert();
     access_mock.assert();
 

@@ -1823,8 +1823,8 @@ impl DbService for SqliteDbService {
     &self,
     app_client_id: &str,
   ) -> Result<Option<crate::db::AppClientToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, String, String, String, i64, i64)>(
-      "SELECT id, app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at 
+    let result = sqlx::query_as::<_, (i64, String, Option<String>, String, String, i64, i64)>(
+      "SELECT id, app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at
        FROM app_client_toolset_configs WHERE app_client_id = ?",
     )
     .bind(app_client_id)
@@ -1859,7 +1859,7 @@ impl DbService for SqliteDbService {
     config: &crate::db::AppClientToolsetConfigRow,
   ) -> Result<crate::db::AppClientToolsetConfigRow, DbError> {
     // SQLite upsert - insert or replace based on unique app_client_id
-    let result = sqlx::query_as::<_, (i64, String, String, String, String, i64, i64)>(
+    let result = sqlx::query_as::<_, (i64, String, Option<String>, String, String, i64, i64)>(
       "INSERT INTO app_client_toolset_configs (app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(app_client_id) DO UPDATE SET

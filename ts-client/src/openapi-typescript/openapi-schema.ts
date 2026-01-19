@@ -1131,7 +1131,7 @@ export interface components {
             /** @description List of toolsets the app-client is configured to access */
             toolsets?: components["schemas"]["AppClientToolset"][];
             /** @description Version of app-client's toolset configuration on auth server */
-            app_client_config_version: string;
+            app_client_config_version?: string | null;
         };
         /** @description Toolset configuration from app-client registration */
         AppClientToolset: {

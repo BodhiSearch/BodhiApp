@@ -219,7 +219,7 @@ pub struct AppToolsetConfigRow {
 pub struct AppClientToolsetConfigRow {
   pub id: i64,
   pub app_client_id: String,
-  pub config_version: String,
+  pub config_version: Option<String>,
   pub toolsets_json: String,
   pub resource_scope: String,
   pub created_at: i64,

@@ -6245,8 +6245,7 @@
       "AppAccessResponse": {
         "type": "object",
         "required": [
-          "scope",
-          "app_client_config_version"
+          "scope"
         ],
         "properties": {
           "scope": {
@@ -6260,7 +6259,10 @@
             "description": "List of toolsets the app-client is configured to access"
           },
           "app_client_config_version": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Version of app-client's toolset configuration on auth server"
           }
         }

@@ -134,7 +134,7 @@ export type AppAccessResponse = {
     /**
      * Version of app-client's toolset configuration on auth server
      */
-    app_client_config_version: string;
+    app_client_config_version?: string | null;
 };
 
 /**

@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS app_client_toolset_configs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     app_client_id TEXT NOT NULL UNIQUE,
-    config_version TEXT NOT NULL,
+    config_version TEXT,
     toolsets_json TEXT NOT NULL,  -- JSON array: [{"id":"...","scope":"..."}]
     resource_scope TEXT NOT NULL,
     created_at INTEGER NOT NULL,
