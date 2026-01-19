@@ -196,10 +196,10 @@ pub struct RegisterClientRequest {
 pub struct AppAccessRequest {
   pub app_client_id: String,
   /// Optional version for cache lookup - if matches cached config, skips auth server call
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub version: Option<String>,
   /// Optional toolset scope IDs to register with resource-client for token exchange
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub toolset_scope_ids: Option<Vec<String>>,
 }
 
@@ -208,7 +208,7 @@ pub struct AppAccessRequest {
 pub struct AppClientToolset {
   pub id: String,
   pub scope: String,
-  /// Keycloak client scope UUID for cache validation
+  /// client scope UUID for cache validation
   #[serde(default)]
   pub scope_id: String,
   /// True if scope has been added to resource-client as optional scope
