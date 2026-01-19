@@ -112,7 +112,7 @@ pub struct ToolsetDefinition {
   pub tools: Vec<ToolDefinition>,
 }
 
-/// Toolset with app-level and user-level configuration status (API response model)
+/// Toolset with app-level configuration status (API response model)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetWithTools {
   /// Unique toolset identifier (e.g., "builtin-exa-web-search")
@@ -123,9 +123,6 @@ pub struct ToolsetWithTools {
   pub description: String,
   /// Whether the toolset is enabled at app level (admin-controlled)
   pub app_enabled: bool,
-  /// User's configuration for this toolset (if any)
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub user_config: Option<UserToolsetConfigSummary>,
   /// Tools provided by this toolset
   pub tools: Vec<ToolDefinition>,
 }
@@ -157,32 +154,70 @@ pub struct FunctionDefinition {
 }
 
 // ============================================================================
-// UserToolsetConfig - Per-user toolset configuration (public API model)
+// Toolset - Multi-instance toolset configuration (public API model)
 // ============================================================================
 
-/// User's configuration for a specific toolset (API model - no sensitive data).
-/// API key is stored at toolset level (one key for all tools in toolset).
+/// User-owned toolset instance with UUID identification
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct UserToolsetConfig {
-  /// Toolset identifier (e.g., "builtin-exa-web-search")
-  pub toolset_id: String,
-  /// Whether the toolset is enabled for this user
+pub struct Toolset {
+  /// Unique instance identifier (UUID)
+  pub id: String,
+  /// User-defined name for this instance
+  pub name: String,
+  /// Toolset type identifier (e.g., "builtin-exa-web-search")
+  pub toolset_type: String,
+  /// Optional description for this instance
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+  /// Whether this instance is enabled
   pub enabled: bool,
-  /// When this configuration was created
+  /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
-  /// When this configuration was last updated
+  /// When this instance was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
 
-/// Summary of user's toolset configuration (for list responses)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct UserToolsetConfigSummary {
-  /// Whether the user has enabled this toolset
-  pub enabled: bool,
-  /// Whether the user has configured an API key
-  pub has_api_key: bool,
+// ============================================================================
+// Toolset validation functions
+// ============================================================================
+
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+static TOOLSET_NAME_REGEX: Lazy<Regex> =
+  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9-]+$").expect("Invalid toolset name regex"));
+
+pub const MAX_TOOLSET_NAME_LEN: usize = 24;
+pub const MAX_TOOLSET_DESCRIPTION_LEN: usize = 255;
+
+/// Validate toolset instance name format and length
+pub fn validate_toolset_name(name: &str) -> Result<(), String> {
+  if name.is_empty() {
+    return Err("Toolset name cannot be empty".to_string());
+  }
+  if name.len() > MAX_TOOLSET_NAME_LEN {
+    return Err(format!(
+      "Toolset name cannot exceed {} characters",
+      MAX_TOOLSET_NAME_LEN
+    ));
+  }
+  if !TOOLSET_NAME_REGEX.is_match(name) {
+    return Err("Toolset name can only contain alphanumeric characters and hyphens".to_string());
+  }
+  Ok(())
+}
+
+/// Validate toolset instance description length
+pub fn validate_toolset_description(description: &str) -> Result<(), String> {
+  if description.len() > MAX_TOOLSET_DESCRIPTION_LEN {
+    return Err(format!(
+      "Toolset description cannot exceed {} characters",
+      MAX_TOOLSET_DESCRIPTION_LEN
+    ));
+  }
+  Ok(())
 }
 
 // ============================================================================
@@ -234,7 +269,10 @@ pub struct ToolsetExecutionResponse {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use crate::toolsets::{
+    validate_toolset_description, validate_toolset_name, ToolsetScope, MAX_TOOLSET_DESCRIPTION_LEN,
+    MAX_TOOLSET_NAME_LEN,
+  };
 
   #[test]
   fn test_toolset_scope_from_scope_string_extracts_known_scopes() {
@@ -262,5 +300,63 @@ mod tests {
   #[test]
   fn test_toolset_scope_all_registry() {
     assert!(ToolsetScope::all().contains(&ToolsetScope::builtin_exa_web_search()));
+  }
+
+  #[test]
+  fn test_validate_toolset_name_accepts_valid_names() {
+    assert!(validate_toolset_name("my-toolset").is_ok());
+    assert!(validate_toolset_name("MyToolset123").is_ok());
+    assert!(validate_toolset_name("a").is_ok());
+    assert!(validate_toolset_name("toolset-1").is_ok());
+  }
+
+  #[test]
+  fn test_validate_toolset_name_rejects_empty() {
+    let result = validate_toolset_name("");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("cannot be empty"));
+  }
+
+  #[test]
+  fn test_validate_toolset_name_rejects_too_long() {
+    let long_name = "a".repeat(MAX_TOOLSET_NAME_LEN + 1);
+    let result = validate_toolset_name(&long_name);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("cannot exceed"));
+  }
+
+  #[test]
+  fn test_validate_toolset_name_rejects_invalid_characters() {
+    assert!(validate_toolset_name("my_toolset").is_err());
+    assert!(validate_toolset_name("my toolset").is_err());
+    assert!(validate_toolset_name("my.toolset").is_err());
+    assert!(validate_toolset_name("my@toolset").is_err());
+  }
+
+  #[test]
+  fn test_validate_toolset_name_accepts_max_length() {
+    let max_name = "a".repeat(MAX_TOOLSET_NAME_LEN);
+    assert!(validate_toolset_name(&max_name).is_ok());
+  }
+
+  #[test]
+  fn test_validate_toolset_description_accepts_valid_descriptions() {
+    assert!(validate_toolset_description("").is_ok());
+    assert!(validate_toolset_description("A short description").is_ok());
+    assert!(validate_toolset_description("A description with special chars: @#$%").is_ok());
+  }
+
+  #[test]
+  fn test_validate_toolset_description_rejects_too_long() {
+    let long_desc = "a".repeat(MAX_TOOLSET_DESCRIPTION_LEN + 1);
+    let result = validate_toolset_description(&long_desc);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("cannot exceed"));
+  }
+
+  #[test]
+  fn test_validate_toolset_description_accepts_max_length() {
+    let max_desc = "a".repeat(MAX_TOOLSET_DESCRIPTION_LEN);
+    assert!(validate_toolset_description(&max_desc).is_ok());
   }
 }

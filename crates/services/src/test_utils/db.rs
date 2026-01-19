@@ -384,50 +384,83 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_model_metadata"))
   }
 
-  async fn get_user_toolset_config(
-    &self,
-    user_id: &str,
-    toolset_id: &str,
-  ) -> Result<Option<crate::db::UserToolsetConfigRow>, DbError> {
+  async fn get_toolset(&self, id: &str) -> Result<Option<crate::db::ToolsetRow>, DbError> {
     self
       .inner
-      .get_user_toolset_config(user_id, toolset_id)
+      .get_toolset(id)
       .await
-      .tap(|_| self.notify("get_user_toolset_config"))
+      .tap(|_| self.notify("get_toolset"))
   }
 
-  async fn upsert_user_toolset_config(
-    &self,
-    config: &crate::db::UserToolsetConfigRow,
-  ) -> Result<crate::db::UserToolsetConfigRow, DbError> {
-    self
-      .inner
-      .upsert_user_toolset_config(config)
-      .await
-      .tap(|_| self.notify("upsert_user_toolset_config"))
-  }
-
-  async fn list_user_toolset_configs(
+  async fn get_toolset_by_name(
     &self,
     user_id: &str,
-  ) -> Result<Vec<crate::db::UserToolsetConfigRow>, DbError> {
+    name: &str,
+  ) -> Result<Option<crate::db::ToolsetRow>, DbError> {
     self
       .inner
-      .list_user_toolset_configs(user_id)
+      .get_toolset_by_name(user_id, name)
       .await
-      .tap(|_| self.notify("list_user_toolset_configs"))
+      .tap(|_| self.notify("get_toolset_by_name"))
   }
 
-  async fn delete_user_toolset_config(
+  async fn create_toolset(
     &self,
-    user_id: &str,
-    toolset_id: &str,
-  ) -> Result<(), DbError> {
+    row: &crate::db::ToolsetRow,
+  ) -> Result<crate::db::ToolsetRow, DbError> {
     self
       .inner
-      .delete_user_toolset_config(user_id, toolset_id)
+      .create_toolset(row)
       .await
-      .tap(|_| self.notify("delete_user_toolset_config"))
+      .tap(|_| self.notify("create_toolset"))
+  }
+
+  async fn update_toolset(
+    &self,
+    row: &crate::db::ToolsetRow,
+    api_key_update: crate::db::ApiKeyUpdate,
+  ) -> Result<crate::db::ToolsetRow, DbError> {
+    self
+      .inner
+      .update_toolset(row, api_key_update)
+      .await
+      .tap(|_| self.notify("update_toolset"))
+  }
+
+  async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+    self
+      .inner
+      .list_toolsets(user_id)
+      .await
+      .tap(|_| self.notify("list_toolsets"))
+  }
+
+  async fn list_toolsets_by_type(
+    &self,
+    user_id: &str,
+    toolset_type: &str,
+  ) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+    self
+      .inner
+      .list_toolsets_by_type(user_id, toolset_type)
+      .await
+      .tap(|_| self.notify("list_toolsets_by_type"))
+  }
+
+  async fn delete_toolset(&self, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_toolset(id)
+      .await
+      .tap(|_| self.notify("delete_toolset"))
+  }
+
+  async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError> {
+    self
+      .inner
+      .get_toolset_api_key(id)
+      .await
+      .tap(|_| self.notify("get_toolset_api_key"))
   }
 
   async fn get_app_toolset_config(

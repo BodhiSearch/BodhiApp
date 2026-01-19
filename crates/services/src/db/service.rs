@@ -191,28 +191,37 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_model_metadata(&self) -> Result<Vec<crate::db::ModelMetadataRow>, DbError>;
 
-  // Toolset configuration management
-  async fn get_user_toolset_config(
+  // Toolset instance management
+  async fn get_toolset(&self, id: &str) -> Result<Option<crate::db::ToolsetRow>, DbError>;
+
+  async fn get_toolset_by_name(
     &self,
     user_id: &str,
-    toolset_id: &str,
-  ) -> Result<Option<crate::db::UserToolsetConfigRow>, DbError>;
+    name: &str,
+  ) -> Result<Option<crate::db::ToolsetRow>, DbError>;
 
-  async fn upsert_user_toolset_config(
+  async fn create_toolset(
     &self,
-    config: &crate::db::UserToolsetConfigRow,
-  ) -> Result<crate::db::UserToolsetConfigRow, DbError>;
+    row: &crate::db::ToolsetRow,
+  ) -> Result<crate::db::ToolsetRow, DbError>;
 
-  async fn list_user_toolset_configs(
+  async fn update_toolset(
+    &self,
+    row: &crate::db::ToolsetRow,
+    api_key_update: crate::db::ApiKeyUpdate,
+  ) -> Result<crate::db::ToolsetRow, DbError>;
+
+  async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError>;
+
+  async fn list_toolsets_by_type(
     &self,
     user_id: &str,
-  ) -> Result<Vec<crate::db::UserToolsetConfigRow>, DbError>;
+    toolset_type: &str,
+  ) -> Result<Vec<crate::db::ToolsetRow>, DbError>;
 
-  async fn delete_user_toolset_config(
-    &self,
-    user_id: &str,
-    toolset_id: &str,
-  ) -> Result<(), DbError>;
+  async fn delete_toolset(&self, id: &str) -> Result<(), DbError>;
+
+  async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError>;
 
   // App-level toolset configuration management
   async fn get_app_toolset_config(
@@ -1541,19 +1550,14 @@ impl DbService for SqliteDbService {
   }
 
   // ============================================================================
-  // Toolset configuration management
+  // Toolset instance management
   // ============================================================================
 
-  async fn get_user_toolset_config(
-    &self,
-    user_id: &str,
-    toolset_id: &str,
-  ) -> Result<Option<crate::db::UserToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, String, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM user_toolset_configs WHERE user_id = ? AND toolset_id = ?",
+  async fn get_toolset(&self, id: &str) -> Result<Option<crate::db::ToolsetRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
     )
-    .bind(user_id)
-    .bind(toolset_id)
+    .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -1561,7 +1565,9 @@ impl DbService for SqliteDbService {
       |(
         id,
         user_id,
-        toolset_id,
+        toolset_type,
+        name,
+        description,
         enabled,
         encrypted_api_key,
         salt,
@@ -1569,10 +1575,12 @@ impl DbService for SqliteDbService {
         created_at,
         updated_at,
       )| {
-        crate::db::UserToolsetConfigRow {
+        crate::db::ToolsetRow {
           id,
           user_id,
-          toolset_id,
+          toolset_type,
+          name,
+          description,
           enabled: enabled != 0,
           encrypted_api_key,
           salt,
@@ -1584,79 +1592,130 @@ impl DbService for SqliteDbService {
     ))
   }
 
-  async fn upsert_user_toolset_config(
-    &self,
-    config: &crate::db::UserToolsetConfigRow,
-  ) -> Result<crate::db::UserToolsetConfigRow, DbError> {
-    let enabled = if config.enabled { 1 } else { 0 };
-
-    // Check if config exists
-    let existing = self
-      .get_user_toolset_config(&config.user_id, &config.toolset_id)
-      .await?;
-
-    let id = if let Some(existing) = existing {
-      // Update existing config
-      sqlx::query(
-        r#"
-        UPDATE user_toolset_configs
-        SET enabled = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
-        WHERE user_id = ? AND toolset_id = ?
-        "#,
-      )
-      .bind(enabled)
-      .bind(&config.encrypted_api_key)
-      .bind(&config.salt)
-      .bind(&config.nonce)
-      .bind(config.updated_at)
-      .bind(&config.user_id)
-      .bind(&config.toolset_id)
-      .execute(&self.pool)
-      .await?;
-
-      existing.id
-    } else {
-      // Insert new config
-      let result = sqlx::query(
-        r#"
-        INSERT INTO user_toolset_configs (user_id, toolset_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-      )
-      .bind(&config.user_id)
-      .bind(&config.toolset_id)
-      .bind(enabled)
-      .bind(&config.encrypted_api_key)
-      .bind(&config.salt)
-      .bind(&config.nonce)
-      .bind(config.created_at)
-      .bind(config.updated_at)
-      .execute(&self.pool)
-      .await?;
-
-      result.last_insert_rowid()
-    };
-
-    // Return the updated/inserted config
-    Ok(crate::db::UserToolsetConfigRow {
-      id,
-      user_id: config.user_id.clone(),
-      toolset_id: config.toolset_id.clone(),
-      enabled: config.enabled,
-      encrypted_api_key: config.encrypted_api_key.clone(),
-      salt: config.salt.clone(),
-      nonce: config.nonce.clone(),
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    })
-  }
-
-  async fn list_user_toolset_configs(
+  async fn get_toolset_by_name(
     &self,
     user_id: &str,
-  ) -> Result<Vec<crate::db::UserToolsetConfigRow>, DbError> {
-    let results = sqlx::query_as::<_, (i64, String, String, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_id, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM user_toolset_configs WHERE user_id = ?",
+    name: &str,
+  ) -> Result<Option<crate::db::ToolsetRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
+    )
+    .bind(user_id)
+    .bind(name)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(
+        id,
+        user_id,
+        toolset_type,
+        name,
+        description,
+        enabled,
+        encrypted_api_key,
+        salt,
+        nonce,
+        created_at,
+        updated_at,
+      )| {
+        crate::db::ToolsetRow {
+          id,
+          user_id,
+          toolset_type,
+          name,
+          description,
+          enabled: enabled != 0,
+          encrypted_api_key,
+          salt,
+          nonce,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn create_toolset(
+    &self,
+    row: &crate::db::ToolsetRow,
+  ) -> Result<crate::db::ToolsetRow, DbError> {
+    let enabled = if row.enabled { 1 } else { 0 };
+
+    sqlx::query(
+      r#"
+      INSERT INTO toolsets (id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&row.id)
+    .bind(&row.user_id)
+    .bind(&row.toolset_type)
+    .bind(&row.name)
+    .bind(&row.description)
+    .bind(enabled)
+    .bind(&row.encrypted_api_key)
+    .bind(&row.salt)
+    .bind(&row.nonce)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn update_toolset(
+    &self,
+    row: &crate::db::ToolsetRow,
+    api_key_update: crate::db::ApiKeyUpdate,
+  ) -> Result<crate::db::ToolsetRow, DbError> {
+    let enabled = if row.enabled { 1 } else { 0 };
+
+    match api_key_update {
+      crate::db::ApiKeyUpdate::Keep => {
+        sqlx::query(
+          r#"
+          UPDATE toolsets
+          SET name = ?, description = ?, enabled = ?, updated_at = ?
+          WHERE id = ?
+          "#,
+        )
+        .bind(&row.name)
+        .bind(&row.description)
+        .bind(enabled)
+        .bind(row.updated_at)
+        .bind(&row.id)
+        .execute(&self.pool)
+        .await?;
+      }
+      crate::db::ApiKeyUpdate::Set(api_key) => {
+        sqlx::query(
+          r#"
+          UPDATE toolsets
+          SET name = ?, description = ?, enabled = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+          WHERE id = ?
+          "#,
+        )
+        .bind(&row.name)
+        .bind(&row.description)
+        .bind(enabled)
+        .bind(&api_key)
+        .bind(&row.salt)
+        .bind(&row.nonce)
+        .bind(row.updated_at)
+        .bind(&row.id)
+        .execute(&self.pool)
+        .await?;
+      }
+    }
+
+    Ok(row.clone())
+  }
+
+  async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+    let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
     )
     .bind(user_id)
     .fetch_all(&self.pool)
@@ -1669,7 +1728,9 @@ impl DbService for SqliteDbService {
           |(
             id,
             user_id,
-            toolset_id,
+            toolset_type,
+            name,
+            description,
             enabled,
             encrypted_api_key,
             salt,
@@ -1677,10 +1738,12 @@ impl DbService for SqliteDbService {
             created_at,
             updated_at,
           )| {
-            crate::db::UserToolsetConfigRow {
+            crate::db::ToolsetRow {
               id,
               user_id,
-              toolset_id,
+              toolset_type,
+              name,
+              description,
               enabled: enabled != 0,
               encrypted_api_key,
               salt,
@@ -1694,18 +1757,78 @@ impl DbService for SqliteDbService {
     )
   }
 
-  async fn delete_user_toolset_config(
+  async fn list_toolsets_by_type(
     &self,
     user_id: &str,
-    toolset_id: &str,
-  ) -> Result<(), DbError> {
-    sqlx::query("DELETE FROM user_toolset_configs WHERE user_id = ? AND toolset_id = ?")
-      .bind(user_id)
-      .bind(toolset_id)
+    toolset_type: &str,
+  ) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+    let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND toolset_type = ?",
+    )
+    .bind(user_id)
+    .bind(toolset_type)
+    .fetch_all(&self.pool)
+    .await?;
+
+    Ok(
+      results
+        .into_iter()
+        .map(
+          |(
+            id,
+            user_id,
+            toolset_type,
+            name,
+            description,
+            enabled,
+            encrypted_api_key,
+            salt,
+            nonce,
+            created_at,
+            updated_at,
+          )| {
+            crate::db::ToolsetRow {
+              id,
+              user_id,
+              toolset_type,
+              name,
+              description,
+              enabled: enabled != 0,
+              encrypted_api_key,
+              salt,
+              nonce,
+              created_at,
+              updated_at,
+            }
+          },
+        )
+        .collect(),
+    )
+  }
+
+  async fn delete_toolset(&self, id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM toolsets WHERE id = ?")
+      .bind(id)
       .execute(&self.pool)
       .await?;
 
     Ok(())
+  }
+
+  async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError> {
+    let result = self.get_toolset(id).await?;
+
+    if let Some(row) = result {
+      if let (Some(encrypted), Some(salt), Some(nonce)) =
+        (row.encrypted_api_key, row.salt, row.nonce)
+      {
+        let api_key = decrypt_api_key(&self.encryption_key, &encrypted, &salt, &nonce)
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        return Ok(Some(api_key));
+      }
+    }
+
+    Ok(None)
   }
 
   // ============================================================================
@@ -3063,271 +3186,6 @@ mod test {
     let all = service.list_model_metadata().await?;
     assert_eq!(1, all.len(), "Should have exactly one metadata row");
     assert_eq!("model", all[0].source);
-
-    Ok(())
-  }
-
-  // ============================================================================
-  // Toolset configuration tests
-  // ============================================================================
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_upsert_user_toolset_config_creates_new(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let now_ts = now.timestamp();
-
-    let config = crate::db::UserToolsetConfigRow {
-      id: 0, // Will be set by database
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some("encrypted".to_string()),
-      salt: Some("salt".to_string()),
-      nonce: Some("nonce".to_string()),
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    let result = service.upsert_user_toolset_config(&config).await?;
-
-    assert!(result.id > 0);
-    assert_eq!("user123", result.user_id);
-    assert_eq!("builtin-exa-web-search", result.toolset_id);
-    assert!(result.enabled);
-    assert_eq!(Some("encrypted".to_string()), result.encrypted_api_key);
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_upsert_user_toolset_config_updates_existing(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let now_ts = now.timestamp();
-
-    // Create initial config
-    let config = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: false,
-      encrypted_api_key: None,
-      salt: None,
-      nonce: None,
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    let created = service.upsert_user_toolset_config(&config).await?;
-
-    // Update config
-    let updated_config = crate::db::UserToolsetConfigRow {
-      id: created.id,
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some("encrypted".to_string()),
-      salt: Some("salt".to_string()),
-      nonce: Some("nonce".to_string()),
-      created_at: now_ts,
-      updated_at: now_ts + 100,
-    };
-
-    let result = service.upsert_user_toolset_config(&updated_config).await?;
-
-    assert_eq!(created.id, result.id);
-    assert!(result.enabled);
-    assert_eq!(Some("encrypted".to_string()), result.encrypted_api_key);
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_get_user_toolset_config_returns_config(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let now_ts = now.timestamp();
-
-    let config = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some("encrypted".to_string()),
-      salt: Some("salt".to_string()),
-      nonce: Some("nonce".to_string()),
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    service.upsert_user_toolset_config(&config).await?;
-
-    let result = service
-      .get_user_toolset_config("user123", "builtin-exa-web-search")
-      .await?;
-
-    assert!(result.is_some());
-    let result = result.unwrap();
-    assert_eq!("user123", result.user_id);
-    assert_eq!("builtin-exa-web-search", result.toolset_id);
-    assert!(result.enabled);
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_get_user_toolset_config_returns_none_for_nonexistent(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let result = service
-      .get_user_toolset_config("user123", "nonexistent-toolset")
-      .await?;
-
-    assert!(result.is_none());
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_user_toolset_configs_returns_all_for_user(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let now_ts = now.timestamp();
-
-    // Create configs for user123
-    let config1 = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some("encrypted1".to_string()),
-      salt: Some("salt1".to_string()),
-      nonce: Some("nonce1".to_string()),
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    let config2 = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user123".to_string(),
-      toolset_id: "another-toolset".to_string(),
-      enabled: false,
-      encrypted_api_key: None,
-      salt: None,
-      nonce: None,
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    // Create config for different user
-    let config3 = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user456".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some("encrypted3".to_string()),
-      salt: Some("salt3".to_string()),
-      nonce: Some("nonce3".to_string()),
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    service.upsert_user_toolset_config(&config1).await?;
-    service.upsert_user_toolset_config(&config2).await?;
-    service.upsert_user_toolset_config(&config3).await?;
-
-    let results = service.list_user_toolset_configs("user123").await?;
-
-    assert_eq!(2, results.len());
-    assert!(results.iter().all(|r| r.user_id == "user123"));
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_user_toolset_configs_returns_empty_for_user_with_no_configs(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let results = service.list_user_toolset_configs("user123").await?;
-
-    assert!(results.is_empty());
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_user_toolset_config_encryption_roundtrip(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let now_ts = now.timestamp();
-
-    // Use encryption functions directly (same as api_model_aliases pattern)
-    let api_key = "sk-test1234567890";
-    let (encrypted, salt, nonce) =
-      crate::db::encryption::encrypt_api_key(&service.encryption_key, api_key)?;
-
-    let config = crate::db::UserToolsetConfigRow {
-      id: 0,
-      user_id: "user123".to_string(),
-      toolset_id: "builtin-exa-web-search".to_string(),
-      enabled: true,
-      encrypted_api_key: Some(encrypted.clone()),
-      salt: Some(salt.clone()),
-      nonce: Some(nonce.clone()),
-      created_at: now_ts,
-      updated_at: now_ts,
-    };
-
-    service.upsert_user_toolset_config(&config).await?;
-
-    let retrieved = service
-      .get_user_toolset_config("user123", "builtin-exa-web-search")
-      .await?
-      .unwrap();
-
-    // Decrypt and verify
-    let decrypted = crate::db::encryption::decrypt_api_key(
-      &service.encryption_key,
-      &retrieved.encrypted_api_key.unwrap(),
-      &retrieved.salt.unwrap(),
-      &retrieved.nonce.unwrap(),
-    )?;
-
-    assert_eq!(api_key, decrypted);
 
     Ok(())
   }

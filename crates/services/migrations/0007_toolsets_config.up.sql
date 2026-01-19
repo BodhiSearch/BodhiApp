@@ -1,11 +1,13 @@
 -- Migration 0007: Toolset Configuration Tables
--- Creates tables for user and app-level toolset configuration
+-- Creates tables for user toolset instances and app-level toolset configuration
 
--- Create the user_toolset_configs table for per-user toolset configuration
-CREATE TABLE IF NOT EXISTS user_toolset_configs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+-- Create the toolsets table for user-owned toolset instances
+CREATE TABLE IF NOT EXISTS toolsets (
+    id TEXT PRIMARY KEY,                   -- UUID as TEXT
     user_id TEXT NOT NULL,                 -- JWT 'sub' claim (no FK)
-    toolset_id TEXT NOT NULL,              -- e.g., "builtin-exa-web-search"
+    toolset_type TEXT NOT NULL,            -- e.g., "builtin-exa-web-search"
+    name TEXT NOT NULL,                    -- user-defined instance name
+    description TEXT,                      -- optional instance description
     enabled INTEGER NOT NULL DEFAULT 0,    -- boolean as integer
     -- Encrypted API key storage (same pattern as api_model_aliases)
     encrypted_api_key TEXT,
@@ -13,17 +15,17 @@ CREATE TABLE IF NOT EXISTS user_toolset_configs (
     nonce TEXT,
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL,
-    UNIQUE(user_id, toolset_id)            -- composite unique constraint
+    UNIQUE(user_id, name COLLATE NOCASE)   -- case-insensitive uniqueness per user
 );
 
 -- Create index on user_id for faster lookups by user
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_user_id ON user_toolset_configs(user_id);
+CREATE INDEX IF NOT EXISTS idx_toolsets_user_id ON toolsets(user_id);
 
--- Create index on toolset_id for faster lookups by toolset
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_toolset_id ON user_toolset_configs(toolset_id);
+-- Create index on toolset_type for faster lookups by type
+CREATE INDEX IF NOT EXISTS idx_toolsets_toolset_type ON toolsets(toolset_type);
 
--- Create index on enabled for filtering enabled toolsets
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_enabled ON user_toolset_configs(enabled);
+-- Create composite index on user_id and toolset_type for efficient filtering
+CREATE INDEX IF NOT EXISTS idx_toolsets_user_type ON toolsets(user_id, toolset_type);
 
 -- Create the app_toolset_configs table for app-level toolset configuration (admin-controlled)
 CREATE TABLE IF NOT EXISTS app_toolset_configs (

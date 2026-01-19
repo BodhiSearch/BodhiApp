@@ -181,14 +181,16 @@ impl From<ModelMetadataRow> for objs::ModelMetadata {
 }
 
 // ============================================================================
-// UserToolsetConfigRow - Database row for user toolset configuration
+// ToolsetRow - Database row for user toolset instances
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UserToolsetConfigRow {
-  pub id: i64,
+pub struct ToolsetRow {
+  pub id: String,
   pub user_id: String,
-  pub toolset_id: String,
+  pub toolset_type: String,
+  pub name: String,
+  pub description: Option<String>,
   pub enabled: bool,
   pub encrypted_api_key: Option<String>,
   pub salt: Option<String>,
