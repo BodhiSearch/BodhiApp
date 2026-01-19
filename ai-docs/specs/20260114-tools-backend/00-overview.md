@@ -1,6 +1,6 @@
 # Toolsets Backend Implementation - Overview
 
-> Status: Backend Phases 1-7.6 Complete, Phase 8 Complete | Phase 8.1, 9 Pending | Updated: 2026-01-17
+> Status: Phases 1-8.1 Complete | Phase 9 In Progress | Updated: 2026-01-18
 
 ## Goal
 
@@ -31,7 +31,8 @@ builtin-exa-web-search      ->   toolset__builtin-exa-web-search__search
   - `get_contents` - Get full page contents
   - `answer` - AI-powered answers from web
 - Toolset configuration UI at `/ui/toolsets` and `/ui/toolsets/edit?toolsetid=xxx`
-- API endpoints: `GET /bodhi/v1/toolsets`, `POST /bodhi/v1/toolsets/{toolset_id}/execute`
+- Chat UI integration with per-tool selection and agentic loop
+- API endpoints: `GET /bodhi/v1/toolsets`, `POST /bodhi/v1/toolsets/{toolset_id}/execute/{method}`
 - OAuth scope: `scope_toolset-builtin-exa-web-search` for third-party app authorization
 - Per-user encrypted API key storage at toolset level (one key for all tools in toolset)
 - **App-level toolset enable/disable** (admin controls toolset availability for all users)
@@ -48,24 +49,29 @@ builtin-exa-web-search      ->   toolset__builtin-exa-web-search__search
 | Config scope | Three-tier for OAuth | App-level (admin) + App-client (registered) + User-level (API keys) |
 | Toolset visibility | Show all, indicate status | Users see all toolsets; disabled toolsets shown but not configurable |
 | Scope check | OAuth: 4 checks, Session: 2 checks | OAuth needs app, app-client, scope, user; Session needs app, user |
+| API token access | Blocked at route level | API tokens (`bodhiapp_*`) cannot access any toolset endpoints |
 | App-level config | Local DB only | No Keycloak sync for app-level enable/disable |
-| App-client cache | DB with version key | Cache Keycloak /resources/request-access response |
+| App-client cache | DB with version key | Cache Keycloak /resources/request-access response with scope_id validation |
 | UI navigation | Sidebar menu | New top-level "Toolsets" item in sidebar |
 | Error detail | Detailed | Pass through Exa errors to LLM/frontend |
-| Endpoint path | `/bodhi/v1/toolsets/{id}/execute` | RESTful resource with action verb |
-| Execute request | Includes tool_name | `POST /toolsets/{toolset_id}/execute` with `tool_name` in body |
+| Endpoint path | `/bodhi/v1/toolsets/{id}/execute/{method}` | RESTful resource with method in path |
+| Execute request | Method in path | `POST /toolsets/{toolset_id}/execute/{method}` with params in body |
 | API timeout | 30 seconds | Balance responsiveness and query complexity |
 | Result caching | None | Always fresh results |
 | User reference | JWT sub claim | Store user_id directly, no FK to users table |
 | API key storage | Toolset level | One API key per toolset (covers all tools in that toolset) |
+| OAuth list filtering | Scope-based | `GET /toolsets` returns only toolsets matching token's `scope_toolset-*` scopes |
 
 ## Architecture
 
 **Frontend orchestrates, backend executes** (per API contract):
 1. Frontend receives `tool_calls` from LLM streaming response
-2. Frontend calls `POST /bodhi/v1/toolsets/{toolset_id}/execute` for each tool (with `tool_name` in body)
-3. Backend validates (OAuth scope OR first-party + configured), executes tool, returns result
-4. Frontend sends tool results back to LLM
+2. Frontend parses tool name from format `toolset__{toolset_id}__{method}` 
+3. Frontend calls `POST /bodhi/v1/toolsets/{toolset_id}/execute/{method}` for each tool
+4. Backend validates (OAuth scope OR session + configured), executes tool, returns result
+5. Frontend sends tool results back to LLM
+
+**Note:** API tokens (`bodhiapp_*`) are blocked from all toolset endpoints at route level.
 
 ## Implementation Status
 
@@ -87,9 +93,13 @@ builtin-exa-web-search      ->   toolset__builtin-exa-web-search__search
 - Frontend UI pages (`/ui/toolsets`)
 - Setup flow integration
 
-**📝 Pending (Phases 8.1, 9)**:
-- Chat UI toolset integration (toolsets dropdown)
-- Integration and E2E tests
+**✅ Completed (Phase 8.1)**:
+- Chat UI toolset integration with per-tool selection
+- Agentic loop with parallel tool execution
+- E2E tests for OAuth + toolset scope combinations
+
+**📝 In Progress (Phase 9)**:
+- Additional E2E tests with real Exa API
 
 ## Key Files (created/modified)
 
@@ -123,17 +133,17 @@ builtin-exa-web-search      ->   toolset__builtin-exa-web-search__search
 
 ### Authorization Model
 
-| Auth Type | App Check | App-Client Check | Scope Check | User Config Check | Status |
-|-----------|-----------|------------------|-------------|-------------------|--------|
-| Session | ✅ | ❌ | ❌ | ✅ | ✅ Accepted (BodhiApp frontend only) |
-| First-party Token | ✅ | ❌ | ❌ | ✅ | 🔴 **Pending restriction** |
-| External OAuth | ✅ | ✅ | ✅ | ✅ | ✅ Fully secured |
+| Auth Type | List | Config | Execute | Status |
+|-----------|------|--------|---------|--------|
+| Session | All toolsets | ✅ | ✅ | ✅ Full access |
+| API Token (`bodhiapp_*`) | 401 | 401 | 401 | ✅ Blocked at route level |
+| External OAuth | Filtered by scope | 401 | With scope check | ✅ Scope-filtered |
 
-**Session auth** is unrestricted by design - only BodhiApp's own frontend uses sessions, and users have explicitly configured their API keys.
+**Session auth** has full access - only BodhiApp's own frontend uses sessions, and users have explicitly configured their API keys.
 
-**First-party tokens** need restriction - see [10-pending-items.md](./10-pending-items.md) for the requirement to block toolset access by default for API tokens.
+**API tokens** are completely blocked from all toolset endpoints at the route level. This is simpler and more secure than granular permissions.
 
-**External OAuth** is fully secured with 4-tier authorization.
+**External OAuth** can list toolsets (filtered by `scope_toolset-*` scopes in token) and execute tools (with scope validation), but cannot access config endpoints.
 
 ## Open Questions
 

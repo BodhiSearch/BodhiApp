@@ -1,16 +1,19 @@
 # Auth & Scopes - Toolsets Feature
 
-> Layer: `objs`, `auth_middleware` crates | Status: ✅ Complete
+> Layer: `objs`, `auth_middleware`, `routes_all` crates | Status: ✅ Complete
 
 ## Scope Model
 
 Toolset scopes are **discrete permissions** (not hierarchical like TokenScope/UserScope). One scope grants access to all tools within that toolset.
 
-**Session/First-party**: Validated by checking if toolset is configured (enabled + has API key) for the user.
+**Session**: Validated by checking if toolset is configured (enabled + has API key) for the user.
+
+**API Token (`bodhiapp_*`)**: Blocked at route level - all toolset endpoints return 401.
 
 **External OAuth**: Additionally validates:
 1. App-client is registered for the toolset (via cached `/resources/request-access` response)
 2. Token contains the required `scope_toolset-*` claim
+3. `GET /toolsets` returns only toolsets matching scopes in token
 
 ## ToolsetScope Enum
 
@@ -52,6 +55,25 @@ impl ToolsetScope {
 }
 ```
 
+## Route-Level Auth (API Token Blocking)
+
+API tokens (`bodhiapp_*`) are blocked at the route level in `crates/routes_all/src/routes.rs`:
+
+```rust
+// Session-only APIs - no API tokens, no OAuth
+let user_session_apis = Router::new()
+    .route("/toolsets/:toolset_id/config", ...)  // GET, PUT, DELETE
+    .route_layer(api_auth_middleware(ResourceRole::User, None, None, ...));
+
+// OAuth-allowed APIs - session + OAuth, NOT API tokens  
+let user_oauth_apis = Router::new()
+    .route("/toolsets", get(...))
+    .route("/toolsets/:toolset_id/execute/:method", post(...))
+    .route_layer(api_auth_middleware(ResourceRole::User, None, Some(UserScope::User), ...));
+```
+
+**Key:** `TokenScope=None` in middleware config means API tokens are rejected with 401.
+
 ## Authorization Middleware for Toolset Execution
 
 **File**: `crates/auth_middleware/src/toolset_auth_middleware.rs`
@@ -59,9 +81,11 @@ impl ToolsetScope {
 ```rust
 /// Middleware for toolset execution endpoints
 ///
-/// Authorization rules:
-/// - Session/First-party: Check app-level + user config
-/// - OAuth: Check app-level + app-client registration + scope + user config
+/// Authorization rules depend on auth type:
+/// - Session (has ROLE header): Check app-level + user config
+/// - External OAuth (has SCOPE starting with "scope_user_"): Check app-level + app-client + scope + user config
+///
+/// Note: API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
 pub async fn toolset_auth_middleware(
     State(state): State<Arc<dyn RouterState>>,
     Path(toolset_id): Path<String>,
@@ -69,20 +93,18 @@ pub async fn toolset_auth_middleware(
     next: Next,
 ) -> Result<Response, ApiError>
 
-async fn _impl(
-    State(state): State<Arc<dyn RouterState>>,
-    Path(toolset_id): Path<String>,
-    req: Request,
-    next: Next,
-) -> Result<Response, ToolsetAuthError> {
+async fn _impl(...) -> Result<Response, ToolsetAuthError> {
     let headers = req.headers();
     let user_id = extract_user_id(headers)?;
     
     // Determine auth type
     let is_session_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
     let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE).unwrap_or("");
-    let is_first_party_token = scope_header.starts_with("scope_token_");
     let is_oauth_auth = scope_header.starts_with("scope_user_") && !is_session_auth;
+
+    if !is_session_auth && !is_oauth_auth {
+        return Err(ToolsetAuthError::MissingAuth);
+    }
 
     let toolset_service = state.app_service().toolset_service();
 
@@ -118,22 +140,26 @@ async fn _impl(
 
 ## Token Types Summary
 
-| Token Type | Example | App Check | App-Client Check | Scope Check | User Config Check |
-|------------|---------|-----------|------------------|-------------|-------------------|
-| Session | HTTP cookie | Yes | No | No | Yes |
-| First-party API | `bodhiapp_xxx` | Yes | No | No | Yes |
-| External OAuth | JWT from Keycloak | Yes | Yes | Yes | Yes |
+| Token Type | Example | Route Access | App Check | App-Client Check | Scope Check | User Config Check |
+|------------|---------|--------------|-----------|------------------|-------------|-------------------|
+| Session | HTTP cookie | ✅ All endpoints | Yes | No | No | Yes |
+| First-party API | `bodhiapp_xxx` | ❌ 401 | - | - | - | - |
+| External OAuth | JWT from Keycloak | ✅ List + Execute | Yes | Yes | Yes | Yes |
+
+**Note:** First-party API tokens are completely blocked from all toolset endpoints at the route level.
 
 ## Header Constants
 
 ```rust
-pub const KEY_HEADER_BODHIAPP_TOOLSET_SCOPES: &str = "X-BodhiApp-Toolset-Scopes";
+pub const KEY_HEADER_BODHIAPP_TOOL_SCOPES: &str = "X-BodhiApp-Tool-Scopes";
 pub const KEY_HEADER_BODHIAPP_AZP: &str = "X-BodhiApp-Azp";
+pub const KEY_HEADER_BODHIAPP_USER_ID: &str = "X-BodhiApp-User-Id";
 ```
 
-These headers are injected after token exchange for OAuth tokens:
-- `X-BodhiApp-Toolset-Scopes`: Space-separated toolset scopes from token
-- `X-BodhiApp-Azp`: Authorized party (app-client ID)
+These headers are injected after token exchange for OAuth tokens in `auth_middleware.rs`:
+- `X-BodhiApp-Tool-Scopes`: Space-separated toolset scopes from token (`scope_toolset-*`)
+- `X-BodhiApp-Azp`: Authorized party (app-client ID from `azp` claim)
+- `X-BodhiApp-User-Id`: User identifier (from `sub` claim) - required for toolset execution
 
 ## Error Types
 
@@ -180,3 +206,5 @@ See [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) for
 - [05.5-app-level-toolset-config.md](./05.5-app-level-toolset-config.md) - App-level toolset enable/disable
 - [05.6-external-app-toolset-access.md](./05.6-external-app-toolset-access.md) - Full OAuth toolset authorization flow
 - [09-keycloak-extension-contract.md](./09-keycloak-extension-contract.md) - Keycloak extension API contract
+- [09.1-keycloak-toolset-scope-transfer.md](./09.1-keycloak-toolset-scope-transfer.md) - Toolset scope transfer for token exchange
+- [10-pending-items.md](./10-pending-items.md) - API token blocking decision rationale

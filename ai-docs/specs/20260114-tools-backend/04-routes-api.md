@@ -10,23 +10,30 @@ Routes are implemented with proper middleware integration. Endpoints use `/tools
 
 **Files**: `crates/routes_app/src/{routes_toolsets.rs, toolsets_dto.rs}`
 
-| Method | Path | Handler | Description |
-|--------|------|---------|-------------|
-| GET | `/toolsets` | `list_all_toolsets()` | List all toolsets with status |
-| GET | `/toolsets/:toolset_id/config` | `get_toolset_config()` | Get user's toolset config |
-| PUT | `/toolsets/:toolset_id/config` | `update_toolset_config()` | Update toolset config |
-| DELETE | `/toolsets/:toolset_id/config` | `delete_toolset_config()` | Delete toolset config |
-| POST | `/toolsets/:toolset_id/execute` | `execute_toolset()` | Execute a tool |
-| PUT | `/toolsets/:toolset_id/app-config` | `enable_app_toolset()` | Admin enable |
-| DELETE | `/toolsets/:toolset_id/app-config` | `disable_app_toolset()` | Admin disable |
+| Method | Path | Handler | Auth | Description |
+|--------|------|---------|------|-------------|
+| GET | `/toolsets` | `list_all_toolsets()` | Session, OAuth | List toolsets (OAuth: filtered by scope) |
+| GET | `/toolsets/:toolset_id/config` | `get_toolset_config()` | Session only | Get user's toolset config |
+| PUT | `/toolsets/:toolset_id/config` | `update_toolset_config()` | Session only | Update toolset config |
+| DELETE | `/toolsets/:toolset_id/config` | `delete_toolset_config()` | Session only | Delete toolset config |
+| POST | `/toolsets/:toolset_id/execute/:method` | `execute_toolset()` | Session, OAuth | Execute a tool method |
+| PUT | `/toolsets/:toolset_id/app-config` | `enable_app_toolset()` | Admin only | Admin enable |
+| DELETE | `/toolsets/:toolset_id/app-config` | `disable_app_toolset()` | Admin only | Admin disable |
 
 Note: Paths shown are route-level. When integrated into `routes_all`, they are prefixed with `/bodhi/v1`.
+
+**Important:** API tokens (`bodhiapp_*`) return 401 for all toolset endpoints.
 
 ## Endpoint Details
 
 ### GET /bodhi/v1/toolsets
 
 List all available toolsets with their tools and configuration status.
+
+**Auth behavior:**
+- **Session**: Returns all toolsets
+- **OAuth**: Returns only toolsets matching `scope_toolset-*` scopes in token
+- **API Token**: Returns 401
 
 **Response:**
 ```json
@@ -96,20 +103,20 @@ Delete toolset configuration (clears API key). Always allowed.
 
 **Response:** 204 No Content
 
-### POST /bodhi/v1/toolsets/{toolset_id}/execute
+### POST /bodhi/v1/toolsets/{toolset_id}/execute/{method}
 
-Execute a tool within the toolset. The `tool_name` specifies which tool to execute.
+Execute a specific method within the toolset. The `method` path parameter specifies which tool to execute (e.g., `search`, `find_similar`, `get_contents`, `answer`).
 
 **Authorization:**
-- **First-party (session, bodhiapp_)**: Check toolset is configured for user
-- **OAuth tokens**: Check toolset scope in token
+- **Session**: Check app-level enabled + user has API key configured
+- **OAuth tokens**: Check app-level enabled + app-client registered + scope in token + user has API key
+- **API Token**: Returns 401 (blocked at route level)
 
 **Request:**
 ```json
 {
   "tool_call_id": "call_abc123",
-  "tool_name": "toolset__builtin-exa-web-search__search",
-  "arguments": {
+  "params": {
     "query": "rust programming language",
     "num_results": 5
   }
@@ -122,9 +129,8 @@ Execute a tool within the toolset. The `tool_name` specifies which tool to execu
   "tool_call_id": "call_abc123",
   "result": {
     "results": [
-      { "title": "...", "url": "...", "snippet": "..." }
-    ],
-    "query_used": "optimized query"
+      { "title": "...", "url": "...", "text": "..." }
+    ]
   }
 }
 ```
@@ -204,8 +210,7 @@ pub struct UpdateToolsetConfigRequest {
 #[derive(Deserialize, ToSchema)]
 pub struct ExecuteToolsetRequest {
     pub tool_call_id: String,
-    pub tool_name: String,  // e.g., "toolset__builtin-exa-web-search__search"
-    pub arguments: serde_json::Value,
+    pub params: serde_json::Value,  // Method-specific parameters
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -220,27 +225,24 @@ pub use objs::ToolsetExecutionResponse;
 ## Route Registration
 
 ```rust
-// crates/routes_app/src/lib.rs
-pub mod routes_toolsets;
-
 // crates/routes_all/src/routes.rs
-let toolset_config_apis = Router::new()
-    .route("/bodhi/v1/toolsets", get(list_all_toolsets_handler))
-    .route("/bodhi/v1/toolsets/:toolset_id/config", get(get_toolset_config_handler))
-    .route_layer(from_fn_with_state(state.clone(), move |s, r, n| {
-        api_auth_middleware(ResourceRole::User, Some(TokenScope::User), Some(UserScope::User), s, r, n)
-    }));
 
-let toolset_config_session_apis = Router::new()
+// Session-only config APIs (no API tokens, no OAuth)
+let user_session_apis = Router::new()
+    .route("/bodhi/v1/toolsets/:toolset_id/config", get(get_toolset_config_handler))
     .route("/bodhi/v1/toolsets/:toolset_id/config", put(update_toolset_config_handler))
     .route("/bodhi/v1/toolsets/:toolset_id/config", delete(delete_toolset_config_handler))
     .route_layer(from_fn_with_state(state.clone(), move |s, r, n| {
         api_auth_middleware(ResourceRole::User, None, None, s, r, n)  // session only
     }));
 
-let toolset_execute_apis = Router::new()
-    .route("/bodhi/v1/toolsets/:toolset_id/execute", post(execute_toolset_handler))
-    .route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware));
+// OAuth-allowed APIs (session + OAuth, NOT API tokens)
+let user_oauth_apis = Router::new()
+    .route("/bodhi/v1/toolsets", get(list_all_toolsets_handler))
+    .route("/bodhi/v1/toolsets/:toolset_id/execute/:method", post(execute_toolset_handler))
+    .route_layer(from_fn_with_state(state.clone(), move |s, r, n| {
+        api_auth_middleware(ResourceRole::User, None, Some(UserScope::User), s, r, n)
+    }));
 
 let toolset_admin_apis = Router::new()
     .route("/bodhi/v1/toolsets/:toolset_id/app-config", put(enable_app_toolset))
@@ -249,6 +251,10 @@ let toolset_admin_apis = Router::new()
         api_auth_middleware(ResourceRole::Admin, None, None, s, r, n)
     }));
 ```
+
+**Note:** The route middleware configuration ensures:
+- `user_session_apis`: `TokenScope=None` means API tokens are rejected (401)
+- `user_oauth_apis`: `TokenScope=None, UserScope=User` allows session and OAuth tokens, rejects API tokens
 
 ## API-Level Validation
 

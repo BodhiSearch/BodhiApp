@@ -203,13 +203,19 @@ pub trait ToolsetService: Debug + Send + Sync {
 
 ---
 
-## Phase 9: Integration Tests ⏳ PENDING
+## Phase 9: Integration Tests ⏳ IN PROGRESS
 
-**Test Cases:**
+**Completed:**
 1. ✅ Backend integration test: `test_live_agentic_chat_with_exa.rs` (requires INTEG_TEST_EXA_API_KEY)
 2. ✅ Frontend unit tests: MSW handlers for toolsets and tool execution
 3. ✅ E2E tests: `chat-toolsets.spec.mjs`, `chat-agentic.spec.mjs`
-4. ⏳ Additional coverage for error scenarios and edge cases
+4. ✅ OAuth + Toolset scope E2E tests: `toolsets-auth-restrictions.spec.mjs`
+   - 4-case test matrix for OAuth + toolset scope combinations
+   - API token blocking verification
+   - Live tool execution with OAuth exchanged token
+
+**Pending:**
+- Additional coverage for error scenarios and edge cases
 
 ---
 
@@ -228,5 +234,6 @@ pub trait ToolsetService: Debug + Send + Sync {
 | Chat Components | `crates/bodhi/src/app/ui/chat/ToolsetsPopover.tsx`, `ToolCallMessage.tsx` |
 | Chat Hooks | `crates/bodhi/src/hooks/use-chat.tsx`, `use-chat-completions.ts` |
 | MSW | `crates/bodhi/src/test-utils/msw-v2/handlers/toolsets.ts` |
-| E2E Tests | `crates/lib_bodhiserver_napi/tests-js/specs/chat/chat-*.spec.mjs` |
+| E2E Tests (Chat) | `crates/lib_bodhiserver_napi/tests-js/specs/chat/chat-*.spec.mjs` |
+| E2E Tests (Auth) | `crates/lib_bodhiserver_napi/tests-js/specs/toolsets/toolsets-auth-restrictions.spec.mjs` |
 | Integration Tests | `crates/integration-tests/tests/test_live_agentic_chat_with_exa.rs` |

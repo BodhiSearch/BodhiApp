@@ -160,14 +160,12 @@ pub async fn auth_middleware(
     // Extract and set toolset scopes, user_id, and azp from the exchanged token
     // These are used by toolset_auth_middleware for external app toolset authorization
     if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-      tracing::debug!(azp = %scope_claims.azp, "auth_middleware: extracted scope claims from token");
       // Extract toolset scopes (space-separated, matches JWT scope format)
       let toolset_scopes: Vec<&str> = scope_claims
         .scope
         .split_whitespace()
         .filter(|s| s.starts_with("scope_toolset-"))
         .collect();
-      tracing::debug!(?toolset_scopes, "auth_middleware: extracted toolset scopes");
       if !toolset_scopes.is_empty() {
         req.headers_mut().insert(
           KEY_HEADER_BODHIAPP_TOOL_SCOPES,
