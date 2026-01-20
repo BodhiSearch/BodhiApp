@@ -764,7 +764,7 @@ impl ToolService for DefaultToolService {
       serde_json::from_str(&config.toolsets_json).unwrap_or_default();
 
     Ok(toolsets.iter().any(|t| {
-      t.get("toolset_id")
+      t.get("id")
         .and_then(|v| v.as_str())
         .map(|id| id == toolset_id)
         .unwrap_or(false)
@@ -1929,7 +1929,7 @@ mod tests {
           id: 1,
           app_client_id: "external-app".to_string(),
           config_version: Some("v1.0.0".to_string()),
-          toolsets_json: r#"[{"toolset_id":"builtin-exa-web-search","toolset_scope":"scope_toolset-builtin-exa-web-search"}]"#.to_string(),
+          toolsets_json: r#"[{"id":"builtin-exa-web-search","toolset_scope":"scope_toolset-builtin-exa-web-search"}]"#.to_string(),
           resource_scope: "scope_resource-bodhi".to_string(),
           created_at: 0,
           updated_at: 0,

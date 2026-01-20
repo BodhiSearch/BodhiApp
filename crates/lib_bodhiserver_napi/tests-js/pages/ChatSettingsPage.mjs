@@ -34,6 +34,9 @@ export class ChatSettingsPage extends BasePage {
     // Stop words
     stopWordsToggle: '[data-testid="stop-words-enabled"]',
     stopWordsInput: '[data-testid="stop-words-input"]',
+
+    // Tool iterations
+    maxToolIterationsInput: '[data-testid="max-tool-iterations-input"]',
   };
 
   /**
@@ -472,5 +475,24 @@ export class ChatSettingsPage extends BasePage {
 
     // Close dropdown by clicking trigger again
     await trigger.click();
+  }
+
+  /**
+   * Max Tool Iterations methods
+   */
+  async expectMaxToolIterationsInputVisible() {
+    const input = this.page.locator(this.selectors.maxToolIterationsInput);
+    await expect(input).toBeVisible();
+  }
+
+  async expectMaxToolIterationsValue(expectedValue) {
+    const input = this.page.locator(this.selectors.maxToolIterationsInput);
+    await expect(input).toHaveValue(expectedValue.toString());
+  }
+
+  async setMaxToolIterations(value) {
+    const input = this.page.locator(this.selectors.maxToolIterationsInput);
+    await input.clear();
+    await input.fill(value.toString());
   }
 }

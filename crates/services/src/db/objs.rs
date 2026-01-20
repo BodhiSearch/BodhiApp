@@ -217,7 +217,7 @@ pub struct AppToolsetConfigRow {
 // AppClientToolsetConfigRow - Database row for cached app-client toolset configuration
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AppClientToolsetConfigRow {
   pub id: i64,
   pub app_client_id: String,

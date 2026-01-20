@@ -44,6 +44,14 @@ export class ChatPage extends BasePage {
     toolCallExpand: '[data-testid="tool-call-expand"]',
     toolCallStatus: '[data-testid="tool-call-status"]',
     toolCallContent: '[data-testid="tool-call-content"]',
+
+    // Toolsets popover elements
+    toolsetsPopoverTrigger: '[data-testid="toolsets-popover-trigger"]',
+    toolsetsPopoverContent: '[data-testid="toolsets-popover-content"]',
+    toolsetItem: (toolsetType) => `[data-testid-type="${toolsetType}"]`,
+    toolsetCheckbox: (toolsetType) =>
+      `[data-testid-type="${toolsetType}"] [data-testid^="toolset-checkbox-"]`,
+    toolsetsBadge: '[data-testid="toolsets-badge"]',
   };
 
   /**
@@ -535,5 +543,70 @@ export class ChatPage extends BasePage {
 
     // Wait for final response from model
     await this.waitForResponseComplete();
+  }
+
+  /**
+   * Toolsets Popover interactions
+   */
+  async openToolsetsPopover() {
+    await this.page.locator(this.selectors.toolsetsPopoverTrigger).click();
+    await expect(this.page.locator(this.selectors.toolsetsPopoverContent)).toBeVisible();
+  }
+
+  async closeToolsetsPopover() {
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator(this.selectors.toolsetsPopoverContent)).not.toBeVisible();
+  }
+
+  async waitForToolsetsToLoad() {
+    await this.page.waitForSelector('[data-testid^="toolset-item-"]', { timeout: 15000 });
+  }
+
+  async enableToolset(toolsetType) {
+    const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
+    const checkbox = toolsetItem.locator('[data-testid^="toolset-checkbox-"]');
+    await expect(checkbox).toBeEnabled();
+    await checkbox.click();
+  }
+
+  async expectToolsetCheckboxChecked(toolsetType) {
+    const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
+    const checkbox = toolsetItem.locator('[data-testid^="toolset-checkbox-"]');
+    await expect(checkbox).toBeChecked();
+  }
+
+  async expectToolsetBadgeVisible(count) {
+    const badge = this.page.locator(this.selectors.toolsetsBadge);
+    await expect(badge).toBeVisible();
+    await expect(badge).toContainText(count.toString());
+  }
+
+  async expectToolsetsPopoverTriggerVisible() {
+    const trigger = this.page.locator(this.selectors.toolsetsPopoverTrigger);
+    await expect(trigger).toBeVisible();
+    await expect(trigger.locator('svg')).toBeVisible();
+  }
+
+  async expectToolsetsPopoverOpen() {
+    const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
+    await expect(popoverContent).toBeVisible();
+    await expect(popoverContent.locator('h4')).toContainText('Toolsets');
+  }
+
+  async expectToolsetInPopover(toolsetType) {
+    const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
+    await expect(toolsetItem).toBeVisible();
+  }
+
+  async expectToolsetsLoadingOrContent() {
+    const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
+    const hasContent =
+      (await popoverContent.locator('[data-testid^="toolset-item-"]').count()) > 0 ||
+      (await popoverContent.getByText('Loading...').count()) > 0 ||
+      (await popoverContent.getByText('No toolsets available').count()) > 0;
+    expect(hasContent).toBe(true);
   }
 }

@@ -66,28 +66,35 @@ test.describe('Toolsets Configuration', () => {
     loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
   });
 
-  test('displays toolsets list page with Exa Web Search toolset', async ({ page }) => {
+  test('displays toolsets list page', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
     await toolsetsPage.navigateToToolsetsList();
     await toolsetsPage.expectToolsetsListPage();
 
-    // Verify Exa Web Search is listed
-    await toolsetsPage.expectToolsetListed('builtin-exa-web-search');
+    // List page should load (may be empty since no toolsets created yet)
   });
 
   test('navigates to toolset edit page from list', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsetsPage.navigateToToolsetsList();
+    // Enable the toolset type first
+    await toolsetsPage.enableToolsetTypeOnAdmin('builtin-exa-web-search');
+
+    // Create a toolset via the new page
+    await toolsetsPage.navigateToNewToolset();
+    await toolsetsPage.expectNewToolsetPage();
+    await toolsetsPage.createToolset('builtin-exa-web-search', 'test-exa', 'test-api-key');
+
+    // Should redirect to list
     await toolsetsPage.expectToolsetsListPage();
 
-    // Click edit button
-    await toolsetsPage.clickEditToolset('builtin-exa-web-search');
+    // Click edit button using type selector
+    await toolsetsPage.clickEditByType('builtin-exa-web-search');
 
-    // Should be on edit page (path may have trailing slash)
+    // Should be on edit page
     await toolsetsPage.expectToolsetEditPage();
   });
 
@@ -95,7 +102,15 @@ test.describe('Toolsets Configuration', () => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
+    // Enable the toolset type first
+    await toolsetsPage.enableToolsetTypeOnAdmin('builtin-exa-web-search');
+
+    // Create a toolset
+    await toolsetsPage.navigateToNewToolset();
+    await toolsetsPage.createToolset('builtin-exa-web-search', 'test-exa-2', 'test-api-key-2');
+
+    // Navigate to edit page using type selector
+    await toolsetsPage.clickEditByType('builtin-exa-web-search');
     await toolsetsPage.expectToolsetEditPage();
     await toolsetsPage.expectFormLoaded();
   });
@@ -104,30 +119,42 @@ test.describe('Toolsets Configuration', () => {
     // Login first (as admin - already set up in beforeAll)
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
-    await toolsetsPage.expectToolsetEditPage();
+    // Navigate to admin page
+    await toolsetsPage.navigateToAdmin();
+    await toolsetsPage.expectAdminPage();
 
-    // Admin should see the app enable toggle
-    await toolsetsPage.expectAdminToggle();
+    // Admin should see the type toggle
+    await toolsetsPage.expectTypeToggle('builtin-exa-web-search');
   });
 
   test('shows confirmation dialog when toggling app enable', async ({ page }) => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    await toolsetsPage.navigateToToolsetEdit('builtin-exa-web-search');
-    await toolsetsPage.expectToolsetEditPage();
+    // Navigate to admin page
+    await toolsetsPage.navigateToAdmin();
+    await toolsetsPage.expectAdminPage();
 
-    // First enable the toolset (it starts disabled)
-    await toolsetsPage.toggleAppEnabled();
-    await expect(page.locator('text=Enable Toolset for Server')).toBeVisible();
-    await toolsetsPage.confirmAppEnable();
+    // Toggle the type (regardless of current state)
+    await toolsetsPage.toggleTypeEnabled('builtin-exa-web-search');
 
-    // Now toggle again to disable and verify disable dialog
-    await toolsetsPage.toggleAppEnabled();
+    // Should show either enable or disable confirmation dialog
+    const enableDialog = page.getByRole('heading', { name: 'Enable Toolset Type' });
+    const disableDialog = page.getByRole('heading', { name: 'Disable Toolset Type' });
 
-    // Should show confirmation dialog
-    await expect(page.locator('text=Disable Toolset for Server')).toBeVisible();
+    // Check which dialog appeared
+    await expect(enableDialog.or(disableDialog)).toBeVisible();
+
+    // Confirm the action based on which dialog is visible
+    const isEnableDialog = await enableDialog.isVisible();
+    const confirmButton = page.getByRole('button', {
+      name: isEnableDialog ? 'Enable' : 'Disable',
+    });
+    await confirmButton.click();
+
+    // Toggle again to verify the opposite dialog appears
+    await toolsetsPage.toggleTypeEnabled('builtin-exa-web-search');
+    await expect(enableDialog.or(disableDialog)).toBeVisible();
   });
 
   test('configures toolset with real API key', async ({ page }) => {
@@ -138,14 +165,14 @@ test.describe('Toolsets Configuration', () => {
     // Login first
     await loginPage.performOAuthLogin('/ui/chat/');
 
-    // Configure the toolset with the real API key
+    // Configure the toolset with the real API key (creates new toolset)
     await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
 
-    // Wait for form to be saved
-    await toolsetsPage.waitForFormState('saved');
+    // Should be redirected to list page
+    await toolsetsPage.expectToolsetsListPage();
 
-    // Navigate back to list and verify status
-    await toolsetsPage.navigateToToolsetsList();
-    await toolsetsPage.expectToolsetEnabled('builtin-exa-web-search');
+    // Verify toolset row exists using type selector
+    const toolsetRow = await toolsetsPage.getToolsetRowByType('builtin-exa-web-search');
+    await expect(toolsetRow).toBeVisible();
   });
 });

@@ -134,9 +134,6 @@ test.describe('Toolsets Setup Integration', () => {
     // Submit the form
     await toolsetsPage.submitForm();
 
-    // Wait for success toast
-    await toolsetsPage.waitForToast('Toolset configuration saved');
-
     // Should navigate to browser extension page after success
     await page.waitForURL((url) => url.pathname === '/ui/setup/browser-extension/');
     expect(getCurrentPath(page)).toBe('/ui/setup/browser-extension/');

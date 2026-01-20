@@ -97,7 +97,12 @@ function ToolsetsPageContent() {
     const canEdit = toolset.app_enabled;
 
     return [
-      <TableCell key="name" data-testid={`toolset-name-${toolset.id}`}>
+      <TableCell
+        key="name"
+        data-testid={`toolset-name-${toolset.id}`}
+        data-testid-type={toolset.toolset_type}
+        data-test-uuid={toolset.id}
+      >
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{toolset.name}</span>
@@ -119,6 +124,7 @@ function ToolsetsPageContent() {
             title={canEdit ? `Edit ${toolset.name}` : 'Disabled by administrator'}
             className="h-8 w-8 p-0"
             data-testid={`toolset-edit-button-${toolset.id}`}
+            data-testid-type={toolset.toolset_type}
           >
             <Pencil className="h-4 w-4" />
           </Button>

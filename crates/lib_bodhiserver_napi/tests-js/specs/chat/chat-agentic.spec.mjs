@@ -39,10 +39,7 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
   test.beforeAll(async () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
-    if (!exaApiKey) {
-      test.skip();
-      return;
-    }
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
 
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
@@ -87,34 +84,21 @@ test.describe('Chat Interface - Agentic Flow', () => {
     page,
   }) => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
-    if (!exaApiKey) {
-      test.skip();
-      return;
-    }
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
 
     await loginPage.performOAuthLogin();
 
     await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
-    await toolsetsPage.waitForFormState('saved');
 
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
     await chatSettingsPage.selectModelQwen();
 
-    const toolsetsButton = page.locator('[data-testid="toolsets-popover-trigger"]');
-    await toolsetsButton.click();
-
-    const popoverContent = page.locator('[data-testid="toolsets-popover-content"]');
-    await expect(popoverContent).toBeVisible();
-
-    await page.waitForSelector('[data-testid^="toolset-item-"]', { timeout: 15000 });
-    const exaCheckbox = popoverContent.locator(
-      '[data-testid="toolset-checkbox-builtin-exa-web-search"]'
-    );
-    await expect(exaCheckbox).toBeEnabled();
-    await exaCheckbox.click();
-
-    await page.keyboard.press('Escape');
+    await chatPage.openToolsetsPopover();
+    await chatPage.waitForToolsetsToLoad();
+    await chatPage.enableToolset('builtin-exa-web-search');
+    await chatPage.closeToolsetsPopover();
 
     await chatPage.sendMessage('What is the latest news about AI from San Francisco?');
 

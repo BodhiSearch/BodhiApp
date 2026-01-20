@@ -27,6 +27,7 @@ interface DataTableProps<T> {
   renderRow: (item: T) => React.ReactNode;
   renderExpandedRow?: (item: T) => React.ReactNode;
   getItemId: (item: T) => string; // New prop for getting unique ID
+  getRowProps?: (item: T) => Record<string, any>; // Optional row attributes
 }
 
 export function DataTable<T>({
@@ -38,6 +39,7 @@ export function DataTable<T>({
   renderRow,
   renderExpandedRow,
   getItemId, // New prop
+  getRowProps, // New prop for custom row attributes
 }: DataTableProps<T>) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -68,18 +70,21 @@ export function DataTable<T>({
     );
   }
 
-  const renderTableRows = (item: T, showExpand: boolean) => (
-    <TableRow key={getItemId(item)}>
-      {renderRow(item)}
-      {showExpand && (
-        <TableCell>
-          <Button variant="ghost" size="sm" onClick={() => toggleRowExpansion(getItemId(item))}>
-            {expandedRow === getItemId(item) ? <ChevronUp /> : <ChevronDown />}
-          </Button>
-        </TableCell>
-      )}
-    </TableRow>
-  );
+  const renderTableRows = (item: T, showExpand: boolean) => {
+    const rowProps = getRowProps?.(item) || {};
+    return (
+      <TableRow key={getItemId(item)} {...rowProps}>
+        {renderRow(item)}
+        {showExpand && (
+          <TableCell>
+            <Button variant="ghost" size="sm" onClick={() => toggleRowExpansion(getItemId(item))}>
+              {expandedRow === getItemId(item) ? <ChevronUp /> : <ChevronDown />}
+            </Button>
+          </TableCell>
+        )}
+      </TableRow>
+    );
+  };
 
   return (
     <Table>

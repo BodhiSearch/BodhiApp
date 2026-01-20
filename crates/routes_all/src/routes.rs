@@ -134,9 +134,8 @@ pub fn build_routes(
       },
     ));
 
-  // Toolset instance CRUD APIs (session and OAuth, no API tokens)
+  // Toolset instance CRUD APIs (session-only, no OAuth or API tokens)
   let user_session_apis = Router::new()
-    .route(ENDPOINT_TOOLSETS, get(list_toolsets_handler))
     .route(ENDPOINT_TOOLSETS, post(create_toolset_handler))
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
@@ -152,6 +151,14 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
+      move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
+    ));
+
+  // Toolset list API (session and OAuth, no API tokens)
+  let user_oauth_apis = Router::new()
+    .route(ENDPOINT_TOOLSETS, get(list_toolsets_handler))
+    .route_layer(from_fn_with_state(
+      state.clone(),
       move |state, req, next| {
         api_auth_middleware(
           ResourceRole::User,
@@ -165,12 +172,25 @@ pub fn build_routes(
     ));
 
   // Toolset execute API with custom middleware - session and OAuth tokens, NOT API tokens
-  let user_oauth_apis = Router::new()
+  let toolset_exec_apis = Router::new()
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}/execute/{{method}}"),
       post(execute_toolset_handler),
     )
-    .route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware));
+    .route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(
+          ResourceRole::User,
+          None,
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
+      },
+    ));
 
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
@@ -308,6 +328,7 @@ pub fn build_routes(
     .merge(user_apis)
     .merge(user_session_apis)
     .merge(user_oauth_apis)
+    .merge(toolset_exec_apis)
     .merge(power_user_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)

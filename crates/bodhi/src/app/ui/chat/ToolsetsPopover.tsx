@@ -148,7 +148,7 @@ function ToolsetItem({
   );
 
   return (
-    <div data-testid={`toolset-item-${toolset.id}`}>
+    <div data-testid={`toolset-item-${toolset.id}`} data-testid-type={toolset.toolset_type}>
       {rowWithTooltip}
       {/* Expanded child tools */}
       {isExpanded && isAvailable && (

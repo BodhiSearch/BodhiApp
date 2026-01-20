@@ -53,7 +53,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
   println!("Step 1: Enabling Exa toolset at app level...");
   let enable_response = client
     .put(format!(
-      "{}/bodhi/v1/toolsets/builtin-exa-web-search/app-config",
+      "{}/bodhi/v1/toolset_types/builtin-exa-web-search/app-config",
       base_url
     ))
     .header("Cookie", session_cookie.to_string())
@@ -72,12 +72,12 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .expect("INTEG_TEST_EXA_API_KEY environment variable must be set for this test");
 
   let config_response = client
-    .put(format!(
-      "{}/bodhi/v1/toolsets/builtin-exa-web-search/config",
-      base_url
-    ))
+    .post(format!("{}/bodhi/v1/toolsets", base_url))
     .header("Cookie", session_cookie.to_string())
     .json(&json!({
+      "toolset_type": "builtin-exa-web-search",
+      "name": "builtin-exa-web-search",
+      "description": "Exa web search toolset",
       "enabled": true,
       "api_key": exa_api_key
     }))
@@ -85,7 +85,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .await?;
 
   assert_eq!(
-    StatusCode::OK,
+    StatusCode::CREATED,
     config_response.status(),
     "Failed to configure Exa toolset"
   );
@@ -106,13 +106,14 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .and_then(|toolsets| {
       toolsets
         .iter()
-        .find(|t| t["toolset_id"] == "builtin-exa-web-search")
+        .find(|t| t["toolset_type"] == "builtin-exa-web-search")
     })
     .expect("Exa toolset not found in available toolsets");
 
   assert_eq!(true, exa_toolset["app_enabled"]);
-  assert_eq!(true, exa_toolset["user_config"]["enabled"]);
-  assert_eq!(true, exa_toolset["user_config"]["has_api_key"]);
+  assert_eq!(true, exa_toolset["enabled"]);
+  assert_eq!(true, exa_toolset["has_api_key"]);
+  let toolset_uuid = exa_toolset["id"].as_str().expect("Expected toolset UUID");
 
   let tools = exa_toolset["tools"]
     .as_array()
@@ -216,8 +217,8 @@ async fn test_live_agentic_chat_with_exa_toolset(
   println!("Step 6: Executing tool call via backend...");
   let execute_response = client
     .post(format!(
-      "{}/bodhi/v1/toolsets/builtin-exa-web-search/execute/{}",
-      base_url, method
+      "{}/bodhi/v1/toolsets/{}/execute/{}",
+      base_url, toolset_uuid, method
     ))
     .header("Cookie", session_cookie.to_string())
     .json(&json!({

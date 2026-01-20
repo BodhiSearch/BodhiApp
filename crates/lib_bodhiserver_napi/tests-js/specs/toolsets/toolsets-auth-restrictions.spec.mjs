@@ -39,6 +39,7 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
   let authClient;
   let resourceClient;
   let apiToken;
+  let toolsetUuid;
 
   test.beforeAll(async ({ browser }) => {
     authServerConfig = getAuthServerConfig();
@@ -79,6 +80,18 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     await tokensPage.expectTokenDialog();
     apiToken = await tokensPage.copyTokenFromDialog();
     await tokensPage.closeTokenDialog();
+
+    // Create a toolset to get its UUID for testing
+    const toolsetsPage = new ToolsetsPage(page, baseUrl);
+    const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
+    await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
+
+    // Get the UUID from the data-test-uuid attribute
+    await toolsetsPage.navigateToToolsetsList();
+    toolsetUuid = await toolsetsPage.getToolsetUuidByType('builtin-exa-web-search');
+
     await context.close();
   });
 
@@ -100,8 +113,8 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     expect(response.status).toBe(401);
   });
 
-  test('GET /toolsets/{id}/config with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/config`, {
+  test('GET /toolsets/{id} with API token returns 401 Unauthorized', async () => {
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
@@ -111,8 +124,8 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     expect(response.status).toBe(401);
   });
 
-  test('PUT /toolsets/{id}/config with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/config`, {
+  test('PUT /toolsets/{id} with API token returns 401 Unauthorized', async () => {
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${apiToken}`,
@@ -127,8 +140,8 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     expect(response.status).toBe(401);
   });
 
-  test('DELETE /toolsets/{id}/config with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/config`, {
+  test('DELETE /toolsets/{id} with API token returns 401 Unauthorized', async () => {
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${apiToken}`,
@@ -229,6 +242,21 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY environment variable is required').toBeTruthy();
 
+    // Phase 1: Session login to configure toolset with API key
+    // Use a new browser context for session login to avoid cookie conflicts
+    const sessionContext = await browser.newContext();
+    const sessionPage = await sessionContext.newPage();
+
+    const loginPage = new LoginPage(sessionPage, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Configure Exa toolset with API key via session auth
+    const toolsetsPage = new ToolsetsPage(sessionPage, baseUrl);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_ID, exaApiKey);
+
+    // Close session context - we'll use OAuth token from here on
+    await sessionContext.close();
+
     // Get dev console token for client management
     const devConsoleToken = await authClient.getDevConsoleToken(
       testCredentials.username,
@@ -258,22 +286,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(requestAccessResponse.status).toBe(200);
     const requestAccessData = await requestAccessResponse.json();
     const resourceScope = requestAccessData.scope;
-
-    // Phase 1: Session login to configure toolset with API key
-    // Use a new browser context for session login to avoid cookie conflicts
-    const sessionContext = await browser.newContext();
-    const sessionPage = await sessionContext.newPage();
-
-    const loginPage = new LoginPage(sessionPage, baseUrl, authServerConfig, testCredentials);
-    await loginPage.performOAuthLogin();
-
-    // Configure Exa toolset with API key via session auth
-    const toolsetsPage = new ToolsetsPage(sessionPage, baseUrl);
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_ID, exaApiKey);
-    await toolsetsPage.waitForFormState('saved');
-
-    // Close session context - we'll use OAuth token from here on
-    await sessionContext.close();
 
     // Phase 2: OAuth flow via test app
     // Navigate to test app and complete OAuth flow WITH toolset scope
@@ -314,27 +326,30 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(Array.isArray(data.toolsets)).toBe(true);
 
     // Should contain the toolset we have the scope for
-    const hasExaToolset = data.toolsets.some((t) => t.toolset_id === TOOLSET_ID);
-    expect(hasExaToolset).toBe(true);
+    const exaToolset = data.toolsets.find((t) => t.toolset_type === TOOLSET_ID);
+    expect(exaToolset).toBeTruthy();
 
     // Execute the toolset using OAuth token
-    const executeResponse = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/execute/search`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tool_call_id: 'test_call_oauth',
-        params: {
-          query: 'latest news about AI from San Francisco',
-          num_results: 3,
+    const executeResponse = await fetch(
+      `${baseUrl}/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          tool_call_id: 'test_call_oauth',
+          params: {
+            query: 'latest news about AI from San Francisco',
+            num_results: 3,
+          },
+        }),
+      }
+    );
 
-    expect(executeResponse.status).toBe(200);
     const executeData = await executeResponse.json();
+    expect(executeResponse.status).toBe(200);
 
     // Verify response structure matches ToolsetExecutionResponse
     expect(executeData.tool_call_id).toBe('test_call_oauth');
@@ -564,7 +579,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
   });
 });
 
-test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
+test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
   let authServerConfig;
   let testCredentials;
   let authClient;
@@ -574,6 +589,7 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
   let baseUrl;
   let testAppUrl;
   let port;
+  let toolsetUuid;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
@@ -581,7 +597,7 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     authClient = createAuthServerTestClient(authServerConfig);
   });
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ browser }) => {
     port = randomPort();
     const serverUrl = `http://localhost:${port}`;
 
@@ -605,6 +621,25 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     });
     baseUrl = await serverManager.startServer();
 
+    // Create a real toolset via session auth to get its UUID
+    const sessionContext = await browser.newContext();
+    const sessionPage = await sessionContext.newPage();
+    const loginPage = new LoginPage(sessionPage, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Configure Exa toolset to create an instance
+    const toolsetsPage = new ToolsetsPage(sessionPage, baseUrl);
+    const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_ID, exaApiKey);
+
+    // Get the UUID from the data-test-uuid attribute
+    await toolsetsPage.navigateToToolsetsList();
+    toolsetUuid = await toolsetsPage.getToolsetUuidByType('builtin-exa-web-search');
+
+    await sessionContext.close();
+
     // Setup static server for OAuth test app
     const appPort = randomPort();
     staticServer = createStaticServer(appPort);
@@ -620,9 +655,7 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     }
   });
 
-  test('GET /toolsets/{id}/config with OAuth token returns 401 (session-only)', async ({
-    page,
-  }) => {
+  test('GET /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
     // Get dev console token
     const devConsoleToken = await authClient.getDevConsoleToken(
       testCredentials.username,
@@ -634,8 +667,8 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     const appClient = await authClient.createAppClient(
       devConsoleToken,
       port,
-      'toolsets-config-test-get',
-      'Test client for GET config endpoint',
+      'toolsets-crud-test-get',
+      'Test client for GET /toolsets/{id} endpoint',
       [redirectUri],
       [authServerConfig.toolsetScopeExaWebSearchId]
     );
@@ -670,21 +703,19 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
     const accessToken = await oauth2TestAppPage.getAccessToken();
 
-    // Test: Config endpoints are session-only, OAuth tokens should be rejected
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/config`, {
+    // Test: OAuth tokens are blocked for /toolsets/{id} endpoint (session-only)
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
 
-    // Config endpoints are session-only - OAuth tokens should get 401
+    // OAuth tokens should be rejected
     expect(response.status).toBe(401);
   });
 
-  test('PUT /toolsets/{id}/config with OAuth token returns 401 (session-only)', async ({
-    page,
-  }) => {
+  test('PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
     const devConsoleToken = await authClient.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
@@ -695,8 +726,8 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     const appClient = await authClient.createAppClient(
       devConsoleToken,
       port,
-      'toolsets-config-test-put',
-      'Test client for PUT config endpoint',
+      'toolsets-crud-test-put',
+      'Test client for PUT /toolsets/{id} endpoint',
       [redirectUri],
       [authServerConfig.toolsetScopeExaWebSearchId]
     );
@@ -730,19 +761,22 @@ test.describe('OAuth Token - Config Endpoints (Session-Only)', () => {
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
     const accessToken = await oauth2TestAppPage.getAccessToken();
 
-    // Test: PUT config should be rejected for OAuth tokens
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/config`, {
+    // Test: OAuth tokens are blocked for /toolsets/{id} endpoint (session-only)
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        enabled: true,
-        api_key: 'test-key',
+        name: 'Updated-OAuth',
+        description: 'Updated from OAuth test',
+        enabled: false,
+        api_key: { action: 'Keep' },
       }),
     });
 
+    // OAuth tokens should be rejected
     expect(response.status).toBe(401);
   });
 });

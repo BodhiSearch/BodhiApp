@@ -1,6 +1,7 @@
 use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::Utc;
 use objs::{AppRegInfoMissingError, ResourceRole, ResourceScope, TokenScope, UserScope};
+use serde::{Deserialize, Serialize};
 use services::{
   db::{DbService, TokenStatus},
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims,
@@ -12,6 +13,12 @@ use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
 const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CachedExchangeResult {
+  token: String,
+  azp: String,
+}
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
@@ -44,7 +51,7 @@ impl DefaultTokenService {
   pub async fn validate_bearer_token(
     &self,
     header: &str,
-  ) -> Result<(String, ResourceScope), AuthError> {
+  ) -> Result<(String, ResourceScope, Option<String>), AuthError> {
     // Extract token from header
     let bearer_token = header
       .strip_prefix(BEARER_PREFIX)
@@ -101,7 +108,11 @@ impl DefaultTokenService {
         .map_err(|e| TokenError::InvalidToken(format!("Invalid scope: {}", e)))?;
 
       // 7. Return ResourceScope::Token with the bearer token itself as the access token
-      return Ok((bearer_token.to_string(), ResourceScope::Token(token_scope)));
+      return Ok((
+        bearer_token.to_string(),
+        ResourceScope::Token(token_scope),
+        None,
+      ));
     }
 
     // EXTERNAL CLIENT TOKEN VALIDATION (keep existing logic)
@@ -117,46 +128,62 @@ impl DefaultTokenService {
     let token_digest = format!("{:x}", hasher.finalize())[0..12].to_string();
 
     // Check cache for exchanged token
-    let cached_token = if let Some(access_token) = self
+    let cached_token = if let Some(cached_json) = self
       .cache_service
       .get(&format!("exchanged_token:{}", &token_digest))
     {
-      let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
-      if scope_claims.exp < Utc::now().timestamp() as u64 {
-        None
+      if let Ok(cached_result) = serde_json::from_str::<CachedExchangeResult>(&cached_json) {
+        let scope_claims = extract_claims::<ScopeClaims>(&cached_result.token)?;
+        if scope_claims.exp < Utc::now().timestamp() as u64 {
+          None
+        } else {
+          let user_scope = UserScope::from_scope(&scope_claims.scope)?;
+          Some((
+            cached_result.token,
+            ResourceScope::User(user_scope),
+            cached_result.azp,
+          ))
+        }
       } else {
-        let user_scope = UserScope::from_scope(&scope_claims.scope)?;
-        Some((access_token, ResourceScope::User(user_scope)))
+        None
       }
     } else {
       None
     };
 
-    if let Some((access_token, resource_scope)) = cached_token {
-      return Ok((access_token, resource_scope));
+    if let Some((access_token, resource_scope, azp)) = cached_token {
+      return Ok((access_token, resource_scope, Some(azp)));
     }
 
     // Exchange external client token
-    let (access_token, resource_scope) = self.handle_external_client_token(bearer_token).await?;
-    self
-      .cache_service
-      .set(&format!("exchanged_token:{}", &token_digest), &access_token);
-    Ok((access_token, resource_scope))
+    let (access_token, resource_scope, azp) =
+      self.handle_external_client_token(bearer_token).await?;
+    let cached_result = CachedExchangeResult {
+      token: access_token.clone(),
+      azp: azp.clone(),
+    };
+    if let Ok(cached_json) = serde_json::to_string(&cached_result) {
+      self
+        .cache_service
+        .set(&format!("exchanged_token:{}", &token_digest), &cached_json);
+    }
+    Ok((access_token, resource_scope, Some(azp)))
   }
 
   /// Handle external client token validation and exchange
   async fn handle_external_client_token(
     &self,
     external_token: &str,
-  ) -> Result<(String, ResourceScope), AuthError> {
+  ) -> Result<(String, ResourceScope, String), AuthError> {
     // Get app registration info
     let app_reg_info: AppRegInfo = self
       .secret_service
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?;
 
-    // Parse token claims to validate issuer
+    // Parse token claims to validate issuer and extract azp BEFORE exchange
     let claims = extract_claims::<ScopeClaims>(external_token)?;
+    let original_azp = claims.azp.clone();
 
     // Validate that it's from the same issuer
     if claims.iss != self.setting_service.auth_issuer() {
@@ -203,7 +230,7 @@ impl DefaultTokenService {
     let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
     let user_scope = UserScope::from_scope(&scope_claims.scope)?;
 
-    Ok((access_token, ResourceScope::User(user_scope)))
+    Ok((access_token, ResourceScope::User(user_scope), original_azp))
   }
 
   pub async fn get_valid_session_token(
@@ -483,12 +510,13 @@ mod tests {
     );
 
     // Validate token
-    let (access_token, scope) = token_service
+    let (access_token, scope, azp) = token_service
       .validate_bearer_token(&format!("Bearer {}", token_str))
       .await?;
 
     assert_eq!(token_str, access_token);
     assert_eq!(ResourceScope::Token(expected_scope), scope);
+    assert_eq!(None, azp);
     Ok(())
   }
 
@@ -539,9 +567,10 @@ mod tests {
       .await;
 
     assert_eq!(true, result.is_ok());
-    let (access_token, scope) = result.unwrap();
+    let (access_token, scope, azp) = result.unwrap();
     assert_eq!(token_str, access_token);
     assert_eq!(ResourceScope::Token(TokenScope::User), scope);
+    assert_eq!(None, azp);
     Ok(())
   }
 
@@ -741,13 +770,14 @@ mod tests {
     ));
 
     // When - Try to validate the external token
-    let (access_token, scope) = token_service
+    let (access_token, scope, azp) = token_service
       .validate_bearer_token(&format!("Bearer {}", external_token))
       .await?;
 
     // Then - Should succeed with exchanged token
     assert_eq!(exchanged_token, access_token);
     assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(Some(external_client_id.to_string()), azp);
     Ok(())
   }
 
@@ -863,13 +893,14 @@ mod tests {
     ));
 
     // When - First validate the legitimate token (this will cache it)
-    let (legitimate_access_token, legitimate_scope) = token_service
+    let (legitimate_access_token, legitimate_scope, legitimate_azp) = token_service
       .validate_bearer_token(&format!("Bearer {}", legitimate_token))
       .await?;
 
     // Then - Verify legitimate token works as expected
     assert_eq!(legitimate_exchanged_token, legitimate_access_token);
     assert_eq!(ResourceScope::User(UserScope::User), legitimate_scope);
+    assert_eq!(Some(external_client_id.to_string()), legitimate_azp);
 
     // When - Try to validate the forged token with same JTI
     let forged_result = token_service

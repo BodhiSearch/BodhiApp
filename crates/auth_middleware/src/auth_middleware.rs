@@ -146,7 +146,7 @@ pub async fn auth_middleware(
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let (access_token, resource_scope) = token_service.validate_bearer_token(header).await?;
+    let (access_token, resource_scope, azp) = token_service.validate_bearer_token(header).await?;
     tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
     req
       .headers_mut()
@@ -157,7 +157,7 @@ pub async fn auth_middleware(
       resource_scope.to_string().parse().unwrap(),
     );
 
-    // Extract and set toolset scopes, user_id, and azp from the exchanged token
+    // Extract and set toolset scopes and user_id from the exchanged token
     // These are used by toolset_auth_middleware for external app toolset authorization
     if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
       // Extract toolset scopes (space-separated, matches JWT scope format)
@@ -177,10 +177,13 @@ pub async fn auth_middleware(
         KEY_HEADER_BODHIAPP_USER_ID,
         scope_claims.sub.parse().unwrap(),
       );
-      // Set azp (authorized party / app-client ID)
+    }
+
+    // Set azp (authorized party / app-client ID) from validate_bearer_token result
+    if let Some(azp) = azp {
       req
         .headers_mut()
-        .insert(KEY_HEADER_BODHIAPP_AZP, scope_claims.azp.parse().unwrap());
+        .insert(KEY_HEADER_BODHIAPP_AZP, azp.parse().unwrap());
     }
 
     Ok(next.run(req).await)
@@ -253,7 +256,8 @@ pub async fn inject_optional_auth_info(
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     // Bearer token
     if let Ok(header) = header.to_str() {
-      if let Ok((access_token, resource_scope)) = token_service.validate_bearer_token(header).await
+      if let Ok((access_token, resource_scope, _azp)) =
+        token_service.validate_bearer_token(header).await
       {
         req
           .headers_mut()
@@ -262,7 +266,7 @@ pub async fn inject_optional_auth_info(
           KEY_HEADER_BODHIAPP_SCOPE,
           resource_scope.to_string().parse().unwrap(),
         );
-        // Extract and set toolset scopes and azp from the exchanged token
+        // Extract and set toolset scopes from the exchanged token
         if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
           let toolset_scopes: Vec<&str> = scope_claims
             .scope
@@ -275,9 +279,6 @@ pub async fn inject_optional_auth_info(
               toolset_scopes.join(" ").parse().unwrap(),
             );
           }
-          req
-            .headers_mut()
-            .insert(KEY_HEADER_BODHIAPP_AZP, scope_claims.azp.parse().unwrap());
         }
       }
     }

@@ -175,7 +175,10 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           <Card className={!isAppEnabled ? 'opacity-60' : ''}>
             <CardHeader>
               <CardTitle className="text-lg">Create Toolset</CardTitle>
-              <CardDescription>
+              <CardDescription
+                data-testid="app-disabled-message"
+                data-test-state={isAppEnabled ? 'enabled' : 'disabled'}
+              >
                 {isAppEnabled
                   ? 'Configure your first Exa Web Search toolset'
                   : 'Enable the toolset type above to create a toolset'}

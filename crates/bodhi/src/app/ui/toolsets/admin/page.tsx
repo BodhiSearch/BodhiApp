@@ -176,6 +176,10 @@ function AdminToolsetsPageContent() {
           loading={isLoading}
           renderRow={renderRow}
           getItemId={(type) => type.toolset_id}
+          getRowProps={(type) => ({
+            'data-testid': `type-row-${type.toolset_id}`,
+            'data-test-state': type.app_enabled ? 'enabled' : 'disabled',
+          })}
           sort={{ column: 'name', direction: 'asc' }}
           onSortChange={() => {}}
           data-testid="types-table"

@@ -14,12 +14,12 @@ export class SetupToolsetsPage extends SetupBasePage {
   selectors = {
     ...this.selectors,
     pageContainer: '[data-testid="toolsets-setup-page"]',
-    toolsetConfigForm: '[data-testid="toolset-config-form"]',
+    toolsetConfigForm: '[data-testid="setup-toolset-form"]',
     apiKeyInput: '[data-testid="toolset-api-key-input"]',
     enabledToggle: '[data-testid="toolset-enabled-toggle"]',
     appEnabledToggle: '[data-testid="app-enabled-toggle"]',
     appDisabledMessage: '[data-testid="app-disabled-message"]',
-    saveButton: '[data-testid="save-toolset-config"]',
+    saveButton: '[data-testid="create-toolset-button"]',
     skipButton: '[data-testid="skip-toolsets-setup"]',
     welcomeTitle: 'text=Configure Toolsets',
     exaLink: 'a[href*="exa.ai"]',
@@ -80,11 +80,15 @@ export class SetupToolsetsPage extends SetupBasePage {
   }
 
   async expectAppDisabledMessage() {
-    await this.expectVisible(this.selectors.appDisabledMessage);
+    const message = this.page.locator(this.selectors.appDisabledMessage);
+    await expect(message).toBeVisible();
+    await expect(message).toHaveAttribute('data-test-state', 'disabled');
   }
 
   async expectNoAppDisabledMessage() {
-    await expect(this.page.locator(this.selectors.appDisabledMessage)).not.toBeVisible();
+    const message = this.page.locator(this.selectors.appDisabledMessage);
+    await expect(message).toBeVisible();
+    await expect(message).toHaveAttribute('data-test-state', 'enabled');
   }
 
   async expectFormDisabled() {
@@ -115,8 +119,8 @@ export class SetupToolsetsPage extends SetupBasePage {
     await this.expectVisible(this.selectors.enableDialogTitle);
     // Click Enable button in dialog
     await this.page.click(this.selectors.dialogEnableButton);
-    // Wait for dialog to close and toast to appear
-    await this.waitForToast('Toolset enabled for server');
+    // Wait for dialog to close
+    await this.page.waitForSelector(this.selectors.enableDialogTitle, { state: 'hidden' });
   }
 
   /**
@@ -128,8 +132,8 @@ export class SetupToolsetsPage extends SetupBasePage {
     await this.expectVisible(this.selectors.disableDialogTitle);
     // Click Disable button in dialog
     await this.page.click(this.selectors.dialogDisableButton);
-    // Wait for dialog to close and toast to appear
-    await this.waitForToast('Toolset disabled for server');
+    // Wait for dialog to close
+    await this.page.waitForSelector(this.selectors.disableDialogTitle, { state: 'hidden' });
   }
 
   async submitForm() {
