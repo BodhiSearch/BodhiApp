@@ -35,6 +35,10 @@ pub enum ToolsetAuthError {
   #[error_meta(error_type = ErrorType::Forbidden)]
   MissingAzpHeader,
 
+  #[error("instance_not_found")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  InstanceNotFound,
+
   #[error(transparent)]
   ToolsetError(#[from] ToolsetError),
 }
@@ -42,22 +46,22 @@ pub enum ToolsetAuthError {
 /// Middleware for toolset execution endpoints
 ///
 /// Authorization rules depend on auth type:
-/// - Session (has ROLE header): Check app-level + user config
-/// - External OAuth (has SCOPE starting with "scope_user_"): Check app-level + app-client + scope + user config
+/// - Session (has ROLE header): Check instance ownership + app-level type enabled + instance available
+/// - External OAuth (has SCOPE starting with "scope_user_"): Check instance ownership + app-level type enabled + app-client registered + scope + instance available
 ///
 /// Note: API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
 pub async fn toolset_auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
-  Path(toolset_id): Path<String>,
+  Path((id, method)): Path<(String, String)>,
   req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
-  Ok(_impl(State(state), Path(toolset_id), req, next).await?)
+  Ok(_impl(State(state), Path((id, method)), req, next).await?)
 }
 
 async fn _impl(
   State(state): State<Arc<dyn RouterState>>,
-  Path(toolset_id): Path<String>,
+  Path((id, _method)): Path<(String, String)>,
   req: Request,
   next: Next,
 ) -> Result<Response, ToolsetAuthError> {
@@ -89,35 +93,43 @@ async fn _impl(
 
   let tool_service = state.app_service().tool_service();
 
-  // 1. Check app-level enabled (both auth types)
-  if !tool_service.is_toolset_enabled_for_app(&toolset_id).await? {
+  // 1. Get instance and verify ownership (returns None if not found OR not owned)
+  let instance = tool_service
+    .get(user_id, &id)
+    .await?
+    .ok_or(ToolsetAuthError::InstanceNotFound)?;
+
+  let toolset_type = &instance.toolset_type;
+
+  // 2. Check app-level type enabled (both auth types)
+  if !tool_service.is_type_enabled(toolset_type).await? {
     return Err(ToolsetError::ToolsetAppDisabled.into());
   }
 
   // For OAuth (external apps), additional checks are required
   if is_oauth_auth {
-    // 2. Check app-client registered for toolset
+    // 3. Check app-client registered for toolset type
     let azp = headers
       .get(KEY_HEADER_BODHIAPP_AZP)
       .and_then(|v| v.to_str().ok())
       .ok_or(ToolsetAuthError::MissingAzpHeader)?;
 
     if !tool_service
-      .is_app_client_registered_for_toolset(azp, &toolset_id)
+      .is_app_client_registered_for_toolset(azp, toolset_type)
       .await?
     {
       return Err(ToolsetAuthError::AppClientNotRegistered);
     }
 
-    // 3. Check scope_toolset-* in token
+    // 4. Check scope_toolset-{type} in token
     let toolset_scopes_header = headers
       .get(KEY_HEADER_BODHIAPP_TOOL_SCOPES)
       .and_then(|v| v.to_str().ok())
       .unwrap_or("");
 
-    // Get required scope for this toolset
-    let required_scope = ToolsetScope::scope_for_toolset_id(&toolset_id)
-      .ok_or_else(|| ToolsetError::ToolsetNotFound(toolset_id.clone()))?;
+    // Get required scope for this toolset type
+    let required_scope = ToolsetScope::scope_for_toolset_id(toolset_type)
+      .ok_or_else(|| ToolsetError::ToolsetNotFound(toolset_type.clone()))?;
 
     // Check if required scope is present (space-separated)
     let has_scope = toolset_scopes_header
@@ -129,14 +141,8 @@ async fn _impl(
     }
   }
 
-  // 4. Check user has toolset configured (API key required for execution)
-  // For session auth, this also checks user_enabled
-  // For OAuth auth, we only need to check API key exists
-  let is_available = tool_service
-    .is_toolset_available_for_user(user_id, &toolset_id)
-    .await?;
-
-  if !is_available {
+  // 5. Check instance is available (has API key and is enabled)
+  if !instance.enabled || !instance.has_api_key {
     return Err(ToolsetError::ToolsetNotConfigured.into());
   }
 
@@ -153,8 +159,9 @@ mod tests {
     routing::post,
     Router,
   };
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, ResourceRole, UserScope};
-  use rstest::rstest;
+  use chrono::Utc;
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, ResourceRole, Toolset, UserScope};
+  use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{test_utils::AppServiceStubBuilder, MockToolService};
   use std::sync::Arc;
@@ -180,29 +187,71 @@ mod tests {
 
     Router::new()
       .route(
-        "/toolsets/{toolset_id}/execute",
+        "/toolsets/{id}/execute/{method}",
         post(test_handler).route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware)),
       )
       .with_state(state)
   }
 
+  #[fixture]
+  fn test_instance() -> Toolset {
+    let now = Utc::now();
+    Toolset {
+      id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+      name: "My Exa Search".to_string(),
+      toolset_type: "builtin-exa-web-search".to_string(),
+      description: Some("Test instance".to_string()),
+      enabled: true,
+      has_api_key: true,
+      created_at: now,
+      updated_at: now,
+    }
+  }
+
+  // Session auth tests
   #[rstest]
+  #[case::success(true, true, true, true, StatusCode::OK)]
+  #[case::instance_not_found(false, false, false, false, StatusCode::NOT_FOUND)]
+  #[case::type_disabled(true, false, true, true, StatusCode::BAD_REQUEST)]
+  #[case::instance_disabled(true, true, false, true, StatusCode::BAD_REQUEST)]
+  #[case::instance_no_api_key(true, true, true, false, StatusCode::BAD_REQUEST)]
   #[tokio::test]
-  async fn test_session_auth_toolset_available(
+  async fn test_session_auth(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
+    #[case] get_returns_instance: bool,
+    #[case] type_enabled: bool,
+    #[case] instance_enabled: bool,
+    #[case] instance_has_api_key: bool,
+    #[case] expected_status: StatusCode,
   ) {
     let mut mock_tool_service = MockToolService::new();
-    // Session auth needs: app enabled + user available
+    let instance_id = test_instance.id.clone();
+    let instance_id_for_uri = test_instance.id.clone();
+    let mut instance_clone = test_instance.clone();
+    instance_clone.enabled = instance_enabled;
+    instance_clone.has_api_key = instance_has_api_key;
+
+    // Setup expectations
     mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_id)
       .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(true));
+      .returning(move |_, _| {
+        if get_returns_instance {
+          Ok(Some(instance_clone.clone()))
+        } else {
+          Ok(None)
+        }
+      });
+
+    if get_returns_instance {
+      mock_tool_service
+        .expect_is_type_enabled()
+        .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+        .times(1)
+        .returning(move |_| Ok(type_enabled));
+    }
 
     let app = test_router_with_tool_service(mock_tool_service);
 
@@ -210,7 +259,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
+          .uri(format!("/toolsets/{}/execute/search", instance_id_for_uri))
           .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
           .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
           .body(Body::empty())
@@ -219,258 +268,93 @@ mod tests {
       .await
       .unwrap();
 
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.status(), expected_status);
   }
 
+  // OAuth auth tests
   #[rstest]
+  #[case::success(true, true, true, true, StatusCode::OK)]
+  #[case::instance_not_found(false, false, false, false, StatusCode::NOT_FOUND)]
+  #[case::type_disabled(true, false, false, false, StatusCode::BAD_REQUEST)]
+  #[case::app_client_not_registered(true, true, false, false, StatusCode::FORBIDDEN)]
+  #[case::missing_scope(true, true, true, false, StatusCode::FORBIDDEN)]
   #[tokio::test]
-  async fn test_session_auth_toolset_not_configured(
+  async fn test_oauth_auth(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
+    #[case] get_returns_instance: bool,
+    #[case] type_enabled: bool,
+    #[case] client_registered: bool,
+    #[case] has_scope: bool,
+    #[case] expected_status: StatusCode,
   ) {
     let mut mock_tool_service = MockToolService::new();
+    let instance_id = test_instance.id.clone();
+    let instance_id_for_uri = test_instance.id.clone();
+    let instance_clone = test_instance.clone();
+
+    // Setup expectations
     mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_id)
       .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(false));
+      .returning(move |_, _| {
+        if get_returns_instance {
+          Ok(Some(instance_clone.clone()))
+        } else {
+          Ok(None)
+        }
+      });
+
+    if get_returns_instance {
+      mock_tool_service
+        .expect_is_type_enabled()
+        .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+        .times(1)
+        .returning(move |_| Ok(type_enabled));
+
+      if type_enabled {
+        mock_tool_service
+          .expect_is_app_client_registered_for_toolset()
+          .withf(|app_client_id, toolset_type| {
+            app_client_id == "external-app" && toolset_type == "builtin-exa-web-search"
+          })
+          .times(1)
+          .returning(move |_, _| Ok(client_registered));
+      }
+    }
 
     let app = test_router_with_tool_service(mock_tool_service);
 
+    let mut builder = Request::builder()
+      .method("POST")
+      .uri(format!("/toolsets/{}/execute/search", instance_id_for_uri))
+      .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+      .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
+      .header(KEY_HEADER_BODHIAPP_AZP, "external-app");
+
+    if has_scope {
+      builder = builder.header(
+        KEY_HEADER_BODHIAPP_TOOL_SCOPES,
+        "scope_toolset-builtin-exa-web-search",
+      );
+    }
+
     let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
+      .oneshot(builder.body(Body::empty()).unwrap())
       .await
       .unwrap();
 
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(response.status(), expected_status);
   }
 
+  // Error condition tests
   #[rstest]
   #[tokio::test]
-  async fn test_session_auth_app_disabled(
+  async fn test_missing_user_id(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
   ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(false));
-    // Should not reach is_toolset_available_for_user since app check fails
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-  }
-
-  // Note: First-party API tokens (bodhiapp_*) are now blocked at route level.
-  // E2E tests verify this behavior in toolsets-auth-restrictions.spec.mjs
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_oauth_token_toolset_configured(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    // OAuth needs: app enabled + app-client registered + scope + user available
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_app_client_registered_for_toolset()
-      .withf(|app_client_id, toolset_id| {
-        app_client_id == "external-app" && toolset_id == "builtin-exa-web-search"
-      })
-      .times(1)
-      .returning(|_, _| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(true));
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
-          .header(KEY_HEADER_BODHIAPP_AZP, "external-app")
-          .header(
-            KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-            "scope_toolset-builtin-exa-web-search",
-          )
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_oauth_token_toolset_not_configured(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_app_client_registered_for_toolset()
-      .withf(|app_client_id, toolset_id| {
-        app_client_id == "external-app" && toolset_id == "builtin-exa-web-search"
-      })
-      .times(1)
-      .returning(|_, _| Ok(true));
-    mock_tool_service
-      .expect_is_toolset_available_for_user()
-      .withf(|user_id, toolset_id| user_id == "user123" && toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_, _| Ok(false));
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
-          .header(KEY_HEADER_BODHIAPP_AZP, "external-app")
-          .header(
-            KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-            "scope_toolset-builtin-exa-web-search",
-          )
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_oauth_token_app_client_not_registered(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_app_client_registered_for_toolset()
-      .withf(|app_client_id, toolset_id| {
-        app_client_id == "unregistered-app" && toolset_id == "builtin-exa-web-search"
-      })
-      .times(1)
-      .returning(|_, _| Ok(false));
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
-          .header(KEY_HEADER_BODHIAPP_AZP, "unregistered-app")
-          .header(
-            KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-            "scope_toolset-builtin-exa-web-search",
-          )
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_oauth_token_missing_toolset_scope(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    mock_tool_service
-      .expect_is_toolset_enabled_for_app()
-      .withf(|toolset_id| toolset_id == "builtin-exa-web-search")
-      .times(1)
-      .returning(|_| Ok(true));
-    mock_tool_service
-      .expect_is_app_client_registered_for_toolset()
-      .withf(|app_client_id, toolset_id| {
-        app_client_id == "external-app" && toolset_id == "builtin-exa-web-search"
-      })
-      .times(1)
-      .returning(|_, _| Ok(true));
-    // Missing the scope_toolset-* header means OAuth auth fails
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
-          .header(KEY_HEADER_BODHIAPP_AZP, "external-app")
-          // Missing KEY_HEADER_BODHIAPP_TOOL_SCOPES
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_missing_user_id(#[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>) {
     let mock_tool_service = MockToolService::new();
     let app = test_router_with_tool_service(mock_tool_service);
 
@@ -478,7 +362,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
+          .uri(format!("/toolsets/{}/execute/search", test_instance.id))
           .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
           .body(Body::empty())
           .unwrap(),
@@ -491,7 +375,10 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_missing_auth(#[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>) {
+  async fn test_missing_auth(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
+  ) {
     let mock_tool_service = MockToolService::new();
     let app = test_router_with_tool_service(mock_tool_service);
 
@@ -499,7 +386,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("POST")
-          .uri("/toolsets/builtin-exa-web-search/execute")
+          .uri(format!("/toolsets/{}/execute/search", test_instance.id))
           .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
           .body(Body::empty())
           .unwrap(),

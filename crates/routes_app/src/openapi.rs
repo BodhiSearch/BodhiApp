@@ -29,14 +29,14 @@ use crate::{
 };
 // Toolsets DTOs and handlers
 use crate::toolsets_dto::{
-  AppToolsetConfigResponse, EnhancedToolsetConfigResponse, ExecuteToolsetRequest,
-  ListToolsetsResponse, UpdateToolsetConfigRequest,
+  ApiKeyUpdateDto, AppToolsetConfigResponse, CreateToolsetRequest, ExecuteToolsetRequest,
+  ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse,
+  UpdateToolsetRequest,
 };
 use crate::{
-  __path_delete_toolset_config_handler, __path_disable_app_toolset_handler,
-  __path_enable_app_toolset_handler, __path_execute_toolset_handler,
-  __path_get_toolset_config_handler, __path_list_all_toolsets_handler,
-  __path_update_toolset_config_handler,
+  __path_create_toolset_handler, __path_delete_toolset_handler, __path_disable_type_handler,
+  __path_enable_type_handler, __path_execute_toolset_handler, __path_get_toolset_handler,
+  __path_list_toolset_types_handler, __path_list_toolsets_handler, __path_update_toolset_handler,
 };
 use async_openai::types::{
   chat::{
@@ -51,11 +51,10 @@ use async_openai::types::{
 };
 use objs::{
   Alias, ApiFormat, AppRole, AppToolsetConfig, OAIRequestParams, OpenAIApiError, ResourceRole,
-  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition,
-  ToolsetExecutionResponse, ToolsetWithTools, UserInfo, UserScope, UserToolsetConfig,
-  UserToolsetConfigSummary, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS,
-  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
-  API_TAG_TOOLSETS,
+  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
+  ToolsetExecutionResponse, ToolsetWithTools, UserInfo, UserScope, API_TAG_API_KEYS,
+  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
+  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use routes_oai::{
   __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
@@ -109,6 +108,8 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_TEST, "api-models/test");
 make_ui_endpoint!(ENDPOINT_API_MODELS_FETCH_MODELS, "api-models/fetch-models");
 make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
+make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
+make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
@@ -335,15 +336,18 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             EmbeddingInput,
             EmbeddingUsage,
             // toolsets
+            CreateToolsetRequest,
+            UpdateToolsetRequest,
+            ApiKeyUpdateDto,
+            ToolsetResponse,
             ListToolsetsResponse,
-            ToolsetWithTools,
-            UserToolsetConfigSummary,
-            EnhancedToolsetConfigResponse,
-            UpdateToolsetConfigRequest,
+            ToolsetTypeResponse,
+            ListToolsetTypesResponse,
             AppToolsetConfigResponse,
             ExecuteToolsetRequest,
             ToolDefinition,
-            UserToolsetConfig,
+            Toolset,
+            ToolsetWithTools,
             AppToolsetConfig,
             ToolsetExecutionResponse,
         ),
@@ -424,13 +428,15 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         remove_user_handler,
 
         // Toolsets endpoints
-        list_all_toolsets_handler,
-        get_toolset_config_handler,
-        update_toolset_config_handler,
-        delete_toolset_config_handler,
+        list_toolsets_handler,
+        create_toolset_handler,
+        get_toolset_handler,
+        update_toolset_handler,
+        delete_toolset_handler,
         execute_toolset_handler,
-        enable_app_toolset_handler,
-        disable_app_toolset_handler
+        list_toolset_types_handler,
+        enable_type_handler,
+        disable_type_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

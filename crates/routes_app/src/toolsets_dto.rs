@@ -1,50 +1,138 @@
-use objs::{AppToolsetConfig, ToolsetExecutionRequest, ToolsetWithTools, UserToolsetConfig};
+use objs::{AppToolsetConfig, ToolDefinition, ToolsetExecutionRequest};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::{Validate, ValidationError};
 
 // ============================================================================
-// Request DTOs
+// Validation Patterns
 // ============================================================================
 
-/// Request to update a user's toolset configuration
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct UpdateToolsetConfigRequest {
-  /// Whether the toolset is enabled for this user
-  pub enabled: bool,
-  /// Optional API key for the toolset (will be encrypted)
+static TOOLSET_NAME_REGEX: Lazy<Regex> =
+  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{0,22}[a-zA-Z0-9]$").unwrap());
+
+fn validate_toolset_name(name: &str) -> Result<(), ValidationError> {
+  if !TOOLSET_NAME_REGEX.is_match(name) {
+    return Err(ValidationError::new("invalid_toolset_name"));
+  }
+  Ok(())
+}
+
+fn default_true() -> bool {
+  true
+}
+
+// ============================================================================
+// Instance CRUD DTOs
+// ============================================================================
+
+/// Request to create a toolset instance
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
+pub struct CreateToolsetRequest {
+  /// Toolset type identifier (e.g., "builtin-exa-web-search")
+  #[validate(length(min = 1))]
+  pub toolset_type: String,
+
+  /// User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore)
+  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
+  pub name: String,
+
+  /// Optional description for this instance
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub api_key: Option<String>,
+  #[validate(length(max = 255))]
+  pub description: Option<String>,
+
+  /// Whether this instance is enabled
+  #[serde(default = "default_true")]
+  pub enabled: bool,
+
+  /// API key for the toolset
+  pub api_key: String,
 }
 
-/// Request to execute a toolset
+/// Request to update a toolset instance (full PUT - all fields required except api_key)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
+pub struct UpdateToolsetRequest {
+  /// User-defined name for this instance
+  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
+  pub name: String,
+
+  /// Optional description for this instance
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[validate(length(max = 255))]
+  pub description: Option<String>,
+
+  /// Whether this instance is enabled
+  pub enabled: bool,
+
+  /// API key update action (Keep or Set)
+  #[serde(default)]
+  pub api_key: ApiKeyUpdateDto,
+}
+
+/// API key update enum (mirrors services::db::ApiKeyUpdate)
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Default)]
+#[serde(tag = "action", content = "value")]
+pub enum ApiKeyUpdateDto {
+  /// Keep the existing API key unchanged
+  #[default]
+  Keep,
+  /// Set a new API key (or clear if None)
+  Set(Option<String>),
+}
+
+/// Toolset instance response
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteToolsetRequest {
-  /// Tool call ID from LLM
-  pub tool_call_id: String,
-  /// Function parameters as JSON
-  pub params: serde_json::Value,
+pub struct ToolsetResponse {
+  /// Unique instance identifier (UUID)
+  pub id: String,
+  /// User-defined name for this instance
+  pub name: String,
+  /// Toolset type identifier (e.g., "builtin-exa-web-search")
+  pub toolset_type: String,
+  /// Optional description for this instance
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+  /// Whether this instance is enabled
+  pub enabled: bool,
+  /// When this instance was created
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: chrono::DateTime<chrono::Utc>,
+  /// When this instance was last updated
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-// ============================================================================
-// Response DTOs
-// ============================================================================
-
-/// Response with list of toolset definitions (enhanced with status)
+/// List of toolset instances
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
-  pub toolsets: Vec<ToolsetWithTools>,
+  pub toolsets: Vec<ToolsetResponse>,
 }
 
-/// Response with single toolset configuration
+// ============================================================================
+// Toolset type DTOs (admin endpoints)
+// ============================================================================
+
+/// Toolset type response (for admin listing)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct GetToolsetConfigResponse {
-  pub config: UserToolsetConfig,
+pub struct ToolsetTypeResponse {
+  /// Unique toolset type identifier (e.g., "builtin-exa-web-search")
+  pub toolset_id: String,
+  /// Human-readable name (e.g., "Exa Web Search")
+  pub name: String,
+  /// Description of the toolset
+  pub description: String,
+  /// Whether the toolset is enabled at app level (admin-controlled)
+  pub app_enabled: bool,
+  /// Tools provided by this toolset
+  pub tools: Vec<ToolDefinition>,
 }
 
-/// Response with list of user toolset configurations
+/// List of toolset types
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ListToolsetConfigsResponse {
-  pub configs: Vec<UserToolsetConfig>,
+pub struct ListToolsetTypesResponse {
+  pub types: Vec<ToolsetTypeResponse>,
 }
 
 // ============================================================================
@@ -65,15 +153,17 @@ pub struct ListAppToolsetConfigsResponse {
   pub configs: Vec<AppToolsetConfig>,
 }
 
-/// Enhanced toolset config response with app-level status
+// ============================================================================
+// Execute DTOs
+// ============================================================================
+
+/// Request to execute a toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct EnhancedToolsetConfigResponse {
-  /// Toolset identifier
-  pub toolset_id: String,
-  /// Whether the toolset is enabled at app level
-  pub app_enabled: bool,
-  /// User's configuration
-  pub config: UserToolsetConfig,
+pub struct ExecuteToolsetRequest {
+  /// Tool call ID from LLM
+  pub tool_call_id: String,
+  /// Function parameters as JSON
+  pub params: serde_json::Value,
 }
 
 // ============================================================================
@@ -105,27 +195,61 @@ mod tests {
   use serde_json::json;
 
   #[rstest]
-  fn test_update_toolset_config_request_serialization() {
-    let req = UpdateToolsetConfigRequest {
+  fn test_create_toolset_request_serialization() {
+    let req = CreateToolsetRequest {
+      toolset_type: "builtin-exa-web-search".to_string(),
+      name: "My Exa".to_string(),
+      description: Some("Test instance".to_string()),
       enabled: true,
-      api_key: Some("sk-test123".to_string()),
+      api_key: "sk-test123".to_string(),
     };
 
     let json = serde_json::to_value(&req).unwrap();
+    assert_eq!("builtin-exa-web-search", json["toolset_type"]);
+    assert_eq!("My Exa", json["name"]);
     assert_eq!(true, json["enabled"]);
     assert_eq!("sk-test123", json["api_key"]);
   }
 
   #[rstest]
-  fn test_update_toolset_config_request_without_api_key() {
-    let req = UpdateToolsetConfigRequest {
+  fn test_update_toolset_request_with_api_key_keep() {
+    let req = UpdateToolsetRequest {
+      name: "Updated Name".to_string(),
+      description: None,
       enabled: false,
-      api_key: None,
+      api_key: ApiKeyUpdateDto::Keep,
     };
 
     let json = serde_json::to_value(&req).unwrap();
+    assert_eq!("Updated Name", json["name"]);
     assert_eq!(false, json["enabled"]);
-    assert!(json.get("api_key").is_none());
+    assert_eq!("Keep", json["api_key"]["action"]);
+  }
+
+  #[rstest]
+  fn test_update_toolset_request_with_api_key_set() {
+    let req = UpdateToolsetRequest {
+      name: "Updated Name".to_string(),
+      description: Some("Updated desc".to_string()),
+      enabled: true,
+      api_key: ApiKeyUpdateDto::Set(Some("new-key".to_string())),
+    };
+
+    let json = serde_json::to_value(&req).unwrap();
+    assert_eq!("Updated Name", json["name"]);
+    assert_eq!("Updated desc", json["description"]);
+    assert_eq!(true, json["enabled"]);
+    assert_eq!("Set", json["api_key"]["action"]);
+    assert_eq!("new-key", json["api_key"]["value"]);
+  }
+
+  #[rstest]
+  fn test_api_key_update_dto_default() {
+    let dto: ApiKeyUpdateDto = Default::default();
+    match dto {
+      ApiKeyUpdateDto::Keep => (),
+      _ => panic!("Default should be Keep"),
+    }
   }
 
   #[rstest]

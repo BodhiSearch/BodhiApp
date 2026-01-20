@@ -7,7 +7,9 @@ macro_rules! make_ui_endpoint {
 
 use crate::proxy_router;
 use auth_middleware::canonical_url_middleware;
-use auth_middleware::{api_auth_middleware, auth_middleware, inject_optional_auth_info};
+use auth_middleware::{
+  api_auth_middleware, auth_middleware, inject_optional_auth_info, toolset_auth_middleware,
+};
 use axum::{
   middleware::from_fn_with_state,
   routing::{delete, get, post, put},
@@ -17,27 +19,27 @@ use objs::{ResourceRole, TokenScope, UserScope};
 use routes_app::{
   app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
   change_user_role_handler, create_alias_handler, create_api_model_handler,
-  create_pull_request_handler, create_token_handler, delete_api_model_handler,
-  delete_setting_handler, delete_toolset_config_handler, dev_secrets_handler,
-  disable_app_toolset_handler, enable_app_toolset_handler, envs_handler, execute_toolset_handler,
+  create_pull_request_handler, create_token_handler, create_toolset_handler,
+  delete_api_model_handler, delete_setting_handler, delete_toolset_handler, dev_secrets_handler,
+  disable_type_handler, enable_type_handler, envs_handler, execute_toolset_handler,
   fetch_models_handler, get_api_formats_handler, get_api_model_handler,
-  get_download_status_handler, get_toolset_config_handler, get_user_alias_handler, health_handler,
-  list_aliases_handler, list_all_requests_handler, list_all_toolsets_handler,
-  list_api_models_handler, list_downloads_handler, list_local_modelfiles_handler,
-  list_pending_requests_handler, list_settings_handler, list_tokens_handler, list_users_handler,
+  get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
+  list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
+  list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
+  list_tokens_handler, list_toolset_types_handler, list_toolsets_handler, list_users_handler,
   logout_handler, ping_handler, pull_by_alias_handler, queue_status_handler,
   refresh_metadata_handler, reject_request_handler, remove_user_handler, request_access_handler,
   request_status_handler, setup_handler, sync_models_handler, test_api_model_handler,
   update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
-  update_toolset_config_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
+  update_toolset_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
   GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
   ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_REQUEST_ACCESS,
   ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
   ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_USERS,
-  ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
+  ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use routes_oai::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
@@ -132,31 +134,21 @@ pub fn build_routes(
       },
     ));
 
-  // Session-only user APIs for toolset config (no API tokens, no OAuth)
+  // Toolset instance CRUD APIs (session and OAuth, no API tokens)
   let user_session_apis = Router::new()
+    .route(ENDPOINT_TOOLSETS, get(list_toolsets_handler))
+    .route(ENDPOINT_TOOLSETS, post(create_toolset_handler))
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/config"),
-      get(get_toolset_config_handler),
+      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
+      get(get_toolset_handler),
     )
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/config"),
-      put(update_toolset_config_handler),
+      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
+      put(update_toolset_handler),
     )
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/config"),
-      delete(delete_toolset_config_handler),
-    )
-    .route_layer(from_fn_with_state(
-      state.clone(),
-      move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
-    ));
-
-  // OAuth-allowed toolset APIs (list + execute) - session and OAuth tokens, NOT API tokens
-  let user_oauth_apis = Router::new()
-    .route(ENDPOINT_TOOLSETS, get(list_all_toolsets_handler))
-    .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/execute/{{method}}"),
-      post(execute_toolset_handler),
+      &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
+      delete(delete_toolset_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -171,6 +163,14 @@ pub fn build_routes(
         )
       },
     ));
+
+  // Toolset execute API with custom middleware - session and OAuth tokens, NOT API tokens
+  let user_oauth_apis = Router::new()
+    .route(
+      &format!("{ENDPOINT_TOOLSETS}/{{id}}/execute/{{method}}"),
+      post(execute_toolset_handler),
+    )
+    .route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware));
 
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
@@ -255,14 +255,15 @@ pub fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
-    // Admin toolset configuration (app-level enable/disable)
+    // Toolset types listing and admin configuration
+    .route(ENDPOINT_TOOLSET_TYPES, get(list_toolset_types_handler))
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/app-config"),
-      put(enable_app_toolset_handler),
+      &format!("{ENDPOINT_TOOLSET_TYPES}/{{type_id}}/app-config"),
+      put(enable_type_handler),
     )
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{toolset_id}}/app-config"),
-      delete(disable_app_toolset_handler),
+      &format!("{ENDPOINT_TOOLSET_TYPES}/{{type_id}}/app-config"),
+      delete(disable_type_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),

@@ -80,6 +80,19 @@ export type ApiKeyUpdateAction = {
 };
 
 /**
+ * API key update enum (mirrors services::db::ApiKeyUpdate)
+ */
+export type ApiKeyUpdateDto = {
+    action: 'Keep';
+} | {
+    /**
+     * Set a new API key (or clear if None)
+     */
+    value: string | null;
+    action: 'Set';
+};
+
+/**
  * Response containing API model configuration
  */
 export type ApiModelResponse = {
@@ -1106,6 +1119,32 @@ export type CreateEmbeddingResponse = {
     usage: EmbeddingUsage;
 };
 
+/**
+ * Request to create a toolset instance
+ */
+export type CreateToolsetRequest = {
+    /**
+     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     */
+    toolset_type: string;
+    /**
+     * User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore)
+     */
+    name: string;
+    /**
+     * Optional description for this instance
+     */
+    description?: string | null;
+    /**
+     * Whether this instance is enabled
+     */
+    enabled?: boolean;
+    /**
+     * API key for the toolset
+     */
+    api_key: string;
+};
+
 export type CustomGrammarFormatParam = {
     /**
      * The grammar definition.
@@ -1211,24 +1250,6 @@ export type EmbeddingUsage = {
 };
 
 export type EncodingFormat = 'float' | 'base64';
-
-/**
- * Enhanced toolset config response with app-level status
- */
-export type EnhancedToolsetConfigResponse = {
-    /**
-     * Toolset identifier
-     */
-    toolset_id: string;
-    /**
-     * Whether the toolset is enabled at app level
-     */
-    app_enabled: boolean;
-    /**
-     * User's configuration
-     */
-    config: UserToolsetConfig;
-};
 
 export type ErrorBody = {
     /**
@@ -1410,10 +1431,17 @@ export type ListModelResponse = {
 };
 
 /**
- * Response with list of toolset definitions (enhanced with status)
+ * List of toolset types
+ */
+export type ListToolsetTypesResponse = {
+    types: Array<ToolsetTypeResponse>;
+};
+
+/**
+ * List of toolset instances
  */
 export type ListToolsetsResponse = {
-    toolsets: Array<ToolsetWithTools>;
+    toolsets: Array<ToolsetResponse>;
 };
 
 /**
@@ -1989,6 +2017,40 @@ export type ToolDefinition = {
 };
 
 /**
+ * User-owned toolset instance with UUID identification
+ */
+export type Toolset = {
+    /**
+     * Unique instance identifier (UUID)
+     */
+    id: string;
+    /**
+     * User-defined name for this instance
+     */
+    name: string;
+    /**
+     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     */
+    toolset_type: string;
+    /**
+     * Optional description for this instance
+     */
+    description?: string | null;
+    /**
+     * Whether this instance is enabled
+     */
+    enabled: boolean;
+    /**
+     * When this instance was created
+     */
+    created_at: string;
+    /**
+     * When this instance was last updated
+     */
+    updated_at: string;
+};
+
+/**
  * Response from toolset tool execution (to send back to LLM)
  */
 export type ToolsetExecutionResponse = {
@@ -2007,7 +2069,67 @@ export type ToolsetExecutionResponse = {
 };
 
 /**
- * Toolset with app-level and user-level configuration status (API response model)
+ * Toolset instance response
+ */
+export type ToolsetResponse = {
+    /**
+     * Unique instance identifier (UUID)
+     */
+    id: string;
+    /**
+     * User-defined name for this instance
+     */
+    name: string;
+    /**
+     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     */
+    toolset_type: string;
+    /**
+     * Optional description for this instance
+     */
+    description?: string | null;
+    /**
+     * Whether this instance is enabled
+     */
+    enabled: boolean;
+    /**
+     * When this instance was created
+     */
+    created_at: string;
+    /**
+     * When this instance was last updated
+     */
+    updated_at: string;
+};
+
+/**
+ * Toolset type response (for admin listing)
+ */
+export type ToolsetTypeResponse = {
+    /**
+     * Unique toolset type identifier (e.g., "builtin-exa-web-search")
+     */
+    toolset_id: string;
+    /**
+     * Human-readable name (e.g., "Exa Web Search")
+     */
+    name: string;
+    /**
+     * Description of the toolset
+     */
+    description: string;
+    /**
+     * Whether the toolset is enabled at app level (admin-controlled)
+     */
+    app_enabled: boolean;
+    /**
+     * Tools provided by this toolset
+     */
+    tools: Array<ToolDefinition>;
+};
+
+/**
+ * Toolset with app-level configuration status (API response model)
  */
 export type ToolsetWithTools = {
     /**
@@ -2026,7 +2148,6 @@ export type ToolsetWithTools = {
      * Whether the toolset is enabled at app level (admin-controlled)
      */
     app_enabled: boolean;
-    user_config?: null | UserToolsetConfigSummary;
     /**
      * Tools provided by this toolset
      */
@@ -2111,17 +2232,25 @@ export type UpdateSettingRequest = {
 };
 
 /**
- * Request to update a user's toolset configuration
+ * Request to update a toolset instance (full PUT - all fields required except api_key)
  */
-export type UpdateToolsetConfigRequest = {
+export type UpdateToolsetRequest = {
     /**
-     * Whether the toolset is enabled for this user
+     * User-defined name for this instance
+     */
+    name: string;
+    /**
+     * Optional description for this instance
+     */
+    description?: string | null;
+    /**
+     * Whether this instance is enabled
      */
     enabled: boolean;
     /**
-     * Optional API key for the toolset (will be encrypted)
+     * API key update action (Keep or Set)
      */
-    api_key?: string | null;
+    api_key?: ApiKeyUpdateDto;
 };
 
 export type UrlCitation = {
@@ -2247,43 +2376,6 @@ export type UserResponse = {
 });
 
 export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
-
-/**
- * User's configuration for a specific toolset (API model - no sensitive data).
- * API key is stored at toolset level (one key for all tools in toolset).
- */
-export type UserToolsetConfig = {
-    /**
-     * Toolset identifier (e.g., "builtin-exa-web-search")
-     */
-    toolset_id: string;
-    /**
-     * Whether the toolset is enabled for this user
-     */
-    enabled: boolean;
-    /**
-     * When this configuration was created
-     */
-    created_at: string;
-    /**
-     * When this configuration was last updated
-     */
-    updated_at: string;
-};
-
-/**
- * Summary of user's toolset configuration (for list responses)
- */
-export type UserToolsetConfigSummary = {
-    /**
-     * Whether the user has enabled this toolset
-     */
-    enabled: boolean;
-    /**
-     * Whether the user has configured an API key
-     */
-    has_api_key: boolean;
-};
 
 /**
  * Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.
@@ -4059,6 +4151,405 @@ export type UpdateApiTokenResponses = {
 
 export type UpdateApiTokenResponse = UpdateApiTokenResponses[keyof UpdateApiTokenResponses];
 
+export type ListToolsetTypesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/toolset_types';
+};
+
+export type ListToolsetTypesErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListToolsetTypesError = ListToolsetTypesErrors[keyof ListToolsetTypesErrors];
+
+export type ListToolsetTypesResponses = {
+    /**
+     * List of all toolset types
+     */
+    200: ListToolsetTypesResponse;
+};
+
+export type ListToolsetTypesResponse2 = ListToolsetTypesResponses[keyof ListToolsetTypesResponses];
+
+export type DisableToolsetTypeData = {
+    body?: never;
+    path: {
+        /**
+         * Toolset type identifier
+         */
+        type_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolset_types/{type_id}/app-config';
+};
+
+export type DisableToolsetTypeErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Toolset type not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DisableToolsetTypeError = DisableToolsetTypeErrors[keyof DisableToolsetTypeErrors];
+
+export type DisableToolsetTypeResponses = {
+    /**
+     * Toolset type disabled
+     */
+    200: AppToolsetConfigResponse;
+};
+
+export type DisableToolsetTypeResponse = DisableToolsetTypeResponses[keyof DisableToolsetTypeResponses];
+
+export type EnableToolsetTypeData = {
+    body?: never;
+    path: {
+        /**
+         * Toolset type identifier
+         */
+        type_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolset_types/{type_id}/app-config';
+};
+
+export type EnableToolsetTypeErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Toolset type not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type EnableToolsetTypeError = EnableToolsetTypeErrors[keyof EnableToolsetTypeErrors];
+
+export type EnableToolsetTypeResponses = {
+    /**
+     * Toolset type enabled
+     */
+    200: AppToolsetConfigResponse;
+};
+
+export type EnableToolsetTypeResponse = EnableToolsetTypeResponses[keyof EnableToolsetTypeResponses];
+
+export type ListToolsetsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/toolsets';
+};
+
+export type ListToolsetsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListToolsetsError = ListToolsetsErrors[keyof ListToolsetsErrors];
+
+export type ListToolsetsResponses = {
+    /**
+     * List of user's toolset instances
+     */
+    200: ListToolsetsResponse;
+};
+
+export type ListToolsetsResponse2 = ListToolsetsResponses[keyof ListToolsetsResponses];
+
+export type CreateToolsetData = {
+    body: CreateToolsetRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/toolsets';
+};
+
+export type CreateToolsetErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Name already exists
+     */
+    409: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateToolsetError = CreateToolsetErrors[keyof CreateToolsetErrors];
+
+export type CreateToolsetResponses = {
+    /**
+     * Toolset instance created
+     */
+    201: ToolsetResponse;
+};
+
+export type CreateToolsetResponse = CreateToolsetResponses[keyof CreateToolsetResponses];
+
+export type DeleteToolsetData = {
+    body?: never;
+    path: {
+        /**
+         * Toolset instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolsets/{id}';
+};
+
+export type DeleteToolsetErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Instance not found or not owned
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteToolsetError = DeleteToolsetErrors[keyof DeleteToolsetErrors];
+
+export type DeleteToolsetResponses = {
+    /**
+     * Toolset instance deleted
+     */
+    204: void;
+};
+
+export type DeleteToolsetResponse = DeleteToolsetResponses[keyof DeleteToolsetResponses];
+
+export type GetToolsetData = {
+    body?: never;
+    path: {
+        /**
+         * Toolset instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolsets/{id}';
+};
+
+export type GetToolsetErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Instance not found or not owned
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetToolsetError = GetToolsetErrors[keyof GetToolsetErrors];
+
+export type GetToolsetResponses = {
+    /**
+     * Toolset instance
+     */
+    200: ToolsetResponse;
+};
+
+export type GetToolsetResponse = GetToolsetResponses[keyof GetToolsetResponses];
+
+export type UpdateToolsetData = {
+    body: UpdateToolsetRequest;
+    path: {
+        /**
+         * Toolset instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolsets/{id}';
+};
+
+export type UpdateToolsetErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Instance not found or not owned
+     */
+    404: unknown;
+    /**
+     * Name already exists
+     */
+    409: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateToolsetError = UpdateToolsetErrors[keyof UpdateToolsetErrors];
+
+export type UpdateToolsetResponses = {
+    /**
+     * Toolset instance updated
+     */
+    200: ToolsetResponse;
+};
+
+export type UpdateToolsetResponse = UpdateToolsetResponses[keyof UpdateToolsetResponses];
+
+export type ExecuteToolsetData = {
+    body: ExecuteToolsetRequest;
+    path: {
+        /**
+         * Toolset instance UUID
+         */
+        id: string;
+        /**
+         * Tool method name
+         */
+        method: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/toolsets/{id}/execute/{method}';
+};
+
+export type ExecuteToolsetErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Instance or method not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ExecuteToolsetError = ExecuteToolsetErrors[keyof ExecuteToolsetErrors];
+
+export type ExecuteToolsetResponses = {
+    /**
+     * Tool execution result
+     */
+    200: ToolsetExecutionResponse;
+};
+
+export type ExecuteToolsetResponse = ExecuteToolsetResponses[keyof ExecuteToolsetResponses];
+
 export type GetCurrentUserData = {
     body?: never;
     path?: never;
@@ -4371,323 +4862,6 @@ export type PingServerResponses = {
 };
 
 export type PingServerResponse = PingServerResponses[keyof PingServerResponses];
-
-export type ListAllToolsetsHandlerData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/toolsets';
-};
-
-export type ListAllToolsetsHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListAllToolsetsHandlerError = ListAllToolsetsHandlerErrors[keyof ListAllToolsetsHandlerErrors];
-
-export type ListAllToolsetsHandlerResponses = {
-    /**
-     * List of all available toolsets with status
-     */
-    200: ListToolsetsResponse;
-};
-
-export type ListAllToolsetsHandlerResponse = ListAllToolsetsHandlerResponses[keyof ListAllToolsetsHandlerResponses];
-
-export type DisableAppToolsetHandlerData = {
-    body?: never;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/app-config';
-};
-
-export type DisableAppToolsetHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type DisableAppToolsetHandlerError = DisableAppToolsetHandlerErrors[keyof DisableAppToolsetHandlerErrors];
-
-export type DisableAppToolsetHandlerResponses = {
-    /**
-     * Toolset disabled for app instance
-     */
-    200: AppToolsetConfigResponse;
-};
-
-export type DisableAppToolsetHandlerResponse = DisableAppToolsetHandlerResponses[keyof DisableAppToolsetHandlerResponses];
-
-export type EnableAppToolsetHandlerData = {
-    body?: never;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/app-config';
-};
-
-export type EnableAppToolsetHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type EnableAppToolsetHandlerError = EnableAppToolsetHandlerErrors[keyof EnableAppToolsetHandlerErrors];
-
-export type EnableAppToolsetHandlerResponses = {
-    /**
-     * Toolset enabled for app instance
-     */
-    200: AppToolsetConfigResponse;
-};
-
-export type EnableAppToolsetHandlerResponse = EnableAppToolsetHandlerResponses[keyof EnableAppToolsetHandlerResponses];
-
-export type DeleteToolsetConfigHandlerData = {
-    body?: never;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/config';
-};
-
-export type DeleteToolsetConfigHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type DeleteToolsetConfigHandlerError = DeleteToolsetConfigHandlerErrors[keyof DeleteToolsetConfigHandlerErrors];
-
-export type DeleteToolsetConfigHandlerResponses = {
-    /**
-     * Toolset configuration deleted
-     */
-    204: void;
-};
-
-export type DeleteToolsetConfigHandlerResponse = DeleteToolsetConfigHandlerResponses[keyof DeleteToolsetConfigHandlerResponses];
-
-export type GetToolsetConfigHandlerData = {
-    body?: never;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/config';
-};
-
-export type GetToolsetConfigHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetToolsetConfigHandlerError = GetToolsetConfigHandlerErrors[keyof GetToolsetConfigHandlerErrors];
-
-export type GetToolsetConfigHandlerResponses = {
-    /**
-     * Toolset configuration with app status
-     */
-    200: EnhancedToolsetConfigResponse;
-};
-
-export type GetToolsetConfigHandlerResponse = GetToolsetConfigHandlerResponses[keyof GetToolsetConfigHandlerResponses];
-
-export type UpdateToolsetConfigHandlerData = {
-    body: UpdateToolsetConfigRequest;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/config';
-};
-
-export type UpdateToolsetConfigHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type UpdateToolsetConfigHandlerError = UpdateToolsetConfigHandlerErrors[keyof UpdateToolsetConfigHandlerErrors];
-
-export type UpdateToolsetConfigHandlerResponses = {
-    /**
-     * Updated toolset configuration
-     */
-    200: EnhancedToolsetConfigResponse;
-};
-
-export type UpdateToolsetConfigHandlerResponse = UpdateToolsetConfigHandlerResponses[keyof UpdateToolsetConfigHandlerResponses];
-
-export type ExecuteToolsetHandlerData = {
-    body: ExecuteToolsetRequest;
-    path: {
-        /**
-         * Toolset identifier
-         */
-        toolset_id: string;
-        /**
-         * Tool method name (e.g., search, findSimilar, contents, answer)
-         */
-        method: string;
-    };
-    query?: never;
-    url: '/toolsets/{toolset_id}/execute/{method}';
-};
-
-export type ExecuteToolsetHandlerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Toolset or method not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ExecuteToolsetHandlerError = ExecuteToolsetHandlerErrors[keyof ExecuteToolsetHandlerErrors];
-
-export type ExecuteToolsetHandlerResponses = {
-    /**
-     * Toolset execution result
-     */
-    200: ToolsetExecutionResponse;
-};
-
-export type ExecuteToolsetHandlerResponse = ExecuteToolsetHandlerResponses[keyof ExecuteToolsetHandlerResponses];
 
 export type CreateChatCompletionData = {
     body: CreateChatCompletionRequest;

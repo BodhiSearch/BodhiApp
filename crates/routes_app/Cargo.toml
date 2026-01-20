@@ -22,7 +22,9 @@ derive-new = { workspace = true }
 include_dir = { workspace = true }
 jsonwebtoken = { workspace = true }
 oauth2 = { workspace = true }
+once_cell = { workspace = true }
 rand = { workspace = true }
+regex = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

@@ -171,6 +171,8 @@ pub struct Toolset {
   pub description: Option<String>,
   /// Whether this instance is enabled
   pub enabled: bool,
+  /// Whether this instance has an API key configured
+  pub has_api_key: bool,
   /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,

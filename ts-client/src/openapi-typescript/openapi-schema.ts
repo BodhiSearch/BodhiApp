@@ -669,6 +669,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/toolset_types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all available toolset types with their tools
+         * @description For OAuth tokens, filters types by scope_toolset-* scopes in the token.
+         */
+        get: operations["listToolsetTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/toolset_types/{type_id}/app-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Enable a toolset type at app level (admin only - enforced by auth middleware) */
+        put: operations["enableToolsetType"];
+        post?: never;
+        /** Disable a toolset type at app level (admin only - enforced by auth middleware) */
+        delete: operations["disableToolsetType"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/toolsets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all toolset instances for the authenticated user
+         * @description For OAuth tokens, filters instances by scope_toolset-* scopes in the token.
+         */
+        get: operations["listToolsets"];
+        put?: never;
+        /** Create a new toolset instance */
+        post: operations["createToolset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/toolsets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a specific toolset instance by ID */
+        get: operations["getToolset"];
+        /** Update a toolset instance (full PUT semantics) */
+        put: operations["updateToolset"];
+        post?: never;
+        /** Delete a toolset instance */
+        delete: operations["deleteToolset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/toolsets/{id}/execute/{method}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute a tool method on a toolset instance */
+        post: operations["executeToolset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/user": {
         parameters: {
             query?: never;
@@ -823,81 +918,6 @@ export interface paths {
         get: operations["pingServer"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/toolsets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List all available toolset definitions with app-enabled status (for UI)
-         * @description For OAuth tokens, filters toolsets based on scope_toolset-* scopes in the token.
-         *     For session auth, returns all toolsets.
-         */
-        get: operations["list_all_toolsets_handler"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/toolsets/{toolset_id}/app-config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Enable a toolset for this app instance (admin only) */
-        put: operations["enable_app_toolset_handler"];
-        post?: never;
-        /** Disable a toolset for this app instance (admin only) */
-        delete: operations["disable_app_toolset_handler"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/toolsets/{toolset_id}/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get user's configuration for a specific toolset (with app-level status) */
-        get: operations["get_toolset_config_handler"];
-        /** Update user's toolset configuration */
-        put: operations["update_toolset_config_handler"];
-        post?: never;
-        /** Delete user's toolset configuration (clears API key) */
-        delete: operations["delete_toolset_config_handler"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/toolsets/{toolset_id}/execute/{method}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Execute a toolset for the user */
-        post: operations["execute_toolset_handler"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1060,6 +1080,16 @@ export interface components {
             value: components["schemas"]["ApiKey"];
             /** @enum {string} */
             action: "set";
+        };
+        /** @description API key update enum (mirrors services::db::ApiKeyUpdate) */
+        ApiKeyUpdateDto: {
+            /** @enum {string} */
+            action: "Keep";
+        } | {
+            /** @description Set a new API key (or clear if None) */
+            value: string | null;
+            /** @enum {string} */
+            action: "Set";
         };
         /**
          * @description Response containing API model configuration
@@ -1933,6 +1963,19 @@ export interface components {
             /** @description The usage information for the request. */
             usage: components["schemas"]["EmbeddingUsage"];
         };
+        /** @description Request to create a toolset instance */
+        CreateToolsetRequest: {
+            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
+            toolset_type: string;
+            /** @description User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore) */
+            name: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
+            enabled?: boolean;
+            /** @description API key for the toolset */
+            api_key: string;
+        };
         CustomGrammarFormatParam: {
             /** @description The grammar definition. */
             definition: string;
@@ -2025,15 +2068,6 @@ export interface components {
         };
         /** @enum {string} */
         EncodingFormat: "float" | "base64";
-        /** @description Enhanced toolset config response with app-level status */
-        EnhancedToolsetConfigResponse: {
-            /** @description Toolset identifier */
-            toolset_id: string;
-            /** @description Whether the toolset is enabled at app level */
-            app_enabled: boolean;
-            /** @description User's configuration */
-            config: components["schemas"]["UserToolsetConfig"];
-        };
         /** @example {
          *       "code": "validation_error",
          *       "message": "Validation failed: name is required",
@@ -2174,9 +2208,13 @@ export interface components {
             object: string;
             data: components["schemas"]["Model"][];
         };
-        /** @description Response with list of toolset definitions (enhanced with status) */
+        /** @description List of toolset types */
+        ListToolsetTypesResponse: {
+            types: components["schemas"]["ToolsetTypeResponse"][];
+        };
+        /** @description List of toolset instances */
         ListToolsetsResponse: {
-            toolsets: components["schemas"]["ToolsetWithTools"][];
+            toolsets: components["schemas"]["ToolsetResponse"][];
         };
         /** @description List users query parameters */
         ListUsersParams: {
@@ -2746,6 +2784,31 @@ export interface components {
             /** @description Function definition details */
             function: components["schemas"]["FunctionDefinition"];
         };
+        /** @description User-owned toolset instance with UUID identification */
+        Toolset: {
+            /** @description Unique instance identifier (UUID) */
+            id: string;
+            /** @description User-defined name for this instance */
+            name: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
+            toolset_type: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
+            enabled: boolean;
+            /**
+             * Format: date-time
+             * @description When this instance was created
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When this instance was last updated
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            updated_at: string;
+        };
         /** @description Response from toolset tool execution (to send back to LLM) */
         ToolsetExecutionResponse: {
             /** @description Tool call ID this response is for */
@@ -2755,7 +2818,43 @@ export interface components {
             /** @description Error message, if execution failed */
             error?: string | null;
         };
-        /** @description Toolset with app-level and user-level configuration status (API response model) */
+        /** @description Toolset instance response */
+        ToolsetResponse: {
+            /** @description Unique instance identifier (UUID) */
+            id: string;
+            /** @description User-defined name for this instance */
+            name: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
+            toolset_type: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
+            enabled: boolean;
+            /**
+             * Format: date-time
+             * @description When this instance was created
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When this instance was last updated
+             */
+            updated_at: string;
+        };
+        /** @description Toolset type response (for admin listing) */
+        ToolsetTypeResponse: {
+            /** @description Unique toolset type identifier (e.g., "builtin-exa-web-search") */
+            toolset_id: string;
+            /** @description Human-readable name (e.g., "Exa Web Search") */
+            name: string;
+            /** @description Description of the toolset */
+            description: string;
+            /** @description Whether the toolset is enabled at app level (admin-controlled) */
+            app_enabled: boolean;
+            /** @description Tools provided by this toolset */
+            tools: components["schemas"]["ToolDefinition"][];
+        };
+        /** @description Toolset with app-level configuration status (API response model) */
         ToolsetWithTools: {
             /** @description Unique toolset identifier (e.g., "builtin-exa-web-search") */
             toolset_id: string;
@@ -2765,7 +2864,6 @@ export interface components {
             description: string;
             /** @description Whether the toolset is enabled at app level (admin-controlled) */
             app_enabled: boolean;
-            user_config?: null | components["schemas"]["UserToolsetConfigSummary"];
             /** @description Tools provided by this toolset */
             tools: components["schemas"]["ToolDefinition"][];
         };
@@ -2842,12 +2940,16 @@ export interface components {
             /** @description New value for the setting (type depends on setting metadata) */
             value: unknown;
         };
-        /** @description Request to update a user's toolset configuration */
-        UpdateToolsetConfigRequest: {
-            /** @description Whether the toolset is enabled for this user */
+        /** @description Request to update a toolset instance (full PUT - all fields required except api_key) */
+        UpdateToolsetRequest: {
+            /** @description User-defined name for this instance */
+            name: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
             enabled: boolean;
-            /** @description Optional API key for the toolset (will be encrypted) */
-            api_key?: string | null;
+            /** @description API key update action (Keep or Set) */
+            api_key?: components["schemas"]["ApiKeyUpdateDto"];
         };
         UrlCitation: {
             /**
@@ -2997,33 +3099,6 @@ export interface components {
         });
         /** @enum {string} */
         UserScope: "scope_user_user" | "scope_user_power_user" | "scope_user_manager" | "scope_user_admin";
-        /** @description User's configuration for a specific toolset (API model - no sensitive data).
-         *     API key is stored at toolset level (one key for all tools in toolset). */
-        UserToolsetConfig: {
-            /** @description Toolset identifier (e.g., "builtin-exa-web-search") */
-            toolset_id: string;
-            /** @description Whether the toolset is enabled for this user */
-            enabled: boolean;
-            /**
-             * Format: date-time
-             * @description When this configuration was created
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            created_at: string;
-            /**
-             * Format: date-time
-             * @description When this configuration was last updated
-             * @example 2024-11-10T04:52:06.786Z
-             */
-            updated_at: string;
-        };
-        /** @description Summary of user's toolset configuration (for list responses) */
-        UserToolsetConfigSummary: {
-            /** @description Whether the user has enabled this toolset */
-            enabled: boolean;
-            /** @description Whether the user has configured an API key */
-            has_api_key: boolean;
-        };
         /**
          * @description Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.
          * @enum {string}
@@ -6077,6 +6152,596 @@ export interface operations {
             };
         };
     };
+    listToolsetTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of all toolset types */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListToolsetTypesResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    enableToolsetType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset type identifier */
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toolset type enabled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Toolset type not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    disableToolsetType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset type identifier */
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toolset type disabled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Toolset type not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    listToolsets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of user's toolset instances */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListToolsetsResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createToolset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateToolsetRequest"];
+            };
+        };
+        responses: {
+            /** @description Toolset instance created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsetResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Name already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getToolset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset instance UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toolset instance */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsetResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Instance not found or not owned */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateToolset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset instance UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolsetRequest"];
+            };
+        };
+        responses: {
+            /** @description Toolset instance updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsetResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Instance not found or not owned */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Name already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteToolset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset instance UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toolset instance deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Instance not found or not owned */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    executeToolset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Toolset instance UUID */
+                id: string;
+                /** @description Tool method name */
+                method: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecuteToolsetRequest"];
+            };
+        };
+        responses: {
+            /** @description Tool execution result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsetExecutionResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Instance or method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     getCurrentUser: {
         parameters: {
             query?: never;
@@ -6543,466 +7208,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    list_all_toolsets_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of all available toolsets with status */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListToolsetsResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    enable_app_toolset_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Toolset enabled for app instance */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    disable_app_toolset_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Toolset disabled for app instance */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    get_toolset_config_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Toolset configuration with app status */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnhancedToolsetConfigResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    update_toolset_config_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateToolsetConfigRequest"];
-            };
-        };
-        responses: {
-            /** @description Updated toolset configuration */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnhancedToolsetConfigResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    delete_toolset_config_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Toolset configuration deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    execute_toolset_handler: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Toolset identifier */
-                toolset_id: string;
-                /** @description Tool method name (e.g., search, findSimilar, contents, answer) */
-                method: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExecuteToolsetRequest"];
-            };
-        };
-        responses: {
-            /** @description Toolset execution result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ToolsetExecutionResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Toolset or method not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Internal server error */
             500: {

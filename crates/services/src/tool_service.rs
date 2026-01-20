@@ -123,9 +123,6 @@ pub trait ToolService: Debug + Send + Sync {
     request: ToolsetExecutionRequest,
   ) -> Result<ToolsetExecutionResponse, ToolsetError>;
 
-  /// Check if a toolset instance is available for use
-  async fn is_available(&self, user_id: &str, id: &str) -> Result<bool, ToolsetError>;
-
   // ============================================================================
   // Toolset type management
   // ============================================================================
@@ -345,6 +342,7 @@ impl DefaultToolService {
       toolset_type: row.toolset_type,
       description: row.description,
       enabled: row.enabled,
+      has_api_key: row.encrypted_api_key.is_some(),
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
@@ -649,19 +647,6 @@ impl ToolService for DefaultToolService {
       "builtin-exa-web-search" => self.execute_exa_method(&api_key, method, request).await,
       _ => Err(ToolsetError::ToolsetNotFound(instance.toolset_type)),
     }
-  }
-
-  async fn is_available(&self, user_id: &str, id: &str) -> Result<bool, ToolsetError> {
-    let instance = self.db_service.get_toolset(id).await?;
-
-    Ok(match instance {
-      Some(i) if i.user_id == user_id => {
-        i.enabled
-          && i.encrypted_api_key.is_some()
-          && self.is_type_enabled(&i.toolset_type).await.unwrap_or(false)
-      }
-      _ => false,
-    })
   }
 
   // ============================================================================
@@ -1859,132 +1844,6 @@ mod tests {
     let result = service.delete("user123", "id1").await;
 
     assert!(result.is_ok());
-    Ok(())
-  }
-
-  // ============================================================================
-  // is_available Tests
-  // ============================================================================
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_true_when_all_conditions_met() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset()
-      .with(eq("id1"))
-      .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "my-exa"))));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
-      .returning(|_| Ok(Some(app_config_enabled())));
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id1").await?;
-
-    assert!(available);
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_false_when_not_enabled() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset().with(eq("id1")).returning(|_| {
-      Ok(Some(ToolsetRow {
-        enabled: false,
-        ..test_toolset_row("id1", "user123", "my-exa")
-      }))
-    });
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id1").await?;
-
-    assert!(!available);
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_false_when_no_api_key() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset().with(eq("id1")).returning(|_| {
-      Ok(Some(ToolsetRow {
-        encrypted_api_key: None,
-        salt: None,
-        nonce: None,
-        ..test_toolset_row("id1", "user123", "my-exa")
-      }))
-    });
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id1").await?;
-
-    assert!(!available);
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_false_when_app_disabled() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset()
-      .with(eq("id1"))
-      .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "my-exa"))));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
-      .returning(|_| Ok(None));
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id1").await?;
-
-    assert!(!available);
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_false_when_not_owned() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset()
-      .with(eq("id1"))
-      .returning(|_| Ok(Some(test_toolset_row("id1", "user999", "other-exa"))));
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id1").await?;
-
-    assert!(!available);
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_is_available_false_when_not_found() -> anyhow::Result<()> {
-    let mut db = MockDbService::new();
-    let exa = MockExaService::new();
-    let time = MockTimeService::new();
-
-    db.expect_get_toolset()
-      .with(eq("id999"))
-      .returning(|_| Ok(None));
-
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let available = service.is_available("user123", "id999").await?;
-
-    assert!(!available);
     Ok(())
   }
 
