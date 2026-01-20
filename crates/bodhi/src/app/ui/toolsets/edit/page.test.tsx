@@ -1,24 +1,23 @@
 /**
- * EditToolsetPage Component Tests
+ * EditToolsetPage Component Tests - UUID-based Architecture
  *
- * Purpose: Verify toolset configuration page functionality with comprehensive
- * scenario-based testing covering toolset configuration and admin controls.
+ * Purpose: Verify toolset edit page with UUID-based instance management
  *
  * Focus Areas:
- * - Toolset configuration form display
- * - API key management
- * - Admin enable/disable controls
- * - Authentication and app initialization states
+ * - Form population from toolset data
+ * - UUID-based query parameter
+ * - API key Keep/Set handling
+ * - Delete functionality
+ * - Redirect when app_enabled is false
  */
 
 import EditToolsetPage from '@/app/ui/toolsets/edit/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
-  mockDeleteToolsetConfig,
-  mockSetAppToolsetDisabled,
-  mockSetAppToolsetEnabled,
-  mockToolsetConfig,
-  mockUpdateToolsetConfig,
+  mockGetToolset,
+  mockUpdateToolset,
+  mockUpdateToolsetError,
+  mockDeleteToolset,
 } from '@/test-utils/msw-v2/handlers/toolsets';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
@@ -29,6 +28,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
 let mockSearchParams: URLSearchParams;
+let mockToast: ReturnType<typeof vi.fn>;
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -37,19 +37,24 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-const toastMock = vi.fn();
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: toastMock,
-  }),
-}));
+vi.mock('@/hooks/use-toast', () => {
+  const toast = vi.fn();
+  return {
+    toast,
+    useToast: () => ({
+      toast,
+    }),
+  };
+});
 
 setupMswV2();
 
-beforeEach(() => {
+beforeEach(async () => {
   pushMock.mockClear();
-  toastMock.mockClear();
-  mockSearchParams = new URLSearchParams('toolset_id=builtin-exa-web-search');
+  const { toast } = await import('@/hooks/use-toast');
+  mockToast = toast as unknown as ReturnType<typeof vi.fn>;
+  mockToast.mockClear();
+  mockSearchParams = new URLSearchParams('id=uuid-test-toolset');
 });
 
 afterEach(() => {
@@ -87,7 +92,7 @@ describe('EditToolsetPage - Error States', () => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
   });
 
-  it('shows error when toolset_id is missing', async () => {
+  it('shows error when id parameter is missing', async () => {
     mockSearchParams = new URLSearchParams('');
 
     await act(async () => {
@@ -100,21 +105,24 @@ describe('EditToolsetPage - Error States', () => {
   });
 });
 
-describe('EditToolsetPage - Toolset Configuration Display', () => {
+describe('EditToolsetPage - Form Display', () => {
   beforeEach(() => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
   });
 
-  it('displays toolset configuration form', async () => {
+  it('displays toolset edit form with populated data', async () => {
     server.use(
-      ...mockToolsetConfig('builtin-exa-web-search', {
+      mockGetToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: true,
+        has_api_key: true,
         app_enabled: true,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       })
     );
 
@@ -123,25 +131,28 @@ describe('EditToolsetPage - Toolset Configuration Display', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('toolset-edit-page')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
+    expect(screen.getByTestId('toolset-name-input')).toHaveValue('my-exa-search');
+    expect(screen.getByTestId('toolset-description-input')).toHaveValue('Test toolset');
+    expect(screen.getByTestId('toolset-enabled-switch')).toBeChecked();
     expect(screen.getByTestId('toolset-api-key-input')).toBeInTheDocument();
-    expect(screen.getByTestId('toolset-enabled-toggle')).toBeInTheDocument();
-    expect(screen.getByTestId('save-toolset-config')).toBeInTheDocument();
   });
 
-  it('displays app disabled message when toolset is disabled by admin', async () => {
+  it('redirects to toolsets page when app_enabled is false', async () => {
     server.use(
-      ...mockToolsetConfig('builtin-exa-web-search', {
+      mockGetToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: true,
+        has_api_key: true,
         app_enabled: false,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       })
     );
 
@@ -150,159 +161,183 @@ describe('EditToolsetPage - Toolset Configuration Display', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Toolset disabled',
+          variant: 'destructive',
+        })
+      );
     });
 
-    expect(screen.getByText(/This toolset is disabled by administrator/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/toolsets');
+    });
   });
 });
 
-describe('EditToolsetPage - Toolset Configuration', () => {
+describe('EditToolsetPage - Update Functionality', () => {
   beforeEach(() => {
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
-      ...mockToolsetConfig('builtin-exa-web-search', {
+      mockGetToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: false,
+        has_api_key: true,
         app_enabled: true,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      }),
-      ...mockUpdateToolsetConfig('builtin-exa-web-search', {
-        app_enabled: true,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: new Date().toISOString(),
-        },
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       })
     );
   });
 
-  it('saves toolset configuration when save button is clicked', async () => {
+  it('updates toolset with Keep API key action when api_key field is empty', async () => {
     const user = userEvent.setup();
+
+    server.use(
+      mockUpdateToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Updated description',
+        enabled: true,
+        has_api_key: true,
+        app_enabled: true,
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: new Date().toISOString(),
+      })
+    );
 
     await act(async () => {
       render(<EditToolsetPage />, { wrapper: createWrapper() });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    // Enter API key
-    const apiKeyInput = screen.getByTestId('toolset-api-key-input');
-    await user.type(apiKeyInput, 'test-api-key');
+    const descInput = screen.getByTestId('toolset-description-input');
+    await user.clear(descInput);
+    await user.type(descInput, 'Updated description');
 
-    // Enable the toolset
-    const enableToggle = screen.getByTestId('toolset-enabled-toggle');
+    const enableToggle = screen.getByTestId('toolset-enabled-switch');
     await user.click(enableToggle);
 
-    // Save
-    const saveButton = screen.getByTestId('save-toolset-config');
+    const saveButton = screen.getByTestId('toolset-save-button');
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(toastMock).toHaveBeenCalledWith(
+      expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Success',
-          description: 'Toolset configuration saved',
+          title: 'Toolset updated successfully',
+        })
+      );
+    });
+  });
+
+  it('updates toolset with Set API key action when new api_key is entered', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      mockUpdateToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: true,
+        has_api_key: true,
+        app_enabled: true,
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: new Date().toISOString(),
+      })
+    );
+
+    await act(async () => {
+      render(<EditToolsetPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
+    });
+
+    const apiKeyInput = screen.getByTestId('toolset-api-key-input');
+    await user.type(apiKeyInput, 'new-api-key-value');
+
+    const enableToggle = screen.getByTestId('toolset-enabled-switch');
+    await user.click(enableToggle);
+
+    const saveButton = screen.getByTestId('toolset-save-button');
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Toolset updated successfully',
+        })
+      );
+    });
+  });
+
+  it('shows error toast when update fails', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      mockUpdateToolsetError({
+        message: 'Name already exists',
+        status: 400,
+      })
+    );
+
+    await act(async () => {
+      render(<EditToolsetPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
+    });
+
+    const saveButton = screen.getByTestId('toolset-save-button');
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Failed to update toolset',
+          description: 'Name already exists',
+          variant: 'destructive',
         })
       );
     });
   });
 });
 
-describe('EditToolsetPage - Admin Controls', () => {
-  beforeEach(() => {
-    server.use(
-      ...mockAppInfo({ status: 'ready' }, { stub: true }),
-      ...mockUserLoggedIn({ role: 'resource_admin' }, { stub: true }),
-      ...mockToolsetConfig('builtin-exa-web-search', {
-        app_enabled: true,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      }),
-      ...mockSetAppToolsetEnabled('builtin-exa-web-search'),
-      ...mockSetAppToolsetDisabled('builtin-exa-web-search')
-    );
-  });
-
-  it('shows admin toggle for resource_admin users', async () => {
-    await act(async () => {
-      render(<EditToolsetPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('app-enabled-toggle')).toBeInTheDocument();
-    expect(screen.getByText('Enable for Server')).toBeInTheDocument();
-  });
-
-  it('opens confirmation dialog when disabling toolset for server', async () => {
-    const user = userEvent.setup();
-
-    await act(async () => {
-      render(<EditToolsetPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
-    });
-
-    // Click the app enabled toggle to disable
-    const appToggle = screen.getByTestId('app-enabled-toggle');
-    await user.click(appToggle);
-
-    // Should show confirmation dialog
-    await waitFor(() => {
-      expect(screen.getByText('Disable Toolset for Server')).toBeInTheDocument();
-    });
-  });
-});
-
-describe('EditToolsetPage - Clear API Key', () => {
+describe('EditToolsetPage - Delete Functionality', () => {
   beforeEach(() => {
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
-      // Toolset is configured with API key
-      ...mockToolsetConfig('builtin-exa-web-search', {
+      mockGetToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: true,
+        has_api_key: true,
         app_enabled: true,
-        config: {
-          toolset_id: 'builtin-exa-web-search',
-          enabled: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      }),
-      ...mockDeleteToolsetConfig('builtin-exa-web-search')
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      })
     );
   });
 
-  it('shows clear API key button when API key is configured', async () => {
-    await act(async () => {
-      render(<EditToolsetPage />, { wrapper: createWrapper() });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('clear-api-key-button')).toBeInTheDocument();
-  });
-
-  it('shows confirmation dialog when clearing API key', async () => {
+  it('shows delete confirmation dialog when delete button is clicked', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
@@ -310,16 +345,118 @@ describe('EditToolsetPage - Clear API Key', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('toolset-config-form')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    const clearButton = screen.getByTestId('clear-api-key-button');
-    await user.click(clearButton);
+    const deleteButton = screen.getByTestId('toolset-delete-button');
+    await user.click(deleteButton);
 
     await waitFor(() => {
-      // The dialog title should appear
       expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-      expect(screen.getByText(/This will remove your API key/)).toBeInTheDocument();
+      expect(screen.getByText(/Are you sure you want to delete/)).toBeInTheDocument();
+    });
+  });
+
+  it('deletes toolset and navigates to toolsets page on confirmation', async () => {
+    const user = userEvent.setup();
+
+    server.use(mockDeleteToolset());
+
+    await act(async () => {
+      render(<EditToolsetPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getByTestId('toolset-delete-button');
+    await user.click(deleteButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole('button', { name: /delete/i });
+    await user.click(confirmButton);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Toolset deleted successfully',
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/toolsets');
+    });
+  });
+});
+
+describe('EditToolsetPage - Form Validation', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockGetToolset({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        toolset_type: 'builtin-exa-web-search',
+        description: 'Test toolset',
+        enabled: true,
+        has_api_key: true,
+        app_enabled: true,
+        tools: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      })
+    );
+  });
+
+  it('validates name length (max 24 characters)', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<EditToolsetPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByTestId('toolset-name-input');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'this-name-is-way-too-long-for-validation');
+
+    const saveButton = screen.getByTestId('toolset-save-button');
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Name must be 24 characters or less')).toBeInTheDocument();
+    });
+  });
+
+  it('validates name format (alphanumeric and hyphens only)', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<EditToolsetPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByTestId('toolset-name-input');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'invalid name with spaces');
+
+    const saveButton = screen.getByTestId('toolset-save-button');
+    await user.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Name can only contain letters, numbers, and hyphens')).toBeInTheDocument();
     });
   });
 });

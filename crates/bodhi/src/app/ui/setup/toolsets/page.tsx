@@ -26,7 +26,7 @@ function ToolsetsSetupContent() {
       <div data-testid="toolsets-setup-page">
         {/* Main Toolset Config Form */}
         <motion.div variants={itemVariants}>
-          <SetupToolsetForm toolsetId="builtin-exa-web-search" onSuccess={handleSuccess} />
+          <SetupToolsetForm onSuccess={handleSuccess} />
         </motion.div>
 
         {/* Footer with clarification and Continue button - mt-4 for consistent padding */}

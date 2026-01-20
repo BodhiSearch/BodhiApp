@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
+import { FormEvent, RefObject, useEffect, useRef, memo, useMemo } from 'react';
 
 import { Plus } from 'lucide-react';
 
@@ -15,7 +15,7 @@ import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useResponsiveTestId } from '@/hooks/use-responsive-testid';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useToolsetSelection } from '@/hooks/use-toolset-selection';
-import { useAvailableToolsets } from '@/hooks/useToolsets';
+import { useToolsets } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
 
@@ -223,9 +223,30 @@ export function ChatUI() {
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
 
   // Toolset selection
-  const { enabledTools, toggleTool, toggleToolset } = useToolsetSelection();
-  const { data: toolsetsResponse } = useAvailableToolsets();
-  const availableToolsets = toolsetsResponse?.toolsets || [];
+  const { enabledTools, toggleTool, toggleToolset, setEnabledTools } = useToolsetSelection();
+  const { data: toolsetsResponse } = useToolsets();
+  const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
+
+  // Auto-filter unavailable toolsets from selection
+  useEffect(() => {
+    if (toolsets.length === 0) return;
+
+    const availableIds = new Set(toolsets.filter((t) => t.app_enabled && t.enabled && t.has_api_key).map((t) => t.id));
+
+    const filtered: Record<string, string[]> = {};
+    let hasUnavailable = false;
+    for (const [id, tools] of Object.entries(enabledTools)) {
+      if (availableIds.has(id)) {
+        filtered[id] = tools;
+      } else {
+        hasUnavailable = true;
+      }
+    }
+
+    if (hasUnavailable) {
+      setEnabledTools(filtered);
+    }
+  }, [toolsets, enabledTools, setEnabledTools]);
 
   // Chat with toolsets support
   const {
@@ -238,7 +259,7 @@ export function ChatUI() {
     pendingToolCalls,
   } = useChat({
     enabledTools,
-    availableToolsets,
+    toolsets,
   });
 
   const inputRef = useRef<HTMLTextAreaElement>(null);

@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { ExternalLink, Info, Loader2 } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Info } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 import {
   AlertDialog,
@@ -14,324 +17,322 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
-import {
-  useSetAppToolsetDisabled,
-  useSetAppToolsetEnabled,
-  useToolsetConfig,
-  useUpdateToolsetConfig,
-} from '@/hooks/useToolsets';
-import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
+import { useCreateToolset, useDisableToolsetType, useEnableToolsetType, useToolsetTypes } from '@/hooks/useToolsets';
 
-// Toolset metadata - hardcoded for now (can be moved to registry later)
-const TOOLSET_METADATA: Record<string, { name: string; description: string; apiKeyUrl: string }> = {
-  'builtin-exa-web-search': {
-    name: 'Exa Web Search',
-    description: 'Search the web using Exa AI for real-time information',
-    apiKeyUrl: 'https://exa.ai',
-  },
-};
+const TOOLSET_TYPE_ID = 'builtin-exa-web-search';
+
+const createToolsetSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(24, 'Name must be 24 characters or less')
+    .regex(/^[a-zA-Z0-9-]+$/, 'Only letters, numbers, and hyphens'),
+  description: z.string().max(255).optional(),
+  api_key: z.string().min(1, 'API key is required'),
+  enabled: z.boolean().default(true),
+});
+
+type CreateToolsetFormData = z.infer<typeof createToolsetSchema>;
 
 interface SetupToolsetFormProps {
-  toolsetId: string;
   onSuccess?: () => void;
 }
 
-export function SetupToolsetForm({ toolsetId, onSuccess }: SetupToolsetFormProps) {
-  const { toast } = useToast();
+export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
+  const { data: typesData, isLoading: typesLoading } = useToolsetTypes();
+  const [enableDialogOpen, setEnableDialogOpen] = useState(false);
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
-  // Form state - optimistic rendering with defaults
-  const [isAppEnabled, setIsAppEnabled] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [enabled, setEnabled] = useState(false);
+  const exaType = typesData?.types?.find((t) => t.toolset_id === TOOLSET_TYPE_ID);
+  const isAppEnabled = exaType?.app_enabled ?? false;
 
-  // Dialog states
-  const [showAppEnableDialog, setShowAppEnableDialog] = useState(false);
-  const [showAppDisableDialog, setShowAppDisableDialog] = useState(false);
-
-  // Fetch toolset config in background - will apply when loaded
-  const { data: toolsetConfig, refetch } = useToolsetConfig(toolsetId);
-
-  // Apply backend state when it loads (discarding any local changes)
-  useEffect(() => {
-    if (toolsetConfig) {
-      setIsAppEnabled(toolsetConfig.app_enabled);
-      if (toolsetConfig.config) {
-        setEnabled(toolsetConfig.config.enabled);
-      }
-    }
-  }, [toolsetConfig]);
-
-  // Auto-enable toolset when user enters API key (UX improvement)
-  useEffect(() => {
-    if (apiKey.trim() && !enabled) {
-      setEnabled(true);
-    }
-  }, [apiKey, enabled]);
-
-  // Mutations
-  const updateConfig = useUpdateToolsetConfig({
+  const enableMutation = useEnableToolsetType({
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Toolset configuration saved',
-      });
-      refetch();
+      toast({ title: 'Success', description: 'Toolset enabled for server' });
+      setEnableDialogOpen(false);
+    },
+    onError: (message) => {
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+      setEnableDialogOpen(false);
+    },
+  });
+
+  const disableMutation = useDisableToolsetType({
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Toolset disabled for server' });
+      setDisableDialogOpen(false);
+    },
+    onError: (message) => {
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+      setDisableDialogOpen(false);
+    },
+  });
+
+  const createMutation = useCreateToolset({
+    onSuccess: (toolset) => {
+      toast({ title: 'Success', description: `Created ${toolset.name}` });
       onSuccess?.();
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     },
   });
 
-  const enableAppToolset = useSetAppToolsetEnabled({
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Toolset enabled for server',
-      });
-      setIsAppEnabled(true);
-      refetch();
-    },
-    onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+  const form = useForm<CreateToolsetFormData>({
+    resolver: zodResolver(createToolsetSchema),
+    defaultValues: {
+      name: TOOLSET_TYPE_ID,
+      description: '',
+      api_key: '',
+      enabled: true,
     },
   });
 
-  const disableAppToolset = useSetAppToolsetDisabled({
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Toolset disabled for server',
-      });
-      setIsAppEnabled(false);
-      refetch();
-    },
-    onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const toolsetMeta = TOOLSET_METADATA[toolsetId] || {
-    name: toolsetId,
-    description: 'Toolset configuration',
-    apiKeyUrl: '#',
-  };
-
-  // Form is disabled when app-level is disabled
-  const isFormDisabled = !isAppEnabled;
-  const isSaving = updateConfig.isLoading;
-  const isAppToggling = enableAppToolset.isLoading || disableAppToolset.isLoading;
-
-  const handleSave = () => {
-    const request: { toolsetId: string; enabled: boolean; api_key?: string } = {
-      toolsetId,
-      enabled,
-    };
-
-    // Only include API key if user entered something
-    if (apiKey.trim()) {
-      request.api_key = apiKey;
-    }
-
-    updateConfig.mutate(request);
-
-    // Also enable at app level when saving with API key
-    if (isAppEnabled && apiKey.trim()) {
-      // App is already enabled, just save user config
-    } else if (apiKey.trim()) {
-      // Enable app level too
-      enableAppToolset.mutate({ toolsetId });
+  const handleToggleClick = (checked: boolean) => {
+    if (checked) {
+      setEnableDialogOpen(true);
+    } else {
+      setDisableDialogOpen(true);
     }
   };
 
-  const handleAppEnableConfirm = () => {
-    enableAppToolset.mutate({ toolsetId });
-    setShowAppEnableDialog(false);
+  const handleEnableConfirm = () => {
+    enableMutation.mutate({ typeId: TOOLSET_TYPE_ID });
   };
 
-  const handleAppDisableConfirm = () => {
-    disableAppToolset.mutate({ toolsetId });
-    setShowAppDisableDialog(false);
+  const handleDisableConfirm = () => {
+    disableMutation.mutate({ typeId: TOOLSET_TYPE_ID });
   };
+
+  const onSubmit = (data: CreateToolsetFormData) => {
+    createMutation.mutate({
+      toolset_type: TOOLSET_TYPE_ID,
+      name: data.name,
+      description: data.description || undefined,
+      api_key: data.api_key,
+      enabled: data.enabled,
+    });
+  };
+
+  if (typesLoading) {
+    return (
+      <Card className="w-full" data-testid="setup-toolset-form">
+        <CardHeader className="text-center">
+          <CardTitle>Configure Toolsets</CardTitle>
+          <CardDescription>Enhance your AI with web search capabilities</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isToggling = enableMutation.isLoading || disableMutation.isLoading;
+  const isCreating = createMutation.isLoading;
+  const isFormDisabled = !isAppEnabled || isToggling || isCreating;
 
   return (
-    <TooltipProvider>
-      <Card className="w-full" data-testid="toolset-config-form">
+    <>
+      <Card className="w-full" data-testid="setup-toolset-form">
         <CardHeader className="text-center">
           <CardTitle>Configure Toolsets</CardTitle>
           <CardDescription>Enhance your AI with web search capabilities</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* App Enable/Disable Toggle - Prominent at top */}
-          <div className="space-y-4 pb-4 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="app-enabled" className="text-base font-medium">
-                  Enable for Server
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Enable/disable {toolsetMeta.name} toolset for this server</p>
-                  </TooltipContent>
-                </Tooltip>
+          {/* Toolset Type Toggle Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">{exaType?.name || 'Exa Web Search'}</CardTitle>
+                  <CardDescription>{exaType?.description || 'Search the web using Exa AI'}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={isAppEnabled}
+                    onCheckedChange={handleToggleClick}
+                    disabled={isToggling}
+                    data-testid="app-enabled-toggle"
+                  />
+                  <span className="text-sm text-muted-foreground">{isAppEnabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {isAppToggling && <Loader2 className="h-4 w-4 animate-spin" />}
-                <Switch
-                  id="app-enabled"
-                  checked={isAppEnabled}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setShowAppEnableDialog(true);
-                    } else {
-                      setShowAppDisableDialog(true);
-                    }
-                  }}
-                  disabled={isAppToggling}
-                  data-testid="app-enabled-toggle"
-                />
-                <Badge variant={isAppEnabled ? 'default' : 'secondary'}>{isAppEnabled ? 'Enabled' : 'Disabled'}</Badge>
-              </div>
-            </div>
-          </div>
+            </CardHeader>
+          </Card>
 
-          {/* Info message when app is disabled */}
-          {!isAppEnabled && (
-            <div
-              className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md"
-              data-testid="app-disabled-message"
-            >
-              Enable the toolset for this server to configure it.
-            </div>
-          )}
+          {/* Create Toolset Form */}
+          <Card className={!isAppEnabled ? 'opacity-60' : ''}>
+            <CardHeader>
+              <CardTitle className="text-lg">Create Toolset</CardTitle>
+              <CardDescription>
+                {isAppEnabled
+                  ? 'Configure your first Exa Web Search toolset'
+                  : 'Enable the toolset type above to create a toolset'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="builtin-exa-web-search"
+                            disabled={isFormDisabled}
+                            data-testid="toolset-name-input"
+                          />
+                        </FormControl>
+                        <FormDescription>A unique name for this toolset</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          {/* User Config Section - Gated on app enabled */}
-          <div className={cn('space-y-4', isFormDisabled && 'opacity-50 pointer-events-none')}>
-            {/* API Key Input */}
-            <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="api-key"
-                  type="password"
-                  placeholder="Enter your API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  disabled={isFormDisabled || isSaving}
-                  data-testid="toolset-api-key-input"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-sm text-muted-foreground">
-                  Get your API key from{' '}
-                  <a
-                    href={toolsetMeta.apiKeyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    {toolsetMeta.apiKeyUrl.replace('https://', '')}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </p>
-                <p className="text-xs text-muted-foreground">Each user must configure their own API key</p>
-              </div>
-            </div>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Describe what this toolset is used for"
+                            disabled={isFormDisabled}
+                            data-testid="toolset-description-input"
+                          />
+                        </FormControl>
+                        <FormDescription>Optional description for this toolset</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            {/* Enable Toggle */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="enabled">Enable Toolset</Label>
-              <Switch
-                id="enabled"
-                checked={enabled}
-                onCheckedChange={setEnabled}
-                disabled={isFormDisabled || isSaving || !apiKey.trim()}
-                data-testid="toolset-enabled-toggle"
-              />
-            </div>
-          </div>
+                  <FormField
+                    control={form.control}
+                    name="api_key"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Key</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="password"
+                            placeholder="Enter API key"
+                            disabled={isFormDisabled}
+                            data-testid="toolset-api-key-input"
+                          />
+                        </FormControl>
+                        <FormDescription>The API key for this toolset</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Enable Toolset</FormLabel>
+                          <FormDescription>Make this toolset available for use in chats</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isFormDisabled}
+                            data-testid="toolset-enabled-toggle"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" disabled={isFormDisabled} data-testid="create-toolset-button">
+                    {isCreating ? 'Creating...' : 'Create Toolset'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {/* Info Box */}
+          <Card className="bg-muted/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Don&apos;t have an Exa API key?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Get one at{' '}
+                    <a href="https://exa.ai" target="_blank" rel="noopener noreferrer" className="underline">
+                      exa.ai
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
 
-        <CardFooter>
-          <Button
-            onClick={handleSave}
-            disabled={isFormDisabled || isSaving || !apiKey.trim()}
-            data-testid="save-toolset-config"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save'
-            )}
-          </Button>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-muted-foreground">You can always skip this step and configure later</p>
         </CardFooter>
       </Card>
 
-      {/* App Enable Confirmation Dialog */}
-      <AlertDialog open={showAppEnableDialog} onOpenChange={setShowAppEnableDialog}>
-        <AlertDialogContent>
+      {/* Enable Confirmation Dialog */}
+      <AlertDialog open={enableDialogOpen} onOpenChange={setEnableDialogOpen}>
+        <AlertDialogContent data-testid="enable-confirm-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Enable Toolset for Server</AlertDialogTitle>
             <AlertDialogDescription>
-              This will enable {toolsetMeta.name} for all users on this server. Users will still need to configure their
-              own API keys to use the toolset.
+              This will enable Exa Web Search for all users on this server.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAppEnableConfirm}>Enable</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* App Disable Confirmation Dialog */}
-      <AlertDialog open={showAppDisableDialog} onOpenChange={setShowAppDisableDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Disable Toolset for Server</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will disable {toolsetMeta.name} for all users on this server. Users will not be able to use this
-              toolset until it is re-enabled.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleAppDisableConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Disable
+            <AlertDialogAction onClick={handleEnableConfirm} disabled={enableMutation.isLoading}>
+              {enableMutation.isLoading ? 'Enabling...' : 'Enable'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+
+      {/* Disable Confirmation Dialog */}
+      <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
+        <AlertDialogContent data-testid="disable-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable Toolset for Server</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will disable Exa Web Search for all users. Existing instances will stop working.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDisableConfirm} disabled={disableMutation.isLoading}>
+              {disableMutation.isLoading ? 'Disabling...' : 'Disable'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

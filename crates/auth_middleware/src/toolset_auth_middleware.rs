@@ -35,9 +35,9 @@ pub enum ToolsetAuthError {
   #[error_meta(error_type = ErrorType::Forbidden)]
   MissingAzpHeader,
 
-  #[error("instance_not_found")]
+  #[error("toolset_not_found")]
   #[error_meta(error_type = ErrorType::NotFound)]
-  InstanceNotFound,
+  ToolsetNotFound,
 
   #[error(transparent)]
   ToolsetError(#[from] ToolsetError),
@@ -46,8 +46,8 @@ pub enum ToolsetAuthError {
 /// Middleware for toolset execution endpoints
 ///
 /// Authorization rules depend on auth type:
-/// - Session (has ROLE header): Check instance ownership + app-level type enabled + instance available
-/// - External OAuth (has SCOPE starting with "scope_user_"): Check instance ownership + app-level type enabled + app-client registered + scope + instance available
+/// - Session (has ROLE header): Check toolset ownership + app-level type enabled + toolset available
+/// - External OAuth (has SCOPE starting with "scope_user_"): Check toolset ownership + app-level type enabled + app-client registered + scope + toolset available
 ///
 /// Note: API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
 pub async fn toolset_auth_middleware(
@@ -93,13 +93,13 @@ async fn _impl(
 
   let tool_service = state.app_service().tool_service();
 
-  // 1. Get instance and verify ownership (returns None if not found OR not owned)
-  let instance = tool_service
+  // 1. Get toolset and verify ownership (returns None if not found OR not owned)
+  let toolset = tool_service
     .get(user_id, &id)
     .await?
-    .ok_or(ToolsetAuthError::InstanceNotFound)?;
+    .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
-  let toolset_type = &instance.toolset_type;
+  let toolset_type = &toolset.toolset_type;
 
   // 2. Check app-level type enabled (both auth types)
   if !tool_service.is_type_enabled(toolset_type).await? {
@@ -141,8 +141,8 @@ async fn _impl(
     }
   }
 
-  // 5. Check instance is available (has API key and is enabled)
-  if !instance.enabled || !instance.has_api_key {
+  // 5. Check toolset is available (has API key and is enabled)
+  if !toolset.enabled || !toolset.has_api_key {
     return Err(ToolsetError::ToolsetNotConfigured.into());
   }
 

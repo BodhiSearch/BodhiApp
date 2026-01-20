@@ -1,19 +1,18 @@
 /**
- * ToolsetsPage Component Tests
+ * ToolsetsPage Component Tests - Instance-based Architecture
  *
- * Purpose: Verify toolsets management page functionality with comprehensive
- * scenario-based testing covering toolset listing and navigation patterns.
+ * Purpose: Verify toolsets list page displays instances with UUID-based architecture
  *
  * Focus Areas:
- * - Toolsets list display with status badges
- * - Navigation to toolset configuration page
- * - Authentication and app initialization states
+ * - Instance list display with status badges
+ * - Navigation to edit page with UUID
+ * - Admin tab navigation
  * - Error handling
  */
 
 import ToolsetsPage from '@/app/ui/toolsets/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
-import { mockAvailableToolsets, mockAvailableToolsetsError } from '@/test-utils/msw-v2/handlers/toolsets';
+import { mockListToolsets, mockListToolsetsError } from '@/test-utils/msw-v2/handlers/toolsets';
 import { mockUserLoggedIn, mockUserLoggedOut } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -26,6 +25,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => '/ui/toolsets',
 }));
 
 setupMswV2();
@@ -64,23 +64,22 @@ describe('ToolsetsPage - Authentication & Initialization', () => {
   });
 });
 
-describe('ToolsetsPage - Toolsets List Display', () => {
+describe('ToolsetsPage - Instance List Display', () => {
   beforeEach(() => {
     server.use(...mockAppInfo({ status: 'ready' }, { stub: true }), ...mockUserLoggedIn({}, { stub: true }));
   });
 
-  it('displays toolsets list with enabled status badge', async () => {
+  it('displays toolset instance with Enabled status badge', async () => {
     server.use(
-      ...mockAvailableToolsets([
+      mockListToolsets([
         {
-          toolset_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
           description: 'Search the web using Exa AI',
+          enabled: true,
+          has_api_key: true,
           app_enabled: true,
-          user_config: {
-            enabled: true,
-            has_api_key: true,
-          },
           tools: [
             {
               type: 'function',
@@ -91,6 +90,8 @@ describe('ToolsetsPage - Toolsets List Display', () => {
               },
             },
           ],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ])
     );
@@ -103,22 +104,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Exa Web Search')).toBeInTheDocument();
+    expect(screen.getByText('my-exa-search')).toBeInTheDocument();
     expect(screen.getByText('Enabled')).toBeInTheDocument();
   });
 
-  it('displays toolsets list with configured status badge', async () => {
+  it('displays toolset instance with Disabled status badge', async () => {
     server.use(
-      ...mockAvailableToolsets([
+      mockListToolsets([
         {
-          toolset_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
           description: 'Search the web using Exa AI',
+          enabled: false,
+          has_api_key: true,
           app_enabled: true,
-          user_config: {
-            enabled: false,
-            has_api_key: true,
-          },
           tools: [
             {
               type: 'function',
@@ -129,6 +129,8 @@ describe('ToolsetsPage - Toolsets List Display', () => {
               },
             },
           ],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ])
     );
@@ -141,18 +143,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Configured')).toBeInTheDocument();
+    expect(screen.getByText('my-exa-search')).toBeInTheDocument();
+    expect(screen.getByText('Disabled')).toBeInTheDocument();
   });
 
-  it('displays toolsets list with not configured status badge', async () => {
+  it('displays toolset instance with No API Key status badge', async () => {
     server.use(
-      ...mockAvailableToolsets([
+      mockListToolsets([
         {
-          toolset_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
           description: 'Search the web using Exa AI',
+          enabled: true,
+          has_api_key: false,
           app_enabled: true,
-          user_config: undefined,
           tools: [
             {
               type: 'function',
@@ -163,6 +168,8 @@ describe('ToolsetsPage - Toolsets List Display', () => {
               },
             },
           ],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ])
     );
@@ -175,18 +182,21 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Not Configured')).toBeInTheDocument();
+    expect(screen.getByText('my-exa-search')).toBeInTheDocument();
+    expect(screen.getByText('No API Key')).toBeInTheDocument();
   });
 
-  it('displays toolsets list with app disabled status badge', async () => {
+  it('displays toolset instance with App Disabled status badge', async () => {
     server.use(
-      ...mockAvailableToolsets([
+      mockListToolsets([
         {
-          toolset_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
           description: 'Search the web using Exa AI',
+          enabled: true,
+          has_api_key: true,
           app_enabled: false,
-          user_config: undefined,
           tools: [
             {
               type: 'function',
@@ -197,6 +207,8 @@ describe('ToolsetsPage - Toolsets List Display', () => {
               },
             },
           ],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ])
     );
@@ -209,29 +221,36 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
+    expect(screen.getByText('my-exa-search')).toBeInTheDocument();
     expect(screen.getByText('App Disabled')).toBeInTheDocument();
   });
 
-  it('navigates to edit page when edit button is clicked', async () => {
-    const user = userEvent.setup();
+  it('displays multiple instances of the same type', async () => {
     server.use(
-      ...mockAvailableToolsets([
+      mockListToolsets([
         {
-          toolset_id: 'builtin-exa-web-search',
-          name: 'Exa Web Search',
-          description: 'Search the web using Exa AI',
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
+          description: 'First instance',
+          enabled: true,
+          has_api_key: true,
           app_enabled: true,
-          user_config: undefined,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search the web',
-                parameters: { type: 'object', properties: {} },
-              },
-            },
-          ],
+          tools: [],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: 'uuid-exa-2',
+          name: 'company-exa-search',
+          toolset_type: 'builtin-exa-web-search',
+          description: 'Second instance',
+          enabled: true,
+          has_api_key: true,
+          app_enabled: true,
+          tools: [],
+          created_at: '2024-01-02T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
         },
       ])
     );
@@ -244,14 +263,28 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    const editButton = screen.getByTestId('toolset-edit-button-builtin-exa-web-search');
-    await user.click(editButton);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/toolsets/edit?toolset_id=builtin-exa-web-search');
+    expect(screen.getByText('my-exa-search')).toBeInTheDocument();
+    expect(screen.getByText('company-exa-search')).toBeInTheDocument();
   });
 
-  it('displays empty state when no toolsets available', async () => {
-    server.use(...mockAvailableToolsets([]));
+  it('navigates to edit page with UUID when edit button is clicked', async () => {
+    const user = userEvent.setup();
+    server.use(
+      mockListToolsets([
+        {
+          id: 'uuid-exa-1',
+          name: 'my-exa-search',
+          toolset_type: 'builtin-exa-web-search',
+          description: 'Search the web using Exa AI',
+          enabled: true,
+          has_api_key: true,
+          app_enabled: true,
+          tools: [],
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ])
+    );
 
     await act(async () => {
       render(<ToolsetsPage />, { wrapper: createWrapper() });
@@ -261,7 +294,76 @@ describe('ToolsetsPage - Toolsets List Display', () => {
       expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('No toolsets available')).toBeInTheDocument();
+    const editButton = screen.getByTestId('toolset-edit-button-uuid-exa-1');
+    await user.click(editButton);
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/toolsets/edit?id=uuid-exa-1');
+  });
+
+  it('displays empty state when no toolsets available', async () => {
+    server.use(mockListToolsets([]));
+
+    await act(async () => {
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('No toolsets configured')).toBeInTheDocument();
+  });
+
+  it('shows New button for creating toolsets', async () => {
+    server.use(mockListToolsets([]));
+
+    await act(async () => {
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('toolset-new-button')).toBeInTheDocument();
+  });
+});
+
+describe('ToolsetsPage - Admin Features', () => {
+  it('shows admin tab for admin users', async () => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({ role: 'resource_admin' }, { stub: true }),
+      mockListToolsets([])
+    );
+
+    await act(async () => {
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+  });
+
+  it('does not show admin tab for regular users', async () => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({ role: 'resource_user' }, { stub: true }),
+      mockListToolsets([])
+    );
+
+    await act(async () => {
+      render(<ToolsetsPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('toolsets-page')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
   });
 });
 
@@ -272,7 +374,7 @@ describe('ToolsetsPage - Error Handling', () => {
 
   it('displays error message when toolsets fetch fails', async () => {
     server.use(
-      ...mockAvailableToolsetsError({
+      mockListToolsetsError({
         message: 'Failed to load toolsets',
         status: 500,
       })

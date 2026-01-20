@@ -18,6 +18,7 @@ use objs::API_TAG_TOOLSETS;
 use objs::{ApiError, Toolset, ToolsetExecutionResponse, ToolsetScope};
 use server_core::RouterState;
 use services::db::ApiKeyUpdate;
+use services::ToolsetError;
 use std::collections::HashSet;
 use std::sync::Arc;
 use validator::Validate;
@@ -74,7 +75,7 @@ fn extract_allowed_toolset_types(headers: &HeaderMap) -> HashSet<String> {
 
 pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
   Router::new()
-    // Instance CRUD
+    // Toolset CRUD
     .route("/toolsets", get(list_toolsets_handler))
     .route("/toolsets", post(create_toolset_handler))
     .route("/toolsets/{id}", get(get_toolset_handler))
@@ -99,19 +100,19 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
 }
 
 // ============================================================================
-// Instance CRUD Handlers
+// Toolset CRUD Handlers
 // ============================================================================
 
-/// List all toolset instances for the authenticated user
+/// List all toolsets for the authenticated user
 ///
-/// For OAuth tokens, filters instances by scope_toolset-* scopes in the token.
+/// For OAuth tokens, filters toolsets by scope_toolset-* scopes in the token.
 #[utoipa::path(
   get,
   path = ENDPOINT_TOOLSETS,
   tag = API_TAG_TOOLSETS,
   operation_id = "listToolsets",
   responses(
-    (status = 200, description = "List of user's toolset instances", body = ListToolsetsResponse),
+    (status = 200, description = "List of user's toolsets", body = ListToolsetsResponse),
   ),
   security(("bearer" = []))
 )]
@@ -122,28 +123,31 @@ pub async fn list_toolsets_handler(
   let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
-  let instances = tool_service.list(&user_id).await?;
+  let toolsets = tool_service.list(&user_id).await?;
 
-  // OAuth filtering: hide instances of types not in scopes
-  let filtered_instances = if is_oauth_auth(&headers) {
+  // OAuth filtering: hide toolsets of types not in scopes
+  let filtered_toolsets = if is_oauth_auth(&headers) {
     let allowed_types = extract_allowed_toolset_types(&headers);
-    instances
+    toolsets
       .into_iter()
-      .filter(|instance| allowed_types.contains(&instance.toolset_type))
+      .filter(|toolset| allowed_types.contains(&toolset.toolset_type))
       .collect()
   } else {
-    instances
+    toolsets
   };
 
-  let toolsets: Vec<ToolsetResponse> = filtered_instances
-    .into_iter()
-    .map(toolset_to_response)
-    .collect();
+  // Enrich each toolset with type information
+  let mut responses = Vec::new();
+  for toolset in filtered_toolsets {
+    responses.push(toolset_to_response(toolset, &tool_service).await?);
+  }
 
-  Ok(Json(ListToolsetsResponse { toolsets }))
+  Ok(Json(ListToolsetsResponse {
+    toolsets: responses,
+  }))
 }
 
-/// Create a new toolset instance
+/// Create a new toolset
 #[utoipa::path(
   post,
   path = ENDPOINT_TOOLSETS,
@@ -151,7 +155,7 @@ pub async fn list_toolsets_handler(
   operation_id = "createToolset",
   request_body = CreateToolsetRequest,
   responses(
-    (status = 201, description = "Toolset instance created", body = ToolsetResponse),
+    (status = 201, description = "Toolset created", body = ToolsetResponse),
     (status = 400, description = "Validation error"),
     (status = 409, description = "Name already exists"),
   ),
@@ -180,10 +184,11 @@ pub async fn create_toolset_handler(
     )
     .await?;
 
-  Ok((StatusCode::CREATED, Json(toolset_to_response(toolset))))
+  let response = toolset_to_response(toolset, &tool_service).await?;
+  Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// Get a specific toolset instance by ID
+/// Get a specific toolset by ID
 #[utoipa::path(
   get,
   path = ENDPOINT_TOOLSETS.to_owned() + "/{id}",
@@ -193,8 +198,8 @@ pub async fn create_toolset_handler(
     ("id" = String, Path, description = "Toolset instance UUID")
   ),
   responses(
-    (status = 200, description = "Toolset instance", body = ToolsetResponse),
-    (status = 404, description = "Instance not found or not owned"),
+    (status = 200, description = "Toolset", body = ToolsetResponse),
+    (status = 404, description = "Toolset not found or not owned"),
   ),
   security(("bearer" = []))
 )]
@@ -209,12 +214,13 @@ pub async fn get_toolset_handler(
   let toolset = tool_service
     .get(&user_id, &id)
     .await?
-    .ok_or_else(|| objs::EntityError::NotFound("Toolset instance".to_string()))?;
+    .ok_or_else(|| objs::EntityError::NotFound("Toolset".to_string()))?;
 
-  Ok(Json(toolset_to_response(toolset)))
+  let response = toolset_to_response(toolset, &tool_service).await?;
+  Ok(Json(response))
 }
 
-/// Update a toolset instance (full PUT semantics)
+/// Update a toolset (full PUT semantics)
 #[utoipa::path(
   put,
   path = ENDPOINT_TOOLSETS.to_owned() + "/{id}",
@@ -225,9 +231,9 @@ pub async fn get_toolset_handler(
   ),
   request_body = UpdateToolsetRequest,
   responses(
-    (status = 200, description = "Toolset instance updated", body = ToolsetResponse),
+    (status = 200, description = "Toolset updated", body = ToolsetResponse),
     (status = 400, description = "Validation error"),
-    (status = 404, description = "Instance not found or not owned"),
+    (status = 404, description = "Toolset not found or not owned"),
     (status = 409, description = "Name already exists"),
   ),
   security(("bearer" = []))
@@ -261,10 +267,11 @@ pub async fn update_toolset_handler(
     )
     .await?;
 
-  Ok(Json(toolset_to_response(toolset)))
+  let response = toolset_to_response(toolset, &tool_service).await?;
+  Ok(Json(response))
 }
 
-/// Delete a toolset instance
+/// Delete a toolset
 #[utoipa::path(
   delete,
   path = ENDPOINT_TOOLSETS.to_owned() + "/{id}",
@@ -274,8 +281,8 @@ pub async fn update_toolset_handler(
     ("id" = String, Path, description = "Toolset instance UUID")
   ),
   responses(
-    (status = 204, description = "Toolset instance deleted"),
-    (status = 404, description = "Instance not found or not owned"),
+    (status = 204, description = "Toolset deleted"),
+    (status = 404, description = "Toolset not found or not owned"),
   ),
   security(("bearer" = []))
 )]
@@ -296,7 +303,7 @@ pub async fn delete_toolset_handler(
 // Execute Handler
 // ============================================================================
 
-/// Execute a tool method on a toolset instance
+/// Execute a tool method on a toolset
 #[utoipa::path(
   post,
   path = ENDPOINT_TOOLSETS.to_owned() + "/{id}/execute/{method}",
@@ -310,7 +317,7 @@ pub async fn delete_toolset_handler(
   responses(
     (status = 200, description = "Tool execution result", body = ToolsetExecutionResponse),
     (status = 400, description = "Validation error or toolset not configured"),
-    (status = 404, description = "Instance or method not found"),
+    (status = 404, description = "Toolset or method not found"),
   ),
   security(("bearer" = []))
 )]
@@ -446,16 +453,29 @@ pub async fn disable_type_handler(
 // Conversion Helpers
 // ============================================================================
 
-fn toolset_to_response(toolset: Toolset) -> ToolsetResponse {
-  ToolsetResponse {
+async fn toolset_to_response(
+  toolset: Toolset,
+  tool_service: &Arc<dyn services::ToolService>,
+) -> Result<ToolsetResponse, ApiError> {
+  // Get type information for enrichment
+  let type_def = tool_service
+    .get_type(&toolset.toolset_type)
+    .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset.toolset_type.clone()))?;
+
+  let app_enabled = tool_service.is_type_enabled(&toolset.toolset_type).await?;
+
+  Ok(ToolsetResponse {
     id: toolset.id,
     name: toolset.name,
     toolset_type: toolset.toolset_type,
     description: toolset.description,
     enabled: toolset.enabled,
+    has_api_key: toolset.has_api_key,
+    app_enabled,
+    tools: type_def.tools,
     created_at: toolset.created_at,
     updated_at: toolset.updated_at,
-  }
+  })
 }
 
 #[cfg(test)]
@@ -486,6 +506,35 @@ mod tests {
       created_at: now,
       updated_at: now,
     }
+  }
+
+  fn test_toolset_definition() -> objs::ToolsetDefinition {
+    objs::ToolsetDefinition {
+      toolset_id: "builtin-exa-web-search".to_string(),
+      name: "Exa Web Search".to_string(),
+      description: "Web search using Exa API".to_string(),
+      tools: vec![ToolDefinition {
+        tool_type: "function".to_string(),
+        function: objs::FunctionDefinition {
+          name: "search".to_string(),
+          description: "Search the web".to_string(),
+          parameters: serde_json::json!({}),
+        },
+      }],
+    }
+  }
+
+  fn setup_type_mocks(mock: &mut MockToolService) {
+    let type_def = test_toolset_definition();
+    mock
+      .expect_get_type()
+      .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+      .returning(move |_| Some(type_def.clone()));
+
+    mock
+      .expect_is_type_enabled()
+      .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+      .returning(|_| Ok(true));
   }
 
   fn test_router(mock_tool_service: MockToolService) -> Router {
@@ -526,6 +575,11 @@ mod tests {
     } else {
       vec![]
     };
+
+    // Setup type enrichment mocks
+    if expected_count > 0 {
+      setup_type_mocks(&mut mock_tool_service);
+    }
 
     mock_tool_service
       .expect_list()
@@ -582,6 +636,7 @@ mod tests {
     let mut mock_tool_service = MockToolService::new();
 
     if expected_status == StatusCode::CREATED {
+      setup_type_mocks(&mut mock_tool_service);
       let instance_clone = test_instance.clone();
       mock_tool_service
         .expect_create()
@@ -638,6 +693,10 @@ mod tests {
   ) {
     let mut mock_tool_service = MockToolService::new();
     let instance_clone = test_instance.clone();
+
+    if returns_instance {
+      setup_type_mocks(&mut mock_tool_service);
+    }
 
     mock_tool_service
       .expect_get()
@@ -700,6 +759,7 @@ mod tests {
     let mut mock_tool_service = MockToolService::new();
 
     if expected_status == StatusCode::OK {
+      setup_type_mocks(&mut mock_tool_service);
       let instance_clone = test_instance.clone();
       mock_tool_service
         .expect_update()
@@ -755,7 +815,7 @@ mod tests {
       .times(1)
       .returning(|_, _, _, _, _, _| {
         Err(services::ToolsetError::ToolsetNotFound(
-          "Toolset instance".to_string(),
+          "Toolset".to_string(),
         ))
       });
 
@@ -813,7 +873,7 @@ mod tests {
         .times(1)
         .returning(|_, _| {
           Err(services::ToolsetError::ToolsetNotFound(
-            "Toolset instance".to_string(),
+            "Toolset".to_string(),
           ))
         });
     }

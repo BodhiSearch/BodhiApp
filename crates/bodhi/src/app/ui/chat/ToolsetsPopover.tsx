@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { ToolsetWithTools } from '@bodhiapp/ts-client';
+import { ToolsetResponse } from '@bodhiapp/ts-client';
 import { Wrench, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useAvailableToolsets } from '@/hooks/useToolsets';
+import { useToolsets, useToolsetTypes } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 
 interface ToolsetsPopoverProps {
@@ -24,17 +24,14 @@ interface ToolsetsPopoverProps {
 /**
  * Get the reason why a toolset is unavailable for use.
  */
-function getUnavailableReason(toolset: ToolsetWithTools): string | null {
+function getUnavailableReason(toolset: ToolsetResponse): string | null {
   if (!toolset.app_enabled) {
     return 'Disabled by administrator';
   }
-  if (!toolset.user_config) {
-    return 'Configure in Toolsets settings';
-  }
-  if (!toolset.user_config.enabled) {
+  if (!toolset.enabled) {
     return 'Disabled in settings';
   }
-  if (!toolset.user_config.has_api_key) {
+  if (!toolset.has_api_key) {
     return 'API key not configured';
   }
   return null;
@@ -43,10 +40,8 @@ function getUnavailableReason(toolset: ToolsetWithTools): string | null {
 /**
  * Check if a toolset is available for use in chat.
  */
-function isToolsetAvailable(toolset: ToolsetWithTools): boolean {
-  return (
-    toolset.app_enabled && toolset.user_config != null && toolset.user_config.enabled && toolset.user_config.has_api_key
-  );
+function isToolsetAvailable(toolset: ToolsetResponse): boolean {
+  return toolset.app_enabled && toolset.enabled && toolset.has_api_key;
 }
 
 /**
@@ -64,7 +59,7 @@ function getCheckboxState(
 }
 
 interface ToolsetItemProps {
-  toolset: ToolsetWithTools;
+  toolset: ToolsetResponse;
   isExpanded: boolean;
   onToggleExpand: () => void;
   enabledTools: Record<string, string[]>;
@@ -83,8 +78,8 @@ function ToolsetItem({
   const unavailableReason = getUnavailableReason(toolset);
   const isAvailable = isToolsetAvailable(toolset);
   const allToolNames = toolset.tools.map((tool) => tool.function.name);
-  const enabledCount = enabledTools[toolset.toolset_id]?.length || 0;
-  const checkboxState = getCheckboxState(toolset.toolset_id, toolset.tools.length, enabledTools);
+  const enabledCount = enabledTools[toolset.id]?.length || 0;
+  const checkboxState = getCheckboxState(toolset.id, toolset.tools.length, enabledTools);
 
   const parentRow = (
     <div
@@ -92,7 +87,7 @@ function ToolsetItem({
         'flex items-center space-x-2 rounded-md p-2 hover:bg-accent',
         !isAvailable && 'opacity-50 cursor-not-allowed'
       )}
-      data-testid={`toolset-row-${toolset.toolset_id}`}
+      data-testid={`toolset-row-${toolset.id}`}
     >
       {/* Expand/collapse chevron */}
       <Button
@@ -105,21 +100,21 @@ function ToolsetItem({
           onToggleExpand();
         }}
         disabled={!isAvailable}
-        data-testid={`toolset-expand-${toolset.toolset_id}`}
+        data-testid={`toolset-expand-${toolset.id}`}
       >
         {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
       </Button>
 
       {/* Parent checkbox (tri-state) */}
       <Checkbox
-        id={`toolset-${toolset.toolset_id}`}
-        data-testid={`toolset-checkbox-${toolset.toolset_id}`}
+        id={`toolset-${toolset.id}`}
+        data-testid={`toolset-checkbox-${toolset.id}`}
         checked={checkboxState === 'checked'}
         data-state={checkboxState}
         disabled={!isAvailable}
         onCheckedChange={() => {
           if (isAvailable) {
-            onToggleToolset(toolset.toolset_id, allToolNames);
+            onToggleToolset(toolset.id, allToolNames);
           }
         }}
       />
@@ -127,7 +122,7 @@ function ToolsetItem({
       {/* Toolset name and count */}
       <div className="flex-1 min-w-0">
         <Label
-          htmlFor={`toolset-${toolset.toolset_id}`}
+          htmlFor={`toolset-${toolset.id}`}
           className={cn('text-sm font-medium cursor-pointer', !isAvailable && 'cursor-not-allowed')}
         >
           {toolset.name}
@@ -153,29 +148,26 @@ function ToolsetItem({
   );
 
   return (
-    <div data-testid={`toolset-item-${toolset.toolset_id}`}>
+    <div data-testid={`toolset-item-${toolset.id}`}>
       {rowWithTooltip}
       {/* Expanded child tools */}
       {isExpanded && isAvailable && (
         <div className="ml-6 space-y-1 mt-1">
           {toolset.tools.map((tool) => {
-            const isToolEnabled = enabledTools[toolset.toolset_id]?.includes(tool.function.name) || false;
+            const isToolEnabled = enabledTools[toolset.id]?.includes(tool.function.name) || false;
             return (
               <div
                 key={tool.function.name}
                 className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent"
-                data-testid={`tool-row-${toolset.toolset_id}-${tool.function.name}`}
+                data-testid={`tool-row-${toolset.id}-${tool.function.name}`}
               >
                 <Checkbox
-                  id={`tool-${toolset.toolset_id}-${tool.function.name}`}
-                  data-testid={`tool-checkbox-${toolset.toolset_id}-${tool.function.name}`}
+                  id={`tool-${toolset.id}-${tool.function.name}`}
+                  data-testid={`tool-checkbox-${toolset.id}-${tool.function.name}`}
                   checked={isToolEnabled}
-                  onCheckedChange={() => onToggleTool(toolset.toolset_id, tool.function.name)}
+                  onCheckedChange={() => onToggleTool(toolset.id, tool.function.name)}
                 />
-                <Label
-                  htmlFor={`tool-${toolset.toolset_id}-${tool.function.name}`}
-                  className="text-sm cursor-pointer flex-1"
-                >
+                <Label htmlFor={`tool-${toolset.id}-${tool.function.name}`} className="text-sm cursor-pointer flex-1">
                   {tool.function.name}
                 </Label>
               </div>
@@ -195,9 +187,33 @@ export function ToolsetsPopover({
 }: ToolsetsPopoverProps) {
   const [open, setOpen] = useState(false);
   const [expandedToolsets, setExpandedToolsets] = useState<Set<string>>(new Set());
-  const { data: toolsetsResponse, isLoading } = useAvailableToolsets();
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const { data: toolsetsResponse, isLoading: toolsetsLoading } = useToolsets();
+  const { data: typesResponse, isLoading: typesLoading } = useToolsetTypes();
 
-  const toolsets = toolsetsResponse?.toolsets || [];
+  const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
+  const types = useMemo(() => typesResponse?.types || [], [typesResponse?.types]);
+  const isLoading = toolsetsLoading || typesLoading;
+
+  // Create a map from type ID to display name
+  const typeDisplayNames = useMemo(() => {
+    const map = new Map<string, string>();
+    types.forEach((type) => map.set(type.toolset_id, type.name));
+    return map;
+  }, [types]);
+
+  // Group toolsets by type
+  const groupedToolsets = useMemo(() => {
+    const groups: Record<string, ToolsetResponse[]> = {};
+    toolsets.forEach((toolset) => {
+      const typeId = toolset.toolset_type;
+      if (!groups[typeId]) {
+        groups[typeId] = [];
+      }
+      groups[typeId].push(toolset);
+    });
+    return groups;
+  }, [toolsets]);
 
   // Count total enabled tools across all toolsets
   const enabledCount = Object.values(enabledTools).reduce((sum, tools) => sum + tools.length, 0);
@@ -209,6 +225,18 @@ export function ToolsetsPopover({
         next.delete(toolsetId);
       } else {
         next.add(toolsetId);
+      }
+      return next;
+    });
+  };
+
+  const toggleGroup = (typeId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(typeId)) {
+        next.delete(typeId);
+      } else {
+        next.add(typeId);
       }
       return next;
     });
@@ -246,18 +274,64 @@ export function ToolsetsPopover({
           ) : toolsets.length === 0 ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">No toolsets available</div>
           ) : (
-            <div className="space-y-1">
-              {toolsets.map((toolset) => (
-                <ToolsetItem
-                  key={toolset.toolset_id}
-                  toolset={toolset}
-                  isExpanded={expandedToolsets.has(toolset.toolset_id)}
-                  onToggleExpand={() => toggleExpand(toolset.toolset_id)}
-                  enabledTools={enabledTools}
-                  onToggleTool={onToggleTool}
-                  onToggleToolset={onToggleToolset}
-                />
-              ))}
+            <div className="space-y-2">
+              {Object.entries(groupedToolsets).map(([typeId, typeToolsets]) => {
+                const displayName = typeDisplayNames.get(typeId) || typeId;
+                const isSingleToolset = typeToolsets.length === 1;
+                const isGroupExpanded = expandedGroups.has(typeId);
+
+                // For single toolset, just show the toolset without group header
+                if (isSingleToolset) {
+                  const toolset = typeToolsets[0];
+                  return (
+                    <ToolsetItem
+                      key={toolset.id}
+                      toolset={toolset}
+                      isExpanded={expandedToolsets.has(toolset.id)}
+                      onToggleExpand={() => toggleExpand(toolset.id)}
+                      enabledTools={enabledTools}
+                      onToggleTool={onToggleTool}
+                      onToggleToolset={onToggleToolset}
+                    />
+                  );
+                }
+
+                // Multiple toolsets: show group header with collapsible section
+                return (
+                  <div key={typeId} data-testid={`toolset-group-${typeId}`}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full justify-start p-2 h-auto font-medium text-sm"
+                      onClick={() => toggleGroup(typeId)}
+                      data-testid={`toolset-group-toggle-${typeId}`}
+                    >
+                      {isGroupExpanded ? (
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 mr-2" />
+                      )}
+                      {displayName}
+                      <span className="ml-2 text-muted-foreground">({typeToolsets.length})</span>
+                    </Button>
+                    {isGroupExpanded && (
+                      <div className="ml-2 space-y-1 mt-1">
+                        {typeToolsets.map((toolset) => (
+                          <ToolsetItem
+                            key={toolset.id}
+                            toolset={toolset}
+                            isExpanded={expandedToolsets.has(toolset.id)}
+                            onToggleExpand={() => toggleExpand(toolset.id)}
+                            enabledTools={enabledTools}
+                            onToggleTool={onToggleTool}
+                            onToggleToolset={onToggleToolset}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

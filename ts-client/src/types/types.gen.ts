@@ -1120,7 +1120,7 @@ export type CreateEmbeddingResponse = {
 };
 
 /**
- * Request to create a toolset instance
+ * Request to create a toolset
  */
 export type CreateToolsetRequest = {
     /**
@@ -1128,15 +1128,15 @@ export type CreateToolsetRequest = {
      */
     toolset_type: string;
     /**
-     * User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore)
+     * User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
      */
     name: string;
     /**
-     * Optional description for this instance
+     * Optional description for this toolset
      */
     description?: string | null;
     /**
-     * Whether this instance is enabled
+     * Whether this toolset is enabled
      */
     enabled?: boolean;
     /**
@@ -1438,7 +1438,7 @@ export type ListToolsetTypesResponse = {
 };
 
 /**
- * List of toolset instances
+ * List of toolsets
  */
 export type ListToolsetsResponse = {
     toolsets: Array<ToolsetResponse>;
@@ -2041,6 +2041,10 @@ export type Toolset = {
      */
     enabled: boolean;
     /**
+     * Whether this instance has an API key configured
+     */
+    has_api_key: boolean;
+    /**
      * When this instance was created
      */
     created_at: string;
@@ -2069,7 +2073,7 @@ export type ToolsetExecutionResponse = {
 };
 
 /**
- * Toolset instance response
+ * Toolset response
  */
 export type ToolsetResponse = {
     /**
@@ -2077,7 +2081,7 @@ export type ToolsetResponse = {
      */
     id: string;
     /**
-     * User-defined name for this instance
+     * User-defined name for this toolset
      */
     name: string;
     /**
@@ -2085,19 +2089,31 @@ export type ToolsetResponse = {
      */
     toolset_type: string;
     /**
-     * Optional description for this instance
+     * Optional description for this toolset
      */
     description?: string | null;
     /**
-     * Whether this instance is enabled
+     * Whether this toolset is enabled
      */
     enabled: boolean;
     /**
-     * When this instance was created
+     * Whether this toolset has an API key configured
+     */
+    has_api_key: boolean;
+    /**
+     * Whether the toolset type is enabled at app level
+     */
+    app_enabled: boolean;
+    /**
+     * Tools provided by this toolset type
+     */
+    tools: Array<ToolDefinition>;
+    /**
+     * When this toolset was created
      */
     created_at: string;
     /**
-     * When this instance was last updated
+     * When this toolset was last updated
      */
     updated_at: string;
 };
@@ -2232,19 +2248,19 @@ export type UpdateSettingRequest = {
 };
 
 /**
- * Request to update a toolset instance (full PUT - all fields required except api_key)
+ * Request to update a toolset (full PUT - all fields required except api_key)
  */
 export type UpdateToolsetRequest = {
     /**
-     * User-defined name for this instance
+     * User-defined name for this toolset
      */
     name: string;
     /**
-     * Optional description for this instance
+     * Optional description for this toolset
      */
     description?: string | null;
     /**
-     * Whether this instance is enabled
+     * Whether this toolset is enabled
      */
     enabled: boolean;
     /**
@@ -4310,7 +4326,7 @@ export type ListToolsetsError = ListToolsetsErrors[keyof ListToolsetsErrors];
 
 export type ListToolsetsResponses = {
     /**
-     * List of user's toolset instances
+     * List of user's toolsets
      */
     200: ListToolsetsResponse;
 };
@@ -4351,7 +4367,7 @@ export type CreateToolsetError = CreateToolsetErrors[keyof CreateToolsetErrors];
 
 export type CreateToolsetResponses = {
     /**
-     * Toolset instance created
+     * Toolset created
      */
     201: ToolsetResponse;
 };
@@ -4384,7 +4400,7 @@ export type DeleteToolsetErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Instance not found or not owned
+     * Toolset not found or not owned
      */
     404: unknown;
     /**
@@ -4397,7 +4413,7 @@ export type DeleteToolsetError = DeleteToolsetErrors[keyof DeleteToolsetErrors];
 
 export type DeleteToolsetResponses = {
     /**
-     * Toolset instance deleted
+     * Toolset deleted
      */
     204: void;
 };
@@ -4430,7 +4446,7 @@ export type GetToolsetErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Instance not found or not owned
+     * Toolset not found or not owned
      */
     404: unknown;
     /**
@@ -4443,7 +4459,7 @@ export type GetToolsetError = GetToolsetErrors[keyof GetToolsetErrors];
 
 export type GetToolsetResponses = {
     /**
-     * Toolset instance
+     * Toolset
      */
     200: ToolsetResponse;
 };
@@ -4476,7 +4492,7 @@ export type UpdateToolsetErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Instance not found or not owned
+     * Toolset not found or not owned
      */
     404: unknown;
     /**
@@ -4493,7 +4509,7 @@ export type UpdateToolsetError = UpdateToolsetErrors[keyof UpdateToolsetErrors];
 
 export type UpdateToolsetResponses = {
     /**
-     * Toolset instance updated
+     * Toolset updated
      */
     200: ToolsetResponse;
 };
@@ -4530,7 +4546,7 @@ export type ExecuteToolsetErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Instance or method not found
+     * Toolset or method not found
      */
     404: unknown;
     /**

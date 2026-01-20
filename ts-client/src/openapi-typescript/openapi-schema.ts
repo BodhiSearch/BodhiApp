@@ -715,12 +715,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all toolset instances for the authenticated user
-         * @description For OAuth tokens, filters instances by scope_toolset-* scopes in the token.
+         * List all toolsets for the authenticated user
+         * @description For OAuth tokens, filters toolsets by scope_toolset-* scopes in the token.
          */
         get: operations["listToolsets"];
         put?: never;
-        /** Create a new toolset instance */
+        /** Create a new toolset */
         post: operations["createToolset"];
         delete?: never;
         options?: never;
@@ -735,12 +735,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a specific toolset instance by ID */
+        /** Get a specific toolset by ID */
         get: operations["getToolset"];
-        /** Update a toolset instance (full PUT semantics) */
+        /** Update a toolset (full PUT semantics) */
         put: operations["updateToolset"];
         post?: never;
-        /** Delete a toolset instance */
+        /** Delete a toolset */
         delete: operations["deleteToolset"];
         options?: never;
         head?: never;
@@ -756,7 +756,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Execute a tool method on a toolset instance */
+        /** Execute a tool method on a toolset */
         post: operations["executeToolset"];
         delete?: never;
         options?: never;
@@ -1963,15 +1963,15 @@ export interface components {
             /** @description The usage information for the request. */
             usage: components["schemas"]["EmbeddingUsage"];
         };
-        /** @description Request to create a toolset instance */
+        /** @description Request to create a toolset */
         CreateToolsetRequest: {
             /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
             toolset_type: string;
-            /** @description User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore) */
+            /** @description User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore) */
             name: string;
-            /** @description Optional description for this instance */
+            /** @description Optional description for this toolset */
             description?: string | null;
-            /** @description Whether this instance is enabled */
+            /** @description Whether this toolset is enabled */
             enabled?: boolean;
             /** @description API key for the toolset */
             api_key: string;
@@ -2212,7 +2212,7 @@ export interface components {
         ListToolsetTypesResponse: {
             types: components["schemas"]["ToolsetTypeResponse"][];
         };
-        /** @description List of toolset instances */
+        /** @description List of toolsets */
         ListToolsetsResponse: {
             toolsets: components["schemas"]["ToolsetResponse"][];
         };
@@ -2796,6 +2796,8 @@ export interface components {
             description?: string | null;
             /** @description Whether this instance is enabled */
             enabled: boolean;
+            /** @description Whether this instance has an API key configured */
+            has_api_key: boolean;
             /**
              * Format: date-time
              * @description When this instance was created
@@ -2818,26 +2820,32 @@ export interface components {
             /** @description Error message, if execution failed */
             error?: string | null;
         };
-        /** @description Toolset instance response */
+        /** @description Toolset response */
         ToolsetResponse: {
             /** @description Unique instance identifier (UUID) */
             id: string;
-            /** @description User-defined name for this instance */
+            /** @description User-defined name for this toolset */
             name: string;
             /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
             toolset_type: string;
-            /** @description Optional description for this instance */
+            /** @description Optional description for this toolset */
             description?: string | null;
-            /** @description Whether this instance is enabled */
+            /** @description Whether this toolset is enabled */
             enabled: boolean;
+            /** @description Whether this toolset has an API key configured */
+            has_api_key: boolean;
+            /** @description Whether the toolset type is enabled at app level */
+            app_enabled: boolean;
+            /** @description Tools provided by this toolset type */
+            tools: components["schemas"]["ToolDefinition"][];
             /**
              * Format: date-time
-             * @description When this instance was created
+             * @description When this toolset was created
              */
             created_at: string;
             /**
              * Format: date-time
-             * @description When this instance was last updated
+             * @description When this toolset was last updated
              */
             updated_at: string;
         };
@@ -2940,13 +2948,13 @@ export interface components {
             /** @description New value for the setting (type depends on setting metadata) */
             value: unknown;
         };
-        /** @description Request to update a toolset instance (full PUT - all fields required except api_key) */
+        /** @description Request to update a toolset (full PUT - all fields required except api_key) */
         UpdateToolsetRequest: {
-            /** @description User-defined name for this instance */
+            /** @description User-defined name for this toolset */
             name: string;
-            /** @description Optional description for this instance */
+            /** @description Optional description for this toolset */
             description?: string | null;
-            /** @description Whether this instance is enabled */
+            /** @description Whether this toolset is enabled */
             enabled: boolean;
             /** @description API key update action (Keep or Set) */
             api_key?: components["schemas"]["ApiKeyUpdateDto"];
@@ -6349,7 +6357,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description List of user's toolset instances */
+            /** @description List of user's toolsets */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6409,7 +6417,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Toolset instance created */
+            /** @description Toolset created */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -6475,7 +6483,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Toolset instance */
+            /** @description Toolset */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6511,7 +6519,7 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Instance not found or not owned */
+            /** @description Toolset not found or not owned */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6545,7 +6553,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Toolset instance updated */
+            /** @description Toolset updated */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6581,7 +6589,7 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Instance not found or not owned */
+            /** @description Toolset not found or not owned */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6618,7 +6626,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Toolset instance deleted */
+            /** @description Toolset deleted */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -6652,7 +6660,7 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Instance not found or not owned */
+            /** @description Toolset not found or not owned */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -6724,7 +6732,7 @@ export interface operations {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
-            /** @description Instance or method not found */
+            /** @description Toolset or method not found */
             404: {
                 headers: {
                     [name: string]: unknown;

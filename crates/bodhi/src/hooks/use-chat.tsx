@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { ToolsetWithTools, ToolsetExecutionResponse, ToolDefinition } from '@bodhiapp/ts-client';
+import { ToolsetResponse, ToolsetExecutionResponse, ToolDefinition } from '@bodhiapp/ts-client';
 
 import { CompletionResult, useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import apiClient from '@/lib/apiClient';
+import { encodeToolName, decodeToolName } from '@/lib/toolsets';
 import { nanoid } from '@/lib/utils';
 import { Message, ToolCall } from '@/types/chat';
 
@@ -17,32 +18,34 @@ const MAX_ITERATIONS_MESSAGE =
   'You have reached the maximum number of tool call iterations. Please provide a final response to the user without making additional tool calls.';
 
 /**
- * Parse toolset ID from fully qualified tool name.
- * Tool names follow format: toolset__{toolset_id}__{tool_name}
- */
-export function parseToolsetId(toolName: string): string {
-  const parts = toolName.split('__');
-  return parts[1] || '';
-}
-
-/**
- * Parse tool name (without toolset prefix) from fully qualified tool name.
- */
-export function parseToolName(fullName: string): string {
-  const parts = fullName.split('__');
-  return parts[2] || fullName;
-}
-
-/**
  * Execute a single tool call via the backend API.
+ * Uses name→UUID mapping to resolve toolset instance UUID from encoded tool name.
  */
 async function executeToolCall(
   toolCall: ToolCall,
   signal: AbortSignal,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  toolsetNameToId: Map<string, string>
 ): Promise<Message> {
-  const toolsetId = parseToolsetId(toolCall.function.name);
-  const method = parseToolName(toolCall.function.name);
+  const decoded = decodeToolName(toolCall.function.name);
+  if (!decoded) {
+    return {
+      role: 'tool' as const,
+      content: JSON.stringify({ error: `Invalid tool name format: ${toolCall.function.name}` }),
+      tool_call_id: toolCall.id,
+    };
+  }
+
+  const { toolsetName, method } = decoded;
+  const toolsetId = toolsetNameToId.get(toolsetName);
+  if (!toolsetId) {
+    return {
+      role: 'tool' as const,
+      content: JSON.stringify({ error: `Unknown toolset: ${toolsetName}` }),
+      tool_call_id: toolCall.id,
+    };
+  }
+
   const baseUrl =
     apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
   const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/execute/${method}`;
@@ -91,9 +94,12 @@ async function executeToolCall(
 async function executeToolCalls(
   toolCalls: ToolCall[],
   signal: AbortSignal,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  toolsetNameToId: Map<string, string>
 ): Promise<Message[]> {
-  const results = await Promise.allSettled(toolCalls.map((tc) => executeToolCall(tc, signal, headers)));
+  const results = await Promise.allSettled(
+    toolCalls.map((tc) => executeToolCall(tc, signal, headers, toolsetNameToId))
+  );
 
   return results.map((result, index) => {
     if (result.status === 'fulfilled') {
@@ -112,22 +118,25 @@ async function executeToolCalls(
 
 /**
  * Build tools array for API request from enabled tools.
- * Flattens nested toolsets and composes tool names as toolset__{id}__{method}.
+ * Only includes tools from available toolsets (app_enabled, enabled, has_api_key).
+ * Encodes tool names as toolset__{instanceName}__{methodName}.
  */
-function buildToolsArray(
-  enabledTools: Record<string, string[]>,
-  availableToolsets: ToolsetWithTools[]
-): ToolDefinition[] {
+function buildToolsArray(enabledTools: Record<string, string[]>, toolsets: ToolsetResponse[]): ToolDefinition[] {
   const result: ToolDefinition[] = [];
-  for (const toolset of availableToolsets) {
-    const enabledToolNames = enabledTools[toolset.toolset_id] || [];
+  for (const toolset of toolsets) {
+    // Skip unavailable toolsets
+    if (!toolset.app_enabled || !toolset.enabled || !toolset.has_api_key) {
+      continue;
+    }
+
+    const enabledToolNames = enabledTools[toolset.id] || [];
     for (const tool of toolset.tools) {
       if (enabledToolNames.includes(tool.function.name)) {
         result.push({
           type: 'function',
           function: {
             ...tool.function,
-            name: `toolset__${toolset.toolset_id}__${tool.function.name}`,
+            name: encodeToolName(toolset.name, tool.function.name),
           },
         });
       }
@@ -138,11 +147,18 @@ function buildToolsArray(
 
 export interface UseChatOptions {
   enabledTools?: Record<string, string[]>;
-  availableToolsets?: ToolsetWithTools[];
+  toolsets?: ToolsetResponse[];
 }
 
 export function useChat(options?: UseChatOptions) {
-  const { enabledTools = {}, availableToolsets = [] } = options || {};
+  const { enabledTools = {}, toolsets = [] } = options || {};
+
+  // Build name→UUID mapping for tool execution
+  const toolsetNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    toolsets.forEach((t) => map.set(t.name, t.id));
+    return map;
+  }, [toolsets]);
 
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -200,7 +216,7 @@ export function useChat(options?: UseChatOptions) {
       const maxIterations = chatSettings.maxToolIterations_enabled ? (chatSettings.maxToolIterations ?? 5) : 5;
 
       // Build tools array from enabled tools
-      const tools = Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, availableToolsets) : [];
+      const tools = Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, toolsets) : [];
 
       const headers: Record<string, string> = {};
       if (chatSettings.api_token_enabled) {
@@ -288,7 +304,7 @@ export function useChat(options?: UseChatOptions) {
             iteration++;
 
             // Execute tool calls in parallel
-            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers);
+            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers, toolsetNameToId);
 
             if (abortedRef.current) break;
 
@@ -353,7 +369,8 @@ export function useChat(options?: UseChatOptions) {
       setCurrentChatId,
       resetToPreSubmissionState,
       enabledTools,
-      availableToolsets,
+      toolsets,
+      toolsetNameToId,
     ]
   );
 

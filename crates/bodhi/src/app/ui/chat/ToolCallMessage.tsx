@@ -6,10 +6,9 @@ import { ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Wrench } from
 
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { decodeToolName } from '@/lib/toolsets';
 import { cn } from '@/lib/utils';
 import { Message, ToolCall } from '@/types/chat';
-
-import { parseToolName, parseToolsetId } from '../../../hooks/use-chat';
 
 export type ToolCallStatus = 'calling' | 'completed' | 'error';
 
@@ -79,8 +78,9 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
     }
   }, [status, forceOpen]);
 
-  const toolName = parseToolName(toolCall.function.name);
-  const toolsetId = parseToolsetId(toolCall.function.name);
+  const decoded = decodeToolName(toolCall.function.name);
+  const toolName = decoded?.method || toolCall.function.name;
+  const toolsetName = decoded?.toolsetName || 'unknown';
   const statusConfig = getStatusConfig(status);
 
   // Parse result content for display
@@ -100,7 +100,7 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
             </div>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium">{toolName}</span>
-              <span className="text-xs text-muted-foreground">{toolsetId}</span>
+              <span className="text-xs text-muted-foreground">{toolsetName}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

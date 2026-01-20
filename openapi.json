@@ -4369,12 +4369,12 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "List all toolset instances for the authenticated user",
-        "description": "For OAuth tokens, filters instances by scope_toolset-* scopes in the token.",
+        "summary": "List all toolsets for the authenticated user",
+        "description": "For OAuth tokens, filters toolsets by scope_toolset-* scopes in the token.",
         "operationId": "listToolsets",
         "responses": {
           "200": {
-            "description": "List of user's toolset instances",
+            "description": "List of user's toolsets",
             "content": {
               "application/json": {
                 "schema": {
@@ -4434,7 +4434,7 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Create a new toolset instance",
+        "summary": "Create a new toolset",
         "operationId": "createToolset",
         "requestBody": {
           "content": {
@@ -4448,7 +4448,7 @@
         },
         "responses": {
           "201": {
-            "description": "Toolset instance created",
+            "description": "Toolset created",
             "content": {
               "application/json": {
                 "schema": {
@@ -4513,7 +4513,7 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Get a specific toolset instance by ID",
+        "summary": "Get a specific toolset by ID",
         "operationId": "getToolset",
         "parameters": [
           {
@@ -4528,7 +4528,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Toolset instance",
+            "description": "Toolset",
             "content": {
               "application/json": {
                 "schema": {
@@ -4568,7 +4568,7 @@
             }
           },
           "404": {
-            "description": "Instance not found or not owned"
+            "description": "Toolset not found or not owned"
           },
           "500": {
             "description": "Internal server error",
@@ -4591,7 +4591,7 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Update a toolset instance (full PUT semantics)",
+        "summary": "Update a toolset (full PUT semantics)",
         "operationId": "updateToolset",
         "parameters": [
           {
@@ -4616,7 +4616,7 @@
         },
         "responses": {
           "200": {
-            "description": "Toolset instance updated",
+            "description": "Toolset updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -4656,7 +4656,7 @@
             }
           },
           "404": {
-            "description": "Instance not found or not owned"
+            "description": "Toolset not found or not owned"
           },
           "409": {
             "description": "Name already exists"
@@ -4682,7 +4682,7 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Delete a toolset instance",
+        "summary": "Delete a toolset",
         "operationId": "deleteToolset",
         "parameters": [
           {
@@ -4697,7 +4697,7 @@
         ],
         "responses": {
           "204": {
-            "description": "Toolset instance deleted"
+            "description": "Toolset deleted"
           },
           "400": {
             "description": "Invalid request parameters",
@@ -4730,7 +4730,7 @@
             }
           },
           "404": {
-            "description": "Instance not found or not owned"
+            "description": "Toolset not found or not owned"
           },
           "500": {
             "description": "Internal server error",
@@ -4755,7 +4755,7 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Execute a tool method on a toolset instance",
+        "summary": "Execute a tool method on a toolset",
         "operationId": "executeToolset",
         "parameters": [
           {
@@ -4829,7 +4829,7 @@
             }
           },
           "404": {
-            "description": "Instance or method not found"
+            "description": "Toolset or method not found"
           },
           "500": {
             "description": "Internal server error",
@@ -8960,7 +8960,7 @@
       },
       "CreateToolsetRequest": {
         "type": "object",
-        "description": "Request to create a toolset instance",
+        "description": "Request to create a toolset",
         "required": [
           "toolset_type",
           "name",
@@ -8973,18 +8973,18 @@
           },
           "name": {
             "type": "string",
-            "description": "User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore)"
+            "description": "User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)"
           },
           "description": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Optional description for this instance"
+            "description": "Optional description for this toolset"
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether this instance is enabled"
+            "description": "Whether this toolset is enabled"
           },
           "api_key": {
             "type": "string",
@@ -9614,7 +9614,7 @@
       },
       "ListToolsetsResponse": {
         "type": "object",
-        "description": "List of toolset instances",
+        "description": "List of toolsets",
         "required": [
           "toolsets"
         ],
@@ -11308,6 +11308,7 @@
           "name",
           "toolset_type",
           "enabled",
+          "has_api_key",
           "created_at",
           "updated_at"
         ],
@@ -11334,6 +11335,10 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether this instance is enabled"
+          },
+          "has_api_key": {
+            "type": "boolean",
+            "description": "Whether this instance has an API key configured"
           },
           "created_at": {
             "type": "string",
@@ -11374,12 +11379,15 @@
       },
       "ToolsetResponse": {
         "type": "object",
-        "description": "Toolset instance response",
+        "description": "Toolset response",
         "required": [
           "id",
           "name",
           "toolset_type",
           "enabled",
+          "has_api_key",
+          "app_enabled",
+          "tools",
           "created_at",
           "updated_at"
         ],
@@ -11390,7 +11398,7 @@
           },
           "name": {
             "type": "string",
-            "description": "User-defined name for this instance"
+            "description": "User-defined name for this toolset"
           },
           "toolset_type": {
             "type": "string",
@@ -11401,21 +11409,36 @@
               "string",
               "null"
             ],
-            "description": "Optional description for this instance"
+            "description": "Optional description for this toolset"
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether this instance is enabled"
+            "description": "Whether this toolset is enabled"
+          },
+          "has_api_key": {
+            "type": "boolean",
+            "description": "Whether this toolset has an API key configured"
+          },
+          "app_enabled": {
+            "type": "boolean",
+            "description": "Whether the toolset type is enabled at app level"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolDefinition"
+            },
+            "description": "Tools provided by this toolset type"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this instance was created"
+            "description": "When this toolset was created"
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this instance was last updated"
+            "description": "When this toolset was last updated"
           }
         }
       },
@@ -11656,7 +11679,7 @@
       },
       "UpdateToolsetRequest": {
         "type": "object",
-        "description": "Request to update a toolset instance (full PUT - all fields required except api_key)",
+        "description": "Request to update a toolset (full PUT - all fields required except api_key)",
         "required": [
           "name",
           "enabled"
@@ -11664,18 +11687,18 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "User-defined name for this instance"
+            "description": "User-defined name for this toolset"
           },
           "description": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Optional description for this instance"
+            "description": "Optional description for this toolset"
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether this instance is enabled"
+            "description": "Whether this toolset is enabled"
           },
           "api_key": {
             "$ref": "#/components/schemas/ApiKeyUpdateDto",

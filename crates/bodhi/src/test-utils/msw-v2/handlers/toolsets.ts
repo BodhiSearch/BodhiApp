@@ -1,46 +1,58 @@
 /**
- * MSW v2 handlers for toolsets endpoints
+ * MSW v2 handlers for toolsets endpoints - instance-based architecture
  */
-import {
-  AppToolsetConfigResponse,
-  EnhancedToolsetConfigResponse,
-  ExecuteToolsetRequest,
-  ListToolsetsResponse,
-  ToolsetExecutionResponse,
-  ToolsetWithTools,
-} from '@bodhiapp/ts-client';
+import { http, HttpResponse } from 'msw';
 
-import { TOOLSETS_ENDPOINT } from '@/hooks/useToolsets';
-
-import { http, HttpResponse, INTERNAL_SERVER_ERROR } from '../setup';
+import { BODHI_API_BASE } from '@/hooks/useQuery';
+import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfigResponse } from '@/hooks/useToolsets';
 
 // ============================================================================
-// Default Test Data
+// Mock Data
 // ============================================================================
 
-const DEFAULT_TOOLSET_WITH_TOOLS: ToolsetWithTools = {
-  toolset_id: 'builtin-exa-web-search',
-  name: 'Exa Web Search',
-  description: 'Search the web using Exa AI',
+export const mockToolset: ToolsetResponse = {
+  id: 'uuid-test-toolset',
+  name: 'my-exa-search',
+  toolset_type: 'builtin-exa-web-search',
+  description: 'Test toolset',
+  enabled: true,
+  has_api_key: true,
   app_enabled: true,
-  user_config: undefined,
   tools: [
     {
       type: 'function',
       function: {
         name: 'search',
-        description: 'Search the web using Exa AI for real-time information',
+        description: 'Search the web using Exa AI',
         parameters: {
           type: 'object',
           properties: {
-            query: {
-              type: 'string',
-              description: 'Search query',
-            },
-            num_results: {
-              type: 'number',
-              description: 'Number of results to return (default: 5)',
-            },
+            query: { type: 'string', description: 'The search query' },
+          },
+          required: ['query'],
+        },
+      },
+    },
+  ],
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockType: ToolsetTypeResponse = {
+  toolset_id: 'builtin-exa-web-search',
+  name: 'Exa Web Search',
+  description: 'Search the web using Exa AI',
+  app_enabled: true,
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'search',
+        description: 'Search the web using Exa AI',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'The search query' },
           },
           required: ['query'],
         },
@@ -50,232 +62,81 @@ const DEFAULT_TOOLSET_WITH_TOOLS: ToolsetWithTools = {
 };
 
 // ============================================================================
-// Toolsets List Handlers
+// Handler Factories
 // ============================================================================
 
 /**
- * Mock handler for GET /toolsets (list all available toolsets)
+ * Mock GET /bodhi/v1/toolsets - List user's toolsets
  */
-export function mockAvailableToolsets(
-  toolsets: ToolsetWithTools[] = [DEFAULT_TOOLSET_WITH_TOOLS],
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.get(TOOLSETS_ENDPOINT, () => {
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const responseData: ListToolsetsResponse = { toolsets };
-      return HttpResponse.json(responseData);
-    }),
-  ];
-}
-
-// ============================================================================
-// Toolset Config Handlers
-// ============================================================================
-
-/**
- * Mock handler for GET /toolsets/:toolsetId/config
- */
-export function mockToolsetConfig(
-  toolsetId: string = 'builtin-exa-web-search',
-  config: Partial<EnhancedToolsetConfigResponse> = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.get(`${TOOLSETS_ENDPOINT}/:toolsetId/config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const responseData: EnhancedToolsetConfigResponse = {
-        toolset_id: toolsetId,
-        app_enabled: config.app_enabled ?? true,
-        config: {
-          toolset_id: toolsetId,
-          enabled: config.config?.enabled ?? false,
-          created_at: config.config?.created_at ?? '2024-01-01T00:00:00Z',
-          updated_at: config.config?.updated_at ?? '2024-01-01T00:00:00Z',
-        },
-      };
-      return HttpResponse.json(responseData);
-    }),
-  ];
+export function mockListToolsets(toolsets: ToolsetResponse[] = [mockToolset]) {
+  return http.get(`${BODHI_API_BASE}/toolsets`, () => HttpResponse.json({ toolsets }));
 }
 
 /**
- * Mock handler for PUT /toolsets/:toolsetId/config (update toolset config)
+ * Mock GET /bodhi/v1/toolsets/:id - Get single toolset
  */
-export function mockUpdateToolsetConfig(
-  toolsetId: string = 'builtin-exa-web-search',
-  responseConfig: Partial<EnhancedToolsetConfigResponse> = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.put(`${TOOLSETS_ENDPOINT}/:toolsetId/config`, async ({ params, request }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const body = (await request.json()) as { enabled: boolean; api_key?: string };
-      const responseData: EnhancedToolsetConfigResponse = {
-        toolset_id: toolsetId,
-        app_enabled: responseConfig.app_enabled ?? true,
-        config: {
-          toolset_id: toolsetId,
-          enabled: body.enabled,
-          created_at: responseConfig.config?.created_at ?? '2024-01-01T00:00:00Z',
-          updated_at: new Date().toISOString(),
-        },
-      };
-      return HttpResponse.json(responseData);
-    }),
-  ];
+export function mockGetToolset(toolset: ToolsetResponse = mockToolset) {
+  return http.get(`${BODHI_API_BASE}/toolsets/:id`, () => HttpResponse.json(toolset));
 }
 
 /**
- * Mock handler for DELETE /toolsets/:toolsetId/config (delete toolset config / clear API key)
+ * Mock POST /bodhi/v1/toolsets - Create new toolset
  */
-export function mockDeleteToolsetConfig(
-  toolsetId: string = 'builtin-exa-web-search',
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.delete(`${TOOLSETS_ENDPOINT}/:toolsetId/config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return new HttpResponse(null, { status: 204 });
-    }),
-  ];
-}
-
-// ============================================================================
-// App-Level Config Handlers (Admin)
-// ============================================================================
-
-/**
- * Mock handler for PUT /toolsets/:toolsetId/app-config (enable app toolset)
- */
-export function mockSetAppToolsetEnabled(
-  toolsetId: string = 'builtin-exa-web-search',
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.put(`${TOOLSETS_ENDPOINT}/:toolsetId/app-config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const responseData: AppToolsetConfigResponse = {
-        toolset_id: toolsetId,
-        enabled: true,
-        updated_by: 'admin-user',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: new Date().toISOString(),
-      };
-      return HttpResponse.json(responseData);
-    }),
-  ];
+export function mockCreateToolset(response: ToolsetResponse = mockToolset) {
+  return http.post(`${BODHI_API_BASE}/toolsets`, () => HttpResponse.json(response, { status: 201 }));
 }
 
 /**
- * Mock handler for DELETE /toolsets/:toolsetId/app-config (disable app toolset)
+ * Mock PUT /bodhi/v1/toolsets/:id - Update toolset
  */
-export function mockSetAppToolsetDisabled(
-  toolsetId: string = 'builtin-exa-web-search',
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.delete(`${TOOLSETS_ENDPOINT}/:toolsetId/app-config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const responseData: AppToolsetConfigResponse = {
-        toolset_id: toolsetId,
-        enabled: false,
-        updated_by: 'admin-user',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: new Date().toISOString(),
-      };
-      return HttpResponse.json(responseData);
-    }),
-  ];
-}
-
-// ============================================================================
-// Tool Execution Handlers
-// ============================================================================
-
-/**
- * Mock handler for POST /toolsets/:toolsetId/execute/:method (execute tool method)
- */
-export function mockToolsetExecute(
-  toolsetId: string = 'builtin-exa-web-search',
-  method: string = 'search',
-  responseOverride?: Partial<ToolsetExecutionResponse> | ((req: ExecuteToolsetRequest) => ToolsetExecutionResponse),
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute/:method`, async ({ params, request }) => {
-      if (params.toolsetId !== toolsetId || params.method !== method) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      const body = (await request.json()) as ExecuteToolsetRequest;
-
-      let responseData: ToolsetExecutionResponse;
-      if (typeof responseOverride === 'function') {
-        responseData = responseOverride(body);
-      } else {
-        responseData = {
-          tool_call_id: body.tool_call_id,
-          result: { success: true, data: 'Mock result' },
-          ...responseOverride,
-        };
-      }
-
-      return HttpResponse.json(responseData);
-    }),
-  ];
+export function mockUpdateToolset(response: ToolsetResponse = mockToolset) {
+  return http.put(`${BODHI_API_BASE}/toolsets/:id`, () => HttpResponse.json(response));
 }
 
 /**
- * Mock handler for tool execution that returns an error
+ * Mock DELETE /bodhi/v1/toolsets/:id - Delete toolset
  */
-export function mockToolsetExecuteError(
-  toolsetId: string = 'builtin-exa-web-search',
-  method: string = 'search',
-  { errorMessage = 'Tool execution failed', status = 500 }: { errorMessage?: string; status?: number } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.post(`${TOOLSETS_ENDPOINT}/:toolsetId/execute/:method`, async ({ params, request }) => {
-      if (params.toolsetId !== toolsetId || params.method !== method) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
+export function mockDeleteToolset() {
+  return http.delete(`${BODHI_API_BASE}/toolsets/:id`, () => new HttpResponse(null, { status: 204 }));
+}
 
-      const body = (await request.json()) as ExecuteToolsetRequest;
+/**
+ * Mock GET /bodhi/v1/toolset_types - List toolset types
+ */
+export function mockListTypes(types: ToolsetTypeResponse[] = [mockType]) {
+  return http.get(`${BODHI_API_BASE}/toolset_types`, () => HttpResponse.json({ types }));
+}
 
-      const responseData: ToolsetExecutionResponse = {
-        tool_call_id: body.tool_call_id,
-        error: errorMessage,
-      };
+/**
+ * Mock PUT /bodhi/v1/toolset_types/:typeId/app-config - Enable toolset type (admin)
+ */
+export function mockEnableType(response?: AppToolsetConfigResponse) {
+  const defaultResponse: AppToolsetConfigResponse = {
+    toolset_id: 'builtin-exa-web-search',
+    enabled: true,
+    updated_by: 'admin123',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  };
+  return http.put(`${BODHI_API_BASE}/toolset_types/:typeId/app-config`, () =>
+    HttpResponse.json(response || defaultResponse)
+  );
+}
 
-      return HttpResponse.json(responseData, { status });
-    }),
-  ];
+/**
+ * Mock DELETE /bodhi/v1/toolset_types/:typeId/app-config - Disable toolset type (admin)
+ */
+export function mockDisableType(response?: AppToolsetConfigResponse) {
+  const defaultResponse: AppToolsetConfigResponse = {
+    toolset_id: 'builtin-exa-web-search',
+    enabled: false,
+    updated_by: 'admin123',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  };
+  return http.delete(`${BODHI_API_BASE}/toolset_types/:typeId/app-config`, () =>
+    HttpResponse.json(response || defaultResponse)
+  );
 }
 
 // ============================================================================
@@ -285,178 +146,70 @@ export function mockToolsetExecuteError(
 /**
  * Mock error for toolsets list endpoint
  */
-export function mockAvailableToolsetsError(
-  {
-    message = 'Failed to fetch toolsets',
-    code = INTERNAL_SERVER_ERROR.code,
-    type = INTERNAL_SERVER_ERROR.type,
-    status = 500,
-  }: { message?: string; code?: string; type?: string; status?: number } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.get(TOOLSETS_ENDPOINT, () => {
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return HttpResponse.json({ error: { message, code, type } }, { status });
-    }),
-  ];
+export function mockListToolsetsError({
+  message = 'Failed to fetch toolsets',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.get(`${BODHI_API_BASE}/toolsets`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
 }
 
 /**
- * Mock error for toolset config endpoint
+ * Mock error for get toolset endpoint
  */
-export function mockToolsetConfigError(
-  toolsetId: string = 'builtin-exa-web-search',
-  {
-    message = 'Toolset not found',
-    code = 'not_found',
-    type = 'not_found_error',
-    status = 404,
-  }: { message?: string; code?: string; type?: string; status?: number } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.get(`${TOOLSETS_ENDPOINT}/:toolsetId/config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return HttpResponse.json({ error: { message, code, type } }, { status });
-    }),
-  ];
+export function mockGetToolsetError({
+  message = 'Toolset not found',
+  code = 'not_found',
+  type = 'not_found_error',
+  status = 404,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.get(`${BODHI_API_BASE}/toolsets/:id`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
 }
 
 /**
- * Mock error for update toolset config endpoint
+ * Mock error for create toolset endpoint
  */
-export function mockUpdateToolsetConfigError(
-  toolsetId: string = 'builtin-exa-web-search',
-  {
-    message = 'Failed to update toolset configuration',
-    code = INTERNAL_SERVER_ERROR.code,
-    type = INTERNAL_SERVER_ERROR.type,
-    status = 500,
-  }: { message?: string; code?: string; type?: string; status?: number } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  return [
-    http.put(`${TOOLSETS_ENDPOINT}/:toolsetId/config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return HttpResponse.json({ error: { message, code, type } }, { status });
-    }),
-  ];
+export function mockCreateToolsetError({
+  message = 'Failed to create toolset',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/toolsets`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
 }
 
 /**
- * Mock error for app-level enable/disable
+ * Mock error for update toolset endpoint
  */
-export function mockSetAppToolsetError(
-  toolsetId: string = 'builtin-exa-web-search',
-  method: 'put' | 'delete' = 'put',
-  {
-    message = 'Admin access required',
-    code = 'forbidden',
-    type = 'forbidden_error',
-    status = 403,
-  }: { message?: string; code?: string; type?: string; status?: number } = {},
-  { stub }: { stub?: boolean } = {}
-) {
-  let hasBeenCalled = false;
-  const handler = method === 'put' ? http.put : http.delete;
-  return [
-    handler(`${TOOLSETS_ENDPOINT}/:toolsetId/app-config`, ({ params }) => {
-      if (params.toolsetId !== toolsetId) return;
-      if (hasBeenCalled && !stub) return;
-      hasBeenCalled = true;
-
-      return HttpResponse.json({ error: { message, code, type } }, { status });
-    }),
-  ];
+export function mockUpdateToolsetError({
+  message = 'Failed to update toolset',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.put(`${BODHI_API_BASE}/toolsets/:id`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
 }
 
 // ============================================================================
-// Convenience Functions
+// Default Handlers
 // ============================================================================
 
-/**
- * Default mocks for all toolsets endpoints (happy path)
- */
-export function mockToolsetsDefault() {
-  return [
-    ...mockAvailableToolsets(),
-    ...mockToolsetConfig(),
-    ...mockUpdateToolsetConfig(),
-    ...mockDeleteToolsetConfig(),
-    ...mockSetAppToolsetEnabled(),
-    ...mockSetAppToolsetDisabled(),
-  ];
-}
-
-/**
- * Mock a toolset as fully configured and enabled
- */
-export function mockToolsetConfigured(toolsetId: string = 'builtin-exa-web-search') {
-  const toolsetItem: ToolsetWithTools = {
-    ...DEFAULT_TOOLSET_WITH_TOOLS,
-    toolset_id: toolsetId,
-    app_enabled: true,
-    user_config: {
-      enabled: true,
-      has_api_key: true,
-    },
-  };
-
-  return [
-    ...mockAvailableToolsets([toolsetItem], { stub: true }),
-    ...mockToolsetConfig(
-      toolsetId,
-      {
-        app_enabled: true,
-        config: {
-          toolset_id: toolsetId,
-          enabled: true,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      },
-      { stub: true }
-    ),
-  ];
-}
-
-/**
- * Mock a toolset as app-disabled
- */
-export function mockToolsetAppDisabled(toolsetId: string = 'builtin-exa-web-search') {
-  const toolsetItem: ToolsetWithTools = {
-    ...DEFAULT_TOOLSET_WITH_TOOLS,
-    toolset_id: toolsetId,
-    app_enabled: false,
-    user_config: undefined,
-  };
-
-  return [
-    ...mockAvailableToolsets([toolsetItem], { stub: true }),
-    ...mockToolsetConfig(
-      toolsetId,
-      {
-        app_enabled: false,
-        config: {
-          toolset_id: toolsetId,
-          enabled: false,
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      },
-      { stub: true }
-    ),
-  ];
-}
+export const toolsetsHandlers = [
+  mockListToolsets(),
+  mockGetToolset(),
+  mockCreateToolset(),
+  mockUpdateToolset(),
+  mockDeleteToolset(),
+  mockListTypes(),
+  mockEnableType(),
+  mockDisableType(),
+];

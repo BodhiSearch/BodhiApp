@@ -24,26 +24,26 @@ fn default_true() -> bool {
 }
 
 // ============================================================================
-// Instance CRUD DTOs
+// Toolset CRUD DTOs
 // ============================================================================
 
-/// Request to create a toolset instance
+/// Request to create a toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct CreateToolsetRequest {
   /// Toolset type identifier (e.g., "builtin-exa-web-search")
   #[validate(length(min = 1))]
   pub toolset_type: String,
 
-  /// User-defined name for this instance (2-24 chars, alphanumeric + spaces/dash/underscore)
+  /// User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
   #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
   pub name: String,
 
-  /// Optional description for this instance
+  /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
   #[validate(length(max = 255))]
   pub description: Option<String>,
 
-  /// Whether this instance is enabled
+  /// Whether this toolset is enabled
   #[serde(default = "default_true")]
   pub enabled: bool,
 
@@ -51,19 +51,19 @@ pub struct CreateToolsetRequest {
   pub api_key: String,
 }
 
-/// Request to update a toolset instance (full PUT - all fields required except api_key)
+/// Request to update a toolset (full PUT - all fields required except api_key)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct UpdateToolsetRequest {
-  /// User-defined name for this instance
+  /// User-defined name for this toolset
   #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
   pub name: String,
 
-  /// Optional description for this instance
+  /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
   #[validate(length(max = 255))]
   pub description: Option<String>,
 
-  /// Whether this instance is enabled
+  /// Whether this toolset is enabled
   pub enabled: bool,
 
   /// API key update action (Keep or Set)
@@ -82,29 +82,35 @@ pub enum ApiKeyUpdateDto {
   Set(Option<String>),
 }
 
-/// Toolset instance response
+/// Toolset response
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolsetResponse {
   /// Unique instance identifier (UUID)
   pub id: String,
-  /// User-defined name for this instance
+  /// User-defined name for this toolset
   pub name: String,
   /// Toolset type identifier (e.g., "builtin-exa-web-search")
   pub toolset_type: String,
-  /// Optional description for this instance
+  /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
-  /// Whether this instance is enabled
+  /// Whether this toolset is enabled
   pub enabled: bool,
-  /// When this instance was created
+  /// Whether this toolset has an API key configured
+  pub has_api_key: bool,
+  /// Whether the toolset type is enabled at app level
+  pub app_enabled: bool,
+  /// Tools provided by this toolset type
+  pub tools: Vec<ToolDefinition>,
+  /// When this toolset was created
   #[schema(value_type = String, format = "date-time")]
   pub created_at: chrono::DateTime<chrono::Utc>,
-  /// When this instance was last updated
+  /// When this toolset was last updated
   #[schema(value_type = String, format = "date-time")]
   pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// List of toolset instances
+/// List of toolsets
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
   pub toolsets: Vec<ToolsetResponse>,

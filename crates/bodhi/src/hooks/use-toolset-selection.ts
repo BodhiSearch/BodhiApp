@@ -6,6 +6,10 @@ import { useChatDB } from '@/hooks/use-chat-db';
 
 const LOCAL_STORAGE_KEY = 'bodhi-last-toolset-selection';
 
+/**
+ * EnabledTools maps toolset instance ID (UUID) to enabled tool names
+ * Example: { "uuid-abc-123": ["search", "contents"] }
+ */
 type EnabledTools = Record<string, string[]>;
 
 /**

@@ -1,11 +1,14 @@
 import {
   AppToolsetConfigResponse,
-  EnhancedToolsetConfigResponse,
+  ToolsetResponse,
+  CreateToolsetRequest,
+  UpdateToolsetRequest,
+  ApiKeyUpdateDto,
   ListToolsetsResponse,
+  ToolsetTypeResponse,
+  ListToolsetTypesResponse,
+  ToolDefinition,
   OpenAiApiError,
-  UpdateToolsetConfigRequest,
-  UserToolsetConfig,
-  UserToolsetConfigSummary,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -17,12 +20,13 @@ type ErrorResponse = OpenAiApiError;
 
 // Re-export types for consumers
 export type {
+  ToolsetResponse,
+  CreateToolsetRequest,
+  UpdateToolsetRequest,
+  ApiKeyUpdateDto,
+  ToolsetTypeResponse,
+  ToolDefinition,
   AppToolsetConfigResponse,
-  EnhancedToolsetConfigResponse,
-  ListToolsetsResponse,
-  UpdateToolsetConfigRequest,
-  UserToolsetConfig,
-  UserToolsetConfigSummary,
 };
 
 // ============================================================================
@@ -30,69 +34,71 @@ export type {
 // ============================================================================
 
 export const TOOLSETS_ENDPOINT = `${BODHI_API_BASE}/toolsets`;
-export const TOOLSET_CONFIG_ENDPOINT = `${BODHI_API_BASE}/toolsets/{toolset_id}/config`;
-export const TOOLSET_APP_CONFIG_ENDPOINT = `${BODHI_API_BASE}/toolsets/{toolset_id}/app-config`;
+export const TOOLSET_TYPES_ENDPOINT = `${BODHI_API_BASE}/toolset_types`;
 
 // ============================================================================
-// Query Hooks
+// Query Hooks - Toolset CRUD
 // ============================================================================
 
 /**
- * Fetch all available toolsets with their status
+ * List all toolsets for the authenticated user
  */
-export function useAvailableToolsets(options?: {
+export function useToolsets(options?: {
   enabled?: boolean;
 }): UseQueryResult<ListToolsetsResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ListToolsetsResponse>(['toolsets', 'available'], TOOLSETS_ENDPOINT, undefined, options);
+  return useQuery<ListToolsetsResponse>(['toolsets'], TOOLSETS_ENDPOINT, undefined, options);
 }
 
 /**
- * Fetch toolset configuration for a specific toolset
- * Note: 404 is a valid response meaning "no config exists yet" - we don't retry on 404
+ * Get a single toolset by UUID
  */
-export function useToolsetConfig(
-  toolsetId: string,
+export function useToolset(
+  id: string,
   options?: { enabled?: boolean }
-): UseQueryResult<EnhancedToolsetConfigResponse, AxiosError<ErrorResponse>> {
-  return useQuery<EnhancedToolsetConfigResponse>(
-    ['toolsets', 'config', toolsetId],
-    `${BODHI_API_BASE}/toolsets/${toolsetId}/config`,
-    undefined,
-    {
-      ...options,
-      enabled: options?.enabled !== false && !!toolsetId,
-      // Don't retry on 404 - it means no config exists, which is a valid state
-      retry: (failureCount, error) => {
-        if (error?.response?.status === 404) return false;
-        return failureCount < 3;
-      },
-    }
-  );
+): UseQueryResult<ToolsetResponse, AxiosError<ErrorResponse>> {
+  return useQuery<ToolsetResponse>(['toolsets', id], `${TOOLSETS_ENDPOINT}/${id}`, undefined, options);
 }
 
 // ============================================================================
-// Mutation Hooks
+// Mutation Hooks - Toolset CRUD
 // ============================================================================
 
-interface UpdateToolsetConfigRequestWithId extends UpdateToolsetConfigRequest {
-  toolsetId: string;
+/**
+ * Create a new toolset
+ */
+export function useCreateToolset(options?: {
+  onSuccess?: (toolset: ToolsetResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<ToolsetResponse>, AxiosError<ErrorResponse>, CreateToolsetRequest> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<ToolsetResponse, CreateToolsetRequest>(() => TOOLSETS_ENDPOINT, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(['toolsets']);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to create toolset';
+      options?.onError?.(message);
+    },
+  });
 }
 
 /**
- * Update toolset configuration (enable/disable, API key)
+ * Update an existing toolset
  */
-export function useUpdateToolsetConfig(options?: {
-  onSuccess?: (response: EnhancedToolsetConfigResponse) => void;
+export function useUpdateToolset(options?: {
+  onSuccess?: (toolset: ToolsetResponse) => void;
   onError?: (message: string) => void;
 }): UseMutationResult<
-  AxiosResponse<EnhancedToolsetConfigResponse>,
+  AxiosResponse<ToolsetResponse>,
   AxiosError<ErrorResponse>,
-  UpdateToolsetConfigRequestWithId
+  UpdateToolsetRequest & { id: string }
 > {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<EnhancedToolsetConfigResponse, UpdateToolsetConfigRequestWithId>(
-    ({ toolsetId }) => `${BODHI_API_BASE}/toolsets/${toolsetId}/config`,
+  return useMutationQuery<ToolsetResponse, UpdateToolsetRequest & { id: string }>(
+    ({ id }) => `${TOOLSETS_ENDPOINT}/${id}`,
     'put',
     {
       onSuccess: (response) => {
@@ -100,31 +106,25 @@ export function useUpdateToolsetConfig(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to update toolset configuration';
+        const message = error?.response?.data?.error?.message || 'Failed to update toolset';
         options?.onError?.(message);
       },
     },
-    {
-      transformBody: ({ toolsetId: _toolsetId, ...requestBody }) => requestBody,
-    }
+    { transformBody: ({ id: _id, ...body }) => body }
   );
 }
 
-interface DeleteToolsetConfigRequest {
-  toolsetId: string;
-}
-
 /**
- * Delete toolset configuration (clears API key)
+ * Delete a toolset
  */
-export function useDeleteToolsetConfig(options?: {
+export function useDeleteToolset(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, DeleteToolsetConfigRequest> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<void, DeleteToolsetConfigRequest>(
-    ({ toolsetId }) => `${BODHI_API_BASE}/toolsets/${toolsetId}/config`,
+  return useMutationQuery<void, { id: string }>(
+    ({ id }) => `${TOOLSETS_ENDPOINT}/${id}`,
     'delete',
     {
       onSuccess: () => {
@@ -132,35 +132,42 @@ export function useDeleteToolsetConfig(options?: {
         options?.onSuccess?.();
       },
       onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to delete toolset configuration';
+        const message = error?.response?.data?.error?.message || 'Failed to delete toolset';
         options?.onError?.(message);
       },
     },
-    {
-      noBody: true,
-    }
+    { noBody: true }
   );
+}
+
+// ============================================================================
+// Query Hooks - Toolset Types
+// ============================================================================
+
+/**
+ * List all available toolset types (for admin and create form)
+ */
+export function useToolsetTypes(options?: {
+  enabled?: boolean;
+}): UseQueryResult<ListToolsetTypesResponse, AxiosError<ErrorResponse>> {
+  return useQuery<ListToolsetTypesResponse>(['toolsets', 'types'], TOOLSET_TYPES_ENDPOINT, undefined, options);
 }
 
 // ============================================================================
 // Admin Mutation Hooks (App-level configuration)
 // ============================================================================
 
-interface SetAppToolsetEnabledRequest {
-  toolsetId: string;
-}
-
 /**
- * Enable a toolset at app level (admin only)
+ * Enable a toolset type at app level (admin only)
  */
-export function useSetAppToolsetEnabled(options?: {
+export function useEnableToolsetType(options?: {
   onSuccess?: (response: AppToolsetConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, SetAppToolsetEnabledRequest> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { typeId: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, SetAppToolsetEnabledRequest>(
-    ({ toolsetId }) => `${BODHI_API_BASE}/toolsets/${toolsetId}/app-config`,
+  return useMutationQuery<AppToolsetConfigResponse, { typeId: string }>(
+    ({ typeId }) => `${TOOLSET_TYPES_ENDPOINT}/${typeId}/app-config`,
     'put',
     {
       onSuccess: (response) => {
@@ -168,27 +175,25 @@ export function useSetAppToolsetEnabled(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to enable toolset for app';
+        const message = error?.response?.data?.error?.message || 'Failed to enable toolset type';
         options?.onError?.(message);
       },
     },
-    {
-      noBody: true,
-    }
+    { noBody: true }
   );
 }
 
 /**
- * Disable a toolset at app level (admin only)
+ * Disable a toolset type at app level (admin only)
  */
-export function useSetAppToolsetDisabled(options?: {
+export function useDisableToolsetType(options?: {
   onSuccess?: (response: AppToolsetConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, SetAppToolsetEnabledRequest> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { typeId: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, SetAppToolsetEnabledRequest>(
-    ({ toolsetId }) => `${BODHI_API_BASE}/toolsets/${toolsetId}/app-config`,
+  return useMutationQuery<AppToolsetConfigResponse, { typeId: string }>(
+    ({ typeId }) => `${TOOLSET_TYPES_ENDPOINT}/${typeId}/app-config`,
     'delete',
     {
       onSuccess: (response) => {
@@ -196,12 +201,10 @@ export function useSetAppToolsetDisabled(options?: {
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to disable toolset for app';
+        const message = error?.response?.data?.error?.message || 'Failed to disable toolset type';
         options?.onError?.(message);
       },
     },
-    {
-      noBody: true,
-    }
+    { noBody: true }
   );
 }

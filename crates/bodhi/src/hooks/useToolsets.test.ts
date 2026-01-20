@@ -1,26 +1,33 @@
-import { EnhancedToolsetConfigResponse, ListToolsetsResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+/**
+ * useToolsets Hook Tests - Instance-based Architecture
+ *
+ * Tests for UUID-based multi-instance toolset hooks with MSW v2 mocks
+ */
+import { ListToolsetsResponse, ToolsetResponse, OpenAiApiError } from '@bodhiapp/ts-client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  useAvailableToolsets,
-  useDeleteToolsetConfig,
-  useSetAppToolsetDisabled,
-  useSetAppToolsetEnabled,
-  useToolsetConfig,
-  useUpdateToolsetConfig,
+  useToolsets,
+  useToolset,
+  useCreateToolset,
+  useUpdateToolset,
+  useDeleteToolset,
+  useToolsetTypes,
 } from '@/hooks/useToolsets';
 import {
-  mockAvailableToolsets,
-  mockAvailableToolsetsError,
-  mockDeleteToolsetConfig,
-  mockSetAppToolsetDisabled,
-  mockSetAppToolsetEnabled,
-  mockToolsetConfig,
-  mockToolsetConfigError,
-  mockUpdateToolsetConfig,
-  mockUpdateToolsetConfigError,
+  mockListToolsets,
+  mockListToolsetsError,
+  mockGetToolset,
+  mockGetToolsetError,
+  mockCreateToolset,
+  mockCreateToolsetError,
+  mockUpdateToolset,
+  mockUpdateToolsetError,
+  mockDeleteToolset,
+  mockListTypes,
+  mockType,
 } from '@/test-utils/msw-v2/handlers/toolsets';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
@@ -28,14 +35,13 @@ import { createWrapper } from '@/tests/wrapper';
 const mockToolsetsResponse: ListToolsetsResponse = {
   toolsets: [
     {
-      toolset_id: 'builtin-exa-web-search',
-      name: 'Exa Web Search',
-      description: 'Search the web using Exa AI for real-time information',
+      id: 'uuid-test-toolset',
+      name: 'my-exa-search',
+      toolset_type: 'builtin-exa-web-search',
+      description: 'Test toolset',
+      enabled: true,
+      has_api_key: true,
       app_enabled: true,
-      user_config: {
-        enabled: true,
-        has_api_key: true,
-      },
       tools: [
         {
           type: 'function',
@@ -52,30 +58,23 @@ const mockToolsetsResponse: ListToolsetsResponse = {
           },
         },
       ],
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
     },
   ],
 };
 
-const mockConfigResponse: EnhancedToolsetConfigResponse = {
-  toolset_id: 'builtin-exa-web-search',
-  app_enabled: true,
-  config: {
-    toolset_id: 'builtin-exa-web-search',
-    enabled: true,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
-};
+const mockToolsetResponse: ToolsetResponse = mockToolsetsResponse.toolsets[0];
 
 setupMswV2();
 
 afterEach(() => server.resetHandlers());
 
-describe('useAvailableToolsets', () => {
-  it('fetches available toolsets successfully', async () => {
-    server.use(...mockAvailableToolsets(mockToolsetsResponse.toolsets));
+describe('useToolsets', () => {
+  it('fetches toolsets successfully', async () => {
+    server.use(mockListToolsets(mockToolsetsResponse.toolsets));
 
-    const { result } = renderHook(() => useAvailableToolsets(), {
+    const { result } = renderHook(() => useToolsets(), {
       wrapper: createWrapper(),
     });
 
@@ -84,37 +83,34 @@ describe('useAvailableToolsets', () => {
     });
 
     expect(result.current.data?.toolsets).toHaveLength(1);
-    expect(result.current.data?.toolsets[0].toolset_id).toBe('builtin-exa-web-search');
+    expect(result.current.data?.toolsets[0].id).toBe('uuid-test-toolset');
+    expect(result.current.data?.toolsets[0].name).toBe('my-exa-search');
   });
 
   it('handles error response', async () => {
     server.use(
-      ...mockAvailableToolsetsError({
+      mockListToolsetsError({
         message: 'Failed to fetch toolsets',
         status: 500,
       })
     );
 
-    const { result } = renderHook(() => useAvailableToolsets(), {
+    const { result } = renderHook(() => useToolsets(), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
+
+    const error = result.current.error as AxiosError<OpenAiApiError>;
+    expect(error.response?.status).toBe(500);
   });
-});
 
-describe('useToolsetConfig', () => {
-  it('fetches toolset config successfully', async () => {
-    server.use(
-      ...mockToolsetConfig('builtin-exa-web-search', {
-        app_enabled: true,
-        config: mockConfigResponse.config,
-      })
-    );
+  it('caches toolsets data', async () => {
+    server.use(mockListToolsets(mockToolsetsResponse.toolsets));
 
-    const { result } = renderHook(() => useToolsetConfig('builtin-exa-web-search'), {
+    const { result, rerender } = renderHook(() => useToolsets(), {
       wrapper: createWrapper(),
     });
 
@@ -122,138 +118,250 @@ describe('useToolsetConfig', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.toolset_id).toBe('builtin-exa-web-search');
-    expect(result.current.data?.app_enabled).toBe(true);
-    expect(result.current.data?.config.enabled).toBe(true);
-  });
+    const firstData = result.current.data;
 
-  it('does not fetch when toolsetId is empty', async () => {
-    const { result } = renderHook(() => useToolsetConfig(''), {
+    rerender();
+
+    expect(result.current.data).toBe(firstData);
+  });
+});
+
+describe('useToolset', () => {
+  it('fetches toolset by ID successfully', async () => {
+    server.use(mockGetToolset(mockToolsetResponse));
+
+    const { result } = renderHook(() => useToolset('uuid-test-toolset'), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toBeUndefined();
+    expect(result.current.data?.id).toBe('uuid-test-toolset');
+    expect(result.current.data?.name).toBe('my-exa-search');
+    expect(result.current.data?.enabled).toBe(true);
   });
 
   it('handles error response', async () => {
     server.use(
-      ...mockToolsetConfigError('invalid-toolset', {
+      mockGetToolsetError({
         message: 'Toolset not found',
         status: 404,
       })
     );
 
-    const { result } = renderHook(() => useToolsetConfig('invalid-toolset'), {
+    const { result } = renderHook(() => useToolset('invalid-id'), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
+
+    const error = result.current.error as AxiosError<OpenAiApiError>;
+    expect(error.response?.status).toBe(404);
   });
 });
 
-describe('useUpdateToolsetConfig', () => {
-  it('updates toolset config successfully', async () => {
-    server.use(
-      ...mockUpdateToolsetConfig('builtin-exa-web-search', {
-        app_enabled: true,
-        config: mockConfigResponse.config,
-      })
-    );
+describe('useCreateToolset', () => {
+  it('creates toolset successfully', async () => {
+    const newToolset: ToolsetResponse = {
+      ...mockToolsetResponse,
+      id: 'uuid-new-toolset',
+      name: 'my-new-toolset',
+    };
 
-    const { result } = renderHook(() => useUpdateToolsetConfig(), {
+    server.use(mockCreateToolset(newToolset));
+
+    const { result } = renderHook(() => useCreateToolset(), {
       wrapper: createWrapper(),
     });
 
     await act(async () => {
       await result.current.mutateAsync({
-        toolsetId: 'builtin-exa-web-search',
+        toolset_type: 'builtin-exa-web-search',
+        name: 'my-new-toolset',
+        description: 'New toolset',
         enabled: true,
         api_key: 'test-api-key',
       });
     });
 
     expect(result.current.isSuccess).toBe(true);
-    expect(result.current.data?.data.toolset_id).toBe('builtin-exa-web-search');
+    expect(result.current.data?.data.id).toBe('uuid-new-toolset');
+    expect(result.current.data?.data.name).toBe('my-new-toolset');
   });
 
-  it('handles error response', async () => {
+  it('calls onSuccess callback on successful creation', async () => {
+    const onSuccess = vi.fn();
+    server.use(mockCreateToolset(mockToolsetResponse));
+
+    const { result } = renderHook(() => useCreateToolset({ onSuccess }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        toolset_type: 'builtin-exa-web-search',
+        name: 'my-exa-search',
+        enabled: true,
+        api_key: 'test-api-key',
+      });
+    });
+
+    expect(onSuccess).toHaveBeenCalledWith(mockToolsetResponse);
+  });
+
+  it('handles error response and calls onError callback', async () => {
+    const onError = vi.fn();
     server.use(
-      ...mockUpdateToolsetConfigError('builtin-exa-web-search', {
-        message: 'Failed to update toolset configuration',
+      mockCreateToolsetError({
+        message: 'Name already exists',
+        status: 400,
+      })
+    );
+
+    const { result } = renderHook(() => useCreateToolset({ onError }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current
+        .mutateAsync({
+          toolset_type: 'builtin-exa-web-search',
+          name: 'duplicate-name',
+          enabled: true,
+          api_key: 'test-api-key',
+        })
+        .catch(() => {});
+    });
+
+    expect(onError).toHaveBeenCalledWith('Name already exists');
+  });
+});
+
+describe('useUpdateToolset', () => {
+  it('updates toolset successfully', async () => {
+    const updatedToolset: ToolsetResponse = {
+      ...mockToolsetResponse,
+      description: 'Updated description',
+      updated_at: new Date().toISOString(),
+    };
+
+    server.use(mockUpdateToolset(updatedToolset));
+
+    const { result } = renderHook(() => useUpdateToolset(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        description: 'Updated description',
+        enabled: true,
+        api_key: { action: 'Keep' },
+      });
+    });
+
+    expect(result.current.isSuccess).toBe(true);
+    expect(result.current.data?.data.description).toBe('Updated description');
+  });
+
+  it('calls onSuccess callback with updated toolset', async () => {
+    const onSuccess = vi.fn();
+    server.use(mockUpdateToolset(mockToolsetResponse));
+
+    const { result } = renderHook(() => useUpdateToolset({ onSuccess }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 'uuid-test-toolset',
+        name: 'my-exa-search',
+        enabled: true,
+        api_key: { action: 'Keep' },
+      });
+    });
+
+    expect(onSuccess).toHaveBeenCalledWith(mockToolsetResponse);
+  });
+
+  it('handles error response and calls onError callback', async () => {
+    const onError = vi.fn();
+    server.use(
+      mockUpdateToolsetError({
+        message: 'Failed to update toolset',
         status: 500,
       })
     );
 
-    const { result } = renderHook(() => useUpdateToolsetConfig(), {
+    const { result } = renderHook(() => useUpdateToolset({ onError }), {
       wrapper: createWrapper(),
     });
 
     await act(async () => {
-      try {
-        await result.current.mutateAsync({
-          toolsetId: 'builtin-exa-web-search',
+      await result.current
+        .mutateAsync({
+          id: 'uuid-test-toolset',
+          name: 'my-exa-search',
           enabled: true,
-        });
-      } catch (error) {
-        const axiosError = error as AxiosError<OpenAiApiError>;
-        expect(axiosError.response?.status).toBe(500);
-      }
+          api_key: { action: 'Keep' },
+        })
+        .catch(() => {});
     });
+
+    expect(onError).toHaveBeenCalledWith('Failed to update toolset');
   });
 });
 
-describe('useDeleteToolsetConfig', () => {
-  it('deletes toolset config successfully', async () => {
-    server.use(...mockDeleteToolsetConfig('builtin-exa-web-search'));
+describe('useDeleteToolset', () => {
+  it('deletes toolset successfully', async () => {
+    server.use(mockDeleteToolset());
 
-    const { result } = renderHook(() => useDeleteToolsetConfig(), {
+    const { result } = renderHook(() => useDeleteToolset(), {
       wrapper: createWrapper(),
     });
 
     await act(async () => {
-      await result.current.mutateAsync({ toolsetId: 'builtin-exa-web-search' });
+      await result.current.mutateAsync({ id: 'uuid-test-toolset' });
     });
 
     expect(result.current.isSuccess).toBe(true);
   });
-});
 
-describe('useSetAppToolsetEnabled', () => {
-  it('enables app toolset successfully', async () => {
-    server.use(...mockSetAppToolsetEnabled('builtin-exa-web-search'));
+  it('calls onSuccess callback on successful deletion', async () => {
+    const onSuccess = vi.fn();
+    server.use(mockDeleteToolset());
 
-    const { result } = renderHook(() => useSetAppToolsetEnabled(), {
+    const { result } = renderHook(() => useDeleteToolset({ onSuccess }), {
       wrapper: createWrapper(),
     });
 
     await act(async () => {
-      await result.current.mutateAsync({ toolsetId: 'builtin-exa-web-search' });
+      await result.current.mutateAsync({ id: 'uuid-test-toolset' });
     });
 
-    expect(result.current.isSuccess).toBe(true);
-    expect(result.current.data?.data.enabled).toBe(true);
+    expect(onSuccess).toHaveBeenCalled();
   });
 });
 
-describe('useSetAppToolsetDisabled', () => {
-  it('disables app toolset successfully', async () => {
-    server.use(...mockSetAppToolsetDisabled('builtin-exa-web-search'));
+describe('useToolsetTypes', () => {
+  it('fetches toolset types successfully', async () => {
+    server.use(mockListTypes([mockType]));
 
-    const { result } = renderHook(() => useSetAppToolsetDisabled(), {
+    const { result } = renderHook(() => useToolsetTypes(), {
       wrapper: createWrapper(),
     });
 
-    await act(async () => {
-      await result.current.mutateAsync({ toolsetId: 'builtin-exa-web-search' });
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.isSuccess).toBe(true);
-    expect(result.current.data?.data.enabled).toBe(false);
+    expect(result.current.data?.types).toHaveLength(1);
+    expect(result.current.data?.types[0].toolset_id).toBe('builtin-exa-web-search');
+    expect(result.current.data?.types[0].name).toBe('Exa Web Search');
   });
 });

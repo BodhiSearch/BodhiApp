@@ -187,10 +187,6 @@ export const mockToolsetWithTools: ToolsetWithTools = {
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
   app_enabled: true,
-  user_config: {
-    enabled: true,
-    has_api_key: true,
-  },
   tools: [
     {
       type: 'function',
@@ -280,7 +276,6 @@ export const mockToolsetWithToolsNotConfigured: ToolsetWithTools = {
   name: 'Calculator',
   description: 'Perform mathematical calculations',
   app_enabled: true,
-  user_config: null,
   tools: [
     {
       type: 'function',
