@@ -20,35 +20,35 @@ This file captures all design decisions, constraints, and preferences from the p
 | Decision | Details |
 |----------|---------|
 | **Primary key** | `id TEXT` (UUID), not `INTEGER AUTOINCREMENT` |
-| **Unique constraint** | `UNIQUE(user_id, name)` - instance name unique per user |
+| **Unique constraint** | `UNIQUE(user_id, name)` - toolset name unique per user |
 | **Keep `app_toolset_configs`** | No changes to admin table, controls type-level enable/disable |
 | **New columns** | `name TEXT NOT NULL`, `description TEXT` (nullable, max 255 chars) |
 | **Rename column** | `toolset_id` → `toolset_type` |
 
 ---
 
-## Instance Naming
+## Toolset Naming
 
 | Rule | Details |
 |------|---------|
 | **Character set** | Alphanumeric + hyphens only: `^[a-zA-Z0-9-]+$` |
 | **Max length** | 64 characters |
-| **Uniqueness scope** | Per-user (different users can have same instance name) |
+| **Uniqueness scope** | Per-user (different users can have same toolset name) |
 | **Name recycling** | Allowed - after deleting, name can be reused |
-| **First instance prefill** | Pre-populate with `toolset_type` only if user has no instances of that type |
-| **No reserved names** | No special "default" instance concept |
+| **First toolset prefill** | Pre-populate with `toolset_type` only if user has no toolsets of that type |
+| **No reserved names** | No special "default" toolset concept |
 
 ---
 
-## Instance Lifecycle
+## Toolset Lifecycle
 
 | Behavior | Details |
 |----------|---------|
 | **Creation** | Created when user first configures, not auto-created |
-| **All instances equal** | No special handling for first/default instance |
-| **Delete allowed** | Any instance can be deleted, including first one |
-| **Edit allowed** | Any instance can be edited at any time |
-| **API key required on create** | Cannot save instance without API key |
+| **All toolsets equal** | No special handling for first/default toolset |
+| **Delete allowed** | Any toolset can be deleted, including first one |
+| **Edit allowed** | Any toolset can be edited at any time |
+| **API key required on create** | Cannot save toolset without API key |
 
 ---
 
@@ -61,9 +61,9 @@ This file captures all design decisions, constraints, and preferences from the p
 | **Execute path** | `POST /toolsets/{uuid}/execute/{method}` |
 | **Type admin paths** | `/toolsets/types`, `/toolsets/types/{type_id}/app-config` |
 | **Response format** | Flat with `toolset_type` field, client groups on frontend |
-| **Tools in response** | Include `tools[]` array in instance responses |
+| **Tools in response** | Include `tools[]` array in toolset responses |
 | **Partial updates** | PUT accepts partial body (like aliases pattern) |
-| **Error messages** | Specific errors: "Instance name 'X' already exists" |
+| **Error messages** | Specific errors: "Toolset name 'X' already exists" |
 
 ---
 
@@ -73,15 +73,15 @@ This file captures all design decisions, constraints, and preferences from the p
 |-------|-------|
 | **OAuth scope** | Type-level: `scope_toolset-builtin-exa-web-search` |
 | **Scope grants** | Access to ALL instances of that toolset type |
-| **App-level control** | Per toolset TYPE, not per instance |
-| **Instance-level** | User enable/disable per instance |
+| **App-level control** | Per toolset TYPE, not per toolset |
+| **Per-toolset** | User enable/disable per toolset |
 
 ### Auth Flow for Execute (in order)
-1. Resolve UUID to instance (validates existence)
-2. Verify user owns instance
-3. Get `toolset_type` from instance
+1. Resolve UUID to toolset (validates existence)
+2. Verify user owns toolset
+3. Get `toolset_type` from toolset
 4. Check app-level type enabled
-5. Check instance enabled by user
+5. Check toolset enabled by user
 6. Check API key configured
 
 ---
@@ -90,7 +90,7 @@ This file captures all design decisions, constraints, and preferences from the p
 
 | Auth Type | Behavior |
 |-----------|----------|
-| **Session auth** | Return ALL user's instances |
+| **Session auth** | Return ALL user's toolsets |
 | **OAuth token** | Filter by `toolset_type` matching scopes in token |
 | **API token** | No toolset access |
 
@@ -111,8 +111,8 @@ This file captures all design decisions, constraints, and preferences from the p
 
 | Behavior | Details |
 |----------|---------|
-| **State structure** | `Record<instanceId, toolNames[]>` (keyed by UUID) |
-| **Multiple instances** | User can select multiple instances of same type |
+| **State structure** | `Record<toolsetId, toolNames[]>` (keyed by UUID) |
+| **Multiple toolsets** | User can select multiple toolsets of same type |
 | **Default selection** | First by `created_at ASC` for each type |
 | **Name→UUID cache** | Build mapping when chat initializes |
 | **Persistence** | Global default + per-conversation override |
@@ -123,9 +123,9 @@ This file captures all design decisions, constraints, and preferences from the p
 
 | Route | Purpose | Access |
 |-------|---------|--------|
-| `/ui/toolsets` | User instance list | All users |
-| `/ui/toolsets/new` | Create instance | All users |
-| `/ui/toolsets/edit?id={uuid}` | Edit instance | All users |
+| `/ui/toolsets` | User toolsets list | All users |
+| `/ui/toolsets/new` | Create toolset | All users |
+| `/ui/toolsets/edit?id={uuid}` | Edit toolset | All users |
 | `/ui/toolsets/admin` | Type enable/disable | Admin only |
 
 ### Admin Access Control
@@ -139,18 +139,18 @@ This file captures all design decisions, constraints, and preferences from the p
 
 | Scenario | Behavior |
 |----------|----------|
-| **Empty state** | "No toolsets configured. Click 'New Instance' to get started." |
+| **Empty state** | "No toolsets configured. Click 'New Toolset' to get started." |
 | **Type dropdown** | Always show, even with single option |
-| **Instance columns** | Name, Type, API Key indicator, Status, Actions |
-| **Disabled by admin** | Instance visible but not editable, edit action removed |
+| **Toolset columns** | Name, Type, API Key indicator, Status, Actions |
+| **Disabled by admin** | Toolset visible but not editable, edit action removed |
 | **Edit when type disabled** | Redirect to `/ui/toolsets` |
-| **Delete confirmation** | Simple: "Delete instance 'X'?" |
+| **Delete confirmation** | Simple: "Delete toolset 'X'?" |
 
 ### Chat ToolsetsPopover
-- Group instances by `toolset_type`
+- Group toolsets by `toolset_type`
 - Collapsible sections per type
-- Collapse section if only single instance of that type
-- Checkbox per tool per instance
+- Collapse section if only single toolset of that type
+- Checkbox per tool per toolset
 
 ---
 

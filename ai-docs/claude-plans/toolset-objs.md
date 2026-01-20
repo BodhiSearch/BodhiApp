@@ -21,7 +21,7 @@ This layer defines the domain types for toolset instances. The key shift: from s
 
 ## New Domain Types
 
-### UserToolsetInstance
+### Toolset
 
 Represents a user's configured instance of a toolset type:
 
@@ -30,13 +30,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// A user's configured toolset instance
+/// A user's configured toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct UserToolsetInstance {
-    /// Unique instance identifier (UUID)
+pub struct Toolset {
+    /// Unique toolset identifier (UUID)
     pub id: String,
 
-    /// User-defined instance name (alphanumeric + hyphens, unique per user)
+    /// User-defined toolset name (alphanumeric + hyphens, unique per user)
     pub name: String,
 
     /// The toolset type this is an instance of (e.g., "builtin-exa-web-search")
@@ -62,17 +62,17 @@ pub struct UserToolsetInstance {
 }
 ```
 
-### ToolsetInstanceWithTools
+### ToolsetWithTools
 
 For API responses including tool definitions:
 
 ```rust
 /// Toolset instance with full context for API response
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ToolsetInstanceWithTools {
+pub struct ToolsetWithTools {
     /// Instance details
     #[serde(flatten)]
-    pub instance: UserToolsetInstance,
+    pub instance: Toolset,
 
     /// Whether the toolset TYPE is enabled at app level
     pub app_enabled: bool,
@@ -91,19 +91,19 @@ Add to `ToolsetError` in `crates/objs/src/errors.rs`:
 
 #[error("instance_not_found")]
 #[error_meta(error_type = ErrorType::NotFound, status = 404)]
-InstanceNotFound(String),
+ToolsetNotFound(String),
 
 #[error("instance_name_exists")]
 #[error_meta(error_type = ErrorType::Conflict, status = 409)]
-InstanceNameExists(String),
+NameExists(String),
 
 #[error("invalid_instance_name")]
 #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
-InvalidInstanceName(String),
+InvalidName(String),
 
 #[error("instance_not_owned")]
 #[error_meta(error_type = ErrorType::Forbidden, status = 403)]
-InstanceNotOwned,
+NotOwned,
 ```
 
 ## Instance Name Validation
@@ -114,28 +114,28 @@ Add validation function or implement as builder pattern:
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-/// Regex for valid instance names: alphanumeric and hyphens only
-static INSTANCE_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
+/// Regex for valid toolset names: alphanumeric and hyphens only
+static TOOLSET_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9-]+$").unwrap()
 });
 
-/// Maximum instance name length
-const MAX_INSTANCE_NAME_LEN: usize = 64;
+/// Maximum toolset name length
+const MAX_TOOLSET_NAME_LEN: usize = 64;
 
-/// Validate instance name format
-pub fn validate_instance_name(name: &str) -> Result<(), ToolsetError> {
+/// Validate toolset name format
+pub fn validate_toolset_name(name: &str) -> Result<(), ToolsetError> {
     if name.is_empty() {
-        return Err(ToolsetError::InvalidInstanceName(
+        return Err(ToolsetError::InvalidName(
             "name cannot be empty".to_string()
         ));
     }
-    if name.len() > MAX_INSTANCE_NAME_LEN {
-        return Err(ToolsetError::InvalidInstanceName(
-            format!("name exceeds {} characters", MAX_INSTANCE_NAME_LEN)
+    if name.len() > MAX_TOOLSET_NAME_LEN {
+        return Err(ToolsetError::InvalidName(
+            format!("name exceeds {} characters", MAX_TOOLSET_NAME_LEN)
         ));
     }
-    if !INSTANCE_NAME_REGEX.is_match(name) {
-        return Err(ToolsetError::InvalidInstanceName(
+    if !TOOLSET_NAME_REGEX.is_match(name) {
+        return Err(ToolsetError::InvalidName(
             "name must contain only alphanumeric characters and hyphens".to_string()
         ));
     }
@@ -145,10 +145,10 @@ pub fn validate_instance_name(name: &str) -> Result<(), ToolsetError> {
 
 ## Tool Name Encoding
 
-For LLM tool names, encode instance name:
+For LLM tool names, encode toolset name:
 
 ```rust
-/// Encode instance name and method into tool name for LLM
+/// Encode toolset name and method into tool name for LLM
 /// Format: toolset_{instance_name}__{method}
 pub fn encode_tool_name(instance_name: &str, method: &str) -> String {
     format!("toolset_{}__{}", instance_name, method)
@@ -171,7 +171,7 @@ pub fn parse_tool_name(tool_name: &str) -> Option<(String, String)> {
 
 | File | Changes |
 |------|---------|
-| `crates/objs/src/toolsets.rs` | Add `UserToolsetInstance`, `ToolsetInstanceWithTools`, validation, encoding functions |
+| `crates/objs/src/toolsets.rs` | Add `Toolset`, `ToolsetWithTools`, validation, encoding functions |
 | `crates/objs/src/errors.rs` | Add new error variants to `ToolsetError` |
 | `crates/objs/src/lib.rs` | Export new types |
 
@@ -187,6 +187,6 @@ No new crate dependencies needed. Uses existing:
 ## Test Considerations
 
 Unit tests for:
-- `validate_instance_name` - valid/invalid names, edge cases
+- `validate_toolset_name` - valid/invalid names, edge cases
 - `encode_tool_name` / `parse_tool_name` - roundtrip encoding
 - Serialization/deserialization of new types

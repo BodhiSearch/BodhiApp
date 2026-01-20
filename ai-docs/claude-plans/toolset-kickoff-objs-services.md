@@ -10,9 +10,9 @@ Copy the prompt below to start a new chat session.
 We are implementing multi-instance toolset support for BodhiApp. Planning is complete - context files are in @ai-docs/claude-plans/toolset-instances-*.md
 
 Read these files in order:
-1. @ai-docs/claude-plans/toolset-instances-context.md - Implementation constraints & preferences
-2. @ai-docs/claude-plans/toolset-instances-objs.md - Domain objects layer spec
-3. @ai-docs/claude-plans/toolset-instances-services.md - Services layer spec
+1. @ai-docs/claude-plans/toolset-context.md - Implementation constraints & preferences
+2. @ai-docs/claude-plans/toolset-objs.md - Domain objects layer spec
+3. @ai-docs/claude-plans/toolset-services.md - Services layer spec
 
 ## Your Task
 

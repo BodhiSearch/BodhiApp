@@ -21,7 +21,7 @@ Routes shift from toolset-type-based endpoints to instance-UUID-based REST endpo
 ```rust
 /// Middleware for toolset instance operations
 /// Path parameter is now instance UUID, not toolset type ID
-pub async fn toolset_instance_auth_middleware(
+pub async fn toolset_auth_middleware(
     State(state): State<Arc<dyn RouterState>>,
     Path(instance_id): Path<String>,  // UUID
     req: Request,
@@ -80,20 +80,20 @@ pub async fn toolset_instance_auth_middleware(
 ```rust
 pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
     Router::new()
-        // Instance CRUD (UUID-based)
-        .route("/toolsets", get(list_instances_handler))
-        .route("/toolsets", post(create_instance_handler))
-        .route("/toolsets/:id", get(get_instance_handler))
-        .route("/toolsets/:id", put(update_instance_handler))
-        .route("/toolsets/:id", delete(delete_instance_handler))
+        // Toolset CRUD (UUID-based)
+        .route("/toolsets", get(list_toolsets_handler))
+        .route("/toolsets", post(create_toolset_handler))
+        .route("/toolsets/:id", get(get_toolset_handler))
+        .route("/toolsets/:id", put(update_toolset_handler))
+        .route("/toolsets/:id", delete(delete_toolset_handler))
 
         // Execute (with auth middleware)
         .route(
             "/toolsets/:id/execute/:method",
-            post(execute_instance_handler)
+            post(execute_toolset_handler)
                 .layer(from_fn_with_state(
                     state.clone(),
-                    toolset_instance_auth_middleware
+                    toolset_auth_middleware
                 ))
         )
 
@@ -133,7 +133,7 @@ use validator::Validate;
 
 /// Create new toolset instance
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
-pub struct CreateInstanceRequest {
+pub struct CreateToolsetRequest {
     /// The toolset type to instantiate
     #[validate(length(min = 1, message = "toolset_type required"))]
     pub toolset_type: String,
@@ -141,7 +141,7 @@ pub struct CreateInstanceRequest {
     /// User-defined instance name
     #[validate(
         length(min = 1, max = 64),
-        regex(path = "INSTANCE_NAME_REGEX", message = "alphanumeric and hyphens only")
+        regex(path = "TOOLSET_NAME_REGEX", message = "alphanumeric and hyphens only")
     )]
     pub name: String,
 
@@ -160,11 +160,11 @@ pub struct CreateInstanceRequest {
 
 /// Update toolset instance (partial update)
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
-pub struct UpdateInstanceRequest {
+pub struct UpdateToolsetRequest {
     /// Update name
     #[validate(
         length(min = 1, max = 64),
-        regex(path = "INSTANCE_NAME_REGEX", message = "alphanumeric and hyphens only")
+        regex(path = "TOOLSET_NAME_REGEX", message = "alphanumeric and hyphens only")
     )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -194,7 +194,7 @@ pub struct ExecuteToolsetRequest {
 
 /// Single instance response
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct InstanceResponse {
+pub struct ToolsetResponse {
     pub id: String,
     pub name: String,
     pub toolset_type: String,
@@ -210,8 +210,8 @@ pub struct InstanceResponse {
 
 /// List instances response
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ListInstancesResponse {
-    pub instances: Vec<InstanceResponse>,
+pub struct ListToolsetsResponse {
+    pub instances: Vec<ToolsetResponse>,
 }
 
 /// Toolset type info for admin listing
@@ -234,7 +234,7 @@ pub struct ListToolsetTypesResponse {
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-static INSTANCE_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
+static TOOLSET_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9-]+$").unwrap()
 });
 ```
@@ -254,10 +254,10 @@ static INSTANCE_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 ```rust
 /// GET /toolsets - List user's instances
-async fn list_instances_handler(
+async fn list_toolsets_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
-) -> Result<Json<ListInstancesResponse>, ApiError> {
+) -> Result<Json<ListToolsetsResponse>, ApiError> {
     let user_id = extract_user_id(&headers)?;
     let tool_service = state.app_service().tool_service();
 
@@ -278,17 +278,17 @@ async fn list_instances_handler(
         _ => vec![],  // API token: no toolset access
     };
 
-    Ok(Json(ListInstancesResponse {
+    Ok(Json(ListToolsetsResponse {
         instances: instances.into_iter().map(Into::into).collect()
     }))
 }
 
 /// POST /toolsets - Create new instance
-async fn create_instance_handler(
+async fn create_toolset_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
-    ValidatedJson(req): ValidatedJson<CreateInstanceRequest>,
-) -> Result<Json<InstanceResponse>, ApiError> {
+    ValidatedJson(req): ValidatedJson<CreateToolsetRequest>,
+) -> Result<Json<ToolsetResponse>, ApiError> {
     let user_id = extract_user_id(&headers)?;
     let tool_service = state.app_service().tool_service();
 
@@ -309,11 +309,11 @@ async fn create_instance_handler(
 }
 
 /// GET /toolsets/:id - Get instance by UUID
-async fn get_instance_handler(
+async fn get_toolset_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> Result<Json<InstanceResponse>, ApiError> {
+) -> Result<Json<ToolsetResponse>, ApiError> {
     let user_id = extract_user_id(&headers)?;
     let tool_service = state.app_service().tool_service();
 
@@ -324,12 +324,12 @@ async fn get_instance_handler(
 }
 
 /// PUT /toolsets/:id - Update instance (partial)
-async fn update_instance_handler(
+async fn update_toolset_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
     Path(id): Path<String>,
-    ValidatedJson(req): ValidatedJson<UpdateInstanceRequest>,
-) -> Result<Json<InstanceResponse>, ApiError> {
+    ValidatedJson(req): ValidatedJson<UpdateToolsetRequest>,
+) -> Result<Json<ToolsetResponse>, ApiError> {
     let user_id = extract_user_id(&headers)?;
     let tool_service = state.app_service().tool_service();
 
@@ -350,7 +350,7 @@ async fn update_instance_handler(
 }
 
 /// DELETE /toolsets/:id - Delete instance
-async fn delete_instance_handler(
+async fn delete_toolset_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
     Path(id): Path<String>,
@@ -364,7 +364,7 @@ async fn delete_instance_handler(
 }
 
 /// POST /toolsets/:id/execute/:method - Execute tool
-async fn execute_instance_handler(
+async fn execute_toolset_handler(
     State(state): State<Arc<dyn RouterState>>,
     headers: HeaderMap,
     Path((id, method)): Path<(String, String)>,
@@ -403,10 +403,10 @@ When listing instances for OAuth client:
 **Reference:** Current schema registration for toolset types.
 
 Add new schemas:
-- `CreateInstanceRequest`
-- `UpdateInstanceRequest`
-- `InstanceResponse`
-- `ListInstancesResponse`
+- `CreateToolsetRequest`
+- `UpdateToolsetRequest`
+- `ToolsetResponse`
+- `ListToolsetsResponse`
 - `ToolsetTypeResponse`
 - `ListToolsetTypesResponse`
 

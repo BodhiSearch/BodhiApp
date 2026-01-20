@@ -41,12 +41,12 @@ Implement multi-instance toolset support in the foundational layers (objs + serv
 **Add:**
 
 ```rust
-/// User's configured toolset instance (pure domain type, no API key fields)
+/// User's configured toolset (pure domain type, no API key fields)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct Toolset {
-    /// Unique instance identifier (UUID)
+    /// Unique toolset identifier (UUID)
     pub id: String,
-    /// User-defined instance name (alphanumeric + hyphens, max 24 chars, unique per user)
+    /// User-defined toolset name (alphanumeric + hyphens, max 24 chars, unique per user)
     pub name: String,
     /// The toolset type this is an instance of (e.g., "builtin-exa-web-search")
     pub toolset_type: String,
@@ -72,18 +72,18 @@ pub struct Toolset {
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-/// Regex for valid toolset instance names: alphanumeric and hyphens only
+/// Regex for valid toolset toolset names: alphanumeric and hyphens only
 static TOOLSET_NAME_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^[a-zA-Z0-9-]+$").unwrap()
 });
 
-/// Maximum toolset instance name length
+/// Maximum toolset toolset name length
 pub const MAX_TOOLSET_NAME_LEN: usize = 24;
 
 /// Maximum toolset description length
 pub const MAX_TOOLSET_DESCRIPTION_LEN: usize = 255;
 
-/// Validate toolset instance name format
+/// Validate toolset toolset name format
 pub fn validate_toolset_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("name cannot be empty".to_string());
@@ -135,7 +135,7 @@ pub struct ToolsetWithTools {
 - Export validation functions and constants
 - Remove `UserToolsetConfig`, `UserToolsetConfigSummary` exports
 
-**Note:** Tool name encoding/parsing is frontend/client responsibility. Backend only ensures instance names use safe characters (alphanumeric + hyphens) to avoid conflicts with client-side patterns.
+**Note:** Tool name encoding/parsing is frontend/client responsibility. Backend only ensures toolset names use safe characters (alphanumeric + hyphens) to avoid conflicts with client-side patterns.
 
 ### Tests for objs (inline in toolsets.rs)
 
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS toolsets (
     nonce TEXT,
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL,
-    UNIQUE(user_id, name)                  -- instance name unique per user
+    UNIQUE(user_id, name)                  -- toolset name unique per user
 );
 
 -- Indexes for efficient queries
@@ -341,19 +341,19 @@ pub enum ToolsetError {
 
     #[error("instance_not_found")]
     #[error_meta(error_type = ErrorType::NotFound, status = 404)]
-    InstanceNotFound(String),
+    ToolsetNotFound(String),
 
     #[error("instance_name_exists")]
     #[error_meta(error_type = ErrorType::Conflict, status = 409)]
-    InstanceNameExists(String),
+    NameExists(String),
 
     #[error("invalid_instance_name")]
     #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
-    InvalidInstanceName(String),
+    InvalidName(String),
 
     #[error("instance_not_owned")]
     #[error_meta(error_type = ErrorType::Forbidden, status = 403)]
-    InstanceNotOwned,
+    NotOwned,
 
     #[error("invalid_toolset_type")]
     #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
@@ -365,8 +365,8 @@ pub enum ToolsetError {
 
 ```ftl
 instance_not_found = Toolset instance '{$id}' not found
-instance_name_exists = Toolset instance name '{$name}' already exists
-invalid_instance_name = Invalid instance name: {$reason}
+instance_name_exists = Toolset toolset name '{$name}' already exists
+invalid_instance_name = Invalid toolset name: {$reason}
 instance_not_owned = You don't have permission to access this toolset instance
 invalid_toolset_type = Invalid toolset type: {$toolset_type}
 ```

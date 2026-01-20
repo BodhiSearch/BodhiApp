@@ -18,8 +18,8 @@ Current schema has:
 New schema:
 
 ```sql
--- User toolset instances (one per configured instance, not per type)
-CREATE TABLE IF NOT EXISTS user_toolset_configs (
+-- User toolsets (one per configured instance, not per type)
+CREATE TABLE IF NOT EXISTS toolsets (
     id TEXT PRIMARY KEY,                   -- UUID (TEXT for SQLite)
     user_id TEXT NOT NULL,                 -- JWT 'sub' claim
     toolset_type TEXT NOT NULL,            -- e.g., "builtin-exa-web-search"
@@ -35,14 +35,14 @@ CREATE TABLE IF NOT EXISTS user_toolset_configs (
 );
 
 -- Indexes for efficient queries
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_user_id
-    ON user_toolset_configs(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_toolset_type
-    ON user_toolset_configs(toolset_type);
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_user_type
-    ON user_toolset_configs(user_id, toolset_type);
-CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_enabled_created
-    ON user_toolset_configs(user_id, toolset_type, enabled, created_at);
+CREATE INDEX IF NOT EXISTS idx_toolsets_user_id
+    ON toolsets(user_id);
+CREATE INDEX IF NOT EXISTS idx_toolsets_toolset_type
+    ON toolsets(toolset_type);
+CREATE INDEX IF NOT EXISTS idx_toolsets_user_type
+    ON toolsets(user_id, toolset_type);
+CREATE INDEX IF NOT EXISTS idx_toolsets_enabled_created
+    ON toolsets(user_id, toolset_type, enabled, created_at);
 ```
 
 ### File: `crates/services/migrations/0007_toolsets_config.down.sql`
@@ -50,11 +50,11 @@ CREATE INDEX IF NOT EXISTS idx_user_toolset_configs_enabled_created
 Update to match new indexes:
 
 ```sql
-DROP INDEX IF EXISTS idx_user_toolset_configs_enabled_created;
-DROP INDEX IF EXISTS idx_user_toolset_configs_user_type;
-DROP INDEX IF EXISTS idx_user_toolset_configs_toolset_type;
-DROP INDEX IF EXISTS idx_user_toolset_configs_user_id;
-DROP TABLE IF EXISTS user_toolset_configs;
+DROP INDEX IF EXISTS idx_toolsets_enabled_created;
+DROP INDEX IF EXISTS idx_toolsets_user_type;
+DROP INDEX IF EXISTS idx_toolsets_toolset_type;
+DROP INDEX IF EXISTS idx_toolsets_user_id;
+DROP TABLE IF EXISTS toolsets;
 ```
 
 **Note:** Keep `app_toolset_configs` table unchanged - it controls type-level enable/disable.
@@ -65,7 +65,7 @@ DROP TABLE IF EXISTS user_toolset_configs;
 
 ### File: `crates/services/src/db/objs.rs`
 
-Current `UserToolsetConfigRow` structure:
+Current `ToolsetRow` structure:
 - `id: i64`
 - `user_id: String`
 - `toolset_id: String`
@@ -75,7 +75,7 @@ New structure:
 
 ```rust
 #[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
-pub struct UserToolsetConfigRow {
+pub struct ToolsetRow {
     pub id: String,                        // UUID as TEXT
     pub user_id: String,
     pub toolset_type: String,              // renamed from toolset_id
@@ -107,45 +107,45 @@ pub struct UserToolsetConfigRow {
 // In DbService trait, replace toolset config methods:
 
 /// Get instance by UUID
-async fn get_user_toolset_instance_by_id(
+async fn get_toolset(
     &self,
     id: &str,
-) -> Result<Option<UserToolsetConfigRow>, DbError>;
+) -> Result<Option<ToolsetRow>, DbError>;
 
 /// Get instance by user_id and name (for uniqueness check)
-async fn get_user_toolset_instance_by_name(
+async fn get_toolset_by_name(
     &self,
     user_id: &str,
     name: &str,
-) -> Result<Option<UserToolsetConfigRow>, DbError>;
+) -> Result<Option<ToolsetRow>, DbError>;
 
 /// Create new instance (INSERT only, not UPSERT)
-async fn create_user_toolset_instance(
+async fn create_toolset(
     &self,
-    row: &UserToolsetConfigRow,
-) -> Result<UserToolsetConfigRow, DbError>;
+    row: &ToolsetRow,
+) -> Result<ToolsetRow, DbError>;
 
 /// Update instance by UUID
-async fn update_user_toolset_instance(
+async fn update_toolset(
     &self,
-    row: &UserToolsetConfigRow,
-) -> Result<UserToolsetConfigRow, DbError>;
+    row: &ToolsetRow,
+) -> Result<ToolsetRow, DbError>;
 
 /// List all instances for user
-async fn list_user_toolset_instances(
+async fn list_toolsets(
     &self,
     user_id: &str,
-) -> Result<Vec<UserToolsetConfigRow>, DbError>;
+) -> Result<Vec<ToolsetRow>, DbError>;
 
 /// List instances by user and type (for chat default selection)
-async fn list_user_toolset_instances_by_type(
+async fn list_toolsets_by_type(
     &self,
     user_id: &str,
     toolset_type: &str,
-) -> Result<Vec<UserToolsetConfigRow>, DbError>;
+) -> Result<Vec<ToolsetRow>, DbError>;
 
 /// Delete instance by UUID
-async fn delete_user_toolset_instance(
+async fn delete_toolset(
     &self,
     id: &str,
 ) -> Result<(), DbError>;
@@ -174,16 +174,16 @@ Key existing methods to replace/adapt:
 ```rust
 #[async_trait::async_trait]
 pub trait ToolService: Debug + Send + Sync {
-    // === Instance Management ===
+    // === Toolset Management ===
 
     /// List all instances for user with tools info
-    async fn list_user_instances(
+    async fn list(
         &self,
         user_id: &str,
-    ) -> Result<Vec<ToolsetInstanceWithTools>, ToolsetError>;
+    ) -> Result<Vec<ToolsetWithTools>, ToolsetError>;
 
     /// Create new instance
-    async fn create_instance(
+    async fn create(
         &self,
         user_id: &str,
         toolset_type: &str,
@@ -194,29 +194,29 @@ pub trait ToolService: Debug + Send + Sync {
     ) -> Result<UserToolsetInstance, ToolsetError>;
 
     /// Get instance by UUID (validates user ownership)
-    async fn get_instance(
+    async fn get(
         &self,
         user_id: &str,
         instance_id: &str,
-    ) -> Result<Option<ToolsetInstanceWithTools>, ToolsetError>;
+    ) -> Result<Option<ToolsetWithTools>, ToolsetError>;
 
     /// Update instance (partial update)
-    async fn update_instance(
+    async fn update(
         &self,
         user_id: &str,
         instance_id: &str,
-        updates: InstanceUpdates,
+        updates: ToolsetUpdates,
     ) -> Result<UserToolsetInstance, ToolsetError>;
 
     /// Delete instance
-    async fn delete_instance(
+    async fn delete(
         &self,
         user_id: &str,
         instance_id: &str,
     ) -> Result<(), ToolsetError>;
 
     /// Execute tool on instance
-    async fn execute_instance_tool(
+    async fn execute(
         &self,
         user_id: &str,
         instance_id: &str,
@@ -225,7 +225,7 @@ pub trait ToolService: Debug + Send + Sync {
     ) -> Result<ToolsetExecutionResponse, ToolsetError>;
 
     /// Check if instance is available (owned, type enabled, instance enabled, has key)
-    async fn is_instance_available(
+    async fn is_available(
         &self,
         user_id: &str,
         instance_id: &str,
@@ -253,7 +253,7 @@ pub trait ToolService: Debug + Send + Sync {
 ```rust
 /// Partial update fields for instance
 #[derive(Debug, Default)]
-pub struct InstanceUpdates {
+pub struct ToolsetUpdates {
     pub name: Option<String>,
     pub description: Option<Option<String>>,  // Some(None) = clear
     pub enabled: Option<bool>,
@@ -269,7 +269,7 @@ pub struct InstanceUpdates {
 
 ### File: `crates/services/src/tool_service.rs`
 
-**Execute authorization flow** (in `execute_instance_tool`):
+**Execute authorization flow** (in `execute`):
 
 1. Get instance by UUID
 2. Verify `instance.user_id == user_id` → else `InstanceNotOwned`
@@ -301,8 +301,8 @@ No changes to encryption logic - same AES-GCM approach:
 |---------|-----|
 | `builtin_toolsets()` registry | Keep - provides type definitions |
 | `get_toolset_for_id(toolset_id)` | Keep - lookup type definition by type ID |
-| `is_toolset_available_for_user(user_id, toolset_id)` | Replace with `is_instance_available(user_id, instance_id)` |
-| `execute_toolset_tool(user_id, toolset_id, ...)` | Replace with `execute_instance_tool(user_id, instance_id, ...)` |
+| `is_toolset_available_for_user(user_id, toolset_id)` | Replace with `is_available(user_id, instance_id)` |
+| `execute_toolset_tool(user_id, toolset_id, ...)` | Replace with `execute(user_id, instance_id, ...)` |
 
 ---
 
@@ -312,7 +312,7 @@ No changes to encryption logic - same AES-GCM approach:
 |------|---------|
 | `crates/services/migrations/0007_toolsets_config.up.sql` | Schema: UUID id, add name/description, change unique constraint |
 | `crates/services/migrations/0007_toolsets_config.down.sql` | Update drop indexes |
-| `crates/services/src/db/objs.rs` | Update `UserToolsetConfigRow` struct |
+| `crates/services/src/db/objs.rs` | Update `ToolsetRow` struct |
 | `crates/services/src/db/service.rs` | Replace toolset config methods with instance methods |
 | `crates/services/src/tool_service.rs` | Replace with instance-based methods, update `DefaultToolService` |
 

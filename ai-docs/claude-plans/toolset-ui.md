@@ -37,7 +37,7 @@ interface ToolDefinition {
   };
 }
 
-interface ToolsetInstance {
+interface Toolset {
   id: string;
   name: string;
   toolset_type: string;
@@ -50,7 +50,7 @@ interface ToolsetInstance {
   updated_at: string;
 }
 
-interface CreateInstanceRequest {
+interface CreateToolsetRequest {
   toolset_type: string;
   name: string;
   description?: string;
@@ -58,7 +58,7 @@ interface CreateInstanceRequest {
   api_key: string;
 }
 
-interface UpdateInstanceRequest {
+interface UpdateToolsetRequest {
   name?: string;
   description?: string | null;
   enabled?: boolean;
@@ -76,8 +76,8 @@ interface ToolsetType {
 // === Instance Hooks ===
 
 /** List user's toolset instances */
-export function useToolsetInstances() {
-  return useQuery<{ instances: ToolsetInstance[] }>({
+export function useToolsets() {
+  return useQuery<{ toolsets: Toolset[] }>({
     queryKey: ['toolsets', 'instances'],
     queryFn: async () => {
       const res = await fetch(TOOLSETS_ENDPOINT, { credentials: 'include' });
@@ -88,8 +88,8 @@ export function useToolsetInstances() {
 }
 
 /** Get single instance by ID */
-export function useToolsetInstance(id: string | undefined) {
-  return useQuery<ToolsetInstance>({
+export function useToolset(id: string | undefined) {
+  return useQuery<Toolset>({
     queryKey: ['toolsets', 'instance', id],
     queryFn: async () => {
       const res = await fetch(`${TOOLSETS_ENDPOINT}/${id}`, { credentials: 'include' });
@@ -101,14 +101,14 @@ export function useToolsetInstance(id: string | undefined) {
 }
 
 /** Create new instance */
-export function useCreateInstance(options?: {
-  onSuccess?: (instance: ToolsetInstance) => void;
+export function useCreateToolset(options?: {
+  onSuccess?: (instance: Toolset) => void;
   onError?: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (req: CreateInstanceRequest) => {
+    mutationFn: async (req: CreateToolsetRequest) => {
       const res = await fetch(TOOLSETS_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
@@ -132,14 +132,14 @@ export function useCreateInstance(options?: {
 }
 
 /** Update instance */
-export function useUpdateInstance(options?: {
-  onSuccess?: (instance: ToolsetInstance) => void;
+export function useUpdateToolset(options?: {
+  onSuccess?: (instance: Toolset) => void;
   onError?: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...req }: UpdateInstanceRequest & { id: string }) => {
+    mutationFn: async ({ id, ...req }: UpdateToolsetRequest & { id: string }) => {
       const res = await fetch(`${TOOLSETS_ENDPOINT}/${id}`, {
         method: 'PUT',
         credentials: 'include',
@@ -163,7 +163,7 @@ export function useUpdateInstance(options?: {
 }
 
 /** Delete instance */
-export function useDeleteInstance(options?: {
+export function useDeleteToolset(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
 }) {
@@ -259,7 +259,7 @@ export function useDisableToolsetType(options?: {
 
 ## Pages
 
-### `/ui/toolsets` - User Instances List
+### `/ui/toolsets` - Toolsets
 
 **File:** `crates/bodhi/src/app/ui/toolsets/page.tsx`
 
@@ -269,7 +269,7 @@ export function useDisableToolsetType(options?: {
 - Table with columns: Name, Type, API Key, Status, Actions
 - "New Instance" button → `/ui/toolsets/new`
 - Row actions: Edit, Delete
-- Empty state: "No toolsets configured. Click 'New Instance' to get started."
+- Empty state: "No toolsets configured. Click 'New Toolset' to get started."
 - Type display name from `TOOLSET_TYPE_DISPLAY_NAMES` map
 
 ```typescript
@@ -302,7 +302,7 @@ const columns = [
 ];
 ```
 
-### `/ui/toolsets/new` - Create Instance
+### `/ui/toolsets/new` - Create Toolset
 
 **File:** `crates/bodhi/src/app/ui/toolsets/new/page.tsx` (NEW)
 
@@ -324,7 +324,7 @@ const columns = [
 
 **On save success:** Navigate to `/ui/toolsets`
 
-### `/ui/toolsets/edit?id={uuid}` - Edit Instance
+### `/ui/toolsets/edit?id={uuid}` - Edit Toolset
 
 **File:** `crates/bodhi/src/app/ui/toolsets/edit/page.tsx`
 
@@ -332,7 +332,7 @@ const columns = [
 
 **Changes:**
 - Query param: `?id={uuid}` instead of `?toolset_id=`
-- Fetch instance by UUID: `useToolsetInstance(id)`
+- Fetch instance by UUID: `useToolset(id)`
 - **Type** field: read-only display
 - **Name**, **Description**, **Enabled**: editable
 - **API Key**: password input, placeholder shows "••••••••" if configured
@@ -396,8 +396,8 @@ function AdminToolsetsPage() {
                 title={type.app_enabled ? 'Disable Type?' : 'Enable Type?'}
                 description={
                   type.app_enabled
-                    ? `Users will not be able to use ${type.name} instances.`
-                    : `Users will be able to use ${type.name} instances.`
+                    ? `Users will not be able to use ${type.name} toolsets.`
+                    : `Users will be able to use ${type.name} toolsets.`
                 }
               >
                 {type.app_enabled ? 'Disable' : 'Enable'}
@@ -463,11 +463,11 @@ export function parseToolName(toolName: string): { instanceName: string; method:
 
 ```typescript
 // Build mapping when chat initializes or instances change
-const instanceNameToId = useMemo(() => {
+const toolsetNameToId = useMemo(() => {
   const map = new Map<string, string>();
-  instances.forEach((i) => map.set(i.name, i.id));
+  toolsets.forEach((i) => map.set(i.name, i.id));
   return map;
-}, [instances]);
+}, [toolsets]);
 ```
 
 2. **Build tools array:**
@@ -475,7 +475,7 @@ const instanceNameToId = useMemo(() => {
 ```typescript
 function buildToolsArray(
   enabledTools: Record<string, string[]>,
-  instances: ToolsetInstance[]
+  instances: Toolset[]
 ): ToolDefinition[] {
   const result: ToolDefinition[] = [];
 
@@ -505,14 +505,14 @@ function buildToolsArray(
 ```typescript
 async function executeToolCall(
   toolCall: { function: { name: string; arguments: string } },
-  instanceNameToId: Map<string, string>
+  toolsetNameToId: Map<string, string>
 ): Promise<ToolResult> {
   const parsed = parseToolName(toolCall.function.name);
   if (!parsed) {
     return { error: `Invalid tool name: ${toolCall.function.name}` };
   }
 
-  const instanceId = instanceNameToId.get(parsed.instanceName);
+  const instanceId = toolsetNameToId.get(parsed.instanceName);
   if (!instanceId) {
     return { error: `Unknown instance: ${parsed.instanceName}` };
   }
@@ -555,18 +555,18 @@ function ToolsetsPopover({
   onToggleTool,
   onToggleToolset,
 }: Props) {
-  const { data } = useToolsetInstances();
-  const instances = data?.instances || [];
+  const { data } = useToolsets();
+  const toolsets = data?.toolsets || [];
 
   // Group by toolset_type
   const grouped = useMemo(() => {
-    return instances.reduce((acc, instance) => {
+    return toolsets.reduce((acc, instance) => {
       const type = instance.toolset_type;
       if (!acc[type]) acc[type] = [];
       acc[type].push(instance);
       return acc;
-    }, {} as Record<string, ToolsetInstance[]>);
-  }, [instances]);
+    }, {} as Record<string, Toolset[]>);
+  }, [toolsets]);
 
   return (
     <Popover>
@@ -612,7 +612,7 @@ function ToolsetTypeGroup({
       </button>
       {expanded && (
         <div className="ml-2 mt-1">
-          {instances.map((instance) => (
+          {toolsets.map((instance) => (
             <InstanceToolsSection
               key={instance.id}
               instance={instance}

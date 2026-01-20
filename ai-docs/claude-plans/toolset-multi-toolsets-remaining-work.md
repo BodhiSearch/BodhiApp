@@ -32,10 +32,10 @@ Methods to remove:
 **list_tools_for_user** (line 364):
 ```rust
 async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError> {
-  // Get user's enabled toolset instances
+  // Get user's enabled toolsets
   let toolsets = self.db_service.list_toolsets(user_id).await?;
 
-  // Filter to only enabled instances with API keys
+  // Filter to only enabled toolsets with API keys
   let enabled_types: Vec<String> = toolsets
     .into_iter()
     .filter(|t| t.enabled && t.encrypted_api_key.is_some())
@@ -89,7 +89,7 @@ async fn list(&self, user_id: &str) -> Result<Vec<Toolset>, ToolsetError> {
 }
 ```
 
-**get** - Get specific toolset instance:
+**get** - Get specific toolset:
 ```rust
 async fn get(&self, user_id: &str, id: &str) -> Result<Option<Toolset>, ToolsetError> {
   let row = self.db_service.get_toolset(id).await?;
@@ -102,7 +102,7 @@ async fn get(&self, user_id: &str, id: &str) -> Result<Option<Toolset>, ToolsetE
 }
 ```
 
-**create** - Create new toolset instance:
+**create** - Create new toolset:
 ```rust
 async fn create(
   &self,
@@ -160,7 +160,7 @@ async fn create(
 }
 ```
 
-**update** - Update existing toolset instance:
+**update** - Update existing toolset:
 ```rust
 async fn update(
   &self,
@@ -235,7 +235,7 @@ async fn update(
 }
 ```
 
-**delete** - Delete toolset instance:
+**delete** - Delete toolset:
 ```rust
 async fn delete(&self, user_id: &str, id: &str) -> Result<(), ToolsetError> {
   // Fetch and verify ownership
@@ -252,7 +252,7 @@ async fn delete(&self, user_id: &str, id: &str) -> Result<(), ToolsetError> {
 }
 ```
 
-**execute** - Execute tool on toolset instance:
+**execute** - Execute tool on toolset:
 ```rust
 async fn execute(
   &self,
@@ -261,21 +261,21 @@ async fn execute(
   method: &str,
   request: ToolsetExecutionRequest,
 ) -> Result<ToolsetExecutionResponse, ToolsetError> {
-  // Fetch instance and verify ownership
-  let instance = self.db_service.get_toolset(id).await?
+  // Fetch toolset and verify ownership
+  let toolset = self.db_service.get_toolset(id).await?
     .ok_or_else(|| ToolsetError::ToolsetNotFound(id.to_string()))?;
 
-  if instance.user_id != user_id {
+  if toolset.user_id != user_id {
     return Err(ToolsetError::ToolsetNotFound(id.to_string()));
   }
 
   // Check app-level type enabled
-  if !self.is_type_enabled(&instance.toolset_type).await? {
+  if !self.is_type_enabled(&toolset.toolset_type).await? {
     return Err(ToolsetError::ToolsetAppDisabled);
   }
 
-  // Check instance enabled
-  if !instance.enabled {
+  // Check toolset enabled
+  if !toolset.enabled {
     return Err(ToolsetError::ToolsetDisabled);
   }
 
@@ -284,7 +284,7 @@ async fn execute(
     .ok_or(ToolsetError::ToolsetNotConfigured)?;
 
   // Execute via Exa service
-  match instance.toolset_type.as_str() {
+  match toolset.toolset_type.as_str() {
     "builtin-exa-web-search" => {
       self.exa_service.execute_tool(&api_key, method, &request.params)
         .await
@@ -295,17 +295,17 @@ async fn execute(
         })
         .map_err(|e| e.into())
     },
-    _ => Err(ToolsetError::ToolsetNotFound(instance.toolset_type)),
+    _ => Err(ToolsetError::ToolsetNotFound(toolset.toolset_type)),
   }
 }
 ```
 
-**is_available** - Check if instance is available:
+**is_available** - Check if toolset is available:
 ```rust
 async fn is_available(&self, user_id: &str, id: &str) -> Result<bool, ToolsetError> {
-  let instance = self.db_service.get_toolset(id).await?;
+  let toolset = self.db_service.get_toolset(id).await?;
 
-  Ok(match instance {
+  Ok(match toolset {
     Some(i) if i.user_id == user_id => {
       i.enabled
         && i.encrypted_api_key.is_some()
