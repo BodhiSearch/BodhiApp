@@ -9316,14 +9316,9 @@
         "type": "object",
         "description": "Request to execute a toolset",
         "required": [
-          "tool_call_id",
           "params"
         ],
         "properties": {
-          "tool_call_id": {
-            "type": "string",
-            "description": "Tool call ID from LLM"
-          },
           "params": {
             "description": "Function parameters as JSON"
           }
@@ -11357,14 +11352,7 @@
       "ToolsetExecutionResponse": {
         "type": "object",
         "description": "Response from toolset tool execution (to send back to LLM)",
-        "required": [
-          "tool_call_id"
-        ],
         "properties": {
-          "tool_call_id": {
-            "type": "string",
-            "description": "Tool call ID this response is for"
-          },
           "result": {
             "description": "Successful result (JSON), if any"
           },

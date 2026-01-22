@@ -918,7 +918,6 @@ mod tests {
         .times(1)
         .returning(|_, _, _, _| {
           Ok(ToolsetExecutionResponse {
-            tool_call_id: "call_123".to_string(),
             result: Some(serde_json::json!({"success": true})),
             error: None,
           })
@@ -933,7 +932,6 @@ mod tests {
     let app = test_router(mock_tool_service);
 
     let request_body = serde_json::json!({
-      "tool_call_id": "call_123",
       "params": {"query": "test"}
     });
 

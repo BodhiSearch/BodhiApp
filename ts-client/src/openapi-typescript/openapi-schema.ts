@@ -2098,8 +2098,6 @@ export interface components {
         };
         /** @description Request to execute a toolset */
         ExecuteToolsetRequest: {
-            /** @description Tool call ID from LLM */
-            tool_call_id: string;
             /** @description Function parameters as JSON */
             params: unknown;
         };
@@ -2813,8 +2811,6 @@ export interface components {
         };
         /** @description Response from toolset tool execution (to send back to LLM) */
         ToolsetExecutionResponse: {
-            /** @description Tool call ID this response is for */
-            tool_call_id: string;
             /** @description Successful result (JSON), if any */
             result?: unknown;
             /** @description Error message, if execution failed */

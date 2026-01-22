@@ -222,7 +222,6 @@ async fn test_live_agentic_chat_with_exa_toolset(
     ))
     .header("Cookie", session_cookie.to_string())
     .json(&json!({
-      "tool_call_id": tool_call_id,
       "params": serde_json::from_str::<Value>(arguments)?
     }))
     .send()
@@ -235,7 +234,6 @@ async fn test_live_agentic_chat_with_exa_toolset(
   );
 
   let execute_json = execute_response.json::<Value>().await?;
-  assert_eq!(tool_call_id, execute_json["tool_call_id"]);
   assert!(
     execute_json["result"].is_object(),
     "Expected result object in tool execution response"

@@ -803,7 +803,6 @@ impl DefaultToolService {
               .collect();
 
             Ok(ToolsetExecutionResponse {
-              tool_call_id: request.tool_call_id,
               result: Some(json!({
                 "results": results,
                 "query_used": response.autoprompt_string,
@@ -812,7 +811,6 @@ impl DefaultToolService {
             })
           }
           Err(e) => Ok(ToolsetExecutionResponse {
-            tool_call_id: request.tool_call_id,
             result: None,
             error: Some(e.to_string()),
           }),
@@ -845,13 +843,11 @@ impl DefaultToolService {
               .collect();
 
             Ok(ToolsetExecutionResponse {
-              tool_call_id: request.tool_call_id,
               result: Some(json!({"results": results})),
               error: None,
             })
           }
           Err(e) => Ok(ToolsetExecutionResponse {
-            tool_call_id: request.tool_call_id,
             result: None,
             error: Some(e.to_string()),
           }),
@@ -886,13 +882,11 @@ impl DefaultToolService {
               .collect();
 
             Ok(ToolsetExecutionResponse {
-              tool_call_id: request.tool_call_id,
               result: Some(json!({"results": results})),
               error: None,
             })
           }
           Err(e) => Ok(ToolsetExecutionResponse {
-            tool_call_id: request.tool_call_id,
             result: None,
             error: Some(e.to_string()),
           }),
@@ -923,7 +917,6 @@ impl DefaultToolService {
               .collect();
 
             Ok(ToolsetExecutionResponse {
-              tool_call_id: request.tool_call_id,
               result: Some(json!({
                 "answer": response.answer,
                 "sources": sources,
@@ -932,7 +925,6 @@ impl DefaultToolService {
             })
           }
           Err(e) => Ok(ToolsetExecutionResponse {
-            tool_call_id: request.tool_call_id,
             result: None,
             error: Some(e.to_string()),
           }),

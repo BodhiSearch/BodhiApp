@@ -1275,10 +1275,6 @@ export type ErrorBody = {
  */
 export type ExecuteToolsetRequest = {
     /**
-     * Tool call ID from LLM
-     */
-    tool_call_id: string;
-    /**
      * Function parameters as JSON
      */
     params: unknown;
@@ -2058,10 +2054,6 @@ export type Toolset = {
  * Response from toolset tool execution (to send back to LLM)
  */
 export type ToolsetExecutionResponse = {
-    /**
-     * Tool call ID this response is for
-     */
-    tool_call_id: string;
     /**
      * Successful result (JSON), if any
      */

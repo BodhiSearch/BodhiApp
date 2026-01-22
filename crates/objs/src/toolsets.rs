@@ -250,8 +250,6 @@ pub struct AppToolsetConfig {
 /// Request to execute a tool within a toolset (from LLM tool_calls)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetExecutionRequest {
-  /// Unique identifier for this tool call (from LLM response)
-  pub tool_call_id: String,
   /// Function parameters as JSON
   pub params: serde_json::Value,
 }
@@ -259,8 +257,6 @@ pub struct ToolsetExecutionRequest {
 /// Response from toolset tool execution (to send back to LLM)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetExecutionResponse {
-  /// Tool call ID this response is for
-  pub tool_call_id: String,
   /// Successful result (JSON), if any
   #[serde(skip_serializing_if = "Option::is_none")]
   pub result: Option<serde_json::Value>,

@@ -58,7 +58,6 @@ async function executeToolCall(
         ...headers,
       },
       body: JSON.stringify({
-        tool_call_id: toolCall.id,
         params: JSON.parse(toolCall.function.arguments),
       }),
       signal,
@@ -69,7 +68,7 @@ async function executeToolCall(
     return {
       role: 'tool' as const,
       content: result.error ? JSON.stringify({ error: result.error }) : JSON.stringify(result.result),
-      tool_call_id: result.tool_call_id,
+      tool_call_id: toolCall.id,
     };
   } catch (error) {
     // Handle abort

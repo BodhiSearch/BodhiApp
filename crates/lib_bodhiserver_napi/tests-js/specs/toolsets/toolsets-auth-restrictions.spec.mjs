@@ -339,7 +339,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tool_call_id: 'test_call_oauth',
           params: {
             query: 'latest news about AI from San Francisco',
             num_results: 3,
@@ -352,7 +351,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(executeResponse.status).toBe(200);
 
     // Verify response structure matches ToolsetExecutionResponse
-    expect(executeData.tool_call_id).toBe('test_call_oauth');
     expect(executeData.result).toBeDefined();
     expect(executeData.error).toBeUndefined();
 
