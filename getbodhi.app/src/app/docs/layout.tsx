@@ -1,11 +1,13 @@
+import fs from 'fs';
+import path from 'path';
+
+import matter from 'gray-matter';
+import Link from 'next/link';
+
 import { DOCS_BASE_PATH, DocSidebar } from '@/app/docs/DocSidebar';
 import '@/app/docs/prism-theme.css';
 import type { NavItem } from '@/app/docs/types';
 import { getAllDocSlugs, getPathOrder } from '@/app/docs/utils';
-import fs from 'fs';
-import matter from 'gray-matter';
-import Link from 'next/link';
-import path from 'path';
 
 function getDocTitle(slug: string): string {
   try {

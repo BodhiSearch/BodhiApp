@@ -1,9 +1,11 @@
 'use client';
 
+import { memo } from 'react';
+
+import Link from 'next/link';
+
 import type { SidebarNavProps } from '@/app/docs/types';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
-import { memo } from 'react';
 
 interface NavItem {
   title: string;
