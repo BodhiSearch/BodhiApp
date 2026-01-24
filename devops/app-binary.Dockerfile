@@ -45,10 +45,11 @@ COPY crates/ci_optims/ crates/ci_optims/
 COPY async-openai/ async-openai/
 
 # Create filtered Cargo.toml for dependency-only build and generate new lock file
+# Downgrade time crate to 0.3.41 for Rust 1.87.0 compatibility
 RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml && \
     mv Cargo.filtered.toml Cargo.toml && \
     cargo generate-lockfile && \
-    cargo update -p deranged
+    cargo update -p time --precise 0.3.41
 
 # Pre-compile all heavy dependencies with consistent optimization level
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
@@ -72,8 +73,8 @@ COPY xtask/ xtask/
 
 # Restore original Cargo.toml and regenerate lock file for full workspace
 COPY Cargo.toml ./
-# Update deranged for time crate compatibility with Rust 1.87.0 (matches setup-rust action fix)
-RUN cargo generate-lockfile && cargo update -p deranged
+# Downgrade time crate to 0.3.41 for Rust 1.87.0 compatibility
+RUN cargo generate-lockfile && cargo update -p time --precise 0.3.41
 
 # Build bodhi binary with consistent optimization level
 # Note: CI_BUILD_TARGET is automatically set based on TARGETARCH for each platform
