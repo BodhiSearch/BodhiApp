@@ -1,6 +1,6 @@
 [package]
 name = "integration-tests"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 edition = "2021"
 
 [dependencies]

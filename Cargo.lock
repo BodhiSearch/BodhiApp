@@ -343,7 +343,7 @@ dependencies = [
 
 [[package]]
 name = "auth_middleware"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "bodhi"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "clap 4.5.40",
@@ -902,7 +902,7 @@ checksum = "bb7bdea464ae038f09197b82430b921c53619fc8d2bcaf7b151013b3ca008017"
 
 [[package]]
 name = "ci_optims"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1099,7 +1099,7 @@ dependencies = [
 
 [[package]]
 name = "commands"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -1898,7 +1898,7 @@ dependencies = [
 
 [[package]]
 name = "errmeta_derive"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "convert_case 0.8.0",
  "pretty_assertions",
@@ -3128,7 +3128,7 @@ dependencies = [
 
 [[package]]
 name = "integration-tests"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -3376,7 +3376,7 @@ dependencies = [
 
 [[package]]
 name = "lib_bodhiserver"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "auth_middleware",
@@ -3409,7 +3409,7 @@ dependencies = [
 
 [[package]]
 name = "lib_bodhiserver_napi"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "dirs",
@@ -3542,7 +3542,7 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
 name = "llama_server_proc"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4308,7 +4308,7 @@ dependencies = [
 
 [[package]]
 name = "objs"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -5466,7 +5466,7 @@ dependencies = [
 
 [[package]]
 name = "routes_all"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "auth_middleware",
@@ -5491,7 +5491,7 @@ dependencies = [
 
 [[package]]
 name = "routes_app"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -5542,7 +5542,7 @@ dependencies = [
 
 [[package]]
 name = "routes_oai"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6122,7 +6122,7 @@ dependencies = [
 
 [[package]]
 name = "server_app"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6157,7 +6157,7 @@ dependencies = [
 
 [[package]]
 name = "server_core"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "anyhow",
  "anyhow_trace",
@@ -6196,7 +6196,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 dependencies = [
  "aes-gcm",
  "anyhow",

@@ -1,6 +1,6 @@
 [package]
 name = "lib_bodhiserver"
-version = "0.0.44-dev"
+version = "0.0.45-dev"
 edition = "2021"
 build = "build.rs"
 
