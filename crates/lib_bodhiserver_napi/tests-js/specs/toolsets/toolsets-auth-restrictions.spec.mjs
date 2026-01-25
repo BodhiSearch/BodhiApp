@@ -28,7 +28,7 @@ import { expect, test } from '@playwright/test';
  * - OAuth tokens are blocked from config endpoints (session-only)
  */
 
-const TOOLSET_ID = 'builtin-exa-web-search';
+const TOOLSET_NAME = 'builtin-exa-web-search';
 const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
 
 test.describe('API Token Blocking - Toolset Endpoints', () => {
@@ -86,11 +86,11 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
-    await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
 
     // Get the UUID from the data-test-uuid attribute
     await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByType('builtin-exa-web-search');
+    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_SCOPE);
 
     await context.close();
   });
@@ -153,7 +153,7 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
   });
 
   test('POST /toolsets/{id}/execute/{method} with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${TOOLSET_ID}/execute/search`, {
+    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}/execute/search`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiToken}`,
@@ -252,7 +252,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
     // Configure Exa toolset with API key via session auth
     const toolsetsPage = new ToolsetsPage(sessionPage, baseUrl);
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_ID, exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
 
     // Close session context - we'll use OAuth token from here on
     await sessionContext.close();
@@ -326,7 +326,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(Array.isArray(data.toolsets)).toBe(true);
 
     // Should contain the toolset we have the scope for
-    const exaToolset = data.toolsets.find((t) => t.toolset_type === TOOLSET_ID);
+    const exaToolset = data.toolsets.find((t) => t.name === TOOLSET_NAME);
     expect(exaToolset).toBeTruthy();
 
     // Execute the toolset using OAuth token
@@ -630,11 +630,11 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_ID, exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
 
     // Get the UUID from the data-test-uuid attribute
     await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByType('builtin-exa-web-search');
+    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_SCOPE);
 
     await sessionContext.close();
 

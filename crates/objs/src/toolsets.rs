@@ -122,7 +122,7 @@ pub struct ToolsetWithTools {
 // ============================================================================
 
 /// Tool definition in OpenAI format for LLM function calling.
-/// Tool name follows Claude MCP convention: toolset__{toolset_id}__{tool_name}
+/// Tool name follows Claude MCP convention: toolset__{toolset_name}__{tool_name}
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolDefinition {
   /// Type of tool (always "function" for now)

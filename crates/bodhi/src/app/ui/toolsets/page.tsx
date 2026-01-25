@@ -97,12 +97,7 @@ function ToolsetsPageContent() {
     const canEdit = toolset.app_enabled;
 
     return [
-      <TableCell
-        key="name"
-        data-testid={`toolset-name-${toolset.id}`}
-        data-testid-scope={toolset.scope}
-        data-test-uuid={toolset.id}
-      >
+      <TableCell key="name">
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{toolset.name}</span>
@@ -217,6 +212,12 @@ function ToolsetsPageContent() {
           sort={{ column: 'name', direction: 'asc' }}
           onSortChange={() => {}}
           data-testid="toolsets-table"
+          getRowProps={(toolset) => ({
+            'data-test-uuid': toolset.id,
+            'data-testid': `toolset-row-${toolset.id}`,
+            'data-test-scope': toolset.scope,
+            'data-test-toolset-name': toolset.name,
+          })}
         />
       </div>
 

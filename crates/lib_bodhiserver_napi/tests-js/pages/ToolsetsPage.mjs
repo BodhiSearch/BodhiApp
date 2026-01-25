@@ -8,12 +8,12 @@ export class ToolsetsPage extends BasePage {
   selectors = {
     pageContainer: '[data-testid="toolsets-page"]',
     toolsetsTable: '[data-testid="toolsets-table"]',
-    toolsetRow: (toolsetId) => `[data-testid="toolset-name-${toolsetId}"]`,
-    toolsetRowByType: (toolsetType) => `[data-testid-type="${toolsetType}"]`,
+    toolsetRowByScope: (scope) => `[data-test-scope="${scope}"]`,
+    toolsetRowByName: (name) => `[data-test-toolset-name="${name}"]`,
     toolsetStatus: (toolsetId) => `[data-testid="toolset-status-${toolsetId}"]`,
     toolsetEditButton: (toolsetId) => `[data-testid="toolset-edit-button-${toolsetId}"]`,
-    toolsetEditButtonByType: (toolsetType) =>
-      `[data-testid^="toolset-edit-button-"][data-testid-type="${toolsetType}"]`,
+    toolsetEditButtonByScope: (scope) =>
+      `[data-testid^="toolset-edit-button-"][data-testid-scope="${scope}"]`,
     // New page selectors
     newPageContainer: '[data-testid="new-toolset-page"]',
     toolsetTypeSelect: '[data-testid="toolset-type-select"]',
@@ -29,8 +29,9 @@ export class ToolsetsPage extends BasePage {
     saveButton: '[data-testid="toolset-save-button"]',
     // Admin page selectors
     adminPageContainer: '[data-testid="admin-toolsets-page"]',
-    typeToggle: (typeId) => `[data-testid="type-toggle-${typeId}"]`,
-    typeRow: (typeId) => `[data-testid="type-row-${typeId}"]`,
+    typeToggle: (scope) =>
+      `tr[data-test-scope="${scope}"] [data-test-scope="${scope}"][role="switch"]`,
+    typeRow: (scope) => `tr[data-test-scope="${scope}"]`,
     toolsetEnabledSwitch: '[data-testid="toolset-enabled-switch"]',
     // Badges
     enabledBadge: 'text=Enabled',
@@ -50,15 +51,6 @@ export class ToolsetsPage extends BasePage {
     await expect(this.page.locator(this.selectors.pageContainer)).toBeVisible({ timeout: 15000 });
   }
 
-  async expectToolsetListed(toolsetId, expectedStatus = null) {
-    await this.expectVisible(this.selectors.toolsetRow(toolsetId));
-
-    if (expectedStatus) {
-      const statusCell = this.page.locator(this.selectors.toolsetStatus(toolsetId));
-      await expect(statusCell).toContainText(expectedStatus);
-    }
-  }
-
   async clickEditToolset(toolsetId) {
     await this.page.click(this.selectors.toolsetEditButton(toolsetId));
     await this.page.waitForURL(/\/ui\/toolsets\/edit/);
@@ -75,11 +67,13 @@ export class ToolsetsPage extends BasePage {
     await expect(this.page.locator(this.selectors.newPageContainer)).toBeVisible();
   }
 
-  async createToolset(toolsetType, name, apiKey) {
+  async createToolset(toolsetName, name, apiKey) {
     // Click the combobox by role within the new page
     await this.page.locator('button[role="combobox"]').click();
-    // Click the option from the dropdown
-    await this.page.click(`[data-testid="type-option-${toolsetType}"]`);
+    // Map toolset name to display name for selection
+    const displayName = toolsetName === 'builtin-exa-web-search' ? 'Exa Web Search' : toolsetName;
+    // Select by role="option" with the display text
+    await this.page.getByRole('option', { name: displayName }).click();
 
     await this.page.fill(this.selectors.toolsetNameInput, name);
     await this.page.fill(this.selectors.apiKeyInput, apiKey);
@@ -89,17 +83,21 @@ export class ToolsetsPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async getToolsetRowByType(toolsetType) {
-    return this.page.locator(this.selectors.toolsetRowByType(toolsetType)).first();
+  async getToolsetRowByScope(scope) {
+    return this.page.locator(this.selectors.toolsetRowByScope(scope)).first();
   }
 
-  async getToolsetUuidByType(toolsetType) {
-    const row = this.page.locator(this.selectors.toolsetRowByType(toolsetType)).first();
+  async getToolsetRowByName(name) {
+    return this.page.locator(this.selectors.toolsetRowByName(name)).first();
+  }
+
+  async getToolsetUuidByScope(scope) {
+    const row = this.page.locator(this.selectors.toolsetRowByScope(scope)).first();
     return await row.getAttribute('data-test-uuid');
   }
 
-  async clickEditByType(toolsetType) {
-    await this.page.click(this.selectors.toolsetEditButtonByType(toolsetType));
+  async clickEditByScope(scope) {
+    await this.page.click(this.selectors.toolsetEditButtonByScope(scope));
     await this.page.waitForURL(/\/ui\/toolsets\/edit/);
     await this.waitForSPAReady();
   }
@@ -155,28 +153,28 @@ export class ToolsetsPage extends BasePage {
     await expect(this.page.locator(this.selectors.adminPageContainer)).toBeVisible();
   }
 
-  async expectTypeToggle(typeId) {
-    await this.expectVisible(this.selectors.typeToggle(typeId));
+  async expectTypeToggle(scope) {
+    await this.expectVisible(this.selectors.typeToggle(scope));
   }
 
-  async enableToolsetTypeOnAdmin(typeId) {
+  async enableToolsetTypeOnAdmin(scope) {
     await this.navigateToAdmin();
     await this.expectAdminPage();
 
-    const typeToggle = this.page.locator(this.selectors.typeToggle(typeId));
+    const typeToggle = this.page.locator(this.selectors.typeToggle(scope));
     const isEnabled = await typeToggle.getAttribute('data-state');
     if (isEnabled !== 'checked') {
       await typeToggle.click();
       await this.page.click('button:has-text("Enable")');
       await this.page.waitForSelector('button:has-text("Enable")', { state: 'hidden' });
       await this.page.waitForSelector(
-        `${this.selectors.typeRow(typeId)}[data-test-state="enabled"]`
+        `${this.selectors.typeRow(scope)}[data-test-state="enabled"]`
       );
     }
   }
 
-  async toggleTypeEnabled(typeId) {
-    await this.page.click(this.selectors.typeToggle(typeId));
+  async toggleTypeEnabled(scope) {
+    await this.page.click(this.selectors.typeToggle(scope));
   }
 
   async confirmAppEnable() {
@@ -209,22 +207,24 @@ export class ToolsetsPage extends BasePage {
   }
 
   // Complete workflow methods
-  async configureToolsetWithApiKey(toolsetType, apiKey, toolsetName = null) {
+  async configureToolsetWithApiKey(scope, apiKey, toolsetName = null) {
     // Step 1: Ensure type is enabled on admin page
-    await this.enableToolsetTypeOnAdmin(toolsetType);
+    await this.enableToolsetTypeOnAdmin(scope);
 
     // Step 2: Create new toolset
     await this.navigateToNewToolset();
     await this.expectNewToolsetPage();
 
-    const name = toolsetName || toolsetType;
-
     // Click the combobox by role
     await this.page.locator('button[role="combobox"]').click();
-    // Click the option from the dropdown
-    await this.page.click(`[data-testid="type-option-${toolsetType}"]`);
+    // Click the option from the dropdown using scope
+    await this.page.click(`[data-test-scope="${scope}"]`);
 
-    await this.page.fill(this.selectors.toolsetNameInput, name);
+    // Only fill name if explicitly provided (otherwise use auto-populated value)
+    if (toolsetName) {
+      await this.page.fill(this.selectors.toolsetNameInput, toolsetName);
+    }
+
     await this.page.fill(this.selectors.apiKeyInput, apiKey);
 
     // Enable the toolset by default (switch defaults to on, so no need to toggle)

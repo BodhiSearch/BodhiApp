@@ -152,6 +152,7 @@ function NewToolsetPageContent() {
                             key={type.scope_uuid}
                             value={type.scope_uuid}
                             data-testid={`type-option-${type.scope_uuid}`}
+                            data-test-scope={type.scope}
                           >
                             {type.name}
                           </SelectItem>

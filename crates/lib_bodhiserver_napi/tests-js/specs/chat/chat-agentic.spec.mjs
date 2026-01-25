@@ -25,6 +25,10 @@ import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
  * - INTEG_TEST_EXA_API_KEY environment variable
  * - Qwen3 model with tool calling support (configured via selectModelQwen)
  */
+
+const TOOLSET_NAME = 'builtin-exa-web-search';
+const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+
 test.describe('Chat Interface - Agentic Flow', () => {
   let authServerConfig;
   let testCredentials;
@@ -89,7 +93,7 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
     await loginPage.performOAuthLogin();
 
-    await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
 
     await chatPage.navigateToChat();
     await chatPage.waitForChatPageLoad();
@@ -97,7 +101,7 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
     await chatPage.openToolsetsPopover();
     await chatPage.waitForToolsetsToLoad();
-    await chatPage.enableToolset('builtin-exa-web-search');
+    await chatPage.enableToolset(TOOLSET_NAME);
     await chatPage.closeToolsetsPopover();
 
     await chatPage.sendMessage('What is the latest news about AI from San Francisco?');

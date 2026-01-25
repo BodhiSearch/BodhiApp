@@ -75,7 +75,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Search the web using Exa AI',
           enabled: true,
           has_api_key: true,
@@ -114,7 +115,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Search the web using Exa AI',
           enabled: false,
           has_api_key: true,
@@ -153,7 +155,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Search the web using Exa AI',
           enabled: true,
           has_api_key: false,
@@ -192,7 +195,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Search the web using Exa AI',
           enabled: true,
           has_api_key: true,
@@ -231,7 +235,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'First instance',
           enabled: true,
           has_api_key: true,
@@ -243,7 +248,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-2',
           name: 'company-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Second instance',
           enabled: true,
           has_api_key: true,
@@ -274,7 +280,8 @@ describe('ToolsetsPage - Instance List Display', () => {
         {
           id: 'uuid-exa-1',
           name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           description: 'Search the web using Exa AI',
           enabled: true,
           has_api_key: true,

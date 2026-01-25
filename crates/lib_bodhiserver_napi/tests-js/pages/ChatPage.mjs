@@ -49,6 +49,8 @@ export class ChatPage extends BasePage {
     toolsetsPopoverTrigger: '[data-testid="toolsets-popover-trigger"]',
     toolsetsPopoverContent: '[data-testid="toolsets-popover-content"]',
     toolsetItem: (toolsetType) => `[data-testid-type="${toolsetType}"]`,
+    toolsetItemByName: (toolsetName) => `[data-test-row-name="${toolsetName}"]`,
+    toolsetByName: (toolsetName) => `[data-test-toolset-name="${toolsetName}"]`,
     toolsetCheckbox: (toolsetType) =>
       `[data-testid-type="${toolsetType}"] [data-testid^="toolset-checkbox-"]`,
     toolsetsBadge: '[data-testid="toolsets-badge"]',
@@ -562,17 +564,17 @@ export class ChatPage extends BasePage {
     await this.page.waitForSelector('[data-testid^="toolset-item-"]', { timeout: 15000 });
   }
 
-  async enableToolset(toolsetType) {
+  async enableToolset(toolsetName) {
     const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
-    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetByName(toolsetName));
     const checkbox = toolsetItem.locator('[data-testid^="toolset-checkbox-"]');
     await expect(checkbox).toBeEnabled();
     await checkbox.click();
   }
 
-  async expectToolsetCheckboxChecked(toolsetType) {
+  async expectToolsetCheckboxChecked(toolsetName) {
     const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
-    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetByName(toolsetName));
     const checkbox = toolsetItem.locator('[data-testid^="toolset-checkbox-"]');
     await expect(checkbox).toBeChecked();
   }
@@ -595,10 +597,11 @@ export class ChatPage extends BasePage {
     await expect(popoverContent.locator('h4')).toContainText('Toolsets');
   }
 
-  async expectToolsetInPopover(toolsetType) {
+  async expectToolsetInPopover(toolsetName) {
     const popoverContent = this.page.locator(this.selectors.toolsetsPopoverContent);
-    const toolsetItem = popoverContent.locator(this.selectors.toolsetItem(toolsetType));
-    await expect(toolsetItem).toBeVisible();
+    const toolsetItem = popoverContent.locator(this.selectors.toolsetByName(toolsetName));
+    const label = toolsetItem.locator(`label[data-test-toolset-name="${toolsetName}"]`);
+    await expect(label).toBeVisible();
   }
 
   async expectToolsetsLoadingOrContent() {

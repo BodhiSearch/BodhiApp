@@ -37,7 +37,8 @@ const mockToolsetsResponse: ListToolsetsResponse = {
     {
       id: 'uuid-test-toolset',
       name: 'my-exa-search',
-      scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+      scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+      scope: 'scope_toolset-builtin-exa-web-search',
       description: 'Test toolset',
       enabled: true,
       has_api_key: true,
@@ -180,7 +181,8 @@ describe('useCreateToolset', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+        scope: 'scope_toolset-builtin-exa-web-search',
         name: 'my-new-toolset',
         description: 'New toolset',
         enabled: true,
@@ -203,7 +205,8 @@ describe('useCreateToolset', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+        scope: 'scope_toolset-builtin-exa-web-search',
         name: 'my-exa-search',
         enabled: true,
         api_key: 'test-api-key',
@@ -229,7 +232,8 @@ describe('useCreateToolset', () => {
     await act(async () => {
       await result.current
         .mutateAsync({
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6', scope: 'scope_toolset-builtin-exa-web-search',
+          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+          scope: 'scope_toolset-builtin-exa-web-search',
           name: 'duplicate-name',
           enabled: true,
           api_key: 'test-api-key',

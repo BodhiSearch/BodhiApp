@@ -88,6 +88,7 @@ function ToolsetItem({
         !isAvailable && 'opacity-50 cursor-not-allowed'
       )}
       data-testid={`toolset-row-${toolset.id}`}
+      data-test-toolset-name={toolset.name}
     >
       {/* Expand/collapse chevron */}
       <Button
@@ -109,6 +110,7 @@ function ToolsetItem({
       <Checkbox
         id={`toolset-${toolset.id}`}
         data-testid={`toolset-checkbox-${toolset.id}`}
+        data-test-toolset-name={`toolset-checkbox-name-${toolset.name}`}
         checked={checkboxState === 'checked'}
         data-state={checkboxState}
         disabled={!isAvailable}
@@ -124,6 +126,7 @@ function ToolsetItem({
         <Label
           htmlFor={`toolset-${toolset.id}`}
           className={cn('text-sm font-medium cursor-pointer', !isAvailable && 'cursor-not-allowed')}
+          data-test-toolset-name={toolset.name}
         >
           {toolset.name}
         </Label>
@@ -148,7 +151,11 @@ function ToolsetItem({
   );
 
   return (
-    <div data-testid={`toolset-item-${toolset.id}`} data-testid-scope={toolset.scope}>
+    <div
+      data-testid={`toolset-item-${toolset.id}`}
+      data-testid-scope={toolset.scope}
+      data-test-toolset-name={toolset.name}
+    >
       {rowWithTooltip}
       {/* Expanded child tools */}
       {isExpanded && isAvailable && (
@@ -275,14 +282,14 @@ export function ToolsetsPopover({
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">No toolsets available</div>
           ) : (
             <div className="space-y-2">
-              {Object.entries(groupedToolsets).map(([typeId, typeToolsets]) => {
-                const displayName = typeDisplayNames.get(typeId) || typeId;
-                const isSingleToolset = typeToolsets.length === 1;
-                const isGroupExpanded = expandedGroups.has(typeId);
+              {Object.entries(groupedToolsets).map(([scopeUuid, tools]) => {
+                const displayName = typeDisplayNames.get(scopeUuid) || scopeUuid;
+                const isSingleToolset = tools.length === 1;
+                const isGroupExpanded = expandedGroups.has(scopeUuid);
 
                 // For single toolset, just show the toolset without group header
                 if (isSingleToolset) {
-                  const toolset = typeToolsets[0];
+                  const toolset = tools[0];
                   return (
                     <ToolsetItem
                       key={toolset.id}
@@ -298,13 +305,13 @@ export function ToolsetsPopover({
 
                 // Multiple toolsets: show group header with collapsible section
                 return (
-                  <div key={typeId} data-testid={`toolset-group-${typeId}`}>
+                  <div key={scopeUuid} data-testid={`toolset-group-${scopeUuid}`} data-test-toolset-name={displayName}>
                     <Button
                       type="button"
                       variant="ghost"
                       className="w-full justify-start p-2 h-auto font-medium text-sm"
-                      onClick={() => toggleGroup(typeId)}
-                      data-testid={`toolset-group-toggle-${typeId}`}
+                      onClick={() => toggleGroup(scopeUuid)}
+                      data-testid={`toolset-group-toggle-${scopeUuid}`}
                     >
                       {isGroupExpanded ? (
                         <ChevronDown className="h-4 w-4 mr-2" />
@@ -312,11 +319,11 @@ export function ToolsetsPopover({
                         <ChevronRight className="h-4 w-4 mr-2" />
                       )}
                       {displayName}
-                      <span className="ml-2 text-muted-foreground">({typeToolsets.length})</span>
+                      <span className="ml-2 text-muted-foreground">({tools.length})</span>
                     </Button>
                     {isGroupExpanded && (
                       <div className="ml-2 space-y-1 mt-1">
-                        {typeToolsets.map((toolset) => (
+                        {tools.map((toolset) => (
                           <ToolsetItem
                             key={toolset.id}
                             toolset={toolset}

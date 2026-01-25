@@ -17,6 +17,10 @@ import { expect, test } from '@playwright/test';
  * NOTE: When EXA_API_KEY is provided in the environment, the tests will
  * configure the Exa Web Search toolset with a real API key and verify it's enabled.
  */
+
+const TOOLSET_NAME = 'builtin-exa-web-search';
+const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+
 test.describe('Toolsets Configuration', () => {
   let authServerConfig;
   let testCredentials;
@@ -81,18 +85,18 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Enable the toolset type first
-    await toolsetsPage.enableToolsetTypeOnAdmin('builtin-exa-web-search');
+    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_SCOPE);
 
     // Create a toolset via the new page
     await toolsetsPage.navigateToNewToolset();
     await toolsetsPage.expectNewToolsetPage();
-    await toolsetsPage.createToolset('builtin-exa-web-search', 'test-exa', 'test-api-key');
+    await toolsetsPage.createToolset(TOOLSET_NAME, 'test-exa', 'test-api-key');
 
     // Should redirect to list
     await toolsetsPage.expectToolsetsListPage();
 
     // Click edit button using type selector
-    await toolsetsPage.clickEditByType('builtin-exa-web-search');
+    await toolsetsPage.clickEditByScope(TOOLSET_SCOPE);
 
     // Should be on edit page
     await toolsetsPage.expectToolsetEditPage();
@@ -103,14 +107,14 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Enable the toolset type first
-    await toolsetsPage.enableToolsetTypeOnAdmin('builtin-exa-web-search');
+    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_SCOPE);
 
     // Create a toolset
     await toolsetsPage.navigateToNewToolset();
-    await toolsetsPage.createToolset('builtin-exa-web-search', 'test-exa-2', 'test-api-key-2');
+    await toolsetsPage.createToolset(TOOLSET_NAME, 'test-exa-2', 'test-api-key-2');
 
     // Navigate to edit page using type selector
-    await toolsetsPage.clickEditByType('builtin-exa-web-search');
+    await toolsetsPage.clickEditByScope(TOOLSET_SCOPE);
     await toolsetsPage.expectToolsetEditPage();
     await toolsetsPage.expectFormLoaded();
   });
@@ -124,7 +128,7 @@ test.describe('Toolsets Configuration', () => {
     await toolsetsPage.expectAdminPage();
 
     // Admin should see the type toggle
-    await toolsetsPage.expectTypeToggle('builtin-exa-web-search');
+    await toolsetsPage.expectTypeToggle(TOOLSET_SCOPE);
   });
 
   test('shows confirmation dialog when toggling app enable', async ({ page }) => {
@@ -136,7 +140,7 @@ test.describe('Toolsets Configuration', () => {
     await toolsetsPage.expectAdminPage();
 
     // Toggle the type (regardless of current state)
-    await toolsetsPage.toggleTypeEnabled('builtin-exa-web-search');
+    await toolsetsPage.toggleTypeEnabled(TOOLSET_SCOPE);
 
     // Should show either enable or disable confirmation dialog
     const enableDialog = page.getByRole('heading', { name: 'Enable Toolset Type' });
@@ -153,7 +157,7 @@ test.describe('Toolsets Configuration', () => {
     await confirmButton.click();
 
     // Toggle again to verify the opposite dialog appears
-    await toolsetsPage.toggleTypeEnabled('builtin-exa-web-search');
+    await toolsetsPage.toggleTypeEnabled(TOOLSET_SCOPE);
     await expect(enableDialog.or(disableDialog)).toBeVisible();
   });
 
@@ -166,13 +170,13 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Configure the toolset with the real API key (creates new toolset)
-    await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey, 'test-toolset-new');
 
     // Should be redirected to list page
     await toolsetsPage.expectToolsetsListPage();
 
     // Verify toolset row exists using type selector
-    const toolsetRow = await toolsetsPage.getToolsetRowByType('builtin-exa-web-search');
+    const toolsetRow = await toolsetsPage.getToolsetRowByName('test-toolset-new');
     await expect(toolsetRow).toBeVisible();
   });
 });

@@ -24,6 +24,10 @@ import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
  * 1. INTEG_TEST_EXA_API_KEY environment variable for the Exa Web Search toolset
  * 2. A model that supports tool calling (e.g., GPT-4, Claude, etc.)
  */
+
+const TOOLSET_NAME = 'builtin-exa-web-search';
+const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+
 test.describe('Chat Interface - Toolsets Integration', () => {
   let authServerConfig;
   let testCredentials;
@@ -83,22 +87,22 @@ test.describe('Chat Interface - Toolsets Integration', () => {
     await loginPage.performOAuthLogin();
 
     await test.step('Configure Exa Web Search toolset', async () => {
-      await toolsetsPage.configureToolsetWithApiKey('builtin-exa-web-search', exaApiKey);
+      await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
     });
 
     await test.step('Verify toolset in popover and enable', async () => {
       await chatPage.navigateToChat();
       await chatPage.openToolsetsPopover();
       await chatPage.waitForToolsetsToLoad();
-      await chatPage.expectToolsetInPopover('builtin-exa-web-search');
-      await chatPage.enableToolset('builtin-exa-web-search');
+      await chatPage.expectToolsetInPopover(TOOLSET_NAME);
+      await chatPage.enableToolset(TOOLSET_NAME);
       await chatPage.closeToolsetsPopover();
       await chatPage.expectToolsetBadgeVisible(4);
     });
 
     await test.step('Verify selection persists after reopening popover', async () => {
       await chatPage.openToolsetsPopover();
-      await chatPage.expectToolsetCheckboxChecked('builtin-exa-web-search');
+      await chatPage.expectToolsetCheckboxChecked(TOOLSET_NAME);
     });
   });
 });

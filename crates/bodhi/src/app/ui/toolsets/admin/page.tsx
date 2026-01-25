@@ -110,6 +110,7 @@ function AdminToolsetsPageContent() {
             onCheckedChange={(checked) => handleToggle(type, checked)}
             disabled={isToggling}
             data-testid={`type-toggle-${type.scope_uuid}`}
+            data-test-scope={type.scope}
           />
           <span className="text-sm text-muted-foreground">{type.app_enabled ? 'Enabled' : 'Disabled'}</span>
         </div>
@@ -178,6 +179,7 @@ function AdminToolsetsPageContent() {
           getItemId={(type) => type.scope_uuid}
           getRowProps={(type) => ({
             'data-testid': `type-row-${type.scope_uuid}`,
+            'data-test-scope': type.scope,
             'data-test-state': type.app_enabled ? 'enabled' : 'disabled',
           })}
           sort={{ column: 'name', direction: 'asc' }}
