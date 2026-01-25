@@ -1202,8 +1202,10 @@ export interface components {
         AppStatus: "setup" | "ready" | "resource-admin";
         /** @description App-level configuration for a toolset (admin-controlled) */
         AppToolsetConfig: {
-            /** @description Toolset identifier (e.g., "builtin-exa-web-search") */
-            toolset_id: string;
+            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search") */
+            scope: string;
+            /** @description Keycloak client scope UUID (environment-specific) */
+            scope_uuid: string;
             /** @description Whether the toolset is enabled for this app instance */
             enabled: boolean;
             /** @description User ID of the admin who last updated this configuration */
@@ -1965,8 +1967,8 @@ export interface components {
         };
         /** @description Request to create a toolset */
         CreateToolsetRequest: {
-            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
-            toolset_type: string;
+            /** @description Toolset scope UUID identifier (e.g., "4ff0e163-36fb-47d6-a5ef-26e396f067d6") */
+            scope_uuid: string;
             /** @description User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore) */
             name: string;
             /** @description Optional description for this toolset */
@@ -2788,8 +2790,10 @@ export interface components {
             id: string;
             /** @description User-defined name for this instance */
             name: string;
-            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
-            toolset_type: string;
+            /** @description Keycloak client scope UUID (environment-specific, stored in DB) */
+            scope_uuid: string;
+            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search", derived from registry) */
+            scope: string;
             /** @description Optional description for this instance */
             description?: string | null;
             /** @description Whether this instance is enabled */
@@ -2822,8 +2826,10 @@ export interface components {
             id: string;
             /** @description User-defined name for this toolset */
             name: string;
-            /** @description Toolset type identifier (e.g., "builtin-exa-web-search") */
-            toolset_type: string;
+            /** @description Toolset scope UUID identifier */
+            scope_uuid: string;
+            /** @description Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search") */
+            scope: string;
             /** @description Optional description for this toolset */
             description?: string | null;
             /** @description Whether this toolset is enabled */
@@ -2847,8 +2853,10 @@ export interface components {
         };
         /** @description Toolset type response (for admin listing) */
         ToolsetTypeResponse: {
-            /** @description Unique toolset type identifier (e.g., "builtin-exa-web-search") */
-            toolset_id: string;
+            /** @description Toolset scope UUID identifier */
+            scope_uuid: string;
+            /** @description Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search") */
+            scope: string;
             /** @description Human-readable name (e.g., "Exa Web Search") */
             name: string;
             /** @description Description of the toolset */
@@ -2860,8 +2868,10 @@ export interface components {
         };
         /** @description Toolset with app-level configuration status (API response model) */
         ToolsetWithTools: {
-            /** @description Unique toolset identifier (e.g., "builtin-exa-web-search") */
-            toolset_id: string;
+            /** @description Keycloak client scope UUID (environment-specific) */
+            scope_uuid: string;
+            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search") */
+            scope: string;
             /** @description Human-readable name (e.g., "Exa Web Search") */
             name: string;
             /** @description Description of the toolset */

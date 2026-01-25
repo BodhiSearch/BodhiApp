@@ -183,7 +183,8 @@ export const mockToolExecutionError = {
  * Mock toolset with nested tools (configured and enabled)
  */
 export const mockToolsetWithTools: ToolsetWithTools = {
-  toolset_id: 'builtin-exa-web-search',
+  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+  scope: 'scope_toolset-builtin-exa-web-search',
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
   app_enabled: true,
@@ -272,7 +273,8 @@ export const mockToolsetWithTools: ToolsetWithTools = {
  * Mock toolset not configured (missing API key)
  */
 export const mockToolsetWithToolsNotConfigured: ToolsetWithTools = {
-  toolset_id: 'builtin-calculator',
+  scope_uuid: 'builtin-calculator-uuid',
+  scope: 'scope_toolset-builtin-calculator',
   name: 'Calculator',
   description: 'Perform mathematical calculations',
   app_enabled: true,

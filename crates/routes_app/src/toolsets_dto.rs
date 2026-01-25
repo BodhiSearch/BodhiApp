@@ -30,9 +30,9 @@ fn default_true() -> bool {
 /// Request to create a toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct CreateToolsetRequest {
-  /// Toolset type identifier (e.g., "builtin-exa-web-search")
+  /// Toolset scope UUID identifier (e.g., "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
   #[validate(length(min = 1))]
-  pub toolset_type: String,
+  pub scope_uuid: String,
 
   /// User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
   #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
@@ -89,8 +89,10 @@ pub struct ToolsetResponse {
   pub id: String,
   /// User-defined name for this toolset
   pub name: String,
-  /// Toolset type identifier (e.g., "builtin-exa-web-search")
-  pub toolset_type: String,
+  /// Toolset scope UUID identifier
+  pub scope_uuid: String,
+  /// Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
+  pub scope: String,
   /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
@@ -123,8 +125,10 @@ pub struct ListToolsetsResponse {
 /// Toolset type response (for admin listing)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolsetTypeResponse {
-  /// Unique toolset type identifier (e.g., "builtin-exa-web-search")
-  pub toolset_id: String,
+  /// Toolset scope UUID identifier
+  pub scope_uuid: String,
+  /// Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
+  pub scope: String,
   /// Human-readable name (e.g., "Exa Web Search")
   pub name: String,
   /// Description of the toolset
@@ -195,7 +199,7 @@ mod tests {
   #[rstest]
   fn test_create_toolset_request_serialization() {
     let req = CreateToolsetRequest {
-      toolset_type: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
       name: "My Exa".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
@@ -203,7 +207,7 @@ mod tests {
     };
 
     let json = serde_json::to_value(&req).unwrap();
-    assert_eq!("builtin-exa-web-search", json["toolset_type"]);
+    assert_eq!("4ff0e163-36fb-47d6-a5ef-26e396f067d6", json["scope_uuid"]);
     assert_eq!("My Exa", json["name"]);
     assert_eq!(true, json["enabled"]);
     assert_eq!("sk-test123", json["api_key"]);

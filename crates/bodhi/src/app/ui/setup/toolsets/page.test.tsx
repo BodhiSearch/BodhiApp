@@ -282,7 +282,7 @@ describe('ToolsetsSetupPage', () => {
       });
     });
 
-    it('prefills name with type id', async () => {
+    it('prefills name with type name', async () => {
       server.use(mockListTypes([mockType]));
 
       renderWithSetupProvider(<ToolsetsSetupPage />);

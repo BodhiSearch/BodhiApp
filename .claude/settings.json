@@ -5,5 +5,5 @@
     ],
     "deny": []
   },
-  "plansDirectory": "./ai-docs/claude-plans/"
+  "plansDirectory": "ai-docs/claude-plans/"
 }

@@ -56,17 +56,14 @@ fn is_oauth_auth(headers: &HeaderMap) -> bool {
       .unwrap_or(false)
 }
 
-fn extract_allowed_toolset_types(headers: &HeaderMap) -> HashSet<String> {
+fn extract_allowed_toolset_scopes(headers: &HeaderMap) -> HashSet<String> {
   let toolset_scopes_header = headers
     .get(KEY_HEADER_BODHIAPP_TOOL_SCOPES)
     .and_then(|v| v.to_str().ok())
     .unwrap_or("");
 
   let allowed_scopes = ToolsetScope::from_scope_string(toolset_scopes_header);
-  allowed_scopes
-    .iter()
-    .map(|s| s.toolset_id().to_string())
-    .collect()
+  allowed_scopes.iter().map(|s| s.to_string()).collect()
 }
 
 // ============================================================================
@@ -89,11 +86,11 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
     // Type listing and admin (separate namespace avoids {id} collision)
     .route("/toolset_types", get(list_toolset_types_handler))
     .route(
-      "/toolset_types/{type_id}/app-config",
+      "/toolset_types/{scope}/app-config",
       put(enable_type_handler),
     )
     .route(
-      "/toolset_types/{type_id}/app-config",
+      "/toolset_types/{scope}/app-config",
       delete(disable_type_handler),
     )
     .with_state(state)
@@ -127,10 +124,10 @@ pub async fn list_toolsets_handler(
 
   // OAuth filtering: hide toolsets of types not in scopes
   let filtered_toolsets = if is_oauth_auth(&headers) {
-    let allowed_types = extract_allowed_toolset_types(&headers);
+    let allowed_scopes = extract_allowed_toolset_scopes(&headers);
     toolsets
       .into_iter()
-      .filter(|toolset| allowed_types.contains(&toolset.toolset_type))
+      .filter(|toolset| allowed_scopes.contains(&toolset.scope))
       .collect()
   } else {
     toolsets
@@ -176,7 +173,7 @@ pub async fn create_toolset_handler(
   let toolset = tool_service
     .create(
       &user_id,
-      &request.toolset_type,
+      &request.scope_uuid,
       &request.name,
       request.description,
       request.enabled,
@@ -364,10 +361,10 @@ pub async fn list_toolset_types_handler(
 
   // OAuth filtering: hide types not in scopes
   let filtered_toolsets = if is_oauth_auth(&headers) {
-    let allowed_types = extract_allowed_toolset_types(&headers);
+    let allowed_scopes = extract_allowed_toolset_scopes(&headers);
     toolsets
       .into_iter()
-      .filter(|t| allowed_types.contains(&t.toolset_id))
+      .filter(|t| allowed_scopes.contains(&t.scope))
       .collect()
   } else {
     toolsets
@@ -376,7 +373,8 @@ pub async fn list_toolset_types_handler(
   let types: Vec<ToolsetTypeResponse> = filtered_toolsets
     .into_iter()
     .map(|t| ToolsetTypeResponse {
-      toolset_id: t.toolset_id,
+      scope_uuid: t.scope_uuid,
+      scope: t.scope,
       name: t.name,
       description: t.description,
       app_enabled: t.app_enabled,
@@ -404,15 +402,28 @@ pub async fn list_toolset_types_handler(
 )]
 pub async fn enable_type_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(type_id): Path<String>,
+  Path(scope): Path<String>,
   headers: HeaderMap,
 ) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
   let admin_token = extract_token_from_headers(&headers)?;
   let updated_by = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
+  // Find the toolset definition to get scope_uuid
+  let toolset_def = tool_service
+    .list_types()
+    .into_iter()
+    .find(|def| def.scope == scope)
+    .ok_or_else(|| services::ToolsetError::ToolsetNotFound(scope.clone()))?;
+
   let config = tool_service
-    .set_app_toolset_enabled(&admin_token, &type_id, true, &updated_by)
+    .set_app_toolset_enabled(
+      &admin_token,
+      &scope,
+      &toolset_def.scope_uuid,
+      true,
+      &updated_by,
+    )
     .await?;
 
   Ok(Json(AppToolsetConfigResponse { config }))
@@ -435,15 +446,28 @@ pub async fn enable_type_handler(
 )]
 pub async fn disable_type_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(type_id): Path<String>,
+  Path(scope): Path<String>,
   headers: HeaderMap,
 ) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
   let admin_token = extract_token_from_headers(&headers)?;
   let updated_by = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
+  // Find the toolset definition to get scope_uuid
+  let toolset_def = tool_service
+    .list_types()
+    .into_iter()
+    .find(|def| def.scope == scope)
+    .ok_or_else(|| services::ToolsetError::ToolsetNotFound(scope.clone()))?;
+
   let config = tool_service
-    .set_app_toolset_enabled(&admin_token, &type_id, false, &updated_by)
+    .set_app_toolset_enabled(
+      &admin_token,
+      &scope,
+      &toolset_def.scope_uuid,
+      false,
+      &updated_by,
+    )
     .await?;
 
   Ok(Json(AppToolsetConfigResponse { config }))
@@ -459,15 +483,16 @@ async fn toolset_to_response(
 ) -> Result<ToolsetResponse, ApiError> {
   // Get type information for enrichment
   let type_def = tool_service
-    .get_type(&toolset.toolset_type)
-    .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset.toolset_type.clone()))?;
+    .get_type(&toolset.scope_uuid)
+    .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset.scope_uuid.clone()))?;
 
-  let app_enabled = tool_service.is_type_enabled(&toolset.toolset_type).await?;
+  let app_enabled = tool_service.is_type_enabled(&toolset.scope_uuid).await?;
 
   Ok(ToolsetResponse {
     id: toolset.id,
     name: toolset.name,
-    toolset_type: toolset.toolset_type,
+    scope_uuid: toolset.scope_uuid,
+    scope: toolset.scope,
     description: toolset.description,
     enabled: toolset.enabled,
     has_api_key: toolset.has_api_key,
@@ -499,7 +524,8 @@ mod tests {
     Toolset {
       id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
       name: "My Exa Search".to_string(),
-      toolset_type: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
       has_api_key: true,
@@ -510,7 +536,8 @@ mod tests {
 
   fn test_toolset_definition() -> objs::ToolsetDefinition {
     objs::ToolsetDefinition {
-      toolset_id: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
       name: "Exa Web Search".to_string(),
       description: "Web search using Exa API".to_string(),
       tools: vec![ToolDefinition {
@@ -528,12 +555,12 @@ mod tests {
     let type_def = test_toolset_definition();
     mock
       .expect_get_type()
-      .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+      .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .returning(move |_| Some(type_def.clone()));
 
     mock
       .expect_is_type_enabled()
-      .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+      .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .returning(|_| Ok(true));
   }
 
@@ -652,7 +679,7 @@ mod tests {
     let app = test_router(mock_tool_service);
 
     let request_body = serde_json::json!({
-      "toolset_type": "builtin-exa-web-search",
+      "scope_uuid": "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
       "name": name,
       "description": "Test instance",
       "enabled": true,
@@ -968,7 +995,8 @@ mod tests {
     let mut mock_tool_service = MockToolService::new();
 
     let toolset_type = ToolsetWithTools {
-      toolset_id: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
       name: "Exa Web Search".to_string(),
       description: "Web search using Exa API".to_string(),
       app_enabled: true,
@@ -1032,29 +1060,35 @@ mod tests {
   ) {
     let mut mock_tool_service = MockToolService::new();
 
+    // Mock list_types to return toolset definition
+    mock_tool_service
+      .expect_list_types()
+      .times(1)
+      .returning(move || {
+        if succeeds {
+          vec![test_toolset_definition()]
+        } else {
+          vec![]
+        }
+      });
+
     if succeeds {
       mock_tool_service
         .expect_set_app_toolset_enabled()
         .times(1)
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _, _, _| {
           Ok(AppToolsetConfig {
-            toolset_id: "builtin-exa-web-search".to_string(),
+            scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+            scope: "scope_toolset-builtin-exa-web-search".to_string(),
             enabled: true,
             updated_by: "admin123".to_string(),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
           })
         });
-    } else {
-      mock_tool_service
-        .expect_set_app_toolset_enabled()
-        .times(1)
-        .returning(|_, _, _, _| {
-          Err(services::ToolsetError::ToolsetNotFound(
-            "Toolset type not found".to_string(),
-          ))
-        });
     }
+    // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
+    // No need to mock set_app_toolset_enabled in that case
 
     let app = test_router(mock_tool_service);
 
@@ -1062,7 +1096,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("PUT")
-          .uri("/toolset_types/builtin-exa-web-search/app-config")
+          .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
           .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
           .header(KEY_HEADER_BODHIAPP_TOKEN, "admin-token")
           .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string())
@@ -1086,29 +1120,35 @@ mod tests {
   ) {
     let mut mock_tool_service = MockToolService::new();
 
+    // Mock list_types to return toolset definition
+    mock_tool_service
+      .expect_list_types()
+      .times(1)
+      .returning(move || {
+        if succeeds {
+          vec![test_toolset_definition()]
+        } else {
+          vec![]
+        }
+      });
+
     if succeeds {
       mock_tool_service
         .expect_set_app_toolset_enabled()
         .times(1)
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _, _, _| {
           Ok(AppToolsetConfig {
-            toolset_id: "builtin-exa-web-search".to_string(),
+            scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+            scope: "scope_toolset-builtin-exa-web-search".to_string(),
             enabled: false,
             updated_by: "admin123".to_string(),
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
           })
         });
-    } else {
-      mock_tool_service
-        .expect_set_app_toolset_enabled()
-        .times(1)
-        .returning(|_, _, _, _| {
-          Err(services::ToolsetError::ToolsetNotFound(
-            "Toolset type not found".to_string(),
-          ))
-        });
     }
+    // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
+    // No need to mock set_app_toolset_enabled in that case
 
     let app = test_router(mock_tool_service);
 
@@ -1116,7 +1156,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("DELETE")
-          .uri("/toolset_types/builtin-exa-web-search/app-config")
+          .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
           .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
           .header(KEY_HEADER_BODHIAPP_TOKEN, "admin-token")
           .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string())

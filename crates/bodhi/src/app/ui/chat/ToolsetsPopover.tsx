@@ -148,7 +148,7 @@ function ToolsetItem({
   );
 
   return (
-    <div data-testid={`toolset-item-${toolset.id}`} data-testid-type={toolset.toolset_type}>
+    <div data-testid={`toolset-item-${toolset.id}`} data-testid-scope={toolset.scope}>
       {rowWithTooltip}
       {/* Expanded child tools */}
       {isExpanded && isAvailable && (
@@ -195,22 +195,22 @@ export function ToolsetsPopover({
   const types = useMemo(() => typesResponse?.types || [], [typesResponse?.types]);
   const isLoading = toolsetsLoading || typesLoading;
 
-  // Create a map from type ID to display name
+  // Create a map from scope UUID to display name
   const typeDisplayNames = useMemo(() => {
     const map = new Map<string, string>();
-    types.forEach((type) => map.set(type.toolset_id, type.name));
+    types.forEach((type) => map.set(type.scope_uuid, type.name));
     return map;
   }, [types]);
 
-  // Group toolsets by type
+  // Group toolsets by scope UUID
   const groupedToolsets = useMemo(() => {
     const groups: Record<string, ToolsetResponse[]> = {};
     toolsets.forEach((toolset) => {
-      const typeId = toolset.toolset_type;
-      if (!groups[typeId]) {
-        groups[typeId] = [];
+      const scopeUuid = toolset.scope_uuid;
+      if (!groups[scopeUuid]) {
+        groups[scopeUuid] = [];
       }
-      groups[typeId].push(toolset);
+      groups[scopeUuid].push(toolset);
     });
     return groups;
   }, [toolsets]);

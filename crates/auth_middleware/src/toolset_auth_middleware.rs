@@ -10,6 +10,7 @@ use axum::{
 use objs::{ApiError, AppError, ErrorType, ToolsetScope};
 use server_core::RouterState;
 use services::ToolsetError;
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -99,23 +100,23 @@ async fn _impl(
     .await?
     .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
-  let toolset_type = &toolset.toolset_type;
+  let scope_uuid = &toolset.scope_uuid;
 
   // 2. Check app-level type enabled (both auth types)
-  if !tool_service.is_type_enabled(toolset_type).await? {
+  if !tool_service.is_type_enabled(scope_uuid).await? {
     return Err(ToolsetError::ToolsetAppDisabled.into());
   }
 
   // For OAuth (external apps), additional checks are required
   if is_oauth_auth {
-    // 3. Check app-client registered for toolset type
+    // 3. Check app-client registered for toolset scope_uuid
     let azp = headers
       .get(KEY_HEADER_BODHIAPP_AZP)
       .and_then(|v| v.to_str().ok())
       .ok_or(ToolsetAuthError::MissingAzpHeader)?;
 
     if !tool_service
-      .is_app_client_registered_for_toolset(azp, toolset_type)
+      .is_app_client_registered_for_toolset(azp, scope_uuid)
       .await?
     {
       return Err(ToolsetAuthError::AppClientNotRegistered);
@@ -127,9 +128,9 @@ async fn _impl(
       .and_then(|v| v.to_str().ok())
       .unwrap_or("");
 
-    // Get required scope for this toolset type
-    let required_scope = ToolsetScope::scope_for_toolset_id(toolset_type)
-      .ok_or_else(|| ToolsetError::ToolsetNotFound(toolset_type.clone()))?;
+    // Get required scope from toolset
+    let required_scope = ToolsetScope::from_str(&toolset.scope)
+      .map_err(|_| ToolsetError::ToolsetNotFound(toolset.scope_uuid.clone()))?;
 
     // Check if required scope is present (space-separated)
     let has_scope = toolset_scopes_header
@@ -199,7 +200,8 @@ mod tests {
     Toolset {
       id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
       name: "My Exa Search".to_string(),
-      toolset_type: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
       has_api_key: true,
@@ -248,7 +250,7 @@ mod tests {
     if get_returns_instance {
       mock_tool_service
         .expect_is_type_enabled()
-        .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+        .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
         .times(1)
         .returning(move |_| Ok(type_enabled));
     }
@@ -309,15 +311,15 @@ mod tests {
     if get_returns_instance {
       mock_tool_service
         .expect_is_type_enabled()
-        .withf(|toolset_type| toolset_type == "builtin-exa-web-search")
+        .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
         .times(1)
         .returning(move |_| Ok(type_enabled));
 
       if type_enabled {
         mock_tool_service
           .expect_is_app_client_registered_for_toolset()
-          .withf(|app_client_id, toolset_type| {
-            app_client_id == "external-app" && toolset_type == "builtin-exa-web-search"
+          .withf(|app_client_id, scope_uuid| {
+            app_client_id == "external-app" && scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
           })
           .times(1)
           .returning(move |_, _| Ok(client_registered));

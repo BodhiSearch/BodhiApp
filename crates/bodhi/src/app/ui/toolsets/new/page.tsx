@@ -20,7 +20,7 @@ import { useCreateToolset, useToolsets, useToolsetTypes } from '@/hooks/useTools
 
 // Form schema matching the plan specification
 const createToolsetSchema = z.object({
-  toolset_type: z.string().min(1, 'Type is required'),
+  scope_uuid: z.string().min(1, 'Type is required'),
   name: z
     .string()
     .min(1, 'Name is required')
@@ -51,7 +51,7 @@ function NewToolsetPageContent() {
   const form = useForm<CreateToolsetFormData>({
     resolver: zodResolver(createToolsetSchema),
     defaultValues: {
-      toolset_type: '',
+      scope_uuid: '',
       name: '',
       description: '',
       api_key: '',
@@ -64,21 +64,25 @@ function NewToolsetPageContent() {
   const availableTypes = types.filter((type) => type.app_enabled);
 
   // Name prefill logic when type changes
-  const handleTypeChange = (type: string) => {
-    form.setValue('toolset_type', type);
+  const handleTypeChange = (scopeUuid: string) => {
+    form.setValue('scope_uuid', scopeUuid);
 
     // Check if user has any toolsets of this type
-    const hasToolsetsOfType = toolsets.some((t) => t.toolset_type === type);
+    const hasToolsetsOfType = toolsets.some((t) => t.scope_uuid === scopeUuid);
     if (!hasToolsetsOfType) {
-      // Prefill name with type if this is the first toolset of this type
-      form.setValue('name', type);
+      // Find the type and derive name from scope by removing 'scope_toolset-' prefix
+      const selectedType = types.find((t) => t.scope_uuid === scopeUuid);
+      if (selectedType) {
+        const derivedName = selectedType.scope.replace(/^scope_toolset-/, '');
+        form.setValue('name', derivedName);
+      }
     }
   };
 
   const onSubmit = (data: CreateToolsetFormData) => {
     createMutation.mutate({
       name: data.name,
-      toolset_type: data.toolset_type,
+      scope_uuid: data.scope_uuid,
       description: data.description || undefined,
       api_key: data.api_key,
       enabled: data.enabled,
@@ -127,7 +131,7 @@ function NewToolsetPageContent() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="toolset_type"
+                name="scope_uuid"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Toolset Type</FormLabel>
@@ -145,9 +149,9 @@ function NewToolsetPageContent() {
                       <SelectContent>
                         {availableTypes.map((type) => (
                           <SelectItem
-                            key={type.toolset_id}
-                            value={type.toolset_id}
-                            data-testid={`type-option-${type.toolset_id}`}
+                            key={type.scope_uuid}
+                            value={type.scope_uuid}
+                            data-testid={`type-option-${type.scope_uuid}`}
                           >
                             {type.name}
                           </SelectItem>

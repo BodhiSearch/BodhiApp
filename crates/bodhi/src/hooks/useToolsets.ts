@@ -163,11 +163,11 @@ export function useToolsetTypes(options?: {
 export function useEnableToolsetType(options?: {
   onSuccess?: (response: AppToolsetConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { typeId: string }> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { scope: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, { typeId: string }>(
-    ({ typeId }) => `${TOOLSET_TYPES_ENDPOINT}/${typeId}/app-config`,
+  return useMutationQuery<AppToolsetConfigResponse, { scope: string }>(
+    ({ scope }) => `${TOOLSET_TYPES_ENDPOINT}/${scope}/app-config`,
     'put',
     {
       onSuccess: (response) => {
@@ -189,11 +189,11 @@ export function useEnableToolsetType(options?: {
 export function useDisableToolsetType(options?: {
   onSuccess?: (response: AppToolsetConfigResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { typeId: string }> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { scope: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, { typeId: string }>(
-    ({ typeId }) => `${TOOLSET_TYPES_ENDPOINT}/${typeId}/app-config`,
+  return useMutationQuery<AppToolsetConfigResponse, { scope: string }>(
+    ({ scope }) => `${TOOLSET_TYPES_ENDPOINT}/${scope}/app-config`,
     'delete',
     {
       onSuccess: (response) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Info } from 'lucide-react';
@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useCreateToolset, useDisableToolsetType, useEnableToolsetType, useToolsetTypes } from '@/hooks/useToolsets';
 
-const TOOLSET_TYPE_ID = 'builtin-exa-web-search';
+const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
 
 const createToolsetSchema = z.object({
   name: z
@@ -51,8 +51,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
-  const exaType = typesData?.types?.find((t) => t.toolset_id === TOOLSET_TYPE_ID);
-  const isAppEnabled = exaType?.app_enabled ?? false;
+  const toolsetType = typesData?.types?.find((t) => t.scope === TOOLSET_SCOPE);
+  const isAppEnabled = toolsetType?.app_enabled ?? false;
 
   const enableMutation = useEnableToolsetType({
     onSuccess: () => {
@@ -89,12 +89,20 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   const form = useForm<CreateToolsetFormData>({
     resolver: zodResolver(createToolsetSchema),
     defaultValues: {
-      name: TOOLSET_TYPE_ID,
+      name: '',
       description: '',
       api_key: '',
       enabled: true,
     },
   });
+
+  // Update form name when toolsetType loads - derive from scope
+  useEffect(() => {
+    if (toolsetType?.scope) {
+      const derivedName = toolsetType.scope.replace(/^scope_toolset-/, '');
+      form.setValue('name', derivedName);
+    }
+  }, [toolsetType?.scope, form]);
 
   const handleToggleClick = (checked: boolean) => {
     if (checked) {
@@ -105,16 +113,21 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   };
 
   const handleEnableConfirm = () => {
-    enableMutation.mutate({ typeId: TOOLSET_TYPE_ID });
+    if (toolsetType) {
+      enableMutation.mutate({ scope: toolsetType.scope });
+    }
   };
 
   const handleDisableConfirm = () => {
-    disableMutation.mutate({ typeId: TOOLSET_TYPE_ID });
+    if (toolsetType) {
+      disableMutation.mutate({ scope: toolsetType.scope });
+    }
   };
 
   const onSubmit = (data: CreateToolsetFormData) => {
+    if (!toolsetType) return;
     createMutation.mutate({
-      toolset_type: TOOLSET_TYPE_ID,
+      scope_uuid: toolsetType.scope_uuid,
       name: data.name,
       description: data.description || undefined,
       api_key: data.api_key,
@@ -155,8 +168,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">{exaType?.name || 'Exa Web Search'}</CardTitle>
-                  <CardDescription>{exaType?.description || 'Search the web using Exa AI'}</CardDescription>
+                  <CardTitle className="text-lg">{toolsetType?.name || 'Web Search'}</CardTitle>
+                  <CardDescription>{toolsetType?.description || 'Configure web search capabilities'}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
@@ -180,7 +193,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
                 data-test-state={isAppEnabled ? 'enabled' : 'disabled'}
               >
                 {isAppEnabled
-                  ? 'Configure your first Exa Web Search toolset'
+                  ? `Configure your first ${toolsetType?.name || 'toolset'} instance`
                   : 'Enable the toolset type above to create a toolset'}
               </CardDescription>
             </CardHeader>
@@ -196,7 +209,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="builtin-exa-web-search"
+                            placeholder={toolsetType?.scope.replace(/^scope_toolset-/, '') || 'my-toolset'}
                             disabled={isFormDisabled}
                             data-testid="toolset-name-input"
                           />
@@ -277,23 +290,25 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
             </CardContent>
           </Card>
 
-          {/* Info Box */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Don&apos;t have an Exa API key?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Get one at{' '}
-                    <a href="https://exa.ai" target="_blank" rel="noopener noreferrer" className="underline">
-                      exa.ai
-                    </a>
-                  </p>
+          {/* Info Box - Only show for Exa */}
+          {toolsetType?.scope === TOOLSET_SCOPE && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Don&apos;t have an Exa API key?</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get one at{' '}
+                      <a href="https://exa.ai" target="_blank" rel="noopener noreferrer" className="underline">
+                        exa.ai
+                      </a>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </CardContent>
 
         <CardFooter className="flex justify-center">
@@ -307,7 +322,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Enable Toolset for Server</AlertDialogTitle>
             <AlertDialogDescription>
-              This will enable Exa Web Search for all users on this server.
+              This will enable {toolsetType?.name || 'this toolset'} for all users on this server.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -325,7 +340,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Disable Toolset for Server</AlertDialogTitle>
             <AlertDialogDescription>
-              This will disable Exa Web Search for all users. Existing instances will stop working.
+              This will disable {toolsetType?.name || 'this toolset'} for all users. Existing instances will stop
+              working.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

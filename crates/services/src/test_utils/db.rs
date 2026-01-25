@@ -28,7 +28,8 @@ pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> Tes
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
   let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
-  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
+  let db_service =
+    SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone(), false);
   db_service.migrate().await.unwrap();
   TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
 }
@@ -435,16 +436,16 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_toolsets"))
   }
 
-  async fn list_toolsets_by_type(
+  async fn list_toolsets_by_scope_uuid(
     &self,
     user_id: &str,
-    toolset_type: &str,
+    scope_uuid: &str,
   ) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
     self
       .inner
-      .list_toolsets_by_type(user_id, toolset_type)
+      .list_toolsets_by_scope_uuid(user_id, scope_uuid)
       .await
-      .tap(|_| self.notify("list_toolsets_by_type"))
+      .tap(|_| self.notify("list_toolsets_by_scope_uuid"))
   }
 
   async fn delete_toolset(&self, id: &str) -> Result<(), DbError> {
@@ -463,15 +464,26 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("get_toolset_api_key"))
   }
 
-  async fn get_app_toolset_config(
+  async fn get_app_toolset_config_by_scope_uuid(
     &self,
-    toolset_id: &str,
+    scope_uuid: &str,
   ) -> Result<Option<AppToolsetConfigRow>, DbError> {
     self
       .inner
-      .get_app_toolset_config(toolset_id)
+      .get_app_toolset_config_by_scope_uuid(scope_uuid)
       .await
-      .tap(|_| self.notify("get_app_toolset_config"))
+      .tap(|_| self.notify("get_app_toolset_config_by_scope_uuid"))
+  }
+
+  async fn get_app_toolset_config_by_scope(
+    &self,
+    scope: &str,
+  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
+    self
+      .inner
+      .get_app_toolset_config_by_scope(scope)
+      .await
+      .tap(|_| self.notify("get_app_toolset_config_by_scope"))
   }
 
   async fn upsert_app_toolset_config(

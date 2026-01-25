@@ -13,7 +13,8 @@ import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfigResponse } f
 export const mockToolset: ToolsetResponse = {
   id: 'uuid-test-toolset',
   name: 'my-exa-search',
-  toolset_type: 'builtin-exa-web-search',
+  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+  scope: 'scope_toolset-builtin-exa-web-search',
   description: 'Test toolset',
   enabled: true,
   has_api_key: true,
@@ -39,7 +40,8 @@ export const mockToolset: ToolsetResponse = {
 };
 
 export const mockType: ToolsetTypeResponse = {
-  toolset_id: 'builtin-exa-web-search',
+  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+  scope: 'scope_toolset-builtin-exa-web-search',
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
   app_enabled: true,
@@ -108,33 +110,35 @@ export function mockListTypes(types: ToolsetTypeResponse[] = [mockType]) {
 }
 
 /**
- * Mock PUT /bodhi/v1/toolset_types/:typeId/app-config - Enable toolset type (admin)
+ * Mock PUT /bodhi/v1/toolset_types/:scope/app-config - Enable toolset type (admin)
  */
 export function mockEnableType(response?: AppToolsetConfigResponse) {
   const defaultResponse: AppToolsetConfigResponse = {
-    toolset_id: 'builtin-exa-web-search',
+    scope: 'scope_toolset-builtin-exa-web-search',
+    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
     enabled: true,
     updated_by: 'admin123',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };
-  return http.put(`${BODHI_API_BASE}/toolset_types/:typeId/app-config`, () =>
+  return http.put(`${BODHI_API_BASE}/toolset_types/:scope/app-config`, () =>
     HttpResponse.json(response || defaultResponse)
   );
 }
 
 /**
- * Mock DELETE /bodhi/v1/toolset_types/:typeId/app-config - Disable toolset type (admin)
+ * Mock DELETE /bodhi/v1/toolset_types/:scope/app-config - Disable toolset type (admin)
  */
 export function mockDisableType(response?: AppToolsetConfigResponse) {
   const defaultResponse: AppToolsetConfigResponse = {
-    toolset_id: 'builtin-exa-web-search',
+    scope: 'scope_toolset-builtin-exa-web-search',
+    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
     enabled: false,
     updated_by: 'admin123',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };
-  return http.delete(`${BODHI_API_BASE}/toolset_types/:typeId/app-config`, () =>
+  return http.delete(`${BODHI_API_BASE}/toolset_types/:scope/app-config`, () =>
     HttpResponse.json(response || defaultResponse)
   );
 }

@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.44-dev"
+    "version": "0.0.45-dev"
   },
   "servers": [
     {
@@ -6540,16 +6540,21 @@
         "type": "object",
         "description": "App-level configuration for a toolset (admin-controlled)",
         "required": [
-          "toolset_id",
+          "scope",
+          "scope_uuid",
           "enabled",
           "updated_by",
           "created_at",
           "updated_at"
         ],
         "properties": {
-          "toolset_id": {
+          "scope": {
             "type": "string",
-            "description": "Toolset identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\")"
+          },
+          "scope_uuid": {
+            "type": "string",
+            "description": "Keycloak client scope UUID (environment-specific)"
           },
           "enabled": {
             "type": "boolean",
@@ -8962,14 +8967,14 @@
         "type": "object",
         "description": "Request to create a toolset",
         "required": [
-          "toolset_type",
+          "scope_uuid",
           "name",
           "api_key"
         ],
         "properties": {
-          "toolset_type": {
+          "scope_uuid": {
             "type": "string",
-            "description": "Toolset type identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "Toolset scope UUID identifier (e.g., \"4ff0e163-36fb-47d6-a5ef-26e396f067d6\")"
           },
           "name": {
             "type": "string",
@@ -11301,7 +11306,8 @@
         "required": [
           "id",
           "name",
-          "toolset_type",
+          "scope_uuid",
+          "scope",
           "enabled",
           "has_api_key",
           "created_at",
@@ -11316,9 +11322,13 @@
             "type": "string",
             "description": "User-defined name for this instance"
           },
-          "toolset_type": {
+          "scope_uuid": {
             "type": "string",
-            "description": "Toolset type identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "Keycloak client scope UUID (environment-specific, stored in DB)"
+          },
+          "scope": {
+            "type": "string",
+            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\", derived from registry)"
           },
           "description": {
             "type": [
@@ -11371,7 +11381,8 @@
         "required": [
           "id",
           "name",
-          "toolset_type",
+          "scope_uuid",
+          "scope",
           "enabled",
           "has_api_key",
           "app_enabled",
@@ -11388,9 +11399,13 @@
             "type": "string",
             "description": "User-defined name for this toolset"
           },
-          "toolset_type": {
+          "scope_uuid": {
             "type": "string",
-            "description": "Toolset type identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "Toolset scope UUID identifier"
+          },
+          "scope": {
+            "type": "string",
+            "description": "Toolset scope identifier (e.g., \"scope_toolset-builtin-exa-web-search\")"
           },
           "description": {
             "type": [
@@ -11434,16 +11449,21 @@
         "type": "object",
         "description": "Toolset type response (for admin listing)",
         "required": [
-          "toolset_id",
+          "scope_uuid",
+          "scope",
           "name",
           "description",
           "app_enabled",
           "tools"
         ],
         "properties": {
-          "toolset_id": {
+          "scope_uuid": {
             "type": "string",
-            "description": "Unique toolset type identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "Toolset scope UUID identifier"
+          },
+          "scope": {
+            "type": "string",
+            "description": "Toolset scope identifier (e.g., \"scope_toolset-builtin-exa-web-search\")"
           },
           "name": {
             "type": "string",
@@ -11470,16 +11490,21 @@
         "type": "object",
         "description": "Toolset with app-level configuration status (API response model)",
         "required": [
-          "toolset_id",
+          "scope_uuid",
+          "scope",
           "name",
           "description",
           "app_enabled",
           "tools"
         ],
         "properties": {
-          "toolset_id": {
+          "scope_uuid": {
             "type": "string",
-            "description": "Unique toolset identifier (e.g., \"builtin-exa-web-search\")"
+            "description": "Keycloak client scope UUID (environment-specific)"
+          },
+          "scope": {
+            "type": "string",
+            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\")"
           },
           "name": {
             "type": "string",

@@ -79,37 +79,37 @@ function AdminToolsetsPageContent() {
 
   const handleEnableConfirm = () => {
     if (selectedType) {
-      enableMutation.mutate({ typeId: selectedType.toolset_id });
+      enableMutation.mutate({ scope: selectedType.scope });
     }
   };
 
   const handleDisableConfirm = () => {
     if (selectedType) {
-      disableMutation.mutate({ typeId: selectedType.toolset_id });
+      disableMutation.mutate({ scope: selectedType.scope });
     }
   };
 
   const renderRow = (type: ToolsetTypeResponse) => {
     const isToggling =
-      selectedType?.toolset_id === type.toolset_id && (enableMutation.isLoading || disableMutation.isLoading);
+      selectedType?.scope_uuid === type.scope_uuid && (enableMutation.isLoading || disableMutation.isLoading);
 
     return [
-      <TableCell key="name" data-testid={`type-name-${type.toolset_id}`}>
+      <TableCell key="name" data-testid={`type-name-${type.scope_uuid}`}>
         <span className="font-medium">{type.name}</span>
       </TableCell>,
-      <TableCell key="description" data-testid={`type-description-${type.toolset_id}`}>
+      <TableCell key="description" data-testid={`type-description-${type.scope_uuid}`}>
         <span className="text-muted-foreground">{type.description}</span>
       </TableCell>,
-      <TableCell key="status" data-testid={`type-status-${type.toolset_id}`}>
+      <TableCell key="status" data-testid={`type-status-${type.scope_uuid}`}>
         <Badge variant={type.app_enabled ? 'default' : 'secondary'}>{type.app_enabled ? 'Enabled' : 'Disabled'}</Badge>
       </TableCell>,
-      <TableCell key="actions" data-testid={`type-actions-${type.toolset_id}`}>
+      <TableCell key="actions" data-testid={`type-actions-${type.scope_uuid}`}>
         <div className="flex items-center gap-2">
           <Switch
             checked={type.app_enabled}
             onCheckedChange={(checked) => handleToggle(type, checked)}
             disabled={isToggling}
-            data-testid={`type-toggle-${type.toolset_id}`}
+            data-testid={`type-toggle-${type.scope_uuid}`}
           />
           <span className="text-sm text-muted-foreground">{type.app_enabled ? 'Enabled' : 'Disabled'}</span>
         </div>
@@ -175,9 +175,9 @@ function AdminToolsetsPageContent() {
           columns={columns}
           loading={isLoading}
           renderRow={renderRow}
-          getItemId={(type) => type.toolset_id}
+          getItemId={(type) => type.scope_uuid}
           getRowProps={(type) => ({
-            'data-testid': `type-row-${type.toolset_id}`,
+            'data-testid': `type-row-${type.scope_uuid}`,
             'data-test-state': type.app_enabled ? 'enabled' : 'disabled',
           })}
           sort={{ column: 'name', direction: 'asc' }}

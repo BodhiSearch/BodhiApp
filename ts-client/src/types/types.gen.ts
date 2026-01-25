@@ -193,9 +193,13 @@ export type AppStatus = 'setup' | 'ready' | 'resource-admin';
  */
 export type AppToolsetConfig = {
     /**
-     * Toolset identifier (e.g., "builtin-exa-web-search")
+     * OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
      */
-    toolset_id: string;
+    scope: string;
+    /**
+     * Keycloak client scope UUID (environment-specific)
+     */
+    scope_uuid: string;
     /**
      * Whether the toolset is enabled for this app instance
      */
@@ -1124,9 +1128,9 @@ export type CreateEmbeddingResponse = {
  */
 export type CreateToolsetRequest = {
     /**
-     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     * Toolset scope UUID identifier (e.g., "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
      */
-    toolset_type: string;
+    scope_uuid: string;
     /**
      * User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
      */
@@ -2025,9 +2029,13 @@ export type Toolset = {
      */
     name: string;
     /**
-     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     * Keycloak client scope UUID (environment-specific, stored in DB)
      */
-    toolset_type: string;
+    scope_uuid: string;
+    /**
+     * OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search", derived from registry)
+     */
+    scope: string;
     /**
      * Optional description for this instance
      */
@@ -2077,9 +2085,13 @@ export type ToolsetResponse = {
      */
     name: string;
     /**
-     * Toolset type identifier (e.g., "builtin-exa-web-search")
+     * Toolset scope UUID identifier
      */
-    toolset_type: string;
+    scope_uuid: string;
+    /**
+     * Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
+     */
+    scope: string;
     /**
      * Optional description for this toolset
      */
@@ -2115,9 +2127,13 @@ export type ToolsetResponse = {
  */
 export type ToolsetTypeResponse = {
     /**
-     * Unique toolset type identifier (e.g., "builtin-exa-web-search")
+     * Toolset scope UUID identifier
      */
-    toolset_id: string;
+    scope_uuid: string;
+    /**
+     * Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
+     */
+    scope: string;
     /**
      * Human-readable name (e.g., "Exa Web Search")
      */
@@ -2141,9 +2157,13 @@ export type ToolsetTypeResponse = {
  */
 export type ToolsetWithTools = {
     /**
-     * Unique toolset identifier (e.g., "builtin-exa-web-search")
+     * Keycloak client scope UUID (environment-specific)
      */
-    toolset_id: string;
+    scope_uuid: string;
+    /**
+     * OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
+     */
+    scope: string;
     /**
      * Human-readable name (e.g., "Exa Web Search")
      */

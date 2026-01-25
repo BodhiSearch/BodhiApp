@@ -188,7 +188,7 @@ impl From<ModelMetadataRow> for objs::ModelMetadata {
 pub struct ToolsetRow {
   pub id: String,
   pub user_id: String,
-  pub toolset_type: String,
+  pub scope_uuid: String,
   pub name: String,
   pub description: Option<String>,
   pub enabled: bool,
@@ -206,7 +206,8 @@ pub struct ToolsetRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppToolsetConfigRow {
   pub id: i64,
-  pub toolset_id: String,
+  pub scope: String,
+  pub scope_uuid: String,
   pub enabled: bool,
   pub updated_by: String,
   pub created_at: i64,

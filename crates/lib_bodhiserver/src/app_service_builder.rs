@@ -301,7 +301,8 @@ impl AppServiceBuilder {
       self.setting_service.app_db_path().display()
     ))
     .await?;
-    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
+    let is_production = self.setting_service.is_production();
+    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key, is_production);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }
@@ -433,10 +434,12 @@ impl AppServiceBuilder {
     let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
 
     // Create tool service with dependencies
+    let is_production = self.setting_service.is_production();
     Arc::new(DefaultToolService::new(
       db_service,
       exa_service,
       time_service,
+      is_production,
     ))
   }
 }

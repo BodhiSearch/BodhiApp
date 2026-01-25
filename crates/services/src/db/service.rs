@@ -213,10 +213,10 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError>;
 
-  async fn list_toolsets_by_type(
+  async fn list_toolsets_by_scope_uuid(
     &self,
     user_id: &str,
-    toolset_type: &str,
+    scope_uuid: &str,
   ) -> Result<Vec<crate::db::ToolsetRow>, DbError>;
 
   async fn delete_toolset(&self, id: &str) -> Result<(), DbError>;
@@ -224,9 +224,14 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError>;
 
   // App-level toolset configuration management
-  async fn get_app_toolset_config(
+  async fn get_app_toolset_config_by_scope_uuid(
     &self,
-    toolset_id: &str,
+    scope_uuid: &str,
+  ) -> Result<Option<crate::db::AppToolsetConfigRow>, DbError>;
+
+  async fn get_app_toolset_config_by_scope(
+    &self,
+    scope: &str,
   ) -> Result<Option<crate::db::AppToolsetConfigRow>, DbError>;
 
   async fn upsert_app_toolset_config(
@@ -261,9 +266,30 @@ pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeService>,
   encryption_key: Vec<u8>,
+  is_production: bool,
 }
 
 impl SqliteDbService {
+  async fn seed_toolset_configs(&self) -> Result<(), DbError> {
+    let scope_uuid = if self.is_production {
+      "7a89e236-9d23-4856-aa77-b52823ff9972"
+    } else {
+      "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
+    };
+
+    sqlx::query(
+      "INSERT OR IGNORE INTO app_toolset_configs
+       (scope, scope_uuid, enabled, updated_by, created_at, updated_at)
+       VALUES (?, ?, 0, 'system', strftime('%s', 'now'), strftime('%s', 'now'))",
+    )
+    .bind("scope_toolset-builtin-exa-web-search")
+    .bind(scope_uuid)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
+  }
+
   async fn get_by_col(
     &self,
     query: &str,
@@ -328,6 +354,7 @@ impl SqliteDbService {
 impl DbService for SqliteDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     sqlx::migrate!("./migrations").run(&self.pool).await?;
+    self.seed_toolset_configs().await?;
     Ok(())
   }
 
@@ -1555,7 +1582,7 @@ impl DbService for SqliteDbService {
 
   async fn get_toolset(&self, id: &str) -> Result<Option<crate::db::ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
+      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
@@ -1565,7 +1592,7 @@ impl DbService for SqliteDbService {
       |(
         id,
         user_id,
-        toolset_type,
+        scope_uuid,
         name,
         description,
         enabled,
@@ -1578,7 +1605,7 @@ impl DbService for SqliteDbService {
         crate::db::ToolsetRow {
           id,
           user_id,
-          toolset_type,
+          scope_uuid,
           name,
           description,
           enabled: enabled != 0,
@@ -1598,7 +1625,7 @@ impl DbService for SqliteDbService {
     name: &str,
   ) -> Result<Option<crate::db::ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
+      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
     )
     .bind(user_id)
     .bind(name)
@@ -1609,7 +1636,7 @@ impl DbService for SqliteDbService {
       |(
         id,
         user_id,
-        toolset_type,
+        scope_uuid,
         name,
         description,
         enabled,
@@ -1622,7 +1649,7 @@ impl DbService for SqliteDbService {
         crate::db::ToolsetRow {
           id,
           user_id,
-          toolset_type,
+          scope_uuid,
           name,
           description,
           enabled: enabled != 0,
@@ -1644,13 +1671,13 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO toolsets (id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
+      INSERT INTO toolsets (id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&row.id)
     .bind(&row.user_id)
-    .bind(&row.toolset_type)
+    .bind(&row.scope_uuid)
     .bind(&row.name)
     .bind(&row.description)
     .bind(enabled)
@@ -1715,7 +1742,7 @@ impl DbService for SqliteDbService {
 
   async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
+      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
     )
     .bind(user_id)
     .fetch_all(&self.pool)
@@ -1728,7 +1755,7 @@ impl DbService for SqliteDbService {
           |(
             id,
             user_id,
-            toolset_type,
+            scope_uuid,
             name,
             description,
             enabled,
@@ -1741,7 +1768,7 @@ impl DbService for SqliteDbService {
             crate::db::ToolsetRow {
               id,
               user_id,
-              toolset_type,
+              scope_uuid,
               name,
               description,
               enabled: enabled != 0,
@@ -1757,16 +1784,16 @@ impl DbService for SqliteDbService {
     )
   }
 
-  async fn list_toolsets_by_type(
+  async fn list_toolsets_by_scope_uuid(
     &self,
     user_id: &str,
-    toolset_type: &str,
+    scope_uuid: &str,
   ) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND toolset_type = ?",
+      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND scope_uuid = ?",
     )
     .bind(user_id)
-    .bind(toolset_type)
+    .bind(scope_uuid)
     .fetch_all(&self.pool)
     .await?;
 
@@ -1777,7 +1804,7 @@ impl DbService for SqliteDbService {
           |(
             id,
             user_id,
-            toolset_type,
+            scope_uuid,
             name,
             description,
             enabled,
@@ -1790,7 +1817,7 @@ impl DbService for SqliteDbService {
             crate::db::ToolsetRow {
               id,
               user_id,
-              toolset_type,
+              scope_uuid,
               name,
               description,
               enabled: enabled != 0,
@@ -1835,22 +1862,49 @@ impl DbService for SqliteDbService {
   // App-level toolset configuration management
   // ============================================================================
 
-  async fn get_app_toolset_config(
+  async fn get_app_toolset_config_by_scope_uuid(
     &self,
-    toolset_id: &str,
+    scope_uuid: &str,
   ) -> Result<Option<crate::db::AppToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, i64, String, i64, i64)>(
-      "SELECT id, toolset_id, enabled, updated_by, created_at, updated_at FROM app_toolset_configs WHERE toolset_id = ?",
+    let result = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
+      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs WHERE scope_uuid = ?",
     )
-    .bind(toolset_id)
+    .bind(scope_uuid)
     .fetch_optional(&self.pool)
     .await?;
 
     Ok(result.map(
-      |(id, toolset_id, enabled, updated_by, created_at, updated_at)| {
+      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
         crate::db::AppToolsetConfigRow {
           id,
-          toolset_id,
+          scope,
+          scope_uuid,
+          enabled: enabled != 0,
+          updated_by,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn get_app_toolset_config_by_scope(
+    &self,
+    scope: &str,
+  ) -> Result<Option<crate::db::AppToolsetConfigRow>, DbError> {
+    let result = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
+      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs WHERE scope = ?",
+    )
+    .bind(scope)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
+        crate::db::AppToolsetConfigRow {
+          id,
+          scope,
+          scope_uuid,
           enabled: enabled != 0,
           updated_by,
           created_at,
@@ -1867,21 +1921,22 @@ impl DbService for SqliteDbService {
     let enabled = if config.enabled { 1 } else { 0 };
 
     // Check if config exists
-    let existing = self.get_app_toolset_config(&config.toolset_id).await?;
+    let existing = self.get_app_toolset_config_by_scope(&config.scope).await?;
 
     let id = if let Some(existing) = existing {
       // Update existing config
       sqlx::query(
         r#"
         UPDATE app_toolset_configs
-        SET enabled = ?, updated_by = ?, updated_at = ?
-        WHERE toolset_id = ?
+        SET scope_uuid = ?, enabled = ?, updated_by = ?, updated_at = ?
+        WHERE scope = ?
         "#,
       )
+      .bind(&config.scope_uuid)
       .bind(enabled)
       .bind(&config.updated_by)
       .bind(config.updated_at)
-      .bind(&config.toolset_id)
+      .bind(&config.scope)
       .execute(&self.pool)
       .await?;
 
@@ -1890,11 +1945,12 @@ impl DbService for SqliteDbService {
       // Insert new config
       let result = sqlx::query(
         r#"
-        INSERT INTO app_toolset_configs (toolset_id, enabled, updated_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO app_toolset_configs (scope, scope_uuid, enabled, updated_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         "#,
       )
-      .bind(&config.toolset_id)
+      .bind(&config.scope)
+      .bind(&config.scope_uuid)
       .bind(enabled)
       .bind(&config.updated_by)
       .bind(config.created_at)
@@ -1908,7 +1964,8 @@ impl DbService for SqliteDbService {
     // Return the updated/inserted config
     Ok(crate::db::AppToolsetConfigRow {
       id,
-      toolset_id: config.toolset_id.clone(),
+      scope: config.scope.clone(),
+      scope_uuid: config.scope_uuid.clone(),
       enabled: config.enabled,
       updated_by: config.updated_by.clone(),
       created_at: config.created_at,
@@ -1917,8 +1974,8 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<crate::db::AppToolsetConfigRow>, DbError> {
-    let results = sqlx::query_as::<_, (i64, String, i64, String, i64, i64)>(
-      "SELECT id, toolset_id, enabled, updated_by, created_at, updated_at FROM app_toolset_configs ORDER BY toolset_id",
+    let results = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
+      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs ORDER BY scope",
     )
     .fetch_all(&self.pool)
     .await?;
@@ -1927,10 +1984,11 @@ impl DbService for SqliteDbService {
       results
         .into_iter()
         .map(
-          |(id, toolset_id, enabled, updated_by, created_at, updated_at)| {
+          |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
             crate::db::AppToolsetConfigRow {
               id,
-              toolset_id,
+              scope,
+              scope_uuid,
               enabled: enabled != 0,
               updated_by,
               created_at,

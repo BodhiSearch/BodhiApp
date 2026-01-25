@@ -93,7 +93,7 @@ pub trait ToolService: Debug + Send + Sync {
   async fn create(
     &self,
     user_id: &str,
-    toolset_type: &str,
+    scope_uuid: &str,
     name: &str,
     description: Option<String>,
     enabled: bool,
@@ -130,34 +130,35 @@ pub trait ToolService: Debug + Send + Sync {
   /// List all available toolset types
   fn list_types(&self) -> Vec<ToolsetDefinition>;
 
-  /// Get toolset type definition by ID
-  fn get_type(&self, toolset_type: &str) -> Option<ToolsetDefinition>;
+  /// Get toolset type definition by scope_uuid
+  fn get_type(&self, scope_uuid: &str) -> Option<ToolsetDefinition>;
 
-  /// Validate toolset type exists
-  fn validate_type(&self, toolset_type: &str) -> Result<(), ToolsetError>;
+  /// Validate toolset scope_uuid exists
+  fn validate_type(&self, scope_uuid: &str) -> Result<(), ToolsetError>;
 
   /// Check if toolset type is enabled at app level
-  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError>;
+  async fn is_type_enabled(&self, scope_uuid: &str) -> Result<bool, ToolsetError>;
 
   // ============================================================================
   // App-level toolset configuration (admin-controlled)
   // ============================================================================
 
-  /// Get app-level toolset config by ID
+  /// Get app-level toolset config by scope
   async fn get_app_toolset_config(
     &self,
-    toolset_id: &str,
+    scope: &str,
   ) -> Result<Option<AppToolsetConfig>, ToolsetError>;
 
   /// Check if toolset is enabled at app level
-  async fn is_toolset_enabled_for_app(&self, toolset_id: &str) -> Result<bool, ToolsetError>;
+  async fn is_toolset_enabled_for_app(&self, scope: &str) -> Result<bool, ToolsetError>;
 
   /// Set app-level toolset enabled status (admin only)
   /// Updates local DB only (no longer syncs with auth server)
   async fn set_app_toolset_enabled(
     &self,
     admin_token: &str,
-    toolset_id: &str,
+    scope: &str,
+    scope_uuid: &str,
     enabled: bool,
     updated_by: &str,
   ) -> Result<AppToolsetConfig, ToolsetError>;
@@ -174,7 +175,7 @@ pub trait ToolService: Debug + Send + Sync {
   async fn is_app_client_registered_for_toolset(
     &self,
     app_client_id: &str,
-    toolset_id: &str,
+    scope_uuid: &str,
   ) -> Result<bool, ToolsetError>;
 }
 
@@ -187,6 +188,7 @@ pub struct DefaultToolService {
   db_service: Arc<dyn DbService>,
   exa_service: Arc<dyn ExaService>,
   time_service: Arc<dyn TimeService>,
+  is_production: bool,
 }
 
 impl DefaultToolService {
@@ -194,11 +196,13 @@ impl DefaultToolService {
     db_service: Arc<dyn DbService>,
     exa_service: Arc<dyn ExaService>,
     time_service: Arc<dyn TimeService>,
+    is_production: bool,
   ) -> Self {
     Self {
       db_service,
       exa_service,
       time_service,
+      is_production,
     }
   }
 
@@ -231,9 +235,16 @@ impl DefaultToolService {
   }
 
   /// Static registry of built-in toolsets with nested tools
-  fn builtin_toolsets() -> Vec<ToolsetDefinition> {
+  fn builtin_toolsets(is_production: bool) -> Vec<ToolsetDefinition> {
+    let scope_uuid = if is_production {
+      "7a89e236-9d23-4856-aa77-b52823ff9972"
+    } else {
+      "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
+    };
+
     vec![ToolsetDefinition {
-      toolset_id: "builtin-exa-web-search".to_string(),
+      scope_uuid: scope_uuid.to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
       name: "Exa Web Search".to_string(),
       description: "Search and analyze web content using Exa AI".to_string(),
       tools: vec![
@@ -335,11 +346,19 @@ impl DefaultToolService {
   }
 
   /// Convert toolset row to public model
-  fn toolset_row_to_model(row: ToolsetRow) -> Toolset {
+  fn toolset_row_to_model(&self, row: ToolsetRow) -> Toolset {
+    // Lookup scope from registry using scope_uuid
+    let scope = Self::builtin_toolsets(self.is_production)
+      .iter()
+      .find(|def| def.scope_uuid == row.scope_uuid)
+      .map(|def| def.scope.clone())
+      .unwrap_or_else(|| "scope_unknown".to_string());
+
     Toolset {
       id: row.id,
       name: row.name,
-      toolset_type: row.toolset_type,
+      scope_uuid: row.scope_uuid,
+      scope,
       description: row.description,
       enabled: row.enabled,
       has_api_key: row.encrypted_api_key.is_some(),
@@ -351,7 +370,8 @@ impl DefaultToolService {
   /// Convert app toolset config row to public model
   fn app_row_to_config(row: AppToolsetConfigRow) -> AppToolsetConfig {
     AppToolsetConfig {
-      toolset_id: row.toolset_id,
+      scope: row.scope,
+      scope_uuid: row.scope_uuid,
       enabled: row.enabled,
       updated_by: row.updated_by,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
@@ -365,17 +385,17 @@ impl ToolService for DefaultToolService {
   async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError> {
     let toolsets = self.db_service.list_toolsets(user_id).await?;
 
-    // Collect unique toolset types that are enabled with API keys
-    let enabled_types: std::collections::HashSet<String> = toolsets
+    // Collect unique scope_uuids that are enabled with API keys
+    let enabled_scope_uuids: std::collections::HashSet<String> = toolsets
       .into_iter()
       .filter(|t| t.enabled && t.encrypted_api_key.is_some())
-      .map(|t| t.toolset_type)
+      .map(|t| t.scope_uuid)
       .collect();
 
     // Return tool definitions for enabled types
     let mut tools = Vec::new();
-    for toolset_def in Self::builtin_toolsets() {
-      if enabled_types.contains(&toolset_def.toolset_id) {
+    for toolset_def in Self::builtin_toolsets(self.is_production) {
+      if enabled_scope_uuids.contains(&toolset_def.scope_uuid) {
         tools.extend(toolset_def.tools);
       }
     }
@@ -390,14 +410,15 @@ impl ToolService for DefaultToolService {
   async fn list_all_toolsets(&self) -> Result<Vec<ToolsetWithTools>, ToolsetError> {
     let mut result = Vec::new();
 
-    for toolset_def in Self::builtin_toolsets() {
+    for toolset_def in Self::builtin_toolsets(self.is_production) {
       let app_enabled = self
-        .is_toolset_enabled_for_app(&toolset_def.toolset_id)
+        .is_toolset_enabled_for_app(&toolset_def.scope)
         .await
         .unwrap_or(false);
 
       result.push(ToolsetWithTools {
-        toolset_id: toolset_def.toolset_id,
+        scope_uuid: toolset_def.scope_uuid,
+        scope: toolset_def.scope,
         name: toolset_def.name,
         description: toolset_def.description,
         app_enabled,
@@ -414,7 +435,12 @@ impl ToolService for DefaultToolService {
 
   async fn list(&self, user_id: &str) -> Result<Vec<Toolset>, ToolsetError> {
     let rows = self.db_service.list_toolsets(user_id).await?;
-    Ok(rows.into_iter().map(Self::toolset_row_to_model).collect())
+    Ok(
+      rows
+        .into_iter()
+        .map(|r| self.toolset_row_to_model(r))
+        .collect(),
+    )
   }
 
   async fn get(&self, user_id: &str, id: &str) -> Result<Option<Toolset>, ToolsetError> {
@@ -422,7 +448,7 @@ impl ToolService for DefaultToolService {
 
     // Return None if not found OR user doesn't own it (hide existence)
     Ok(match row {
-      Some(r) if r.user_id == user_id => Some(Self::toolset_row_to_model(r)),
+      Some(r) if r.user_id == user_id => Some(self.toolset_row_to_model(r)),
       _ => None,
     })
   }
@@ -430,7 +456,7 @@ impl ToolService for DefaultToolService {
   async fn create(
     &self,
     user_id: &str,
-    toolset_type: &str,
+    scope_uuid: &str,
     name: &str,
     description: Option<String>,
     enabled: bool,
@@ -445,11 +471,11 @@ impl ToolService for DefaultToolService {
         .map_err(|reason| ToolsetError::InvalidName(reason))?;
     }
 
-    // Validate toolset type exists
-    self.validate_type(toolset_type)?;
+    // Validate scope_uuid exists
+    self.validate_type(scope_uuid)?;
 
     // Check app-level enabled
-    if !self.is_type_enabled(toolset_type).await? {
+    if !self.is_type_enabled(scope_uuid).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -472,7 +498,7 @@ impl ToolService for DefaultToolService {
     let row = ToolsetRow {
       id: Uuid::new_v4().to_string(),
       user_id: user_id.to_string(),
-      toolset_type: toolset_type.to_string(),
+      scope_uuid: scope_uuid.to_string(),
       name: name.to_string(),
       description,
       enabled,
@@ -484,7 +510,7 @@ impl ToolService for DefaultToolService {
     };
 
     let result = self.db_service.create_toolset(&row).await?;
-    Ok(Self::toolset_row_to_model(result))
+    Ok(self.toolset_row_to_model(result))
   }
 
   async fn update(
@@ -530,7 +556,7 @@ impl ToolService for DefaultToolService {
     }
 
     // Check app-level enabled if trying to enable
-    if enabled && !self.is_type_enabled(&existing.toolset_type).await? {
+    if enabled && !self.is_type_enabled(&existing.scope_uuid).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -560,7 +586,7 @@ impl ToolService for DefaultToolService {
     let row = ToolsetRow {
       id: id.to_string(),
       user_id: user_id.to_string(),
-      toolset_type: existing.toolset_type,
+      scope_uuid: existing.scope_uuid,
       name: name.to_string(),
       description,
       enabled,
@@ -575,7 +601,7 @@ impl ToolService for DefaultToolService {
       .db_service
       .update_toolset(&row, db_api_key_update)
       .await?;
-    Ok(Self::toolset_row_to_model(result))
+    Ok(self.toolset_row_to_model(result))
   }
 
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), ToolsetError> {
@@ -614,7 +640,7 @@ impl ToolService for DefaultToolService {
     }
 
     // Check app-level type enabled
-    if !self.is_type_enabled(&instance.toolset_type).await? {
+    if !self.is_type_enabled(&instance.scope_uuid).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -630,22 +656,24 @@ impl ToolService for DefaultToolService {
       .await?
       .ok_or(ToolsetError::ToolsetNotConfigured)?;
 
-    // Verify method exists for toolset type
+    // Verify method exists for toolset type and get scope
     let toolset_def = self
-      .get_type(&instance.toolset_type)
-      .ok_or_else(|| ToolsetError::ToolsetNotFound(instance.toolset_type.clone()))?;
+      .get_type(&instance.scope_uuid)
+      .ok_or_else(|| ToolsetError::ToolsetNotFound(instance.scope_uuid.clone()))?;
 
     if !toolset_def.tools.iter().any(|t| t.function.name == method) {
       return Err(ToolsetError::MethodNotFound(format!(
-        "Method '{}' not found in toolset type '{}'",
-        method, instance.toolset_type
+        "Method '{}' not found in toolset scope '{}'",
+        method, toolset_def.scope
       )));
     }
 
-    // Execute based on toolset type
-    match instance.toolset_type.as_str() {
-      "builtin-exa-web-search" => self.execute_exa_method(&api_key, method, request).await,
-      _ => Err(ToolsetError::ToolsetNotFound(instance.toolset_type)),
+    // Execute based on scope
+    match toolset_def.scope.as_str() {
+      "scope_toolset-builtin-exa-web-search" => {
+        self.execute_exa_method(&api_key, method, request).await
+      }
+      _ => Err(ToolsetError::ToolsetNotFound(instance.scope_uuid)),
     }
   }
 
@@ -654,25 +682,29 @@ impl ToolService for DefaultToolService {
   // ============================================================================
 
   fn list_types(&self) -> Vec<ToolsetDefinition> {
-    Self::builtin_toolsets()
+    Self::builtin_toolsets(self.is_production)
   }
 
-  fn get_type(&self, toolset_type: &str) -> Option<ToolsetDefinition> {
-    Self::builtin_toolsets()
+  fn get_type(&self, scope_uuid: &str) -> Option<ToolsetDefinition> {
+    Self::builtin_toolsets(self.is_production)
       .into_iter()
-      .find(|def| def.toolset_id == toolset_type)
+      .find(|def| def.scope_uuid == scope_uuid)
   }
 
-  fn validate_type(&self, toolset_type: &str) -> Result<(), ToolsetError> {
-    if self.get_type(toolset_type).is_some() {
+  fn validate_type(&self, scope_uuid: &str) -> Result<(), ToolsetError> {
+    if self.get_type(scope_uuid).is_some() {
       Ok(())
     } else {
-      Err(ToolsetError::InvalidToolsetType(toolset_type.to_string()))
+      Err(ToolsetError::InvalidToolsetType(scope_uuid.to_string()))
     }
   }
 
-  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError> {
-    self.is_toolset_enabled_for_app(toolset_type).await
+  async fn is_type_enabled(&self, scope_uuid: &str) -> Result<bool, ToolsetError> {
+    // Get scope from scope_uuid for database lookup
+    let toolset_def = self
+      .get_type(scope_uuid)
+      .ok_or_else(|| ToolsetError::InvalidToolsetType(scope_uuid.to_string()))?;
+    self.is_toolset_enabled_for_app(&toolset_def.scope).await
   }
 
   // ============================================================================
@@ -681,22 +713,28 @@ impl ToolService for DefaultToolService {
 
   async fn get_app_toolset_config(
     &self,
-    toolset_id: &str,
+    scope: &str,
   ) -> Result<Option<AppToolsetConfig>, ToolsetError> {
-    // Verify toolset exists
-    if !Self::builtin_tool_definitions()
+    // Verify scope exists in our toolset definitions
+    if !Self::builtin_toolsets(self.is_production)
       .iter()
-      .any(|def| def.function.name == toolset_id)
+      .any(|def| def.scope == scope)
     {
-      return Err(ToolsetError::ToolsetNotFound(toolset_id.to_string()));
+      return Err(ToolsetError::ToolsetNotFound(scope.to_string()));
     }
 
-    let config = self.db_service.get_app_toolset_config(toolset_id).await?;
+    let config = self
+      .db_service
+      .get_app_toolset_config_by_scope(scope)
+      .await?;
     Ok(config.map(Self::app_row_to_config))
   }
 
-  async fn is_toolset_enabled_for_app(&self, toolset_id: &str) -> Result<bool, ToolsetError> {
-    let config = self.db_service.get_app_toolset_config(toolset_id).await?;
+  async fn is_toolset_enabled_for_app(&self, scope: &str) -> Result<bool, ToolsetError> {
+    let config = self
+      .db_service
+      .get_app_toolset_config_by_scope(scope)
+      .await?;
     // No row means disabled (default state)
     Ok(config.map(|c| c.enabled).unwrap_or(false))
   }
@@ -704,16 +742,17 @@ impl ToolService for DefaultToolService {
   async fn set_app_toolset_enabled(
     &self,
     admin_token: &str,
-    toolset_id: &str,
+    scope: &str,
+    scope_uuid: &str,
     enabled: bool,
     updated_by: &str,
   ) -> Result<AppToolsetConfig, ToolsetError> {
-    // Verify toolset exists
-    if !Self::builtin_tool_definitions()
+    // Verify scope exists in our toolset definitions
+    if !Self::builtin_toolsets(self.is_production)
       .iter()
-      .any(|def| def.function.name == toolset_id)
+      .any(|def| def.scope == scope)
     {
-      return Err(ToolsetError::ToolsetNotFound(toolset_id.to_string()));
+      return Err(ToolsetError::ToolsetNotFound(scope.to_string()));
     }
 
     // Note: admin_token is now unused since we removed auth server integration
@@ -724,11 +763,15 @@ impl ToolService for DefaultToolService {
     let now_ts = now.timestamp();
 
     // Get existing config
-    let existing = self.db_service.get_app_toolset_config(toolset_id).await?;
+    let existing = self
+      .db_service
+      .get_app_toolset_config_by_scope(scope)
+      .await?;
 
     let config = AppToolsetConfigRow {
       id: existing.as_ref().map(|e| e.id).unwrap_or(0),
-      toolset_id: toolset_id.to_string(),
+      scope: scope.to_string(),
+      scope_uuid: scope_uuid.to_string(),
       enabled,
       updated_by: updated_by.to_string(),
       created_at: existing.as_ref().map(|e| e.created_at).unwrap_or(now_ts),
@@ -747,7 +790,7 @@ impl ToolService for DefaultToolService {
   async fn is_app_client_registered_for_toolset(
     &self,
     app_client_id: &str,
-    toolset_id: &str,
+    scope_uuid: &str,
   ) -> Result<bool, ToolsetError> {
     // Look up cached app-client toolset config
     let config = self
@@ -759,14 +802,14 @@ impl ToolService for DefaultToolService {
       return Ok(false);
     };
 
-    // Parse the toolsets_json to check if toolset_id is registered
+    // Parse the toolsets_json to check if scope_uuid is registered
     let toolsets: Vec<serde_json::Value> =
       serde_json::from_str(&config.toolsets_json).unwrap_or_default();
 
     Ok(toolsets.iter().any(|t| {
-      t.get("id")
+      t.get("scope_id")
         .and_then(|v| v.as_str())
-        .map(|id| id == toolset_id)
+        .map(|id| id == scope_uuid)
         .unwrap_or(false)
     }))
   }
@@ -952,7 +995,7 @@ mod tests {
     ToolsetRow {
       id: id.to_string(),
       user_id: user_id.to_string(),
-      toolset_type: "builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
       name: name.to_string(),
       description: Some("Test toolset".to_string()),
       enabled: true,
@@ -967,7 +1010,8 @@ mod tests {
   fn app_config_enabled() -> AppToolsetConfigRow {
     AppToolsetConfigRow {
       id: 1,
-      toolset_id: "builtin-exa-web-search".to_string(),
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
       enabled: true,
       updated_by: "admin".to_string(),
       created_at: 1700000000,
@@ -985,7 +1029,7 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let defs = service.list_all_tool_definitions();
 
     assert_eq!(1, defs.len());
@@ -998,11 +1042,12 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let types = service.list_types();
 
     assert_eq!(1, types.len());
-    assert_eq!("builtin-exa-web-search", types[0].toolset_id);
+    assert_eq!("4ff0e163-36fb-47d6-a5ef-26e396f067d6", types[0].scope_uuid);
+    assert_eq!("scope_toolset-builtin-exa-web-search", types[0].scope);
     assert_eq!(4, types[0].tools.len());
   }
 
@@ -1012,8 +1057,8 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let def = service.get_type("builtin-exa-web-search");
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
+    let def = service.get_type("4ff0e163-36fb-47d6-a5ef-26e396f067d6");
 
     assert!(def.is_some());
     let def = def.unwrap();
@@ -1027,7 +1072,7 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let def = service.get_type("unknown");
 
     assert!(def.is_none());
@@ -1039,8 +1084,8 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let result = service.validate_type("builtin-exa-web-search");
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
+    let result = service.validate_type("4ff0e163-36fb-47d6-a5ef-26e396f067d6");
 
     assert!(result.is_ok());
   }
@@ -1051,7 +1096,7 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service.validate_type("unknown");
 
     assert!(result.is_err());
@@ -1084,7 +1129,7 @@ mod tests {
         ])
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let tools = service.list_tools_for_user("user123").await?;
 
     assert_eq!(4, tools.len());
@@ -1102,7 +1147,7 @@ mod tests {
       .with(eq("user123"))
       .returning(|_| Ok(vec![]));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let tools = service.list_tools_for_user("user123").await?;
 
     assert!(tools.is_empty());
@@ -1125,7 +1170,7 @@ mod tests {
         ])
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let tools = service.list_tools_for_user("user123").await?;
 
     assert_eq!(4, tools.len());
@@ -1143,11 +1188,11 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolsets = service.list_all_toolsets().await?;
 
     assert_eq!(1, toolsets.len());
@@ -1162,11 +1207,11 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolsets = service.list_all_toolsets().await?;
 
     assert_eq!(1, toolsets.len());
@@ -1194,7 +1239,7 @@ mod tests {
         ])
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolsets = service.list("user123").await?;
 
     assert_eq!(2, toolsets.len());
@@ -1214,7 +1259,7 @@ mod tests {
       .with(eq("user123"))
       .returning(|_| Ok(vec![]));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolsets = service.list("user123").await?;
 
     assert!(toolsets.is_empty());
@@ -1236,7 +1281,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "my-exa-1"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service.get("user123", "id1").await?;
 
     assert!(toolset.is_some());
@@ -1255,7 +1300,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user999", "other-exa"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service.get("user123", "id1").await?;
 
     assert!(toolset.is_none());
@@ -1273,7 +1318,7 @@ mod tests {
       .with(eq("id999"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service.get("user123", "id999").await?;
 
     assert!(toolset.is_none());
@@ -1298,18 +1343,18 @@ mod tests {
     db.expect_get_toolset_by_name()
       .with(eq("user123"), eq("my-exa"))
       .returning(|_, _| Ok(None));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_create_toolset().returning(|row| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .create(
         "user123",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         "my-exa",
         Some("My Exa".to_string()),
         true,
@@ -1329,18 +1374,18 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_get_toolset_by_name()
       .with(eq("user123"), eq("my-exa"))
       .returning(|_, _| Ok(Some(test_toolset_row("existing", "user123", "my-exa"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .create(
         "user123",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         "my-exa",
         None,
         true,
@@ -1365,11 +1410,11 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .create(
         "user123",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         name,
         None,
         true,
@@ -1390,11 +1435,11 @@ mod tests {
     let time = MockTimeService::new();
 
     let long_name = "a".repeat(25);
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .create(
         "user123",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         &long_name,
         None,
         true,
@@ -1414,7 +1459,7 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .create(
         "user123",
@@ -1441,15 +1486,15 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .create(
         "user123",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         "my-exa",
         None,
         true,
@@ -1479,18 +1524,18 @@ mod tests {
     db.expect_get_toolset_by_name()
       .with(eq("user456"), eq("my-exa"))
       .returning(|_, _| Ok(None));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_create_toolset().returning(|row| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .create(
         "user456",
-        "builtin-exa-web-search",
+        "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
         "my-exa",
         None,
         true,
@@ -1523,15 +1568,15 @@ mod tests {
     db.expect_get_toolset_by_name()
       .with(eq("user123"), eq("my-exa-updated"))
       .returning(|_, _| Ok(None));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_update_toolset()
       .returning(|row, _| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .update(
         "user123",
@@ -1558,7 +1603,7 @@ mod tests {
       .with(eq("id999"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .update("user123", "id999", "my-exa", None, true, ApiKeyUpdate::Keep)
       .await;
@@ -1582,7 +1627,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user999", "other-exa"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .update("user123", "id1", "my-exa", None, true, ApiKeyUpdate::Keep)
       .await;
@@ -1609,7 +1654,7 @@ mod tests {
       .with(eq("user123"), eq("my-exa-2"))
       .returning(|_, _| Ok(Some(test_toolset_row("id2", "user123", "my-exa-2"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .update("user123", "id1", "my-exa-2", None, true, ApiKeyUpdate::Keep)
       .await;
@@ -1633,15 +1678,15 @@ mod tests {
     db.expect_get_toolset()
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "MyExa"))));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_update_toolset()
       .returning(|row, _| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .update("user123", "id1", "myexa", None, true, ApiKeyUpdate::Keep)
       .await?;
@@ -1663,11 +1708,11 @@ mod tests {
         ..test_toolset_row("id1", "user123", "my-exa")
       }))
     });
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service
       .update("user123", "id1", "my-exa", None, true, ApiKeyUpdate::Keep)
       .await;
@@ -1694,15 +1739,15 @@ mod tests {
     db.expect_get_toolset()
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "my-exa"))));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_update_toolset()
       .returning(|row, _| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .update(
         "user123",
@@ -1732,15 +1777,15 @@ mod tests {
     db.expect_get_toolset()
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user123", "my-exa"))));
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
     db.expect_encryption_key()
       .return_const(b"0123456789abcdef".to_vec());
     db.expect_update_toolset()
       .returning(|row, _| Ok(row.clone()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let toolset = service
       .update("user123", "id1", "my-exa", None, true, ApiKeyUpdate::Keep)
       .await?;
@@ -1767,7 +1812,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service.delete("user123", "id1").await;
 
     assert!(result.is_ok());
@@ -1785,7 +1830,7 @@ mod tests {
       .with(eq("id999"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service.delete("user123", "id999").await;
 
     assert!(result.is_err());
@@ -1807,7 +1852,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(Some(test_toolset_row("id1", "user999", "other-exa"))));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service.delete("user123", "id1").await;
 
     assert!(result.is_err());
@@ -1832,7 +1877,7 @@ mod tests {
       .with(eq("id1"))
       .returning(|_| Ok(()));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let result = service.delete("user123", "id1").await;
 
     assert!(result.is_ok());
@@ -1850,12 +1895,14 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(Some(app_config_enabled())));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let enabled = service.is_type_enabled("builtin-exa-web-search").await?;
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
+    let enabled = service
+      .is_type_enabled("4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+      .await?;
 
     assert!(enabled);
     Ok(())
@@ -1868,8 +1915,8 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| {
         Ok(Some(AppToolsetConfigRow {
           enabled: false,
@@ -1877,8 +1924,10 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let enabled = service.is_type_enabled("builtin-exa-web-search").await?;
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
+    let enabled = service
+      .is_type_enabled("4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+      .await?;
 
     assert!(!enabled);
     Ok(())
@@ -1891,12 +1940,14 @@ mod tests {
     let exa = MockExaService::new();
     let time = MockTimeService::new();
 
-    db.expect_get_app_toolset_config()
-      .with(eq("builtin-exa-web-search"))
+    db.expect_get_app_toolset_config_by_scope()
+      .with(eq("scope_toolset-builtin-exa-web-search"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
-    let enabled = service.is_type_enabled("builtin-exa-web-search").await?;
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
+    let enabled = service
+      .is_type_enabled("4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+      .await?;
 
     assert!(!enabled);
     Ok(())
@@ -1921,16 +1972,16 @@ mod tests {
           id: 1,
           app_client_id: "external-app".to_string(),
           config_version: Some("v1.0.0".to_string()),
-          toolsets_json: r#"[{"id":"builtin-exa-web-search","toolset_scope":"scope_toolset-builtin-exa-web-search"}]"#.to_string(),
+          toolsets_json: r#"[{"scope_id":"4ff0e163-36fb-47d6-a5ef-26e396f067d6","toolset_scope":"scope_toolset-builtin-exa-web-search"}]"#.to_string(),
           resource_scope: "scope_resource-bodhi".to_string(),
           created_at: 0,
           updated_at: 0,
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let registered = service
-      .is_app_client_registered_for_toolset("external-app", "builtin-exa-web-search")
+      .is_app_client_registered_for_toolset("external-app", "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .await?;
 
     assert!(registered);
@@ -1953,7 +2004,7 @@ mod tests {
           app_client_id: "external-app".to_string(),
           config_version: Some("v1.0.0".to_string()),
           toolsets_json:
-            r#"[{"toolset_id":"other-toolset","toolset_scope":"scope_toolset-other-toolset"}]"#
+            r#"[{"scope_id":"other-uuid","toolset_scope":"scope_toolset-other-toolset"}]"#
               .to_string(),
           resource_scope: "scope_resource-bodhi".to_string(),
           created_at: 0,
@@ -1961,9 +2012,9 @@ mod tests {
         }))
       });
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let registered = service
-      .is_app_client_registered_for_toolset("external-app", "builtin-exa-web-search")
+      .is_app_client_registered_for_toolset("external-app", "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .await?;
 
     assert!(!registered);
@@ -1982,9 +2033,9 @@ mod tests {
       .with(eq("unknown-app"))
       .returning(|_| Ok(None));
 
-    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time));
+    let service = DefaultToolService::new(Arc::new(db), Arc::new(exa), Arc::new(time), false);
     let registered = service
-      .is_app_client_registered_for_toolset("unknown-app", "builtin-exa-web-search")
+      .is_app_client_registered_for_toolset("unknown-app", "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .await?;
 
     assert!(!registered);

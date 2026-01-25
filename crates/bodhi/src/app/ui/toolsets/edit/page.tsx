@@ -170,7 +170,7 @@ function EditToolsetContent() {
               <FormItem>
                 <FormLabel>Toolset Type</FormLabel>
                 <FormControl>
-                  <Input value={toolset.toolset_type} disabled data-testid="toolset-type-display" />
+                  <Input value={toolset.scope} disabled data-testid="toolset-type-display" />
                 </FormControl>
                 <FormDescription>The type of toolset (read-only)</FormDescription>
               </FormItem>
