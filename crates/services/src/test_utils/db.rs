@@ -505,6 +505,17 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("list_app_toolset_configs"))
   }
 
+  async fn list_app_toolset_configs_by_scopes(
+    &self,
+    scopes: &[String],
+  ) -> Result<Vec<AppToolsetConfigRow>, DbError> {
+    self
+      .inner
+      .list_app_toolset_configs_by_scopes(scopes)
+      .await
+      .tap(|_| self.notify("list_app_toolset_configs_by_scopes"))
+  }
+
   async fn get_app_client_toolset_config(
     &self,
     app_client_id: &str,

@@ -15,6 +15,7 @@ import {
   mockCreateToolsetError,
   mockDisableType,
   mockEnableType,
+  mockListToolsets,
   mockListTypes,
   mockType,
 } from '@/test-utils/msw-v2/handlers/toolsets';
@@ -66,7 +67,22 @@ afterEach(() => {
 describe('ToolsetsSetupPage', () => {
   describe('Loading State', () => {
     it('shows skeleton while types loading', async () => {
-      server.use(mockListTypes([mockType]));
+      server.use(
+        mockListTypes([mockType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -78,7 +94,22 @@ describe('ToolsetsSetupPage', () => {
   describe('Form Display', () => {
     it('shows toggle and form fields when type is disabled', async () => {
       const disabledType = { ...mockType, app_enabled: false };
-      server.use(mockListTypes([disabledType]));
+      server.use(
+        mockListTypes([disabledType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: false,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -93,7 +124,22 @@ describe('ToolsetsSetupPage', () => {
     });
 
     it('shows toggle and form fields when type is enabled', async () => {
-      server.use(mockListTypes([mockType]));
+      server.use(
+        mockListTypes([mockType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -131,7 +177,22 @@ describe('ToolsetsSetupPage', () => {
     });
 
     it('enables form fields when app-config is on', async () => {
-      server.use(mockListTypes([mockType]));
+      server.use(
+        mockListTypes([mockType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -155,7 +216,23 @@ describe('ToolsetsSetupPage', () => {
     it('shows enable dialog when toggle is clicked on', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
       const disabledType = { ...mockType, app_enabled: false };
-      server.use(mockListTypes([disabledType]), mockEnableType());
+      server.use(
+        mockListTypes([disabledType]),
+        mockEnableType(),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: false,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -173,7 +250,23 @@ describe('ToolsetsSetupPage', () => {
     it('enables toolset when confirm is clicked', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
       const disabledType = { ...mockType, app_enabled: false };
-      server.use(mockListTypes([disabledType]), mockEnableType());
+      server.use(
+        mockListTypes([disabledType]),
+        mockEnableType(),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: false,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -198,7 +291,23 @@ describe('ToolsetsSetupPage', () => {
   describe('Disable Flow', () => {
     it('shows disable dialog when toggle is clicked off', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      server.use(mockListTypes([mockType]), mockDisableType());
+      server.use(
+        mockListTypes([mockType]),
+        mockDisableType(),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -215,7 +324,23 @@ describe('ToolsetsSetupPage', () => {
 
     it('disables toolset when confirm is clicked', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      server.use(mockListTypes([mockType]), mockDisableType());
+      server.use(
+        mockListTypes([mockType]),
+        mockDisableType(),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -240,7 +365,23 @@ describe('ToolsetsSetupPage', () => {
   describe('Create Flow', () => {
     it('creates toolset and navigates on success', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      server.use(mockListTypes([mockType]), mockCreateToolset());
+      server.use(
+        mockListTypes([mockType]),
+        mockCreateToolset(),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -262,7 +403,23 @@ describe('ToolsetsSetupPage', () => {
 
     it('shows error toast when creation fails', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      server.use(mockListTypes([mockType]), mockCreateToolsetError({ message: 'Name already exists', status: 400 }));
+      server.use(
+        mockListTypes([mockType]),
+        mockCreateToolsetError({ message: 'Name already exists', status: 400 }),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -283,7 +440,22 @@ describe('ToolsetsSetupPage', () => {
     });
 
     it('prefills name with type name', async () => {
-      server.use(mockListTypes([mockType]));
+      server.use(
+        mockListTypes([mockType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -297,7 +469,22 @@ describe('ToolsetsSetupPage', () => {
   describe('Skip Flow', () => {
     it('navigates to browser-extension when skip is clicked', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      server.use(mockListTypes([mockType]));
+      server.use(
+        mockListTypes([mockType]),
+        mockListToolsets(
+          [],
+          [
+            {
+              scope: 'scope_toolset-builtin-exa-web-search',
+              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              enabled: true,
+              updated_by: 'system',
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+            },
+          ]
+        )
+      );
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();

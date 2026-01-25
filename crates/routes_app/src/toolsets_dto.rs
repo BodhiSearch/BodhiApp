@@ -100,8 +100,6 @@ pub struct ToolsetResponse {
   pub enabled: bool,
   /// Whether this toolset has an API key configured
   pub has_api_key: bool,
-  /// Whether the toolset type is enabled at app level
-  pub app_enabled: bool,
   /// Tools provided by this toolset type
   pub tools: Vec<ToolDefinition>,
   /// When this toolset was created
@@ -116,6 +114,7 @@ pub struct ToolsetResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
   pub toolsets: Vec<ToolsetResponse>,
+  pub toolset_types: Vec<AppToolsetConfig>,
 }
 
 // ============================================================================

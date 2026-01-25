@@ -139,8 +139,22 @@ pub async fn list_toolsets_handler(
     responses.push(toolset_to_response(toolset, &tool_service).await?);
   }
 
+  // Fetch toolset_types based on auth type
+  let toolset_types = if is_oauth_auth(&headers) {
+    // For OAuth: fetch only configs for scopes in the token (efficient database query)
+    let allowed_scopes = extract_allowed_toolset_scopes(&headers);
+    let scopes_vec: Vec<String> = allowed_scopes.into_iter().collect();
+    tool_service
+      .list_app_toolset_configs_by_scopes(&scopes_vec)
+      .await?
+  } else {
+    // For session: return all toolset configs (session users have access to all scopes)
+    tool_service.list_app_toolset_configs().await?
+  };
+
   Ok(Json(ListToolsetsResponse {
     toolsets: responses,
+    toolset_types,
   }))
 }
 
@@ -486,8 +500,6 @@ async fn toolset_to_response(
     .get_type(&toolset.scope_uuid)
     .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset.scope_uuid.clone()))?;
 
-  let app_enabled = tool_service.is_type_enabled(&toolset.scope_uuid).await?;
-
   Ok(ToolsetResponse {
     id: toolset.id,
     name: toolset.name,
@@ -496,7 +508,6 @@ async fn toolset_to_response(
     description: toolset.description,
     enabled: toolset.enabled,
     has_api_key: toolset.has_api_key,
-    app_enabled,
     tools: type_def.tools,
     created_at: toolset.created_at,
     updated_at: toolset.updated_at,
@@ -557,11 +568,6 @@ mod tests {
       .expect_get_type()
       .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
       .returning(move |_| Some(type_def.clone()));
-
-    mock
-      .expect_is_type_enabled()
-      .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
-      .returning(|_| Ok(true));
   }
 
   fn test_router(mock_tool_service: MockToolService) -> Router {
@@ -614,6 +620,19 @@ mod tests {
       .times(1)
       .returning(move |_| Ok(instances_to_return.clone()));
 
+    // Mock toolset_types fetching based on auth type
+    if is_session {
+      mock_tool_service
+        .expect_list_app_toolset_configs()
+        .times(1)
+        .returning(|| Ok(vec![]));
+    } else if is_oauth_filtered {
+      mock_tool_service
+        .expect_list_app_toolset_configs_by_scopes()
+        .times(1)
+        .returning(|_| Ok(vec![]));
+    }
+
     let app = test_router(mock_tool_service);
 
     let mut request_builder = Request::builder()
@@ -636,6 +655,181 @@ mod tests {
       .unwrap();
 
     assert_eq!(StatusCode::OK, response.status());
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_list_toolsets_session_returns_all_toolset_types(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
+  ) {
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+
+    setup_type_mocks(&mut mock_tool_service);
+
+    mock_tool_service
+      .expect_list()
+      .withf(|user_id| user_id == "user123")
+      .times(1)
+      .returning(move |_| Ok(vec![instance_clone.clone()]));
+
+    let config = AppToolsetConfig {
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      enabled: true,
+      updated_by: "admin".to_string(),
+      created_at: chrono::Utc::now(),
+      updated_at: chrono::Utc::now(),
+    };
+
+    mock_tool_service
+      .expect_list_app_toolset_configs()
+      .times(1)
+      .returning(move || Ok(vec![config.clone()]));
+
+    let app = test_router(mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("GET")
+          .uri("/toolsets")
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(StatusCode::OK, response.status());
+
+    let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+      .await
+      .unwrap();
+    let list_response: crate::toolsets_dto::ListToolsetsResponse =
+      serde_json::from_slice(&body_bytes).unwrap();
+
+    assert_eq!(1, list_response.toolset_types.len());
+    assert_eq!(
+      "scope_toolset-builtin-exa-web-search",
+      list_response.toolset_types[0].scope
+    );
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    test_instance: Toolset,
+  ) {
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+
+    setup_type_mocks(&mut mock_tool_service);
+
+    mock_tool_service
+      .expect_list()
+      .withf(|user_id| user_id == "user123")
+      .times(1)
+      .returning(move |_| Ok(vec![instance_clone.clone()]));
+
+    let config = AppToolsetConfig {
+      scope: "scope_toolset-builtin-exa-web-search".to_string(),
+      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      enabled: true,
+      updated_by: "admin".to_string(),
+      created_at: chrono::Utc::now(),
+      updated_at: chrono::Utc::now(),
+    };
+
+    // OAuth should use the scoped query method
+    mock_tool_service
+      .expect_list_app_toolset_configs_by_scopes()
+      .withf(|scopes| scopes.len() == 1 && scopes[0] == "scope_toolset-builtin-exa-web-search")
+      .times(1)
+      .returning(move |_| Ok(vec![config.clone()]));
+
+    let app = test_router(mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("GET")
+          .uri("/toolsets")
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
+          .header(
+            KEY_HEADER_BODHIAPP_TOOL_SCOPES,
+            "scope_toolset-builtin-exa-web-search",
+          )
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(StatusCode::OK, response.status());
+
+    let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+      .await
+      .unwrap();
+    let list_response: crate::toolsets_dto::ListToolsetsResponse =
+      serde_json::from_slice(&body_bytes).unwrap();
+
+    assert_eq!(1, list_response.toolset_types.len());
+    assert_eq!(
+      "scope_toolset-builtin-exa-web-search",
+      list_response.toolset_types[0].scope
+    );
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) {
+    let mut mock_tool_service = MockToolService::new();
+
+    mock_tool_service
+      .expect_list()
+      .withf(|user_id| user_id == "user123")
+      .times(1)
+      .returning(|_| Ok(vec![]));
+
+    // OAuth with empty scopes should call with empty vec
+    mock_tool_service
+      .expect_list_app_toolset_configs_by_scopes()
+      .withf(|scopes| scopes.is_empty())
+      .times(1)
+      .returning(|_| Ok(vec![]));
+
+    let app = test_router(mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("GET")
+          .uri("/toolsets")
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
+          .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(StatusCode::OK, response.status());
+
+    let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+      .await
+      .unwrap();
+    let list_response: crate::toolsets_dto::ListToolsetsResponse =
+      serde_json::from_slice(&body_bytes).unwrap();
+
+    assert_eq!(0, list_response.toolset_types.len());
   }
 
   // ============================================================================

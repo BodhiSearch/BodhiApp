@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { ToolsetResponse } from '@bodhiapp/ts-client';
+import { ToolsetResponse, AppToolsetConfig } from '@bodhiapp/ts-client';
 import { Wrench, ChevronRight, ChevronDown } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -22,14 +22,30 @@ interface ToolsetsPopoverProps {
 }
 
 /**
+ * Create a map from scope to enabled status from toolset_types array.
+ */
+function createScopeEnabledMap(toolsetTypes: AppToolsetConfig[]): Map<string, boolean> {
+  const map = new Map<string, boolean>();
+  toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+  return map;
+}
+
+/**
+ * Check if a toolset type is admin-enabled based on scope map.
+ */
+function isAdminEnabled(toolset: ToolsetResponse, scopeEnabledMap: Map<string, boolean>): boolean {
+  return scopeEnabledMap.get(toolset.scope) ?? true;
+}
+
+/**
  * Get the reason why a toolset is unavailable for use.
  */
-function getUnavailableReason(toolset: ToolsetResponse): string | null {
-  if (!toolset.app_enabled) {
+function getUnavailableReason(toolset: ToolsetResponse, scopeEnabledMap: Map<string, boolean>): string | null {
+  if (!isAdminEnabled(toolset, scopeEnabledMap)) {
     return 'Disabled by administrator';
   }
   if (!toolset.enabled) {
-    return 'Disabled in settings';
+    return 'Disabled by user';
   }
   if (!toolset.has_api_key) {
     return 'API key not configured';
@@ -40,8 +56,8 @@ function getUnavailableReason(toolset: ToolsetResponse): string | null {
 /**
  * Check if a toolset is available for use in chat.
  */
-function isToolsetAvailable(toolset: ToolsetResponse): boolean {
-  return toolset.app_enabled && toolset.enabled && toolset.has_api_key;
+function isToolsetAvailable(toolset: ToolsetResponse, scopeEnabledMap: Map<string, boolean>): boolean {
+  return isAdminEnabled(toolset, scopeEnabledMap) && toolset.enabled && toolset.has_api_key;
 }
 
 /**
@@ -65,6 +81,7 @@ interface ToolsetItemProps {
   enabledTools: Record<string, string[]>;
   onToggleTool: (toolsetId: string, toolName: string) => void;
   onToggleToolset: (toolsetId: string, allToolNames: string[]) => void;
+  scopeEnabledMap: Map<string, boolean>;
 }
 
 function ToolsetItem({
@@ -74,9 +91,10 @@ function ToolsetItem({
   enabledTools,
   onToggleTool,
   onToggleToolset,
+  scopeEnabledMap,
 }: ToolsetItemProps) {
-  const unavailableReason = getUnavailableReason(toolset);
-  const isAvailable = isToolsetAvailable(toolset);
+  const unavailableReason = getUnavailableReason(toolset, scopeEnabledMap);
+  const isAvailable = isToolsetAvailable(toolset, scopeEnabledMap);
   const allToolNames = toolset.tools.map((tool) => tool.function.name);
   const enabledCount = enabledTools[toolset.id]?.length || 0;
   const checkboxState = getCheckboxState(toolset.id, toolset.tools.length, enabledTools);
@@ -199,8 +217,12 @@ export function ToolsetsPopover({
   const { data: typesResponse, isLoading: typesLoading } = useToolsetTypes();
 
   const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
+  const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);
   const types = useMemo(() => typesResponse?.types || [], [typesResponse?.types]);
   const isLoading = toolsetsLoading || typesLoading;
+
+  // Create scope enabled map from toolset_types
+  const scopeEnabledMap = useMemo(() => createScopeEnabledMap(toolsetTypes), [toolsetTypes]);
 
   // Create a map from scope UUID to display name
   const typeDisplayNames = useMemo(() => {
@@ -279,7 +301,25 @@ export function ToolsetsPopover({
           {isLoading ? (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">Loading...</div>
           ) : toolsets.length === 0 ? (
-            <div className="px-2 py-4 text-sm text-muted-foreground text-center">No toolsets available</div>
+            <div className="px-2 py-4 text-sm text-muted-foreground text-center" data-testid="toolsets-empty-state">
+              {toolsetTypes.length > 0 ? (
+                <>
+                  <p>No toolsets configured.</p>
+                  <p className="mt-1">
+                    {toolsetTypes.length} toolset type{toolsetTypes.length !== 1 ? 's' : ''} available.
+                  </p>
+                  <a
+                    href="/ui/toolsets"
+                    className="text-primary hover:underline mt-2 inline-block"
+                    data-testid="toolsets-settings-link"
+                  >
+                    Configure in settings
+                  </a>
+                </>
+              ) : (
+                <p>No toolsets available</p>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               {Object.entries(groupedToolsets).map(([scopeUuid, tools]) => {
@@ -299,6 +339,7 @@ export function ToolsetsPopover({
                       enabledTools={enabledTools}
                       onToggleTool={onToggleTool}
                       onToggleToolset={onToggleToolset}
+                      scopeEnabledMap={scopeEnabledMap}
                     />
                   );
                 }
@@ -332,6 +373,7 @@ export function ToolsetsPopover({
                             enabledTools={enabledTools}
                             onToggleTool={onToggleTool}
                             onToggleToolset={onToggleToolset}
+                            scopeEnabledMap={scopeEnabledMap}
                           />
                         ))}
                       </div>

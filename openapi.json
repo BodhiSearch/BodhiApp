@@ -9616,13 +9616,20 @@
         "type": "object",
         "description": "List of toolsets",
         "required": [
-          "toolsets"
+          "toolsets",
+          "toolset_types"
         ],
         "properties": {
           "toolsets": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolsetResponse"
+            }
+          },
+          "toolset_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppToolsetConfig"
             }
           }
         }
@@ -11284,7 +11291,7 @@
       },
       "ToolDefinition": {
         "type": "object",
-        "description": "Tool definition in OpenAI format for LLM function calling.\nTool name follows Claude MCP convention: toolset__{toolset_id}__{tool_name}",
+        "description": "Tool definition in OpenAI format for LLM function calling.\nTool name follows Claude MCP convention: toolset__{toolset_name}__{tool_name}",
         "required": [
           "type",
           "function"
@@ -11385,7 +11392,6 @@
           "scope",
           "enabled",
           "has_api_key",
-          "app_enabled",
           "tools",
           "created_at",
           "updated_at"
@@ -11421,10 +11427,6 @@
           "has_api_key": {
             "type": "boolean",
             "description": "Whether this toolset has an API key configured"
-          },
-          "app_enabled": {
-            "type": "boolean",
-            "description": "Whether the toolset type is enabled at app level"
           },
           "tools": {
             "type": "array",

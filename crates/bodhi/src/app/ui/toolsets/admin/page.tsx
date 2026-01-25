@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -26,6 +26,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   useDisableToolsetType,
   useEnableToolsetType,
+  useToolsets,
   useToolsetTypes,
   type ToolsetTypeResponse,
 } from '@/hooks/useToolsets';
@@ -41,10 +42,19 @@ const columns = [
 function AdminToolsetsPageContent() {
   const pathname = usePathname();
   const { data, isLoading, error } = useToolsetTypes();
+  const { data: toolsetsData } = useToolsets();
 
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<ToolsetTypeResponse | null>(null);
+
+  // Create scope enabled map from toolset_types
+  const scopeEnabledMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    const toolsetTypes = toolsetsData?.toolset_types || [];
+    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    return map;
+  }, [toolsetsData?.toolset_types]);
 
   const enableMutation = useEnableToolsetType({
     onSuccess: () => {
@@ -92,6 +102,7 @@ function AdminToolsetsPageContent() {
   const renderRow = (type: ToolsetTypeResponse) => {
     const isToggling =
       selectedType?.scope_uuid === type.scope_uuid && (enableMutation.isLoading || disableMutation.isLoading);
+    const isEnabled = scopeEnabledMap.get(type.scope) ?? false;
 
     return [
       <TableCell key="name" data-testid={`type-name-${type.scope_uuid}`}>
@@ -101,18 +112,18 @@ function AdminToolsetsPageContent() {
         <span className="text-muted-foreground">{type.description}</span>
       </TableCell>,
       <TableCell key="status" data-testid={`type-status-${type.scope_uuid}`}>
-        <Badge variant={type.app_enabled ? 'default' : 'secondary'}>{type.app_enabled ? 'Enabled' : 'Disabled'}</Badge>
+        <Badge variant={isEnabled ? 'default' : 'secondary'}>{isEnabled ? 'Enabled' : 'Disabled'}</Badge>
       </TableCell>,
       <TableCell key="actions" data-testid={`type-actions-${type.scope_uuid}`}>
         <div className="flex items-center gap-2">
           <Switch
-            checked={type.app_enabled}
+            checked={isEnabled}
             onCheckedChange={(checked) => handleToggle(type, checked)}
             disabled={isToggling}
             data-testid={`type-toggle-${type.scope_uuid}`}
             data-test-scope={type.scope}
           />
-          <span className="text-sm text-muted-foreground">{type.app_enabled ? 'Enabled' : 'Disabled'}</span>
+          <span className="text-sm text-muted-foreground">{isEnabled ? 'Enabled' : 'Disabled'}</span>
         </div>
       </TableCell>,
     ];
@@ -177,11 +188,14 @@ function AdminToolsetsPageContent() {
           loading={isLoading}
           renderRow={renderRow}
           getItemId={(type) => type.scope_uuid}
-          getRowProps={(type) => ({
-            'data-testid': `type-row-${type.scope_uuid}`,
-            'data-test-scope': type.scope,
-            'data-test-state': type.app_enabled ? 'enabled' : 'disabled',
-          })}
+          getRowProps={(type) => {
+            const isEnabled = scopeEnabledMap.get(type.scope) ?? false;
+            return {
+              'data-testid': `type-row-${type.scope_uuid}`,
+              'data-test-scope': type.scope,
+              'data-test-state': isEnabled ? 'enabled' : 'disabled',
+            };
+          }}
           sort={{ column: 'name', direction: 'asc' }}
           onSortChange={() => {}}
           data-testid="types-table"

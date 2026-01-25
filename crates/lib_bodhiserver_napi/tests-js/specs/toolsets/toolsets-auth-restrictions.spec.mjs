@@ -167,6 +167,34 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
 
     expect(response.status).toBe(401);
   });
+
+  test('GET /toolsets with session auth returns toolset_types field', async ({ browser }) => {
+    const sessionContext = await browser.newContext();
+    const sessionPage = await sessionContext.newPage();
+    const loginPage = new LoginPage(sessionPage, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    await sessionPage.goto(baseUrl);
+
+    const data = await sessionPage.evaluate(async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/bodhi/v1/toolsets`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    }, baseUrl);
+
+    expect(data.toolset_types).toBeDefined();
+    expect(Array.isArray(data.toolset_types)).toBe(true);
+    const exaType = data.toolset_types.find((t) => t.scope === TOOLSET_SCOPE);
+    expect(exaType).toBeTruthy();
+
+    await sessionContext.close();
+  });
 });
 
 test.describe('OAuth Token + Toolset Scope Combinations', () => {
@@ -329,6 +357,13 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const exaToolset = data.toolsets.find((t) => t.name === TOOLSET_NAME);
     expect(exaToolset).toBeTruthy();
 
+    // Verify toolset_types field exists and contains exa config
+    expect(data.toolset_types).toBeDefined();
+    expect(Array.isArray(data.toolset_types)).toBe(true);
+    const exaType = data.toolset_types.find((t) => t.scope === TOOLSET_SCOPE);
+    expect(exaType).toBeTruthy();
+    expect(exaType.scope_uuid).toBe(authServerConfig.toolsetScopeExaWebSearchId);
+
     // Execute the toolset using OAuth token
     const executeResponse = await fetch(
       `${baseUrl}/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
@@ -441,6 +476,11 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
     // Without toolset scope in token, should return empty list
     expect(data.toolsets.length).toBe(0);
+
+    // Verify toolset_types is also empty when no toolset scope in token
+    expect(data.toolset_types).toBeDefined();
+    expect(Array.isArray(data.toolset_types)).toBe(true);
+    expect(data.toolset_types.length).toBe(0);
   });
 
   /**
@@ -574,6 +614,11 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
     // Without toolset scope in token, should return empty list
     expect(data.toolsets.length).toBe(0);
+
+    // Verify toolset_types is also empty when no toolset scope in token
+    expect(data.toolset_types).toBeDefined();
+    expect(Array.isArray(data.toolset_types)).toBe(true);
+    expect(data.toolset_types.length).toBe(0);
   });
 });
 

@@ -71,30 +71,41 @@ describe('ToolsetsPage - Instance List Display', () => {
 
   it('displays toolset instance with Enabled status badge', async () => {
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Search the web using Exa AI',
-          enabled: true,
-          has_api_key: true,
-          app_enabled: true,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search the web',
-                parameters: { type: 'object', properties: {} },
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Search the web using Exa AI',
+            enabled: true,
+            has_api_key: true,
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'search',
+                  description: 'Search the web',
+                  parameters: { type: 'object', properties: {} },
+                },
               },
-            },
-          ],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ])
+            ],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -111,30 +122,41 @@ describe('ToolsetsPage - Instance List Display', () => {
 
   it('displays toolset instance with Disabled status badge', async () => {
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Search the web using Exa AI',
-          enabled: false,
-          has_api_key: true,
-          app_enabled: true,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search the web',
-                parameters: { type: 'object', properties: {} },
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Search the web using Exa AI',
+            enabled: false,
+            has_api_key: true,
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'search',
+                  description: 'Search the web',
+                  parameters: { type: 'object', properties: {} },
+                },
               },
-            },
-          ],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ])
+            ],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -151,30 +173,41 @@ describe('ToolsetsPage - Instance List Display', () => {
 
   it('displays toolset instance with No API Key status badge', async () => {
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Search the web using Exa AI',
-          enabled: true,
-          has_api_key: false,
-          app_enabled: true,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search the web',
-                parameters: { type: 'object', properties: {} },
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Search the web using Exa AI',
+            enabled: true,
+            has_api_key: false,
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'search',
+                  description: 'Search the web',
+                  parameters: { type: 'object', properties: {} },
+                },
               },
-            },
-          ],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ])
+            ],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -191,30 +224,41 @@ describe('ToolsetsPage - Instance List Display', () => {
 
   it('displays toolset instance with App Disabled status badge', async () => {
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Search the web using Exa AI',
-          enabled: true,
-          has_api_key: true,
-          app_enabled: false,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'search',
-                description: 'Search the web',
-                parameters: { type: 'object', properties: {} },
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Search the web using Exa AI',
+            enabled: true,
+            has_api_key: true,
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'search',
+                  description: 'Search the web',
+                  parameters: { type: 'object', properties: {} },
+                },
               },
-            },
-          ],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ])
+            ],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: false,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -231,34 +275,44 @@ describe('ToolsetsPage - Instance List Display', () => {
 
   it('displays multiple instances of the same type', async () => {
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'First instance',
-          enabled: true,
-          has_api_key: true,
-          app_enabled: true,
-          tools: [],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        {
-          id: 'uuid-exa-2',
-          name: 'company-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Second instance',
-          enabled: true,
-          has_api_key: true,
-          app_enabled: true,
-          tools: [],
-          created_at: '2024-01-02T00:00:00Z',
-          updated_at: '2024-01-02T00:00:00Z',
-        },
-      ])
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'First instance',
+            enabled: true,
+            has_api_key: true,
+            tools: [],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+          {
+            id: 'uuid-exa-2',
+            name: 'company-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Second instance',
+            enabled: true,
+            has_api_key: true,
+            tools: [],
+            created_at: '2024-01-02T00:00:00Z',
+            updated_at: '2024-01-02T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -276,21 +330,32 @@ describe('ToolsetsPage - Instance List Display', () => {
   it('navigates to edit page with UUID when edit button is clicked', async () => {
     const user = userEvent.setup();
     server.use(
-      mockListToolsets([
-        {
-          id: 'uuid-exa-1',
-          name: 'my-exa-search',
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
-          description: 'Search the web using Exa AI',
-          enabled: true,
-          has_api_key: true,
-          app_enabled: true,
-          tools: [],
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-      ])
+      mockListToolsets(
+        [
+          {
+            id: 'uuid-exa-1',
+            name: 'my-exa-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            scope: 'scope_toolset-builtin-exa-web-search',
+            description: 'Search the web using Exa AI',
+            enabled: true,
+            has_api_key: true,
+            tools: [],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {

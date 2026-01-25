@@ -1442,6 +1442,7 @@ export type ListToolsetTypesResponse = {
  */
 export type ListToolsetsResponse = {
     toolsets: Array<ToolsetResponse>;
+    toolset_types: Array<AppToolsetConfig>;
 };
 
 /**
@@ -2003,7 +2004,7 @@ export type ToolChoiceOptions = 'none' | 'auto' | 'required';
 
 /**
  * Tool definition in OpenAI format for LLM function calling.
- * Tool name follows Claude MCP convention: toolset__{toolset_id}__{tool_name}
+ * Tool name follows Claude MCP convention: toolset__{toolset_name}__{tool_name}
  */
 export type ToolDefinition = {
     /**
@@ -2104,10 +2105,6 @@ export type ToolsetResponse = {
      * Whether this toolset has an API key configured
      */
     has_api_key: boolean;
-    /**
-     * Whether the toolset type is enabled at app level
-     */
-    app_enabled: boolean;
     /**
      * Tools provided by this toolset type
      */

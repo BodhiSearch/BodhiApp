@@ -27,6 +27,7 @@ interface DataTableProps<T> {
   renderRow: (item: T) => React.ReactNode;
   renderExpandedRow?: (item: T) => React.ReactNode;
   getItemId: (item: T) => string; // New prop for getting unique ID
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getRowProps?: (item: T) => Record<string, any>; // Optional row attributes
 }
 

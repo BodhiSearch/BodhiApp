@@ -2215,6 +2215,7 @@ export interface components {
         /** @description List of toolsets */
         ListToolsetsResponse: {
             toolsets: components["schemas"]["ToolsetResponse"][];
+            toolset_types: components["schemas"]["AppToolsetConfig"][];
         };
         /** @description List users query parameters */
         ListUsersParams: {
@@ -2777,7 +2778,7 @@ export interface components {
         /** @enum {string} */
         ToolChoiceOptions: "none" | "auto" | "required";
         /** @description Tool definition in OpenAI format for LLM function calling.
-         *     Tool name follows Claude MCP convention: toolset__{toolset_id}__{tool_name} */
+         *     Tool name follows Claude MCP convention: toolset__{toolset_name}__{tool_name} */
         ToolDefinition: {
             /** @description Type of tool (always "function" for now) */
             type: string;
@@ -2836,8 +2837,6 @@ export interface components {
             enabled: boolean;
             /** @description Whether this toolset has an API key configured */
             has_api_key: boolean;
-            /** @description Whether the toolset type is enabled at app level */
-            app_enabled: boolean;
             /** @description Tools provided by this toolset type */
             tools: components["schemas"]["ToolDefinition"][];
             /**

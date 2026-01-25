@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -61,7 +63,16 @@ function NewToolsetPageContent() {
 
   const toolsets = toolsetsData?.toolsets || [];
   const types = typesData?.types || [];
-  const availableTypes = types.filter((type) => type.app_enabled);
+
+  // Create scope enabled map from toolset_types
+  const scopeEnabledMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    const toolsetTypes = toolsetsData?.toolset_types || [];
+    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    return map;
+  }, [toolsetsData?.toolset_types]);
+
+  const availableTypes = types.filter((type) => scopeEnabledMap.get(type.scope) ?? false);
 
   // Name prefill logic when type changes
   const handleTypeChange = (scopeUuid: string) => {

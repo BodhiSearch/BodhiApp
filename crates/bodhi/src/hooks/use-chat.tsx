@@ -117,14 +117,20 @@ async function executeToolCalls(
 
 /**
  * Build tools array for API request from enabled tools.
- * Only includes tools from available toolsets (app_enabled, enabled, has_api_key).
+ * Only includes tools from available toolsets (admin enabled, user enabled, has_api_key).
  * Encodes tool names as toolset__{instanceName}__{methodName}.
  */
-function buildToolsArray(enabledTools: Record<string, string[]>, toolsets: ToolsetResponse[]): ToolDefinition[] {
+function buildToolsArray(
+  enabledTools: Record<string, string[]>,
+  toolsets: ToolsetResponse[],
+  scopeEnabledMap: Map<string, boolean>
+): ToolDefinition[] {
   const result: ToolDefinition[] = [];
   for (const toolset of toolsets) {
+    const isAdminEnabled = scopeEnabledMap.get(toolset.scope) ?? true;
+
     // Skip unavailable toolsets
-    if (!toolset.app_enabled || !toolset.enabled || !toolset.has_api_key) {
+    if (!isAdminEnabled || !toolset.enabled || !toolset.has_api_key) {
       continue;
     }
 
@@ -147,10 +153,11 @@ function buildToolsArray(enabledTools: Record<string, string[]>, toolsets: Tools
 export interface UseChatOptions {
   enabledTools?: Record<string, string[]>;
   toolsets?: ToolsetResponse[];
+  toolsetTypes?: { scope: string; enabled: boolean }[];
 }
 
 export function useChat(options?: UseChatOptions) {
-  const { enabledTools = {}, toolsets = [] } = options || {};
+  const { enabledTools = {}, toolsets = [], toolsetTypes = [] } = options || {};
 
   // Build name→UUID mapping for tool execution
   const toolsetNameToId = useMemo(() => {
@@ -158,6 +165,13 @@ export function useChat(options?: UseChatOptions) {
     toolsets.forEach((t) => map.set(t.name, t.id));
     return map;
   }, [toolsets]);
+
+  // Build scope→enabled mapping from toolset types
+  const scopeEnabledMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    return map;
+  }, [toolsetTypes]);
 
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -215,7 +229,8 @@ export function useChat(options?: UseChatOptions) {
       const maxIterations = chatSettings.maxToolIterations_enabled ? (chatSettings.maxToolIterations ?? 5) : 5;
 
       // Build tools array from enabled tools
-      const tools = Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, toolsets) : [];
+      const tools =
+        Object.keys(enabledTools).length > 0 ? buildToolsArray(enabledTools, toolsets, scopeEnabledMap) : [];
 
       const headers: Record<string, string> = {};
       if (chatSettings.api_token_enabled) {
@@ -370,6 +385,7 @@ export function useChat(options?: UseChatOptions) {
       enabledTools,
       toolsets,
       toolsetNameToId,
+      scopeEnabledMap,
     ]
   );
 

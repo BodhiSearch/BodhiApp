@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Info } from 'lucide-react';
@@ -25,7 +25,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useCreateToolset, useDisableToolsetType, useEnableToolsetType, useToolsetTypes } from '@/hooks/useToolsets';
+import {
+  useCreateToolset,
+  useDisableToolsetType,
+  useEnableToolsetType,
+  useToolsets,
+  useToolsetTypes,
+} from '@/hooks/useToolsets';
 
 const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
 
@@ -48,11 +54,19 @@ interface SetupToolsetFormProps {
 
 export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   const { data: typesData, isLoading: typesLoading } = useToolsetTypes();
+  const { data: toolsetsData } = useToolsets();
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
   const toolsetType = typesData?.types?.find((t) => t.scope === TOOLSET_SCOPE);
-  const isAppEnabled = toolsetType?.app_enabled ?? false;
+
+  // Check if admin enabled using toolset_types
+  const isAppEnabled = useMemo(() => {
+    if (!toolsetType || !toolsetsData?.toolset_types) return false;
+    const scopeEnabledMap = new Map<string, boolean>();
+    toolsetsData.toolset_types.forEach((config) => scopeEnabledMap.set(config.scope, config.enabled));
+    return scopeEnabledMap.get(toolsetType.scope) ?? false;
+  }, [toolsetType, toolsetsData?.toolset_types]);
 
   const enableMutation = useEnableToolsetType({
     onSuccess: () => {

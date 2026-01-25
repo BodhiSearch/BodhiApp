@@ -110,7 +110,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
     })
     .expect("Exa toolset not found in available toolsets");
 
-  assert_eq!(true, exa_toolset["app_enabled"]);
+  assert_eq!(true, toolsets_json["toolset_types"][0]["enabled"]);
   assert_eq!(true, exa_toolset["enabled"]);
   assert_eq!(true, exa_toolset["has_api_key"]);
   let toolset_uuid = exa_toolset["id"].as_str().expect("Expected toolset UUID");

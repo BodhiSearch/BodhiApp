@@ -46,10 +46,7 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-cpu",
-        "platforms": [
-          "linux/amd64",
-          "linux/arm64"
-        ],
+        "platforms": ["linux/amd64", "linux/arm64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cpu",
         "docker_flags": [],
         "description": "Multi-platform: AMD64 + ARM64"
@@ -58,13 +55,9 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-cuda",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cuda",
-        "docker_flags": [
-          "--gpus all"
-        ],
+        "docker_flags": ["--gpus all"],
         "description": "NVIDIA GPU acceleration",
         "gpu_type": "NVIDIA"
       },
@@ -72,15 +65,9 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-rocm",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-rocm",
-        "docker_flags": [
-          "--device=/dev/kfd",
-          "--device=/dev/dri",
-          "--group-add video"
-        ],
+        "docker_flags": ["--device=/dev/kfd", "--device=/dev/dri", "--group-add video"],
         "description": "AMD GPU acceleration",
         "gpu_type": "AMD"
       },
@@ -88,13 +75,9 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-vulkan",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-vulkan",
-        "docker_flags": [
-          "--device=/dev/dri"
-        ],
+        "docker_flags": ["--device=/dev/dri"],
         "description": "Cross-vendor GPU acceleration",
         "gpu_type": "Vulkan"
       },
@@ -102,13 +85,9 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-intel",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-intel",
-        "docker_flags": [
-          "--device=/dev/dri"
-        ],
+        "docker_flags": ["--device=/dev/dri"],
         "description": "Intel GPU acceleration (SYCL)",
         "gpu_type": "Intel"
       },
@@ -116,10 +95,7 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-cann",
-        "platforms": [
-          "linux/amd64",
-          "linux/arm64"
-        ],
+        "platforms": ["linux/amd64", "linux/arm64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-cann",
         "docker_flags": [
           "--device=/dev/davinci0",
@@ -134,13 +110,9 @@
         "version": "0.0.10",
         "tag": "docker/v0.0.10",
         "latest_tag": "latest-musa",
-        "platforms": [
-          "linux/amd64"
-        ],
+        "platforms": ["linux/amd64"],
         "pull_command": "docker pull ghcr.io/bodhisearch/bodhiapp:latest-musa",
-        "docker_flags": [
-          "--device=/dev/musa"
-        ],
+        "docker_flags": ["--device=/dev/musa"],
         "description": "Moore Threads GPU acceleration",
         "gpu_type": "Moore Threads"
       }

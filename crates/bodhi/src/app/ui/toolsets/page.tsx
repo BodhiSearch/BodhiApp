@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Pencil, Plus, Trash2, Wrench } from 'lucide-react';
 import Link from 'next/link';
@@ -37,11 +37,16 @@ const columns = [
   { id: 'actions', name: '', sorted: false },
 ];
 
-function getToolsetStatus(toolset: ToolsetResponse): {
+function getToolsetStatus(
+  toolset: ToolsetResponse,
+  scopeEnabledMap: Map<string, boolean>
+): {
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
 } {
-  if (!toolset.app_enabled) {
+  const isAdminEnabled = scopeEnabledMap.get(toolset.scope) ?? true;
+
+  if (!isAdminEnabled) {
     return { label: 'App Disabled', variant: 'destructive' };
   }
 
@@ -75,6 +80,14 @@ function ToolsetsPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toolsetToDelete, setToolsetToDelete] = useState<ToolsetResponse | null>(null);
 
+  // Create scope enabled map from toolset_types
+  const scopeEnabledMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    const toolsetTypes = data?.toolset_types || [];
+    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    return map;
+  }, [data?.toolset_types]);
+
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
   const handleEdit = (toolset: ToolsetResponse) => {
@@ -93,8 +106,8 @@ function ToolsetsPageContent() {
   };
 
   const renderRow = (toolset: ToolsetResponse) => {
-    const status = getToolsetStatus(toolset);
-    const canEdit = toolset.app_enabled;
+    const status = getToolsetStatus(toolset, scopeEnabledMap);
+    const canEdit = scopeEnabledMap.get(toolset.scope) ?? true;
 
     return [
       <TableCell key="name">

@@ -93,9 +93,23 @@ export const defaultNavigationItems: NavigationItem[] = [
         icon: Wrench,
         items: [
           {
+            title: 'New Toolset',
+            href: '/ui/toolsets/new/',
+            description: 'Create a new toolset',
+            icon: Wrench,
+            skip: true,
+          },
+          {
             title: 'Edit Toolset',
             href: '/ui/toolsets/edit/',
             description: 'Edit a toolset',
+            icon: Wrench,
+            skip: true,
+          },
+          {
+            title: 'Admin Toolsets',
+            href: '/ui/toolsets/admin/',
+            description: 'Admin toolsets',
             icon: Wrench,
             skip: true,
           },

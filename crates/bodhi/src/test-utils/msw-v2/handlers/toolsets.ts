@@ -18,7 +18,6 @@ export const mockToolset: ToolsetResponse = {
   description: 'Test toolset',
   enabled: true,
   has_api_key: true,
-  app_enabled: true,
   tools: [
     {
       type: 'function',
@@ -38,6 +37,17 @@ export const mockToolset: ToolsetResponse = {
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
+
+export const mockToolsetTypes = [
+  {
+    scope: 'scope_toolset-builtin-exa-web-search',
+    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+    enabled: true,
+    updated_by: 'system',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
+];
 
 export const mockType: ToolsetTypeResponse = {
   scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
@@ -70,8 +80,8 @@ export const mockType: ToolsetTypeResponse = {
 /**
  * Mock GET /bodhi/v1/toolsets - List user's toolsets
  */
-export function mockListToolsets(toolsets: ToolsetResponse[] = [mockToolset]) {
-  return http.get(`${BODHI_API_BASE}/toolsets`, () => HttpResponse.json({ toolsets }));
+export function mockListToolsets(toolsets: ToolsetResponse[] = [mockToolset], toolset_types = mockToolsetTypes) {
+  return http.get(`${BODHI_API_BASE}/toolsets`, () => HttpResponse.json({ toolsets, toolset_types }));
 }
 
 /**

@@ -166,6 +166,12 @@ pub trait ToolService: Debug + Send + Sync {
   /// List all app-level toolset configs
   async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
 
+  /// List app-level toolset configs for specific scopes
+  async fn list_app_toolset_configs_by_scopes(
+    &self,
+    scopes: &[String],
+  ) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
+
   // ============================================================================
   // App-client toolset configuration (cached from auth server)
   // ============================================================================
@@ -784,6 +790,17 @@ impl ToolService for DefaultToolService {
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
     let configs = self.db_service.list_app_toolset_configs().await?;
+    Ok(configs.into_iter().map(Self::app_row_to_config).collect())
+  }
+
+  async fn list_app_toolset_configs_by_scopes(
+    &self,
+    scopes: &[String],
+  ) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
+    let configs = self
+      .db_service
+      .list_app_toolset_configs_by_scopes(scopes)
+      .await?;
     Ok(configs.into_iter().map(Self::app_row_to_config).collect())
   }
 

@@ -8,13 +8,14 @@
  * - UUID-based query parameter
  * - API key Keep/Set handling
  * - Delete functionality
- * - Redirect when app_enabled is false
+ * - Redirect when toolset type is admin-disabled
  */
 
 import EditToolsetPage from '@/app/ui/toolsets/edit/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
   mockGetToolset,
+  mockListToolsets,
   mockUpdateToolset,
   mockUpdateToolsetError,
   mockDeleteToolset,
@@ -120,11 +121,23 @@ describe('EditToolsetPage - Form Display', () => {
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-      })
+      }),
+      mockListToolsets(
+        [],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -141,7 +154,7 @@ describe('EditToolsetPage - Form Display', () => {
     expect(screen.getByTestId('toolset-api-key-input')).toBeInTheDocument();
   });
 
-  it('redirects to toolsets page when app_enabled is false', async () => {
+  it('redirects to toolsets page when toolset type is disabled by admin', async () => {
     server.use(
       mockGetToolset({
         id: 'uuid-test-toolset',
@@ -151,11 +164,23 @@ describe('EditToolsetPage - Form Display', () => {
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
-        app_enabled: false,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-      })
+      }),
+      mockListToolsets(
+        [],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: false,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
 
     await act(async () => {
@@ -190,11 +215,23 @@ describe('EditToolsetPage - Update Functionality', () => {
         description: 'Test toolset',
         enabled: false,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-      })
+      }),
+      mockListToolsets(
+        [],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
   });
 
@@ -210,7 +247,6 @@ describe('EditToolsetPage - Update Functionality', () => {
         description: 'Updated description',
         enabled: true,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: new Date().toISOString(),
@@ -256,7 +292,6 @@ describe('EditToolsetPage - Update Functionality', () => {
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: new Date().toISOString(),
@@ -335,11 +370,23 @@ describe('EditToolsetPage - Delete Functionality', () => {
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-      })
+      }),
+      mockListToolsets(
+        [],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
   });
 
@@ -413,11 +460,23 @@ describe('EditToolsetPage - Form Validation', () => {
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
-        app_enabled: true,
         tools: [],
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-      })
+      }),
+      mockListToolsets(
+        [],
+        [
+          {
+            scope: 'scope_toolset-builtin-exa-web-search',
+            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            enabled: true,
+            updated_by: 'system',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ]
+      )
     );
   });
 

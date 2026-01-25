@@ -241,6 +241,11 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<crate::db::AppToolsetConfigRow>, DbError>;
 
+  async fn list_app_toolset_configs_by_scopes(
+    &self,
+    scopes: &[String],
+  ) -> Result<Vec<crate::db::AppToolsetConfigRow>, DbError>;
+
   // ============================================================================
   // App-Client Toolset Config (cached from Keycloak /resources/request-access)
   // ============================================================================
@@ -1979,6 +1984,51 @@ impl DbService for SqliteDbService {
     )
     .fetch_all(&self.pool)
     .await?;
+
+    Ok(
+      results
+        .into_iter()
+        .map(
+          |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
+            crate::db::AppToolsetConfigRow {
+              id,
+              scope,
+              scope_uuid,
+              enabled: enabled != 0,
+              updated_by,
+              created_at,
+              updated_at,
+            }
+          },
+        )
+        .collect(),
+    )
+  }
+
+  async fn list_app_toolset_configs_by_scopes(
+    &self,
+    scopes: &[String],
+  ) -> Result<Vec<crate::db::AppToolsetConfigRow>, DbError> {
+    if scopes.is_empty() {
+      return Ok(vec![]);
+    }
+
+    let placeholders = scopes.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let query = format!(
+      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at
+       FROM app_toolset_configs
+       WHERE scope IN ({})
+       ORDER BY scope",
+      placeholders
+    );
+
+    let mut query_builder =
+      sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(&query);
+    for scope in scopes {
+      query_builder = query_builder.bind(scope);
+    }
+
+    let results = query_builder.fetch_all(&self.pool).await?;
 
     Ok(
       results

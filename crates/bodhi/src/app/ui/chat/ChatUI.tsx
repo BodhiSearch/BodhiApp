@@ -226,12 +226,22 @@ export function ChatUI() {
   const { enabledTools, toggleTool, toggleToolset, setEnabledTools } = useToolsetSelection();
   const { data: toolsetsResponse } = useToolsets();
   const toolsets = useMemo(() => toolsetsResponse?.toolsets || [], [toolsetsResponse?.toolsets]);
+  const toolsetTypes = useMemo(() => toolsetsResponse?.toolset_types || [], [toolsetsResponse?.toolset_types]);
+
+  // Create scope enabled map from toolset_types
+  const scopeEnabledMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    return map;
+  }, [toolsetTypes]);
 
   // Auto-filter unavailable toolsets from selection
   useEffect(() => {
     if (toolsets.length === 0) return;
 
-    const availableIds = new Set(toolsets.filter((t) => t.app_enabled && t.enabled && t.has_api_key).map((t) => t.id));
+    const availableIds = new Set(
+      toolsets.filter((t) => (scopeEnabledMap.get(t.scope) ?? true) && t.enabled && t.has_api_key).map((t) => t.id)
+    );
 
     const filtered: Record<string, string[]> = {};
     let hasUnavailable = false;
@@ -246,7 +256,7 @@ export function ChatUI() {
     if (hasUnavailable) {
       setEnabledTools(filtered);
     }
-  }, [toolsets, enabledTools, setEnabledTools]);
+  }, [toolsets, scopeEnabledMap, enabledTools, setEnabledTools]);
 
   // Chat with toolsets support
   const {
@@ -260,6 +270,7 @@ export function ChatUI() {
   } = useChat({
     enabledTools,
     toolsets,
+    toolsetTypes,
   });
 
   const inputRef = useRef<HTMLTextAreaElement>(null);

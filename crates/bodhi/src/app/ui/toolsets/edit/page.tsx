@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2 } from 'lucide-react';
@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useDeleteToolset, useToolset, useUpdateToolset } from '@/hooks/useToolsets';
+import { useDeleteToolset, useToolset, useToolsets, useUpdateToolset } from '@/hooks/useToolsets';
 
 // Form schema matching the plan specification
 const updateToolsetSchema = z.object({
@@ -53,7 +53,16 @@ function EditToolsetContent() {
   const id = searchParams?.get('id');
 
   const { data: toolset, isLoading, error } = useToolset(id || '', { enabled: !!id });
+  const { data: toolsetsResponse } = useToolsets();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Create scope enabled map from toolset_types
+  const isAdminEnabled = useMemo(() => {
+    if (!toolset || !toolsetsResponse?.toolset_types) return true;
+    const scopeEnabledMap = new Map<string, boolean>();
+    toolsetsResponse.toolset_types.forEach((config) => scopeEnabledMap.set(config.scope, config.enabled));
+    return scopeEnabledMap.get(toolset.scope) ?? true;
+  }, [toolset, toolsetsResponse?.toolset_types]);
 
   const updateMutation = useUpdateToolset({
     onSuccess: (updated) => {
@@ -98,7 +107,7 @@ function EditToolsetContent() {
 
   // Redirect if app disabled
   useEffect(() => {
-    if (toolset && !toolset.app_enabled) {
+    if (toolset && !isAdminEnabled) {
       toast({
         title: 'Toolset disabled',
         description: 'This toolset has been disabled by an administrator.',
@@ -106,7 +115,7 @@ function EditToolsetContent() {
       });
       router.push('/ui/toolsets');
     }
-  }, [toolset, router]);
+  }, [toolset, isAdminEnabled, router]);
 
   const onSubmit = (data: UpdateToolsetFormData) => {
     if (!id) return;
