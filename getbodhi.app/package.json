@@ -1,6 +1,6 @@
 {
   "name": "getbodhi.app",
-  "version": "0.0.11-dev",
+  "version": "0.0.12-dev",
   "private": true,
   "type": "module",
   "scripts": {
