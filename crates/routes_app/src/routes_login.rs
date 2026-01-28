@@ -395,6 +395,7 @@ pub async fn logout_handler(
         description = "Application client requesting access",
         example = json!({
             "app_client_id": "my_app_client_123",
+            "toolset_scope_ids": ["uuid-for-toolset-scope-1"],
             "version": "v1.0.0"
         })
     ),
