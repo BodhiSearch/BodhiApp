@@ -17,12 +17,12 @@ pub enum ContextError {
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
-  #[error("unreachable")]
+  #[error("Internal error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   Unreachable(String),
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
-  #[error("exec_not_exists")]
+  #[error("Model executable not found: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ExecNotExists(String),
 }
@@ -41,24 +41,27 @@ impl_error_from!(
 #[cfg(test)]
 mod tests {
   use crate::ContextError;
-  use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::AppError;
-  use objs::FluentLocalizationService;
   use rstest::rstest;
-  use std::sync::Arc;
 
   #[rstest]
-  #[case(&ContextError::Unreachable("unreachable".to_string()), "should not happen: unreachable")]
-  fn test_error_messages_server_core(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected_message: &str,
-  ) {
-    assert_error_message(
-      localization_service,
-      &error.code(),
-      error.args(),
-      expected_message,
-    );
+  #[case(&ContextError::Unreachable("unreachable".to_string()), "Internal error: unreachable.")]
+  #[case(&ContextError::ExecNotExists("/path/to/exec".to_string()), "Model executable not found: /path/to/exec.")]
+  fn test_error_display(#[case] error: &dyn AppError, #[case] expected_message: &str) {
+    assert_eq!(expected_message, error.to_string());
+  }
+
+  #[rstest]
+  #[case(&ContextError::Unreachable("test".to_string()), "internal_server_error")]
+  #[case(&ContextError::ExecNotExists("/path".to_string()), "internal_server_error")]
+  fn test_error_type(#[case] error: &dyn AppError, #[case] expected_type: &str) {
+    assert_eq!(expected_type, error.error_type());
+  }
+
+  #[rstest]
+  #[case(&ContextError::Unreachable("test".to_string()), "context_error-unreachable")]
+  #[case(&ContextError::ExecNotExists("/path".to_string()), "context_error-exec_not_exists")]
+  fn test_error_code(#[case] error: &dyn AppError, #[case] expected_code: &str) {
+    assert_eq!(expected_code, error.code());
   }
 }

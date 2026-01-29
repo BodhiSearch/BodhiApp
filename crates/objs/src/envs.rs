@@ -100,13 +100,13 @@ pub struct NumberRange {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum SettingsMetadataError {
-  #[error("invalid_value_type")]
+  #[error("cannot parse {1} as {0}")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidValueType(SettingMetadata, serde_json::Value),
-  #[error("invalid_value")]
+  #[error("passed value is not a valid value: {0}")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidValue(serde_json::Value),
-  #[error("null_value")]
+  #[error("value is null")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   NullValue,
 }
@@ -260,11 +260,10 @@ impl SettingInfo {
 #[cfg(test)]
 mod tests {
   use super::SettingMetadata;
-  use crate::{test_utils::setup_l10n, ApiError, FluentLocalizationService, OpenAIApiError};
+  use crate::{ApiError, OpenAIApiError};
   // use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_yaml::Number;
-  use std::sync::Arc;
 
   #[rstest]
   // String metadata tests
@@ -481,7 +480,6 @@ mod tests {
     "value is null"
   )]
   fn test_setting_metadata_convert_error(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] metadata: SettingMetadata,
     #[case] input: serde_json::Value,
     #[case] expected_error: &str,
@@ -489,9 +487,7 @@ mod tests {
     let app_error = metadata.convert(input).unwrap_err();
     let message = OpenAIApiError::from(ApiError::from(app_error))
       .error
-      .message
-      .replace("\u{2068}", "")
-      .replace("\u{2069}", "");
+      .message;
     assert_eq!(expected_error, message.trim());
   }
 }

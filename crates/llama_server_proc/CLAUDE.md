@@ -39,7 +39,7 @@ The `llama_server_proc` crate occupies a foundational infrastructure position in
 
 ### Integration with objs Crate
 
-The crate deeply integrates with the objs crate's error handling infrastructure through `ServerError` enum implementation of the `AppError` trait, enabling localized error messages and consistent error propagation across BodhiApp. The integration includes automatic error conversion from standard library and reqwest errors using the `impl_error_from!` macro pattern, ensuring seamless error handling coordination.
+The crate deeply integrates with the objs crate's error handling infrastructure through `ServerError` enum implementation of the `AppError` trait, enabling user-friendly error messages via thiserror templates and consistent error propagation across BodhiApp. The integration includes automatic error conversion from standard library and reqwest errors using the `impl_error_from!` macro pattern, ensuring seamless error handling coordination.
 
 ### Service Layer Integration Points
 

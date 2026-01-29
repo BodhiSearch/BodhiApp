@@ -17,10 +17,10 @@ use std::sync::Arc;
 pub enum ApiAuthError {
   #[error(transparent)]
   SecretService(#[from] SecretServiceError),
-  #[error("forbidden")]
+  #[error("Insufficient permissions for this resource.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   Forbidden,
-  #[error("missing_auth")]
+  #[error("Authentication required. Provide an API key or log in.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingAuth,
   #[error("malformed_role")]
@@ -136,9 +136,7 @@ mod tests {
     routing::get,
     Router,
   };
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, ResourceRole, TokenScope, UserScope,
-  };
+  use objs::{ResourceRole, TokenScope, UserScope};
   use rstest::rstest;
   use serde_json::Value;
   use server_core::{
@@ -213,7 +211,6 @@ mod tests {
   #[case::admin_accessing_admin(ResourceRole::Admin, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
@@ -237,7 +234,6 @@ mod tests {
   #[case::manager_accessing_admin(ResourceRole::Manager, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_insufficient(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
@@ -259,7 +255,6 @@ mod tests {
   #[case::admin_accessing_user(TokenScope::Admin, TokenScope::User)]
   #[tokio::test]
   async fn test_api_auth_scope_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
@@ -280,7 +275,6 @@ mod tests {
   #[case::power_user_accessing_manager(TokenScope::PowerUser, TokenScope::Manager)]
   #[tokio::test]
   async fn test_api_auth_scope_insufficient(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
@@ -301,10 +295,7 @@ mod tests {
   #[case::scope_not_allowed_manager(TokenScope::Manager)]
   #[case::scope_not_allowed_admin(TokenScope::Admin)]
   #[tokio::test]
-  async fn test_api_auth_scope_not_allowed(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] scope: TokenScope,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_scope_not_allowed(#[case] scope: TokenScope) -> anyhow::Result<()> {
     let router = test_router(ResourceRole::User, None);
     let req = Request::builder()
       .uri("/test")
@@ -325,7 +316,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
     #[case] required_role: ResourceRole,
@@ -352,7 +342,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_failure(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
     #[case] required_role: ResourceRole,
@@ -379,7 +368,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_no_scope_required(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: TokenScope,
     #[case] required_role: ResourceRole,
@@ -399,9 +387,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_api_auth_middleware_missing_role(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
     let router = test_router(ResourceRole::User, None);
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
@@ -410,7 +396,7 @@ mod tests {
     assert_eq!(
       serde_json::json!({
         "error": {
-          "message": "missing authentication header",
+          "message": "Authentication required. Provide an API key or log in.",
           "type": "authentication_error",
           "code": "api_auth_error-missing_auth"
         }
@@ -422,9 +408,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_api_auth_middleware_invalid_role(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_middleware_invalid_role() -> anyhow::Result<()> {
     let router = test_router(ResourceRole::User, None);
     let req = Request::builder()
       .uri("/test")
@@ -440,9 +424,12 @@ mod tests {
     assert_eq!(
       serde_json::json! {{
         "error": {
-          "message": "invalid role name: \u{2068}some_invalid_role\u{2069}",
+          "message": "invalid_role_name",
           "type": "authentication_error",
-          "code": "role_error-invalid_role_name"
+          "code": "role_error-invalid_role_name",
+          "param": {
+            "var_0": "some_invalid_role"
+          }
         }
       }},
       error
@@ -467,7 +454,6 @@ mod tests {
   #[case::admin_accessing_admin(UserScope::Admin, UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
@@ -491,7 +477,6 @@ mod tests {
   #[case::manager_accessing_admin(UserScope::Manager, UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_insufficient(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
@@ -513,7 +498,6 @@ mod tests {
   #[case::admin_scope_not_allowed(UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_not_allowed(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_scope: UserScope,
   ) -> anyhow::Result<()> {
     let router = test_router_user_scope(ResourceRole::User, None);
@@ -536,7 +520,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_over_user_scope_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
     #[case] required_role: ResourceRole,
@@ -563,7 +546,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_over_user_scope_failure(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
     #[case] required_role: ResourceRole,
@@ -590,7 +572,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_api_auth_role_precedence_no_user_scope_required(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] user_role: ResourceRole,
     #[case] user_scope: UserScope,
     #[case] required_role: ResourceRole,
@@ -610,9 +591,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_api_auth_middleware_user_scope_missing_auth(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()> {
     let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
@@ -621,7 +600,7 @@ mod tests {
     assert_eq!(
       serde_json::json!({
         "error": {
-          "message": "missing authentication header",
+          "message": "Authentication required. Provide an API key or log in.",
           "type": "authentication_error",
           "code": "api_auth_error-missing_auth"
         }
@@ -633,9 +612,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_api_auth_middleware_invalid_user_scope(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_middleware_invalid_user_scope() -> anyhow::Result<()> {
     let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder()
       .uri("/test")
@@ -651,9 +628,12 @@ mod tests {
     assert_eq!(
       serde_json::json!({
         "error": {
-          "message": "invalid resource scope: \u{2068}invalid_user_scope\u{2069}",
+          "message": "invalid resource scope: invalid_user_scope",
           "type": "authentication_error",
-          "code": "resource_scope_error-invalid_scope"
+          "code": "resource_scope_error-invalid_scope",
+          "param": {
+            "var_0": "invalid_user_scope"
+          }
         }
       }),
       error
@@ -663,9 +643,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_api_auth_middleware_token_scope_in_user_scope_context(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_api_auth_middleware_token_scope_in_user_scope_context() -> anyhow::Result<()> {
     // Test sending a TokenScope value when UserScope is expected
     let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
     let req = Request::builder()

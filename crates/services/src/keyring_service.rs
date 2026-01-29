@@ -89,20 +89,15 @@ pub fn generate_random_key() -> Vec<u8> {
 #[cfg(test)]
 mod tests {
   use crate::KeyringError;
-  use objs::test_utils::assert_error_message;
   use objs::AppError;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
-  use rstest::rstest;
-  use std::sync::Arc;
 
-  #[rstest]
-  #[case(&KeyringError::KeyringError(keyring::Error::NoEntry), "No matching entry found in secure storage")]
-  #[case(&KeyringError::DecodeError(base64::DecodeError::InvalidPadding), "invalid format: Invalid padding")]
-  fn test_secret_service_error_messages(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected: &str,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), expected);
+  #[test]
+  fn test_keyring_error_types() {
+    let error = KeyringError::KeyringError(keyring::Error::NoEntry);
+    assert_eq!(
+      error.error_type(),
+      objs::ErrorType::InternalServer.to_string()
+    );
+    assert_eq!(error.code(), "keyring_error-keyring_error");
   }
 }

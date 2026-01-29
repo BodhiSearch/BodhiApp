@@ -18,30 +18,30 @@ pub enum AiApiServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
 
-  #[error("api_error")]
+  #[error("API error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ApiError(String),
 
-  #[error("unauthorized")]
+  #[error("API authentication failed: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   Unauthorized(String),
 
-  #[error("not_found")]
+  #[error("Resource not found: {0}.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   NotFound(String),
 
-  #[error("rate_limit")]
+  #[error("Too many requests to API. Please wait and try again.")]
   #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   RateLimit(String),
 
-  #[error("prompt_too_long")]
+  #[error("Message too long. Maximum length is {max_length} but received {actual_length}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   PromptTooLong {
     max_length: usize,
     actual_length: usize,
   },
 
-  #[error("model_not_found")]
+  #[error("API model '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ModelNotFound(String),
 }

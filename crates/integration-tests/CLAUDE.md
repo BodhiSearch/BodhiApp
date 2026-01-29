@@ -63,7 +63,7 @@ End-to-end testing that validates service coordination across all application la
 - `server_core` - HTTP server infrastructure with test context management
 - `auth_middleware` - Authentication middleware with test client and session utilities
 - `llama_server_proc` - LLM process management with test server lifecycle utilities
-- `objs` - Domain objects with test fixtures and localization setup
+- `objs` - Domain objects with test fixtures
 
 ### Testing Infrastructure
 

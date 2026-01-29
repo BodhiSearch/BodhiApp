@@ -335,18 +335,13 @@ mod tests {
   use crate::{
     test_utils::test_config, BodhiServer, NapiAppOptions, BODHI_HOME, BODHI_HOST, BODHI_PORT,
   };
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::rstest;
-  use std::sync::Arc;
   use tempfile::TempDir;
   use tokio::time::{sleep, Duration};
 
   #[rstest]
   #[tokio::test]
-  async fn test_server_lifecycle(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_config: (NapiAppOptions, TempDir),
-  ) {
+  async fn test_server_lifecycle(test_config: (NapiAppOptions, TempDir)) {
     let (config, _temp_dir) = test_config;
     let mut server = BodhiServer::new(config).expect("Failed to create server");
 
@@ -393,10 +388,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_server_config_access(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_config: (NapiAppOptions, TempDir),
-  ) {
+  async fn test_server_config_access(test_config: (NapiAppOptions, TempDir)) {
     let (config, _temp_dir) = test_config;
     let server = BodhiServer::new(config).expect("Failed to create server");
 
@@ -408,10 +400,7 @@ mod tests {
 
   #[tokio::test]
   #[rstest]
-  async fn test_server_already_running_error(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_config: (NapiAppOptions, TempDir),
-  ) {
+  async fn test_server_already_running_error(test_config: (NapiAppOptions, TempDir)) {
     let (config, _temp_dir) = test_config;
     let mut server = BodhiServer::new(config).expect("Failed to create server");
 

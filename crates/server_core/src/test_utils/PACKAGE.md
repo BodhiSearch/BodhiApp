@@ -65,13 +65,12 @@ mod http_context_tests {
     use server_core::{MockSharedContext, DefaultRouterState, RouterStateError};
     use services::test_utils::AppServiceStub;
     use async_openai::types::CreateChatCompletionRequest;
-    use objs::{Alias, test_utils::setup_l10n};
+    use objs::Alias;
     use mockall::predicate::*;
     
     #[rstest]
     #[awt]
     async fn test_router_state_chat_completions_success(
-        setup_l10n: (),
         #[future] app_service_stub: AppServiceStub
     ) {
         let mut mock_context = MockSharedContext::new();
@@ -128,7 +127,6 @@ HTTP context testing with comprehensive lifecycle management:
 #[rstest]
 #[awt]
 async fn test_shared_context_lifecycle_management(
-    setup_l10n: (),
     #[future] app_service_stub: AppServiceStub
 ) {
     let mut mock_context = MockSharedContext::new();
@@ -221,7 +219,6 @@ mod server_factory_integration_tests {
     #[rstest]
     #[awt]
     async fn test_server_factory_http_context_integration(
-        setup_l10n: (),
         #[future] app_service_stub: AppServiceStub
     ) {
         // Create mock LLM server for HTTP context testing
@@ -411,7 +408,6 @@ HTTP infrastructure testing with comprehensive service coordination:
 #[rstest]
 #[awt]
 async fn test_http_infrastructure_service_integration(
-    setup_l10n: (),
     temp_bodhi_home: TempDir,
     #[future] app_service_stub: AppServiceStub
 ) {
@@ -468,7 +464,6 @@ Comprehensive HTTP error handling testing with service error scenarios:
 #[rstest]
 #[awt]
 async fn test_http_error_service_coordination(
-    setup_l10n: (),
     #[future] app_service_stub: AppServiceStub
 ) {
     let app_service = app_service_stub.await;

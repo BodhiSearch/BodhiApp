@@ -46,7 +46,7 @@ pub struct NewDownloadRequest {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum PullError {
-  #[error("file_already_exists")]
+  #[error("File '{filename}' already exists in '{repo}'.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   FileAlreadyExists {
     repo: String,
@@ -440,7 +440,7 @@ mod tests {
     Router,
   };
   use mockall::predicate::{always, eq};
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo};
+  use objs::{HubFile, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -555,7 +555,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_repo_file_already_downloaded(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -590,9 +589,14 @@ mod tests {
       error_body,
       json! {{
         "error": {
-          "message": "file \u{2068}testalias.Q8_0.gguf\u{2069} already exists in repo \u{2068}MyFactory/testalias-gguf\u{2069} with snapshot \u{2068}main\u{2069}",
+          "message": "File 'testalias.Q8_0.gguf' already exists in 'MyFactory/testalias-gguf'.",
           "code": "pull_error-file_already_exists",
-          "type": "invalid_request_error"
+          "type": "invalid_request_error",
+          "param": {
+            "filename": "testalias.Q8_0.gguf",
+            "repo": "MyFactory/testalias-gguf",
+            "snapshot": "main"
+          }
         }
       }}
     );
@@ -603,7 +607,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_repo_file_existing_pending_download(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -654,7 +657,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_alias_success(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     mut test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -713,7 +715,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_alias_not_found(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -740,9 +741,12 @@ mod tests {
       response,
       json! {{
         "error": {
-          "message": "remote model alias '\u{2068}non_existent:alias\u{2069}' not found, check your alias and try again",
+          "message": "Remote model 'non_existent:alias' not found. Check the alias name and try again.",
           "type": "not_found_error",
-          "code": "remote_model_not_found_error"
+          "code": "remote_model_not_found_error",
+          "param": {
+            "alias": "non_existent:alias"
+          }
         }
       }}
     );
@@ -753,7 +757,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_download_status_success(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -791,7 +794,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_download_status_not_found(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -820,9 +822,13 @@ mod tests {
       response,
       json! {{
         "error": {
-          "message": "item '\u{2068}non_existent_id\u{2069}' of type '\u{2068}download_requests\u{2069}' not found in db",
+          "message": "Item 'non_existent_id' of type 'download_requests' not found.",
           "type": "not_found_error",
-          "code": "item_not_found"
+          "code": "item_not_found",
+          "param": {
+            "id": "non_existent_id",
+            "item_type": "download_requests"
+          }
         }
       }}
     );

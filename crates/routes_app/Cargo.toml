@@ -19,7 +19,6 @@ base64 = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
-include_dir = { workspace = true }
 jsonwebtoken = { workspace = true }
 oauth2 = { workspace = true }
 once_cell = { workspace = true }

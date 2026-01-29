@@ -336,27 +336,25 @@ Complete application service setup with dependency injection:
 ```rust
 // Complete service setup fixture (see tests/utils/live_server_utils.rs)
 #[fixture]
-pub async fn llama2_7b_setup(
-  #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-) -> anyhow::Result<(TempDir, Arc<dyn AppService>)> {
+pub async fn llama2_7b_setup() -> anyhow::Result<(TempDir, Arc<dyn AppService>)> {
   // Environment setup with temporary directories
   let temp_dir = tempfile::tempdir()?;
   let cache_dir = temp_dir.path().join(".cache");
   let bodhi_home = cache_dir.join("bodhi");
   copy_test_dir("tests/data/live/bodhi", &bodhi_home);
-  
+
   // OAuth2 client creation and configuration
   let config = AuthServerConfigBuilder::default()
     .auth_server_url(&auth_server_url).realm(&realm)
     .dev_console_client_id(client_id).dev_console_client_secret(client_secret).build()?;
   let auth_client = AuthServerTestClient::new(config);
   let resource_client = auth_client.create_resource_client("integration_test").await?;
-  
+
   // Service composition with dependency injection
   let service = AppServiceBuilder::new(setting_service)
     .hub_service(hub_service)?.data_service(data_service)?
     .auth_service(Arc::new(auth_service))?.secret_service(Arc::new(secret_service))?
-    .localization_service(localization_service.clone())?.build().await?;
+    .build().await?;
   Ok((temp_dir, Arc::new(service)))
 }
 ```

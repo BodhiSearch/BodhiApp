@@ -9,7 +9,7 @@ pub enum ModelRouterError {
   #[error(transparent)]
   AliasNotFound(#[from] AliasNotFoundError),
 
-  #[error("ai_api_model_not_found")]
+  #[error("Model '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ApiModelNotFound(String),
 }

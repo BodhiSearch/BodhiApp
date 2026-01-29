@@ -16,13 +16,10 @@ dircpy = { workspace = true, optional = true }
 dirs = { workspace = true, optional = true }
 derive-new = { workspace = true }
 fs_extra = { workspace = true, optional = true }
-fluent = { workspace = true }
 hf-hub = { workspace = true }
 http-body-util = { workspace = true, optional = true }
-include_dir = { workspace = true }
-once_cell = { workspace = true }
-lazy_static = { workspace = true }
 memmap2 = { workspace = true }
+once_cell = { workspace = true }
 
 regex = { workspace = true }
 reqwest = { workspace = true }
@@ -35,7 +32,6 @@ tempfile = { workspace = true, optional = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"], optional = true }
 thiserror = { workspace = true }
-unic-langid = { workspace = true }
 utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 
@@ -57,7 +53,6 @@ tempfile = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
-unic-langid = { workspace = true }
 
 
 [features]

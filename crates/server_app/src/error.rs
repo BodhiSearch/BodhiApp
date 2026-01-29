@@ -2,7 +2,7 @@ use objs::{AppError, ErrorType};
 use tokio::task::JoinError;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("task_join_error")]
+#[error("Background task failed: {source}.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct TaskJoinError {
   #[from]
@@ -12,15 +12,11 @@ pub struct TaskJoinError {
 #[cfg(test)]
 mod tests {
   use crate::TaskJoinError;
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService,
-  };
+  use objs::AppError;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::sync::Arc;
-  use tokio::task::JoinError;
 
-  async fn build_join_error() -> JoinError {
+  async fn build_join_error() -> tokio::task::JoinError {
     let handle = tokio::spawn(async move {
       async fn null() {}
       null().await;
@@ -35,12 +31,11 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_error_messages_task_join(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-  ) {
+  async fn test_task_join_error_display() {
     let join_error = build_join_error().await;
-    let expected = format!("failed to join task: {}", join_error);
     let error = TaskJoinError::from(join_error);
-    assert_error_message(localization_service, &error.code(), error.args(), &expected);
+    let message = error.to_string();
+    assert!(message.starts_with("Background task failed: "));
+    assert_eq!("task_join_error", error.code());
   }
 }

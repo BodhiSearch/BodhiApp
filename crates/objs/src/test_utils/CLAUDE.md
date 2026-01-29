@@ -6,17 +6,16 @@ This file provides guidance to Claude Code when working with the `test_utils` mo
 
 ## Purpose
 
-The `test_utils` module serves as BodhiApp's **foundational testing infrastructure**, providing specialized utilities that enable comprehensive cross-crate testing with domain-specific fixtures, localization validation, and complex data generation.
+The `test_utils` module serves as BodhiApp's **foundational testing infrastructure**, providing specialized utilities that enable comprehensive cross-crate testing with domain-specific fixtures, error message validation, and complex data generation.
 
 ## Cross-Crate Testing Architecture
 
-### Universal Localization Testing Foundation
+### Error Message Testing Foundation
 Critical testing capability used across all BodhiApp crates:
-- **setup_l10n()**: Aggregates Fluent message templates from multiple crates (objs, auth_middleware, services, routes)
-- **Mock localization service**: Overrides singleton `FluentLocalizationService::get_instance()` for isolated testing
-- **Multi-language validation**: Tests error message consistency in en-US and fr-FR across service boundaries
-- **Cross-crate resource loading**: Enables services and routes to test localized errors without circular dependencies
-- **Fallback mechanism validation**: Ensures graceful degradation when translations are missing across all components
+- **Error message validation**: Tests error messages via `error.to_string()` using thiserror templates
+- **Cross-crate error validation**: Enables services and routes to test error messages consistently
+- **User-friendly message testing**: Validates that errors provide actionable, sentence-case messages ending with a period
+- **Field interpolation testing**: Validates `{field}` and `{0}` syntax in error message templates
 
 ### Environment Isolation for Integration Testing
 Sophisticated environment fixtures used by downstream crates:
@@ -52,7 +51,7 @@ Python integration supporting complex cross-crate testing scenarios:
 ### Services Crate Integration
 The services crate extensively uses objs test_utils for comprehensive service testing with sophisticated coordination patterns:
 - **AppServiceStub coordination**: Services use objs domain factories (`Repo::testalias()`, `HubFileBuilder::testalias()`, `AliasBuilder::llama3()`) to create consistent test data across service boundaries
-- **Localization testing**: `setup_l10n()` loads objs error messages for service error validation with comprehensive cross-service error propagation testing
+- **Error message testing**: Error messages validated via `error.to_string()` for service error validation with comprehensive cross-service error propagation testing
 - **Database testing**: Environment fixtures (`temp_bodhi_home()`, `temp_hf_home()`) provide configuration for service database integration with isolated SQLite databases
 - **Mock service coordination**: Domain object builders enable realistic service behavior simulation with `OfflineHubService`, `SecretServiceStub`, and `TestDbService` patterns
 - **Cross-service integration**: Service composition testing uses objs fixtures for authentication flows, model management pipelines, and database transaction coordination
@@ -88,7 +87,7 @@ The `test_utils` module serves as:
 ## Downstream Integration Constraints
 
 ### Service Testing Dependencies
-- Services must use `setup_l10n()` to test localized error messages properly
+- Error messages are tested via `error.to_string()` using thiserror templates
 - Domain object builders must be used consistently across service tests for data integrity
 - Environment fixtures required for any service tests involving file system operations
 - Python data generation fixtures needed for services testing GGUF parsing or model metadata
@@ -100,7 +99,7 @@ The `test_utils` module serves as:
 - Authentication testing must use objs role and scope builders for authorization validation
 
 ### Cross-Crate Testing Coordination
-- All crates must coordinate localization resource loading through objs `setup_l10n()`
+- Error messages are tested via `error.to_string()` using thiserror templates
 - Domain object builders must be used consistently to prevent test data inconsistencies
 - Environment isolation fixtures required for any tests involving configuration or file system state
 - Mock service coordination must respect objs domain object validation rules

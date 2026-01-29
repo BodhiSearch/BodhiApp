@@ -24,7 +24,7 @@ pub enum ServeError {
   Context(#[from] ContextError),
   #[error(transparent)]
   Server(#[from] ServerError),
-  #[error("unknown")]
+  #[error("Server started but readiness signal not received.")]
   #[error_meta(error_type = ErrorType::Unknown)]
   Unknown,
 }

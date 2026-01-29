@@ -220,9 +220,9 @@ impl From<&TestError> for ErrorMetas {
 The errmeta_derive macro provides the foundation for objs crate error handling patterns used throughout BodhiApp services.
 
 **Integration Features**:
-- `trait_to_impl` parameter enables AppError trait implementation (crates/errmeta_derive/src/lib.rs:74-77)
+- `trait_to_impl` parameter enables AppError trait implementation
 - Generated methods provide structured data for HTTP response generation
-- Error codes serve as localization keys for multi-language support
+- Error codes serve as stable identifiers for API responses and programmatic error handling
 - Args extraction enables message templating with user data
 
 ### Service Layer Coordination
@@ -232,7 +232,7 @@ Service-specific error types derive ErrorMeta for consistent error reporting:
 - Consistent error metadata across all service boundaries
 - Automatic error propagation with preserved context
 - Integration with tracing and logging systems
-- Localized error messages for user-facing components
+- User-friendly error messages via thiserror templates
 
 ## Unit Test Coverage
 

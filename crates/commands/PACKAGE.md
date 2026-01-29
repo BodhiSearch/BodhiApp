@@ -10,7 +10,6 @@ The `commands` crate implements CLI command orchestration with sophisticated ser
 
 **src/lib.rs**
 - Module structure and feature-gated test utilities
-- L10n resources inclusion for error localization
 - Public API exports for CreateCommand and PullCommand
 
 **src/cmd_create.rs**

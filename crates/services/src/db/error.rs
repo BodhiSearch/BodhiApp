@@ -1,7 +1,7 @@
 use objs::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("sqlx_error")]
+#[error("Database error: {source}.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SqlxError {
   #[from]
@@ -17,7 +17,7 @@ impl PartialEq for SqlxError {
 impl Eq for SqlxError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("sqlx_migrate_error")]
+#[error("Database migration error: {source}.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SqlxMigrateError {
   #[from]
@@ -33,7 +33,7 @@ impl PartialEq for SqlxMigrateError {
 impl Eq for SqlxMigrateError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("item_not_found")]
+#[error("Item '{id}' of type '{item_type}' not found.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct ItemNotFound {
   id: String,
@@ -43,32 +43,12 @@ pub struct ItemNotFound {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n},
-    FluentLocalizationService,
-  };
-  use rstest::rstest;
-  use sqlx::migrate::MigrateError;
-  use std::sync::Arc;
+  use objs::AppError;
 
-  #[rstest]
-  #[case::sqlx(
-    &SqlxError::new(sqlx::Error::RowNotFound),
-    "no rows returned by a query that expected to return at least one row"
-  )]
-  #[case::migration(
-    &SqlxMigrateError::new(MigrateError::VersionMissing(1)),
-    "migration 1 was previously applied but is missing in the resolved migrations"
-  )]
-  #[case::item_not_found(
-    &ItemNotFound::new("1".to_string(), "user".to_string()),
-    "item '1' of type 'user' not found in db"
-  )]
-  fn test_sqlx_error_message(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] message: String,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), &message);
+  #[test]
+  fn test_item_not_found_error() {
+    let error = ItemNotFound::new("1".to_string(), "user".to_string());
+    assert_eq!(error.error_type(), objs::ErrorType::NotFound.to_string());
+    assert_eq!(error.code(), "item_not_found");
   }
 }

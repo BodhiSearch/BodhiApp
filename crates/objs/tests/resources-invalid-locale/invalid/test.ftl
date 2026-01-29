@@ -1,1 +1,0 @@
-test-key = This is an invalid locale test

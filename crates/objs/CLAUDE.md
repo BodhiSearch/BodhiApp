@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with the `objs` crate.
 
 ## Purpose
 
-The `objs` crate serves as BodhiApp's **universal foundation layer**, providing domain objects, centralized error handling with localization, and shared types that enable consistent behavior across the entire application ecosystem including services, routes, CLI, and desktop components. This crate defines the canonical business entities and cross-cutting concerns that maintain architectural consistency across all deployment contexts.
+The `objs` crate serves as BodhiApp's **universal foundation layer**, providing domain objects, centralized error handling, and shared types that enable consistent behavior across the entire application ecosystem including services, routes, CLI, and desktop components. This crate defines the canonical business entities and cross-cutting concerns that maintain architectural consistency across all deployment contexts.
 
 ## Key Domain Architecture
 
@@ -15,7 +15,7 @@ BodhiApp's error system provides application-wide consistency:
 - **ErrorType enum**: Universal HTTP status code mapping used by all routes and services
 - **AppError trait**: Standardized error metadata interface implemented across all crates
 - **ApiError envelope**: Converts service layer errors to OpenAI-compatible JSON responses
-- **Localized messaging**: Multi-language error support consumed by web UI, CLI, and desktop clients
+- **User-friendly messages**: Error messages defined inline via thiserror `#[error("...")]` templates
 - **Cross-crate error propagation**: Seamless error flow from services through routes to clients
 
 ### GGUF Model File System
@@ -71,14 +71,14 @@ The `objs` crate serves as BodhiApp's **architectural keystone**:
 - **Universal Foundation**: All other crates depend on objs for core types and error handling
 - **Cross-Crate Consistency**: Ensures unified behavior across services, routes, CLI, and desktop components
 - **Integration Coordinator**: Bridges external APIs (OpenAI, Hugging Face, OAuth2) with internal representations
-- **Localization Hub**: Provides centralized multi-language support consumed by all user-facing components
+- **Error Message Hub**: Provides centralized error message templates consumed by all user-facing components
 - **Domain Authority**: Defines canonical business entities used throughout the application ecosystem
 
 ## Cross-Crate Integration Patterns
 
 ### Service Layer Integration
 The objs crate enables sophisticated service coordination through comprehensive domain object usage:
-- **Error Propagation**: Service errors implement AppError via errmeta_derive for consistent HTTP response generation with localized messages
+- **Error Propagation**: Service errors implement AppError via errmeta_derive for consistent HTTP response generation
 - **Domain Validation**: Services use objs validation for request parameters, business rules, and cross-service data consistency
 - **Model Coordination**: HubService and DataService coordinate via shared Repo, HubFile, and Alias types with atomic file operations
 - **Authentication Integration**: AuthService uses Role and Scope types for authorization decisions with hierarchical access control
@@ -92,7 +92,7 @@ Routes depend on objs for request/response handling:
 - **Error Response Generation**: ApiError converts service errors to OpenAI-compatible JSON via RouterStateError translation
 - **Authentication Middleware**: Role and Scope types enable fine-grained access control through auth_middleware with hierarchical authorization
 - **Authorization Headers**: ResourceScope union type supports both TokenScope and UserScope authorization contexts in HTTP middleware
-- **Localized Error Messages**: Multi-language error support for web UI and API clients through HTTP error responses with auth_middleware integration
+- **User-Friendly Error Messages**: Error messages via thiserror templates for web UI and API clients through HTTP error responses with auth_middleware integration
 - **OpenAI API Compatibility**: Complete parameter system enables OpenAI API emulation through routes_oai with non-destructive parameter overlay
 - **Application API Integration**: routes_app uses domain objects for model management, authentication, and configuration with comprehensive validation
 - **API Error Translation**: Service errors converted to OpenAI-compatible error responses with proper error types and HTTP status codes
@@ -108,7 +108,7 @@ Domain objects flow through HTTP infrastructure with server_core coordination:
 Domain objects flow throughout the application with comprehensive service integration:
 
 - **CLI → Services**: Command parameters validated and converted via objs types with comprehensive error handling and CLI-specific error translation
-- **Services → Routes**: Business logic results converted to API responses via objs with localized error messages
+- **Services → Routes**: Business logic results converted to API responses via objs with user-friendly error messages
 - **Routes → Frontend**: Consistent error format and localized messages via ApiError with OpenAI compatibility
 - **Application API → Services**: routes_app coordinates model management, authentication, and configuration through objs domain objects
 - **Desktop ↔ Services**: Shared domain objects ensure consistency between web and desktop clients
@@ -136,9 +136,9 @@ Domain objects support multiple embedding contexts:
 
 ### Application-Wide Error Handling
 - **Universal Implementation**: All crates must implement AppError for error types to ensure consistent behavior
-- **Localization Requirement**: All user-facing errors must have Fluent message templates in en-US and fr-FR
+- **Message Guidelines**: Error messages should be user-friendly, written in sentence case, and end with a period
+- **Field Interpolation**: Use `{field}` syntax for named fields and `{0}` for positional fields in error messages
 - **Cross-Crate Propagation**: Errors must flow cleanly from services through routes to clients
-- **Fallback Safety**: ApiError provides graceful degradation when localization fails
 
 ### Model Management Consistency
 - **Canonical Format**: Repo "user/name" format enforced across all model-handling components
@@ -185,7 +185,6 @@ BodhiApp's test utilities leverage `rstest` fixtures for dependency injection an
 Test utilities provide sophisticated mock implementations covering all major domain areas:
 - **Model Management Mocks**: Realistic Hugging Face cache structures with valid GGUF files
 - **Authentication Fixtures**: Role-based authorization testing with OAuth2 flow simulation
-- **Localization Testing**: Isolated FluentLocalizationService instances with mock resource loading
 - **HTTP Response Utilities**: Type-safe response parsing for integration test scenarios
 - **Temporary Environment Management**: Safe filesystem operations with automatic cleanup
 
@@ -204,7 +203,7 @@ Test utilities enable sophisticated service testing through domain-specific buil
 - **HubService Testing**: Mock repository structures with realistic file hierarchies and metadata
 - **DataService Testing**: Temporary directory fixtures with alias configuration management
 - **AuthService Testing**: Role and scope testing with realistic OAuth2 flow simulation
-- **Error Handling Testing**: Localized error message validation across all service boundaries
+- **Error Handling Testing**: Error message validation using `error.to_string()` across all service boundaries
 - **Database Testing**: Transaction isolation and migration testing support
 
 #### Route Layer Testing Infrastructure
@@ -212,7 +211,7 @@ Test utilities support comprehensive HTTP endpoint testing:
 - **Request/Response Parsing**: Type-safe HTTP body parsing for JSON and text responses
 - **Authentication Context**: Role-based authorization testing with middleware integration
 - **Parameter Validation**: OpenAI parameter testing across all compatibility endpoints
-- **Error Response Validation**: Localized error message testing for API responses
+- **Error Response Validation**: Error message testing for API responses using `error.to_string()`
 - **Integration Test Support**: End-to-end request flow testing with realistic mock data
 
 #### CLI and Desktop Testing Support

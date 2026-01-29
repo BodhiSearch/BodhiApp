@@ -6,7 +6,6 @@ use auth_middleware::{
 };
 use fs_extra::dir::{copy, CopyOptions};
 use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder, AppServiceBuilder};
-use objs::{test_utils::setup_l10n, FluentLocalizationService};
 use rand::Rng;
 use rstest::fixture;
 use serde_json::Value;
@@ -40,9 +39,7 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
 }
 
 #[fixture]
-pub async fn llama2_7b_setup(
-  #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-) -> anyhow::Result<(TempDir, Arc<dyn AppService>)> {
+pub async fn llama2_7b_setup() -> anyhow::Result<(TempDir, Arc<dyn AppService>)> {
   // Load environment variables from .env.test
   let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
@@ -135,7 +132,6 @@ pub async fn llama2_7b_setup(
     .hub_service(hub_service)?
     .auth_service(Arc::new(auth_service))?
     .secret_service(Arc::new(secret_service))?
-    .localization_service(localization_service.clone())?
     .build()
     .await?;
   Ok((temp_dir, Arc::new(service)))

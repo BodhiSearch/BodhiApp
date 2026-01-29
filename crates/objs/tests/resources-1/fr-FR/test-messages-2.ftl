@@ -1,1 +1,0 @@
-some-message = Some message

@@ -438,9 +438,7 @@ mod tests {
   use anyhow_trace::anyhow_trace;
   use chrono::{Duration, Utc};
   use mockall::predicate::*;
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, ResourceScope, TokenScope, UserScope,
-  };
+  use objs::{ResourceScope, TokenScope, UserScope};
   use rstest::rstest;
   use serde_json::json;
   use services::{
@@ -471,7 +469,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_bodhiapp_token_scope_variations(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] scope_str: &str,
     #[case] expected_scope: TokenScope,
     #[future] test_db_service: TestDbService,
@@ -524,7 +521,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_bodhiapp_token_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Setup test database with token
@@ -578,7 +574,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_bodhiapp_token_inactive(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Setup test database with inactive token
@@ -629,7 +624,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_bodhiapp_token_invalid_hash(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Setup test database with token
@@ -685,7 +679,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_bearer_token_header_errors(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] header: &str,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
@@ -708,7 +701,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_validate_external_client_token_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Given - Create a token from a different client but same issuer
@@ -786,7 +778,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_external_client_token_cache_security_prevents_jti_forgery(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Given - Create a legitimate external token from a different client

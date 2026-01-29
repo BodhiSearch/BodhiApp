@@ -249,10 +249,6 @@ pub async fn queue_status_handler(
 mod tests {
   use super::*;
   use axum::{body::Body, http::Request, routing::post, Router};
-  use objs::{
-    test_utils::{localization_service, setup_l10n},
-    FluentLocalizationService,
-  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
@@ -320,12 +316,8 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_refresh_metadata_enqueue_failure_returns_400(
-    localization_service: Arc<FluentLocalizationService>,
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
-    // Set up localization for error messages
-    let _l10n = setup_l10n(localization_service);
-
     // Configure mock to fail on enqueue
     let mut mock_queue = MockQueueProducer::new();
     mock_queue

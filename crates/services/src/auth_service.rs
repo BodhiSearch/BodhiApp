@@ -21,10 +21,13 @@ pub const HEADER_BODHI_APP_VERSION: &str = "x-bodhi-app-version";
 pub enum AuthServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
-  #[error("auth_service_api_error")]
+  #[error("Authentication service error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AuthServiceApiError(String),
-  #[error("token_exchange_error")]
+  #[error("Network error during authentication: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  ReqwestMiddlewareError(String),
+  #[error("Token exchange failed: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   TokenExchangeError(String),
 }
@@ -769,38 +772,10 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    test_utils::test_auth_service, AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError,
-  };
-  use jsonwebtoken::errors::ErrorKind;
+  use crate::{test_utils::test_auth_service, AppRegInfo, AuthService, AuthServiceError};
   use mockito::{Matcher, Server};
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService,
-  };
   use rstest::rstest;
   use serde_json::json;
-  use std::sync::Arc;
-
-  #[rstest]
-  #[case(&AuthServiceError::AuthServiceApiError("test".to_string()), "error from auth service: test")]
-  #[case(&JsonWebTokenError::new(ErrorKind::InvalidToken.into()), "authentication token is invalid")]
-  #[case(&JsonWebTokenError::new(ErrorKind::InvalidSignature.into()), "authentication token signature does not match")]
-  #[case(&JsonWebTokenError::new(ErrorKind::InvalidIssuer.into()), "authentication token issuer is invalid")]
-  #[case(&JsonWebTokenError::new(ErrorKind::InvalidAudience.into()), "authentication token audience is invalid")]
-  #[case(&JsonWebTokenError::new(ErrorKind::InvalidSubject.into()), "authentication token is invalid, source: InvalidSubject")]
-  fn test_error_messages_services(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected_message: &str,
-  ) {
-    assert_error_message(
-      localization_service,
-      &error.code(),
-      error.args(),
-      expected_message,
-    );
-  }
 
   #[rstest]
   #[tokio::test]

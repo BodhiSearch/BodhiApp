@@ -77,16 +77,16 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   UserScope(#[from] UserScopeError),
-  #[error("missing_roles")]
+  #[error("User has no valid access roles.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingRoles,
-  #[error("invalid_access")]
+  #[error("Access denied.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
-  #[error("token_inactive")]
+  #[error("API token is inactive.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   TokenInactive,
-  #[error("token_not_found")]
+  #[error("API token not found.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   TokenNotFound,
   #[error(transparent)]
@@ -95,7 +95,7 @@ pub enum AuthError {
   AppRegInfoMissing(#[from] AppRegInfoMissingError),
   #[error(transparent)]
   DbError(#[from] DbError),
-  #[error("refresh_token_not_found")]
+  #[error("Session expired. Please log out and log in again.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
   #[error(transparent)]
@@ -103,16 +103,16 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
-  #[error("signature_key")]
+  #[error("Invalid signature key: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   SignatureKey(String),
-  #[error("invalid_token")]
+  #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidToken(String),
-  #[error("signature_mismatch")]
+  #[error("Signature mismatch: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   SignatureMismatch(String),
-  #[error("app_status_invalid")]
+  #[error("Application is not ready. Current status: {0}.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppStatusInvalid(AppStatus),
 }
@@ -393,10 +393,7 @@ mod tests {
   };
   use base64::{engine::general_purpose, Engine};
   use mockall::predicate::eq;
-  use objs::{
-    test_utils::{setup_l10n, temp_bodhi_home},
-    FluentLocalizationService, ReqwestError,
-  };
+  use objs::{test_utils::temp_bodhi_home, ReqwestError};
   use pretty_assertions::assert_eq;
   use rand::RngCore;
   use rstest::rstest;
@@ -521,7 +518,6 @@ mod tests {
   #[tokio::test]
   #[anyhow_trace]
   async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or_missing(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] secret_service: SecretServiceStub,
   ) -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
@@ -551,7 +547,10 @@ mod tests {
         "error": {
           "code": "auth_error-app_status_invalid",
           "type": "invalid_app_state",
-          "message": "app status is invalid for this operation: \u{2068}setup\u{2069}"
+          "message": "Application is not ready. Current status: setup.",
+          "param": {
+            "var_0": "setup"
+          }
         }
       }},
       body
@@ -575,7 +574,6 @@ mod tests {
   #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "resource_manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_valid_session_token(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     temp_bodhi_home: TempDir,
     #[case] path: &str,
     #[case] roles: &[&str],
@@ -646,7 +644,6 @@ mod tests {
   #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "resource_manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
@@ -744,7 +741,6 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_token_refresh_persists_to_session(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String),
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
@@ -839,7 +835,6 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String),
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
@@ -907,9 +902,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "error connecting to internal service: \u{2068}Failed to refresh token\u{2069}",
+          "message": "Network error: Failed to refresh token.",
           "type": "internal_server_error",
-          "code": "reqwest_error"
+          "code": "reqwest_error",
+          "param": {
+            "error": "Failed to refresh token"
+          }
         }
       }},
       actual
@@ -968,7 +966,7 @@ mod tests {
         "error": {
           "code": "auth_error-invalid_access",
           "type": "authentication_error",
-          "message": "access denied"
+          "message": "Access denied."
         }
       }},
       body
@@ -978,9 +976,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_middleware_removes_internal_token_headers(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_auth_middleware_removes_internal_token_headers() -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .with_session_service()
@@ -1060,7 +1056,6 @@ mod tests {
   #[case::admin("scope_token_admin")]
   #[tokio::test]
   async fn test_auth_middleware_bodhiapp_token_scope_variations(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] scope_str: &str,
   ) -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
@@ -1133,9 +1128,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_middleware_bodhiapp_token_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .with_session_service()
@@ -1206,9 +1199,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_middleware_bodhiapp_token_inactive(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .with_session_service()
@@ -1267,7 +1258,7 @@ mod tests {
         "error": {
           "code": "auth_error-token_inactive",
           "type": "authentication_error",
-          "message": "API token is inactive"
+          "message": "API token is inactive."
         }
       }},
       body
@@ -1277,9 +1268,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_middleware_bodhiapp_token_invalid_hash(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .with_session_service()
@@ -1342,7 +1331,10 @@ mod tests {
         "error": {
           "code": "token_error-invalid_token",
           "type": "authentication_error",
-          "message": "token is invalid: \u{2068}Invalid token\u{2069}"
+          "message": "Invalid token: Invalid token.",
+          "param": {
+            "var_0": "Invalid token"
+          }
         }
       }},
       body

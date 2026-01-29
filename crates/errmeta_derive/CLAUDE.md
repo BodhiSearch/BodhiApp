@@ -4,7 +4,7 @@ See [crates/errmeta_derive/PACKAGE.md](crates/errmeta_derive/PACKAGE.md) for imp
 
 ## Architectural Purpose
 
-The `errmeta_derive` crate serves as BodhiApp's foundational procedural macro infrastructure for structured error handling. It transforms Rust error enums and structs into self-describing error objects that provide consistent metadata extraction across all application layers. This macro-driven approach ensures zero runtime overhead while enabling sophisticated error categorization, localization, and debugging capabilities throughout the system.
+The `errmeta_derive` crate serves as BodhiApp's foundational procedural macro infrastructure for structured error handling. It transforms Rust error enums and structs into self-describing error objects that provide consistent metadata extraction across all application layers. This macro-driven approach ensures zero runtime overhead while enabling sophisticated error categorization, user-friendly messages, and debugging capabilities throughout the system.
 
 ## Domain Architecture
 
@@ -13,7 +13,7 @@ The `errmeta_derive` crate serves as BodhiApp's foundational procedural macro in
 The crate implements a three-method contract for error introspection:
 
 - **Error Type Classification**: `error_type()` returns semantic error categories (ValidationError, DatabaseError, etc.) that enable service-level error routing and HTTP status code mapping
-- **Localization Key Generation**: `code()` provides stable identifiers for error message templates, supporting multi-language user interfaces
+- **Error Code Generation**: `code()` provides stable identifiers for programmatic error handling and API response categorization
 - **Structured Argument Extraction**: `args()` captures error context as key-value pairs for message interpolation and debugging
 
 This triumvirate approach separates concerns between error semantics, user presentation, and diagnostic information, enabling clean error handling patterns across service boundaries.
@@ -46,7 +46,7 @@ This framework is crucial for BodhiApp's multi-layered architecture, where error
 The `objs` crate relies on `errmeta_derive` to implement the `AppError` trait across all domain error types. This integration provides:
 
 - **Consistent HTTP Response Generation**: Error metadata drives status code selection and response body formatting
-- **Localization Service Integration**: Error codes serve as keys for message template lookup and user language selection
+- **Error Code Integration**: Error codes serve as stable identifiers for API responses and programmatic error handling
 - **Structured Logging Integration**: Error arguments provide contextual information for observability and debugging
 
 ### Service Layer Error Coordination
@@ -125,13 +125,13 @@ The error type classification aligns with BodhiApp's service architecture:
 - **Infrastructure Error Types**: DatabaseError, NetworkError, FileSystemError map to operational concerns
 - **Integration Error Types**: ExternalServiceError, HubApiError map to external dependency failures
 
-### Localization Architecture Integration
+### Error Message Architecture Integration
 
-Error code generation follows BodhiApp's internationalization patterns:
+Error messages are defined inline using thiserror `#[error("...")]` attributes:
 
+- **User-Friendly Messages**: Error messages should be clear, actionable, and written in sentence case ending with a period
+- **Field Interpolation**: Use `{field}` syntax for named fields and `{0}` for positional fields in error messages
 - **Hierarchical Code Structure**: Error codes use `service_name-error_variant` format for namespace organization
-- **Template Parameter Extraction**: Field names become template parameters for message interpolation
-- **Cultural Context Preservation**: Error arguments preserve cultural formatting requirements for numbers, dates, and currencies
 
 ### Security and Privacy Considerations
 

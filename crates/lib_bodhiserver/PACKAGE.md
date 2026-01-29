@@ -22,13 +22,11 @@ pub struct AppServiceBuilder {
   secret_service: Option<Arc<dyn SecretService>>,
   cache_service: Option<Arc<dyn CacheService>>,
   auth_service: Option<Arc<dyn AuthService>>,
-  localization_service: Option<Arc<dyn LocalizationService>>,
 }
 
 impl AppServiceBuilder {
   pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
     // Build services in dependency order with automatic resolution
-    let localization_service = self.get_or_build_localization_service()?;
     let hub_service = self.get_or_build_hub_service();
     let data_service = self.get_or_build_data_service(hub_service.clone());
     let time_service = self.get_or_build_time_service();
@@ -42,7 +40,7 @@ impl AppServiceBuilder {
     let app_service = DefaultAppService::new(
       self.setting_service, hub_service, data_service, auth_service,
       db_service, session_service, secret_service, cache_service,
-      localization_service, time_service,
+      time_service,
     );
     Ok(app_service)
   }
@@ -90,7 +88,7 @@ async fn get_or_build_db_service(&mut self, time_service: Arc<dyn TimeService>, 
 - Comprehensive error handling with service-specific error types and recovery strategies
 - Database migration management with SQLite connection pooling and transaction support
 - Platform-specific credential storage integration with keyring services and encryption
-- Localization resource loading from all workspace crates with fallback support and error handling
+- User-friendly error messages via thiserror templates with comprehensive error handling
 
 ## Application Directory Management Architecture
 
@@ -297,48 +295,6 @@ fn setup_settings(
 - OAuth2 application registration information with secure credential storage
 - Development/production mode coordination with environment-specific defaults
 
-## Localization Resource Management
-
-### Multi-Crate Resource Loading Implementation
-Comprehensive localization support with resource loading from all workspace crates:
-
-```rust
-// Localization resource loading from all crates - see crates/lib_bodhiserver/src/app_service_builder.rs
-fn load_all_localization_resources(localization_service: &FluentLocalizationService) -> Result<(), ErrorMessage> {
-  localization_service
-    .load_resource(objs::l10n::L10N_RESOURCES)?
-    .load_resource(objs::gguf::l10n::L10N_RESOURCES)?
-    .load_resource(llama_server_proc::l10n::L10N_RESOURCES)?
-    .load_resource(services::l10n::L10N_RESOURCES)?
-    .load_resource(commands::l10n::L10N_RESOURCES)?
-    .load_resource(server_core::l10n::L10N_RESOURCES)?
-    .load_resource(auth_middleware::l10n::L10N_RESOURCES)?
-    .load_resource(routes_oai::l10n::L10N_RESOURCES)?
-    .load_resource(routes_app::l10n::L10N_RESOURCES)?
-    .load_resource(routes_all::l10n::L10N_RESOURCES)?
-    .load_resource(server_app::l10n::L10N_RESOURCES)?
-    .load_resource(crate::l10n::L10N_RESOURCES)?;
-  Ok(())
-}
-
-// Localization service initialization with comprehensive error handling
-fn get_or_build_localization_service(&mut self) -> Result<Arc<dyn LocalizationService>, ErrorMessage> {
-  if let Some(service) = self.localization_service.take() {
-    return Ok(service);
-  }
-  
-  let localization_service = FluentLocalizationService::get_instance();
-  load_all_localization_resources(&localization_service)?;
-  Ok(localization_service)
-}
-```
-
-**Localization Features**:
-- Multi-language support with resource loading from all workspace crates
-- Fluent message template integration with comprehensive error handling
-- Singleton localization service with thread-safe access and caching
-- Fallback support for missing translations with graceful degradation
-
 ## UI Asset Management Architecture
 
 ### Embedded Static Asset Integration
@@ -347,12 +303,6 @@ Next.js frontend integration with embedded asset serving for complete applicatio
 ```rust
 // Embedded UI assets for complete application integration - see crates/lib_bodhiserver/src/ui_assets.rs
 pub static EMBEDDED_UI_ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../bodhi/out");
-
-// Localization resources embedded at compile time
-pub mod l10n {
-  use include_dir::Dir;
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
-}
 ```
 
 **UI Asset Features**:
@@ -364,7 +314,7 @@ pub mod l10n {
 ## Error Handling Architecture
 
 ### Comprehensive Error Types Implementation
-Sophisticated error handling with localized messages and recovery strategies:
+Sophisticated error handling with user-friendly messages via thiserror templates:
 
 ```rust
 // Configuration error types with comprehensive handling - see crates/lib_bodhiserver/src/error.rs
@@ -403,7 +353,7 @@ pub enum AppDirsBuilderError {
 ```
 
 **Error Handling Features**:
-- Comprehensive error types with localized messages and error codes
+- Comprehensive error types with user-friendly messages via thiserror templates
 - Context preservation with source error chaining and detailed information
 - Recovery guidance with actionable error messages and resolution steps
 - Integration with objs error system for consistent error handling across crates
@@ -428,8 +378,7 @@ pub use services::{
 
 // Domain object re-exports for consistent API
 pub use objs::{
-  ApiError, AppError, AppType, EnvType, ErrorMessage, ErrorType,
-  FluentLocalizationService, LogLevel, OpenAIApiError,
+  ApiError, AppError, AppType, EnvType, ErrorMessage, ErrorType, LogLevel, OpenAIApiError,
 };
 
 // Server management re-exports

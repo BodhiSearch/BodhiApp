@@ -210,15 +210,15 @@ Service errors translated to HTTP responses through RouterStateError:
 
 **Translation Layers**:
 1. Service returns domain error (e.g., `HubServiceError`)
-2. RouterStateError wraps with HTTP context
+2. HttpError wraps error for axum IntoResponse implementation
 3. Error type determines HTTP status code
-4. Localized message extracted for response body
+4. User-friendly message extracted via `error.to_string()` for response body
 5. OpenAI-compatible error format for API responses
 
 **Why This Approach**:
 - Consistent error handling across all routes
 - Proper HTTP semantics (404, 401, 500, etc)
-- Localized error messages for international users
+- User-friendly error messages via thiserror templates
 - API compatibility with OpenAI clients
 
 ## Security Architecture Decisions

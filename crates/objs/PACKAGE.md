@@ -7,7 +7,7 @@ This document serves as a rich index and navigation aid for the `objs` crate, pr
 The `objs` crate serves as the **architectural keystone** for BodhiApp, providing foundational types used throughout the entire application ecosystem. Every other crate depends on `objs` for:
 
 - **Cross-Crate Consistency**: Unified domain entities across services, routes, CLI, and desktop components
-- **Error System Integration**: Centralized error handling with multi-language localization
+- **Error System Integration**: Centralized error handling with user-friendly thiserror templates
 - **External API Bridging**: Standardized interfaces for OpenAI, Hugging Face, and OAuth2 systems
 - **Business Rule Enforcement**: Domain validation and type safety across all application layers
 
@@ -20,7 +20,7 @@ BodhiApp's error architecture provides application-wide consistency through soph
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ServiceError {
-  #[error("model_not_found")]
+  #[error("Model not found: {model_name}.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ModelNotFound { model_name: String },
 }
@@ -31,10 +31,14 @@ The error system coordinates across all BodhiApp layers through these key files:
 
 - **Error Definition**: `src/error/objs.rs` - Contains all domain error types with `errmeta_derive` patterns
 - **API Conversion**: `src/error/error_api.rs` - `ApiError` envelope for OpenAI compatibility
-- **Localization**: `src/localization_service.rs` - Singleton service with test override mechanism
-- **Resource Templates**: `src/resources/en-US/messages.ftl` - Fluent message templates with argument extraction
 
-**Why This Architecture**: Enables seamless error propagation from services → routes → clients with consistent localization and OpenAI API compatibility across all application boundaries.
+**Error Message Guidelines**:
+- Write user-friendly messages in sentence case ending with a period
+- Use `{field}` syntax for named field interpolation
+- Use `{0}` for positional field interpolation
+- Messages should be clear and actionable
+
+**Why This Architecture**: Enables seamless error propagation from services → routes → clients with consistent error messages and OpenAI API compatibility across all application boundaries.
 
 ## GGUF Binary Format System
 
@@ -154,18 +158,18 @@ pub trait AuthService {
 pub enum HubServiceError {
   #[error(transparent)]
   HubApiError(#[from] HubApiError),
-  #[error("hub_file_missing")]
+  #[error("Hub file not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   HubFileNotFound(#[from] HubFileNotFoundError),
 }
 ```
 
-- **Error Propagation**: All service errors implement `AppError` via `errmeta_derive` for consistent HTTP response generation with localized messages
+- **Error Propagation**: All service errors implement `AppError` via `errmeta_derive` for consistent HTTP response generation
 - **Domain Validation**: Services use objs validation rules for request parameters, business logic, and cross-service data consistency
 - **Model Coordination**: `HubService` and `DataService` coordinate via shared `Repo`, `HubFile`, and `Alias` types with atomic operations and validation
 - **Authentication Flow**: `AuthService` uses `Role` and `Scope` types for complex authorization decisions with hierarchical access control
 - **Database Integration**: `DbService` uses objs error types for transaction management, migration support, and consistent error handling
-- **Cross-Service Error Flow**: Service errors propagate through objs error system to provide consistent API responses and localized messages
+- **Cross-Service Error Flow**: Service errors propagate through objs error system to provide consistent API responses
 
 ### Route Layer Integration Architecture
 Routes depend on objs for comprehensive request/response handling:
@@ -173,7 +177,7 @@ Routes depend on objs for comprehensive request/response handling:
 - **Parameter Validation**: `OAIRequestParams` enforced across all OpenAI-compatible endpoints
 - **Error Response Generation**: `ApiError` provides OpenAI-compatible JSON responses for all service errors
 - **Authorization Middleware**: `Role` and `Scope` types enable fine-grained access control across route hierarchies
-- **Localized Error Messages**: Multi-language error support delivered to web UI, CLI, and API clients
+- **User-Friendly Error Messages**: Error messages via thiserror templates delivered to web UI, CLI, and API clients
 
 ### Extension Guidelines for Cross-Crate Integration
 
@@ -190,23 +194,24 @@ When creating new objs types that will be used across crates:
 For new error types that span multiple crates:
 
 ```rust
-// 1. Define in appropriate domain module with localization
-#[error("custom_validation_error")]
+// Define in appropriate domain module with user-friendly message
+#[error("Invalid {field}: {value}.")]
 #[error_meta(error_type = ErrorType::BadRequest)]
 CustomError { field: String, value: String },
-
-// 2. Add Fluent message templates in all supported languages
-// src/resources/en-US/messages.ftl:
-// custom_validation_error = Invalid {field}: {value}
 ```
+
+**Error Message Guidelines**:
+- Use sentence case and end with a period
+- Use `{field}` for named field interpolation
+- Messages should be clear and actionable
 
 ## Critical Cross-Crate Invariants
 
 ### Application-Wide Error Handling Requirements
 - **Universal Implementation**: All crates must implement `AppError` for error types to maintain consistent behavior
-- **Localization Consistency**: All user-facing errors require Fluent message templates in supported languages
+- **Message Guidelines**: Error messages should be user-friendly, sentence case, ending with a period
+- **Field Interpolation**: Use `{field}` for named fields and `{0}` for positional fields
 - **Cross-Crate Error Flow**: Errors must propagate cleanly from services through routes to clients
-- **Fallback Safety**: `ApiError` provides graceful degradation when localization resources fail
 
 ### Model Management Coordination Constraints
 - **Canonical Format Enforcement**: `Repo` "user/name" format strictly validated across all model-handling components
@@ -365,65 +370,19 @@ pub async fn parse_txt(response: Response<Body>) -> String {
 
 **Why This Architecture**: Enables type-safe response parsing for integration tests. The functions handle both JSON deserialization and plain text extraction from HTTP responses.
 
-### Localization Testing Support
+### Error Message Testing
 
-#### **Mock Localization Service**: `src/test_utils/l10n.rs`
+Error messages are validated directly using `error.to_string()`:
 
-**Service Instance Management**:
 ```rust
-impl FluentLocalizationService {
-  pub fn get_instance() -> Arc<FluentLocalizationService> {
-    MOCK_LOCALIZATION_SERVICE
-      .read()
-      .unwrap()
-      .as_ref()
-      .unwrap()
-      .clone()
-  }
-}
-
-pub fn set_mock_localization_service(service: Arc<FluentLocalizationService>) {
-  let mut mock = MOCK_LOCALIZATION_SERVICE.write().unwrap();
-  *mock = Some(service);
+#[test]
+fn test_error_message() {
+  let error = MyError::ValidationFailed { field: "name".to_string() };
+  assert_eq!("Validation failed for field: name.", error.to_string());
 }
 ```
 
-**Cross-Crate Resource Loading**:
-```rust
-#[fixture]
-#[once]
-pub fn setup_l10n(
-  localization_service: Arc<FluentLocalizationService>,
-) -> Arc<FluentLocalizationService> {
-  localization_service
-    .load_resource(&include_dir::include_dir!("$CARGO_MANIFEST_DIR/../objs/src/resources"))
-    .unwrap()
-    // ... loads resources from all crates
-}
-```
-
-**Why This Architecture**: Provides comprehensive localization testing with all crate resources loaded. The mock service enables testing of localized error messages across the entire application ecosystem.
-
-#### **Error Message Testing**: `src/test_utils/error.rs`
-```rust
-pub fn assert_error_message(
-  service: &Arc<FluentLocalizationService>,
-  code: &str,
-  args: HashMap<String, String>,
-  expected: &str,
-) {
-  let message = service.get_message(&EN_US, code, Some(args)).unwrap();
-  assert_eq!(
-    expected,
-    message
-      .to_string()
-      .replace("\u{2068}", "") // Remove bidirectional formatting
-      .replace("\u{2069}", "")
-  );
-}
-```
-
-**Why This Architecture**: Enables precise error message validation with proper Unicode handling. The function strips bidirectional formatting characters that can interfere with test assertions.
+**Why This Architecture**: Error messages are defined inline in thiserror `#[error("...")]` attributes, enabling straightforward testing without localization service dependencies.
 
 ### Data Generation and Python Integration
 
@@ -503,21 +462,19 @@ objs = { workspace = true, features = ["test-utils"] }
 Tests should use rstest fixtures for consistent environment setup:
 ```rust
 #[rstest]
-fn test_model_loading(
-  temp_hf_home: TempDir,
-  localization_service: Arc<FluentLocalizationService>,
-) {
-  // Test uses isolated HF cache and localization
+fn test_model_loading(temp_hf_home: TempDir) {
+  // Test uses isolated HF cache
 }
 ```
 
-### **Mock Service Configuration**
-Tests requiring localization should setup mock services:
+### **Error Message Testing**
+Error messages are tested directly using `error.to_string()`:
 ```rust
-#[rstest]
-fn test_error_messages(setup_l10n: Arc<FluentLocalizationService>) {
-  assert_error_message(&setup_l10n, "error_code", args, "Expected Message");
+#[test]
+fn test_error_message() {
+  let error = MyError::NotFound { id: "123".to_string() };
+  assert_eq!("Resource not found: 123.", error.to_string());
 }
 ```
 
-**Why These Patterns**: Ensures consistent test isolation, dependency injection, and resource management across all crate test suites.
+**Why These Patterns**: Ensures consistent test isolation and straightforward error message validation without localization service dependencies.

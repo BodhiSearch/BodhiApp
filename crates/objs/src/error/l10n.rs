@@ -31,10 +31,10 @@ pub struct LocaleNotSupportedError {
 pub enum LocalizationMessageError {
   #[error(transparent)]
   RwLockRead(#[from] RwLockReadError),
-  #[error("message_not_found")]
+  #[error("Message template not found: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-message_not_found")]
   MessageNotFound(String),
-  #[error("format_pattern")]
+  #[error("Message formatting failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-format_pattern")]
   FormatPattern(String),
   #[error(transparent)]

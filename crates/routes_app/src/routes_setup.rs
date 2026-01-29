@@ -22,7 +22,7 @@ pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AppServiceError {
-  #[error("already_setup")]
+  #[error("Application is already set up.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AlreadySetup,
   #[error(transparent)]
@@ -297,7 +297,7 @@ mod tests {
     Router,
   };
 
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, ReqwestError};
+  use objs::ReqwestError;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -360,7 +360,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_setup_handler_error(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] secret_service: SecretServiceStub,
     #[case] payload: SetupRequest,
   ) -> anyhow::Result<()> {
@@ -392,7 +391,7 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "app is already setup",
+          "message": "Application is already set up.",
           "code": "app_service_error-already_setup",
           "type": "invalid_request_error",
         }
@@ -692,9 +691,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_setup_handler_register_resource_error(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
     let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
@@ -735,9 +732,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "error connecting to internal service: \u{2068}failed to register as resource server\u{2069}",
+          "message": "Network error: failed to register as resource server.",
           "code": "reqwest_error",
           "type": "internal_server_error",
+          "param": {
+            "error": "failed to register as resource server"
+          }
         }
       }},
       body
@@ -748,13 +748,14 @@ mod tests {
   #[rstest]
   #[case(
     r#"{"invalid": true,}"#,
-    "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON: trailing comma at line 1 column 18\u{2069}"
+    "Invalid JSON in request: Failed to parse the request body as JSON: trailing comma at line 1 column 18.",
+    "Failed to parse the request body as JSON: trailing comma at line 1 column 18"
   )]
   #[tokio::test]
   async fn test_setup_handler_bad_request(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] body: &str,
     #[case] expected_error: &str,
+    #[case] source_error: &str,
   ) -> anyhow::Result<()> {
     let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
@@ -779,7 +780,10 @@ mod tests {
         "error": {
           "message": expected_error,
           "type": "invalid_request_error",
-          "code": "json_rejection_error"
+          "code": "json_rejection_error",
+          "param": {
+            "source": source_error
+          }
         }
       }},
       body
@@ -789,9 +793,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_setup_handler_validation_error(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
     let mock_auth_service = MockAuthService::default();
     // No expectation needed as validation should fail before calling auth service
 

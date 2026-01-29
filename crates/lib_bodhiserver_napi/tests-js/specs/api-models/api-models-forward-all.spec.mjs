@@ -173,7 +173,7 @@ test.describe('API Models Forward All With Prefix', () => {
 
     // Try to create - should show error
     await page.click('[data-testid="create-api-model-button"]');
-    await formPage.form.waitForToast(/prefix.*already exists|prefix_exists/i);
+    await formPage.form.waitForToast(/Prefix.*already.*used/i);
 
     // ===== SCENARIO E: Delete forward_all model =====
     await modelsPage.navigateToModels();

@@ -58,7 +58,7 @@ Complex API operations coordinated across BodhiApp's service layer:
 Application API routes coordinate with HTTP infrastructure for request processing:
 - **Request Validation**: Comprehensive input validation using validator crate with custom validation rules
 - **Response Formatting**: Consistent API response formats with pagination, error handling, and OpenAI compatibility
-- **Error Handling**: Service errors converted to appropriate HTTP status codes with localized messages
+- **Error Handling**: Service errors converted to appropriate HTTP status codes with user-friendly messages
 - **Authentication Integration**: Seamless integration with auth_middleware for API security and authorization
 - **Route Composition Integration**: Coordinated with routes_all for unified route composition with session-based authentication and role-based authorization
 
@@ -67,7 +67,7 @@ Extensive use of objs crate for API operations:
 - **Request/Response Objects**: Comprehensive API object definitions with validation and serialization
 - **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation
 - **Parameter Validation**: Domain object validation rules applied consistently across API endpoints
-- **Localization Support**: Multi-language error messages via objs LocalizationService integration
+- **Error Message Support**: User-friendly error messages via thiserror templates
 
 ## API Orchestration Workflows
 
@@ -130,7 +130,7 @@ Sophisticated user access control with role-based authorization:
 ### Service Coordination Rules
 - All routes must use RouterState dependency injection for consistent service access
 - Command orchestration must handle async operations with proper error propagation and recovery
-- Service errors must be translated to appropriate HTTP status codes with localized messages
+- Service errors must be translated to appropriate HTTP status codes with user-friendly messages
 - Long-running operations must provide progress feedback and cancellation support
 - Database operations must maintain transactional consistency across service boundaries
 
@@ -142,7 +142,7 @@ When implementing additional application API endpoints:
 1. **Service Coordination Design**: Use RouterState for consistent AppService access and business logic coordination
 2. **Request/Response Objects**: Define comprehensive API objects with validation using validator crate and ToSchema for OpenAPI
 3. **Command Integration**: Leverage commands crate for complex operations that require multi-service coordination
-4. **Error Handling**: Implement API-specific errors that convert to appropriate HTTP responses with localization
+4. **Error Handling**: Implement API-specific errors that convert to appropriate HTTP responses with user-friendly messages
 5. **OpenAPI Documentation**: Add comprehensive Utoipa annotations with examples and proper schema definitions
 
 ### Extending Authentication Flows

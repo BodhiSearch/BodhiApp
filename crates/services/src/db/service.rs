@@ -46,13 +46,13 @@ pub enum DbError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::BadRequest, code="db_error-strum_parse", args_delegate = false)]
   StrumParse(#[from] strum::ParseError),
-  #[error("token_validation")]
+  #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   TokenValidation(String),
-  #[error("encryption_error")]
+  #[error("Encryption error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
-  #[error("prefix_exists")]
+  #[error("Prefix '{0}' is already used by another API model.")]
   #[error_meta(error_type = ErrorType::BadRequest, code = "db_error-prefix_exists")]
   PrefixExists(String),
 }

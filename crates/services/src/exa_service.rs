@@ -15,19 +15,19 @@ const EXA_TIMEOUT_SECS: u64 = 30;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ExaError {
-  #[error("request_failed")]
+  #[error("Search request failed: {0}.")]
   #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   RequestFailed(String),
 
-  #[error("rate_limited")]
+  #[error("Search rate limit exceeded. Please wait and try again.")]
   #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   RateLimited,
 
-  #[error("invalid_api_key")]
+  #[error("Search API key is invalid or missing.")]
   #[error_meta(error_type = ErrorType::Unauthorized)]
   InvalidApiKey,
 
-  #[error("timeout")]
+  #[error("Search request timed out.")]
   #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   Timeout,
 }

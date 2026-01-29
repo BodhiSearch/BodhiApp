@@ -591,29 +591,29 @@ Comprehensive error handling with HTTP status code mapping:
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum LoginError {
-    #[error("app_reg_info_not_found")]
+    #[error("App registration info not found.")]
     #[error_meta(error_type = ErrorType::InvalidAppState)]
     AppRegInfoNotFound,
-    
-    #[error("app_status_invalid")]
+
+    #[error("App status is invalid: {0}.")]
     #[error_meta(error_type = ErrorType::InvalidAppState)]
     AppStatusInvalid(AppStatus),
-    
+
     #[error(transparent)]
     SecretServiceError(#[from] SecretServiceError),
-    
-    #[error(transparent)]
-    #[error_meta(error_type = ErrorType::Authentication, code = "login_error-session_error", args_delegate = false)]
+
+    #[error("Session error: {0}.")]
+    #[error_meta(error_type = ErrorType::Authentication, args_delegate = false)]
     SessionError(#[from] tower_sessions::session::Error),
-    
-    #[error("oauth_error")]
+
+    #[error("OAuth error: {0}.")]
     #[error_meta(error_type = ErrorType::BadRequest)]
     OAuthError(String),
-    
+
     #[error(transparent)]
     AuthServiceError(#[from] AuthServiceError),
-    
-    #[error("state_digest_mismatch")]
+
+    #[error("State digest mismatch.")]
     #[error_meta(error_type = ErrorType::BadRequest)]
     StateDigestMismatch,
 }
@@ -622,7 +622,7 @@ pub enum LoginError {
 **Cross-Crate Integration Features**:
 - Service registry access through RouterState for consistent business logic coordination
 - Command layer integration for complex multi-service operations
-- Comprehensive error translation with localized messages and HTTP status code mapping
+- Comprehensive error translation with user-friendly messages and HTTP status code mapping
 - Domain object integration for consistent validation and serialization patterns
 
 ## Request/Response Object Architecture
@@ -786,7 +786,7 @@ For features requiring coordination across multiple services:
 
 1. **Command Orchestration**: Use commands crate for complex multi-service workflows with proper error boundaries and rollback
 2. **Service Registry**: Coordinate through AppService registry for consistent business logic access and dependency injection
-3. **Error Translation**: Convert service errors to appropriate HTTP responses with OpenAI-compatible error formats and localization
+3. **Error Translation**: Convert service errors to appropriate HTTP responses with OpenAI-compatible error formats
 4. **Progress Tracking**: Implement progress feedback for long-running operations with cancellation support and status updates
 5. **Transaction Management**: Ensure data consistency across service boundaries with proper transaction coordination and rollback capabilities
 

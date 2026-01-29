@@ -369,33 +369,50 @@ pub async fn canonical_url_middleware(
 - Canonical URL redirection improves SEO while providing consistent security boundaries
 - Comprehensive security header management with automatic injection and removal patterns
 
-## Localization Infrastructure
+## Error Message Architecture
 
-### Error Message Localization
-Authentication and authorization errors support localization through Fluent resource files:
+### Error Message Definitions
+Authentication and authorization errors use thiserror templates for user-friendly messages:
 
 ```rust
-// Localization resource inclusion - see crates/auth_middleware/src/lib.rs
-pub mod l10n {
-  use include_dir::Dir;
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+// Error messages defined inline with thiserror - see crates/auth_middleware/src/error.rs
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum AuthError {
+  #[error("Access denied.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  InvalidAccess,
+
+  #[error("Refresh token not found in session, logout and login again to continue.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  RefreshTokenNotFound,
+
+  #[error("Session is not available, please try again later: {0}.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TowerSession(#[from] tower_sessions::session::Error),
+
+  #[error("API token is inactive.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenInactive,
 }
 
-// Error messages with localization support - see crates/auth_middleware/src/resources/en-US/messages.ftl
-auth_error-invalid_access = access denied
-auth_error-refresh_token_not_found = refresh token not found in session, logout and login again to continue
-auth_error-tower_sessions = session is not available, please try again later, error: {$error}
-auth_error-token_inactive = API token is inactive
-auth_error-app_status_invalid = app status is invalid for this operation: {$var_0}
-api_auth_error-forbidden = insufficient privileges to access this resource
-api_auth_error-missing_auth = missing authentication header
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ApiAuthError {
+  #[error("Insufficient privileges to access this resource.")]
+  #[error_meta(error_type = ErrorType::Authorization)]
+  Forbidden,
+
+  #[error("Missing authentication header.")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  MissingAuth,
+}
 ```
 
-**Localization Features**:
-- Fluent-based localization system with parameterized error messages
-- Embedded resource files using include_dir for deployment convenience
+**Error Message Features**:
+- User-friendly error messages defined inline via thiserror `#[error("...")]` attributes
 - Consistent error message formatting across authentication and authorization failures
-- Support for dynamic error parameters with proper escaping and formatting
+- Support for field interpolation using `{field}` syntax for named fields and `{0}` for positional
 
 ## Utility Functions and Helpers
 
@@ -429,7 +446,7 @@ pub struct ApiErrorResponse {
 - App status retrieval with graceful fallback to Setup status when not configured
 - Cryptographically secure random string generation for tokens and security identifiers
 - Consistent API error response structures for HTTP error handling
-- Integration with project-wide error handling patterns and localization system
+- Integration with project-wide error handling patterns using thiserror templates
 
 ## Cross-Crate Integration Implementation
 

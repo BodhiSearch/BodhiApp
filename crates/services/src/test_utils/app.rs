@@ -12,7 +12,6 @@ use crate::{
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
-use objs::LocalizationService;
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
@@ -61,7 +60,6 @@ pub struct AppServiceStub {
   pub secret_service: Option<Arc<dyn SecretService>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
-  pub localization_service: Option<Arc<dyn LocalizationService>>,
   #[builder(default = "self.default_time_service()")]
   pub time_service: Option<Arc<dyn TimeService>>,
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
@@ -286,10 +284,6 @@ impl AppService for AppServiceStub {
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
     self.cache_service.clone().unwrap()
-  }
-
-  fn localization_service(&self) -> Arc<dyn LocalizationService> {
-    self.localization_service.clone().unwrap()
   }
 
   fn time_service(&self) -> Arc<dyn TimeService> {

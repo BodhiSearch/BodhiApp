@@ -24,7 +24,7 @@ The app service builder provides two primary entry points:
 
 2. **`build_app_service_with_config(setting_service, config)`** - Configurable for testing
    - Allows dependency injection through `AppServiceConfig`
-   - Enables mocking of specific services (secret service, localization service)
+   - Enables mocking of specific services (secret service, etc.)
    - Maintains the same initialization flow while allowing customization
 
 ### Helper Functions
@@ -36,7 +36,6 @@ The builder is decomposed into focused helper functions:
 - `setup_app_database()` - Connects to and migrates the application database
 - `setup_session_database()` - Connects to and migrates the session database
 - `setup_auth_service()` - Configures Keycloak authentication service
-- `setup_localization_service()` - Loads all localization resources from workspace crates
 
 ## Key Components
 
@@ -68,13 +67,12 @@ pub enum AppServiceBuilderError {
   AppDbMigrationError(#[source] services::db::DbError),
   SessionDbConnectionError(#[source] services::db::DbError),
   SessionDbMigrationError(#[source] services::SessionServiceError),
-  LocalizationError(#[from] objs::LocalizationSetupError),
 }
 ```
 
 **Purpose**: Provides comprehensive error handling for all service initialization failures.
 
-**Design**: Follows the same simple error pattern as `AppDirsBuilderError` - uses plain `thiserror::Error` without `errmeta_derive::ErrorMeta` since localization isn't available during service initialization.
+**Design**: Follows the same simple error pattern as `AppDirsBuilderError` - uses plain `thiserror::Error` with user-friendly messages directly in the error templates.
 
 ## Migration Summary
 
@@ -118,7 +116,6 @@ let service = AppServiceBuilder::new(setting_service)
   .data_service(data_service)?
   .auth_service(Arc::new(auth_service))?
   .secret_service(Arc::new(secret_service))?
-  .localization_service(localization_service.clone())?
   .build()
   .await?;
 ```
@@ -159,7 +156,6 @@ async fn test_with_mocked_secret_service() -> anyhow::Result<()> {
 
     let app_service = AppServiceBuilder::new(setting_service)
         .secret_service(Arc::new(mock_secret_service))?
-        .localization_service(FluentLocalizationService::get_instance())?
         .build()
         .await?;
 
@@ -181,7 +177,6 @@ let app_service = AppServiceBuilder::new(setting_service)
     .hub_service(hub_service)?
     .auth_service(Arc::new(auth_service))?
     .secret_service(Arc::new(secret_service))?
-    .localization_service(FluentLocalizationService::get_instance())?
     .build()
     .await?;
 ```
@@ -200,7 +195,7 @@ Each helper function can be tested independently:
 ### 2. **Integration Testing with Mocks**
 The `AppServiceBuilder` allows selective mocking:
 - Mock secret service for testing without keyring dependencies
-- Mock localization service to avoid singleton initialization issues
+- Mock time service for deterministic time-based testing
 - Test error scenarios by injecting failing mock services
 
 ### 3. **End-to-End Testing**
@@ -230,17 +225,19 @@ impl From<AppServiceBuilderError> for BodhiError {
 
 ### Error Messages
 
-Localized error messages are provided in `messages.ftl` files:
+Error messages are defined directly in thiserror templates:
 
-```fluent
-# lib_bodhiserver/src/resources/en-US/messages.ftl
-app_service_builder_error-encryption_key_error = failed to generate or retrieve encryption key
-app_service_builder_error-secret_service_error = failed to initialize secret service
-app_service_builder_error-app_db_connection_error = failed to connect to application database
-# ... additional error messages
-
-# bodhi/src-tauri/src/resources/en-US/messages.ftl  
-bodhi_error-app_service_builder_error = failed to initialize application services
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum AppServiceBuilderError {
+  #[error("Failed to generate or retrieve encryption key.")]
+  EncryptionKeyError(#[from] services::KeyringError),
+  #[error("Failed to initialize secret service.")]
+  SecretServiceError(#[from] services::SecretServiceError),
+  #[error("Failed to connect to application database.")]
+  AppDbConnectionError(#[from] services::db::DbError),
+  // ... additional error variants
+}
 ```
 
 ### Error Propagation
@@ -249,7 +246,7 @@ Errors are properly propagated through the call stack:
 1. Helper functions return specific `AppServiceBuilderError` variants
 2. Main builder functions propagate these errors
 3. Application code converts to `BodhiError` via `From` trait
-4. Localized error messages are displayed to users
+4. User-friendly error messages are displayed via thiserror templates
 
 ## Files Changed
 
@@ -261,13 +258,11 @@ Errors are properly propagated through the call stack:
 
 #### Core Implementation
 - `crates/lib_bodhiserver/src/lib.rs` - Added module export
-- `crates/lib_bodhiserver/src/resources/en-US/messages.ftl` - Added error messages
 - `crates/lib_bodhiserver/Cargo.toml` - Added tokio test dependency
 
-#### Application Integration  
+#### Application Integration
 - `crates/bodhi/src-tauri/src/app.rs` - Replaced 60+ lines with 3 lines
 - `crates/bodhi/src-tauri/src/error.rs` - Added error variant and conversion
-- `crates/bodhi/src-tauri/src/resources/en-US/messages.ftl` - Added error message
 
 #### Test Integration
 - `crates/integration-tests/tests/utils/live_server_utils.rs` - Simplified service setup
@@ -277,6 +272,6 @@ Errors are properly propagated through the call stack:
 - **Maintainability**: Centralized service initialization logic
 - **Testability**: Enhanced through dependency injection pattern
 - **Reusability**: Service builder can be used across deployment modes
-- **Error handling**: Comprehensive error coverage with proper localization
+- **Error handling**: Comprehensive error coverage with user-friendly thiserror messages
 
 The migration successfully consolidates complex service initialization logic into a clean, testable, and reusable library component that serves as the foundation for all Bodhi application deployments.

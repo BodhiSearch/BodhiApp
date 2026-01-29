@@ -44,7 +44,6 @@ Comprehensive testing infrastructure for AppServiceBuilder and service dependenc
 #[tokio::test]
 async fn test_app_service_builder_with_custom_services(
   empty_bodhi_home: TempDir,
-  #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
 ) -> anyhow::Result<()> {
   let bodhi_home = empty_bodhi_home.path().join("bodhi");
   let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
@@ -262,7 +261,6 @@ End-to-end testing for complete application initialization:
 #[tokio::test]
 async fn test_complete_app_service_composition(
   empty_bodhi_home: TempDir,
-  #[from(objs::test_utils::setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
 ) -> anyhow::Result<()> {
   let bodhi_home = empty_bodhi_home.path().join("bodhi");
   let bodhi_home_str = bodhi_home.display().to_string();
@@ -298,7 +296,6 @@ Comprehensive testing for service interactions and coordination:
 #[tokio::test]
 async fn test_service_integration_workflows(
   empty_bodhi_home: TempDir,
-  #[from(objs::test_utils::setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
 ) -> anyhow::Result<()> {
   let bodhi_home = empty_bodhi_home.path().join("bodhi");
   let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
@@ -329,7 +326,6 @@ Performance testing for service initialization and composition:
 #[tokio::test]
 async fn test_service_composition_performance(
   empty_bodhi_home: TempDir,
-  #[from(objs::test_utils::setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
 ) -> anyhow::Result<()> {
   let bodhi_home = empty_bodhi_home.path().join("bodhi");
   let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;

@@ -45,9 +45,3 @@ pub use routes_toolsets::*;
 pub use routes_user::*;
 pub use routes_users_list::*;
 pub use toolsets_dto::*;
-
-pub mod l10n {
-  use include_dir::Dir;
-
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
-}

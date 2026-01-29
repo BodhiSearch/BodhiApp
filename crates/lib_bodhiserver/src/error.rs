@@ -63,10 +63,10 @@ impl From<AppServiceBuilderError> for ErrorMessage {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AppServiceBuilderError {
-  #[error("Service already set: {0}")]
+  #[error("{0}")]
   #[error_meta(error_type=ErrorType::InternalServer)]
   ServiceAlreadySet(String),
-  #[error("placeholder_value")]
+  #[error("Encryption key not properly configured.")]
   #[error_meta(error_type=ErrorType::BadRequest)]
   PlaceholderValue(String),
 }

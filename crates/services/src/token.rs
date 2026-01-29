@@ -6,7 +6,7 @@ use std::{collections::HashMap, result::Result};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
-#[error("json_web_token_error")]
+#[error("Invalid token: {source}.")]
 pub struct JsonWebTokenError {
   #[from]
   source: jsonwebtoken::errors::Error,
@@ -29,21 +29,21 @@ impl JsonWebTokenError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum TokenError {
-  #[error("invalid_token")]
+  #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidToken(String),
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
-  #[error("invalid_issuer")]
+  #[error("Invalid token issuer: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidIssuer(String),
-  #[error("scope_empty")]
+  #[error("User does not have any access permissions.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   ScopeEmpty,
-  #[error("expired")]
+  #[error("Session has expired. Please log in again.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   Expired,
-  #[error("invalid_audience")]
+  #[error("Invalid token audience: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAudience(String),
 }
@@ -140,11 +140,9 @@ mod tests {
   use crate::{extract_claims, test_utils::build_token, TokenError};
   use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
   use chrono::Utc;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
-  use rstest::rstest;
   use serde::Deserialize;
   use serde_json::{json, Value};
-  use std::{collections::HashMap, sync::Arc};
+  use std::collections::HashMap;
   use time::OffsetDateTime;
 
   #[derive(Debug, Deserialize, PartialEq)]
@@ -307,10 +305,8 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  fn test_extract_claims_token_malformed_payload(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  #[test]
+  fn test_extract_claims_token_malformed_payload() -> anyhow::Result<()> {
     let token = format!(
       "{}.{}.{}",
       URL_SAFE_NO_PAD.encode(r#"{"alg":"RS256","typ":"JWT"}"#),
@@ -323,10 +319,8 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  fn test_extract_claims_token_type_mismatch(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  #[test]
+  fn test_extract_claims_token_type_mismatch() -> anyhow::Result<()> {
     let now = Utc::now().timestamp();
     let claims = json! {{
       "sub": "1234",

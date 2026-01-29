@@ -1,5 +1,6 @@
 use crate::ErrorMessage;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use utoipa::ToSchema;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema)]
@@ -7,7 +8,7 @@ use utoipa::ToSchema;
     "message": "Validation failed: name is required",
     "type": "invalid_request_error",
     "code": "validation_error",
-    "param": "name"
+    "param": {"field": "name", "value": "invalid"}
 }))]
 pub struct ErrorBody {
   /// Human-readable error message describing what went wrong
@@ -22,10 +23,10 @@ pub struct ErrorBody {
   #[schema(example = "validation_error")]
   pub code: Option<String>,
 
-  /// Parameter name that caused the error (for validation errors)
+  /// Additional error parameters as key-value pairs (for validation errors)
   #[serde(skip_serializing_if = "Option::is_none")]
-  #[schema(example = "name")]
-  pub param: Option<String>,
+  #[schema(example = json!({"field": "name", "value": "invalid"}))]
+  pub param: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema)]

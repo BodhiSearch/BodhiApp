@@ -14,7 +14,6 @@ mod model_metadata;
 mod user_alias;
 
 mod hub_file;
-mod localization_service;
 pub mod log;
 mod oai;
 mod remote_file;
@@ -37,7 +36,6 @@ pub use model_metadata::*;
 pub use user_alias::*;
 
 pub use hub_file::*;
-pub use localization_service::*;
 pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
@@ -58,10 +56,4 @@ macro_rules! impl_error_from {
       }
     }
   };
-}
-
-pub mod l10n {
-  use include_dir::Dir;
-
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
 }

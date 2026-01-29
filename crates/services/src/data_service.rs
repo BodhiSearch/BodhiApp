@@ -11,17 +11,17 @@ use objs::{
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("alias_exists")]
+#[error("Model configuration '{0}' already exists.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct AliasExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("alias_not_found")]
+#[error("Model configuration '{0}' not found.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct AliasNotFoundError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("data_file_missing")]
+#[error("File '{filename}' not found in '{dirname}' folder.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct DataFileNotFoundError {
   filename: String,
@@ -31,7 +31,7 @@ pub struct DataFileNotFoundError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
-  #[error("dir_missing")]
+  #[error("Bodhi data folder not initialized. Run 'bodhi init' to set up.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   DirMissing { dirname: String },
   #[error(transparent)]
@@ -353,34 +353,13 @@ mod test {
       test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
       TestHfService,
     },
-    AliasExistsError, AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError,
-    LocalDataService,
+    AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError, LocalDataService,
   };
   use anyhow_trace::anyhow_trace;
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n, temp_bodhi_home},
-    Alias, ApiAlias, ApiFormat, AppError, FluentLocalizationService, RemoteModel, UserAlias,
-  };
+  use objs::{test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, RemoteModel, UserAlias};
   use rstest::rstest;
   use std::{fs, sync::Arc};
   use tempfile::TempDir;
-
-  #[rstest]
-  #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
-  r#"directory 'test' not found in $BODHI_HOME.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case::not_found(&DataServiceError::DataFileNotFound(DataFileNotFoundError::new("test.txt".to_string(), "test".to_string())),
-  r#"file 'test.txt' not found in $BODHI_HOME/test.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case(&AliasNotFoundError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases")]
-  #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases")]
-  fn test_data_service_error(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] message: String,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), &message);
-  }
 
   #[rstest]
   #[tokio::test]

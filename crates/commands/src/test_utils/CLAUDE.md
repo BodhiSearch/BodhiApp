@@ -78,7 +78,7 @@ The test_utils module has specific architectural constraints:
 Command test utilities must coordinate with objs testing infrastructure:
 - **Standardized Test Data**: Must use objs test factories (`Repo::testalias()`, etc.) for consistency
 - **Builder Pattern Compatibility**: Command builders must integrate with objs domain builders
-- **Error System Coordination**: Command errors must work with objs error system and localization
+- **Error System Coordination**: Command errors must work with objs error system via thiserror templates
 - **Parameter Object Integration**: OAIRequestParams and other domain objects must be consistent
 
 ### Cross-Crate Testing Coordination

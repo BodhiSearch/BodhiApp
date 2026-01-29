@@ -20,18 +20,18 @@ Advanced library interface for embedding BodhiApp functionality:
 
 ### Cross-Crate Service Integration Architecture
 Comprehensive service orchestration for embeddable library functionality:
-- **Service Registry Composition**: Complete AppService registry with HubService, DataService, AuthService, DbService, SessionService, SecretService, CacheService, LocalizationService, and TimeService
+- **Service Registry Composition**: Complete AppService registry with HubService, DataService, AuthService, DbService, SessionService, SecretService, CacheService, and TimeService
 - **Configuration Management**: Environment-specific configuration with development/production modes and flexible settings management
 - **Database Integration**: SQLite database setup with migration management and connection pooling for embedded scenarios
 - **Authentication Coordination**: OAuth2 integration with session management and API token support for embedded authentication
-- **Localization Resource Management**: Multi-language support with resource loading from all workspace crates
+- **Error Message Architecture**: User-friendly error messages via thiserror templates
 
 ### Application Bootstrap and Configuration System
 Sophisticated application initialization with comprehensive configuration management:
 - **AppOptions Builder Pattern**: Flexible configuration with environment variables, app settings, and OAuth credentials management
 - **Directory Setup Orchestration**: Automatic creation of BODHI_HOME, aliases, databases, logs, and HuggingFace cache directories
 - **Settings Service Integration**: Complete settings management with file-based configuration, environment variable overrides, and system defaults
-- **Error Handling Architecture**: Comprehensive error types with localized messages and recovery strategies for configuration failures
+- **Error Handling Architecture**: Comprehensive error types with user-friendly messages and recovery strategies for configuration failures
 - **UI Asset Management**: Embedded static asset serving with Next.js frontend integration for complete application embedding
 
 ## Architecture Position
@@ -65,7 +65,7 @@ Advanced configuration management coordinated across all application layers:
 - **AppOptions Builder Pattern**: Flexible configuration with environment variables, app settings, OAuth credentials, and system settings management
 - **Settings Service Integration**: Complete settings management with file-based configuration, environment variable overrides, and system defaults coordination
 - **Environment Type Management**: Development/production mode coordination with environment-specific configuration and resource management
-- **Localization Resource Loading**: Multi-language support with resource loading from all workspace crates and comprehensive error handling
+- **Error Message Support**: User-friendly error messages via thiserror templates with comprehensive error handling
 
 ## Embeddable Library Orchestration Workflows
 
@@ -76,7 +76,7 @@ Complex application initialization with comprehensive service orchestration:
 2. **Directory Setup**: BODHI_HOME, HF_HOME, aliases, databases, and logs directory creation with proper permissions and error handling
 3. **Service Composition**: AppServiceBuilder orchestration with all 10 business services including dependency injection and error recovery
 4. **Database Migration**: SQLite database setup with schema migration, connection pooling, and transaction support for embedded scenarios
-5. **Localization Loading**: Multi-language resource loading from all workspace crates with comprehensive error handling and fallback support
+5. **Service Initialization**: Complete service initialization with error handling and recovery mechanisms
 
 ### Configuration Management Orchestration
 Sophisticated configuration coordination across application boundaries:
@@ -118,7 +118,7 @@ Comprehensive error management across embeddable library boundaries:
 - AppOptions must validate all required configuration with clear error messages and recovery guidance
 - Settings service must support environment-specific configuration with development/production mode coordination
 - Directory setup must handle filesystem permissions and creation failures with proper error reporting and recovery
-- Localization resources must load from all workspace crates with fallback support and comprehensive error handling
+- Error messages should be user-friendly, written in sentence case, and end with a period
 
 ## Embeddable Library Extension Patterns
 

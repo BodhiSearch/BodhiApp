@@ -17,9 +17,3 @@ pub const ENDPOINT_OAI_EMBEDDINGS: &str = "/v1/embeddings";
 pub const ENDPOINT_OLLAMA_TAGS: &str = "/api/tags";
 pub const ENDPOINT_OLLAMA_SHOW: &str = "/api/show";
 pub const ENDPOINT_OLLAMA_CHAT: &str = "/api/chat";
-
-pub mod l10n {
-  use include_dir::Dir;
-
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
-}

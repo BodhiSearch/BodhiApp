@@ -20,39 +20,39 @@ use uuid::Uuid;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ToolsetError {
-  #[error("not_found")]
+  #[error("Toolset '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ToolsetNotFound(String),
 
-  #[error("method_not_found")]
+  #[error("Toolset method '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   MethodNotFound(String),
 
-  #[error("not_configured")]
+  #[error("Toolset is not configured for this user.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ToolsetNotConfigured,
 
-  #[error("disabled")]
+  #[error("Toolset is disabled.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ToolsetDisabled,
 
-  #[error("execution_failed")]
+  #[error("Toolset execution failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ExecutionFailed(String),
 
-  #[error("app_disabled")]
+  #[error("Toolset application is disabled.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   ToolsetAppDisabled,
 
-  #[error("name_exists")]
+  #[error("Toolset name '{0}' already exists.")]
   #[error_meta(error_type = ErrorType::Conflict)]
   NameExists(String),
 
-  #[error("invalid_name")]
+  #[error("Invalid toolset name: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidName(String),
 
-  #[error("invalid_toolset_type")]
+  #[error("Invalid toolset type: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidToolsetType(String),
 

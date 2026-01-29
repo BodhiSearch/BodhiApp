@@ -13,8 +13,6 @@ This document provides detailed technical information for the `crates/routes_oai
 - `src/routes_ollama.rs` - Ollama compatibility layer with bidirectional format translation
 - `src/test_utils/mod.rs` - Testing utilities and fixtures for route testing
 
-### Resource Files
-- `src/resources/en-US/messages.ftl` - Localized error messages for HTTP errors
 
 ### Dependencies
 
@@ -198,18 +196,18 @@ fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> 
 Comprehensive error handling with API-specific response formatting:
 
 ```rust
-// HTTP error types with localization (src/routes_chat.rs)
+// HTTP error types with thiserror (src/routes_chat.rs)
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum HttpError {
-  #[error("http_error")]
+  #[error("HTTP error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Http(#[from] http::Error),
 }
 ```
 
-**Error Resources**: `src/resources/en-US/messages.ftl`
-- Localized error messages for HTTP errors
+**Error Handling Features**:
+- User-friendly error messages defined inline via thiserror templates
 - Integration with objs error system for consistent responses
 
 ### Streaming Response Coordination

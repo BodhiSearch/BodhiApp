@@ -31,7 +31,7 @@ Comprehensive API specification with interactive documentation and dynamic UI se
 - **Unified Documentation**: BodhiOpenAPIDoc combines specifications from routes_oai and routes_app with OpenAPIEnvModifier for environment adaptation
 - **Interactive Interface**: Swagger UI at /swagger-ui with /api-docs/openapi.json endpoint for comprehensive API exploration
 - **Dynamic UI Serving**: Environment-based UI serving with production embedded assets, development proxy to localhost:3000, and fallback handling
-- **Localization Resources**: L10N_RESOURCES with include_dir macro for embedded localization files supporting multi-language error messages
+- **Error Message Resources**: User-friendly error messages via thiserror templates
 
 ## Architecture Position
 
@@ -49,7 +49,7 @@ Complex route composition coordinated across BodhiApp's HTTP layer:
 - **routes_oai Integration**: OpenAI and Ollama API endpoints with bearer token authentication and comprehensive parameter validation
 - **routes_app Integration**: Application management endpoints with session-based authentication and role-based authorization
 - **auth_middleware Coordination**: Multi-layer authentication with role hierarchy enforcement and scope-based access control
-- **Error Translation**: Consistent error handling across all routes with OpenAI-compatible error responses and localization
+- **Error Translation**: Consistent error handling across all routes with OpenAI-compatible error responses
 
 ### Service Layer HTTP Coordination
 Route composition coordinates with BodhiApp's service layer:
@@ -106,7 +106,7 @@ Dynamic UI serving with environment-specific configuration via apply_ui_router:
 ### Route Composition Requirements
 - All routes must use RouterState dependency injection for consistent service access across route boundaries
 - Route-specific middleware must be applied in correct order for proper authentication and authorization flow
-- Error handling must provide consistent error responses across OpenAI and application endpoints with localization
+- Error handling must provide consistent error responses across OpenAI and application endpoints
 - CORS configuration must support web client integration while maintaining security boundaries
 
 ### Authentication and Authorization Standards
@@ -164,7 +164,7 @@ Route composition requires comprehensive testing across route boundaries:
 - **Authentication Flow Testing**: Test authentication and authorization across different route types with role and scope validation
 - **UI Serving Testing**: Validate environment-specific UI serving with proxy and static asset configurations
 - **Middleware Interaction Testing**: Test middleware ordering and interaction across route boundaries with error handling validation
-- **Cross-Route Error Handling**: Validate consistent error responses across OpenAI and application endpoints with localization
+- **Cross-Route Error Handling**: Validate consistent error responses across OpenAI and application endpoints
 
 ### Route Composition Mock Coordination
 Testing route composition with service mock coordination:

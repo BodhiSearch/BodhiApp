@@ -26,7 +26,7 @@ type ServerHandleState = Arc<Mutex<Option<ServerShutdownHandle>>>;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum NativeError {
-  #[error(transparent)]
+  #[error("Desktop application error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, code = "tauri",  args_delegate = false)]
   Tauri(#[from] tauri::Error),
   #[error(transparent)]

@@ -14,7 +14,7 @@ use axum::{
   Router,
 };
 use dotenv;
-use objs::{test_utils::setup_l10n, ErrorBody, FluentLocalizationService, OpenAIApiError};
+use objs::{ErrorBody, OpenAIApiError};
 use rstest::{fixture, rstest};
 use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
@@ -69,7 +69,6 @@ fn auth_client(auth_server_config: &AuthServerConfig) -> AuthServerTestClient {
 
 // Helper function to create test state with specific client configuration
 async fn create_test_state(
-  _setup_l10n: &Arc<FluentLocalizationService>,
   config: &AuthServerConfig,
   resource_client_id: &str,
   resource_client_secret: &str,
@@ -145,7 +144,6 @@ fn test_user() -> TestUser {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_cross_client_token_exchange_success(
-  setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
   test_user: TestUser,
   auth_client: AuthServerTestClient,
@@ -161,7 +159,6 @@ async fn test_cross_client_token_exchange_success(
     .as_ref()
     .unwrap();
   let state = create_test_state(
-    setup_l10n,
     auth_server_config,
     &resource_client_id,
     &resource_client_secret,
@@ -233,7 +230,6 @@ async fn test_cross_client_token_exchange_success(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_cross_client_token_exchange_no_user_scope(
-  setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
   test_user: TestUser,
   auth_client: AuthServerTestClient,
@@ -249,7 +245,6 @@ async fn test_cross_client_token_exchange_no_user_scope(
     .as_ref()
     .unwrap();
   let state = create_test_state(
-    setup_l10n,
     auth_server_config,
     &resource_client_id,
     &resource_client_secret,
@@ -285,7 +280,7 @@ async fn test_cross_client_token_exchange_no_user_scope(
   assert_eq!(
     OpenAIApiError::new(
       ErrorBody::new(
-        "user does not have any privileges on this system".to_string(),
+        "User does not have any access permissions.".to_string(),
         "authentication_error".to_string(),
         Some("token_error-scope_empty".to_string()),
         None,
@@ -301,7 +296,6 @@ async fn test_cross_client_token_exchange_no_user_scope(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_cross_client_token_exchange_auth_service_error(
-  setup_l10n: &Arc<FluentLocalizationService>,
   auth_server_config: &AuthServerConfig,
   test_user: TestUser,
   auth_client: AuthServerTestClient,
@@ -311,7 +305,6 @@ async fn test_cross_client_token_exchange_auth_service_error(
 
   // Step 2: Create test state with dynamic client credentials
   let state = create_test_state(
-    setup_l10n,
     auth_server_config,
     &dynamic_clients.resource_client.client_id,
     dynamic_clients

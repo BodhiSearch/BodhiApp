@@ -621,9 +621,8 @@ mod tests {
   };
   use chrono::{DateTime, Utc};
   use mockall::predicate;
-  use objs::{
-    test_utils::setup_l10n, ApiAliasBuilder, ApiFormat::OpenAI, FluentLocalizationService,
-  };
+  use objs::ApiAliasBuilder;
+  use objs::ApiFormat::OpenAI;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
@@ -738,7 +737,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_list_api_models_handler(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -830,7 +828,7 @@ mod tests {
   async fn test_create_api_model_handler_success(
     #[case] input_url: &str,
     #[case] expected_url: &str,
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -881,7 +879,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_generates_uuid(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -925,7 +922,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_validation_error_empty_api_key(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -963,7 +959,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_validation_error_invalid_url(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1002,7 +997,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_validation_error_empty_models(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1041,7 +1035,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_forward_all_with_prefix_success(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1081,7 +1074,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_handler_forward_all_without_prefix_fails(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1111,7 +1103,7 @@ mod tests {
     // Verify error response contains validation error for prefix
     let error_response = response.json::<serde_json::Value>().await?;
     let error_message = error_response["error"]["message"].as_str().unwrap();
-    assert!(error_message.contains("prefix is required"));
+    assert!(error_message.contains("Prefix is required"));
 
     Ok(())
   }
@@ -1120,7 +1112,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_sync_models_handler_success(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1205,7 +1196,7 @@ mod tests {
   async fn test_update_api_model_handler_success(
     #[case] input_url: &str,
     #[case] expected_url: &str,
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1264,7 +1255,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_update_api_model_handler_not_found(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1309,7 +1299,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_delete_api_model_handler_success(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1349,7 +1338,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_delete_api_model_handler_not_found(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1384,7 +1372,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_api_model_handler_success(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1436,7 +1423,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_api_model_handler_not_found(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1762,7 +1748,7 @@ mod tests {
     #[case] create_json: serde_json::Value,
     #[case] update_json: serde_json::Value,
     #[case] expected_get_json: serde_json::Value,
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
+
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1828,7 +1814,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_forward_all_requires_prefix(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1872,7 +1857,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_api_model_duplicate_prefix_error(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -1928,7 +1912,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_update_api_model_duplicate_prefix_error(
-    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,

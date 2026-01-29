@@ -521,8 +521,7 @@ mod tests {
   use axum::http::{Request, StatusCode};
   use chrono::Utc;
   use objs::{
-    test_utils::setup_l10n, AppToolsetConfig, FluentLocalizationService, ResourceRole,
-    ToolDefinition, ToolsetExecutionResponse, ToolsetWithTools,
+    AppToolsetConfig, ResourceRole, ToolDefinition, ToolsetExecutionResponse, ToolsetWithTools,
   };
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
@@ -594,7 +593,6 @@ mod tests {
   #[case::empty_list(true, false, 0)]
   #[tokio::test]
   async fn test_list_toolsets(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] is_session: bool,
     #[case] is_oauth_filtered: bool,
@@ -659,10 +657,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_list_toolsets_session_returns_all_toolset_types(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_instance: Toolset,
-  ) {
+  async fn test_list_toolsets_session_returns_all_toolset_types(test_instance: Toolset) {
     let mut mock_tool_service = MockToolService::new();
     let instance_clone = test_instance.clone();
 
@@ -720,10 +715,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_instance: Toolset,
-  ) {
+  async fn test_list_toolsets_oauth_returns_scoped_toolset_types(test_instance: Toolset) {
     let mut mock_tool_service = MockToolService::new();
     let instance_clone = test_instance.clone();
 
@@ -787,9 +779,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) {
+  async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
     let mut mock_tool_service = MockToolService::new();
 
     mock_tool_service
@@ -848,7 +838,6 @@ mod tests {
   #[case::name_conflict("Existing Name", StatusCode::CONFLICT, Some("entity_error"))]
   #[tokio::test]
   async fn test_create_toolset(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] name: &str,
     #[case] expected_status: StatusCode,
@@ -907,7 +896,6 @@ mod tests {
   #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
   async fn test_get_toolset(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] returns_instance: bool,
     #[case] expected_status: StatusCode,
@@ -970,7 +958,6 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_update_toolset(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] name: &str,
     #[case] api_key: ApiKeyUpdateDto,
@@ -1024,7 +1011,6 @@ mod tests {
   #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
   async fn test_update_toolset_not_found(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] _returns_instance: bool,
     #[case] expected_status: StatusCode,
@@ -1076,7 +1062,6 @@ mod tests {
   #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
   async fn test_delete_toolset(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] succeeds: bool,
     #[case] expected_status: StatusCode,
@@ -1126,7 +1111,6 @@ mod tests {
   #[case::method_not_found(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
   async fn test_execute_toolset(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] succeeds: bool,
     #[case] expected_status: StatusCode,
@@ -1181,11 +1165,7 @@ mod tests {
   #[case::session_returns_all(true, 1)]
   #[case::oauth_filters(false, 0)]
   #[tokio::test]
-  async fn test_list_toolset_types(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] is_session: bool,
-    #[case] expected_count: usize,
-  ) {
+  async fn test_list_toolset_types(#[case] is_session: bool, #[case] expected_count: usize) {
     let mut mock_tool_service = MockToolService::new();
 
     let toolset_type = ToolsetWithTools {
@@ -1247,11 +1227,7 @@ mod tests {
   #[case::success(true, StatusCode::OK)]
   #[case::type_not_found(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
-  async fn test_enable_type(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] succeeds: bool,
-    #[case] expected_status: StatusCode,
-  ) {
+  async fn test_enable_type(#[case] succeeds: bool, #[case] expected_status: StatusCode) {
     let mut mock_tool_service = MockToolService::new();
 
     // Mock list_types to return toolset definition
@@ -1307,11 +1283,7 @@ mod tests {
   #[case::success(true, StatusCode::OK)]
   #[case::type_not_found(false, StatusCode::NOT_FOUND)]
   #[tokio::test]
-  async fn test_disable_type(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[case] succeeds: bool,
-    #[case] expected_status: StatusCode,
-  ) {
+  async fn test_disable_type(#[case] succeeds: bool, #[case] expected_status: StatusCode) {
     let mut mock_tool_service = MockToolService::new();
 
     // Mock list_types to return toolset definition

@@ -353,7 +353,7 @@ pub fn generate_pkce() -> (String, String) {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum LogoutError {
-  #[error(transparent)]
+  #[error("Failed to delete session: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, code = "logout_error-session_delete_error", args_delegate = false)]
   SessionDelete(#[from] tower_sessions::session::Error),
 }
@@ -572,10 +572,7 @@ mod tests {
   use chrono::Utc;
   use mockito::{Matcher, Server};
   use oauth2::{AccessToken, PkceCodeVerifier, RefreshToken};
-  use objs::{
-    test_utils::{setup_l10n, temp_bodhi_home},
-    FluentLocalizationService,
-  };
+  use objs::test_utils::temp_bodhi_home;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -1015,7 +1012,6 @@ mod tests {
   #[anyhow_trace]
   async fn test_auth_callback_handler_state_not_in_session(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready);
     let secret_service = Arc::new(secret_service);
@@ -1044,7 +1040,7 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "login info not found in session, are cookies enabled?",
+          "message": "Login session not found. Are cookies enabled?",
           "code": "login_error-session_info_not_found",
           "type": "internal_server_error"
         }
@@ -1182,7 +1178,7 @@ mod tests {
   #[tokio::test]
   async fn test_auth_callback_handler_missing_params(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
+
     #[case] state_prefix: String,
     #[case] code_present: bool,
     #[case] expected_error: &str,
@@ -1234,14 +1230,16 @@ mod tests {
       .await;
     resp.assert_status(StatusCode::BAD_REQUEST);
     let error = resp.json::<Value>();
-    let expected_message =
-      "invalid request, reason: \u{2068}".to_string() + expected_error + "\u{2069}";
+    let expected_message = format!("Invalid request: {}.", expected_error);
     assert_eq!(
       json! {{
         "error": {
           "message": expected_message,
           "code": "bad_request_error",
-          "type": "invalid_request_error"
+          "type": "invalid_request_error",
+          "param": {
+            "reason": expected_error
+          }
         }
       }},
       error
@@ -1253,7 +1251,6 @@ mod tests {
   #[tokio::test]
   async fn test_auth_callback_handler_auth_service_error(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let secret_service = SecretServiceStub::new()
@@ -1312,9 +1309,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "error from auth service: \u{2068}network error\u{2069}",
+          "message": "Authentication service error: network error.",
           "code": "auth_service_error-auth_service_api_error",
-          "type": "internal_server_error"
+          "type": "internal_server_error",
+          "param": {
+            "var_0": "network error"
+          }
         }
       }},
       error
@@ -1373,7 +1373,6 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_callback_handler_resource_admin(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     temp_bodhi_home: TempDir,
     token: (String, String),
   ) -> anyhow::Result<()> {
@@ -1862,7 +1861,6 @@ mod tests {
   #[tokio::test]
   async fn test_request_access_handler_no_client_credentials(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready); // No app_reg_info set
@@ -1891,7 +1889,7 @@ mod tests {
 
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
     let error = resp.json::<Value>().await?;
-    let expected_message = "app is not registered, need to register app first";
+    let expected_message = "Application is not registered. Please register the application first.";
     assert_eq!(
       json! {{
         "error": {
@@ -1909,7 +1907,6 @@ mod tests {
   #[tokio::test]
   async fn test_request_access_handler_auth_service_error(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let app_client_id = "invalid_app_client_id";
 
@@ -1975,9 +1972,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "error from auth service: \u{2068}app_client_not_found\u{2069}",
+          "message": "Authentication service error: app_client_not_found.",
           "code": "auth_service_error-auth_service_api_error",
-          "type": "internal_server_error"
+          "type": "internal_server_error",
+          "param": {
+            "var_0": "app_client_not_found"
+          }
         }
       }},
       error

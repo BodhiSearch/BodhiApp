@@ -63,7 +63,7 @@ The `crates/bodhi/src-tauri` crate serves as BodhiApp's **unified application or
 
 - **Above lib_bodhiserver**: Coordinates complete application embedding with service composition, configuration management, and deployment coordination
 - **Below deployment infrastructure**: Provides executable entry points for native desktop and container deployment scenarios with feature-based compilation
-- **Integration with objs**: Uses domain objects for error handling, configuration validation, CLI parameter management, and localization support
+- **Integration with objs**: Uses domain objects for error handling, configuration validation, CLI parameter management, and user-friendly error messages
 - **Cross-cutting coordination**: Implements application-wide concerns including logging configuration, environment management, resource lifecycle, and deployment orchestration
 
 ## Cross-Crate Integration Patterns
@@ -75,7 +75,7 @@ Application entry point orchestrates BodhiApp's complete service architecture:
 - **lib_bodhiserver Embedding**: Complete application service registry composition with AppServiceBuilder pattern and configuration management coordination
 - **Service Composition**: Coordinates all business services through lib_bodhiserver's dependency injection with proper initialization ordering and error handling
 - **Configuration Management**: Environment-specific configuration with development/production mode switching, OAuth endpoint coordination, and settings service integration
-- **Error Translation Coordination**: Service errors converted to appropriate application-level error messages with localization support and user-actionable guidance
+- **Error Translation Coordination**: Service errors converted to appropriate application-level error messages via thiserror templates with user-actionable guidance
 
 ### Deployment Mode Integration Architecture
 
@@ -129,7 +129,7 @@ Optimized headless server deployment with comprehensive logging and configuratio
 - All application logic must support both native desktop and container deployment modes through feature-based conditional compilation with clean separation
 - CLI interface must adapt behavior based on compilation features with appropriate subcommand availability, parameter validation, and error handling
 - Configuration management must coordinate environment-specific settings with development/production mode switching and proper precedence handling
-- Error handling must provide appropriate user guidance for both desktop and server deployment scenarios with localization support
+- Error handling must provide appropriate user guidance for both desktop and server deployment scenarios with user-friendly thiserror messages
 
 ### Service Integration Standards
 
@@ -195,7 +195,7 @@ For new container and server deployment capabilities:
 
 ### Error Handling and Recovery Standards
 
-- All application errors must implement AppError trait for consistent error reporting, localization support, and error type classification
+- All application errors must implement AppError trait for consistent error reporting, user-friendly messages via thiserror, and error type classification
 - Error messages must provide actionable guidance appropriate for the deployment mode, user context, and operational environment
 - Error recovery must coordinate across service boundaries with proper resource cleanup, state management, and graceful degradation
 - Application startup errors must provide clear diagnostic information, configuration guidance, and deployment troubleshooting assistance

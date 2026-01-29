@@ -69,13 +69,13 @@ pub struct UpdateApiTokenRequest {
 pub enum ApiTokenError {
   #[error(transparent)]
   Token(#[from] TokenError),
-  #[error("app_reg_info_missing")]
+  #[error("Application is not registered. Cannot create API tokens.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AppRegMissing,
-  #[error("token_missing")]
+  #[error("Access token is missing.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AccessTokenMissing,
-  #[error("refresh_token_missing")]
+  #[error("Refresh token not received from authentication server.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   RefreshTokenMissing,
   #[error(transparent)]
@@ -348,8 +348,8 @@ pub async fn list_tokens_handler(
 mod tests {
   use super::{list_tokens_handler, update_token_handler};
   use crate::{
-    create_token_handler, ApiTokenError, ApiTokenResponse, CreateApiTokenRequest,
-    PaginatedApiTokenResponse, UpdateApiTokenRequest,
+    create_token_handler, ApiTokenResponse, CreateApiTokenRequest, PaginatedApiTokenResponse,
+    UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
   use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN};
@@ -360,10 +360,7 @@ mod tests {
     Router,
   };
   use hyper::StatusCode;
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService, TokenScope,
-  };
+  use objs::TokenScope;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use server_core::{
@@ -383,27 +380,6 @@ mod tests {
   use tower::ServiceExt;
   use uuid::Uuid;
 
-  #[rstest]
-  #[case::app_reg_missing(
-        &ApiTokenError::AppRegMissing,
-        "app is not registered, cannot create api tokens"
-    )]
-  #[case::token_missing(
-        &ApiTokenError::AccessTokenMissing,
-        "access token is not present in request"
-    )]
-  #[case::refresh_token_missing(
-        &ApiTokenError::RefreshTokenMissing,
-        "refresh token not received from auth server"
-    )]
-  fn test_error_messages(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected: &str,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), expected);
-  }
-
   async fn app(app_service_stub: AppServiceStub) -> Router {
     let router_state = DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
@@ -421,7 +397,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_list_tokens_pagination(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
@@ -556,7 +531,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_role_scope_mapping(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] role: &str,
     #[case] requested_scope: TokenScope,
     #[case] expected_scope: &str,
@@ -615,7 +589,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_success(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let claims = access_token_claims();
@@ -688,7 +661,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_without_name(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let claims = access_token_claims();
@@ -842,7 +814,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_update_token_handler_success(
-    #[from(setup_l10n)] _l18n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let claims = access_token_claims();
@@ -943,7 +914,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_privilege_escalation_user(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] role: &str,
     #[case] requested_scope: TokenScope,
     #[future] test_db_service: TestDbService,
@@ -987,7 +957,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_privilege_escalation_invalid_scopes(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] role: &str,
     #[case] requested_scope: TokenScope,
     #[future] test_db_service: TestDbService,

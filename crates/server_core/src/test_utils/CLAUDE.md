@@ -105,7 +105,7 @@ HTTP infrastructure testing must validate comprehensive HTTP functionality:
 - **RouterState Testing**: All HTTP infrastructure tests must use RouterState dependency injection patterns
 - **SSE Streaming Testing**: Streaming tests must validate both DirectSSE and ForwardedSSE functionality
 - **Context Management Testing**: SharedContext tests must validate thread-safe operations and lifecycle management
-- **Error Handling Testing**: HTTP error tests must validate service error translation and localization
+- **Error Handling Testing**: HTTP error tests must validate service error translation and user-friendly messages
 
 ### Service Mock Coordination Requirements
 HTTP testing requires sophisticated service mocking:

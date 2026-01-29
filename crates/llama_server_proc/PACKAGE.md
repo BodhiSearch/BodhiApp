@@ -134,11 +134,11 @@ pub enum ServerError {
 }
 ```
 
-**Localized Error Messages** (`src/resources/en-US/messages.ftl`):
-- server_not_ready: "server not ready: the server process has not completed initialization"
-- startup_error: "failed to start server: {$var_0}"
-- health_check_error: "server health check failed: {$var_0}"
-- timeout_error: "server health check timed out after {$var_0} seconds"
+**Error Messages** (defined via thiserror templates in `src/error.rs`):
+- ServerNotReady: "Server not ready: the server process has not completed initialization."
+- StartupError: "Failed to start server: {0}."
+- HealthCheckError: "Server health check failed: {0}."
+- TimeoutError: "Server health check timed out after {0} seconds."
 
 ### Build System Architecture
 
@@ -195,16 +195,13 @@ pub fn mock_response(body: impl Into<String>) -> Response {
 ## Core Implementation Files
 
 ### Main Components
-- `src/lib.rs` - Library exports and localization resources
+- `src/lib.rs` - Library exports
 - `src/server.rs` - Server trait definition and LlamaServer implementation
-- `src/error.rs` - ServerError enum with localization support
+- `src/error.rs` - ServerError enum with thiserror templates
 - `src/build_envs.rs` - Build environment constants and configuration
 - `src/test_utils/mod.rs` - Testing utilities and fixtures
 - `build.rs` - Build script for cross-platform binary management
 - `tests/test_server_proc.rs` - Integration tests with real server processes
-
-### Resource Files
-- `src/resources/en-US/messages.ftl` - Localized error messages
 
 ## Usage Examples
 
@@ -312,7 +309,7 @@ make clean
 ### With objs Crate
 - Error handling via `ServerError` implementing `AppError`
 - Builder pattern validation using `BuilderError`
-- Localized error messages through FluentLocalizationService
+- User-friendly error messages via thiserror templates
 
 ### With Higher-Level Services
 - Trait-based abstraction enables dependency injection

@@ -1,17 +1,12 @@
-use crate::{
-  AppError, ErrorBody, ErrorMessage, FluentLocalizationService, JsonRejectionError,
-  LocalizationService, OpenAIApiError,
-};
+use crate::{AppError, ErrorBody, ErrorMessage, JsonRejectionError, OpenAIApiError};
 use axum::{
   body::Body,
   extract::rejection::JsonRejection,
   response::{IntoResponse, Response},
 };
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::{borrow::Borrow, str::FromStr};
-use unic_langid::LanguageIdentifier;
 
 #[derive(Debug, Serialize, Deserialize, thiserror::Error)]
 pub struct ApiError {
@@ -34,11 +29,6 @@ impl From<JsonRejection> for ApiError {
     JsonRejectionError::new(value).into()
   }
 }
-
-// TODO: limiting to EN_US locale, need to refactor and move creating ApiError to route_layer to
-// use the request locale
-pub static EN_US: Lazy<LanguageIdentifier> =
-  Lazy::new(|| LanguageIdentifier::from_str("en-US").unwrap());
 
 impl From<Box<dyn AppError>> for ApiError {
   fn from(value: Box<dyn AppError>) -> Self {
@@ -65,37 +55,34 @@ impl<T: AppError + 'static> From<T> for ApiError {
   }
 }
 
-const DEFAULT_ERR_MSG: &str = "something went wrong, not able to find the error message for code, try again later or connect with us to report the error code";
-
 impl From<ApiError> for ErrorMessage {
   fn from(value: ApiError) -> Self {
     let ApiError {
+      name,
       error_type,
       code,
-      args,
       ..
     } = value;
-    let message = localized_msg(&code, args);
-    Self::new(code, error_type, message)
+    Self::new(code, error_type, name)
   }
 }
 
 impl From<ApiError> for OpenAIApiError {
   fn from(value: ApiError) -> Self {
     let ApiError {
+      name,
       error_type,
       status,
       code,
       args,
-      ..
     } = value;
-    let message = localized_msg(&code, args);
+    let param = if args.is_empty() { None } else { Some(args) };
     OpenAIApiError {
       error: ErrorBody {
-        message,
+        message: name,
         r#type: error_type,
         code: Some(code),
-        param: None,
+        param,
       },
       status,
     }
@@ -113,34 +100,14 @@ impl IntoResponse for ApiError {
   }
 }
 
-fn localized_msg(code: &str, args: HashMap<String, String>) -> String {
-  let instance = FluentLocalizationService::get_instance();
-  let message = instance
-    .get_message(&EN_US, code, Some(args))
-    .unwrap_or_else(|err| {
-      tracing::warn!(
-        "failed to get message: err: {}, code={}, args={:?}",
-        err,
-        err.code(),
-        err.args()
-      );
-      DEFAULT_ERR_MSG.to_string()
-    });
-  message
-}
-
 #[cfg(test)]
 mod tests {
-  use crate::{
-    test_utils::setup_l10n, ApiError, BadRequestError, FluentLocalizationService,
-    InternalServerError,
-  };
+  use crate::{ApiError, BadRequestError, InternalServerError};
   use axum::{body::Body, extract::Path, http::Request, response::Response, routing::get, Router};
   use http_body_util::BodyExt;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
-  use std::sync::Arc;
   use tower::ServiceExt;
 
   async fn handler_return_different_error_objs(
@@ -156,21 +123,22 @@ mod tests {
   #[rstest]
   #[case("2", 400, serde_json::json! {{
     "error": {
-    "message": "invalid request, reason: \u{2068}even\u{2069}",
+    "message": "Invalid request: even.",
     "type": "invalid_request_error",
     "code": "bad_request_error",
+    "param": {"reason": "even"}
     }}
   })]
   #[case("3", 500, serde_json::json! {{
     "error": {
-      "message": "internal_server_error: \u{2068}odd\u{2069}",
+      "message": "Internal error: odd.",
       "type": "internal_server_error",
       "code": "internal_server_error",
+      "param": {"reason": "odd"}
     }
   }})]
   #[tokio::test]
   async fn test_app_error_into_response(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] input: &str,
     #[case] status: u16,
     #[case] expected: Value,

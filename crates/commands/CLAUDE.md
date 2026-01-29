@@ -56,7 +56,7 @@ Complex coordination across BodhiApp's service layer:
 - **HubService Integration**: Model discovery, download, and repository authentication
 - **DataService Coordination**: Alias management, file system operations, and configuration storage
 - **AuthService Integration**: Credential management for gated repository access
-- **Error Propagation**: Service errors translated to CLI-specific user messages with localization
+- **Error Propagation**: Service errors translated to CLI-specific user messages via thiserror templates
 
 ### Domain Object Integration
 Extensive use of objs crate for CLI operations:

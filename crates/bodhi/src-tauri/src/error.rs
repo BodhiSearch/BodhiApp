@@ -5,7 +5,7 @@ use lib_bodhiserver::{AppError, ErrorMessage, ErrorType};
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AppSetupError {
-  #[error("io_error: error spawning async runtime: {0}")]
+  #[error("Failed to start application: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AsyncRuntime(#[from] io::Error),
 }
@@ -35,7 +35,7 @@ mod tests {
     let expected = ErrorMessage::new(
       "app_setup_error-async_runtime".to_string(),
       ErrorType::InternalServer.to_string(),
-      "io_error: error spawning async runtime: simulated async runtime failure".to_string(),
+      "Failed to start application: simulated async runtime failure.".to_string(),
     );
     assert_eq!(err_msg, expected);
   }

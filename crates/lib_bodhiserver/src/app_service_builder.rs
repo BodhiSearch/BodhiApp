@@ -1,5 +1,5 @@
 use crate::{AppServiceBuilderError, AppStateOption};
-use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationService};
+use objs::{ApiError, ErrorMessage};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
@@ -33,7 +33,6 @@ pub struct AppServiceBuilder {
   secret_service: Option<Arc<dyn SecretService>>,
   cache_service: Option<Arc<dyn CacheService>>,
   auth_service: Option<Arc<dyn AuthService>>,
-  localization_service: Option<Arc<dyn LocalizationService>>,
   ai_api_service: Option<Arc<dyn AiApiService>>,
   encryption_key: Option<Vec<u8>>,
 }
@@ -51,7 +50,6 @@ impl AppServiceBuilder {
       secret_service: None,
       cache_service: None,
       auth_service: None,
-      localization_service: None,
       ai_api_service: None,
       encryption_key: None,
     }
@@ -167,20 +165,6 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
-  /// Sets the localization service.
-  pub fn localization_service(
-    mut self,
-    service: Arc<dyn LocalizationService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.localization_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "localization_service".to_string(),
-      ));
-    }
-    self.localization_service = Some(service);
-    Ok(self)
-  }
-
   /// Sets the AI API service.
   pub fn ai_api_service(
     mut self,
@@ -198,7 +182,6 @@ impl AppServiceBuilder {
   /// Builds the complete DefaultAppService, resolving all dependencies automatically.
   pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
     // Build services in dependency order
-    let localization_service = self.get_or_build_localization_service()?;
     let hub_service = self.get_or_build_hub_service();
     let time_service = self.get_or_build_time_service();
     let encryption_key = self.get_or_build_encryption_key()?;
@@ -242,7 +225,6 @@ impl AppServiceBuilder {
       session_service,
       secret_service,
       cache_service,
-      localization_service,
       time_service,
       ai_api_service,
       concurrency_service,
@@ -394,19 +376,6 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Gets or builds the localization service.
-  fn get_or_build_localization_service(
-    &mut self,
-  ) -> Result<Arc<dyn LocalizationService>, ErrorMessage> {
-    if let Some(service) = self.localization_service.take() {
-      return Ok(service);
-    }
-
-    let localization_service = FluentLocalizationService::get_instance();
-    load_all_localization_resources(&localization_service)?;
-    Ok(localization_service)
-  }
-
   /// Gets or builds the AI API service.
   fn get_or_build_ai_api_service(
     &mut self,
@@ -442,28 +411,6 @@ impl AppServiceBuilder {
       is_production,
     ))
   }
-}
-
-/// Loads all localization resources from all crates in the workspace.
-/// This ensures that error messages and other localized content are available.
-fn load_all_localization_resources(
-  localization_service: &FluentLocalizationService,
-) -> Result<(), ErrorMessage> {
-  localization_service
-    .load_resource(objs::l10n::L10N_RESOURCES)?
-    .load_resource(objs::gguf::l10n::L10N_RESOURCES)?
-    .load_resource(llama_server_proc::l10n::L10N_RESOURCES)?
-    .load_resource(services::l10n::L10N_RESOURCES)?
-    .load_resource(commands::l10n::L10N_RESOURCES)?
-    .load_resource(server_core::l10n::L10N_RESOURCES)?
-    .load_resource(auth_middleware::l10n::L10N_RESOURCES)?
-    .load_resource(routes_oai::l10n::L10N_RESOURCES)?
-    .load_resource(routes_app::l10n::L10N_RESOURCES)?
-    .load_resource(routes_all::l10n::L10N_RESOURCES)?
-    .load_resource(server_app::l10n::L10N_RESOURCES)?
-    .load_resource(crate::l10n::L10N_RESOURCES)?;
-
-  Ok(())
 }
 
 pub async fn build_app_service(
@@ -509,7 +456,7 @@ pub fn update_with_option(
 mod tests {
   use super::{AppServiceBuilder, AppServiceBuilderError};
   use crate::{setup_app_dirs, AppOptionsBuilder};
-  use objs::{test_utils::empty_bodhi_home, FluentLocalizationService};
+  use objs::test_utils::empty_bodhi_home;
   use rstest::rstest;
   use services::{
     test_utils::FrozenTimeService, AppService, MockCacheService, MockSecretService, SettingService,
@@ -518,7 +465,7 @@ mod tests {
   use tempfile::TempDir;
 
   #[rstest]
-  #[case(&AppServiceBuilderError::ServiceAlreadySet("test_service".to_string()), "Service already set: test_service")]
+  #[case(&AppServiceBuilderError::ServiceAlreadySet("test_service".to_string()), "test_service")]
   fn test_error_messages_objs(#[case] error: &AppServiceBuilderError, #[case] expected: &str) {
     assert_eq!(expected, error.to_string());
   }
@@ -541,7 +488,6 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_with_custom_services(
     empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
@@ -576,7 +522,6 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_with_multiple_services(
     empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();

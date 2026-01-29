@@ -2,65 +2,60 @@
 
 This document provides detailed technical information for the `test_utils` module, focusing on BodhiApp-specific testing implementation patterns used across multiple crates and sophisticated cross-crate testing coordination.
 
-## Cross-Crate Localization Testing Architecture
+## Cross-Crate Error Testing Architecture
 
-### Universal Mock Localization Service Pattern
-BodhiApp's foundational testing infrastructure used throughout the entire application ecosystem:
+### Error Message Validation Pattern
+BodhiApp's foundational error testing infrastructure uses thiserror templates with `error.to_string()` validation:
 
 ```rust
-lazy_static::lazy_static! {
-  pub static ref MOCK_LOCALIZATION_SERVICE: Arc<RwLock<Option<Arc<FluentLocalizationService>>>> = Arc::new(RwLock::new(None));
-}
+#[rstest]
+fn test_error_message_validation() -> anyhow::Result<()> {
+  let error = SomeError::ValidationError {
+    field: "username".to_string(),
+    reason: "too short".to_string(),
+  };
 
-#[fixture]
-#[once]
-pub fn setup_l10n(
-  localization_service: Arc<FluentLocalizationService>,
-) -> Arc<FluentLocalizationService> {
-  localization_service
-    .load_resource(&include_dir::include_dir!("$CARGO_MANIFEST_DIR/../objs/src/resources"))
-    .unwrap()
-    .load_resource(&include_dir::include_dir!("$CARGO_MANIFEST_DIR/../objs/src/gguf/resources"))
-    .unwrap()
-    // ... loads resources from all crates in dependency order
-    .load_resource(&include_dir::include_dir!("$CARGO_MANIFEST_DIR/../bodhi/src-tauri/src/resources"))
-    .unwrap();
-  set_mock_localization_service(localization_service.clone());
-  localization_service
+  // Error messages validated via error.to_string()
+  let message = error.to_string();
+  assert!(message.contains("username"));
+  assert!(message.contains("too short"));
+
+  // Error messages should be user-friendly, sentence case, end with period
+  assert!(message.ends_with("."));
+  Ok(())
 }
 ```
 
 ### Downstream Crate Integration Implementation
-This pattern enables sophisticated cross-crate testing scenarios:
+Error testing patterns enable sophisticated cross-crate testing scenarios:
 
 **Services Crate Usage**:
-- Service error testing validates localized messages across service boundaries with comprehensive error propagation from `AuthServiceError`, `HubServiceError`, `DataServiceError`, and `DbError`
-- `AppServiceStub` tests coordinate with localization fixtures for comprehensive error validation across authentication flows, model management, and database operations
+- Service error testing validates error messages via `error.to_string()` across service boundaries with comprehensive error propagation from `AuthServiceError`, `HubServiceError`, `DataServiceError`, and `DbError`
+- `AppServiceStub` tests validate error messages for comprehensive error validation across authentication flows, model management, and database operations
 - Database service tests ensure error messages work correctly across transaction boundaries with `TestDbService` and event broadcasting patterns
-- Cross-service integration testing validates error flows from `HubService` → `DataService` → `AuthService` with consistent localized messaging
+- Cross-service integration testing validates error flows from `HubService` → `DataService` → `AuthService` with consistent error messaging
 - Service composition testing uses objs fixtures for realistic multi-service scenarios including OAuth2 flows, model downloads, and database transactions
 
 **Routes Crate Integration**:
-- API endpoint tests validate localized error responses for OpenAI compatibility
-- Middleware tests ensure authentication errors have proper localized messages
-- Route integration tests validate error propagation from services through localization
+- API endpoint tests validate error responses for OpenAI compatibility using `error.to_string()`
+- Middleware tests ensure authentication errors have proper user-friendly messages
+- Route integration tests validate error propagation from services through thiserror templates
 
 **CLI Testing Coordination**:
-- Command-line interface tests validate help text and error messages across locales
+- Command-line interface tests validate help text and error messages
 - CLI error handling tests ensure consistent messaging with web interface
 
 **Key Cross-Crate Implementation Features**:
-- `#[once]` fixture ensures single initialization across entire test workspace
-- Resource aggregation from all crates prevents circular dependency issues
-- Singleton override mechanism works across crate boundaries for integration testing
+- Error messages defined inline via thiserror `#[error("...")]` templates
+- Field interpolation using `{field}` syntax for named fields
+- User-friendly messages: sentence case, ending with period
 - Test isolation requires careful cleanup coordination across multiple test suites
 
-### Resource Loading Architecture for Cross-Crate Testing
-Sophisticated resource aggregation supporting application-wide testing:
+### Error Testing Patterns for Cross-Crate Testing
+Comprehensive error validation supporting application-wide testing:
 
-- **Crate Resource Export Pattern**: Each crate exports `l10n::L10N_RESOURCES` constant via `include_dir!` macro
-- **Centralized Resource Aggregation**: `setup_l10n()` loads resources from all crates in dependency order
-- **Cross-Boundary Validation**: Tests validate localized errors work seamlessly across service → route → client boundaries
+- **thiserror Template Validation**: Error messages tested via `error.to_string()` throughout codebase
+- **Cross-Boundary Validation**: Tests validate error messages work seamlessly across service → route → client boundaries
 - **Integration Test Support**: Enables comprehensive end-to-end testing of error flows across entire application stack
 
 ## Environment Isolation for Multi-Crate Integration
@@ -285,25 +280,25 @@ For new Python generators that will be used by multiple crates:
 ### Application-Wide Cross-Crate Testing Extensions
 When extending testing capabilities that span multiple crates:
 
-1. **Coordinate Localization Resource Export**: Ensure all new crates expose `l10n::L10N_RESOURCES` for aggregation
-2. **Update Central Resource Loading**: Modify `setup_l10n()` to include new resource directories from all crates
-3. **Validate End-to-End Integration**: Test localization and domain object behavior across complete application stack
+1. **Error Message Guidelines**: Ensure error messages are user-friendly, sentence case, ending with period
+2. **Field Interpolation**: Use `{field}` syntax for named fields and `{0}` for positional fields in error messages
+3. **Validate End-to-End Integration**: Test error messages and domain object behavior across complete application stack
 4. **Coordinate Feature Dependencies**: Update feature flags across consuming crates when new external dependencies introduced
 5. **Maintain Cross-Crate Documentation**: Update both objs documentation and consuming crate documentation when patterns change
 
 ## Critical Cross-Crate Testing Patterns
 
-### Application-Wide Localization Testing Requirements
+### Application-Wide Error Testing Requirements
 Comprehensive error testing patterns used throughout BodhiApp:
 
 ```rust
 #[rstest]
-fn test_localized_error_cross_crate_integration(setup_l10n: ()) {
+fn test_error_cross_crate_integration() {
   let error = SomeError::new("field", "value");
   let api_error = ApiError::from(error);
-  let message = api_error.message(&locale_en_us());
+  let message = api_error.message();
   assert!(message.contains("Invalid field"));
-  
+
   // Validate error propagation across service → route → client boundaries
   let service_result = some_service.process_request(invalid_request).await;
   assert!(service_result.is_err());
@@ -339,16 +334,16 @@ Environment patterns supporting comprehensive integration testing:
 
 ```rust
 #[rstest]
-fn test_configuration_loading_cross_crate(temp_bodhi_home: TempDir, setup_l10n: ()) {
+fn test_configuration_loading_cross_crate(temp_bodhi_home: TempDir) {
   std::env::set_var("BODHI_HOME", temp_bodhi_home.path());
   let config = load_bodhi_config().unwrap();
   assert!(!config.aliases.is_empty());
-  
+
   // Test configuration coordination across CLI, services, and routes
   let cli_result = cli_command_with_config(&config).await;
   let service_result = service_with_config(&config).await;
   let route_result = route_with_config(&config).await;
-  
+
   // Ensure consistent behavior across all application layers
   assert_eq!(cli_result.model_count(), service_result.model_count());
   assert_eq!(service_result.available_models(), route_result.available_models());
@@ -358,11 +353,11 @@ fn test_configuration_loading_cross_crate(temp_bodhi_home: TempDir, setup_l10n: 
 ### Multi-Crate Integration Testing Requirements
 Comprehensive patterns for testing across entire application stack:
 
-- **Service → Route → Client Flow Testing**: Validate complete request/response cycles with localized errors
+- **Service → Route → Client Flow Testing**: Validate complete request/response cycles with user-friendly errors
 - **Configuration Consistency Testing**: Ensure CLI, web interface, and API behave consistently with shared configuration
 - **Model Management Integration**: Test model download, alias creation, and API access across all application layers
 - **Authentication Flow Coordination**: Validate OAuth2 flows work consistently across web and CLI interfaces
-- **Error Propagation Validation**: Ensure errors flow correctly from services through routes to localized client messages
+- **Error Propagation Validation**: Ensure errors flow correctly from services through routes to user-friendly client messages
 
 ## Commands for Cross-Crate Testing
 

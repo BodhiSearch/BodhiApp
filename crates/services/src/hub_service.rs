@@ -17,7 +17,7 @@ use crate::Progress;
 pub static SNAPSHOT_MAIN: &str = "main";
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("hub_file_missing")]
+#[error("File '{filename}' not found in repository '{repo}'.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct HubFileNotFoundError {
   pub filename: String,
@@ -26,44 +26,40 @@ pub struct HubFileNotFoundError {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("remote_model_not_found")]
+#[error("Remote model '{alias}' not found. Check the alias name and try again.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct RemoteModelNotFoundError {
   pub alias: String,
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("hub_api_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, code = self.error_code())]
-pub struct HubApiError {
-  error: String,
-  error_status: u16,
-  repo: String,
-  kind: HubApiErrorKind,
-}
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum HubApiError {
+  #[error(
+    "Access to '{repo}' requires approval. Visit https://huggingface.co/{repo} to request access."
+  )]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  GatedAccess { repo: String, error: String },
 
-impl HubApiError {
-  pub fn error_code(&self) -> &str {
-    match self.kind {
-      HubApiErrorKind::GatedAccess => "hub_api_error-gated_access",
-      HubApiErrorKind::NotExists => "hub_api_error-not_exists",
-      HubApiErrorKind::MayBeNotExists => "hub_api_error-may_be_not_exists",
-      HubApiErrorKind::Unknown => "hub_api_error-unknown",
-      HubApiErrorKind::Transport => "hub_api_error-transport",
-      HubApiErrorKind::Request => "hub_api_error-request",
-    }
-  }
-}
+  #[error("Repository '{repo}' not found or requires authentication. Run 'huggingface-cli login' to authenticate.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  MayNotExist { repo: String, error: String },
 
-#[derive(Debug, PartialEq, strum::Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum HubApiErrorKind {
-  GatedAccess,
-  NotExists,
-  MayBeNotExists,
-  Unknown,
-  Transport,
-  Request,
+  #[error("Repository '{repo}' is disabled or has been removed.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  RepoDisabled { repo: String, error: String },
+
+  #[error("Network error accessing Hugging Face. Check your internet connection and try again.")]
+  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
+  Transport { repo: String, error: String },
+
+  #[error("Hugging Face API error: {error}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  Unknown { repo: String, error: String },
+
+  #[error("Failed to build API client: {error}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  Request { repo: String, error: String },
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -445,13 +441,9 @@ impl HfHubService {
       .with_progress(self.progress_bar)
       .with_token(self.token.clone())
       .build()
-      .map_err(|err| {
-        HubApiError::new(
-          err.to_string(),
-          500,
-          model_repo.url(),
-          HubApiErrorKind::Request,
-        )
+      .map_err(|err| HubApiError::Request {
+        repo: model_repo.url(),
+        error: err.to_string(),
       })?;
     tracing::info!("Downloading from url {}", model_repo.api_url());
     let repo = model_repo.url();
@@ -473,20 +465,32 @@ impl HfHubService {
           ApiError::RequestError(reqwest_err) => {
             let status = reqwest_err.status().map(|s| s.as_u16()).unwrap_or(500);
             match status {
-              403 => HubApiError::new(error_msg, status, repo, HubApiErrorKind::GatedAccess),
-              401 if self.token.is_none() => {
-                HubApiError::new(error_msg, status, repo, HubApiErrorKind::MayBeNotExists)
-              }
-              404 if self.token.is_some() => {
-                HubApiError::new(error_msg, status, repo, HubApiErrorKind::NotExists)
-              }
-              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => {
-                HubApiError::new(error_msg, 500, repo, HubApiErrorKind::Transport)
-              }
-              _ => HubApiError::new(error_msg, status, repo, HubApiErrorKind::Unknown),
+              403 => HubApiError::GatedAccess {
+                repo: repo.to_string(),
+                error: error_msg,
+              },
+              401 if self.token.is_none() => HubApiError::MayNotExist {
+                repo: repo.to_string(),
+                error: error_msg,
+              },
+              404 if self.token.is_some() => HubApiError::RepoDisabled {
+                repo: repo.to_string(),
+                error: error_msg,
+              },
+              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => HubApiError::Transport {
+                repo: repo.to_string(),
+                error: error_msg,
+              },
+              _ => HubApiError::Unknown {
+                repo: repo.to_string(),
+                error: error_msg,
+              },
             }
           }
-          _ => HubApiError::new(error_msg, 500, repo, HubApiErrorKind::Request),
+          _ => HubApiError::Request {
+            repo: repo.to_string(),
+            error: error_msg,
+          },
         };
         return Err(HubServiceError::HubApiError(err));
       }
@@ -502,83 +506,18 @@ mod test {
     test_utils::{
       build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
     },
-    HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError,
-    RemoteModelNotFoundError, SNAPSHOT_MAIN,
+    HubApiError, HubFileNotFoundError, HubService, HubServiceError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{
-      assert_error_message, generate_test_data_gguf_files, setup_l10n, temp_hf_home, SNAPSHOT,
-    },
-    AppError, FluentLocalizationService, HubFile, Repo,
+    test_utils::{generate_test_data_gguf_files, temp_hf_home, SNAPSHOT},
+    HubFile, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::{collections::HashSet, fs, sync::Arc};
+  use std::{collections::HashSet, fs};
   use strfmt::strfmt;
   use tempfile::TempDir;
-
-  #[rstest]
-  #[case(
-    HubApiErrorKind::GatedAccess,
-    r#"request error: https://someurl.com/my/repo: status code 403.
-huggingface repo 'my/repo' is requires requesting for access from website.
-Go to https://huggingface.co/my/repo to request access to the model and try again."#
-  )]
-  #[case(
-    HubApiErrorKind::NotExists,
-    r#"request error: https://someurl.com/my/repo: status code 403.
-The huggingface repo 'my/repo' does not exists."#
-  )]
-  #[case(
-    HubApiErrorKind::MayBeNotExists,
-    r#"request error: https://someurl.com/my/repo: status code 403.
-You are not logged in to huggingface using CLI `huggingface-cli login`.
-So either the huggingface repo 'my/repo' does not exists, or is private, or requires request access.
-Go to https://huggingface.co/my/repo to request access, login via CLI, and then try again."#
-  )]
-  #[case(
-    HubApiErrorKind::Unknown,
-    r#"request error: https://someurl.com/my/repo: status code 403.
-An unknown error occurred accessing huggingface repo 'my/repo'."#
-  )]
-  #[case(HubApiErrorKind::Transport, r#"request error: https://someurl.com/my/repo: status code 403.
-An error occurred while connecting to huggingface.co. Check your internet connection and try again."#)]
-  #[case(
-    HubApiErrorKind::Request,
-    r#"request error: https://someurl.com/my/repo: status code 403.
-An error occurred while requesting access to huggingface repo 'my/repo'."#
-  )]
-  fn test_hub_service_api_error(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] kind: HubApiErrorKind,
-    #[case] message: String,
-  ) {
-    let error = HubApiError::new(
-      "request error: https://someurl.com/my/repo: status code 403".to_string(),
-      403,
-      "my/repo".to_string(),
-      kind,
-    );
-    assert_error_message(localization_service, &error.code(), error.args(), &message);
-  }
-
-  #[rstest]
-  #[case(&HubFileNotFoundError::new(
-    "testalias.gguf".to_string(),
-    "test/repo".to_string(),
-    "main".to_string(),
-  ), "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'")]
-  #[case(&RemoteModelNotFoundError::new(
-    "llama3:instruct".to_string(),
-  ), "remote model alias 'llama3:instruct' not found, check your alias and try again")]
-  fn test_hub_service_alias_not_found_error(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected: &str,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), expected);
-  }
 
   #[rstest]
   #[case::anon(None, None, "2")]
@@ -667,18 +606,17 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let error = strfmt!(UNAUTH_ERR, repo => repo.clone(), sha)?;
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError {
-        error: actual_error,
-        error_status,
+      HubServiceError::HubApiError(HubApiError::MayNotExist {
         repo: actual_repo,
-        kind,
+        error: actual_error,
       }) => {
-        assert_eq!(error, actual_error.to_string());
-        assert_eq!(401, error_status);
+        assert_eq!(error, actual_error);
         assert_eq!(repo, actual_repo);
-        assert_eq!(HubApiErrorKind::MayBeNotExists, kind);
       }
-      _ => panic!("Expected HubServiceError::MayBeNotExists, got {}", err),
+      _ => panic!(
+        "Expected HubServiceError::HubApiError::MayNotExist, got {}",
+        err
+      ),
     }
     Ok(())
   }
@@ -719,18 +657,17 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let error = strfmt!(error, repo => "amir36/test-gated-repo", sha)?;
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError {
-        error: actual_error,
-        error_status,
+      HubServiceError::HubApiError(HubApiError::GatedAccess {
         repo,
-        kind,
+        error: actual_error,
       }) => {
-        assert_eq!(error, actual_error.to_string());
-        assert_eq!(403, error_status);
-        assert_eq!("amir36/test-gated-repo", repo.to_string());
-        assert_eq!(HubApiErrorKind::GatedAccess, kind);
+        assert_eq!(error, actual_error);
+        assert_eq!("amir36/test-gated-repo", repo);
       }
-      _ => panic!("Expected HubServiceError::GatedAccess, got {}", err),
+      _ => panic!(
+        "Expected HubServiceError::HubApiError::GatedAccess, got {}",
+        err
+      ),
     }
     Ok(())
   }
@@ -768,18 +705,17 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     assert!(local_model_file.is_err());
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError {
-        error: actual_error,
-        error_status,
+      HubServiceError::HubApiError(HubApiError::RepoDisabled {
         repo: actual_repo,
-        kind,
+        error: actual_error,
       }) => {
-        assert_eq!(error, actual_error.to_string());
-        assert_eq!(404, error_status);
-        assert_eq!("amir36/not-exists", actual_repo.to_string());
-        assert_eq!(HubApiErrorKind::NotExists, kind);
+        assert_eq!(error, actual_error);
+        assert_eq!("amir36/not-exists", actual_repo);
       }
-      err => panic!("Expected HubServiceError::MayBeNotExists, got {}", err),
+      err => panic!(
+        "Expected HubServiceError::HubApiError::RepoDisabled, got {}",
+        err
+      ),
     }
     Ok(())
   }

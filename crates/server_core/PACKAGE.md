@@ -5,7 +5,7 @@
 ## Module Structure
 
 ### Core HTTP Infrastructure
-- `src/lib.rs` - Crate root with module exports and localization resources
+- `src/lib.rs` - Crate root with module exports
 - `src/router_state.rs` - Dependency injection container for HTTP handlers
 - `src/shared_rw.rs` - SharedContext trait and LLM server management
 - `src/model_router.rs` - Model request routing between local and remote

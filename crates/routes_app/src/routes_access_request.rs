@@ -476,7 +476,7 @@ mod tests {
     KEY_HEADER_BODHIAPP_USER_ID,
   };
   use axum::{body::Body, http::Request, routing::post, Router};
-  use objs::test_utils::{setup_l10n, temp_bodhi_home};
+  use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::json;
   use server_core::{DefaultRouterState, MockSharedContext};
@@ -548,7 +548,6 @@ mod tests {
   #[tokio::test]
   #[anyhow_trace]
   async fn test_approve_request_clears_user_sessions(
-    #[from(setup_l10n)] _setup_l10n: &std::sync::Arc<objs::FluentLocalizationService>,
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
     // 1. Setup: Create real databases for both app and session

@@ -310,7 +310,7 @@ impl_error_from!(::std::io::Error, ServerError::Io, ::objs::IoError);
 
 **Error Handling Features**:
 - Transparent error wrapping preserves original service error context
-- Server-specific error types with localized messages via errmeta_derive integration
+- Server-specific error types with user-friendly messages via errmeta_derive integration
 - Comprehensive error boundaries for server lifecycle, service bootstrap, and listener operations
 - Error isolation prevents listener failures from interrupting server operation
 

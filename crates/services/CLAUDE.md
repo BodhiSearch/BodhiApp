@@ -56,7 +56,7 @@ Services integrate with HTTP infrastructure through specific coordination points
 - Error implements AppError trait via errmeta_derive
 - RouterStateError wraps service error with HTTP context
 - Error converts to ApiError with OpenAI-compatible format
-- Response includes localized error message from objs LocalizationService
+- Response includes user-friendly error message from thiserror template
 
 ### Service to Authentication Middleware Coordination
 

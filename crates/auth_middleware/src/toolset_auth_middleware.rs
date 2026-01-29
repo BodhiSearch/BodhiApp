@@ -16,11 +16,11 @@ use std::sync::Arc;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ToolsetAuthError {
-  #[error("missing_user_id")]
+  #[error("User identification missing from request.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingUserId,
 
-  #[error("missing_auth")]
+  #[error("Authentication required for toolset access.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingAuth,
 
@@ -36,7 +36,7 @@ pub enum ToolsetAuthError {
   #[error_meta(error_type = ErrorType::Forbidden)]
   MissingAzpHeader,
 
-  #[error("toolset_not_found")]
+  #[error("Toolset not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ToolsetNotFound,
 
@@ -161,7 +161,7 @@ mod tests {
     Router,
   };
   use chrono::Utc;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, ResourceRole, Toolset, UserScope};
+  use objs::{ResourceRole, Toolset, UserScope};
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{test_utils::AppServiceStubBuilder, MockToolService};
@@ -219,7 +219,6 @@ mod tests {
   #[case::instance_no_api_key(true, true, true, false, StatusCode::BAD_REQUEST)]
   #[tokio::test]
   async fn test_session_auth(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] get_returns_instance: bool,
     #[case] type_enabled: bool,
@@ -282,7 +281,6 @@ mod tests {
   #[case::missing_scope(true, true, true, false, StatusCode::FORBIDDEN)]
   #[tokio::test]
   async fn test_oauth_auth(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     test_instance: Toolset,
     #[case] get_returns_instance: bool,
     #[case] type_enabled: bool,
@@ -353,10 +351,7 @@ mod tests {
   // Error condition tests
   #[rstest]
   #[tokio::test]
-  async fn test_missing_user_id(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_instance: Toolset,
-  ) {
+  async fn test_missing_user_id(test_instance: Toolset) {
     let mock_tool_service = MockToolService::new();
     let app = test_router_with_tool_service(mock_tool_service);
 
@@ -377,10 +372,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_missing_auth(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    test_instance: Toolset,
-  ) {
+  async fn test_missing_auth(test_instance: Toolset) {
     let mock_tool_service = MockToolService::new();
     let app = test_router_with_tool_service(mock_tool_service);
 

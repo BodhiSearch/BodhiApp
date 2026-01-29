@@ -248,26 +248,10 @@ mod tests {
     generate_random_key, get_secret, set_secret, DefaultSecretService, SecretService,
     SecretServiceError,
   };
-  use objs::{
-    test_utils::{assert_error_message, setup_l10n, temp_dir},
-    AppError, FluentLocalizationService,
-  };
+  use objs::test_utils::temp_dir;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
-  use std::sync::Arc;
   use tempfile::TempDir;
-
-  #[rstest]
-  #[case(&SecretServiceError::KeyMismatch, "passed encryption key and encryption key stored on platform do not match")]
-  #[case(&SecretServiceError::KeyNotFound, "encryption key not found on platform secure storage")]
-  #[case(&SecretServiceError::EncryptionError("invalid format".to_string()), "invalid format")]
-  fn test_secret_service_error_messages(
-    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected: &str,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), expected);
-  }
 
   fn secret_service(temp_dir: &TempDir) -> DefaultSecretService {
     DefaultSecretService::new(

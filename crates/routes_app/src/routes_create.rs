@@ -34,14 +34,14 @@ pub struct UpdateAliasRequest {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum CreateAliasError {
-  #[error("alias_not_present")]
+  #[error("Model alias is not present in request.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AliasNotPresent,
   #[error(transparent)]
   AliasNotFound(#[from] AliasNotFoundError),
   #[error(transparent)]
   CreateCommand(#[from] CreateCommandError),
-  #[error("alias_mismatch")]
+  #[error("Model alias in path '{path}' does not match alias in request '{request}'.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AliasMismatch { path: String, request: String },
 }
@@ -140,7 +140,7 @@ mod tests {
     routing::{post, put},
     Router,
   };
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, OAIRequestParamsBuilder};
+  use objs::OAIRequestParamsBuilder;
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
@@ -262,7 +262,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_alias_handler_non_existent_repo(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let payload = serde_json::json!({
@@ -294,7 +293,12 @@ mod tests {
         "error": {
           "type": "not_found_error",
           "code": "hub_file_not_found_error",
-          "message": "file '\u{2068}fakemodel.Q4_0.gguf\u{2069}' not found in huggingface repo '\u{2068}FakeFactory/not-exists\u{2069}', snapshot '\u{2068}main\u{2069}'"
+          "message": "File 'fakemodel.Q4_0.gguf' not found in repository 'FakeFactory/not-exists'.",
+          "param": {
+            "filename": "fakemodel.Q4_0.gguf",
+            "repo": "FakeFactory/not-exists",
+            "snapshot": "main"
+          }
         }
       }},
       response
@@ -351,10 +355,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_create_alias_handler_missing_alias(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    #[future] app: Router,
-  ) -> anyhow::Result<()> {
+  async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyhow::Result<()> {
     let payload = serde_json::json!({
       "repo": "FakeFactory/fakemodel-gguf",
       "filename": "fakemodel.Q4_0.gguf",
@@ -384,7 +385,10 @@ mod tests {
         "error": {
           "type": "invalid_request_error",
           "code": "json_rejection_error",
-          "message": "failed to parse the request body as JSON, error: \u{2068}Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167\u{2069}"
+          "message": "Invalid JSON in request: Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167.",
+          "param": {
+            "source": "Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167"
+          }
         }
       }},
       response
@@ -424,7 +428,6 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_alias_repo_not_downloaded_error(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
     #[case] payload: Value,
     #[case] method: Method,
@@ -448,7 +451,12 @@ mod tests {
         "error": {
           "type": "not_found_error",
           "code": "hub_file_not_found_error",
-          "message": "file '\u{2068}tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf\u{2069}' not found in huggingface repo '\u{2068}TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF\u{2069}', snapshot '\u{2068}main\u{2069}'"
+          "message": "File 'tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf' not found in repository 'TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF'.",
+          "param": {
+            "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
+            "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
+            "snapshot": "main"
+          }
         }
       }},
       response

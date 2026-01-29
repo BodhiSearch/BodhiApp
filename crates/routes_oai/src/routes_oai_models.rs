@@ -215,7 +215,6 @@ mod tests {
     Router,
   };
   use chrono::Utc;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use objs::{ApiAlias, ApiFormat};
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
@@ -343,10 +342,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_oai_model_handler_not_found(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    #[future] app: Router,
-  ) -> anyhow::Result<()> {
+  async fn test_oai_model_handler_not_found(#[future] app: Router) -> anyhow::Result<()> {
     let response = app
       .oneshot(
         Request::builder()

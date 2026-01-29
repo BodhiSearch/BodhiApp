@@ -389,7 +389,6 @@ mod tests {
     routing::get,
     Router,
   };
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -552,7 +551,6 @@ mod tests {
   #[tokio::test]
   async fn test_get_alias_handler_non_existent(
     #[future] router_state_stub: DefaultRouterState,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let response = test_router(router_state_stub)
       .oneshot(
@@ -566,9 +564,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "alias '\u{2068}non_existent_alias\u{2069}' not found in $BODHI_HOME/aliases",
+          "message": "Model configuration 'non_existent_alias' not found.",
           "code": "alias_not_found_error",
-          "type": "not_found_error"
+          "type": "not_found_error",
+          "param": {
+            "var_0": "non_existent_alias"
+          }
         }
       }},
       response

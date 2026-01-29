@@ -64,7 +64,7 @@ Complex authentication flows coordinated across BodhiApp's service layer:
 Authentication middleware coordinates with HTTP infrastructure for request processing:
 - **RouterState Integration**: Dependency injection providing access to AppService registry for authentication operations
 - **Request Header Management**: Automatic injection and removal of internal authentication headers for security
-- **Error Translation**: Service errors converted to appropriate HTTP status codes with localized messages
+- **Error Translation**: Service errors converted to appropriate HTTP status codes with user-friendly messages
 - **Middleware Composition**: Layered middleware architecture with auth_middleware, inject_session_auth_info, and canonical_url_middleware
 - **OpenAI API Security**: Bearer token authentication for OpenAI-compatible endpoints through routes_oai integration
 - **Application API Security**: Session-based and bearer token authentication for application endpoints through routes_app integration
@@ -101,7 +101,7 @@ Sophisticated authentication coordination supporting multiple authentication pat
 - **Precedence Rules**: Bearer token authentication takes precedence over session-based authentication
 - **Header Management**: Automatic injection of X-Resource-Token, X-Resource-Role, and X-Resource-Scope headers
 - **Security Isolation**: Removal of user-provided internal headers to prevent header injection attacks
-- **Error Coordination**: Consistent error handling across both authentication flows with localized messages
+- **Error Coordination**: Consistent error handling across both authentication flows with user-friendly messages
 
 ### Token Service Orchestration Workflows
 Complex token management workflows coordinated across multiple services:

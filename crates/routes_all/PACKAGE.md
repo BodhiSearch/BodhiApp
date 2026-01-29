@@ -263,24 +263,6 @@ let router = Router::<Arc<dyn RouterState>>::new()
 - Interactive Swagger UI interface with authentication flow documentation and endpoint testing
 - Comprehensive schema definitions with validation and examples for all request/response types
 
-### Localization Resources
-Embedded localization files for multi-language support:
-
-```rust
-// Localization pattern (see src/lib.rs)
-pub mod l10n {
-  use include_dir::Dir;
-  
-  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
-}
-```
-
-**Localization Features**:
-- Embedded localization resources using include_dir macro for compile-time resource inclusion
-- Support for multiple languages with fluent localization files (en-US/messages.ftl)
-- Runtime localization access for error messages and user-facing text across all route handlers
-- Integration with error handling system for localized error responses
-
 ### UI Endpoint Macro
 Utility macro for consistent UI endpoint generation:
 

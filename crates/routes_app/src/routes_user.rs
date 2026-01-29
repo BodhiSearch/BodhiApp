@@ -171,10 +171,7 @@ mod tests {
     routing::get,
     Router,
   };
-  use objs::{
-    test_utils::setup_l10n, AppRole, FluentLocalizationService, ResourceRole, ResourceScope,
-    TokenScope, UserInfo, UserScope,
-  };
+  use objs::{AppRole, ResourceRole, ResourceScope, TokenScope, UserInfo, UserScope};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -214,9 +211,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_user_info_handler_empty_token(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let router = test_router(app_service);
 
@@ -233,9 +228,12 @@ mod tests {
     assert_eq!(
       json!({
         "error": {
-          "message": "invalid request, reason: \u{2068}injected token is empty\u{2069}",
+          "message": "Invalid request: injected token is empty.",
           "type": "invalid_request_error",
-          "code": "bad_request_error"
+          "code": "bad_request_error",
+          "param": {
+            "reason": "injected token is empty"
+          }
         }
       }),
       response_json
@@ -245,9 +243,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_user_info_handler_invalid_token(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
+  async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let router = test_router(app_service);
 
@@ -264,9 +260,12 @@ mod tests {
     assert_eq!(
       json!({
         "error": {
-          "message": "token is invalid: \u{2068}malformed token format\u{2069}",
+          "message": "Invalid token: malformed token format.",
           "code": "token_error-invalid_token",
-          "type": "authentication_error"
+          "type": "authentication_error",
+          "param": {
+            "var_0": "malformed token format"
+          }
         }
       }),
       response_json
@@ -495,9 +494,12 @@ mod tests {
     assert_eq!(
       json!({
         "error": {
-          "message": "invalid role name: \u{2068}invalid_role\u{2069}",
+          "message": "invalid_role_name",
           "type": "invalid_request_error",
-          "code": "role_error-invalid_role_name"
+          "code": "role_error-invalid_role_name",
+          "param": {
+            "var_0": "invalid_role"
+          }
         }
       }),
       response_json
@@ -528,9 +530,12 @@ mod tests {
     assert_eq!(
       json!({
         "error": {
-          "message": "invalid resource scope: \u{2068}invalid_scope\u{2069}",
+          "message": "invalid resource scope: invalid_scope",
           "type": "authentication_error",
-          "code": "resource_scope_error-invalid_scope"
+          "code": "resource_scope_error-invalid_scope",
+          "param": {
+            "var_0": "invalid_scope"
+          }
         }
       }),
       response_json
