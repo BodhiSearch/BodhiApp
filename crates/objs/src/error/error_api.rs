@@ -102,7 +102,7 @@ impl IntoResponse for ApiError {
 
 #[cfg(test)]
 mod tests {
-  use crate::{ApiError, BadRequestError, InternalServerError};
+  use crate::{ApiError, AppError, ErrorType};
   use axum::{body::Body, extract::Path, http::Request, response::Response, routing::get, Router};
   use http_body_util::BodyExt;
   use pretty_assertions::assert_eq;
@@ -110,31 +110,43 @@ mod tests {
   use serde_json::Value;
   use tower::ServiceExt;
 
+  #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+  #[error_meta(trait_to_impl = AppError)]
+  enum TestError {
+    #[error("Bad input: {0}.")]
+    #[error_meta(error_type = ErrorType::BadRequest)]
+    BadInput(String),
+
+    #[error("Something went wrong: {0}.")]
+    #[error_meta(error_type = ErrorType::InternalServer)]
+    Internal(String),
+  }
+
   async fn handler_return_different_error_objs(
     Path(input): Path<String>,
   ) -> Result<Response, ApiError> {
     if input.parse::<i32>().unwrap() % 2 == 0 {
-      Err(BadRequestError::new("even".to_string()))?
+      Err(TestError::BadInput("even".to_string()))?
     } else {
-      Err(InternalServerError::new("odd".to_string()))?
+      Err(TestError::Internal("odd".to_string()))?
     }
   }
 
   #[rstest]
   #[case("2", 400, serde_json::json! {{
     "error": {
-    "message": "Invalid request: even.",
+    "message": "Bad input: even.",
     "type": "invalid_request_error",
-    "code": "bad_request_error",
-    "param": {"reason": "even"}
-    }}
-  })]
+    "code": "test_error-bad_input",
+    "param": {"var_0": "even"}
+    }
+  }})]
   #[case("3", 500, serde_json::json! {{
     "error": {
-      "message": "Internal error: odd.",
+      "message": "Something went wrong: odd.",
       "type": "internal_server_error",
-      "code": "internal_server_error",
-      "param": {"reason": "odd"}
+      "code": "test_error-internal",
+      "param": {"var_0": "odd"}
     }
   }})]
   #[tokio::test]
