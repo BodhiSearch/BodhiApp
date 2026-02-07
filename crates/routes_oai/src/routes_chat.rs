@@ -7,7 +7,7 @@ use async_openai::types::{
 };
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, BadRequestError, ErrorType, API_TAG_OPENAI};
+use objs::{ApiError, AppError, ErrorType, API_TAG_OPENAI};
 use server_core::{LlmEndpoint, RouterState};
 use std::sync::Arc;
 
@@ -21,13 +21,17 @@ pub enum HttpError {
   #[error("Response serialization failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Serialization(#[from] serde_json::Error),
+
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidRequest(String),
 }
 
 /// Validates basic structure of chat completion request
-fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), BadRequestError> {
+fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), HttpError> {
   // Validate model field exists and is a string
   if request.get("model").and_then(|v| v.as_str()).is_none() {
-    return Err(BadRequestError::new(
+    return Err(HttpError::InvalidRequest(
       "'model' field is required and must be a string".to_string(),
     ));
   }
@@ -38,7 +42,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), B
     .map(|v| v.is_array())
     .unwrap_or(false)
   {
-    return Err(BadRequestError::new(
+    return Err(HttpError::InvalidRequest(
       "'messages' field is required and must be an array".to_string(),
     ));
   }
@@ -46,7 +50,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), B
   // Validate stream field is boolean if present
   if let Some(stream) = request.get("stream") {
     if !stream.is_boolean() {
-      return Err(BadRequestError::new(
+      return Err(HttpError::InvalidRequest(
         "'stream' field must be a boolean".to_string(),
       ));
     }
