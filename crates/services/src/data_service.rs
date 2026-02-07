@@ -4,9 +4,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use objs::{
-  impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
-  IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
-  UserAlias,
+  impl_error_from, Alias, AppError, ErrorType, IoError, RemoteModel, SerdeYamlError,
+  SerdeYamlWithPathError, UserAlias,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
@@ -37,15 +36,7 @@ pub enum DataServiceError {
   #[error(transparent)]
   DataFileNotFound(#[from] DataFileNotFoundError),
   #[error(transparent)]
-  DirCreate(#[from] IoDirCreateError),
-  #[error(transparent)]
   Io(#[from] IoError),
-  #[error(transparent)]
-  IoFileRead(#[from] IoFileReadError),
-  #[error(transparent)]
-  IoFileDelete(#[from] IoFileDeleteError),
-  #[error(transparent)]
-  IoFileWrite(#[from] IoFileWriteError),
   #[error(transparent)]
   AliasNotExists(#[from] AliasNotFoundError),
   #[error(transparent)]
@@ -147,7 +138,7 @@ impl DataService for LocalDataService {
     let contents = serde_yaml::to_string(alias)?;
     let filename = self.aliases_dir().join(alias.config_filename());
     fs::write(filename.clone(), contents)
-      .map_err(|err| IoFileWriteError::new(err, alias.config_filename().clone()))?;
+      .map_err(|err| IoError::file_write(err, alias.config_filename().clone()))?;
     Ok(filename)
   }
 
@@ -229,7 +220,7 @@ impl DataService for LocalDataService {
       return Err(DataFileNotFoundError::new(String::from(MODELS_YAML), "".to_string()).into());
     }
     let content = fs::read_to_string(models_file.clone())
-      .map_err(|err| IoFileReadError::new(err, models_file.display().to_string()))?;
+      .map_err(|err| IoError::file_read(err, models_file.display().to_string()))?;
     let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content)
       .map_err(|err| SerdeYamlWithPathError::new(err, models_file.display().to_string()))?;
     Ok(models)
@@ -256,7 +247,7 @@ impl DataService for LocalDataService {
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
-    fs::remove_file(&filename).map_err(|err| IoFileDeleteError::new(err, filename))?;
+    fs::remove_file(&filename).map_err(|err| IoError::file_delete(err, filename))?;
     Ok(())
   }
 
@@ -282,7 +273,7 @@ impl DataService for LocalDataService {
   fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
     let path = self.find_file(folder, filename)?;
     let result =
-      fs::read(&path).map_err(|err| IoFileReadError::new(err, path.display().to_string()))?;
+      fs::read(&path).map_err(|err| IoError::file_read(err, path.display().to_string()))?;
     Ok(result)
   }
 
@@ -291,11 +282,11 @@ impl DataService for LocalDataService {
     if let Some(parent) = path.parent() {
       if !parent.exists() {
         fs::create_dir_all(parent)
-          .map_err(|err| IoDirCreateError::new(err, parent.display().to_string()))?;
+          .map_err(|err| IoError::dir_create(err, parent.display().to_string()))?;
       }
     }
     fs::write(&path, contents)
-      .map_err(|err| IoFileWriteError::new(err, path.display().to_string()))?;
+      .map_err(|err| IoError::file_write(err, path.display().to_string()))?;
     Ok(())
   }
 }
@@ -333,7 +324,7 @@ impl LocalDataService {
               }
             },
             Err(err) => {
-              let err = IoFileReadError::new(err, filename);
+              let err = IoError::file_read(err, filename);
               tracing::warn!(?err, "Error reading model alias YAML file");
               None
             }
