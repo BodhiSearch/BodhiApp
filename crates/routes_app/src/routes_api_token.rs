@@ -1,15 +1,15 @@
 use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
-use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN};
+use auth_middleware::ExtractToken;
 use axum::{
   extract::{Path, Query, State},
-  http::{HeaderMap, StatusCode},
+  http::{StatusCode, HeaderMap},
   Json,
 };
 use axum_extra::extract::WithRejection;
 use base64::{engine::general_purpose, Engine};
 use objs::{
-  ApiError, AppError, BadRequestError, EntityError, ErrorType, OpenAIApiError, ResourceRole,
-  TokenScope, API_TAG_API_KEYS,
+  ApiError, AppError, EntityError, ErrorType, OpenAIApiError, ResourceRole, TokenScope,
+  API_TAG_API_KEYS,
 };
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -80,6 +80,15 @@ pub enum ApiTokenError {
   RefreshTokenMissing,
   #[error(transparent)]
   AuthService(#[from] AuthServiceError),
+  #[error("Privilege escalation not allowed.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  PrivilegeEscalation,
+  #[error("Invalid token scope.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidScope,
+  #[error("Invalid role: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidRole(String),
 }
 
 /// Create a new API token
@@ -114,6 +123,7 @@ pub enum ApiTokenError {
     )
 )]
 pub async fn create_token_handler(
+  ExtractToken(resource_token): ExtractToken,
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
@@ -121,32 +131,24 @@ pub async fn create_token_handler(
   let app_service = state.app_service();
   let db_service = app_service.db_service();
 
-  // Extract user info from headers
-  let resource_token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .and_then(|token| token.to_str().ok())
-    .ok_or(ApiTokenError::AccessTokenMissing)?;
-
-  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
+  let user_id = extract_claims::<IdClaims>(&resource_token)?.sub;
   let user_role_str = headers
-    .get(KEY_HEADER_BODHIAPP_ROLE)
+    .get(auth_middleware::KEY_HEADER_BODHIAPP_ROLE)
     .and_then(|role| role.to_str().ok())
     .ok_or(ApiTokenError::AccessTokenMissing)?;
 
   let user_role =
-    ResourceRole::from_str(user_role_str).map_err(|e| BadRequestError::new(e.to_string()))?;
+    ResourceRole::from_str(user_role_str).map_err(|e| ApiTokenError::InvalidRole(e.to_string()))?;
 
   // Validate privilege escalation - users cannot create tokens with higher privileges than their role
   let token_scope = match (user_role, &payload.scope) {
     // User can only create user-level tokens
     (ResourceRole::User, TokenScope::User) => Ok(payload.scope),
-    (ResourceRole::User, _) => Err(BadRequestError::new(
-      "privilege_escalation_not_allowed".to_string(),
-    )),
+    (ResourceRole::User, _) => Err(ApiTokenError::PrivilegeEscalation),
 
     // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens only
     (_, TokenScope::User | TokenScope::PowerUser) => Ok(payload.scope),
-    (_, _) => Err(BadRequestError::new("invalid_token_scope".to_string())),
+    (_, _) => Err(ApiTokenError::InvalidScope),
   }?;
 
   // Generate cryptographically secure random token
@@ -239,7 +241,7 @@ pub async fn create_token_handler(
     )
 )]
 pub async fn update_token_handler(
-  headers: HeaderMap,
+  ExtractToken(resource_token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
   WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, ApiError>,
@@ -247,13 +249,7 @@ pub async fn update_token_handler(
   let app_service = state.app_service();
   let db_service = app_service.db_service();
 
-  let resource_token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .map(|token| token.to_str());
-  let Some(Ok(resource_token)) = resource_token else {
-    return Err(ApiTokenError::AccessTokenMissing)?;
-  };
-  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
+  let user_id = extract_claims::<IdClaims>(&resource_token)?.sub;
   let mut token = db_service
     .get_api_token_by_id(&user_id, &id)
     .await?
@@ -316,18 +312,12 @@ pub async fn update_token_handler(
     )
 )]
 pub async fn list_tokens_handler(
-  headers: HeaderMap,
+  ExtractToken(resource_token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Query(query): Query<PaginationSortParams>,
 ) -> Result<Json<PaginatedApiTokenResponse>, ApiError> {
   let per_page = query.page_size.min(100);
-  let resource_token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .map(|token| token.to_str());
-  let Some(Ok(resource_token)) = resource_token else {
-    return Err(ApiTokenError::AccessTokenMissing)?;
-  };
-  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
+  let user_id = extract_claims::<IdClaims>(&resource_token)?.sub;
 
   let (tokens, total) = state
     .app_service()

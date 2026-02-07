@@ -4,13 +4,24 @@ use auth_middleware::{
 };
 use axum::{http::header::HeaderMap, Json};
 use objs::{
-  ApiError, AppRole, BadRequestError, ResourceRole, ResourceScope, TokenScope, UserInfo,
+  ApiError, AppError, AppRole, ErrorType, ResourceRole, ResourceScope, TokenScope, UserInfo,
   API_TAG_AUTH,
 };
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
 use tracing::debug;
 use utoipa::ToSchema;
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum UserInfoError {
+  #[error("Invalid header value: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidHeader(String),
+  #[error("Injected token is empty.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  EmptyToken,
+}
 
 /// Token Type
 /// `session` - token stored in cookie based http session
@@ -98,10 +109,10 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
   };
   let token = token
     .to_str()
-    .map_err(|err| BadRequestError::new(err.to_string()))?;
+    .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
   if token.is_empty() {
     debug!("injected token is empty");
-    return Err(BadRequestError::new("injected token is empty".to_string()))?;
+    return Err(UserInfoError::EmptyToken)?;
   }
   let role_header = headers.get(KEY_HEADER_BODHIAPP_ROLE);
   let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
@@ -110,7 +121,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
       debug!("role header present");
       let role = role_header
         .to_str()
-        .map_err(|err| BadRequestError::new(err.to_string()))?;
+        .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
       let role = role.parse::<ResourceRole>()?;
       let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(UserInfo {
@@ -125,7 +136,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
       debug!("scope header present");
       let scope = scope_header
         .to_str()
-        .map_err(|err| BadRequestError::new(err.to_string()))?;
+        .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
       let resource_scope = ResourceScope::try_parse(scope)?;
       match resource_scope {
         ResourceScope::Token(token_scope) => {
@@ -228,12 +239,9 @@ mod tests {
     assert_eq!(
       json!({
         "error": {
-          "message": "Invalid request: injected token is empty.",
+          "message": "Injected token is empty.",
           "type": "invalid_request_error",
-          "code": "bad_request_error",
-          "param": {
-            "reason": "injected token is empty"
-          }
+          "code": "user_info_error-empty_token",
         }
       }),
       response_json

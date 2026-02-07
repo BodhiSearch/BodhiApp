@@ -6,10 +6,18 @@ use axum::{
   extract::{Path, Query, State},
   Json,
 };
-use objs::{Alias, ApiError, HubFile, OpenAIApiError, API_TAG_MODELS};
+use objs::{Alias, ApiError, AppError, ErrorType, HubFile, OpenAIApiError, API_TAG_MODELS};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ModelError {
+  #[error("Failed to fetch metadata.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  MetadataFetchFailed,
+}
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -191,9 +199,7 @@ pub async fn list_local_modelfiles_handler(
     .await
     .map_err(|e| {
       tracing::error!("Failed to batch fetch metadata: {}", e);
-      ApiError::from(objs::InternalServerError::new(
-        "Failed to fetch metadata".to_string(),
-      ))
+      ModelError::MetadataFetchFailed
     })?;
 
   // Convert to responses with metadata attached

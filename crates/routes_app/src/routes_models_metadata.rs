@@ -7,12 +7,40 @@
 use crate::ModelAliasResponse;
 use axum::{extract::State, http::StatusCode, Json};
 use chrono::Utc;
-use objs::{Alias, ApiError, API_TAG_MODELS};
+use objs::{Alias, ApiError, AppError, ErrorType, API_TAG_MODELS};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{extract_and_store_metadata, RefreshTask};
 use std::{str::FromStr, sync::Arc};
 use utoipa::ToSchema;
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum MetadataError {
+  #[error("Invalid repo format: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidRepoFormat(String),
+
+  #[error("Failed to list aliases.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  ListAliasesFailed,
+
+  #[error("Model alias not found for repo={repo}, filename={filename}, snapshot={snapshot}.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  AliasNotFound {
+    repo: String,
+    filename: String,
+    snapshot: String,
+  },
+
+  #[error("Failed to extract metadata: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ExtractionFailed(String),
+
+  #[error("Failed to enqueue metadata refresh task.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  EnqueueFailed,
+}
 
 /// Source type discriminator for refresh requests
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, ToSchema, PartialEq)]
@@ -123,10 +151,7 @@ pub async fn refresh_metadata_handler(
     } => {
       // Parse and validate repo
       let repo_parsed = objs::Repo::from_str(&repo).map_err(|e| {
-        ApiError::from(objs::BadRequestError::new(format!(
-          "Invalid repo format: {}",
-          e
-        )))
+        MetadataError::InvalidRepoFormat(e.to_string())
       })?;
 
       // Find the ModelAlias for this GGUF file
@@ -137,9 +162,7 @@ pub async fn refresh_metadata_handler(
         .await
         .map_err(|e| {
           tracing::error!("Failed to list aliases: {}", e);
-          ApiError::from(objs::InternalServerError::new(
-            "Failed to list aliases".to_string(),
-          ))
+          MetadataError::ListAliasesFailed
         })?;
 
       let alias = all_aliases
@@ -160,10 +183,11 @@ pub async fn refresh_metadata_handler(
           }
         })
         .ok_or_else(|| {
-          ApiError::from(objs::NotFoundError::new(format!(
-            "Model alias not found for repo={}, filename={}, snapshot={}",
-            repo, filename, snapshot
-          )))
+          MetadataError::AliasNotFound {
+            repo: repo.clone(),
+            filename: filename.clone(),
+            snapshot: snapshot.clone(),
+          }
         })?;
 
       // Extract and store metadata synchronously
@@ -181,10 +205,7 @@ pub async fn refresh_metadata_handler(
           snapshot,
           e
         );
-        ApiError::from(objs::BadRequestError::new(format!(
-          "Failed to extract metadata: {}",
-          e
-        )))
+        MetadataError::ExtractionFailed(e.to_string())
       })?;
 
       // Convert to response with metadata
@@ -202,9 +223,7 @@ pub async fn refresh_metadata_handler(
       // Enqueue task via QueueProducer
       if let Err(e) = state.app_service().queue_producer().enqueue(task).await {
         tracing::error!("Failed to enqueue refresh task: {}", e);
-        return Err(ApiError::from(objs::BadRequestError::new(
-          "Failed to enqueue metadata refresh task".to_string(),
-        )));
+        return Err(MetadataError::EnqueueFailed)?;
       }
 
       let response = RefreshResponse {

@@ -1,5 +1,5 @@
 use oauth2::url::ParseError;
-use objs::{AppError, BadRequestError, ErrorType};
+use objs::{AppError, ErrorType};
 use services::{AppStatus, AuthServiceError, JsonWebTokenError, SecretServiceError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -25,8 +25,6 @@ pub enum LoginError {
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
   #[error(transparent)]
-  BadRequest(#[from] BadRequestError),
-  #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, code = "login_error-parse_error", args_delegate = false)]
   ParseError(#[from] ParseError),
   #[error(transparent)]
@@ -34,4 +32,10 @@ pub enum LoginError {
   #[error("State parameter in callback does not match the one sent in login request.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   StateDigestMismatch,
+  #[error("Missing state parameter in OAuth callback.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  MissingState,
+  #[error("Missing code parameter in OAuth callback.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  MissingCode,
 }

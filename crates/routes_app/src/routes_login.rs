@@ -16,7 +16,7 @@ use axum::{
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_TAG_AUTH};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -206,19 +206,17 @@ pub async fn auth_callback_handler(
   let received_state = request
     .state
     .as_ref()
-    .ok_or_else(|| BadRequestError::new("missing state parameter".to_string()))?;
+    .ok_or(LoginError::MissingState)?;
 
   if stored_state != *received_state {
-    return Err(BadRequestError::new(
-      "state parameter in callback does not match with the one sent in login request".to_string(),
-    ))?;
+    return Err(LoginError::StateDigestMismatch)?;
   }
 
   // Check for required authorization code
   let code = request
     .code
     .as_ref()
-    .ok_or_else(|| BadRequestError::new("missing code parameter".to_string()))?;
+    .ok_or(LoginError::MissingCode)?;
 
   // Get PKCE verifier
   let pkce_verifier = session
@@ -1169,19 +1167,9 @@ mod tests {
   }
 
   #[rstest]
-  #[case(
-    "modified-",
-    true,
-    "state parameter in callback does not match with the one sent in login request"
-  )]
-  // #[case("", false, "missing code parameter")]
   #[tokio::test]
-  async fn test_auth_callback_handler_missing_params(
+  async fn test_auth_callback_handler_state_mismatch(
     temp_bodhi_home: TempDir,
-
-    #[case] state_prefix: String,
-    #[case] code_present: bool,
-    #[case] expected_error: &str,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let secret_service = SecretServiceStub::new()
@@ -1214,32 +1202,23 @@ mod tests {
     let body: RedirectResponse = login_resp.json();
     let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-    let state = format!("{}{}", state_prefix, query_params.get("state").unwrap());
-    let code = if code_present {
-      Some("test_code".to_string())
-    } else {
-      None
-    };
+    let state = format!("modified-{}", query_params.get("state").unwrap());
 
     let resp = client
       .post("/auth/callback")
       .json(&json! {{
-        "code": code,
+        "code": "test_code",
         "state": state,
       }})
       .await;
     resp.assert_status(StatusCode::BAD_REQUEST);
     let error = resp.json::<Value>();
-    let expected_message = format!("Invalid request: {}.", expected_error);
     assert_eq!(
       json! {{
         "error": {
-          "message": expected_message,
-          "code": "bad_request_error",
+          "message": "State parameter in callback does not match the one sent in login request.",
+          "code": "login_error-state_digest_mismatch",
           "type": "invalid_request_error",
-          "param": {
-            "reason": expected_error
-          }
         }
       }},
       error

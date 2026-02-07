@@ -1,16 +1,32 @@
-use auth_middleware::KEY_HEADER_BODHIAPP_TOKEN;
+use auth_middleware::ExtractToken;
 use axum::{
   extract::{Path, Query, State},
-  http::{HeaderMap, StatusCode},
+  http::StatusCode,
   Json,
 };
-use objs::{ApiError, BadRequestError, InternalServerError, OpenAIApiError, API_TAG_AUTH};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{extract_claims, Claims, UserListResponse};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use utoipa::ToSchema;
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum UserManagementError {
+  #[error("Failed to list users: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  ListFailed(String),
+
+  #[error("Failed to change user role: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  RoleChangeFailed(String),
+
+  #[error("Failed to remove user: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  RemoveFailed(String),
+}
 
 /// List users query parameters
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
@@ -49,25 +65,18 @@ pub struct ChangeRoleRequest {
     )
 )]
 pub async fn list_users_handler(
-  headers: HeaderMap,
+  ExtractToken(token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<ListUsersParams>,
 ) -> Result<Json<UserListResponse>, ApiError> {
-  // Get reviewer token from headers
-  let token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .ok_or_else(|| BadRequestError::new("No authentication token present".to_string()))?
-    .to_str()
-    .map_err(|err| BadRequestError::new(err.to_string()))?;
-
   // Call auth service to list users
   let auth_service = state.app_service().auth_service();
   let users = auth_service
-    .list_users(token, params.page, params.page_size)
+    .list_users(&token, params.page, params.page_size)
     .await
     .map_err(|e| {
       error!("Failed to list users from auth service: {}", e);
-      InternalServerError::new(format!("Failed to list users: {}", e))
+      UserManagementError::ListFailed(e.to_string())
     })?;
 
   info!("Successfully retrieved {} users", users.users.len());
@@ -95,18 +104,12 @@ pub async fn list_users_handler(
     )
 )]
 pub async fn change_user_role_handler(
-  headers: HeaderMap,
+  ExtractToken(token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Path(user_id): Path<String>,
   Json(request): Json<ChangeRoleRequest>,
 ) -> Result<StatusCode, ApiError> {
-  let token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .ok_or_else(|| BadRequestError::new("No authentication token present".to_string()))?
-    .to_str()
-    .map_err(|err| BadRequestError::new(err.to_string()))?;
-
-  let claims: Claims = extract_claims::<Claims>(token)?;
+  let claims: Claims = extract_claims::<Claims>(&token)?;
 
   info!(
     "User {} changing role for user {} to role {}",
@@ -115,11 +118,11 @@ pub async fn change_user_role_handler(
 
   let auth_service = state.app_service().auth_service();
   auth_service
-    .assign_user_role(token, &user_id, &request.role)
+    .assign_user_role(&token, &user_id, &request.role)
     .await
     .map_err(|e| {
       error!("Failed to change user role: {}", e);
-      InternalServerError::new(format!("Failed to change user role: {}", e))
+      UserManagementError::RoleChangeFailed(e.to_string())
     })?;
 
   // Clear existing sessions for the user to ensure new role is applied
@@ -163,17 +166,11 @@ pub async fn change_user_role_handler(
     )
 )]
 pub async fn remove_user_handler(
-  headers: HeaderMap,
+  ExtractToken(token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Path(user_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .ok_or_else(|| BadRequestError::new("No authentication token present".to_string()))?
-    .to_str()
-    .map_err(|err| BadRequestError::new(err.to_string()))?;
-
-  let claims: Claims = extract_claims::<Claims>(token)?;
+  let claims: Claims = extract_claims::<Claims>(&token)?;
 
   info!(
     "User {} removing user {}",
@@ -182,11 +179,11 @@ pub async fn remove_user_handler(
 
   let auth_service = state.app_service().auth_service();
   auth_service
-    .remove_user(token, &user_id)
+    .remove_user(&token, &user_id)
     .await
     .map_err(|e| {
       error!("Failed to remove user: {}", e);
-      InternalServerError::new(format!("Failed to remove user: {}", e))
+      UserManagementError::RemoveFailed(e.to_string())
     })?;
 
   info!(
@@ -385,7 +382,7 @@ mod tests {
     // Verify error message
     let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
     let body_text = String::from_utf8(body_bytes.to_vec())?;
-    assert!(body_text.contains("No authentication token present"));
+    assert!(body_text.contains("Required header"));
 
     Ok(())
   }

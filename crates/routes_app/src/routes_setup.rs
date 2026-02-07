@@ -25,6 +25,9 @@ pub enum AppServiceError {
   #[error("Application is already set up.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AlreadySetup,
+  #[error("Server name must be at least 10 characters long.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ServerNameTooShort,
   #[error(transparent)]
   SecretServiceError(#[from] SecretServiceError),
   #[error(transparent)]
@@ -147,10 +150,7 @@ pub async fn setup_handler(
 
   // Validate server name (minimum 10 characters)
   if request.name.len() < 10 {
-    // TODO: localize this error message
-    return Err(objs::BadRequestError::new(
-      "Server name must be at least 10 characters long".to_string(),
-    ))?;
+    return Err(AppServiceError::ServerNameTooShort)?;
   }
   let setting_service = &state.app_service().setting_service();
   let redirect_uris = if setting_service.get_public_host_explicit().is_some() {

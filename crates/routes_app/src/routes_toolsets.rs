@@ -5,8 +5,8 @@ use crate::toolsets_dto::{
 };
 use crate::{ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES};
 use auth_middleware::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
-  KEY_HEADER_BODHIAPP_TOOL_SCOPES, KEY_HEADER_BODHIAPP_USER_ID,
+  ExtractToken, ExtractUserId, KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE,
+  KEY_HEADER_BODHIAPP_TOOL_SCOPES,
 };
 use axum::{
   extract::{Path, State},
@@ -15,7 +15,7 @@ use axum::{
   Json, Router,
 };
 use objs::API_TAG_TOOLSETS;
-use objs::{ApiError, Toolset, ToolsetExecutionResponse, ToolsetScope};
+use objs::{ApiError, AppError, ErrorType, Toolset, ToolsetExecutionResponse, ToolsetScope};
 use server_core::RouterState;
 use services::db::ApiKeyUpdate;
 use services::ToolsetError;
@@ -23,29 +23,17 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use validator::Validate;
 
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ToolsetValidationError {
+  #[error("Validation error: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  Validation(String),
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-fn extract_user_id_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
-  headers
-    .get(KEY_HEADER_BODHIAPP_USER_ID)
-    .and_then(|v| v.to_str().ok())
-    .map(|s| s.to_string())
-    .ok_or_else(|| {
-      objs::BadRequestError::new("User ID not found in request headers".to_string()).into()
-    })
-}
-
-fn extract_token_from_headers(headers: &HeaderMap) -> Result<String, ApiError> {
-  headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .and_then(|v| v.to_str().ok())
-    .map(|s| s.to_string())
-    .ok_or_else(|| {
-      objs::BadRequestError::new("Access token not found in request headers".to_string()).into()
-    })
-}
 
 fn is_oauth_auth(headers: &HeaderMap) -> bool {
   !headers.contains_key(KEY_HEADER_BODHIAPP_ROLE)
@@ -114,10 +102,10 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
   security(("bearer" = []))
 )]
 pub async fn list_toolsets_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
 ) -> Result<Json<ListToolsetsResponse>, ApiError> {
-  let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   let toolsets = tool_service.list(&user_id).await?;
@@ -173,15 +161,13 @@ pub async fn list_toolsets_handler(
   security(("bearer" = []))
 )]
 pub async fn create_toolset_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
-  headers: HeaderMap,
   Json(request): Json<CreateToolsetRequest>,
 ) -> Result<(StatusCode, Json<ToolsetResponse>), ApiError> {
   request
     .validate()
-    .map_err(|e| objs::BadRequestError::new(format!("Validation error: {}", e)))?;
-
-  let user_id = extract_user_id_from_headers(&headers)?;
+    .map_err(|e| ToolsetValidationError::Validation(e.to_string()))?;
   let tool_service = state.app_service().tool_service();
 
   let toolset = tool_service
@@ -215,11 +201,10 @@ pub async fn create_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn get_toolset_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  headers: HeaderMap,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
-  let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   let toolset = tool_service
@@ -250,16 +235,14 @@ pub async fn get_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn update_toolset_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  headers: HeaderMap,
   Json(request): Json<UpdateToolsetRequest>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
   request
     .validate()
-    .map_err(|e| objs::BadRequestError::new(format!("Validation error: {}", e)))?;
-
-  let user_id = extract_user_id_from_headers(&headers)?;
+    .map_err(|e| ToolsetValidationError::Validation(e.to_string()))?;
   let tool_service = state.app_service().tool_service();
 
   let api_key_update = match request.api_key {
@@ -298,11 +281,10 @@ pub async fn update_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn delete_toolset_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-  headers: HeaderMap,
 ) -> Result<StatusCode, ApiError> {
-  let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   tool_service.delete(&user_id, &id).await?;
@@ -333,12 +315,11 @@ pub async fn delete_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn execute_toolset_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path((id, method)): Path<(String, String)>,
-  headers: HeaderMap,
   Json(request): Json<ExecuteToolsetRequest>,
 ) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
-  let user_id = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   let response = tool_service
@@ -415,12 +396,11 @@ pub async fn list_toolset_types_handler(
   security(("bearer" = []))
 )]
 pub async fn enable_type_handler(
+  ExtractToken(admin_token): ExtractToken,
+  ExtractUserId(updated_by): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(scope): Path<String>,
-  headers: HeaderMap,
 ) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
-  let admin_token = extract_token_from_headers(&headers)?;
-  let updated_by = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   // Find the toolset definition to get scope_uuid
@@ -459,12 +439,11 @@ pub async fn enable_type_handler(
   security(("bearer" = []))
 )]
 pub async fn disable_type_handler(
+  ExtractToken(admin_token): ExtractToken,
+  ExtractUserId(updated_by): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(scope): Path<String>,
-  headers: HeaderMap,
 ) -> Result<Json<AppToolsetConfigResponse>, ApiError> {
-  let admin_token = extract_token_from_headers(&headers)?;
-  let updated_by = extract_user_id_from_headers(&headers)?;
   let tool_service = state.app_service().tool_service();
 
   // Find the toolset definition to get scope_uuid
@@ -517,6 +496,7 @@ async fn toolset_to_response(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
   use axum::body::Body;
   use axum::http::{Request, StatusCode};
   use chrono::Utc;
