@@ -6,55 +6,61 @@
 
 ### Core Service Registry
 - `src/lib.rs` - Crate root with module exports and feature flags
-- `src/app_service.rs` - Central AppService trait and DefaultAppService implementation
+- `src/app_service.rs` - Central `AppService` trait and `DefaultAppService` implementation (13 service accessors)
 - `src/service_ext.rs` - Service extension utilities
-- `src/macros.rs` - Service macro definitions
+- `src/macros.rs` - `asref_impl!` macro for service trait AsRef implementations
 
-### Authentication & Security Services
-- `src/auth_service.rs` - OAuth2 PKCE flows with Keycloak integration
-- `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation
-- `src/keyring_service.rs` - Platform-specific credential storage
-- `src/session_service.rs` - SQLite-backed HTTP session management
-- `src/token.rs` - JWT token utilities and validation
+### Authentication and Security Services
+- `src/auth_service.rs` - OAuth2 PKCE flows with Keycloak integration, token exchange, dynamic client registration
+- `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation for secret storage
+- `src/keyring_service.rs` - Platform-specific credential storage (Keychain, Secret Service, Windows Credential Manager)
+- `src/session_service.rs` - SQLite-backed HTTP session management with `AppSessionStore` wrapper
+- `src/token.rs` - JWT token parsing, validation, and claims extraction
+- `src/concurrency_service.rs` - Distributed lock abstraction with `LocalConcurrencyService` for auth token refresh
 
 ### Model Management Services
-- `src/hub_service.rs` - HuggingFace Hub API integration
-- `src/data_service.rs` - Local model storage and alias management
-- `src/ai_api_service.rs` - External AI API integration with OpenAI compatibility
+- `src/hub_service.rs` - HuggingFace Hub API integration, local model discovery, GGUF file resolution
+- `src/data_service.rs` - Local model storage, alias management (User/Model/Api), remote model listing
 - `src/cache_service.rs` - Mini-moka based caching layer
+
+### AI and Tool Services
+- `src/ai_api_service.rs` - External AI API integration with test prompt, model listing, and request forwarding
+- `src/tool_service.rs` - Toolset management and execution for LLM function calling
+- `src/exa_service.rs` - Exa AI semantic search API integration (search, find similar, contents, answer)
 
 ### Infrastructure Services
 - `src/db/mod.rs` - Database module exports
-- `src/db/service.rs` - SQLite operations with migration support
+- `src/db/service.rs` - SQLite operations with migration support, `TimeService` trait, `DbService` trait
 - `src/db/sqlite_pool.rs` - Connection pool management
-- `src/db/encryption.rs` - Database-level encryption utilities
-- `src/db/error.rs` - Database error types
-- `src/db/objs.rs` - Database domain objects
+- `src/db/encryption.rs` - Database-level API key encryption utilities
+- `src/db/error.rs` - Database error types (`SqlxError`, `SqlxMigrateError`, `ItemNotFound`)
+- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `UserAccessRequest`, `ModelMetadataRow`, etc.)
 
-### Configuration & Environment
-- `src/setting_service.rs` - Application configuration management
+### Configuration and Environment
+- `src/setting_service.rs` - Application configuration management with `SettingsChangeListener` notification
 - `src/env_wrapper.rs` - Environment variable abstraction
 - `src/progress_tracking.rs` - Download progress monitoring
-- `src/objs.rs` - Service-specific domain objects
+- `src/objs.rs` - Service-specific domain objects (`AppRegInfo`, `AppStatus`)
+- `src/queue_service.rs` - Background metadata extraction queue with async processing
 
 ### Test Utilities (`test-utils` feature)
 - `src/test_utils/mod.rs` - Test fixture exports
-- `src/test_utils/app.rs` - AppService test builders
-- `src/test_utils/auth.rs` - Authentication service mocks
-- `src/test_utils/data.rs` - Data service test helpers
-- `src/test_utils/db.rs` - Database test fixtures
+- `src/test_utils/app.rs` - `AppServiceStub` builder for full service composition testing
+- `src/test_utils/auth.rs` - Authentication service mocks with embedded RSA keys
+- `src/test_utils/data.rs` - Data service test helpers with temp directory fixtures
+- `src/test_utils/db.rs` - Database test fixtures with event broadcasting
 - `src/test_utils/envs.rs` - Environment test utilities
-- `src/test_utils/hf.rs` - HuggingFace service mocks
+- `src/test_utils/hf.rs` - HuggingFace service mocks and `OfflineHubService`
 - `src/test_utils/objs.rs` - Domain object test builders
-- `src/test_utils/secret.rs` - Secret service test helpers
+- `src/test_utils/secret.rs` - Secret service stubs with in-memory storage
 - `src/test_utils/session.rs` - Session service mocks
 - `src/test_utils/settings.rs` - Settings test configuration
 
-## Key Implementation Examples
+## Key Implementation Patterns
 
 ### Service Registry Pattern
 ```rust
-// src/app_service.rs
+// src/app_service.rs - 13 services in the registry
 #[cfg_attr(test, mockall::automock)]
 pub trait AppService: std::fmt::Debug + Send + Sync {
   fn setting_service(&self) -> Arc<dyn SettingService>;
@@ -65,102 +71,89 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn session_service(&self) -> Arc<dyn SessionService>;
   fn secret_service(&self) -> Arc<dyn SecretService>;
   fn cache_service(&self) -> Arc<dyn CacheService>;
-  fn localization_service(&self) -> Arc<dyn LocalizationService>;
   fn time_service(&self) -> Arc<dyn TimeService>;
   fn ai_api_service(&self) -> Arc<dyn AiApiService>;
-}
-
-#[derive(Clone, Debug, derive_new::new)]
-pub struct DefaultAppService {
-  env_service: Arc<dyn SettingService>,
-  hub_service: Arc<dyn HubService>,
-  // ... all 11 services
+  fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
+  fn queue_producer(&self) -> Arc<dyn QueueProducer>;
+  fn tool_service(&self) -> Arc<dyn ToolService>;
 }
 ```
 
-### OAuth2 Authentication Flow
+### Consolidated IO Error Usage
 ```rust
-// src/auth_service.rs
-#[async_trait]
-pub trait AuthService: Send + Sync + std::fmt::Debug {
-  async fn exchange_auth_code(
-    &self,
-    code: AuthorizationCode,
-    client_id: ClientId,
-    client_secret: ClientSecret,
-    redirect_uri: RedirectUrl,
-    code_verifier: PkceCodeVerifier,
-  ) -> Result<(AccessToken, RefreshToken)>;
-
-  async fn refresh_token(
-    &self,
-    client_id: &str,
-    client_secret: &str,
-    refresh_token: &str,
-  ) -> Result<(String, Option<String>)>;
+// src/data_service.rs - Single IoError variant per service error enum
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum DataServiceError {
+  #[error(transparent)]
+  Io(#[from] IoError),
+  // ... other domain-specific variants
 }
+
+// Bridge std::io::Error -> IoError -> DataServiceError::Io
+impl_error_from!(::std::io::Error, DataServiceError::Io, ::objs::IoError);
+
+// Usage with convenience constructors
+fs::write(filename.clone(), contents)
+  .map_err(|err| IoError::file_write(err, alias.config_filename().clone()))?;
+fs::read(&path)
+  .map_err(|err| IoError::file_read(err, path.display().to_string()))?;
+fs::remove_file(&filename)
+  .map_err(|err| IoError::file_delete(err, filename))?;
+fs::create_dir_all(parent)
+  .map_err(|err| IoError::dir_create(err, parent.display().to_string()))?;
 ```
 
-### Multi-Layer Encryption
+### Alias Resolution Priority
 ```rust
-// src/secret_service.rs
-pub async fn store_secret(&self, key: &str, value: &str) -> Result<()> {
-  let mut salt = vec![0u8; SALT_SIZE];
-  let mut nonce = vec![0u8; NONCE_SIZE];
-  rng().fill_bytes(&mut salt);
-  rng().fill_bytes(&mut nonce);
-
-  let mut derived_key = [0u8; 32];
-  pbkdf2_hmac::<Sha256>(&master_key, &salt, 1000, &mut derived_key);
-
-  let cipher = Aes256Gcm::new(&derived_key);
-  let encrypted = cipher.encrypt(&nonce, value.as_bytes())?;
-  // Store with Base64 encoding
+// src/data_service.rs - Three-tier alias resolution
+async fn find_alias(&self, alias: &str) -> Option<Alias> {
+  // Priority 1: User aliases (YAML files)
+  if let Some(user_alias) = self.find_user_alias(alias) {
+    return Some(Alias::User(user_alias));
+  }
+  // Priority 2: Model aliases (auto-discovered GGUF files)
+  // Priority 3: API aliases (database, prefix-aware routing)
 }
 ```
 
-### Model Download Coordination
+### Concurrency Control Pattern
 ```rust
-// src/hub_service.rs
-#[async_trait]
-pub trait HubService: Send + Sync + std::fmt::Debug {
-  async fn download(
+// src/concurrency_service.rs
+pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
+  async fn with_lock_auth(
     &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: Option<String>,
-    progress: Option<Progress>,
-  ) -> Result<HubFile, HubServiceError>;
-
-  fn find_local_file(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: Option<String>,
-  ) -> Result<HubFile, HubServiceError>;
+    key: &str,
+    f: Box<dyn FnOnce() -> BoxFuture<'static, AuthTokenResult> + Send + 'static>,
+  ) -> AuthTokenResult;
 }
 ```
 
-### AI API Integration
+### Error Enum Pattern with impl_error_from!
 ```rust
-// src/ai_api_service.rs
-#[async_trait]
-pub trait AiApiService: Send + Sync + std::fmt::Debug {
-  async fn test_api_key(&self, alias: &ApiAlias) -> Result<()>;
-
-  async fn chat_completion(
-    &self,
-    alias: &ApiAlias,
-    request: CreateChatCompletionRequest,
-  ) -> Result<Response>;
-
-  async fn forward_chat_completion(
-    &self,
-    alias_id: &str,
-    request: CreateChatCompletionRequest,
-  ) -> Result<axum::Response>;
-}
+// Common pattern across services - bridge external errors via intermediate types
+impl_error_from!(reqwest::Error, AuthServiceError::Reqwest, ::objs::ReqwestError);
+impl_error_from!(serde_yaml::Error, DataServiceError::SerdeYamlError, ::objs::SerdeYamlError);
+impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
+impl_error_from!(sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
 ```
+
+## Error Types by Service
+
+| Service | Error Enum | IoError Variant | Other Key Variants |
+|---------|-----------|-----------------|-------------------|
+| DataService | `DataServiceError` | `Io(IoError)` | `DirMissing`, `DataFileNotFound`, `AliasNotExists`, `AliasExists`, `SerdeYaml`, `HubService`, `Db` |
+| HubService | `HubServiceError` | `IoError(IoError)` | `HubApiError`, `HubFileNotFound`, `ObjValidationError` |
+| SecretService | `SecretServiceError` | `IoError(IoError)` | `KeyMismatch`, `KeyNotFound`, `EncryptionError`, `DecryptionError` |
+| SettingService | `SettingServiceError` | `Io(IoError)` | `SerdeYaml`, `LockError`, `InvalidSource` |
+| AuthService | `AuthServiceError` | (none) | `Reqwest`, `AuthServiceApiError`, `TokenExchangeError` |
+| DbService | `DbError` | (none) | `SqlxError`, `SqlxMigrateError`, `StrumParse`, `TokenValidation`, `PrefixExists` |
+| SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError` |
+| AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
+| ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `ToolsetNotConfigured`, `ToolsetDisabled`, `NameExists`, `DbError`, `ExaError` |
+| ExaService | `ExaError` | (none) | `RequestFailed`, `RateLimited`, `InvalidApiKey`, `Timeout` |
+| KeyringService | `KeyringError` | (none) | `KeyringError`, `DecodeError` |
+| Token | `TokenError` | (none) | `InvalidToken`, `SerdeJson`, `InvalidIssuer`, `ScopeEmpty`, `Expired` |
 
 ## Crate Commands
 
@@ -187,41 +180,35 @@ cargo doc -p services --features test-utils --open
 
 ### Service Initialization
 ```rust
-use services::{DefaultAppService, TimeService, DbService, SecretService};
+use services::{DefaultAppService, DefaultTimeService};
 
-// Initialize services in dependency order
 let time_service = Arc::new(DefaultTimeService::new());
 let db_service = Arc::new(SqliteDbService::new(pool, time_service.clone()));
-let secret_service = Arc::new(DefaultSecretService::new(db_service.clone()));
+let secret_service = Arc::new(DefaultSecretService::new(/* ... */));
 
 let app_service = DefaultAppService::new(
-  env_service,
-  hub_service,
-  data_service,
-  auth_service,
-  db_service,
-  session_service,
-  secret_service,
-  cache_service,
-  localization_service,
-  time_service,
-  ai_api_service,
+  env_service, hub_service, data_service,
+  auth_service, db_service, session_service,
+  secret_service, cache_service, time_service,
+  ai_api_service, concurrency_service,
+  queue_producer, tool_service,
 );
 ```
 
-### Authentication Workflow
+### IO Error Handling in Services
 ```rust
-use services::{AuthService, SessionService};
+use objs::IoError;
 
-// OAuth2 code exchange
-let (access_token, refresh_token) = auth_service
-  .exchange_auth_code(code, client_id, client_secret, redirect_uri, verifier)
-  .await?;
+// File read with path context
+let content = fs::read_to_string(&path)
+  .map_err(|err| IoError::file_read(err, path.display().to_string()))?;
 
-// Create session
-let session_id = session_service
-  .create_session(user_id, &access_token)
-  .await?;
+// Directory creation with path context
+fs::create_dir_all(parent)
+  .map_err(|err| IoError::dir_create(err, parent.display().to_string()))?;
+
+// Bare std::io::Error auto-converts via impl_error_from! macro
+let entries = fs::read_dir(&aliases_dir)?;
 ```
 
 ### Model Management
@@ -233,42 +220,55 @@ let hub_file = hub_service
   .download(&repo, "model.gguf", None, Some(progress))
   .await?;
 
-// Save alias
+// Save user alias
 let alias = UserAlias::new("my-model", repo, filename);
 data_service.save_alias(&alias)?;
+
+// Find alias with priority resolution
+let alias = data_service.find_alias("gpt-4").await;
+// Returns User > Model > Api alias priority
 ```
 
 ## Feature Flags
 
-- `test-utils`: Enables comprehensive test utilities and mock services
+- `test-utils`: Enables comprehensive test utilities, mock services, and rstest fixtures
+- `default = ["tokio"]`: Tokio runtime enabled by default
 
 ## Dependencies
 
 ### Core Dependencies
-- `async-trait`: Async trait support
-- `axum`: HTTP framework integration
-- `sqlx`: Database operations
-- `oauth2`: OAuth2 client
-- `jsonwebtoken`: JWT handling
-- `aes-gcm`: Encryption
-- `pbkdf2`: Key derivation
-- `keyring`: Platform credential storage
-- `mini-moka`: Caching
-- `hf-hub`: HuggingFace API
+- `objs` - Domain objects, error types, `IoError` enum, `impl_error_from!` macro
+- `llama_server_proc` - LLM process management
+- `async-trait` - Async trait support
+- `axum` - HTTP framework integration
+- `sqlx` - Database operations (SQLite)
+- `oauth2` - OAuth2 client
+- `jsonwebtoken` - JWT handling
+- `aes-gcm` / `pbkdf2` - Encryption and key derivation
+- `keyring` - Platform credential storage (platform-specific features)
+- `mini-moka` - In-memory caching
+- `hf-hub` - HuggingFace API integration
+- `reqwest` - HTTP client
+- `walkdir` - Directory traversal for model discovery
 
 ### Optional Dependencies (test-utils)
-- `mockall`: Mock generation
-- `rstest`: Fixture-based testing
-- `tempfile`: Temporary directories
+- `mockall` - Mock generation for service traits
+- `rstest` - Fixture-based testing
+- `tempfile` - Temporary directories for test isolation
+- `rsa` - RSA key pair generation for JWT testing
+- `once_cell` - One-time initialization in test fixtures
 
 ## File References
 
 See individual module files for complete implementation details:
 - Service registry: `src/app_service.rs`
-- Authentication: `src/auth_service.rs`, `src/session_service.rs`
+- Authentication: `src/auth_service.rs`, `src/session_service.rs`, `src/concurrency_service.rs`
 - Security: `src/secret_service.rs`, `src/keyring_service.rs`
 - Model management: `src/hub_service.rs`, `src/data_service.rs`
+- AI integration: `src/ai_api_service.rs`, `src/tool_service.rs`, `src/exa_service.rs`
 - Database: `src/db/*.rs`
-- AI APIs: `src/ai_api_service.rs`
-- Configuration: `src/setting_service.rs`
+- Configuration: `src/setting_service.rs`, `src/env_wrapper.rs`
+- Background processing: `src/queue_service.rs`, `src/progress_tracking.rs`
+- Domain objects: `src/objs.rs`
+- Token handling: `src/token.rs`
 - Test utilities: `src/test_utils/*.rs`

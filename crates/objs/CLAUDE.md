@@ -17,6 +17,8 @@ BodhiApp's error system provides application-wide consistency:
 - **ApiError envelope**: Converts service layer errors to OpenAI-compatible JSON responses
 - **User-friendly messages**: Error messages defined inline via thiserror `#[error("...")]` templates
 - **Cross-crate error propagation**: Seamless error flow from services through routes to clients
+- **Domain-specific error enums**: Each domain area defines its own error enum with appropriate ErrorType variants, rather than using generic HTTP status code wrappers. This ensures errors carry domain context and meaningful messages.
+- **Consolidated IO errors**: A single `IoError` enum with 6 variants (Io, WithPath, DirCreate, FileRead, FileWrite, FileDelete) replaces the previous 6 separate IO error structs. Convenience constructors (`IoError::file_read()`, `IoError::dir_create()`, etc.) provide ergonomic construction while the unified enum simplifies pattern matching and error propagation across service boundaries.
 
 ### GGUF Model File System
 Specialized binary format handling for local AI model management:
@@ -136,9 +138,11 @@ Domain objects support multiple embedding contexts:
 
 ### Application-Wide Error Handling
 - **Universal Implementation**: All crates must implement AppError for error types to ensure consistent behavior
+- **Domain-Specific Enums Over Generic Wrappers**: Error types must be domain-specific enums (e.g., `EntityError`, `ObjValidationError`, `IoError`) rather than generic HTTP-status-code wrappers. Generic structs like `BadRequestError`, `NotFoundError`, `InternalServerError`, etc. have been removed in favor of domain enums that carry contextual meaning.
 - **Message Guidelines**: Error messages should be user-friendly, written in sentence case, and end with a period
 - **Field Interpolation**: Use `{field}` syntax for named fields and `{0}` for positional fields in error messages
 - **Cross-Crate Propagation**: Errors must flow cleanly from services through routes to clients
+- **IO Error Consolidation**: All IO-related errors use the unified `IoError` enum with context-specific variants rather than separate structs. Use the convenience constructors (e.g., `IoError::file_read(source, path)`) for ergonomic error creation with path context.
 
 ### Model Management Consistency
 - **Canonical Format**: Repo "user/name" format enforced across all model-handling components

@@ -17,7 +17,7 @@
 - `src/middleware/mod.rs` - HTTP middleware components
 
 ### Error Handling
-- `src/error.rs` - HTTP infrastructure error types
+- `src/error.rs` - `ContextError` enum aggregating service errors (Hub, Data, Server, validation) for the LLM context layer; delegates to `ApiError` for HTTP response conversion
 
 ### Test Utilities (`test-utils` feature)
 - `src/test_utils/mod.rs` - Test fixture exports

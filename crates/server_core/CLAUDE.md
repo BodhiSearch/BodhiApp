@@ -206,20 +206,21 @@ pub trait ServerFactory: Send + Sync {
 
 ### Error Translation Architecture
 
-Service errors translated to HTTP responses through RouterStateError:
+Service errors are translated to HTTP responses through a single `ApiError` response path:
 
 **Translation Layers**:
-1. Service returns domain error (e.g., `HubServiceError`)
-2. HttpError wraps error for axum IntoResponse implementation
-3. Error type determines HTTP status code
-4. User-friendly message extracted via `error.to_string()` for response body
-5. OpenAI-compatible error format for API responses
+1. Service returns domain error (e.g., `HubServiceError`, `DataServiceError`)
+2. `ContextError` aggregates service-level errors with transparent delegation via `#[error(transparent)]`
+3. `ApiError` (from the `objs` crate) converts domain errors directly to OpenAI-compatible HTTP responses
+4. Error type determines HTTP status code via the `AppError` trait's `error_type()` method
+5. User-friendly message extracted via `error.to_string()` for response body
 
-**Why This Approach**:
-- Consistent error handling across all routes
-- Proper HTTP semantics (404, 401, 500, etc)
-- User-friendly error messages via thiserror templates
-- API compatibility with OpenAI clients
+**Why a Single ApiError Path**:
+- Eliminates unnecessary generic wrapper types -- `ApiError` is the sole conversion point from domain errors to HTTP responses
+- The `AppError` trait (implemented via `errmeta_derive::ErrorMeta`) provides `error_type()` and `code()` for consistent categorization
+- `ContextError` uses `#[error(transparent)]` to delegate display and error metadata to the underlying service errors
+- Direct conversion avoids intermediate wrapper allocation and simplifies the error flow
+- API compatibility with OpenAI clients is maintained at the `ApiError` level, not in server_core
 
 ## Security Architecture Decisions
 

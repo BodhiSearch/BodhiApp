@@ -6,168 +6,134 @@ See [crates/routes_app/PACKAGE.md](crates/routes_app/PACKAGE.md) for implementat
 
 ## Purpose
 
-The `routes_app` crate serves as BodhiApp's **application API orchestration layer**, implementing comprehensive HTTP endpoints for model management, authentication, API token management, and application configuration with sophisticated OpenAPI documentation generation and multi-service coordination.
+The `routes_app` crate serves as BodhiApp's **application API orchestration layer**, implementing comprehensive HTTP endpoints for model management, authentication, API token management, toolset management, user administration, and application configuration with OpenAPI documentation generation.
 
 ## Key Domain Architecture
 
-### Application API Orchestration System
-Comprehensive HTTP endpoint implementation with sophisticated service coordination:
-- **Model Management API**: Create, pull, and manage model aliases with command orchestration
-- **Authentication API**: OAuth2 flows, session management, and user profile operations
-- **User Management API**: Access request workflows, user role assignment, and administrative operations
-- **API Token Management**: JWT token generation, validation, and lifecycle management
-- **Application Configuration**: Settings management, setup flows, and system configuration
-- **OpenAPI Documentation**: Comprehensive API specification generation with Utoipa integration
-- **Development Tools**: Debug endpoints and developer utilities for system introspection
+### Domain-Specific Error Handling Strategy
+The crate has deliberately moved away from generic HTTP error wrappers (such as `BadRequestError`, `InternalServerError`, `ConflictError`) in favor of **domain-specific error enums** per module. Each route module defines its own error enum that precisely describes what went wrong in domain terms, rather than merely mapping to HTTP status codes. This decision was made to:
 
-### Multi-Service HTTP Coordination Architecture
-Sophisticated HTTP request processing with cross-service orchestration:
-- **RouterState Integration**: Dependency injection providing access to AppService registry and SharedContext
-- **Command Layer Integration**: Direct integration with commands crate for CLI operation orchestration
-- **Service Layer Coordination**: Complex service interactions for authentication, model management, and configuration
-- **Error Translation**: Service errors converted to appropriate HTTP responses with OpenAI-compatible error formats
-- **Request Validation**: Comprehensive input validation using validator crate and custom validation rules
+- Produce deterministic, machine-readable error codes (e.g., `access_request_error-already_pending` vs a generic `conflict_error`)
+- Enable per-variant error metadata via `errmeta_derive::ErrorMeta`, giving each variant its own `ErrorType`, `code`, and message template
+- Eliminate ambiguity about what condition actually triggered an error response
+- Support downstream error handling by API clients that need to distinguish between different failure modes
 
-### OpenAPI Documentation Generation System
-Advanced API documentation with comprehensive specification generation:
-- **Utoipa Integration**: Automatic OpenAPI 3.0 specification generation with schema validation
-- **Environment-Specific Configuration**: Dynamic server URL and security scheme configuration
-- **Comprehensive Schema Coverage**: Complete request/response object documentation with examples
-- **Interactive Documentation**: API exploration interface with authentication flow documentation
-- **Multi-Format Support**: JSON schema generation with validation and example generation
+**Domain error enums defined in this crate:**
+- `LoginError` -- OAuth flow failures (AppRegInfoNotFound, SessionInfoNotFound, OAuthError, StateDigestMismatch, MissingState, MissingCode)
+- `LogoutError` -- Session destruction failures
+- `AccessRequestError` -- Access request workflow (AlreadyPending, AlreadyHasAccess, PendingRequestNotFound, InsufficientPrivileges)
+- `UserManagementError` -- Admin user operations (ListFailed, RoleChangeFailed, RemoveFailed)
+- `ApiTokenError` -- Token lifecycle (AppRegMissing, AccessTokenMissing, PrivilegeEscalation, InvalidScope, InvalidRole)
+- `AppServiceError` -- Setup flow (AlreadySetup, ServerNameTooShort)
+- `MetadataError` -- Model metadata operations (InvalidRepoFormat, ListAliasesFailed, AliasNotFound, ExtractionFailed, EnqueueFailed)
+- `ModelError` -- Model listing (MetadataFetchFailed)
+- `ToolsetValidationError` -- Toolset CRUD validation
+- `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
+- `CreateAliasError` -- Model alias creation
+- `UserInfoError` -- User info endpoint (InvalidHeader, EmptyToken)
+
+All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion in `objs`.
+
+### Typed Axum Extractors from auth_middleware
+The crate uses **typed Axum extractors** from `auth_middleware` instead of manual `HeaderMap` parsing for user identity. This eliminates a class of bugs where handlers could forget to check for missing headers or parse them incorrectly.
+
+**Extractors used throughout the crate:**
+- `ExtractUserId(user_id)` -- Extracts user ID from `X-BodhiApp-User-Id` header; returns `ApiError` if missing
+- `ExtractToken(token)` -- Extracts auth token from `X-BodhiApp-Token` header; returns `ApiError` if missing
+- `ExtractUsername(username)` -- Extracts username from `X-BodhiApp-Username` header
+- `ExtractRole(role)` -- Extracts parsed `ResourceRole` from `X-BodhiApp-Role` header
+- `MaybeRole(role)` -- Extracts `Option<ResourceRole>`, allowing handlers to check if user has any role
+
+**Important nuance**: Some handlers that use typed extractors also accept `HeaderMap` as a parameter. This is intentional -- the `HeaderMap` is used for auxiliary functions like `is_oauth_auth()` that inspect scope and role headers for filtering logic, not for extracting user identity. The pattern is: extractors for identity, HeaderMap for auxiliary inspection.
+
+**Migration note**: The helper functions `extract_user_id_from_headers` and `extract_token_from_headers` that previously existed in `routes_toolsets.rs` have been removed in favor of the typed extractors.
 
 ## Architecture Position
 
-The `routes_app` crate serves as BodhiApp's **application API orchestration layer**:
-- **Above server_core and services**: Coordinates HTTP infrastructure and business services for application API operations
-- **Below client applications**: Provides comprehensive API surface for web UI, mobile apps, and external integrations
-- **Parallel to routes_oai**: Similar HTTP orchestration role but focused on application management instead of OpenAI compatibility
-- **Integration with auth_middleware**: Leverages authentication middleware for comprehensive API security and authorization
+The `routes_app` crate sits in the **API layer** of BodhiApp's architecture:
+- **Depends on**: `objs` (domain types, errors), `services` (business logic), `commands` (CLI orchestration), `auth_middleware` (extractors, session helpers), `server_core` (RouterState)
+- **Consumed by**: `routes_all` (route composition), `server_app` (standalone server), `bodhi` (Tauri app)
+- **Parallel to**: `routes_oai` (OpenAI-compatible endpoints)
 
 ## Cross-Crate Integration Patterns
 
-### Service Layer API Coordination
-Complex API operations coordinated across BodhiApp's service layer:
-- **RouterState Integration**: HTTP handlers access AppService registry for comprehensive business logic operations
-- **Command Layer Orchestration**: Direct integration with commands crate for CLI operation execution through HTTP endpoints
-- **Authentication Service Coordination**: OAuth2 flows, token management, and user profile operations with comprehensive error handling
-- **Model Management Integration**: DataService and HubService coordination for model alias management and file operations
-- **Configuration Management**: SettingService integration for application configuration and system setup workflows
+### Service Layer Coordination
+All route handlers access business logic through `RouterState`, which provides `AppService`. This registry exposes typed service traits:
+- `data_service()` -- Local model alias CRUD, unified alias listing (User + Model + API)
+- `hub_service()` -- HuggingFace cache scanning, model file listing
+- `db_service()` -- SQLite persistence for tokens, access requests, metadata, download tracking
+- `auth_service()` -- OAuth2 code exchange, role assignment, user management, client registration
+- `secret_service()` -- App registration info, app status lifecycle
+- `setting_service()` -- Configuration management, environment detection
+- `session_service()` -- Session clearing for role changes
+- `tool_service()` -- Toolset CRUD, type management, execution
+- `time_service()` -- Testable time source (never use `Utc::now()` directly)
+- `queue_producer()` -- Async task enqueueing for metadata refresh
 
-### HTTP Infrastructure Integration
-Application API routes coordinate with HTTP infrastructure for request processing:
-- **Request Validation**: Comprehensive input validation using validator crate with custom validation rules
-- **Response Formatting**: Consistent API response formats with pagination, error handling, and OpenAI compatibility
-- **Error Handling**: Service errors converted to appropriate HTTP status codes with user-friendly messages
-- **Authentication Integration**: Seamless integration with auth_middleware for API security and authorization
-- **Route Composition Integration**: Coordinated with routes_all for unified route composition with session-based authentication and role-based authorization
+### Command Layer Integration
+Model creation and pull operations delegate to the `commands` crate (`CreateCommand`, `PullCommand`) rather than calling services directly. This ensures CLI and HTTP operations share identical business logic and validation.
 
-### Domain Object Integration
-Extensive use of objs crate for API operations:
-- **Request/Response Objects**: Comprehensive API object definitions with validation and serialization
-- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation
-- **Parameter Validation**: Domain object validation rules applied consistently across API endpoints
-- **Error Message Support**: User-friendly error messages via thiserror templates
+### Error Translation Chain
+Service errors flow through a well-defined chain: service-specific error -> domain error enum (defined in this crate) -> `ApiError` (from `objs`) -> OpenAI-compatible JSON response. Each domain error enum wraps relevant service errors via `#[error(transparent)]` with `#[from]` conversion, while also defining handler-specific error variants.
 
 ## API Orchestration Workflows
 
-### Multi-Service Model Management Coordination
-Complex model management operations with service orchestration:
+### OAuth2 Authentication Flow
+1. `auth_initiate_handler` -- Generates PKCE challenge, stores state in session, returns authorization URL with dynamic callback URL detection (supports loopback, network IP, and explicit public host configurations)
+2. `auth_callback_handler` -- Validates CSRF state, exchanges authorization code, handles `ResourceAdmin` first-login flow (make-resource-admin, token refresh, redirect to download-models), stores tokens in session
+3. `logout_handler` -- Destroys session, returns login URL
+4. `request_access_handler` -- App-to-app resource access with version-based caching and toolset scope management
 
-1. **Model Alias Creation**: HTTP endpoints coordinate with commands crate for CreateCommand execution
-2. **Model Pull Operations**: PullCommand orchestration through HTTP with progress tracking and error handling
-3. **Model Discovery**: DataService and HubService coordination for model listing and metadata retrieval
-4. **Alias Management**: CRUD operations for model aliases with validation and conflict resolution
-5. **File Management**: Local model file operations coordinated with HubService and file system management
+### API Token Privilege Escalation Prevention
+Token creation enforces a strict privilege matrix:
+- `User` role can only create `scope_token_user` tokens
+- `PowerUser`, `Manager`, `Admin` can create `scope_token_user` or `scope_token_power_user` tokens
+- No role can create `scope_token_manager` or `scope_token_admin` tokens
+- Tokens use cryptographic random generation with `bodhiapp_` prefix, SHA-256 hashing, and prefix-based lookup
 
-### Authentication Flow Orchestration
-Sophisticated authentication coordination across multiple services:
+### User Access Request Workflow
+1. User requests access via `user_request_access_handler` (must have no existing role, no pending request)
+2. Admin/Manager reviews pending requests via `list_pending_requests_handler`
+3. Approval via `approve_request_handler` validates role hierarchy, assigns role via auth service, clears all user sessions
+4. Rejection via `reject_request_handler` updates status
 
-**OAuth2 Authentication Workflow**:
-1. **Login Initiation**: OAuth2 authorization URL generation with PKCE challenge and state validation
-2. **Callback Processing**: Authorization code exchange with token validation and session creation
-3. **Session Management**: HTTP session coordination with Tower Sessions and secure cookie handling
-4. **Token Refresh**: Automatic token refresh with session updates and error recovery
-5. **User Profile**: User information retrieval and profile management through authentication services
+### Toolset Management
+Toolset routes use a dual-auth model:
+- Session auth (role headers) grants full access to all toolset types
+- OAuth auth (scope headers) restricts access to toolset types matching `scope_toolset-*` scopes in the token
+- The `is_oauth_auth()` helper distinguishes these two auth modes by checking header presence
 
-**API Token Management Workflow**:
-1. **Token Creation**: JWT token generation with scope validation and database storage
-2. **Token Validation**: Bearer token authentication with database lookup and status checking
-3. **Token Lifecycle**: Token activation, deactivation, and expiration management
-4. **Authorization**: Role-based and scope-based authorization for API endpoints
-
-### Application Configuration Orchestration
-Comprehensive application setup and configuration management:
-1. **Initial Setup**: Application registration and configuration with OAuth provider integration
-2. **Settings Management**: Configuration CRUD operations with validation and persistence
-3. **System Status**: Application health and status monitoring with comprehensive diagnostics
-4. **Development Tools**: Debug endpoints for system introspection and troubleshooting
-
-### User Access Management Orchestration
-Sophisticated user access control with role-based authorization:
-1. **Access Request Workflow**: Users can request access with pending/approved/rejected status tracking
-2. **Administrative Review**: Managers and admins can approve/reject requests with role assignment
-3. **Role Management**: Hierarchical role system with user/power_user/manager/admin levels
-4. **Session Coordination**: User session clearing on role changes for immediate effect
-5. **User Lifecycle**: Complete user management including role changes and access removal
+### Model Metadata Refresh
+Supports two modes via discriminated union request body:
+- Bulk async (`{"source": "all"}`) -- Enqueues background task, returns 202 Accepted
+- Single sync (`{"source": "model", ...}`) -- Extracts metadata immediately, returns 200 with enriched response
 
 ## Important Constraints
 
-### API Compatibility Requirements
-- All endpoints must maintain consistent request/response formats for client application compatibility
-- Request validation must use validator crate with comprehensive validation rules and error reporting
-- Response formats must support pagination, sorting, and filtering for large data sets
-- Error responses must follow OpenAI-compatible error format for ecosystem integration
-- API versioning must be maintained through URL paths with backward compatibility considerations
+### Time Handling
+Always use `app_service.time_service().utc_now()` instead of `Utc::now()`. This is critical for testability -- the `TimeService` trait allows tests to inject deterministic timestamps.
 
-### Authentication and Authorization Standards
-- All protected endpoints must integrate with auth_middleware for consistent security
-- OAuth2 flows must follow PKCE standards with proper state validation and CSRF protection
-- API token management must support role-based and scope-based authorization with hierarchical access control
-- Session management must use secure cookie configuration with SameSite and secure flags
-- Authentication errors must provide actionable guidance without leaking sensitive information
+### Session Clearing on Role Changes
+When a user's role changes (via access request approval or direct role change), all existing sessions for that user must be cleared. This ensures the new role takes effect immediately rather than waiting for session expiry. The `change_user_role_handler` logs but does not fail the operation if session clearing encounters an error.
 
-### Service Coordination Rules
-- All routes must use RouterState dependency injection for consistent service access
-- Command orchestration must handle async operations with proper error propagation and recovery
-- Service errors must be translated to appropriate HTTP status codes with user-friendly messages
-- Long-running operations must provide progress feedback and cancellation support
-- Database operations must maintain transactional consistency across service boundaries
+### Settings Edit Allowlist
+Only specific settings can be modified via the API (`BODHI_EXEC_VARIANT`, `BODHI_KEEP_ALIVE_SECS`). `BODHI_HOME` can only be changed via environment variable. All other settings return `SettingsError::Unsupported`.
 
-## Application API Extension Patterns
+### Network Installation Support
+The setup and login flows dynamically detect the request host to support network installations where the server is accessed from different machines. When `BODHI_PUBLIC_HOST` is not explicitly configured, the handler extracts the `Host` header to construct callback URLs. When explicitly configured (e.g., RunPod deployment), only the configured host is used.
+
+## Extension Patterns
 
 ### Adding New Application Endpoints
-When implementing additional application API endpoints:
+1. Define a domain-specific error enum with `#[error_meta(trait_to_impl = AppError)]` variants for every distinct failure mode
+2. Use typed extractors (`ExtractUserId`, `ExtractToken`, etc.) for user identity -- only add `HeaderMap` if auxiliary header inspection is needed
+3. Add `#[utoipa::path(...)]` annotations with comprehensive request/response examples and security requirements
+4. Coordinate through `RouterState` for service access
+5. For complex multi-service operations, consider delegating to the `commands` crate
 
-1. **Service Coordination Design**: Use RouterState for consistent AppService access and business logic coordination
-2. **Request/Response Objects**: Define comprehensive API objects with validation using validator crate and ToSchema for OpenAPI
-3. **Command Integration**: Leverage commands crate for complex operations that require multi-service coordination
-4. **Error Handling**: Implement API-specific errors that convert to appropriate HTTP responses with user-friendly messages
-5. **OpenAPI Documentation**: Add comprehensive Utoipa annotations with examples and proper schema definitions
-
-### Extending Authentication Flows
-For new authentication and authorization patterns:
-
-1. **OAuth2 Integration**: Follow established PKCE patterns with proper state validation and CSRF protection
-2. **Session Management**: Integrate with Tower Sessions for consistent session handling and secure cookie configuration
-3. **API Token Extensions**: Extend JWT token management with new scopes and authorization patterns
-4. **Authorization Middleware**: Coordinate with auth_middleware for consistent security across endpoints
-5. **User Management**: Design user profile and account management features with proper privacy controls
-
-### User Access Management Extensions
-For extending user management and access control features:
-
-1. **Role Hierarchy**: Follow established role precedence (admin > manager > power_user > user) for authorization checks
-2. **Access Request Workflows**: Implement multi-step approval processes with proper status tracking and notifications
-3. **Session Management**: Coordinate session clearing with role changes to ensure immediate privilege updates
-4. **Audit Logging**: Track administrative actions for security and compliance requirements
-5. **Authorization Context**: Use header-based authentication context for consistent user identification across endpoints
-
-### Cross-Service Integration Patterns
-For features that require coordination across multiple services:
-
-1. **Command Orchestration**: Use commands crate for complex multi-service workflows with proper error boundaries
-2. **Service Registry**: Coordinate through AppService registry for consistent business logic access
-3. **Error Translation**: Convert service errors to appropriate HTTP responses with OpenAI-compatible error formats
-4. **Progress Tracking**: Implement progress feedback for long-running operations with cancellation support
-5. **Transaction Management**: Ensure data consistency across service boundaries with proper rollback capabilities
+### Adding New Error Variants
+When extending existing error enums:
+1. Add the variant with `#[error("...")]` message template and `#[error_meta(error_type = ErrorType::...)]`
+2. The error code is auto-generated from the enum name and variant name (e.g., `LoginError::MissingState` -> `login_error-missing_state`)
+3. Use `#[error(transparent)]` with `#[from]` for wrapping upstream service errors
+4. Test the error code and HTTP status code in integration tests

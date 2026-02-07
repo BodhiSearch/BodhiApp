@@ -1,797 +1,256 @@
 # PACKAGE.md - routes_app
 
-This document provides detailed technical information for the `routes_app` crate, focusing on BodhiApp's application API orchestration architecture, sophisticated HTTP endpoint implementation, and comprehensive OpenAPI documentation generation patterns.
+This document provides the implementation index and navigation guide for the `routes_app` crate, covering application API endpoints, domain error types, typed extractors, and testing patterns.
 
-## Application API Orchestration Architecture
+## Module Structure
 
-The `routes_app` crate serves as BodhiApp's **application API orchestration layer**, implementing comprehensive HTTP endpoints for model management, authentication, API token management, and application configuration with sophisticated service coordination.
+Entry point: `crates/routes_app/src/lib.rs` -- Re-exports all public modules with conditional `test_utils` compilation.
 
-### RouterState Integration Architecture
-Application API routes coordinate extensively with HTTP infrastructure:
+### Route Modules (one per API domain)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `routes_login` | `crates/routes_app/src/routes_login.rs` | OAuth2 initiate/callback, logout, app-to-app access |
+| `routes_access_request` | `crates/routes_app/src/routes_access_request.rs` | User access request workflow (request, status, approve, reject) |
+| `routes_users_list` | `crates/routes_app/src/routes_users_list.rs` | Admin user listing, role changes, user removal |
+| `routes_api_token` | `crates/routes_app/src/routes_api_token.rs` | API token create, update, list with privilege escalation prevention |
+| `routes_models` | `crates/routes_app/src/routes_models.rs` | Model alias listing (discriminated union), model file listing, alias details |
+| `routes_models_metadata` | `crates/routes_app/src/routes_models_metadata.rs` | Metadata refresh (sync/async), queue status |
+| `routes_create` | `crates/routes_app/src/routes_create.rs` | Model alias create and update via CreateCommand |
+| `routes_pull` | `crates/routes_app/src/routes_pull.rs` | Model download via PullCommand with progress tracking |
+| `routes_toolsets` | `crates/routes_app/src/routes_toolsets.rs` | Toolset CRUD, execution, type management |
+| `routes_settings` | `crates/routes_app/src/routes_settings.rs` | Settings list, update, reset to default |
+| `routes_setup` | `crates/routes_app/src/routes_setup.rs` | App setup, ping, health, app info |
+| `routes_user` | `crates/routes_app/src/routes_user.rs` | Current user info (discriminated union response) |
+| `routes_dev` | `crates/routes_app/src/routes_dev.rs` | Development/debug endpoints |
+
+### Supporting Modules
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `error` | `crates/routes_app/src/error.rs` | `LoginError` enum (shared across login/callback) |
+| `common` | `crates/routes_app/src/common.rs` | `RedirectResponse` DTO |
+| `api_dto` | `crates/routes_app/src/api_dto.rs` | Pagination params, paginated response types, endpoint constants |
+| `api_models_dto` | `crates/routes_app/src/api_models_dto.rs` | Model alias response DTOs (AliasResponse, UserAliasResponse, etc.) |
+| `toolsets_dto` | `crates/routes_app/src/toolsets_dto.rs` | Toolset request/response DTOs |
+| `openapi` | `crates/routes_app/src/openapi.rs` | OpenAPI spec generation with Utoipa |
+| `utils` | `crates/routes_app/src/utils.rs` | Helper functions (e.g., `extract_request_host`) |
+
+## Domain Error Enums
+
+Each route module defines its own error enum. All use the `errmeta_derive::ErrorMeta` derive macro.
+
+### LoginError (`crates/routes_app/src/error.rs`)
 
 ```rust
-// Pattern structure - see crates/routes_app/src/routes_create.rs
-#[utoipa::path(
-    post,
-    path = ENDPOINT_MODELS,
-    tag = API_TAG_MODELS,
-    operation_id = "createModelAlias",
-    request_body = CreateAliasRequest,
-    responses(
-        (status = 201, description = "Model alias created successfully", body = AliasResponse),
-        (status = 400, description = "Invalid request parameters", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
-    ),
-    security(("bearer_auth" = []))
-)]
-pub async fn create_alias_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    WithRejection(Json(request), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
-) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
-    // Command orchestration through RouterState
-    let command = CreateCommand::new(
-        request.alias,
-        Repo::new(&request.repo)?,
-        request.filename,
-        request.snapshot,
-        true, // auto_download
-        false, // update
-        request.request_params.unwrap_or_default(),
-        request.context_params.unwrap_or_default(),
-    );
-    
-    command.execute(router_state.app_service()).await?;
-    
-    // Response generation with alias lookup
-    let alias = router_state.app_service()
-        .data_service()
-        .find_alias(&request.alias)
-        .ok_or_else(|| AliasNotFoundError(request.alias.clone()))?;
-    
-    Ok((StatusCode::CREATED, Json(AliasResponse::from(alias))))
+pub enum LoginError {
+  AppRegInfoNotFound,          // ErrorType::InvalidAppState
+  AppStatusInvalid(AppStatus), // ErrorType::InvalidAppState
+  SecretServiceError(..),      // transparent
+  SessionError(..),            // ErrorType::Authentication
+  SessionInfoNotFound,         // ErrorType::InternalServer
+  OAuthError(String),          // ErrorType::BadRequest
+  AuthServiceError(..),        // transparent
+  ParseError(..),              // ErrorType::InternalServer
+  JsonWebToken(..),            // transparent
+  StateDigestMismatch,         // ErrorType::BadRequest
+  MissingState,                // ErrorType::BadRequest
+  MissingCode,                 // ErrorType::BadRequest
 }
 ```
 
-### Command Layer Integration Architecture
-Direct integration with commands crate for complex operations:
+### AccessRequestError (`crates/routes_app/src/routes_access_request.rs`)
 
 ```rust
-// Model pull orchestration - see crates/routes_app/src/routes_pull.rs
-pub async fn create_pull_request_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    WithRejection(Json(request), _): WithRejection<Json<NewDownloadRequest>, ApiError>,
-) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
-    let pull_command = match request.alias {
-        Some(alias) => PullCommand::ByAlias { alias },
-        None => PullCommand::ByRepoFile {
-            repo: Repo::new(&request.repo)?,
-            filename: request.filename,
-            snapshot: request.snapshot,
-        },
-    };
-    
-    // Execute command with progress tracking
-    pull_command.execute(router_state.app_service(), None).await?;
-    
-    // Create download request record
-    let download_request = DownloadRequest::new(
-        request.repo,
-        request.filename,
-        request.snapshot.unwrap_or_else(|| "main".to_string()),
-        DownloadStatus::Completed,
-    );
-    
-    Ok((StatusCode::CREATED, Json(download_request)))
+pub enum AccessRequestError {
+  AlreadyPending,              // ErrorType::Conflict
+  AlreadyHasAccess,            // ErrorType::UnprocessableEntity
+  PendingRequestNotFound,      // ErrorType::NotFound
+  RequestNotFound(i64),        // ErrorType::NotFound
+  InsufficientPrivileges,      // ErrorType::BadRequest
+  FetchFailed(String),         // ErrorType::InternalServer
 }
 ```
 
-**Key Command Integration Features**:
-- Direct command execution through HTTP endpoints with async coordination
-- Progress tracking and error propagation from command layer to HTTP responses
-- Service registry access through RouterState for consistent business logic coordination
-- Command result translation to appropriate HTTP status codes and response objects
-
-## Authentication Flow Implementation
-
-### OAuth2 Authentication Orchestration
-Sophisticated OAuth2 flow implementation with comprehensive security:
+### ApiTokenError (`crates/routes_app/src/routes_api_token.rs`)
 
 ```rust
-// OAuth initiation - see crates/routes_app/src/routes_login.rs
-pub async fn auth_initiate_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    session: Session,
-    headers: HeaderMap,
-) -> Result<(StatusCode, Json<RedirectResponse>), ApiError> {
-    let app_status = app_status_or_default(router_state.app_service()).await;
-    
-    match app_status {
-        AppStatus::Ready => {
-            // Check existing authentication
-            if let Some(access_token) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await? {
-                if let Ok(claims) = extract_claims(&access_token) {
-                    if !claims.is_expired() {
-                        return Ok((StatusCode::OK, Json(RedirectResponse {
-                            location: CHAT_PATH.to_string(),
-                        })));
-                    }
-                }
-            }
-            
-            // Generate OAuth authorization URL with PKCE
-            let app_reg_info = router_state.app_service()
-                .secret_service()
-                .get_app_reg_info().await?
-                .ok_or(LoginError::AppRegInfoNotFound)?;
-            
-            let (auth_url, csrf_token, pkce_verifier) = generate_oauth_url(&app_reg_info, &headers)?;
-            
-            // Store PKCE verifier and state in session
-            session.insert("pkce_verifier", pkce_verifier.secret()).await?;
-            session.insert("csrf_state", csrf_token.secret()).await?;
-            
-            Ok((StatusCode::CREATED, Json(RedirectResponse {
-                location: auth_url.to_string(),
-            })))
-        }
-        _ => Err(LoginError::AppStatusInvalid(app_status).into()),
-    }
+pub enum ApiTokenError {
+  Token(..),                   // transparent from TokenError
+  AppRegMissing,               // ErrorType::InternalServer
+  AccessTokenMissing,          // ErrorType::BadRequest
+  RefreshTokenMissing,         // ErrorType::BadRequest
+  AuthService(..),             // transparent from AuthServiceError
+  PrivilegeEscalation,         // ErrorType::BadRequest
+  InvalidScope,                // ErrorType::BadRequest
+  InvalidRole(String),         // ErrorType::BadRequest
 }
 ```
 
-### Session Management Integration
-HTTP session coordination with Tower Sessions:
+### UserManagementError (`crates/routes_app/src/routes_users_list.rs`)
 
 ```rust
-// OAuth callback processing - see crates/routes_app/src/routes_login.rs
-pub async fn auth_callback_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    Query(params): Query<HashMap<String, String>>,
-    session: Session,
-) -> Result<(StatusCode, Json<RedirectResponse>), ApiError> {
-    // Validate OAuth callback parameters
-    let code = params.get("code").ok_or_else(|| {
-        BadRequestError::new("authorization code missing from callback".to_string())
-    })?;
-    
-    let state = params.get("state").ok_or_else(|| {
-        BadRequestError::new("state parameter missing from callback".to_string())
-    })?;
-    
-    // Validate CSRF state
-    let stored_state = session.get::<String>("csrf_state").await?
-        .ok_or(LoginError::SessionInfoNotFound)?;
-    
-    if state != &stored_state {
-        return Err(LoginError::StateDigestMismatch.into());
-    }
-    
-    // Exchange authorization code for tokens
-    let pkce_verifier = session.get::<String>("pkce_verifier").await?
-        .ok_or(LoginError::SessionInfoNotFound)?;
-    
-    let app_reg_info = router_state.app_service()
-        .secret_service()
-        .get_app_reg_info().await?
-        .ok_or(LoginError::AppRegInfoNotFound)?;
-    
-    let (access_token, refresh_token) = router_state.app_service()
-        .auth_service()
-        .exchange_auth_code(
-            AuthorizationCode::new(code.clone()),
-            ClientId::new(app_reg_info.client_id),
-            ClientSecret::new(app_reg_info.client_secret),
-            RedirectUrl::new(app_reg_info.redirect_uri)?,
-            PkceCodeVerifier::new(pkce_verifier),
-        ).await?;
-    
-    // Store tokens in session
-    session.insert(SESSION_KEY_ACCESS_TOKEN, access_token.secret()).await?;
-    session.insert(SESSION_KEY_REFRESH_TOKEN, refresh_token.secret()).await?;
-    
-    // Clear temporary session data
-    session.remove::<String>("pkce_verifier").await?;
-    session.remove::<String>("csrf_state").await?;
-    
-    Ok((StatusCode::OK, Json(RedirectResponse {
-        location: CHAT_PATH.to_string(),
-    })))
+pub enum UserManagementError {
+  ListFailed(String),          // ErrorType::InternalServer
+  RoleChangeFailed(String),    // ErrorType::InternalServer
+  RemoveFailed(String),        // ErrorType::InternalServer
 }
 ```
 
-**Authentication Flow Features**:
-- PKCE-based OAuth2 flow with proper state validation and CSRF protection
-- Session-based token storage with secure cookie configuration
-- Automatic token refresh with session updates and error recovery
-- Comprehensive error handling with actionable user guidance
-
-## API Token Management Implementation
-
-### JWT Token Generation and Validation
-Sophisticated API token management with database integration:
+### MetadataError (`crates/routes_app/src/routes_models_metadata.rs`)
 
 ```rust
-// API token creation - see crates/routes_app/src/routes_api_token.rs
-pub async fn create_token_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    WithRejection(Json(request), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
-) -> Result<(StatusCode, Json<ApiTokenResponse>), ApiError> {
-    // Extract user information from session or bearer token
-    let user_id = extract_user_id_from_auth_context(&router_state).await?;
-    
-    // Generate JWT token with specified scopes
-    let token_id = uuid::Uuid::new_v4().to_string();
-    let token_claims = TokenClaims {
-        sub: user_id.clone(),
-        token_id: token_id.clone(),
-        scopes: request.scopes.clone(),
-        exp: calculate_expiration(request.expires_in),
-        iat: chrono::Utc::now().timestamp(),
-    };
-    
-    let jwt_token = generate_jwt_token(&token_claims)?;
-    
-    // Store token metadata in database
-    let token_digest = calculate_sha256_digest(&jwt_token);
-    let api_token = ApiToken {
-        id: token_id.clone(),
-        user_id,
-        name: request.name,
-        token_digest,
-        scopes: request.scopes,
-        status: TokenStatus::Active,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-        expires_at: token_claims.exp.map(|exp| {
-            chrono::DateTime::from_timestamp(exp, 0).unwrap()
-        }),
-    };
-    
-    router_state.app_service()
-        .db_service()
-        .create_api_token(&api_token).await?;
-    
-    Ok((StatusCode::CREATED, Json(ApiTokenResponse {
-        token: jwt_token,
-        token_id,
-        expires_at: api_token.expires_at,
-    })))
+pub enum MetadataError {
+  InvalidRepoFormat(String),   // ErrorType::BadRequest
+  ListAliasesFailed,           // ErrorType::InternalServer
+  AliasNotFound { repo, filename, snapshot }, // ErrorType::NotFound
+  ExtractionFailed(String),    // ErrorType::BadRequest
+  EnqueueFailed,               // ErrorType::BadRequest
 }
 ```
 
-### Token Lifecycle Management
-Comprehensive token management with status tracking:
+### AppServiceError (`crates/routes_app/src/routes_setup.rs`)
 
 ```rust
-// Token status update - see crates/routes_app/src/routes_api_token.rs
-pub async fn update_token_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    Path(token_id): Path<String>,
-    WithRejection(Json(request), _): WithRejection<Json<UpdateTokenRequest>, ApiError>,
-) -> Result<(StatusCode, Json<ApiToken>), ApiError> {
-    let user_id = extract_user_id_from_auth_context(&router_state).await?;
-    
-    // Verify token ownership
-    let mut api_token = router_state.app_service()
-        .db_service()
-        .get_api_token_by_id(&token_id).await?
-        .ok_or_else(|| ApiTokenError::TokenNotFound(token_id.clone()))?;
-    
-    if api_token.user_id != user_id {
-        return Err(ApiTokenError::TokenNotFound(token_id).into());
-    }
-    
-    // Update token status
-    if let Some(status) = request.status {
-        api_token.status = status;
-        api_token.updated_at = chrono::Utc::now();
-        
-        router_state.app_service()
-            .db_service()
-            .update_api_token(&api_token).await?;
-    }
-    
-    Ok((StatusCode::OK, Json(api_token)))
+pub enum AppServiceError {
+  AlreadySetup,                // ErrorType::BadRequest
+  ServerNameTooShort,          // ErrorType::BadRequest
+  SecretServiceError(..),      // transparent
+  AuthServiceError(..),        // transparent
 }
 ```
 
-**API Token Management Features**:
-- JWT token generation with configurable scopes and expiration
-- Database-backed token storage with digest-based lookup for security
-- Token lifecycle management with activation, deactivation, and expiration
-- User-based token ownership with proper authorization checks
+### Other Error Enums
 
-## User Access Management Implementation
+- `ModelError` in `crates/routes_app/src/routes_models.rs` -- `MetadataFetchFailed`
+- `ToolsetValidationError` in `crates/routes_app/src/routes_toolsets.rs` -- `Validation(String)`
+- `SettingsError` in `crates/routes_app/src/routes_settings.rs` -- `NotFound`, `BodhiHome`, `Unsupported`
+- `LogoutError` in `crates/routes_app/src/routes_login.rs` -- `SessionDelete`
+- `UserInfoError` in `crates/routes_app/src/routes_user.rs` -- `InvalidHeader`, `EmptyToken`
+- `CreateAliasError` in `crates/routes_app/src/routes_create.rs` -- `AliasNotPresent`, transparent wrappers
 
-### Access Request Workflow Architecture
-Sophisticated user access control with role-based authorization:
+## Typed Extractor Usage Pattern
+
+Handlers use typed extractors from `auth_middleware` for identity, with optional `HeaderMap` for auxiliary inspection:
 
 ```rust
-// User access request - see crates/routes_app/src/routes_access_request.rs
-pub async fn user_request_access_handler(
-  headers: HeaderMap,
+// Extractors for identity + HeaderMap for auxiliary logic
+pub async fn list_toolsets_handler(
+  ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<(StatusCode, Json<EmptyResponse>), ApiError> {
-  // Extract username from authenticated headers
-  let username = headers.get(KEY_HEADER_BODHIAPP_USERNAME)
-    .ok_or_else(|| BadRequestError::new("User logged in information not present".to_string()))?
-    .to_str()
-    .map_err(|err| BadRequestError::new(err.to_string()))?;
-
-  // Check if user already has a role
-  if let Some(role_header) = headers.get(KEY_HEADER_BODHIAPP_ROLE) {
-    let role = role_header.to_str().map_err(|err| BadRequestError::new(err.to_string()))?;
-    if !role.is_empty() {
-      return Err(UnprocessableEntityError::new(
-        "User already has access".to_string(),
-      ))?;
-    }
-  }
-
-  let db_service = state.app_service().db_service();
-  
-  // Check for existing pending request
-  if db_service.get_pending_request(user_id.to_string()).await?.is_some() {
-    return Err(ConflictError::new("Access request already pending".to_string()))?;
-  }
-
-  // Create new access request
-  db_service.insert_pending_request(username.to_string(), user_id.to_string()).await?;
-  Ok((StatusCode::CREATED, Json(EmptyResponse {})))
+  headers: HeaderMap,
+) -> Result<Json<ListToolsetsResponse>, ApiError> {
+  let tool_service = state.app_service().tool_service();
+  let toolsets = tool_service.list(&user_id).await?;
+  // HeaderMap used for is_oauth_auth() filtering, not identity
+  let filtered = if is_oauth_auth(&headers) {
+    // ...filter by scope
+  } else {
+    toolsets
+  };
+  // ...
 }
 ```
 
-### Administrative Access Control
-Role-based authorization with hierarchical access control:
+Handlers that need multiple identity fields:
 
 ```rust
-// Access request approval - see crates/routes_app/src/routes_access_request.rs
 pub async fn approve_request_handler(
-  headers: HeaderMap,
+  ExtractRole(approver_role): ExtractRole,
+  ExtractUsername(approver_username): ExtractUsername,
+  ExtractToken(token): ExtractToken,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<i64>,
   Json(request): Json<ApproveUserAccessRequest>,
-) -> Result<StatusCode, ApiError> {
-  // Extract approver's role and validate hierarchy
-  let approver_role_str = headers.get(KEY_HEADER_BODHIAPP_ROLE)
-    .ok_or_else(|| BadRequestError::new("No role header present".to_string()))?
-    .to_str().map_err(|err| BadRequestError::new(err.to_string()))?;
-    
-  let approver_role = approver_role_str.parse::<Role>()?;
-  
-  // Validate role hierarchy - users can only assign roles equal to or lower than their own
-  if !approver_role.has_access_to(&request.role) {
-    return Err(BadRequestError::new(
-      "Insufficient privileges to assign this role".to_string(),
-    ))?;
-  }
+) -> Result<StatusCode, ApiError> { /* ... */ }
+```
 
-  let db_service = state.app_service().db_service();
-  let access_request = db_service.get_request_by_id(id).await?
-    .ok_or_else(|| BadRequestError::new(format!("Access request {} not found", id)))?;
+## API Token Privilege Matrix
 
-  // Update request status and assign role through auth service
-  db_service.update_request_status(id, UserAccessRequestStatus::Approved, approver_username.to_string()).await?;
-  
-  let auth_service = state.app_service().auth_service();
-  auth_service.assign_user_role(token, &access_request.user_id, &request.role.to_string()).await?;
+Defined in `crates/routes_app/src/routes_api_token.rs`, the `create_token_handler` enforces:
 
-  // Clear existing sessions to ensure new role takes effect immediately
-  let session_service = state.app_service().session_service();
-  let cleared_sessions = session_service.clear_sessions_for_user(&access_request.user_id).await?;
-  
-  Ok(StatusCode::OK)
+```rust
+let token_scope = match (user_role, &payload.scope) {
+  (ResourceRole::User, TokenScope::User) => Ok(payload.scope),
+  (ResourceRole::User, _) => Err(ApiTokenError::PrivilegeEscalation),
+  (_, TokenScope::User | TokenScope::PowerUser) => Ok(payload.scope),
+  (_, _) => Err(ApiTokenError::InvalidScope),
+}?;
+```
+
+## OAuth2 Callback URL Detection
+
+In `crates/routes_app/src/routes_login.rs` and `crates/routes_app/src/routes_setup.rs`, the callback URL strategy depends on configuration:
+
+- **Explicit public host** (`BODHI_PUBLIC_HOST` set): Uses only the configured callback URL
+- **Local/network mode** (no explicit host): Extracts `Host` header from the request to construct the callback URL, enabling network access from different machines
+
+Setup handler registers multiple redirect URIs for local mode: all loopback hosts (localhost, 127.0.0.1, 0.0.0.0), the request host if different, and the server's detected IP.
+
+## Toolset Dual-Auth Model
+
+In `crates/routes_app/src/routes_toolsets.rs`:
+
+```rust
+fn is_oauth_auth(headers: &HeaderMap) -> bool {
+  !headers.contains_key(KEY_HEADER_BODHIAPP_ROLE)
+    && headers.get(KEY_HEADER_BODHIAPP_SCOPE)
+      .and_then(|v| v.to_str().ok())
+      .map(|s| s.starts_with("scope_user_"))
+      .unwrap_or(false)
 }
 ```
 
-**User Access Management Features**:
-- Multi-step access request workflow with pending/approved/rejected status tracking
-- Hierarchical role-based authorization with admin/manager/power_user/user levels
-- Administrative review and approval processes with audit logging
-- Automatic session clearing on role changes for immediate privilege updates
-- Comprehensive user lifecycle management including role changes and access removal
+Session auth (has `ROLE` header): full access to all toolset types and configs.
+OAuth auth (has `SCOPE` header, no `ROLE`): filtered by `scope_toolset-*` scopes in token.
 
-## OpenAPI Documentation Generation
+## OpenAPI Specification
 
-### Utoipa Integration Architecture
-Comprehensive OpenAPI specification generation with environment-specific configuration:
+`crates/routes_app/src/openapi.rs` defines `BodhiOpenAPIDoc` with:
+- All endpoint paths registered via `#[openapi(paths(...))]`
+- All request/response schemas via `#[openapi(components(schemas(...)))]`
+- `OpenAPIEnvModifier` for environment-specific server URL and bearer auth security scheme
+
+## Testing Patterns
+
+### Router Construction in Tests
+Each route module constructs test routers with mocked services:
 
 ```rust
-// OpenAPI document configuration - see crates/routes_app/src/openapi.rs
-#[derive(OpenApi)]
-#[openapi(
-    info(
-        title = "Bodhi App APIs",
-        version = env!("CARGO_PKG_VERSION"),
-        contact(
-            name = "Bodhi API Support",
-            url = "https://github.com/BodhiSearch/BodhiApp/issues",
-            email = "support@getbodhi.app"
-        ),
-        description = r#"API documentation for Bodhi App.
-
-## Authentication
-This API supports two authentication methods:
-
-1. **Browser Session** (Default)
-   - Login via `/bodhi/v1/auth/initiate` endpoint
-   - Session cookie will be used automatically
-   - Best for browser-based access
-
-2. **API Token**
-   - Create API Token using the app Menu > Settings > API Tokens
-   - Use the API Token as the Authorization Bearer token in API calls
-   - Best for programmatic access
-"#
-    ),
-    components(
-        schemas(
-            OpenAIApiError,
-            AppInfo,
-            AppStatus,
-            UserInfo,
-            RedirectResponse,
-            PaginatedDownloadResponse,
-            PaginatedAliasResponse,
-            PaginatedApiTokenResponse,
-            PaginatedLocalModelResponse,
-            SetupRequest,
-            SetupResponse,
-            CreateAliasRequest,
-            UpdateAliasRequest,
-            AliasResponse,
-            ApiTokenResponse,
-            ApiToken,
-            CreateApiTokenRequest,
-            TokenStatus,
-            SettingInfo,
-            SettingMetadata,
-            SettingSource,
-            UpdateSettingRequest
-        ),
-    ),
-    paths(
-        // System endpoints
-        ping_handler,
-        health_handler,
-        app_info_handler,
-        // Authentication endpoints
-        auth_initiate_handler,
-        auth_callback_handler,
-        logout_handler,
-        user_info_handler,
-        // Model management endpoints
-        create_alias_handler,
-        update_alias_handler,
-        list_local_aliases_handler,
-        get_alias_handler,
-        list_local_modelfiles_handler,
-        // API token endpoints
-        create_token_handler,
-        list_tokens_handler,
-        update_token_handler,
-        // Settings endpoints
-        list_settings_handler,
-        update_setting_handler,
-        delete_setting_handler,
+fn test_router(mock_tool_service: MockToolService) -> Router {
+  let app_service = AppServiceStubBuilder::default()
+    .with_tool_service(Arc::new(mock_tool_service))
+    .build().unwrap();
+  let state: Arc<dyn RouterState> = Arc::new(
+    DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
     )
-)]
-pub struct BodhiOpenAPIDoc;
+  );
+  routes_toolsets(state)
+}
 ```
 
-### Environment-Specific Configuration
-Dynamic OpenAPI configuration based on application environment:
+### Header-Based Auth Simulation
+Tests simulate authentication by setting internal headers directly (bypassing middleware):
 
 ```rust
-// Environment modifier - see crates/routes_app/src/openapi.rs
-#[derive(Debug, derive_new::new)]
-pub struct OpenAPIEnvModifier {
-    setting_service: Arc<dyn SettingService>,
-}
-
-impl Modify for OpenAPIEnvModifier {
-    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-        // Add environment-specific server configuration
-        let server_url = self.setting_service.public_server_url();
-        let desc = if self.setting_service.is_production() {
-            ""
-        } else {
-            " - Development"
-        };
-        
-        let server = utoipa::openapi::ServerBuilder::default()
-            .url(server_url)
-            .description(Some(format!("Bodhi App {}", desc)))
-            .build();
-        
-        openapi.servers = Some(vec![server]);
-        
-        // Add security schemes
-        if let Some(components) = &mut openapi.components {
-            components.security_schemes.insert(
-                "bearer_auth".to_string(),
-                SecurityScheme::Http(
-                    HttpBuilder::default()
-                        .scheme(HttpAuthScheme::Bearer)
-                        .bearer_format("JWT")
-                        .description(Some(
-                            "Enter the API token obtained from /bodhi/v1/tokens endpoint".to_string(),
-                        ))
-                        .build(),
-                ),
-            );
-        }
-    }
-}
+Request::builder()
+  .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+  .header(KEY_HEADER_BODHIAPP_TOKEN, "admin-token")
+  .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string())
 ```
 
-**OpenAPI Documentation Features**:
-- Automatic OpenAPI 3.0 specification generation with comprehensive schema coverage
-- Environment-specific server configuration with development and production variants
-- Interactive API documentation with authentication flow guidance
-- Comprehensive request/response examples with validation schemas
+### Integration Tests with Real Database
+Access request and session tests use real SQLite databases via `test_db_service` fixtures. Session clearing tests create real session records and verify they are removed after role changes.
 
-## Cross-Crate Integration Implementation
+### Test Utilities
 
-### Service Layer Coordination
-Application API routes coordinate extensively with BodhiApp's service layer:
-
-```rust
-// Model listing with service coordination - see crates/routes_app/src/routes_models.rs
-pub async fn list_local_aliases_handler(
-    State(router_state): State<Arc<dyn RouterState>>,
-    Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedAliasResponse>, ApiError> {
-    let data_service = router_state.app_service().data_service();
-    
-    // Get all aliases with pagination
-    let aliases = data_service.list_aliases()?;
-    let total = aliases.len();
-    
-    // Apply sorting
-    let mut sorted_aliases = aliases;
-    if let Some(sort_field) = &params.sort {
-        match sort_field.as_str() {
-            "repo" => sorted_aliases.sort_by(|a, b| a.repo.cmp(&b.repo)),
-            "filename" => sorted_aliases.sort_by(|a, b| a.filename.cmp(&b.filename)),
-            "alias" => sorted_aliases.sort_by(|a, b| a.alias.cmp(&b.alias)),
-            _ => {} // Default ordering
-        }
-        
-        if params.sort_order == "desc" {
-            sorted_aliases.reverse();
-        }
-    }
-    
-    // Apply pagination
-    let start = (params.page - 1) * params.page_size;
-    let end = std::cmp::min(start + params.page_size, total);
-    let paginated_aliases = sorted_aliases.into_iter()
-        .skip(start)
-        .take(params.page_size)
-        .map(AliasResponse::from)
-        .collect();
-    
-    let response = PaginatedResponse {
-        data: paginated_aliases,
-        total,
-        page: params.page,
-        page_size: params.page_size,
-    };
-    
-    Ok(Json(PaginatedAliasResponse::from(response)))
-}
-```
-
-### Error Translation Architecture
-Comprehensive error handling with HTTP status code mapping:
-
-```rust
-// Application-specific error types - see crates/routes_app/src/error.rs
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum LoginError {
-    #[error("App registration info not found.")]
-    #[error_meta(error_type = ErrorType::InvalidAppState)]
-    AppRegInfoNotFound,
-
-    #[error("App status is invalid: {0}.")]
-    #[error_meta(error_type = ErrorType::InvalidAppState)]
-    AppStatusInvalid(AppStatus),
-
-    #[error(transparent)]
-    SecretServiceError(#[from] SecretServiceError),
-
-    #[error("Session error: {0}.")]
-    #[error_meta(error_type = ErrorType::Authentication, args_delegate = false)]
-    SessionError(#[from] tower_sessions::session::Error),
-
-    #[error("OAuth error: {0}.")]
-    #[error_meta(error_type = ErrorType::BadRequest)]
-    OAuthError(String),
-
-    #[error(transparent)]
-    AuthServiceError(#[from] AuthServiceError),
-
-    #[error("State digest mismatch.")]
-    #[error_meta(error_type = ErrorType::BadRequest)]
-    StateDigestMismatch,
-}
-```
-
-**Cross-Crate Integration Features**:
-- Service registry access through RouterState for consistent business logic coordination
-- Command layer integration for complex multi-service operations
-- Comprehensive error translation with user-friendly messages and HTTP status code mapping
-- Domain object integration for consistent validation and serialization patterns
-
-## Request/Response Object Architecture
-
-### Comprehensive API Object Definitions
-Sophisticated request/response objects with validation and OpenAPI integration:
-
-```rust
-// Model creation request - see crates/routes_app/src/api_dto.rs
-#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
-pub struct CreateAliasRequest {
-    #[validate(length(min = 1, message = "Alias name cannot be empty"))]
-    alias: String,
-    
-    #[validate(length(min = 1, message = "Repository name cannot be empty"))]
-    repo: String,
-    
-    #[validate(length(min = 1, message = "Filename cannot be empty"))]
-    filename: String,
-    
-    snapshot: Option<String>,
-    request_params: Option<OAIRequestParams>,
-    context_params: Option<Vec<String>>,
-}
-
-// Paginated response wrapper - see crates/routes_app/src/api_dto.rs
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct PaginatedAliasResponse {
-    pub data: Vec<AliasResponse>,
-    pub total: usize,
-    pub page: usize,
-    pub page_size: usize,
-}
-
-impl From<PaginatedResponse<AliasResponse>> for PaginatedAliasResponse {
-    fn from(paginated: PaginatedResponse<AliasResponse>) -> Self {
-        PaginatedAliasResponse {
-            data: paginated.data,
-            total: paginated.total,
-            page: paginated.page,
-            page_size: paginated.page_size,
-        }
-    }
-}
-```
-
-### Pagination and Sorting Support
-Comprehensive pagination and sorting infrastructure:
-
-```rust
-// Pagination parameters - see crates/routes_app/src/api_dto.rs
-#[derive(Debug, Deserialize, IntoParams)]
-pub struct PaginationSortParams {
-    /// Page number (1-based)
-    #[serde(default = "default_page")]
-    pub page: usize,
-
-    /// Number of items per page (max 100)
-    #[serde(default = "default_page_size")]
-    pub page_size: usize,
-
-    /// Field to sort by (repo, filename, size, updated_at, snapshot)
-    #[serde(default)]
-    pub sort: Option<String>,
-
-    /// Sort order (asc or desc)
-    #[serde(default = "default_sort_order")]
-    pub sort_order: String,
-}
-
-fn default_page() -> usize { 1 }
-fn default_page_size() -> usize { 30 }
-fn default_sort_order() -> String { "asc".to_string() }
-```
-
-**API Object Features**:
-- Comprehensive validation using validator crate with custom validation rules
-- OpenAPI schema generation with ToSchema derive for interactive documentation
-- Pagination and sorting support for large data sets with configurable parameters
-- Type-safe request/response handling with serde serialization and deserialization
-
-## Testing Infrastructure
-
-### Application API Testing Patterns
-Comprehensive testing infrastructure for HTTP endpoints:
-
-```rust
-// Test utilities - see crates/routes_app/src/test_utils/alias_response.rs
-impl AliasResponse {
-    pub fn llama3() -> Self {
-        AliasResponseBuilder::default()
-            .alias("llama3:instruct")
-            .repo(Repo::LLAMA3)
-            .filename(Repo::LLAMA3_Q8)
-            .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-            .source("user")
-            .model_params(HashMap::new())
-            .request_params(
-                OAIRequestParamsBuilder::default()
-                    .stop(vec![
-                        "<|start_header_id|>".to_string(),
-                        "<|end_header_id|>".to_string(),
-                        "<|eot_id|>".to_string(),
-                    ])
-                    .build()
-                    .unwrap(),
-            )
-            .context_params(vec!["--n-keep 24".to_string()])
-            .build()
-            .unwrap()
-    }
-}
-
-// Test event coordination macro - see crates/routes_app/src/test_utils/mod.rs
-#[macro_export]
-macro_rules! wait_for_event {
-    ($rx:expr, $event_name:expr, $timeout:expr) => {{
-        loop {
-            tokio::select! {
-                event = $rx.recv() => {
-                    match event {
-                        Ok(e) if e == $event_name => break true,
-                        _ => continue
-                    }
-                }
-                _ = tokio::time::sleep($timeout) => break false
-            }
-        }
-    }};
-}
-```
-
-**Testing Infrastructure Features**:
-- Test fixture creation with builder patterns for consistent test data
-- Event coordination macros for testing async operations and state changes
-- HTTP endpoint testing with axum-test integration for realistic request/response testing
-- Service mocking coordination for isolated endpoint testing scenarios
-
-## Extension Guidelines
-
-### Adding New Application Endpoints
-When creating new application API endpoints:
-
-1. **Request/Response Design**: Define comprehensive API objects with validation using validator crate and ToSchema for OpenAPI
-2. **Service Coordination**: Use RouterState for consistent AppService access and business logic coordination
-3. **Command Integration**: Leverage commands crate for complex operations requiring multi-service coordination
-4. **Error Handling**: Implement endpoint-specific errors with transparent service error wrapping and HTTP status mapping
-5. **OpenAPI Documentation**: Add comprehensive Utoipa annotations with examples, security requirements, and proper schema definitions
-
-### Authentication and Authorization Extensions
-For new authentication and authorization patterns:
-
-1. **OAuth2 Integration**: Follow established PKCE patterns with proper state validation and CSRF protection
-2. **Session Management**: Integrate with Tower Sessions for consistent session handling and secure cookie configuration
-3. **API Token Management**: Extend JWT token system with new scopes and authorization patterns while maintaining security
-4. **Authorization Middleware**: Coordinate with auth_middleware for consistent security across all endpoints
-5. **User Management**: Design user profile and account management features with proper privacy controls and data protection
-
-### Cross-Service Integration Patterns
-For features requiring coordination across multiple services:
-
-1. **Command Orchestration**: Use commands crate for complex multi-service workflows with proper error boundaries and rollback
-2. **Service Registry**: Coordinate through AppService registry for consistent business logic access and dependency injection
-3. **Error Translation**: Convert service errors to appropriate HTTP responses with OpenAI-compatible error formats
-4. **Progress Tracking**: Implement progress feedback for long-running operations with cancellation support and status updates
-5. **Transaction Management**: Ensure data consistency across service boundaries with proper transaction coordination and rollback capabilities
+- `crates/routes_app/src/test_utils/alias_response.rs` -- Builder-based test fixtures for `AliasResponse`
+- `crates/routes_app/src/test_utils/mod.rs` -- Test helper macros and constants
 
 ## Commands
 
-**Application API Tests**: `cargo test -p routes_app` (includes HTTP endpoint and integration testing)  
-**OpenAPI Validation**: `cargo test -p routes_app openapi` (includes OpenAPI specification validation)  
-**Authentication Tests**: `cargo test -p routes_app auth` (includes OAuth2 flow and session management testing)
+**Run all tests**: `cargo test -p routes_app`
+**Run specific module tests**: `cargo test -p routes_app routes_toolsets` (or any module name)
+**Run with test-utils feature**: `cargo test -p routes_app --features test-utils`

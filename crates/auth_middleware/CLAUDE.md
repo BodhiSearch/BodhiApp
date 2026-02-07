@@ -6,7 +6,7 @@ See [crates/auth_middleware/PACKAGE.md](crates/auth_middleware/PACKAGE.md) for i
 
 ## Purpose
 
-The `auth_middleware` crate serves as BodhiApp's **HTTP authentication and authorization middleware layer**, implementing sophisticated JWT token validation, session management, and multi-layered security controls with comprehensive OAuth2 integration and role-based access control.
+The `auth_middleware` crate serves as BodhiApp's **HTTP authentication and authorization middleware layer**, implementing sophisticated JWT token validation, session management, multi-layered security controls, and type-safe header extraction with comprehensive OAuth2 integration and role-based access control.
 
 ## Key Domain Architecture
 
@@ -17,6 +17,14 @@ Sophisticated authentication architecture supporting multiple authentication flo
 - **Dual Authentication Support**: Seamless handling of both session tokens and API bearer tokens with precedence rules
 - **Token Exchange Protocol**: RFC 8693 token exchange for external client integration and service-to-service authentication
 - **Same-Origin Validation**: Security header validation for CSRF protection and request origin verification
+
+### Type-Safe Header Extraction System
+Axum `FromRequestParts` extractors that provide compile-time enforcement of header requirements in route handlers:
+- **Design Rationale**: Before extractors, ~25 route handlers each manually extracted internal headers using `BadRequestError` with inconsistent validation logic. The extractor system centralizes this into 7 reusable types with uniform validation behavior.
+- **Required vs Optional Pattern**: Required extractors (`ExtractToken`, `ExtractUserId`, `ExtractUsername`, `ExtractRole`, `ExtractScope`) reject requests with 400 Bad Request when headers are missing. Optional extractors (`MaybeToken`, `MaybeRole`) return `None` for missing/empty headers, enabling routes that work with or without authentication context.
+- **Typed Parsing**: `ExtractRole` and `MaybeRole` go beyond string extraction -- they parse the header value into `ResourceRole` using `FromStr`, providing domain-validated types directly to handler functions instead of raw strings.
+- **Validation Pipeline**: Every extractor follows a consistent three-step validation: header present -> `to_str()` succeeds (valid UTF-8) -> non-empty string. Typed extractors add a fourth step: `FromStr` parsing into the domain type.
+- **Error Consolidation**: `HeaderExtractionError` enum (Missing, Invalid, Empty variants) replaces scattered `BadRequestError` usage with structured, descriptive error messages that include the header name and failure reason.
 
 ### JWT Token Management Architecture
 Comprehensive token lifecycle management with sophisticated validation:
@@ -34,21 +42,28 @@ Fine-grained access control with hierarchical role management:
 - **Authorization Precedence**: Role-based authorization takes precedence over scope-based when both are present
 - **Cross-Service Authorization**: Integration with objs crate role and scope types for consistent authorization
 
+### Toolset Authorization Architecture
+Specialized middleware for toolset execution endpoints with dual auth-type support:
+- **Session vs OAuth Discrimination**: Determines auth type by checking for `X-BodhiApp-Role` header (session) vs `scope_user_` prefix in scope header (OAuth)
+- **Multi-Step Authorization Chain**: Toolset ownership -> app-level type enabled -> (OAuth only: app-client registered + toolset scope present) -> toolset available and configured
+- **API Token Exclusion**: API tokens (`bodhiapp_*`) are blocked at route level before reaching toolset middleware, simplifying internal logic
+
 ### Security Infrastructure Architecture
 Multi-layered security controls with comprehensive threat protection:
 - **Canonical URL Middleware**: Automatic redirection to canonical URLs with SEO optimization and security benefits
 - **Request Origin Validation**: Same-origin request validation using Sec-Fetch-Site headers for CSRF protection
 - **Token Digest Security**: SHA-256 token digests for secure database storage and lookup without exposing tokens
 - **External Client Security**: Secure external client token validation with issuer and audience verification
-- **Security Header Management**: Automatic injection and removal of internal security headers for request processing
+- **Internal Header Namespace**: All internal headers use `X-BodhiApp-` prefix via `bodhi_header!` macro, with automatic stripping of user-provided values to prevent header injection
 
 ## Architecture Position
 
 The `auth_middleware` crate serves as BodhiApp's **HTTP security orchestration layer**:
 - **Above server_core and services**: Coordinates HTTP infrastructure and business services for authentication operations
-- **Below route implementations**: Provides authentication and authorization foundation for routes_oai and routes_app
-- **Integration with objs**: Uses domain objects for role, scope, and error handling with consistent validation
+- **Below route implementations**: Provides authentication, authorization, and header extraction foundation for routes_oai and routes_app
+- **Integration with objs**: Uses domain objects (`ResourceRole`, `Role`, `ResourceScope`, `TokenScope`, `UserScope`) for role, scope, and error handling with consistent validation
 - **Cross-cutting security**: Implements security boundaries across all HTTP endpoints with comprehensive middleware integration
+- **Extractor consumption**: Route handlers in `routes_app` (e.g., `routes_access_request`, `routes_api_token`, `routes_users_list`, `routes_toolsets`) use extractors as handler parameters, replacing manual header extraction with type-safe destructuring
 
 ## Cross-Crate Integration Patterns
 
@@ -59,6 +74,7 @@ Complex authentication flows coordinated across BodhiApp's service layer:
 - **DbService Token Management**: API token storage, status tracking, and digest-based lookup with transaction support
 - **CacheService Performance**: Token validation caching, exchange result caching, and automatic invalidation strategies
 - **SessionService Integration**: HTTP session management with SQLite backend and secure cookie configuration
+- **ToolService Integration**: Toolset ownership verification, type enablement checks, and app-client registration validation
 
 ### HTTP Infrastructure Integration
 Authentication middleware coordinates with HTTP infrastructure for request processing:
@@ -66,6 +82,7 @@ Authentication middleware coordinates with HTTP infrastructure for request proce
 - **Request Header Management**: Automatic injection and removal of internal authentication headers for security
 - **Error Translation**: Service errors converted to appropriate HTTP status codes with user-friendly messages
 - **Middleware Composition**: Layered middleware architecture with auth_middleware, inject_session_auth_info, and canonical_url_middleware
+- **Extractor-to-Handler Flow**: Auth middleware injects `X-BodhiApp-*` headers into requests; extractors in route handlers read and validate those headers, creating a clean separation between authentication (middleware) and consumption (handler parameters)
 - **OpenAI API Security**: Bearer token authentication for OpenAI-compatible endpoints through routes_oai integration
 - **Application API Security**: Session-based and bearer token authentication for application endpoints through routes_app integration
 - **API Token Management**: Database-backed API token validation for external client access to OpenAI endpoints
@@ -75,8 +92,9 @@ Authentication middleware coordinates with HTTP infrastructure for request proce
 Extensive use of objs crate for authentication and authorization:
 - **Role and Scope Types**: Hierarchical role validation and resource scope authorization with consistent domain logic
 - **Error System Integration**: Authentication errors implement AppError trait for consistent HTTP response generation
+- **ResourceRole in Extractors**: `ExtractRole` and `MaybeRole` parse header strings directly into `ResourceRole` domain type, eliminating raw string handling in route handlers
 - **ResourceScope Union**: Seamless handling of both TokenScope and UserScope authorization contexts
-- **Validation Consistency**: Domain object validation rules applied consistently across authentication flows
+- **Validation Consistency**: Domain object validation rules applied consistently across authentication flows and extractor parsing
 
 ## Authentication Flow Orchestration
 
@@ -88,18 +106,23 @@ Sophisticated authentication coordination supporting multiple authentication pat
 2. **Session Token Retrieval**: Access token extraction from HTTP session storage with Tower Sessions integration
 3. **Token Validation**: JWT token validation with claims verification and expiration checking
 4. **Automatic Token Refresh**: Expired token refresh using refresh tokens with seamless session updates
-5. **Role Extraction**: Role extraction from JWT claims with hierarchical authorization validation
+5. **Header Injection**: Role, username, user ID, and token injected as `X-BodhiApp-*` headers for downstream extractors
 
 **Bearer Token Authentication Flow**:
 1. **Token Extraction**: Bearer token extraction from Authorization header with format validation
 2. **Database Token Lookup**: API token status verification with digest-based lookup and active/inactive checking
 3. **External Client Handling**: External client token validation with issuer and audience verification
 4. **Token Exchange**: RFC 8693 token exchange for external clients with scope validation and caching
-5. **Resource Scope Authorization**: Token-based or user-based scope validation with ResourceScope union type
+5. **Header Injection**: Scope, user ID, azp, and tool scopes injected as `X-BodhiApp-*` headers for downstream extractors
+
+**Header Extraction in Route Handlers** (downstream of middleware):
+- Required extractors cause 400 Bad Request if the middleware did not inject the expected header
+- Optional extractors gracefully handle absent headers for routes that support unauthenticated access
+- Typed extractors provide parsed domain objects directly in handler function signatures
 
 **Dual Authentication Support**:
 - **Precedence Rules**: Bearer token authentication takes precedence over session-based authentication
-- **Header Management**: Automatic injection of X-Resource-Token, X-Resource-Role, and X-Resource-Scope headers
+- **Header Management**: Automatic injection of X-BodhiApp-Token, X-BodhiApp-Role, X-BodhiApp-Scope, X-BodhiApp-Username, X-BodhiApp-User-Id headers
 - **Security Isolation**: Removal of user-provided internal headers to prevent header injection attacks
 - **Error Coordination**: Consistent error handling across both authentication flows with user-friendly messages
 
@@ -129,6 +152,13 @@ Complex token management workflows coordinated across multiple services:
 - Token refresh operations must be atomic with proper session updates and error recovery mechanisms
 - External client token exchange must validate issuer and audience claims to prevent token substitution attacks
 
+### Header Extraction Consistency
+- All route handlers must use extractor types from `extractors.rs` instead of manual `req.headers().get()` calls with ad-hoc error handling
+- Required extractors must be used when the authentication middleware guarantees the header will be present (e.g., behind `auth_middleware`)
+- Optional extractors must be used for routes behind `inject_optional_auth_info` where authentication may not be present
+- Typed extractors (`ExtractRole`, `MaybeRole`) must be preferred over string extractors when the header value represents a domain type
+- New internal headers should follow the `X-BodhiApp-` prefix convention via `bodhi_header!` macro and get corresponding extractors
+
 ### Authorization Consistency Standards
 - Role-based authorization must follow hierarchical ordering (Admin > Manager > PowerUser > User) consistently
 - Resource scope authorization must support both TokenScope and UserScope with proper precedence rules
@@ -144,13 +174,23 @@ Complex token management workflows coordinated across multiple services:
 - Token exchange operations must follow RFC 8693 standards with proper scope mapping and validation
 
 ### HTTP Security Integration Requirements
-- Internal authentication headers (X-Resource-*) must be automatically removed from incoming requests to prevent injection
+- Internal authentication headers (X-BodhiApp-*) must be automatically removed from incoming requests to prevent injection
 - Authentication middleware must inject appropriate headers for downstream route handlers with validated information
 - Canonical URL middleware must redirect to configured canonical URLs for SEO and security benefits
 - Error responses must not leak sensitive authentication information while providing actionable error messages
 - Session management must use secure cookie configuration with SameSite::Strict and appropriate security flags
 
 ## Authentication Extension Patterns
+
+### Adding New Extractors
+When adding extractors for new internal headers:
+
+1. **Define the header constant** using `bodhi_header!("HeaderName")` in `auth_middleware.rs`
+2. **Choose required vs optional** based on whether the header is guaranteed by upstream middleware
+3. **Implement `FromRequestParts`** using `extract_required_header` or `extract_optional_header` helper functions
+4. **Add typed parsing** if the header value represents a domain type with `FromStr` implementation
+5. **Add unit tests** following the existing pattern: test present, test missing, test invalid (for typed extractors)
+6. **Ensure middleware injection**: Verify that `auth_middleware` or `inject_optional_auth_info` injects the header before the extractor will consume it
 
 ### Adding New Authentication Middleware
 When creating new authentication middleware for specific use cases:

@@ -8,8 +8,8 @@ This document provides detailed technical information for the `crates/routes_oai
 
 ### Main Components
 - `src/lib.rs` - Library exports with module re-exports and API endpoint constants
-- `src/routes_chat.rs` - OpenAI chat completions endpoint with streaming support
-- `src/routes_oai_models.rs` - OpenAI models API with comprehensive alias resolution
+- `src/routes_chat.rs` - OpenAI chat completions and embeddings endpoints with streaming support, request validation, and `HttpError` enum
+- `src/routes_oai_models.rs` - OpenAI models API with comprehensive alias resolution and deduplication
 - `src/routes_ollama.rs` - Ollama compatibility layer with bidirectional format translation
 - `src/test_utils/mod.rs` - Testing utilities and fixtures for route testing
 
@@ -18,108 +18,133 @@ This document provides detailed technical information for the `crates/routes_oai
 
 **Core Dependencies** (`Cargo.toml`):
 - `async-openai` for OpenAI type compatibility and parameter validation
-- `server_core` for RouterState and HTTP infrastructure coordination
+- `server_core` for RouterState, LlmEndpoint, and HTTP infrastructure coordination
 - `services` for business logic coordination and service access
-- `objs` for domain objects, error handling, and validation
-- `axum` and `axum-extra` for HTTP route handling and request extraction
+- `objs` for domain objects, error handling (`AppError`, `ErrorType`, `ApiError`), and validation
+- `errmeta_derive` for `ErrorMeta` derive macro on `HttpError`
+- `axum` and `axum-extra` for HTTP route handling and request extraction (`WithRejection`)
 - `serde` and `serde_json` for JSON serialization and deserialization
 - `utoipa` for OpenAPI documentation generation
 
 ## API Implementation Architecture
 
-### OpenAI Chat Completions Implementation
+### HttpError Enum
 
-Core chat completion handler with streaming support:
+The crate defines its own error type for HTTP-layer errors in `src/routes_chat.rs`:
 
 ```rust
-// Chat completion endpoint (src/routes_chat.rs)
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum HttpError {
+  #[error("Error constructing HTTP response: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Http(#[from] http::Error),
+
+  #[error("Response serialization failed: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Serialization(#[from] serde_json::Error),
+
+  #[error("{0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidRequest(String),
+}
+```
+
+**Key design points**:
+- `Http` and `Serialization` are internal server errors (500) for response construction failures
+- `InvalidRequest` is a bad request error (400) for pre-forwarding validation failures, replacing the removed `BadRequestError` struct from `objs`
+- All variants implement `AppError` via `ErrorMeta` derive for automatic `ApiError` conversion
+
+### Chat Completion Request Validation
+
+Structural validation performed before forwarding (`src/routes_chat.rs`):
+
+```rust
+fn validate_chat_completion_request(
+  request: &serde_json::Value,
+) -> Result<(), HttpError> {
+  // 1. model: must exist and be a string
+  // 2. messages: must exist and be an array
+  // 3. stream: if present, must be a boolean
+  // Returns HttpError::InvalidRequest on failure
+}
+```
+
+The handler accepts `Json<serde_json::Value>` (not a typed struct) and forwards the raw JSON directly to the LLM server, preserving vendor-specific fields.
+
+### Chat Completions Handler
+
+Core chat completion endpoint with raw JSON forwarding (`src/routes_chat.rs`):
+
+```rust
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<serde_json::Value>, ApiError>,
 ) -> Result<Response, ApiError> {
-  let response = state.chat_completions(request).await?;
-  let mut response_builder = Response::builder().status(response.status());
-  if let Some(headers) = response_builder.headers_mut() {
-    *headers = response.headers().clone();
-  }
-  let stream = response.bytes_stream();
-  let body = Body::from_stream(stream);
-  Ok(response_builder.body(body).map_err(HttpError::Http)?)
+  validate_chat_completion_request(&request)?;
+  let response = state
+    .forward_request(LlmEndpoint::ChatCompletions, request)
+    .await?;
+  // Proxy status, headers, and body stream directly
 }
 ```
 
 **Key Features**:
-- Complete OpenAI parameter validation using `async-openai` types (`src/routes_chat.rs`)
-- Streaming and non-streaming response support with proper SSE formatting
-- Request forwarding through RouterState to SharedContext for LLM coordination (`src/routes_chat.rs`)
-- Comprehensive OpenAPI documentation with examples (`src/routes_chat.rs`)
+- Raw `serde_json::Value` acceptance avoids lossy typed deserialization
+- Structural validation via `validate_chat_completion_request()` catches malformed requests early
+- Request forwarded through `RouterState::forward_request()` with `LlmEndpoint::ChatCompletions`
+- Response status, headers, and body stream proxied directly without intermediate buffering
 
-### Models API Implementation
+### Embeddings Handler
 
-OpenAI-compatible model discovery with alias resolution:
+Embeddings endpoint with typed deserialization (`src/routes_chat.rs`):
 
 ```rust
-// Model listing handler (src/routes_oai_models.rs)
-pub async fn oai_models_handler(
+pub async fn embeddings_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<OAIModelListResponse>, ApiError> {
-  let aliases = state
-    .app_service()
-    .data_service()
-    .list_aliases()
-    .await
-    .map_err(ApiError::from)?;
-
-  let mut seen_models = HashSet::new();
-  let mut models = Vec::new();
-
-  // Process aliases in priority order: User > Model > API
-  for alias in aliases {
-    match alias {
-      Alias::User(user_alias) => {
-        if seen_models.insert(user_alias.alias.clone()) {
-          models.push(user_alias_to_oai_model(state.clone(), user_alias));
-        }
-      }
-      // Additional alias handling...
-    }
-  }
-
-  Ok(Json(OAIModelListResponse {
-    object: "list".to_string(),
-    data: models,
-  }))
+  WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, ApiError>,
+) -> Result<Response, ApiError> {
+  let request_value = serde_json::to_value(request)
+    .map_err(HttpError::Serialization)?;
+  let response = state
+    .forward_request(LlmEndpoint::Embeddings, request_value)
+    .await?;
+  // Proxy status, headers, and body stream directly
 }
 ```
 
-**Model Conversion Functions**:
-- User alias conversion: `src/routes_oai_models.rs`
-- Model alias conversion: `src/routes_oai_models.rs`
-- API alias conversion: `src/routes_oai_models.rs`
+Uses typed `CreateEmbeddingRequest` deserialization (unlike chat completions) since embeddings requests have a simpler, more stable schema.
+
+### Models API Implementation
+
+OpenAI-compatible model discovery with alias resolution and deduplication (`src/routes_oai_models.rs`):
+
+- `oai_models_handler` - Lists all models, deduplicating via `HashSet` across User, Model, and Api alias types
+- `oai_model_handler` - Retrieves a specific model by ID via `DataService::find_alias()`
+- `user_alias_to_oai_model()` - Converts user aliases with filesystem-based creation timestamps
+- `model_alias_to_oai_model()` - Converts auto-discovered model aliases from HF cache paths
+- `api_model_to_oai_model()` - Converts API aliases with prefixed model IDs and base URL as `owned_by`
+
+**API Alias Cache Refresh**: When `forward_all_with_prefix` is set and the cache is empty or stale, an async task is spawned to refresh model listings from the remote API provider.
 
 ## Ollama Ecosystem Integration Architecture
 
 ### Request Format Translation
 
-Sophisticated bidirectional format conversion between Ollama and OpenAI:
+Bidirectional format conversion between Ollama and OpenAI (`src/routes_ollama.rs`):
 
 ```rust
-// Ollama to OpenAI request conversion (src/routes_ollama.rs)
 impl From<ChatRequest> for CreateChatCompletionRequest {
   fn from(val: ChatRequest) -> Self {
     let options = val.options.unwrap_or_default();
     CreateChatCompletionRequest {
-      messages: val
-        .messages
-        .into_iter()
-        .map(|i| i.into())
-        .collect::<Vec<_>>(),
+      messages: val.messages.into_iter().map(|i| i.into()).collect(),
       model: val.model,
       frequency_penalty: options.frequency_penalty,
       max_completion_tokens: options.num_predict,
       temperature: options.temperature,
       top_p: options.top_p,
-      stop: options.stop.map(Stop::StringArray),
+      stop: options.stop.map(StopConfiguration::StringArray),
       stream: val.stream,
       ..Default::default()
     }
@@ -129,116 +154,24 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
 
 ### Response Format Translation
 
-OpenAI to Ollama response conversion with analytics placeholders:
-
-```rust
-// OpenAI to Ollama response conversion (src/routes_ollama.rs)
-impl From<CreateChatCompletionResponse> for ChatResponse {
-  fn from(response: CreateChatCompletionResponse) -> Self {
-    let first = response.choices.first();
-    let message = first
-      .map(|choice| choice.message.clone().into())
-      .unwrap_or_default();
-    let done_reason = first.map(|choice| choice.finish_reason).unwrap_or(None);
-    let done = done_reason.is_some();
-    let usage = response.usage;
-
-    ChatResponse {
-      model: response.model,
-      created_at: response.created,
-      message,
-      done_reason,
-      done,
-      // Analytics placeholders for future implementation
-      total_duration: 0 as f64,
-      load_duration: "-1".to_string(),
-      prompt_eval_count: usage.as_ref().map(|u| u.prompt_tokens as i32).unwrap_or(-1),
-      eval_count: usage.map(|u| u.completion_tokens as i32).unwrap_or(-1),
-    }
-  }
-}
-```
+OpenAI to Ollama response conversion with analytics placeholders (`src/routes_ollama.rs`):
+- `From<CreateChatCompletionResponse> for ChatResponse` - Non-streaming response conversion
+- `From<CreateChatCompletionStreamResponse> for ResponseStream` - Streaming chunk conversion
+- Analytics fields (durations, counts) populated from usage data or set to placeholder values
 
 ### Ollama Models Integration
 
-Model metadata conversion with filesystem integration:
+Model metadata conversion with filesystem integration (`src/routes_ollama.rs`):
+- `user_alias_to_ollama_model()` - Filesystem metadata for creation time, GGUF format details
+- `model_alias_to_ollama_model()` - HF cache path construction for auto-discovered models
+- `alias_to_ollama_model_show()` - Detailed model info including request/context params serialized as YAML
+- API aliases are filtered out of Ollama model listings (Ollama does not support remote API providers)
 
-```rust
-// User alias to Ollama model conversion (src/routes_ollama.rs)
-fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
-  let bodhi_home = &state.app_service().setting_service().bodhi_home();
-  let path = bodhi_home.join("aliases").join(alias.config_filename());
-  let created = fs::metadata(path)
-    .map_err(|e| e.to_string())
-    .and_then(|m| m.created().map_err(|e| e.to_string()))
-    .and_then(|t| t.duration_since(UNIX_EPOCH).map_err(|e| e.to_string()))
-    .unwrap_or_default()
-    .as_secs() as u32;
-  Model {
-    model: alias.alias,
-    modified_at: created,
-    size: 0,
-    digest: alias.snapshot,
-    details: ModelDetails {
-      parent_model: None,
-      format: GGUF.to_string(),
-      family: "unknown".to_string(),
-      // Additional model metadata fields
-    },
-  }
-}
-```
+### Ollama Chat Handler
 
-## HTTP Route Orchestration Implementation
-
-### Error Handling Architecture
-
-Comprehensive error handling with API-specific response formatting:
-
-```rust
-// HTTP error types with thiserror (src/routes_chat.rs)
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum HttpError {
-  #[error("HTTP error: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
-  Http(#[from] http::Error),
-}
-```
-
-**Error Handling Features**:
-- User-friendly error messages defined inline via thiserror templates
-- Integration with objs error system for consistent responses
-
-### Streaming Response Coordination
-
-Advanced streaming with format-specific transformation:
-
-```rust
-// Ollama streaming transformation (src/routes_ollama.rs)
-let stream = response.bytes_stream().map(move |chunk| {
-  let chunk = chunk.map_err(|e| format!("error reading chunk: {e}"))?;
-  let text = String::from_utf8_lossy(&chunk);
-
-  if text.starts_with("data: ") {
-    let msg = text
-      .strip_prefix("data: ")
-      .unwrap()
-      .strip_suffix("\n\n")
-      .unwrap();
-
-    let oai_chunk: CreateChatCompletionStreamResponse =
-      serde_json::from_str(msg).map_err(|e| format!("error parsing chunk: {e}"))?;
-
-    let data: ResponseStream = oai_chunk.into();
-    serde_json::to_string(&data)
-      .map(|s| format!("data: {s}\n\n"))
-      .map_err(|e| format!("error serializing chunk: {e}"))
-  } else {
-    Ok(text.into_owned())
-  }
-});
-```
+The Ollama chat handler (`src/routes_ollama.rs`) converts Ollama requests to OpenAI format, forwards via `forward_request()`, and handles two response modes:
+- **Non-streaming**: Full response deserialized as `CreateChatCompletionResponse`, converted to `ChatResponse`, returned as JSON
+- **Streaming**: SSE chunks parsed from OpenAI format, converted to `ResponseStream`, re-serialized as SSE
 
 ## Cross-Crate Integration Implementation
 
@@ -272,99 +205,31 @@ Extensive use of objs crate throughout API operations:
 use objs::{Alias, ApiAlias, ApiError, ModelAlias, UserAlias, OpenAIApiError};
 
 // Error system integration (src/routes_chat.rs)
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
+use objs::{ApiError, AppError, ErrorType};
 ```
 
 ## API Testing Architecture
 
-### OpenAI Compatibility Testing
+### Chat Completion Testing
 
-Comprehensive testing with OpenAI SDK validation:
+Tests in `src/routes_chat.rs` cover:
+- **Non-streaming**: `test_routes_chat_completions_non_stream` - Full request/response cycle with model alias resolution via `MockSharedContext`
+- **Streaming**: `test_routes_chat_completions_stream` - SSE stream parsing and content aggregation across multiple chunks
+- **Embeddings**: `test_routes_embeddings_non_stream` - Typed embedding request with response validation
 
-```rust
-// Non-streaming chat completion test (src/routes_chat.rs)
-#[rstest]
-#[awt]
-#[tokio::test]
-async fn test_routes_chat_completions_non_stream(
-  #[future] app_service_stub: AppServiceStub,
-) -> anyhow::Result<()> {
-  let request = CreateChatCompletionRequestArgs::default()
-    .model("testalias-exists:instruct")
-    .messages(vec![ChatCompletionRequestMessage::User(
-      ChatCompletionRequestUserMessageArgs::default()
-        .content("What day comes after Monday?")
-        .build()?,
-    )])
-    .build()?;
-  
-  let response = app.oneshot(Request::post("/v1/chat/completions").json(request)?).await?;
-  assert_eq!(StatusCode::OK, response.status());
-  
-  let result: CreateChatCompletionResponse = response.json().await?;
-  assert_eq!(
-    "The day that comes after Monday is Tuesday.",
-    result.choices.first().unwrap().message.content.as_ref().unwrap()
-  );
-}
-```
+### Models API Testing
 
-### Streaming Response Testing
+Tests in `src/routes_oai_models.rs` cover:
+- `test_oai_models_handler` - Full model listing with expected alias resolution
+- `test_oai_model_handler` - Single model retrieval by ID
+- `test_oai_model_handler_not_found` - 404 for non-existent models
+- API alias tests with and without prefix for both list and single model endpoints
 
-Advanced streaming validation with SSE format testing:
+### Ollama Compatibility Testing
 
-```rust
-// Streaming response test (src/routes_chat.rs)
-#[rstest]
-#[awt]
-#[tokio::test]
-async fn test_routes_chat_completions_stream(
-  #[future] app_service_stub: AppServiceStub,
-) -> anyhow::Result<()> {
-  let request = CreateChatCompletionRequestArgs::default()
-    .stream(true)
-    .build()?;
-  
-  let response = app.oneshot(Request::post("/v1/chat/completions").json(request)?).await?;
-  let response: Vec<CreateChatCompletionStreamResponse> = response.sse().await?;
-  let content = response.into_iter().fold(String::new(), |mut f, r| {
-    let content = r.choices.first().unwrap().delta.content.as_deref().unwrap_or_default();
-    f.push_str(content);
-    f
-  });
-  
-  assert_eq!("  After Monday, the next day is Tuesday.", content);
-}
-```
-
-### Ollama Ecosystem Testing
-
-Ollama compatibility validation:
-
-```rust
-// Ollama model listing test (src/routes_ollama.rs)
-#[rstest]
-#[awt]
-#[tokio::test]
-async fn test_ollama_routes_models_list(
-  #[future] router_state_stub: DefaultRouterState,
-) -> anyhow::Result<()> {
-  let response = app
-    .oneshot(Request::get("/api/tags").body(Body::empty())?)
-    .await?
-    .json::<Value>()
-    .await?;
-  
-  assert!(response["models"].as_array().length().unwrap() >= 6);
-  let llama3 = response["models"]
-    .as_array()
-    .unwrap()
-    .iter()
-    .find(|item| item["model"] == "llama3:instruct")
-    .unwrap();
-  assert_eq!("5007652f7a641fe7170e0bad4f63839419bd9213", llama3["digest"]);
-}
-```
+Tests in `src/routes_ollama.rs` cover:
+- `test_ollama_routes_models_list` - Ollama model listing format validation
+- `test_ollama_model_show` - Detailed model information with parameters and template fields
 
 ## Extension Guidelines
 
@@ -372,18 +237,18 @@ async fn test_ollama_routes_models_list(
 
 When implementing additional OpenAI API endpoints:
 
-1. **Specification Compliance**: Use `async-openai` types for exact OpenAI parameter validation and response formatting
-2. **Service Coordination**: Implement RouterState integration for consistent AppService access and business logic coordination
-3. **Error Handling**: Create API-specific error types that convert to OpenAI-compatible responses with proper status codes
+1. **Request Strategy**: Decide between raw JSON forwarding (for proxy endpoints preserving vendor extensions) or typed deserialization (for endpoints needing local processing)
+2. **Error Handling**: Add variants to `HttpError` if the endpoint has unique failure modes; use `ErrorMeta` derive for `AppError` implementation
+3. **Service Coordination**: Implement RouterState integration for consistent AppService access
 4. **Documentation**: Add comprehensive `utoipa` OpenAPI documentation with examples and proper schemas
-5. **Testing**: Create compatibility tests using OpenAI SDK types for validation
+5. **Testing**: Create compatibility tests using `MockSharedContext` for request forwarding validation
 
 ### Extending Ollama Compatibility
 
 For new Ollama API endpoints:
 
 1. **Format Translation**: Design bidirectional `From` implementations between Ollama and OpenAI formats
-2. **Parameter Mapping**: Create semantic parameter mapping preserving functionality across API specifications
+2. **Error Handling**: Use `Json<OllamaError>` as the error type for Ollama-compatible error responses
 3. **Response Formatting**: Implement Ollama-specific response types with proper field mapping and serialization
 4. **Ecosystem Integration**: Validate compatibility with Ollama CLI tools and ecosystem integrations
 5. **Testing**: Add Ollama ecosystem compatibility tests with format validation
@@ -393,16 +258,15 @@ For new Ollama API endpoints:
 For efficient API operations:
 
 1. **Stream Proxying**: Use `Body::from_stream()` for efficient streaming without intermediate buffering
-2. **Alias Deduplication**: Use `HashSet` for efficient model deduplication in listing operations
-3. **Format Abstraction**: Create unified internal processing supporting both API formats
+2. **Raw JSON Forwarding**: Accept `serde_json::Value` for proxy endpoints to avoid lossy re-serialization
+3. **Alias Deduplication**: Use `HashSet` for efficient model deduplication in listing operations
 4. **Error Boundaries**: Implement proper error handling for streaming and non-streaming contexts
-5. **Resource Management**: Coordinate with TimeService for efficient metadata operations
+5. **Async Cache Refresh**: Spawn background tasks for API alias cache updates to avoid blocking request processing
 
 ## Commands
 
-**Full Test Suite**: `cargo test -p routes_oai`  
-**Chat Endpoints**: `cargo test -p routes_oai routes_chat`  
-**Model Endpoints**: `cargo test -p routes_oai routes_oai_models`  
-**Ollama Compatibility**: `cargo test -p routes_oai routes_ollama`  
-**Streaming Tests**: `cargo test -p routes_oai stream`  
-**Format Validation**: `cargo test -p routes_oai --test integration`
+**Full Test Suite**: `cargo test -p routes_oai`
+**Chat Endpoints**: `cargo test -p routes_oai routes_chat`
+**Model Endpoints**: `cargo test -p routes_oai routes_oai_models`
+**Ollama Compatibility**: `cargo test -p routes_oai routes_ollama`
+**Streaming Tests**: `cargo test -p routes_oai stream`

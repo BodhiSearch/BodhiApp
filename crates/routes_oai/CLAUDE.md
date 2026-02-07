@@ -11,28 +11,37 @@ The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility orchestra
 ### OpenAI API Compatibility Architecture
 Comprehensive OpenAI API implementation ensuring full ecosystem compatibility:
 
-- **Chat Completions Orchestration**: `/v1/chat/completions` with streaming and non-streaming support, request validation, and response formatting
-- **Models Discovery API**: `/v1/models` and `/v1/models/{id}` endpoints with model alias resolution and metadata coordination
-- **Parameter Validation System**: Complete OpenAI parameter validation using async-openai types with range checking and format compliance
-- **Response Streaming Infrastructure**: Server-sent events with proper SSE formatting, connection management, and streaming response coordination
-- **Error Handling Integration**: OpenAI-compatible error responses with proper HTTP status codes and error types
+- **Chat Completions Orchestration**: `/v1/chat/completions` with streaming and non-streaming support, pre-deserialization validation, and response proxying
+- **Embeddings API**: `/v1/embeddings` endpoint for text embedding generation with the same request-forwarding architecture as chat completions
+- **Models Discovery API**: `/v1/models` and `/v1/models/{id}` endpoints with model alias resolution, deduplication, and metadata coordination across user, model, and API alias types
+- **Pre-Deserialization Validation**: Chat completion requests are accepted as raw `serde_json::Value` and validated before forwarding, avoiding lossy re-serialization through typed structs
+- **Response Streaming Infrastructure**: Server-sent events with proper SSE formatting, connection management, and streaming response proxying via `Body::from_stream`
+- **Error Handling Integration**: Crate-local `HttpError` enum with `InvalidRequest` variant for 400 errors, `Http` for response construction failures, and `Serialization` for JSON errors -- all implementing `AppError` for consistent HTTP response generation
 
 ### Ollama Ecosystem Integration Architecture
 Sophisticated dual API compatibility for broader ecosystem support:
 
 - **Ollama Models API**: `/api/tags` and `/api/show` endpoints with Ollama-specific response formats and model metadata conversion
 - **Ollama Chat Interface**: `/api/chat` endpoint with bidirectional request/response format translation and parameter mapping
-- **Cross-Format Translation System**: Seamless conversion between OpenAI and Ollama formats with semantic parameter preservation
+- **Cross-Format Translation System**: Seamless conversion between OpenAI and Ollama formats using `From` trait implementations with semantic parameter preservation
 - **Parameter Mapping Intelligence**: Intelligent parameter translation between API specifications maintaining functionality and compatibility
 - **Tool Integration Support**: Full compatibility with Ollama CLI tools, ecosystem integrations, and third-party applications
+
+### Request Validation Architecture
+The crate implements a deliberate two-phase validation strategy for chat completions:
+
+- **Phase 1 -- Structural Validation**: The `validate_chat_completion_request()` function checks raw JSON structure before forwarding, catching malformed requests early with user-friendly error messages. Three checks are performed: model field presence/type, messages field presence/type, and stream field type (if present).
+- **Phase 2 -- Downstream Validation**: The LLM server performs full semantic validation (model existence, parameter ranges, message content validity) after the request is forwarded.
+- **Design Rationale**: By accepting requests as `serde_json::Value` rather than deserializing into `CreateChatCompletionRequest`, the crate avoids the problem of async-openai's typed struct discarding unknown or extended fields during re-serialization. The raw JSON is forwarded directly to the LLM server, preserving vendor-specific extensions and parameters that async-openai types would otherwise strip.
+- **Error Consolidation**: All validation errors use the `HttpError::InvalidRequest(String)` variant, which maps to `ErrorType::BadRequest` (HTTP 400). This replaced the previous `BadRequestError` struct from the `objs` crate, consolidating request validation errors within the crate that owns the validation logic.
 
 ### HTTP Route Orchestration Architecture
 Advanced HTTP request processing with comprehensive service coordination:
 
 - **RouterState Integration**: Dependency injection providing unified access to AppService registry, SharedContext, and service composition
-- **Model Alias Resolution**: DataService coordination for model alias lookup, validation, and priority-based resolution
-- **Request Forwarding Infrastructure**: Intelligent request routing through SharedContext to LLM server instances with load balancing
-- **Response Transformation Pipeline**: Format-specific response processing for OpenAI and Ollama compatibility with streaming support
+- **Model Alias Resolution**: DataService coordination for model alias lookup, validation, and priority-based resolution with deduplication via `HashSet`
+- **Request Forwarding Infrastructure**: Requests routed through `RouterState::forward_request()` with `LlmEndpoint` discriminator to appropriate LLM server instances
+- **Response Proxying**: Response headers and body streams are proxied directly from the LLM server response, avoiding intermediate buffering
 - **Error Translation Coordination**: Service errors converted to appropriate API-specific error responses with localization and user guidance
 
 ## Architecture Position
@@ -50,26 +59,25 @@ The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility orchestra
 Comprehensive API operations coordinated across BodhiApp's complete service architecture:
 
 - **RouterState Integration**: HTTP handlers access complete AppService registry for business logic operations with dependency injection
-- **DataService Coordination**: Model alias resolution, listing, validation, and priority-based selection for API endpoints
-- **SharedContext Integration**: LLM server request routing, response streaming coordination, and load balancing management
+- **DataService Coordination**: Model alias resolution, listing, validation, and priority-based selection for API endpoints; handles three alias types (User, Model, Api) with distinct conversion logic per alias type
+- **SharedContext Integration**: LLM server request routing via `forward_request()` with `LlmEndpoint` discriminator, response streaming coordination
 - **Error Service Translation**: Service errors converted to OpenAI/Ollama-compatible API responses with user-friendly messages
 - **Authentication Integration**: Comprehensive API security through auth_middleware with bearer tokens, session management, and access control
 
 ### HTTP Infrastructure Integration
 Advanced API route coordination with comprehensive HTTP infrastructure:
 
-- **Request Validation Infrastructure**: Comprehensive OpenAI parameter validation using async-openai types with range checking and format compliance
+- **Request Validation Infrastructure**: Structural JSON validation for chat completions using raw `serde_json::Value`, with `HttpError::InvalidRequest` for user-facing 400 errors
 - **Response Streaming Coordination**: Server-sent events coordinated with server_core streaming infrastructure for real-time response delivery
-- **Error Handling System**: HTTP error responses with proper status codes and API-specific error formats
+- **Error Handling System**: HTTP error responses with proper status codes and API-specific error formats via `errmeta_derive::ErrorMeta` macro
 - **Content Negotiation**: Multi-format response handling for OpenAI and Ollama compatibility with automatic format detection
 - **Route Composition Integration**: Coordinated with routes_all for unified route composition, hierarchical authorization, and middleware orchestration
 
 ### Domain Object Integration
 Comprehensive integration with objs crate for consistent API operations:
 
-- **Alias Resolution System**: Model alias lookup, validation, and priority-based resolution using objs domain objects with comprehensive error handling
-- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation with status code mapping
-- **Parameter Validation Framework**: OpenAI parameter validation using objs validation rules, error handling, and user-actionable feedback
+- **Alias Resolution System**: Model alias lookup, validation, and priority-based resolution using objs domain objects (`UserAlias`, `ModelAlias`, `ApiAlias`) with comprehensive error handling
+- **Error System Integration**: `HttpError` enum implements `AppError` trait via `errmeta_derive::ErrorMeta` for consistent HTTP response generation with status code mapping. `InvalidRequest` maps to `ErrorType::BadRequest`, while `Http` and `Serialization` map to `ErrorType::InternalServer`.
 - **Error Message Support**: User-friendly error messages via thiserror templates with format-specific message formatting
 
 ## API Orchestration Workflows
@@ -77,59 +85,59 @@ Comprehensive integration with objs crate for consistent API operations:
 ### Multi-Service Chat Completion Coordination
 Sophisticated request processing with comprehensive service orchestration:
 
-1. **Request Reception and Validation**: HTTP routes receive OpenAI-compatible requests with comprehensive parameter validation and format checking
-2. **Model Alias Resolution**: DataService resolves model aliases with priority-based selection and availability validation
-3. **Context Coordination**: SharedContext manages LLM server instances with load balancing and health monitoring for request processing
-4. **Response Streaming Orchestration**: Server-sent events handle real-time streaming responses with proper formatting and connection management
-5. **Error Translation and Recovery**: Service errors converted to OpenAI-compatible HTTP responses with user-friendly messages and recovery guidance
+1. **Request Reception**: HTTP route accepts raw JSON body via `WithRejection<Json<serde_json::Value>, ApiError>` for flexible parsing
+2. **Structural Validation**: `validate_chat_completion_request()` checks model, messages, and stream fields for correct types, returning `HttpError::InvalidRequest` on failure
+3. **Request Forwarding**: Raw `serde_json::Value` forwarded via `state.forward_request(LlmEndpoint::ChatCompletions, request)` preserving all original fields
+4. **Response Proxying**: Response status, headers, and body stream are proxied directly without intermediate deserialization
+5. **Error Translation**: Service errors (`ContextError`, `ApiError`) and construction errors (`HttpError::Http`) converted to appropriate HTTP responses
 
 ### Dual-Format API Support Orchestration
 Comprehensive API compatibility coordination with sophisticated format handling:
 
 **OpenAI API Workflow**:
-1. **Parameter Validation**: Complete OpenAI parameter validation using async-openai types with comprehensive error handling
-2. **Request Processing**: Standard OpenAI request processing with model alias resolution and service coordination
-3. **Response Formatting**: OpenAI-compatible response formatting with proper JSON structure and metadata
-4. **Streaming Support**: SSE streaming with OpenAI chunk format, connection management, and error recovery
+1. **Structural Validation**: Raw JSON validation for required fields before forwarding
+2. **Request Forwarding**: Direct `serde_json::Value` forwarding preserving vendor extensions
+3. **Response Proxying**: Headers and body stream proxied directly from LLM server
+4. **Streaming Support**: SSE streaming proxied through `Body::from_stream` without format transformation
 
 **Ollama API Workflow**:
-1. **Format Translation**: Bidirectional Ollama request format conversion to OpenAI internal format with parameter preservation
-2. **Parameter Mapping**: Intelligent Ollama-specific parameter mapping to OpenAI equivalents with semantic preservation
-3. **Response Conversion**: OpenAI responses converted to Ollama-compatible format with proper field mapping
-4. **Ecosystem Integration**: Full support for Ollama CLI tools, ecosystem compatibility, and third-party integrations
+1. **Format Translation**: Ollama `ChatRequest` deserialized and converted to OpenAI `CreateChatCompletionRequest` via `From` impl
+2. **Parameter Mapping**: Ollama-specific parameters (num_predict, tfs_z, etc.) mapped to OpenAI equivalents with semantic preservation
+3. **Response Conversion**: OpenAI responses converted to Ollama-compatible format (`ChatResponse`, `ResponseStream`) with proper field mapping
+4. **Streaming Transformation**: SSE chunks parsed from OpenAI format, converted to Ollama `ResponseStream`, and re-serialized
 
 ### Cross-Format Error Coordination
 Sophisticated error handling across different API formats:
 
-- **OpenAI Error Format**: Standard OpenAI error responses with proper error types, codes, and detailed error information
-- **Ollama Error Format**: Ollama-compatible error responses with simplified error structure and appropriate formatting
-- **Service Error Translation**: Service errors converted to appropriate API-specific formats with consistent error handling
-- **Error Message Support**: User-friendly error messages via thiserror templates with format-specific formatting
+- **OpenAI Error Format**: Standard OpenAI error responses via `ApiError` with proper error types, codes, and HTTP status codes
+- **Ollama Error Format**: Ollama-compatible `OllamaError` struct with simplified error string for Ollama ecosystem compatibility
+- **Crate-Local Errors**: `HttpError` enum consolidates request validation (`InvalidRequest`), HTTP construction (`Http`), and serialization (`Serialization`) errors
+- **Error Message Support**: User-friendly error messages via thiserror derive with descriptive format strings
 
 ## Important Constraints
 
 ### OpenAI API Compatibility Requirements
 
 - **Specification Compliance**: All endpoints must maintain strict OpenAI API specification compliance for ecosystem compatibility and tool integration
-- **Parameter Validation**: Request validation must use async-openai types for parameter validation, format consistency, and comprehensive error handling
+- **Raw JSON Forwarding**: Chat completion requests must be forwarded as raw JSON to preserve vendor-specific extensions that typed deserialization would strip
 - **Response Format Compliance**: Response formats must match OpenAI specification exactly for SDK compatibility, tool integration, and ecosystem support
-- **Error Response Standards**: Error responses must follow OpenAI error format with proper error types, HTTP status codes, and detailed error information
-- **Streaming Response Requirements**: Streaming responses must use proper SSE formatting with OpenAI chunk structure and connection management
+- **Error Response Standards**: Error responses must follow OpenAI error format via `ApiError` with proper error types, HTTP status codes, and detailed error information
+- **Streaming Response Requirements**: Streaming responses must proxy SSE format directly from the LLM server without unnecessary transformation
 
 ### Ollama Ecosystem Integration Standards
 
 - **CLI Tool Compatibility**: Ollama endpoints must provide full support for Ollama CLI tools and ecosystem integrations with proper format handling
 - **Bidirectional Translation**: Request/response format translation must be bidirectional and lossless where possible with semantic preservation
 - **Parameter Mapping Standards**: Parameter mapping between Ollama and OpenAI formats must preserve semantic meaning and functionality
-- **Error Handling Consistency**: Error handling must provide Ollama-compatible error responses while maintaining internal consistency and proper error reporting
+- **Error Handling Consistency**: Error handling must provide Ollama-compatible error responses (`Json<OllamaError>`) while maintaining internal consistency
 - **Model Metadata Compatibility**: Model metadata must be compatible with Ollama model discovery, management tools, and ecosystem expectations
 
 ### HTTP Infrastructure Coordination Rules
 
 - **RouterState Integration**: All routes must use RouterState dependency injection for consistent service access and comprehensive dependency management
 - **Model Resolution Coordination**: Model alias resolution must coordinate with DataService for consistent model discovery and priority-based selection
-- **Streaming Infrastructure Integration**: Response streaming must integrate with server_core streaming infrastructure for performance and connection management
-- **Error Translation Requirements**: Error handling must translate service errors to appropriate API-specific formats with user-friendly messages
+- **Streaming Infrastructure Integration**: Response streaming must proxy through `Body::from_stream` for efficient pass-through without intermediate buffering
+- **Error Translation Requirements**: `HttpError` variants must implement `AppError` via `ErrorMeta` derive for automatic HTTP response conversion
 - **Authentication Integration Standards**: Authentication must integrate with auth_middleware for consistent API security, access control, and authorization across endpoints
 
 ## API Extension Patterns
@@ -137,19 +145,19 @@ Sophisticated error handling across different API formats:
 ### Adding New OpenAI Endpoints
 When implementing additional OpenAI API endpoints:
 
-1. **Specification Compliance**: Follow OpenAI API specification exactly for parameter validation, response formats, and error handling
+1. **Raw JSON Pattern**: Consider accepting `serde_json::Value` for forward-proxy endpoints to preserve vendor extensions, or typed structs for endpoints requiring local processing
 2. **Service Coordination**: Use RouterState for consistent AppService access, business logic coordination, and dependency management
-3. **Error Handling Integration**: Implement API-specific errors that convert to OpenAI-compatible responses with user-friendly messages
-4. **Documentation Standards**: Add comprehensive OpenAPI documentation with examples, proper schemas, and endpoint specifications
+3. **Error Handling Integration**: Add variants to `HttpError` for endpoint-specific errors, using `ErrorMeta` derive for `AppError` trait implementation
+4. **Documentation Standards**: Add comprehensive `utoipa` OpenAPI documentation with examples, proper schemas, and endpoint specifications
 5. **Testing Infrastructure**: Create comprehensive API compatibility tests with OpenAI SDK validation and ecosystem integration testing
 
 ### Extending Ollama Compatibility
 For new Ollama API endpoints and features:
 
-1. **Format Translation Design**: Design comprehensive bidirectional translation between Ollama and OpenAI formats with semantic preservation
+1. **Format Translation Design**: Design comprehensive bidirectional translation between Ollama and OpenAI formats using `From` trait implementations
 2. **Parameter Mapping Intelligence**: Create intelligent parameter mapping that preserves functionality and maintains compatibility
 3. **Ecosystem Integration Testing**: Validate compatibility with Ollama CLI tools, ecosystem integrations, and third-party applications
-4. **Error Consistency Management**: Provide Ollama-compatible error responses while maintaining internal error handling and consistency
+4. **Error Consistency Management**: Use `Json<OllamaError>` as the error type for Ollama routes to provide Ollama-compatible error responses
 5. **Documentation Standards**: Document Ollama-specific behavior, compatibility considerations, and ecosystem integration patterns
 
 ### Cross-Format Integration Patterns

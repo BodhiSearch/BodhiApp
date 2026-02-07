@@ -13,24 +13,45 @@ The `objs` crate serves as the **architectural keystone** for BodhiApp, providin
 
 ## Centralized Error System Implementation
 
-BodhiApp's error architecture provides application-wide consistency through sophisticated code generation patterns:
+BodhiApp's error architecture uses domain-specific error enums rather than generic HTTP status code wrappers. Each domain area defines its own error enum with appropriate `ErrorType` variants, ensuring errors carry contextual meaning alongside proper HTTP status codes.
 
 ```rust
-// Pattern structure (see src/error/objs.rs for complete implementations)
+// Domain-specific error enum pattern (see src/error/objs.rs)
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum ServiceError {
-  #[error("Model not found: {model_name}.")]
+pub enum EntityError {
+  #[error("{0} not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
-  ModelNotFound { model_name: String },
+  NotFound(String),
 }
+```
+
+### **Consolidated IoError Enum**
+Previously 6 separate IO error structs (IoError struct, IoWithPathError, IoDirCreateError, IoFileReadError, IoFileWriteError, IoFileDeleteError), now consolidated into a single `IoError` enum with 6 variants and convenience constructors:
+
+```rust
+// Unified IO error enum (see src/error/objs.rs)
+pub enum IoError {
+  Io { source: std::io::Error },
+  WithPath { source: std::io::Error, path: String },
+  DirCreate { source: std::io::Error, path: String },
+  FileRead { source: std::io::Error, path: String },
+  FileWrite { source: std::io::Error, path: String },
+  FileDelete { source: std::io::Error, path: String },
+}
+// Convenience: IoError::file_read(source, path)
 ```
 
 ### **Cross-Crate Error Flow Architecture**
 The error system coordinates across all BodhiApp layers through these key files:
 
-- **Error Definition**: `src/error/objs.rs` - Contains all domain error types with `errmeta_derive` patterns
-- **API Conversion**: `src/error/error_api.rs` - `ApiError` envelope for OpenAI compatibility
+- **Error Definition**: `src/error/objs.rs` - Domain error types: `EntityError`, `ObjValidationError`, `IoError`, `BuilderError`, `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `RwLockReadError`, `AppRegInfoMissingError`
+- **API Conversion**: `src/error/error_api.rs` - `ApiError` envelope converting any `AppError` to OpenAI-compatible JSON responses. Tests use a test-only `TestError` enum to verify the conversion pipeline.
+- **Error Trait & Types**: `src/error/common.rs` - `ErrorType` enum (HTTP status mapping), `AppError` trait, `ErrorMessage` struct
+- **OpenAI Format**: `src/error/error_oai.rs` - `OpenAIApiError` and `ErrorBody` for OpenAI-compatible error responses with utoipa schema annotations
+- **Localization Errors**: `src/error/l10n.rs` - `LocalizationSetupError`, `LocalizationMessageError`, `LocaleNotSupportedError`
+
+**Important**: Generic HTTP wrapper structs (`BadRequestError`, `NotFoundError`, `InternalServerError`, `UnauthorizedError`, `ConflictError`, `UnprocessableEntityError`, `ServiceUnavailableError`) have been removed. Use domain-specific error enums with `#[error_meta(error_type = ErrorType::...)]` instead.
 
 **Error Message Guidelines**:
 - Write user-friendly messages in sentence case ending with a period
@@ -38,7 +59,7 @@ The error system coordinates across all BodhiApp layers through these key files:
 - Use `{0}` for positional field interpolation
 - Messages should be clear and actionable
 
-**Why This Architecture**: Enables seamless error propagation from services → routes → clients with consistent error messages and OpenAI API compatibility across all application boundaries.
+**Why This Architecture**: Domain-specific enums carry contextual meaning that generic HTTP wrappers cannot. The consolidated `IoError` enum simplifies pattern matching and reduces boilerplate while retaining operation-specific context through its variants. Error propagation flows seamlessly from services through routes to clients with consistent messages and OpenAI API compatibility.
 
 ## GGUF Binary Format System
 
@@ -191,24 +212,35 @@ When creating new objs types that will be used across crates:
 5. **Update downstream crates**: Coordinate changes across services, routes, and CLI with attention to CLI-specific error translation and builder patterns
 
 #### Extending Error System
-For new error types that span multiple crates:
+For new error types, define domain-specific error enums rather than generic HTTP wrapper structs:
 
 ```rust
-// Define in appropriate domain module with user-friendly message
-#[error("Invalid {field}: {value}.")]
-#[error_meta(error_type = ErrorType::BadRequest)]
-CustomError { field: String, value: String },
+// Define domain-specific enum in appropriate module (see src/error/objs.rs)
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum MyDomainError {
+  #[error("Invalid {field}: {value}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidField { field: String, value: String },
+
+  #[error("{0} not found.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  NotFound(String),
+}
 ```
 
 **Error Message Guidelines**:
 - Use sentence case and end with a period
 - Use `{field}` for named field interpolation
 - Messages should be clear and actionable
+- Never create generic HTTP wrapper structs (e.g., `BadRequestError`) -- use domain enum variants with `ErrorType` annotations instead
 
 ## Critical Cross-Crate Invariants
 
 ### Application-Wide Error Handling Requirements
 - **Universal Implementation**: All crates must implement `AppError` for error types to maintain consistent behavior
+- **Domain-Specific Enums**: Use domain-specific error enums with `ErrorType` annotations, not generic HTTP wrapper structs. Generic wrappers (`BadRequestError`, `NotFoundError`, etc.) have been removed.
+- **Unified IO Errors**: Use `IoError` enum variants with convenience constructors for all IO operations
 - **Message Guidelines**: Error messages should be user-friendly, sentence case, ending with a period
 - **Field Interpolation**: Use `{field}` for named fields and `{0}` for positional fields
 - **Cross-Crate Error Flow**: Errors must propagate cleanly from services through routes to clients
