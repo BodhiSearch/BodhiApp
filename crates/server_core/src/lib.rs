@@ -5,7 +5,6 @@ pub mod test_utils;
 
 mod direct_sse;
 mod error;
-mod error_response;
 mod fwd_sse;
 pub mod middleware;
 mod model_router;
@@ -15,7 +14,6 @@ mod shared_rw;
 
 pub use direct_sse::*;
 pub use error::*;
-pub use error_response::*;
 pub use fwd_sse::*;
 pub use model_router::*;
 pub use router_state::*;
