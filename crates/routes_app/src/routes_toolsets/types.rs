@@ -1,21 +1,9 @@
-use objs::{AppError, AppToolsetConfig, ErrorType, ToolDefinition, ToolsetExecutionRequest};
+use objs::{AppToolsetConfig, ToolDefinition, ToolsetExecutionRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
-
-// ============================================================================
-// Error Types
-// ============================================================================
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ToolsetValidationError {
-  #[error("Validation error: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  Validation(String),
-}
 
 // ============================================================================
 // Validation Patterns
