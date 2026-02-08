@@ -1,32 +1,8 @@
 use chrono::{DateTime, Utc};
-use objs::{
-  AppError, ErrorType, ResourceRole, TokenScope, UserInfo,
-};
+use objs::{ResourceRole, TokenScope, UserInfo};
 use serde::{Deserialize, Serialize};
 use services::db::{UserAccessRequest, UserAccessRequestStatus};
 use utoipa::ToSchema;
-
-// === From routes_user.rs ===
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum UserRouteError {
-  #[error("Invalid header value: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidHeader(String),
-  #[error("Injected token is empty.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  EmptyToken,
-  #[error("Failed to list users: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  ListFailed(String),
-  #[error("Failed to change user role: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  RoleChangeFailed(String),
-  #[error("Failed to remove user: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  RemoveFailed(String),
-}
 
 /// Token Type
 /// `session` - token stored in cookie based http session
@@ -94,36 +70,6 @@ pub struct ChangeRoleRequest {
   /// Role to assign to the user
   #[schema(example = "resource_manager")]
   pub role: String,
-}
-
-// === From routes_access_request.rs ===
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum AccessRequestError {
-  #[error("Access request already pending.")]
-  #[error_meta(error_type = ErrorType::Conflict)]
-  AlreadyPending,
-
-  #[error("User already has access.")]
-  #[error_meta(error_type = ErrorType::UnprocessableEntity)]
-  AlreadyHasAccess,
-
-  #[error("Pending access request for user not found.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  PendingRequestNotFound,
-
-  #[error("Access request {0} not found.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  RequestNotFound(i64),
-
-  #[error("Insufficient privileges to assign this role.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InsufficientPrivileges,
-
-  #[error("Failed to fetch access requests: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  FetchFailed(String),
 }
 
 /// Response for checking access request status
