@@ -552,8 +552,6 @@ mod tests {
 
   #[test]
   fn test_api_key_update_action_serialization() {
-    use super::ApiKey;
-
     let keep = ApiKeyUpdateAction::Keep;
     assert_eq!(
       serde_json::to_string(&keep).unwrap(),
@@ -575,8 +573,6 @@ mod tests {
 
   #[test]
   fn test_api_key_update_action_deserialization() {
-    use super::ApiKey;
-
     let keep: ApiKeyUpdateAction = serde_json::from_str(r#"{"action":"keep"}"#).unwrap();
     assert_eq!(keep, ApiKeyUpdateAction::Keep);
 
@@ -594,8 +590,6 @@ mod tests {
 
   #[test]
   fn test_api_key_update_action_conversion() {
-    use super::ApiKey;
-
     let keep = ApiKeyUpdate::from(ApiKeyUpdateAction::Keep);
     assert_eq!(keep, ApiKeyUpdate::Keep);
 

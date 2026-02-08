@@ -4,7 +4,6 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod api_dto;
-mod api_models_dto;
 mod routes_api_models;
 mod routes_api_token;
 mod routes_app_request_access;
@@ -19,7 +18,6 @@ mod shared;
 mod toolsets_dto;
 
 pub use api_dto::*;
-pub use api_models_dto::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;
 pub use routes_app_request_access::*;
