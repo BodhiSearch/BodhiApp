@@ -1,4 +1,4 @@
-use crate::utils::extract_request_host;
+use crate::shared::utils::extract_request_host;
 use crate::{LoginError, RedirectResponse, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_LOGOUT};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use auth_middleware::{

@@ -1398,7 +1398,7 @@ mod tests {
     let runtime_value = serde_json::to_value(&runtime_spec).unwrap();
 
     // Load the generated openapi.json file
-    let spec_content = include_str!("../../../openapi.json");
+    let spec_content = include_str!("../../../../openapi.json");
     let generated_spec: serde_json::Value = serde_json::from_str(spec_content).unwrap();
 
     // Compare key sections to ensure they're in sync

@@ -1,4 +1,4 @@
-use crate::utils::extract_request_host;
+use crate::shared::utils::extract_request_host;
 use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_HEALTH, ENDPOINT_PING};
 use auth_middleware::app_status_or_default;
 use axum::{
