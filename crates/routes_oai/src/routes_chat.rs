@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum HttpError {
+pub enum OAIRouteError {
   #[error("Error constructing HTTP response: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Http(#[from] http::Error),
@@ -28,10 +28,10 @@ pub enum HttpError {
 }
 
 /// Validates basic structure of chat completion request
-fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), HttpError> {
+fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), OAIRouteError> {
   // Validate model field exists and is a string
   if request.get("model").and_then(|v| v.as_str()).is_none() {
-    return Err(HttpError::InvalidRequest(
+    return Err(OAIRouteError::InvalidRequest(
       "Field 'model' is required and must be a string.".to_string(),
     ));
   }
@@ -42,7 +42,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), H
     .map(|v| v.is_array())
     .unwrap_or(false)
   {
-    return Err(HttpError::InvalidRequest(
+    return Err(OAIRouteError::InvalidRequest(
       "Field 'messages' is required and must be an array.".to_string(),
     ));
   }
@@ -50,7 +50,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), H
   // Validate stream field is boolean if present
   if let Some(stream) = request.get("stream") {
     if !stream.is_boolean() {
-      return Err(HttpError::InvalidRequest(
+      return Err(OAIRouteError::InvalidRequest(
         "Field 'stream' must be a boolean.".to_string(),
       ));
     }
@@ -153,7 +153,7 @@ pub async fn chat_completions_handler(
   }
   let stream = response.bytes_stream();
   let body = Body::from_stream(stream);
-  Ok(response_builder.body(body).map_err(HttpError::Http)?)
+  Ok(response_builder.body(body).map_err(OAIRouteError::Http)?)
 }
 
 /// Create embeddings
@@ -201,7 +201,7 @@ pub async fn embeddings_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateEmbeddingRequest>, ApiError>,
 ) -> Result<Response, ApiError> {
-  let request_value = serde_json::to_value(request).map_err(HttpError::Serialization)?;
+  let request_value = serde_json::to_value(request).map_err(OAIRouteError::Serialization)?;
   let response = state
     .forward_request(LlmEndpoint::Embeddings, request_value)
     .await?;
@@ -211,7 +211,7 @@ pub async fn embeddings_handler(
   }
   let stream = response.bytes_stream();
   let body = Body::from_stream(stream);
-  Ok(response_builder.body(body).map_err(HttpError::Http)?)
+  Ok(response_builder.body(body).map_err(OAIRouteError::Http)?)
 }
 
 #[cfg(test)]
