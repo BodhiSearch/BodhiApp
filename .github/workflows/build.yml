@@ -211,6 +211,8 @@ jobs:
           INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
           INTEG_TEST_OPENAI_API_KEY: ${{ secrets.INTEG_TEST_OPENAI_API_KEY }}
           INTEG_TEST_OPENROUTER_API_KEY: ${{ secrets.INTEG_TEST_OPENROUTER_API_KEY }}
+          INTEG_TEST_EXA_API_KEY: ${{ secrets.INTEG_TEST_EXA_API_KEY }}
+          INTEG_TEST_SCOPE_TOOLSET_EXA_WEB_SEARCH_ID: ${{ vars.INTEG_TEST_SCOPE_TOOLSET_EXA_WEB_SEARCH_ID }}
 
       - name: Publish Playwright test results
         uses: dorny/test-reporter@v1
