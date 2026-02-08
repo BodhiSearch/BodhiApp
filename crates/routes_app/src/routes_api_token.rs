@@ -2,7 +2,7 @@ use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
 use auth_middleware::ExtractToken;
 use axum::{
   extract::{Path, Query, State},
-  http::{StatusCode, HeaderMap},
+  http::{HeaderMap, StatusCode},
   Json,
 };
 use axum_extra::extract::WithRejection;

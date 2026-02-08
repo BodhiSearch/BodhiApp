@@ -32,7 +32,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), H
   // Validate model field exists and is a string
   if request.get("model").and_then(|v| v.as_str()).is_none() {
     return Err(HttpError::InvalidRequest(
-      "'model' field is required and must be a string".to_string(),
+      "Field 'model' is required and must be a string.".to_string(),
     ));
   }
 
@@ -43,7 +43,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), H
     .unwrap_or(false)
   {
     return Err(HttpError::InvalidRequest(
-      "'messages' field is required and must be an array".to_string(),
+      "Field 'messages' is required and must be an array.".to_string(),
     ));
   }
 
@@ -51,7 +51,7 @@ fn validate_chat_completion_request(request: &serde_json::Value) -> Result<(), H
   if let Some(stream) = request.get("stream") {
     if !stream.is_boolean() {
       return Err(HttpError::InvalidRequest(
-        "'stream' field must be a boolean".to_string(),
+        "Field 'stream' must be a boolean.".to_string(),
       ));
     }
   }

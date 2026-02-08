@@ -132,10 +132,10 @@ pub enum SettingServiceError {
   Io(#[from] IoError),
   #[error(transparent)]
   SerdeYaml(#[from] SerdeYamlError),
-  #[error("lock_error")]
+  #[error("Settings lock failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   LockError(String),
-  #[error("invalid_source")]
+  #[error("Invalid settings source.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidSource,
 }

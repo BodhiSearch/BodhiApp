@@ -21,9 +21,9 @@ pub const HEADER_BODHI_APP_VERSION: &str = "x-bodhi-app-version";
 pub enum AuthServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
-  #[error("Authentication service error: {0}.")]
+  #[error("Authentication service API error (status {status}): {body}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
-  AuthServiceApiError(String),
+  AuthServiceApiError { status: u16, body: String },
   #[error("Network error during authentication: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ReqwestMiddlewareError(String),
@@ -118,12 +118,12 @@ struct KeycloakError {
 
 impl From<KeycloakError> for AuthServiceError {
   fn from(value: KeycloakError) -> Self {
-    let msg = if let Some(desc) = value.error_description {
+    let body = if let Some(desc) = value.error_description {
       format!("{}: {}", value.error, desc)
     } else {
       value.error
     };
-    AuthServiceError::AuthServiceApiError(msg)
+    AuthServiceError::AuthServiceApiError { status: 0, body }
   }
 }
 
@@ -420,13 +420,18 @@ impl AuthService for KeycloakAuthService {
       .send()
       .await?;
 
+    let status = response.status();
     let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
-      if response.status().is_success() {
+      if status.is_success() {
         response.json().await?
       } else {
+        let status_code = status.as_u16();
         let error = response.json::<KeycloakError>().await?;
         log::log_http_error("POST", &url, "auth_service", &error.error);
-        return Err(AuthServiceError::AuthServiceApiError(error.error));
+        return Err(AuthServiceError::AuthServiceApiError {
+          status: status_code,
+          body: error.error,
+        });
       };
 
     let access_token = token_response.access_token().secret().to_string();
@@ -583,8 +588,9 @@ impl AuthService for KeycloakAuthService {
     // All retries exhausted
     tracing::error!("Token refresh failed after {} attempts", max_retries + 1);
     Err(
-      last_error.unwrap_or_else(|| {
-        AuthServiceError::AuthServiceApiError("Max retries exceeded".to_string())
+      last_error.unwrap_or_else(|| AuthServiceError::AuthServiceApiError {
+        status: 0,
+        body: "Max retries exceeded".to_string(),
       }),
     )
   }
@@ -838,7 +844,7 @@ mod tests {
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
-      matches!(err, AuthServiceError::AuthServiceApiError(msg) if msg == "cannot complete request")
+      matches!(err, AuthServiceError::AuthServiceApiError { body, .. } if body == "cannot complete request")
     );
     mock_server.assert();
     Ok(())
@@ -934,7 +940,7 @@ mod tests {
     let error = result.unwrap_err();
     assert!(matches!(
       error,
-      AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant: Invalid refresh token"
+      AuthServiceError::AuthServiceApiError { body, .. } if body == "invalid_grant: Invalid refresh token"
     ));
     mock.assert();
     Ok(())
@@ -1028,7 +1034,7 @@ mod tests {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      AuthServiceError::AuthServiceApiError(_)
+      AuthServiceError::AuthServiceApiError { .. }
     ));
     token_mock.assert();
 
@@ -1078,7 +1084,7 @@ mod tests {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      AuthServiceError::AuthServiceApiError(_)
+      AuthServiceError::AuthServiceApiError { .. }
     ));
     token_mock.assert();
     admin_mock.assert();
@@ -1245,7 +1251,7 @@ mod tests {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      AuthServiceError::AuthServiceApiError(_)
+      AuthServiceError::AuthServiceApiError { .. }
     ));
     token_mock.assert();
     access_mock.assert();

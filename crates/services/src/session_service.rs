@@ -15,7 +15,7 @@ use tower_sessions_sqlx_store::SqliteStore;
 pub enum SessionServiceError {
   #[error(transparent)]
   SqlxError(#[from] SqlxError),
-  #[error("Session store error: {0}")]
+  #[error("Session store error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   SessionStoreError(tower_sessions::session_store::Error),
 }

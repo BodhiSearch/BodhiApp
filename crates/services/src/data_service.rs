@@ -4,8 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use objs::{
-  impl_error_from, Alias, AppError, ErrorType, IoError, RemoteModel, SerdeYamlError,
-  SerdeYamlWithPathError, UserAlias,
+  impl_error_from, Alias, AppError, ErrorType, IoError, RemoteModel, SerdeYamlError, UserAlias,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
@@ -21,7 +20,7 @@ pub struct AliasNotFoundError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("File '{filename}' not found in '{dirname}' folder.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct DataFileNotFoundError {
   filename: String,
   dirname: String,
@@ -30,9 +29,6 @@ pub struct DataFileNotFoundError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
-  #[error("Bodhi data folder not initialized. Run 'bodhi init' to set up.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  DirMissing { dirname: String },
   #[error(transparent)]
   DataFileNotFound(#[from] DataFileNotFoundError),
   #[error(transparent)]
@@ -41,8 +37,6 @@ pub enum DataServiceError {
   AliasNotExists(#[from] AliasNotFoundError),
   #[error(transparent)]
   AliasExists(#[from] AliasExistsError),
-  #[error(transparent)]
-  SerdeYamlErrorWithPath(#[from] SerdeYamlWithPathError),
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
@@ -222,7 +216,7 @@ impl DataService for LocalDataService {
     let content = fs::read_to_string(models_file.clone())
       .map_err(|err| IoError::file_read(err, models_file.display().to_string()))?;
     let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content)
-      .map_err(|err| SerdeYamlWithPathError::new(err, models_file.display().to_string()))?;
+      .map_err(|err| SerdeYamlError::with_path(err, models_file.display().to_string()))?;
     Ok(models)
   }
 
@@ -318,7 +312,7 @@ impl LocalDataService {
             Ok(content) => match serde_yaml::from_str::<UserAlias>(&content) {
               Ok(alias) => Some((filename, alias)),
               Err(err) => {
-                let err = SerdeYamlWithPathError::new(err, filename);
+                let err = SerdeYamlError::with_path(err, filename);
                 tracing::warn!(?err, "Error deserializing model alias YAML file",);
                 None
               }
@@ -393,7 +387,7 @@ chat_template: llama3
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      DataServiceError::SerdeYamlErrorWithPath(_)
+      DataServiceError::SerdeYamlError(_)
     ));
     Ok(())
   }

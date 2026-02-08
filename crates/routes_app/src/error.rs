@@ -38,4 +38,7 @@ pub enum LoginError {
   #[error("Missing code parameter in OAuth callback.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   MissingCode,
+  #[error("Failed to delete session: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "login_error-session_delete", args_delegate = false)]
+  SessionDelete(tower_sessions::session::Error),
 }

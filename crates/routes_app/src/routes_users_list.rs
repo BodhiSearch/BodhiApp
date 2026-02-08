@@ -1,32 +1,17 @@
+use crate::UserRouteError;
 use auth_middleware::ExtractToken;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   Json,
 };
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_AUTH};
+use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{extract_claims, Claims, UserListResponse};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use utoipa::ToSchema;
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum UserManagementError {
-  #[error("Failed to list users: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  ListFailed(String),
-
-  #[error("Failed to change user role: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  RoleChangeFailed(String),
-
-  #[error("Failed to remove user: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  RemoveFailed(String),
-}
 
 /// List users query parameters
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default)]
@@ -76,7 +61,7 @@ pub async fn list_users_handler(
     .await
     .map_err(|e| {
       error!("Failed to list users from auth service: {}", e);
-      UserManagementError::ListFailed(e.to_string())
+      UserRouteError::ListFailed(e.to_string())
     })?;
 
   info!("Successfully retrieved {} users", users.users.len());
@@ -122,7 +107,7 @@ pub async fn change_user_role_handler(
     .await
     .map_err(|e| {
       error!("Failed to change user role: {}", e);
-      UserManagementError::RoleChangeFailed(e.to_string())
+      UserRouteError::RoleChangeFailed(e.to_string())
     })?;
 
   // Clear existing sessions for the user to ensure new role is applied
@@ -183,7 +168,7 @@ pub async fn remove_user_handler(
     .await
     .map_err(|e| {
       error!("Failed to remove user: {}", e);
-      UserManagementError::RemoveFailed(e.to_string())
+      UserRouteError::RemoveFailed(e.to_string())
     })?;
 
   info!(
@@ -307,9 +292,10 @@ mod tests {
       .expect_list_users()
       .times(1)
       .return_once(|_, _, _| {
-        Err(services::AuthServiceError::AuthServiceApiError(
-          "Invalid session [RequestID: 123456]".to_string(),
-        ))
+        Err(services::AuthServiceError::AuthServiceApiError {
+          status: 500,
+          body: "Invalid session [RequestID: 123456]".to_string(),
+        })
       });
 
     // Build app service with mock auth service

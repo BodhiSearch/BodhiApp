@@ -16,7 +16,7 @@ use axum::{
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_AUTH};
+use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -203,20 +203,14 @@ pub async fn auth_callback_handler(
     .map_err(LoginError::from)?
     .ok_or(LoginError::SessionInfoNotFound)?;
 
-  let received_state = request
-    .state
-    .as_ref()
-    .ok_or(LoginError::MissingState)?;
+  let received_state = request.state.as_ref().ok_or(LoginError::MissingState)?;
 
   if stored_state != *received_state {
     return Err(LoginError::StateDigestMismatch)?;
   }
 
   // Check for required authorization code
-  let code = request
-    .code
-    .as_ref()
-    .ok_or(LoginError::MissingCode)?;
+  let code = request.code.as_ref().ok_or(LoginError::MissingCode)?;
 
   // Get PKCE verifier
   let pkce_verifier = session
@@ -348,14 +342,6 @@ pub fn generate_pkce() -> (String, String) {
   (code_verifier, code_challenge)
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum LogoutError {
-  #[error("Failed to delete session: {0}.")]
-  #[error_meta(error_type = ErrorType::InternalServer, code = "logout_error-session_delete_error", args_delegate = false)]
-  SessionDelete(#[from] tower_sessions::session::Error),
-}
-
 /// Logout the current user by destroying their session
 #[utoipa::path(
     post,
@@ -376,7 +362,7 @@ pub async fn logout_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let setting_service = state.app_service().setting_service();
-  session.delete().await.map_err(LogoutError::from)?;
+  session.delete().await.map_err(LoginError::SessionDelete)?;
   let ui_login = format!("{}/ui/login", setting_service.public_server_url());
   Ok(Json(RedirectResponse { location: ui_login }))
 }
@@ -1244,9 +1230,10 @@ mod tests {
       .expect_exchange_auth_code()
       .times(1)
       .return_once(|_, _, _, _, _| {
-        Err(AuthServiceError::AuthServiceApiError(
-          "network error".to_string(),
-        ))
+        Err(AuthServiceError::AuthServiceApiError {
+          status: 500,
+          body: "network error".to_string(),
+        })
       });
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
@@ -1288,11 +1275,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "Authentication service error: network error.",
+          "message": "Authentication service API error (status 500): network error.",
           "code": "auth_service_error-auth_service_api_error",
           "type": "internal_server_error",
           "param": {
-            "var_0": "network error"
+            "status": "500",
+            "body": "network error"
           }
         }
       }},
@@ -1951,11 +1939,12 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "Authentication service error: app_client_not_found.",
+          "message": "Authentication service API error (status 0): app_client_not_found.",
           "code": "auth_service_error-auth_service_api_error",
           "type": "internal_server_error",
           "param": {
-            "var_0": "app_client_not_found"
+            "status": "0",
+            "body": "app_client_not_found"
           }
         }
       }},

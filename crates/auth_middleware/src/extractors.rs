@@ -1,7 +1,4 @@
-use axum::{
-  extract::FromRequestParts,
-  http::request::Parts,
-};
+use axum::{extract::FromRequestParts, http::request::Parts};
 use objs::{ApiError, AppError, ErrorType, ResourceRole};
 use std::str::FromStr;
 
@@ -33,12 +30,10 @@ fn extract_required_header(parts: &Parts, header: &str) -> Result<String, Header
     .ok_or_else(|| HeaderExtractionError::Missing {
       header: header.to_string(),
     })?;
-  let value = value
-    .to_str()
-    .map_err(|e| HeaderExtractionError::Invalid {
-      header: header.to_string(),
-      reason: e.to_string(),
-    })?;
+  let value = value.to_str().map_err(|e| HeaderExtractionError::Invalid {
+    header: header.to_string(),
+    reason: e.to_string(),
+  })?;
   if value.is_empty() {
     return Err(HeaderExtractionError::Empty {
       header: header.to_string(),
@@ -47,16 +42,17 @@ fn extract_required_header(parts: &Parts, header: &str) -> Result<String, Header
   Ok(value.to_string())
 }
 
-fn extract_optional_header(parts: &Parts, header: &str) -> Result<Option<String>, HeaderExtractionError> {
+fn extract_optional_header(
+  parts: &Parts,
+  header: &str,
+) -> Result<Option<String>, HeaderExtractionError> {
   match parts.headers.get(header) {
     None => Ok(None),
     Some(value) => {
-      let value = value
-        .to_str()
-        .map_err(|e| HeaderExtractionError::Invalid {
-          header: header.to_string(),
-          reason: e.to_string(),
-        })?;
+      let value = value.to_str().map_err(|e| HeaderExtractionError::Invalid {
+        header: header.to_string(),
+        reason: e.to_string(),
+      })?;
       if value.is_empty() {
         Ok(None)
       } else {
@@ -73,8 +69,8 @@ impl<S: Send + Sync> FromRequestParts<S> for ExtractToken {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let token = extract_required_header(parts, KEY_HEADER_BODHIAPP_TOKEN)
-      .map_err(ApiError::from)?;
+    let token =
+      extract_required_header(parts, KEY_HEADER_BODHIAPP_TOKEN).map_err(ApiError::from)?;
     Ok(ExtractToken(token))
   }
 }
@@ -86,8 +82,8 @@ impl<S: Send + Sync> FromRequestParts<S> for ExtractUserId {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let user_id = extract_required_header(parts, KEY_HEADER_BODHIAPP_USER_ID)
-      .map_err(ApiError::from)?;
+    let user_id =
+      extract_required_header(parts, KEY_HEADER_BODHIAPP_USER_ID).map_err(ApiError::from)?;
     Ok(ExtractUserId(user_id))
   }
 }
@@ -99,8 +95,8 @@ impl<S: Send + Sync> FromRequestParts<S> for ExtractUsername {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let username = extract_required_header(parts, KEY_HEADER_BODHIAPP_USERNAME)
-      .map_err(ApiError::from)?;
+    let username =
+      extract_required_header(parts, KEY_HEADER_BODHIAPP_USERNAME).map_err(ApiError::from)?;
     Ok(ExtractUsername(username))
   }
 }
@@ -112,8 +108,8 @@ impl<S: Send + Sync> FromRequestParts<S> for ExtractRole {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let role_str = extract_required_header(parts, KEY_HEADER_BODHIAPP_ROLE)
-      .map_err(ApiError::from)?;
+    let role_str =
+      extract_required_header(parts, KEY_HEADER_BODHIAPP_ROLE).map_err(ApiError::from)?;
     let role = ResourceRole::from_str(&role_str).map_err(|e| {
       ApiError::from(HeaderExtractionError::Invalid {
         header: KEY_HEADER_BODHIAPP_ROLE.to_string(),
@@ -131,8 +127,8 @@ impl<S: Send + Sync> FromRequestParts<S> for ExtractScope {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let scope = extract_required_header(parts, KEY_HEADER_BODHIAPP_SCOPE)
-      .map_err(ApiError::from)?;
+    let scope =
+      extract_required_header(parts, KEY_HEADER_BODHIAPP_SCOPE).map_err(ApiError::from)?;
     Ok(ExtractScope(scope))
   }
 }
@@ -145,8 +141,8 @@ impl<S: Send + Sync> FromRequestParts<S> for MaybeToken {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let token = extract_optional_header(parts, KEY_HEADER_BODHIAPP_TOKEN)
-      .map_err(ApiError::from)?;
+    let token =
+      extract_optional_header(parts, KEY_HEADER_BODHIAPP_TOKEN).map_err(ApiError::from)?;
     Ok(MaybeToken(token))
   }
 }
@@ -159,8 +155,8 @@ impl<S: Send + Sync> FromRequestParts<S> for MaybeRole {
   type Rejection = ApiError;
 
   async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-    let role_str = extract_optional_header(parts, KEY_HEADER_BODHIAPP_ROLE)
-      .map_err(ApiError::from)?;
+    let role_str =
+      extract_optional_header(parts, KEY_HEADER_BODHIAPP_ROLE).map_err(ApiError::from)?;
     match role_str {
       None => Ok(MaybeRole(None)),
       Some(s) => {

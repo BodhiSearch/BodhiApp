@@ -7,10 +7,10 @@ use sha2::{Digest, Sha256};
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum KeyringError {
-  #[error("keyring_error")]
+  #[error("Keyring access failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   KeyringError(#[from] keyring::Error),
-  #[error("decode_error")]
+  #[error("Keyring data decode failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   DecodeError(#[from] base64::DecodeError),
 }

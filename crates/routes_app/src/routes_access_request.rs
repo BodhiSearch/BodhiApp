@@ -2,7 +2,7 @@ use crate::{
   PaginationSortParams, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
   ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use auth_middleware::{ExtractRole, ExtractToken, ExtractUsername, ExtractUserId, MaybeRole};
+use auth_middleware::{ExtractRole, ExtractToken, ExtractUserId, ExtractUsername, MaybeRole};
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
@@ -423,9 +423,9 @@ mod tests {
     KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME,
     KEY_HEADER_BODHIAPP_USER_ID,
   };
-  use objs::ResourceRole;
   use axum::{body::Body, http::Request, routing::post, Router};
   use objs::test_utils::temp_bodhi_home;
+  use objs::ResourceRole;
   use rstest::rstest;
   use serde_json::json;
   use server_core::{DefaultRouterState, MockSharedContext};

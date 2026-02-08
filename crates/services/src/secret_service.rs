@@ -47,23 +47,23 @@ impl Default for DecryptedData {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum SecretServiceError {
-  #[error("key_mismatch")]
+  #[error("Secret key mismatch.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   KeyMismatch,
-  #[error("key_not_found")]
+  #[error("Secret key not found.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   KeyNotFound,
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
   IoError(#[from] IoError),
-  #[error("encryption_error")]
+  #[error("Encryption failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
-  #[error("decryption_error")]
+  #[error("Decryption failed: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   DecryptionError(String),
-  #[error("invalid_format")]
+  #[error("Invalid secret format: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidFormat(String),
 }

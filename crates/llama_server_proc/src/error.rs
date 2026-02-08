@@ -4,7 +4,7 @@ use objs::{impl_error_from, AppError, ErrorType, IoError, ReqwestError};
 #[error_meta(trait_to_impl = AppError)]
 pub enum ServerError {
   #[error("Model server is starting up. Please wait and try again.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
+  #[error_meta(error_type = ErrorType::ServiceUnavailable)]
   ServerNotReady,
 
   #[error("Failed to start model server: {0}.")]
@@ -45,7 +45,7 @@ mod tests {
   fn test_error_types() {
     assert_eq!(
       ServerError::ServerNotReady.error_type(),
-      ErrorType::InternalServer.to_string()
+      ErrorType::ServiceUnavailable.to_string()
     );
     assert_eq!(
       ServerError::TimeoutError(30).error_type(),
@@ -56,7 +56,7 @@ mod tests {
   #[test]
   fn test_error_status_codes() {
     assert_eq!(
-      StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      StatusCode::SERVICE_UNAVAILABLE.as_u16(),
       ServerError::ServerNotReady.status()
     );
     assert_eq!(

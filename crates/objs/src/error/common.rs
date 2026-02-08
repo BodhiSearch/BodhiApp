@@ -20,8 +20,6 @@ impl std::fmt::Display for ErrorMessage {
 #[derive(Debug, strum::Display, strum::AsRefStr, strum::EnumString, Default)]
 #[strum(serialize_all = "snake_case")]
 pub enum ErrorType {
-  #[strum(serialize = "validation_error")]
-  Validation,
   #[strum(serialize = "invalid_request_error")]
   BadRequest,
   #[strum(serialize = "invalid_app_state")]
@@ -30,8 +28,6 @@ pub enum ErrorType {
   InternalServer,
   #[strum(serialize = "authentication_error")]
   Authentication,
-  #[strum(serialize = "unauthorized_error")]
-  Unauthorized,
   #[strum(serialize = "forbidden_error")]
   Forbidden,
   #[strum(serialize = "not_found_error")]
@@ -51,11 +47,9 @@ impl ErrorType {
   pub fn status(&self) -> u16 {
     match self {
       ErrorType::InternalServer => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-      ErrorType::Validation => StatusCode::BAD_REQUEST.as_u16(),
       ErrorType::BadRequest => StatusCode::BAD_REQUEST.as_u16(),
       ErrorType::InvalidAppState => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
       ErrorType::Authentication => StatusCode::UNAUTHORIZED.as_u16(),
-      ErrorType::Unauthorized => StatusCode::UNAUTHORIZED.as_u16(),
       ErrorType::NotFound => StatusCode::NOT_FOUND.as_u16(),
       ErrorType::Conflict => StatusCode::CONFLICT.as_u16(),
       ErrorType::UnprocessableEntity => StatusCode::UNPROCESSABLE_ENTITY.as_u16(),

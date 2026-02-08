@@ -15,13 +15,13 @@ const PBKDF2_ITERATIONS: u32 = 1000;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum EncryptionError {
-  #[error("encryption_failed")]
+  #[error("Encryption failed.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionFailed,
-  #[error("decryption_failed")]
+  #[error("Decryption failed.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   DecryptionFailed,
-  #[error("invalid_format")]
+  #[error("Invalid encryption format: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidFormat(String),
 }

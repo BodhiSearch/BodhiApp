@@ -14,13 +14,22 @@ use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum UserInfoError {
+pub enum UserRouteError {
   #[error("Invalid header value: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidHeader(String),
   #[error("Injected token is empty.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   EmptyToken,
+  #[error("Failed to list users: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  ListFailed(String),
+  #[error("Failed to change user role: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  RoleChangeFailed(String),
+  #[error("Failed to remove user: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  RemoveFailed(String),
 }
 
 /// Token Type
@@ -109,10 +118,10 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
   };
   let token = token
     .to_str()
-    .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
+    .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
   if token.is_empty() {
     debug!("injected token is empty");
-    return Err(UserInfoError::EmptyToken)?;
+    return Err(UserRouteError::EmptyToken)?;
   }
   let role_header = headers.get(KEY_HEADER_BODHIAPP_ROLE);
   let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
@@ -121,7 +130,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
       debug!("role header present");
       let role = role_header
         .to_str()
-        .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
+        .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
       let role = role.parse::<ResourceRole>()?;
       let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(UserInfo {
@@ -136,7 +145,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>,
       debug!("scope header present");
       let scope = scope_header
         .to_str()
-        .map_err(|err| UserInfoError::InvalidHeader(err.to_string()))?;
+        .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
       let resource_scope = ResourceScope::try_parse(scope)?;
       match resource_scope {
         ResourceScope::Token(token_scope) => {
@@ -241,7 +250,7 @@ mod tests {
         "error": {
           "message": "Injected token is empty.",
           "type": "invalid_request_error",
-          "code": "user_info_error-empty_token",
+          "code": "user_route_error-empty_token",
         }
       }),
       response_json

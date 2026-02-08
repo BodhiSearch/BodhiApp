@@ -24,7 +24,7 @@ pub enum ExaError {
   RateLimited,
 
   #[error("Search API key is invalid or missing.")]
-  #[error_meta(error_type = ErrorType::Unauthorized)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   InvalidApiKey,
 
   #[error("Search request timed out.")]

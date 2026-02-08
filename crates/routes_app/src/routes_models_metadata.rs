@@ -150,9 +150,8 @@ pub async fn refresh_metadata_handler(
       snapshot,
     } => {
       // Parse and validate repo
-      let repo_parsed = objs::Repo::from_str(&repo).map_err(|e| {
-        MetadataError::InvalidRepoFormat(e.to_string())
-      })?;
+      let repo_parsed =
+        objs::Repo::from_str(&repo).map_err(|e| MetadataError::InvalidRepoFormat(e.to_string()))?;
 
       // Find the ModelAlias for this GGUF file
       let all_aliases = state
@@ -182,12 +181,10 @@ pub async fn refresh_metadata_handler(
             None
           }
         })
-        .ok_or_else(|| {
-          MetadataError::AliasNotFound {
-            repo: repo.clone(),
-            filename: filename.clone(),
-            snapshot: snapshot.clone(),
-          }
+        .ok_or_else(|| MetadataError::AliasNotFound {
+          repo: repo.clone(),
+          filename: filename.clone(),
+          snapshot: snapshot.clone(),
         })?;
 
       // Extract and store metadata synchronously
