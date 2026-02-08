@@ -1,22 +1,7 @@
 use axum::{http::StatusCode, Json};
-use commands::CreateCommandError;
-use objs::{AppError, ErrorType, ObjValidationError};
 use serde::{Deserialize, Serialize};
-use services::AliasNotFoundError;
 use utoipa::ToSchema;
 use validator::Validate;
-
-// === From routes_models.rs ===
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ModelError {
-  #[error("Failed to fetch metadata.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  MetadataFetchFailed,
-}
-
-// === From routes_create.rs ===
 
 #[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateAliasRequest {
@@ -39,20 +24,6 @@ pub struct UpdateAliasRequest {
   pub context_params: Option<Vec<String>>,
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum CreateAliasError {
-  #[error(transparent)]
-  AliasNotFound(#[from] AliasNotFoundError),
-  #[error(transparent)]
-  CreateCommand(#[from] CreateCommandError),
-  #[error("Model alias in path '{path}' does not match alias in request '{request}'.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  AliasMismatch { path: String, request: String },
-}
-
-// === From routes_pull.rs ===
-
 /// Request to pull a model file from HuggingFace
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(example = json!({
@@ -72,52 +43,6 @@ pub struct NewDownloadRequest {
     example = "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
   )]
   pub filename: String,
-}
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum PullError {
-  #[error("File '{filename}' already exists in '{repo}'.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  FileAlreadyExists {
-    repo: String,
-    filename: String,
-    snapshot: String,
-  },
-  #[error(transparent)]
-  PullCommand(#[from] commands::PullCommandError),
-  #[error(transparent)]
-  ObjValidation(#[from] ObjValidationError),
-}
-
-// === From routes_models_metadata.rs ===
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum MetadataError {
-  #[error("Invalid repo format: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidRepoFormat(String),
-
-  #[error("Failed to list aliases.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  ListAliasesFailed,
-
-  #[error("Model alias not found for repo={repo}, filename={filename}, snapshot={snapshot}.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  AliasNotFound {
-    repo: String,
-    filename: String,
-    snapshot: String,
-  },
-
-  #[error("Failed to extract metadata: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  ExtractionFailed(String),
-
-  #[error("Failed to enqueue metadata refresh task.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  EnqueueFailed,
 }
 
 /// Source type discriminator for refresh requests
