@@ -1,23 +1,19 @@
 use crate::{
-  AliasResponse, LocalModelResponse, PaginatedAliasResponse, PaginatedLocalModelResponse,
-  PaginationSortParams, UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  AliasResponse, CreateAliasRequest, LocalModelResponse, ModelError, PaginatedAliasResponse,
+  PaginatedLocalModelResponse, PaginationSortParams, UpdateAliasRequest, UserAliasResponse,
+  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Path, Query, State},
+  http::StatusCode,
   Json,
 };
-use objs::{Alias, ApiError, AppError, ErrorType, HubFile, OpenAIApiError, API_TAG_MODELS};
+use axum_extra::extract::WithRejection;
+use commands::CreateCommand;
+use objs::{Alias, ApiError, HubFile, OpenAIApiError, Repo, API_TAG_MODELS};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ModelError {
-  #[error("Failed to fetch metadata.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  MetadataFetchFailed,
-}
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -383,203 +379,85 @@ pub async fn get_user_alias_handler(
   ))
 }
 
-#[cfg(test)]
-mod tests {
-  use crate::{
-    get_user_alias_handler, list_aliases_handler, AliasResponse, PaginatedAliasResponse,
-    UserAliasResponse,
-  };
-  use axum::{
-    body::Body,
-    http::{status::StatusCode, Request},
-    routing::get,
-    Router,
-  };
-  use pretty_assertions::assert_eq;
-  use rstest::rstest;
-  use serde_json::{json, Value};
-  use server_core::{
-    test_utils::{router_state_stub, ResponseTestExt},
-    DefaultRouterState,
-  };
-  use std::sync::Arc;
+/// Create Alias
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS,
+    tag = API_TAG_MODELS,
+    operation_id = "createAlias",
+    request_body = CreateAliasRequest,
+    responses(
+      (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn create_alias_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
+) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+  let command = CreateCommand::new(
+    &payload.alias,
+    Repo::try_from(payload.repo)?,
+    &payload.filename,
+    payload.snapshot,
+    false,
+    false,
+    payload.request_params.unwrap_or_default(),
+    payload.context_params.unwrap_or_default(),
+  );
+  command.execute(state.app_service()).await?;
+  let alias = state
+    .app_service()
+    .data_service()
+    .find_user_alias(&payload.alias)
+    .ok_or(AliasNotFoundError(payload.alias))?;
+  Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
+}
 
-  use tower::ServiceExt;
-
-  fn test_router(router_state_stub: DefaultRouterState) -> Router {
-    Router::new()
-      .route("/api/models", get(list_aliases_handler))
-      .route("/api/models/{id}", get(get_user_alias_handler))
-      .with_state(Arc::new(router_state_stub))
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_local_aliases_handler(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
-      .await?
-      .json::<Value>()
-      .await?;
-    assert_eq!(1, response["page"]);
-    assert_eq!(30, response["page_size"]);
-    assert_eq!(8, response["total"]);
-    let data = response["data"].as_array().unwrap();
-    assert!(!data.is_empty());
-    assert_eq!(
-      "FakeFactory/fakemodel-gguf:Q4_0",
-      data.first().unwrap()["alias"].as_str().unwrap(),
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_local_aliases_page_size(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/models?page=2&page_size=4")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?
-      .json::<Value>()
-      .await?;
-    assert_eq!(2, response["page"]);
-    assert_eq!(4, response["page_size"]);
-    assert_eq!(8, response["total"]);
-    let data = response["data"].as_array().unwrap();
-    assert_eq!(4, data.len());
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_local_aliases_over_limit_page_size(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/models?page_size=150")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?
-      .json::<Value>()
-      .await?;
-
-    assert_eq!(100, response["page_size"]);
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_local_aliases_response_structure(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
-      .await?
-      .json::<PaginatedAliasResponse>()
-      .await?;
-
-    assert!(!response.data.is_empty());
-    // Find a user alias in the discriminated union format
-    let user_alias_response = response
-      .data
-      .iter()
-      .find_map(|alias| match alias {
-        AliasResponse::User(user_alias) if user_alias.alias == "llama3:instruct" => {
-          Some(user_alias)
-        }
-        _ => None,
-      })
-      .unwrap();
-    // Verify the response has correct fields
-    assert_eq!("llama3:instruct", user_alias_response.alias);
-    assert_eq!(
-      "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-      user_alias_response.repo
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_local_aliases_sorting(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/models?sort=repo&sort_order=desc")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?
-      .json::<PaginatedAliasResponse>()
-      .await?;
-
-    assert!(!response.data.is_empty());
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_get_alias_handler(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/models/llama3:instruct")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?;
-    assert_eq!(StatusCode::OK, response.status());
-    let alias_response = response.json::<UserAliasResponse>().await?;
-    let expected = UserAliasResponse::llama3();
-    assert_eq!(expected, alias_response);
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_get_alias_handler_non_existent(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/models/non_existent_alias")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?;
-    assert_eq!(StatusCode::NOT_FOUND, response.status());
-    let response = response.json::<Value>().await?;
-    assert_eq!(
-      json! {{
-        "error": {
-          "message": "Model configuration 'non_existent_alias' not found.",
-          "code": "alias_not_found_error",
-          "type": "not_found_error",
-          "param": {
-            "var_0": "non_existent_alias"
-          }
-        }
-      }},
-      response
-    );
-    Ok(())
-  }
+/// Update Alias
+#[utoipa::path(
+    put,
+    path = ENDPOINT_MODELS.to_owned() + "/{id}",
+    tag = API_TAG_MODELS,
+    params(
+        ("id" = String, Path, description = "Alias identifier",
+         example = "llama--3")
+    ),
+    operation_id = "updateAlias",
+    request_body = UpdateAliasRequest,
+    responses(
+      (status = 200, description = "Alias updated succesfully", body = UserAliasResponse),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn update_alias_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  axum::extract::Path(id): axum::extract::Path<String>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
+) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+  let command = CreateCommand::new(
+    &id,
+    Repo::try_from(payload.repo)?,
+    payload.filename,
+    payload.snapshot,
+    false,
+    true,
+    payload.request_params.unwrap_or_default(),
+    payload.context_params.unwrap_or_default(),
+  );
+  command.execute(state.app_service()).await?;
+  let alias = state
+    .app_service()
+    .data_service()
+    .find_user_alias(&id)
+    .ok_or(AliasNotFoundError(id))?;
+  Ok((StatusCode::OK, Json(UserAliasResponse::from(alias))))
 }
