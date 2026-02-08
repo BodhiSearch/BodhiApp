@@ -15,7 +15,6 @@ mod routes_setup;
 mod routes_toolsets;
 mod routes_users;
 mod shared;
-mod toolsets_dto;
 
 pub use api_dto::*;
 pub use routes_api_models::*;
@@ -29,4 +28,3 @@ pub use routes_setup::*;
 pub use routes_toolsets::*;
 pub use routes_users::*;
 pub use shared::*;
-pub use toolsets_dto::*;

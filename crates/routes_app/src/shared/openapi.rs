@@ -28,15 +28,13 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler, __path_user_request_access_handler,
 };
 // Toolsets DTOs and handlers
-use crate::toolsets_dto::{
+use crate::{
   ApiKeyUpdateDto, AppToolsetConfigResponse, CreateToolsetRequest, ExecuteToolsetRequest,
   ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse,
-  UpdateToolsetRequest,
-};
-use crate::{
-  __path_create_toolset_handler, __path_delete_toolset_handler, __path_disable_type_handler,
-  __path_enable_type_handler, __path_execute_toolset_handler, __path_get_toolset_handler,
-  __path_list_toolset_types_handler, __path_list_toolsets_handler, __path_update_toolset_handler,
+  UpdateToolsetRequest, __path_create_toolset_handler, __path_delete_toolset_handler,
+  __path_disable_type_handler, __path_enable_type_handler, __path_execute_toolset_handler,
+  __path_get_toolset_handler, __path_list_toolset_types_handler, __path_list_toolsets_handler,
+  __path_update_toolset_handler,
 };
 use async_openai::types::{
   chat::{
