@@ -1,3 +1,4 @@
+use anyhow_trace::anyhow_trace;
 use crate::{
   create_api_model_handler, delete_api_model_handler, fetch_models_handler, get_api_model_handler,
   list_api_models_handler, sync_models_handler, test_api_model_handler, update_api_model_handler,
@@ -128,6 +129,7 @@ fn test_router(app_service: Arc<dyn services::AppService>) -> Router {
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_api_models_handler(
   #[future]
   #[from(test_db_service)]
@@ -148,8 +150,7 @@ async fn test_list_api_models_handler(
   let response = test_router(Arc::new(app_service))
     .oneshot(
       Request::get(ENDPOINT_API_MODELS)
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?
     .json::<PaginatedApiModelResponse>()
@@ -217,6 +218,7 @@ async fn test_list_api_models_handler(
 #[case::multiple_trailing_slashes("https://api.openai.com/v1///", "https://api.openai.com/v1")]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_success(
   #[case] input_url: &str,
   #[case] expected_url: &str,
@@ -234,7 +236,7 @@ async fn test_create_api_model_handler_success(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: input_url.to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -270,6 +272,7 @@ async fn test_create_api_model_handler_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_generates_uuid(
   #[future]
   #[from(test_db_service)]
@@ -289,7 +292,7 @@ async fn test_create_api_model_handler_generates_uuid(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -313,6 +316,7 @@ async fn test_create_api_model_handler_generates_uuid(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_validation_error_empty_api_key(
   #[future]
   #[from(test_db_service)]
@@ -339,10 +343,10 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error for API key
+  // Verify error response contains validation error code for API key
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("API key must not be empty"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("json_rejection_error", error_code);
 
   Ok(())
 }
@@ -350,6 +354,7 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_validation_error_invalid_url(
   #[future]
   #[from(test_db_service)]
@@ -364,7 +369,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "not-a-valid-url".to_string(), // Invalid: not a valid URL
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec!["gpt-4".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -377,10 +382,10 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error for URL
+  // Verify error response contains validation error code for URL
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("Base URL must be a valid URL"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("obj_validation_error-validation_errors", error_code);
 
   Ok(())
 }
@@ -388,6 +393,7 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_validation_error_empty_models(
   #[future]
   #[from(test_db_service)]
@@ -402,7 +408,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec![], // Invalid: empty models array
     prefix: None,
     forward_all_with_prefix: false,
@@ -426,6 +432,7 @@ async fn test_create_api_model_handler_validation_error_empty_models(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_forward_all_with_prefix_success(
   #[future]
   #[from(test_db_service)]
@@ -440,7 +447,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec![], // Empty models is valid for forward_all mode
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
@@ -465,6 +472,7 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   #[future]
   #[from(test_db_service)]
@@ -479,7 +487,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123456789".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123456789".to_string())?,
     models: vec![],
     prefix: None, // Invalid: forward_all_with_prefix requires a prefix
     forward_all_with_prefix: true,
@@ -492,10 +500,10 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   // Verify response status is 400 Bad Request
   assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-  // Verify error response contains validation error for prefix
+  // Verify error response contains validation error code for prefix
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("Prefix is required"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("obj_validation_error-forward_all_requires_prefix", error_code);
 
   Ok(())
 }
@@ -503,6 +511,7 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_sync_models_handler_success(
   #[future]
   #[from(test_db_service)]
@@ -537,7 +546,7 @@ async fn test_sync_models_handler_success(
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v1".to_string(),
-    api_key: ApiKey::some("sk-test123".to_string()).unwrap(),
+    api_key: ApiKey::some("sk-test123".to_string())?,
     models: vec![],
     prefix: Some("fwd/".to_string()),
     forward_all_with_prefix: true,
@@ -556,8 +565,7 @@ async fn test_sync_models_handler_success(
         "/bodhi/v1/api-models/{}/sync-models",
         create_response.id
       ))
-      .body(Body::empty())
-      .unwrap(),
+      .body(Body::empty())?,
     )
     .await?;
 
@@ -585,6 +593,7 @@ async fn test_sync_models_handler_success(
 #[case::multiple_trailing_slashes("https://api.openai.com/v2///", "https://api.openai.com/v2")]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_api_model_handler_success(
   #[case] input_url: &str,
   #[case] expected_url: &str,
@@ -607,7 +616,7 @@ async fn test_update_api_model_handler_success(
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
     base_url: input_url.to_string(), // Updated URL with potential trailing slashes
-    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string()).unwrap()), // New API key
+    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string())?), // New API key
     models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
     prefix: Some("openai".to_string()),
     forward_all_with_prefix: false,
@@ -644,6 +653,7 @@ async fn test_update_api_model_handler_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_api_model_handler_not_found(
   #[future]
   #[from(test_db_service)]
@@ -658,7 +668,7 @@ async fn test_update_api_model_handler_not_found(
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v2".to_string(),
-    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string()).unwrap()),
+    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string())?),
     models: vec!["gpt-4-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -674,10 +684,10 @@ async fn test_update_api_model_handler_not_found(
   // Verify response status is 404 Not Found
   assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-  // Verify error message
+  // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("API model 'non-existent-alias' not found"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("entity_error-not_found", error_code);
 
   Ok(())
 }
@@ -685,6 +695,7 @@ async fn test_update_api_model_handler_not_found(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_api_model_handler_success(
   #[future]
   #[from(test_db_service)]
@@ -705,8 +716,7 @@ async fn test_delete_api_model_handler_success(
   let response = test_router(Arc::new(app_service))
     .oneshot(
       Request::delete(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS))
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
@@ -724,6 +734,7 @@ async fn test_delete_api_model_handler_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_api_model_handler_not_found(
   #[future]
   #[from(test_db_service)]
@@ -739,18 +750,17 @@ async fn test_delete_api_model_handler_not_found(
   let response = test_router(Arc::new(app_service))
     .oneshot(
       Request::delete(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS))
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
   // Verify response status is 404 Not Found
   assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-  // Verify error message
+  // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("API model 'non-existent-alias' not found"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("entity_error-not_found", error_code);
 
   Ok(())
 }
@@ -758,6 +768,7 @@ async fn test_delete_api_model_handler_not_found(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_api_model_handler_success(
   #[future]
   #[from(test_db_service)]
@@ -778,8 +789,7 @@ async fn test_get_api_model_handler_success(
   let response = test_router(Arc::new(app_service))
     .oneshot(
       Request::get(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS))
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
@@ -809,6 +819,7 @@ async fn test_get_api_model_handler_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_api_model_handler_not_found(
   #[future]
   #[from(test_db_service)]
@@ -824,18 +835,17 @@ async fn test_get_api_model_handler_not_found(
   let response = test_router(Arc::new(app_service))
     .oneshot(
       Request::get(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS))
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
   // Verify response status is 404 Not Found
   assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-  // Verify error message
+  // Verify error code
   let error_response = response.json::<serde_json::Value>().await?;
-  let error_message = error_response["error"]["message"].as_str().unwrap();
-  assert!(error_message.contains("API model 'non-existent-alias' not found"));
+  let error_code = error_response["error"]["code"].as_str().unwrap();
+  assert_eq!("entity_error-not_found", error_code);
 
   Ok(())
 }
@@ -843,6 +853,7 @@ async fn test_get_api_model_handler_not_found(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_success(
   #[future]
   #[from(test_db_service)]
@@ -859,8 +870,7 @@ async fn test_create_api_model_success(
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
     .models(vec!["gpt-4".to_string()])
-    .build_with_time(now)
-    .unwrap();
+    .build_with_time(now)?;
 
   db_service
     .create_api_model_alias(&api_alias, Some("sk-test123".to_string()))
@@ -868,8 +878,8 @@ async fn test_create_api_model_success(
 
   // Verify it was created
   let retrieved = db_service.get_api_model_alias(&test_id).await?;
-  assert!(retrieved.is_some());
-  assert_eq!(retrieved.unwrap().id, test_id);
+  let retrieved = retrieved.ok_or_else(|| anyhow::anyhow!("expected api model alias to exist"))?;
+  assert_eq!(retrieved.id, test_id);
 
   // Verify API key is encrypted but retrievable
   let api_key = db_service.get_api_key_for_alias(&test_id).await?;
@@ -881,6 +891,7 @@ async fn test_create_api_model_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_api_model(
   #[future]
   #[from(test_db_service)]
@@ -894,8 +905,7 @@ async fn test_delete_api_model(
     .api_format(OpenAI)
     .base_url("https://api.openai.com/v1")
     .models(vec!["gpt-4".to_string()])
-    .build_with_time(now)
-    .unwrap();
+    .build_with_time(now)?;
 
   db_service
     .create_api_model_alias(&api_alias, Some("sk-test".to_string()))
@@ -913,7 +923,7 @@ async fn test_delete_api_model(
   Ok(())
 }
 
-#[test]
+#[rstest]
 fn test_api_key_masking() {
   use crate::mask_api_key;
 
@@ -921,7 +931,7 @@ fn test_api_key_masking() {
   assert_eq!(mask_api_key("short"), "***");
 }
 
-#[test]
+#[rstest]
 fn test_creds_enum_validation() {
   // Test with ApiKey credentials
   let test_request_with_key = TestPromptRequest {
@@ -1129,6 +1139,7 @@ fn test_creds_enum_validation() {
 )]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_api_model_prefix_lifecycle(
   #[case] create_json: serde_json::Value,
   #[case] update_json: serde_json::Value,
@@ -1174,8 +1185,7 @@ async fn test_api_model_prefix_lifecycle(
   let get_response = test_router(app_service)
     .oneshot(
       Request::get(&format!("{}/{}", ENDPOINT_API_MODELS, model_id))
-        .body(axum::body::Body::empty())
-        .unwrap(),
+        .body(axum::body::Body::empty())?,
     )
     .await?;
 
@@ -1198,6 +1208,7 @@ async fn test_api_model_prefix_lifecycle(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_forward_all_requires_prefix(
   #[future]
   #[from(test_db_service)]
@@ -1241,6 +1252,7 @@ async fn test_create_api_model_forward_all_requires_prefix(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_api_model_duplicate_prefix_error(
   #[future]
   #[from(test_db_service)]
@@ -1296,6 +1308,7 @@ async fn test_create_api_model_duplicate_prefix_error(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_api_model_duplicate_prefix_error(
   #[future]
   #[from(test_db_service)]

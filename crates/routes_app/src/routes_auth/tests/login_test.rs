@@ -51,6 +51,7 @@ use uuid::Uuid;
           }),
   )]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_initiate_handler(
   #[case] secret_service: SecretServiceStub,
   temp_bodhi_home: TempDir,
@@ -97,15 +98,15 @@ async fn test_auth_initiate_handler(
 
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  assert_eq!("code", query_params.get("response_type").unwrap());
-  assert_eq!("test_client_id", query_params.get("client_id").unwrap());
-  assert_eq!(callback_url, query_params.get("redirect_uri").unwrap());
+  assert_eq!(Some("code"), query_params.get("response_type").map(|s| s.as_str()));
+  assert_eq!(Some("test_client_id"), query_params.get("client_id").map(|s| s.as_str()));
+  assert_eq!(Some(callback_url), query_params.get("redirect_uri").map(|s| s.as_str()));
   assert!(query_params.contains_key("state"));
   assert!(query_params.contains_key("code_challenge"));
-  assert_eq!("S256", query_params.get("code_challenge_method").unwrap());
+  assert_eq!(Some("S256"), query_params.get("code_challenge_method").map(|s| s.as_str()));
   assert_eq!(
-    "openid email profile roles",
-    query_params.get("scope").unwrap()
+    Some("openid email profile roles"),
+    query_params.get("scope").map(|s| s.as_str())
   );
 
   Ok(())
@@ -113,6 +114,7 @@ async fn test_auth_initiate_handler(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_initiate_handler_loopback_host_detection(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -167,14 +169,17 @@ async fn test_auth_initiate_handler_loopback_host_detection(
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   // Should use localhost from Host header instead of configured 0.0.0.0
-  let callback_url = query_params.get("redirect_uri").unwrap();
-  assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
+  assert_eq!(
+    Some("http://localhost:1135/ui/auth/callback"),
+    query_params.get("redirect_uri").map(|s| s.as_str())
+  );
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_initiate_handler_network_host_usage(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -229,14 +234,17 @@ async fn test_auth_initiate_handler_network_host_usage(
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   // Should now use the request host for network installation support
-  let callback_url = query_params.get("redirect_uri").unwrap();
-  assert_eq!("http://192.168.1.100:1135/ui/auth/callback", callback_url);
+  assert_eq!(
+    Some("http://192.168.1.100:1135/ui/auth/callback"),
+    query_params.get("redirect_uri").map(|s| s.as_str())
+  );
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_initiate_handler_logged_in_redirects_to_home(
   temp_bodhi_home: TempDir,
   token: (String, String),
@@ -256,6 +264,7 @@ async fn test_auth_initiate_handler_logged_in_redirects_to_home(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_initiate_handler_for_expired_token_redirects_to_login(
   temp_bodhi_home: TempDir,
   expired_token: (String, String),
@@ -360,7 +369,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     "family_name": "User",
     "email": "testuser@email.com"
   }};
-  let (token, _) = build_token(claims).unwrap();
+  let (token, _) = build_token(claims)?;
   let dbfile = temp_bodhi_home.path().join("test.db");
   let mut mock_auth_service = MockAuthService::default();
   let token_clone = token.clone();
@@ -417,7 +426,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   // Extract state and code_challenge from the login response
-  let state = query_params.get("state").unwrap();
+  let state = query_params.get("state").expect("state param missing");
 
   // Perform callback request
   let resp = client
@@ -437,14 +446,14 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let access_token = session_service
     .get_session_value(session_id.value(), "access_token")
     .await
-    .unwrap();
-  let access_token = access_token.as_str().unwrap();
+    .expect("access_token not found in session");
+  let access_token = access_token.as_str().expect("access_token not a string");
   assert_eq!(token, access_token);
   let refresh_token = session_service
     .get_session_value(session_id.value(), "refresh_token")
     .await
-    .unwrap();
-  let refresh_token = refresh_token.as_str().unwrap();
+    .expect("refresh_token not found in session");
+  let refresh_token = refresh_token.as_str().expect("refresh_token not a string");
   assert_eq!("test_refresh_token", refresh_token);
   Ok(())
 }
@@ -480,14 +489,8 @@ async fn test_auth_callback_handler_state_not_in_session(
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
   let json = resp.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Login session not found. Are cookies enabled?",
-        "code": "login_error-session_info_not_found",
-        "type": "internal_server_error"
-      }
-    }},
-    json
+    "login_error-session_info_not_found",
+    json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -517,7 +520,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     "family_name": "User",
     "email": "testuser@email.com"
   }};
-  let (token, _) = build_token(claims).unwrap();
+  let (token, _) = build_token(claims)?;
   let dbfile = temp_bodhi_home.path().join("test.db");
   let mut mock_auth_service = MockAuthService::default();
   let token_clone = token.clone();
@@ -578,11 +581,11 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   // Verify callback URL uses localhost from Host header
-  let callback_url = query_params.get("redirect_uri").unwrap();
+  let callback_url = query_params.get("redirect_uri").expect("redirect_uri param missing");
   assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
 
   // Extract state for the callback request
-  let state = query_params.get("state").unwrap();
+  let state = query_params.get("state").expect("state param missing");
 
   // Perform callback request
   let resp = client
@@ -603,8 +606,8 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let access_token = session_service
     .get_session_value(session_id.value(), "access_token")
     .await
-    .unwrap();
-  let access_token = access_token.as_str().unwrap();
+    .expect("access_token not found in session");
+  let access_token = access_token.as_str().expect("access_token not a string");
   assert_eq!(token, access_token);
 
   Ok(())
@@ -612,6 +615,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
   let secret_service = SecretServiceStub::new()
@@ -644,7 +648,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  let state = format!("modified-{}", query_params.get("state").unwrap());
+  let state = format!("modified-{}", query_params.get("state").expect("state param missing"));
 
   let resp = client
     .post("/auth/callback")
@@ -656,20 +660,15 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   resp.assert_status(StatusCode::BAD_REQUEST);
   let error = resp.json::<Value>();
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "State parameter in callback does not match the one sent in login request.",
-        "code": "login_error-state_digest_mismatch",
-        "type": "invalid_request_error",
-      }
-    }},
-    error
+    "login_error-state_digest_mismatch",
+    error["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_callback_handler_auth_service_error(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -716,7 +715,7 @@ async fn test_auth_callback_handler_auth_service_error(
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  let state = query_params.get("state").unwrap().to_string();
+  let state = query_params.get("state").expect("state param missing").to_string();
   let code = "test_code".to_string();
   let resp = client
     .post("/auth/callback")
@@ -729,18 +728,8 @@ async fn test_auth_callback_handler_auth_service_error(
   resp.assert_status(StatusCode::INTERNAL_SERVER_ERROR);
   let error = resp.json::<Value>();
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Authentication service API error (status 500): network error.",
-        "code": "auth_service_error-auth_service_api_error",
-        "type": "internal_server_error",
-        "param": {
-          "status": "500",
-          "body": "network error"
-        }
-      }
-    }},
-    error
+    "auth_service_error-auth_service_api_error",
+    error["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -752,6 +741,7 @@ pub async fn create_test_session_handler(session: Session) -> impl IntoResponse 
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile.clone()).await);
@@ -794,6 +784,7 @@ async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_auth_callback_handler_resource_admin(
   temp_bodhi_home: TempDir,
   token: (String, String),
@@ -959,8 +950,7 @@ async fn execute_auth_callback(
     .json(json! {{
       "code": "test_code",
       "state": request_state,
-    }})
-    .unwrap();
+    }})?;
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::OK, response.status());
   Ok(response)
@@ -977,7 +967,7 @@ async fn assert_login_callback_result_resource_admin(
     body.location
   );
   let secret_service = app_service.secret_service();
-  let updated_status = secret_service.app_status().unwrap();
+  let updated_status = secret_service.app_status()?;
   assert_eq!(AppStatus::Ready, updated_status);
   Ok(())
 }

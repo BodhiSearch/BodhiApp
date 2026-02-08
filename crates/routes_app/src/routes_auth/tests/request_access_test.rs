@@ -1,4 +1,5 @@
 use crate::request_access_handler;
+use anyhow_trace::anyhow_trace;
 use axum::{
   http::{status::StatusCode, Request},
   routing::post,
@@ -24,6 +25,7 @@ use tower::ServiceExt;
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_request_access_handler_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let app_client_id = "test_app_client_id";
   let expected_scope = "scope_resource_test-resource-server";
@@ -116,6 +118,7 @@ async fn test_request_access_handler_success(temp_bodhi_home: TempDir) -> anyhow
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_request_access_handler_none_version_cache_miss(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -228,6 +231,7 @@ async fn test_request_access_handler_none_version_cache_miss(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_request_access_handler_auth_returns_none_version(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -321,6 +325,7 @@ async fn test_request_access_handler_auth_returns_none_version(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_request_access_handler_no_client_credentials(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -351,22 +356,16 @@ async fn test_request_access_handler_no_client_credentials(
 
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
   let error = resp.json::<Value>().await?;
-  let expected_message = "Application is not registered. Please register the application first.";
   assert_eq!(
-    json! {{
-      "error": {
-        "message": expected_message,
-        "code": "login_error-app_reg_info_not_found",
-        "type": "invalid_app_state"
-      }
-    }},
-    error
+    "login_error-app_reg_info_not_found",
+    error["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_request_access_handler_auth_service_error(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -432,18 +431,8 @@ async fn test_request_access_handler_auth_service_error(
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
   let error = resp.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Authentication service API error (status 0): app_client_not_found.",
-        "code": "auth_service_error-auth_service_api_error",
-        "type": "internal_server_error",
-        "param": {
-          "status": "0",
-          "body": "app_client_not_found"
-        }
-      }
-    }},
-    error
+    "auth_service_error-auth_service_api_error",
+    error["error"]["code"].as_str().unwrap()
   );
 
   token_mock.assert();

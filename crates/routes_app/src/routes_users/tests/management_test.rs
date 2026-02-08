@@ -1,18 +1,23 @@
-use crate::{change_user_role_handler, list_users_handler};
+use crate::{change_user_role_handler, list_users_handler, remove_user_handler};
+use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
 };
 use axum::{
   body::Body,
-  http::Request,
-  routing::{get, put},
+  http::{Request, StatusCode},
+  routing::{delete, get, put},
   Router,
 };
 use chrono::{Duration, Utc};
 use mockall::predicate::{always, eq};
 use objs::{test_utils::temp_bodhi_home, AppRole, ResourceRole, UserInfo};
+use pretty_assertions::assert_eq;
 use rstest::rstest;
-use server_core::{DefaultRouterState, MockSharedContext};
+use serde_json::Value;
+use server_core::{
+  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext,
+};
 use services::{
   test_utils::{build_token_with_exp, AppServiceStubBuilder},
   MockAuthService, MockSessionService, UserListResponse,
@@ -23,6 +28,7 @@ use tower::ServiceExt;
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // Mock successful auth service response
   let mut mock_auth = MockAuthService::default();
@@ -80,29 +86,28 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
     .header(KEY_HEADER_BODHIAPP_TOKEN, "test-token")
     .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
     .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
-    .body(Body::empty())
-    .unwrap();
+    .body(Body::empty())?;
 
   // Send request through router
   let response = router.oneshot(request).await?;
 
   // Verify successful response
-  assert_eq!(axum::http::StatusCode::OK, response.status());
+  assert_eq!(StatusCode::OK, response.status());
 
   // Verify response body
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
-  let response_body: UserListResponse = serde_json::from_slice(&body_bytes)?;
+  let response_body = response.json::<UserListResponse>().await?;
 
-  assert_eq!(response_body.client_id, "test-client-id");
-  assert_eq!(response_body.users.len(), 2);
-  assert_eq!(response_body.users[0].username, "admin@example.com");
-  assert_eq!(response_body.users[1].username, "user@example.com");
+  assert_eq!("test-client-id", response_body.client_id);
+  assert_eq!(2, response_body.users.len());
+  assert_eq!("admin@example.com", response_body.users[0].username);
+  assert_eq!("user@example.com", response_body.users[1].username);
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // Mock auth service returning error
   let mut mock_auth = MockAuthService::default();
@@ -136,28 +141,27 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
     .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid-token")
     .header(KEY_HEADER_BODHIAPP_USERNAME, "user@example.com")
     .header(KEY_HEADER_BODHIAPP_USER_ID, "user-id")
-    .body(Body::empty())
-    .unwrap();
+    .body(Body::empty())?;
 
   // Send request through router
   let response = router.oneshot(request).await?;
 
   // Verify error response
-  assert_eq!(
-    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-    response.status()
-  );
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
 
-  // Verify error message contains auth service error
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
-  let body_text = String::from_utf8(body_bytes.to_vec())?;
-  assert!(body_text.contains("Failed to list users"));
+  // Verify error code
+  let response_json = response.json::<Value>().await?;
+  assert_eq!(
+    "user_route_error-list_failed",
+    response_json["error"]["code"].as_str().unwrap()
+  );
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_users_handler_missing_token(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // Build app service (auth service won't be called)
   let app_service = AppServiceStubBuilder::default().build()?;
@@ -174,25 +178,27 @@ async fn test_list_users_handler_missing_token(_temp_bodhi_home: TempDir) -> any
 
   // Make request without token header
   let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
-    .body(Body::empty())
-    .unwrap();
+    .body(Body::empty())?;
 
   // Send request through router
   let response = router.oneshot(request).await?;
 
   // Verify bad request response
-  assert_eq!(axum::http::StatusCode::BAD_REQUEST, response.status());
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
-  // Verify error message
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
-  let body_text = String::from_utf8(body_bytes.to_vec())?;
-  assert!(body_text.contains("Required header"));
+  // Verify error code
+  let response_json = response.json::<Value>().await?;
+  assert_eq!(
+    "header_extraction_error-missing",
+    response_json["error"]["code"].as_str().unwrap()
+  );
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_users_handler_pagination_parameters(
   _temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -235,30 +241,29 @@ async fn test_list_users_handler_pagination_parameters(
     .header(KEY_HEADER_BODHIAPP_TOKEN, "test-token")
     .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
     .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
-    .body(Body::empty())
-    .unwrap();
+    .body(Body::empty())?;
 
   // Send request through router
   let response = router.oneshot(request).await?;
 
   // Verify successful response
-  assert_eq!(axum::http::StatusCode::OK, response.status());
+  assert_eq!(StatusCode::OK, response.status());
 
   // Verify response contains correct pagination
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
-  let response_body: UserListResponse = serde_json::from_slice(&body_bytes)?;
+  let response_body = response.json::<UserListResponse>().await?;
 
-  assert_eq!(response_body.page, 2);
-  assert_eq!(response_body.page_size, 5);
-  assert_eq!(response_body.total_users, 15);
-  assert_eq!(response_body.has_next, true);
-  assert_eq!(response_body.has_previous, true);
+  assert_eq!(2, response_body.page);
+  assert_eq!(5, response_body.page_size);
+  assert_eq!(15, response_body.total_users);
+  assert_eq!(true, response_body.has_next);
+  assert_eq!(true, response_body.has_previous);
 
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // Create a valid JWT token for testing
   let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
@@ -302,16 +307,210 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
   let request = Request::put("/bodhi/v1/users/user-123/role")
     .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
     .header("Content-Type", "application/json")
-    .body(Body::from(r#"{"role": "resource_power_user"}"#))
-    .unwrap();
+    .body(Body::from(r#"{"role": "resource_power_user"}"#))?;
 
   // Send request
   let response = router.oneshot(request).await?;
 
   // Verify success
-  assert_eq!(axum::http::StatusCode::OK, response.status());
+  assert_eq!(StatusCode::OK, response.status());
 
   // The mock expectations will verify that both assign_user_role
   // AND clear_sessions_for_user were called
+  Ok(())
+}
+
+// ============================================================================
+// remove_user_handler tests
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_remove_user()
+    .times(1)
+    .with(always(), eq("user-to-remove"))
+    .return_once(|_, _| Ok(()));
+
+  let app_service = AppServiceStubBuilder::default()
+    .auth_service(Arc::new(mock_auth))
+    .build()?;
+
+  let state = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let router = Router::new()
+    .route("/bodhi/v1/users/{user_id}", delete(remove_user_handler))
+    .with_state(state);
+
+  let request = Request::delete("/bodhi/v1/users/user-to-remove")
+    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
+    .body(Body::empty())?;
+
+  let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_remove_user()
+    .times(1)
+    .return_once(|_, _| {
+      Err(services::AuthServiceError::AuthServiceApiError {
+        status: 404,
+        body: "User not found".to_string(),
+      })
+    });
+
+  let app_service = AppServiceStubBuilder::default()
+    .auth_service(Arc::new(mock_auth))
+    .build()?;
+
+  let state = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let router = Router::new()
+    .route("/bodhi/v1/users/{user_id}", delete(remove_user_handler))
+    .with_state(state);
+
+  let request = Request::delete("/bodhi/v1/users/nonexistent-user")
+    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
+    .body(Body::empty())?;
+
+  let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "user_route_error-remove_failed",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
+// change_user_role_handler - role change failure test
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_change_user_role_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_assign_user_role()
+    .times(1)
+    .return_once(|_, _, _| {
+      Err(services::AuthServiceError::AuthServiceApiError {
+        status: 500,
+        body: "Role assignment failed".to_string(),
+      })
+    });
+
+  let app_service = AppServiceStubBuilder::default()
+    .auth_service(Arc::new(mock_auth))
+    .build()?;
+
+  let state = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let router = Router::new()
+    .route(
+      "/bodhi/v1/users/{user_id}/role",
+      put(change_user_role_handler),
+    )
+    .with_state(state);
+
+  let request = Request::put("/bodhi/v1/users/user-123/role")
+    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
+    .header("Content-Type", "application/json")
+    .body(Body::from(r#"{"role": "resource_admin"}"#))?;
+
+  let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "user_route_error-role_change_failed",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
+// change_user_role_handler - session clear failure doesn't fail operation
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_change_user_role_session_clear_failure_still_succeeds(
+  _temp_bodhi_home: TempDir,
+) -> anyhow::Result<()> {
+  let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_assign_user_role()
+    .times(1)
+    .return_once(|_, _, _| Ok(()));
+
+  let mut mock_session = MockSessionService::default();
+  mock_session
+    .expect_clear_sessions_for_user()
+    .times(1)
+    .return_once(|_| {
+      Err(services::SessionServiceError::SessionStoreError(
+        tower_sessions::session_store::Error::Backend("Session store unavailable".to_string()),
+      ))
+    });
+
+  let app_service = AppServiceStubBuilder::default()
+    .auth_service(Arc::new(mock_auth))
+    .session_service(Arc::new(mock_session))
+    .build()?;
+
+  let state = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let router = Router::new()
+    .route(
+      "/bodhi/v1/users/{user_id}/role",
+      put(change_user_role_handler),
+    )
+    .with_state(state);
+
+  let request = Request::put("/bodhi/v1/users/user-123/role")
+    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
+    .header("Content-Type", "application/json")
+    .body(Body::from(r#"{"role": "resource_user"}"#))?;
+
+  let response = router.oneshot(request).await?;
+
+  // Should still succeed even though session clearing failed
+  assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }

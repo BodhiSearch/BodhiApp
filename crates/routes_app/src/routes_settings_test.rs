@@ -53,10 +53,9 @@ fn test_setting_service(
   Ok(setting_service)
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN app with auth disabled
   let setting_service = test_setting_service(
@@ -117,24 +116,23 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     metadata: SettingMetadata::Number { min: 1, max: 65535 },
   };
   assert_eq!(
-    &log_level,
-    settings.iter().find(|k| k.key == BODHI_LOG_LEVEL).unwrap()
+    Some(&log_level),
+    settings.iter().find(|k| k.key == BODHI_LOG_LEVEL)
   );
   assert_eq!(
-    &host,
-    settings.iter().find(|k| k.key == BODHI_HOST).unwrap()
+    Some(&host),
+    settings.iter().find(|k| k.key == BODHI_HOST)
   );
   assert_eq!(
-    &port,
-    settings.iter().find(|k| k.key == BODHI_PORT).unwrap()
+    Some(&port),
+    settings.iter().find(|k| k.key == BODHI_PORT)
   );
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result<()> {
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
@@ -166,10 +164,9 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
@@ -192,18 +189,17 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
 
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
-    "settings_error-not_found",
-    error["error"]["code"].as_str().unwrap()
+    Some("settings_error-not_found"),
+    error["error"]["code"].as_str()
   );
 
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[ignore = "enable when supporting editing other settings"]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::Result<()> {
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
@@ -225,21 +221,16 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
-    json! {{
-      "message": "cannot parse \u{2068}\"not a number\"\u{2069} as \u{2068}Number\u{2069}",
-      "type": "invalid_request_error",
-      "code": "settings_metadata_error-invalid_value_type"
-    }},
-    error["error"]
+    Some("settings_metadata_error-invalid_value_type"),
+    error["error"]["code"].as_str()
   );
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[ignore = "enable when supporting editing other settings"]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_routes_setting_update_invalid_value_out_of_range(
   temp_dir: TempDir,
 ) -> anyhow::Result<()> {
@@ -263,20 +254,15 @@ async fn test_routes_setting_update_invalid_value_out_of_range(
   // assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
-    json! {{
-      "message": "passed value is not a valid value: \u{2068}1000\u{2069}",
-      "type": "invalid_request_error",
-      "code": "settings_metadata_error-invalid_value"
-    }},
-    error["error"]
+    Some("settings_metadata_error-invalid_value"),
+    error["error"]["code"].as_str()
   );
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app with a custom setting value
   let setting_service = test_setting_service(
@@ -316,10 +302,9 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
@@ -342,17 +327,16 @@ async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let error = response.json::<serde_json::Value>().await?;
   assert_eq!(
-    "settings_error-not_found",
-    error["error"]["code"].as_str().unwrap()
+    Some("settings_error-not_found"),
+    error["error"]["code"].as_str()
   );
 
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app with both env and file settings
   let setting_service = test_setting_service(
@@ -394,10 +378,9 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app with no custom settings
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;

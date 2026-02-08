@@ -1,4 +1,5 @@
 use crate::routes_oai::{oai_model_handler, oai_models_handler};
+use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -30,14 +31,15 @@ async fn app() -> Router {
     .with_db_service()
     .await
     .build()
-    .unwrap();
+    .expect("failed to build app service");
   create_router(Arc::new(service))
 }
 
 #[rstest]
 #[awt]
 #[tokio::test]
-async fn test_oai_models_handler(#[future] app: Router) -> anyhow::Result<()> {
+#[anyhow_trace]
+async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Result<()> {
   let response = app
     .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
     .await?;
@@ -106,7 +108,8 @@ async fn test_oai_models_handler(#[future] app: Router) -> anyhow::Result<()> {
 #[rstest]
 #[awt]
 #[tokio::test]
-async fn test_oai_model_handler(#[future] app: Router) -> anyhow::Result<()> {
+#[anyhow_trace]
+async fn test_oai_model_handler_found(#[future] app: Router) -> anyhow::Result<()> {
   let response = app
     .oneshot(
       Request::builder()
@@ -132,6 +135,7 @@ async fn test_oai_model_handler(#[future] app: Router) -> anyhow::Result<()> {
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_oai_model_handler_not_found(#[future] app: Router) -> anyhow::Result<()> {
   let response = app
     .oneshot(
@@ -145,7 +149,10 @@ async fn test_oai_model_handler_not_found(#[future] app: Router) -> anyhow::Resu
   Ok(())
 }
 
+#[rstest]
+#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
   let service = AppServiceStubBuilder::default()
     .with_data_service()
@@ -175,16 +182,24 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
 
   assert_eq!(StatusCode::OK, response.status());
   let response = response.json::<Value>().await?;
-  let data = response["data"].as_array().unwrap();
+  let data = response["data"]
+    .as_array()
+    .expect("expected data to be an array");
 
-  let model_ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().expect("expected id to be a string"))
+    .collect();
   assert!(model_ids.contains(&"openai/gpt-4"));
   assert!(model_ids.contains(&"openai/gpt-3.5-turbo"));
 
   Ok(())
 }
 
+#[rstest]
+#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()> {
   let service = AppServiceStubBuilder::default()
     .with_data_service()
@@ -214,15 +229,23 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
 
   assert_eq!(StatusCode::OK, response.status());
   let response = response.json::<Value>().await?;
-  let data = response["data"].as_array().unwrap();
+  let data = response["data"]
+    .as_array()
+    .expect("expected data to be an array");
 
-  let model_ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().expect("expected id to be a string"))
+    .collect();
   assert!(model_ids.contains(&"gpt-4"));
 
   Ok(())
 }
 
+#[rstest]
+#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
   let service = AppServiceStubBuilder::default()
     .with_data_service()
@@ -269,7 +292,10 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[rstest]
+#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()> {
   let service = AppServiceStubBuilder::default()
     .with_data_service()

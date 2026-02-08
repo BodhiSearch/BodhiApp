@@ -3,7 +3,6 @@ use crate::{
   CreateApiTokenRequest, PaginatedApiTokenResponse, UpdateApiTokenRequest,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN};
 use axum::{
   body::Body,
   http::{Method, Request},
@@ -15,7 +14,7 @@ use objs::TokenScope;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{
-  test_utils::{RequestTestExt, ResponseTestExt},
+  test_utils::{RequestAuthExt, RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext,
 };
 use services::{
@@ -43,10 +42,10 @@ async fn app(app_service_stub: AppServiceStub) -> Router {
     .with_state(Arc::new(router_state))
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_tokens_pagination(
   #[future]
   #[from(test_db_service)]
@@ -84,10 +83,9 @@ async fn test_list_tokens_pagination(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
+        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens?page=1&page_size=10")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
@@ -103,10 +101,9 @@ async fn test_list_tokens_pagination(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
+        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens?page=2&page_size=10")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
@@ -123,6 +120,7 @@ async fn test_list_tokens_pagination(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_tokens_empty(
   #[future]
   #[from(test_db_service)]
@@ -141,10 +139,9 @@ async fn test_list_tokens_empty(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
+        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
 
@@ -158,7 +155,6 @@ async fn test_list_tokens_empty(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[case::user_role_user_scope("resource_user", TokenScope::User, "scope_token_user")]
 #[case::admin_role_user_scope("resource_admin", TokenScope::User, "scope_token_user")]
@@ -181,6 +177,7 @@ async fn test_list_tokens_empty(
 )]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_role_scope_mapping(
   #[case] role: &str,
   #[case] requested_scope: TokenScope,
@@ -204,8 +201,7 @@ async fn test_create_token_handler_role_scope_mapping(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, role)
+        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
           name: Some(format!("Test Token for {}", role)),
           scope: requested_scope,
@@ -235,10 +231,10 @@ async fn test_create_token_handler_role_scope_mapping(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -260,8 +256,7 @@ async fn test_create_token_handler_success(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
+        .with_user_auth(&access_token, "resource_user")
         .json(&CreateApiTokenRequest {
           name: Some(token_name.to_string()),
           scope: TokenScope::User,
@@ -307,10 +302,10 @@ async fn test_create_token_handler_success(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_without_name(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -330,8 +325,7 @@ async fn test_create_token_handler_without_name(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
+        .with_user_auth(&access_token, "resource_user")
         .json(&CreateApiTokenRequest {
           name: None,
           scope: TokenScope::User,
@@ -355,10 +349,10 @@ async fn test_create_token_handler_without_name(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_missing_auth(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -387,10 +381,10 @@ async fn test_create_token_handler_missing_auth(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_invalid_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -410,8 +404,7 @@ async fn test_create_token_handler_invalid_role(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role_value")
+        .with_user_auth(&access_token, "invalid_role_value")
         .json(&CreateApiTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
@@ -424,10 +417,10 @@ async fn test_create_token_handler_invalid_role(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_handler_missing_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -447,8 +440,8 @@ async fn test_create_token_handler_missing_role(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        // NO KEY_HEADER_BODHIAPP_ROLE header - should return error
+        .header("X-BodhiApp-Token", &access_token)
+        // NO role header - should return error
         .json(&CreateApiTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
@@ -464,6 +457,7 @@ async fn test_create_token_handler_missing_role(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_token_handler_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -500,7 +494,7 @@ async fn test_update_token_handler_success(
       Request::builder()
         .method(Method::PUT)
         .uri(format!("/api/tokens/{}", token.id))
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
+        .header("X-BodhiApp-Token", &access_token)
         .json(&UpdateApiTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
@@ -519,7 +513,7 @@ async fn test_update_token_handler_success(
   let db_token = test_db_service
     .get_api_token_by_id(&user_id, &token.id)
     .await?
-    .unwrap();
+    .expect("Token should exist in database");
   assert_eq!(db_token.name, "Updated Name");
   assert_eq!(db_token.status, TokenStatus::Inactive);
 
@@ -529,6 +523,7 @@ async fn test_update_token_handler_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_token_handler_not_found(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
@@ -545,7 +540,7 @@ async fn test_update_token_handler_not_found(
       Request::builder()
         .method(Method::PUT)
         .uri("/api/tokens/non-existent-id")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
+        .header("X-BodhiApp-Token", &token)
         .json(&UpdateApiTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
@@ -557,13 +552,13 @@ async fn test_update_token_handler_not_found(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[case::user_to_power_user("resource_user", TokenScope::PowerUser)]
 #[case::user_to_manager("resource_user", TokenScope::Manager)]
 #[case::user_to_admin("resource_user", TokenScope::Admin)]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_privilege_escalation_user(
   #[case] role: &str,
   #[case] requested_scope: TokenScope,
@@ -585,8 +580,7 @@ async fn test_create_token_privilege_escalation_user(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, role)
+        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
           name: Some("Escalation Attempt".to_string()),
           scope: requested_scope,
@@ -599,7 +593,6 @@ async fn test_create_token_privilege_escalation_user(
   Ok(())
 }
 
-#[anyhow_trace]
 #[rstest]
 #[case::power_user_to_manager("resource_power_user", TokenScope::Manager)]
 #[case::power_user_to_admin("resource_power_user", TokenScope::Admin)]
@@ -607,6 +600,7 @@ async fn test_create_token_privilege_escalation_user(
 #[case::admin_to_manager("resource_admin", TokenScope::Manager)]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_token_privilege_escalation_invalid_scopes(
   #[case] role: &str,
   #[case] requested_scope: TokenScope,
@@ -628,8 +622,7 @@ async fn test_create_token_privilege_escalation_invalid_scopes(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &access_token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, role)
+        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
           name: Some("Invalid Scope Attempt".to_string()),
           scope: requested_scope,

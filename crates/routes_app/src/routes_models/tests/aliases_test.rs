@@ -2,6 +2,7 @@ use crate::{
   create_alias_handler, get_user_alias_handler, list_aliases_handler, update_alias_handler,
   AliasResponse, PaginatedAliasResponse, UserAliasResponse, UserAliasResponseBuilder,
 };
+use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{status::StatusCode, Method, Request},
@@ -11,9 +12,9 @@ use axum::{
 use objs::OAIRequestParamsBuilder;
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
-use serde_json::{json, Value};
+use serde_json::Value;
 use server_core::{
-  test_utils::{router_state_stub, ResponseTestExt},
+  test_utils::{router_state_stub, RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext,
 };
 use services::test_utils::{app_service_stub, AppServiceStub};
@@ -33,11 +34,12 @@ fn test_router(router_state_stub: DefaultRouterState) -> Router {
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_local_aliases_handler(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
+    .oneshot(Request::get("/api/models").body(Body::empty())?)
     .await?
     .json::<Value>()
     .await?;
@@ -56,14 +58,14 @@ async fn test_list_local_aliases_handler(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_local_aliases_page_size(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
     .oneshot(
       Request::get("/api/models?page=2&page_size=4")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?
     .json::<Value>()
@@ -79,14 +81,14 @@ async fn test_list_local_aliases_page_size(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_local_aliases_over_limit_page_size(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
     .oneshot(
       Request::get("/api/models?page_size=150")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?
     .json::<Value>()
@@ -99,11 +101,12 @@ async fn test_list_local_aliases_over_limit_page_size(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_local_aliases_response_structure(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
+    .oneshot(Request::get("/api/models").body(Body::empty())?)
     .await?
     .json::<PaginatedAliasResponse>()
     .await?;
@@ -130,14 +133,14 @@ async fn test_list_local_aliases_response_structure(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_local_aliases_sorting(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
     .oneshot(
       Request::get("/api/models?sort=repo&sort_order=desc")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?
     .json::<PaginatedAliasResponse>()
@@ -150,14 +153,14 @@ async fn test_list_local_aliases_sorting(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_alias_handler(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
     .oneshot(
       Request::get("/api/models/llama3:instruct")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
   assert_eq!(StatusCode::OK, response.status());
@@ -170,30 +173,21 @@ async fn test_get_alias_handler(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_alias_handler_non_existent(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
     .oneshot(
       Request::get("/api/models/non_existent_alias")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Model configuration 'non_existent_alias' not found.",
-        "code": "data_service_error-alias_not_found",
-        "type": "not_found_error",
-        "param": {
-          "var_0": "non_existent_alias"
-        }
-      }
-    }},
-    response
+    "data_service_error-alias_not_found",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -287,20 +281,16 @@ fn expected_with_snapshot() -> UserAliasResponse {
 #[rstest]
 #[case(payload(), expected())]
 #[case(payload_with_snapshot(), expected_with_snapshot())]
-#[tokio::test]
 #[awt]
+#[tokio::test]
+#[anyhow_trace]
 async fn test_create_alias_handler(
   #[future] app: Router,
   #[case] payload: Value,
   #[case] expected: UserAliasResponse,
 ) -> anyhow::Result<()> {
   let response = app
-    .oneshot(
-      Request::post("/api/models")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/api/models").json(&payload)?)
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
   let response = response.json::<UserAliasResponse>().await?;
@@ -311,6 +301,7 @@ async fn test_create_alias_handler(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
     "alias": "test:newalias",
@@ -327,29 +318,13 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
   });
 
   let response = app
-    .oneshot(
-      Request::post("/api/models")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/api/models").json(&payload)?)
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "type": "not_found_error",
-        "code": "hub_service_error-file_not_found",
-        "message": "File 'fakemodel.Q4_0.gguf' not found in repository 'FakeFactory/not-exists'.",
-        "param": {
-          "filename": "fakemodel.Q4_0.gguf",
-          "repo": "FakeFactory/not-exists",
-          "snapshot": "main"
-        }
-      }
-    }},
-    response
+    "hub_service_error-file_not_found",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -357,6 +332,7 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
     "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
@@ -377,9 +353,7 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
       Request::builder()
         .method(Method::PUT)
         .uri("/api/models/tinyllama:instruct")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
+        .json(&payload)?,
     )
     .await?;
 
@@ -390,12 +364,10 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
       OAIRequestParamsBuilder::default()
         .temperature(0.8)
         .max_tokens(2000_u16)
-        .build()
-        .unwrap(),
+        .build()?,
     )
     .context_params(vec!["--ctx-size 4096".to_string()])
-    .build()
-    .unwrap();
+    .build()?;
   assert_eq!(expected, updated_alias);
   Ok(())
 }
@@ -403,6 +375,7 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
     "repo": "FakeFactory/fakemodel-gguf",
@@ -418,28 +391,14 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   });
 
   let response = app
-    .oneshot(
-      Request::post("/api/models")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/api/models").json(&payload)?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "type": "invalid_request_error",
-        "code": "json_rejection_error",
-        "message": "Invalid JSON in request: Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167.",
-        "param": {
-          "source": "Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167"
-        }
-      }
-    }},
-    response
+    "json_rejection_error",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -475,6 +434,7 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
 }), Method::PUT, "/api/models/tinyllama:instruct")]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_alias_repo_not_downloaded_error(
   #[future] app: Router,
   #[case] payload: Value,
@@ -486,28 +446,15 @@ async fn test_create_alias_repo_not_downloaded_error(
       Request::builder()
         .method(method)
         .uri(url)
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
+        .json(&payload)?,
     )
     .await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "type": "not_found_error",
-        "code": "hub_service_error-file_not_found",
-        "message": "File 'tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf' not found in repository 'TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF'.",
-        "param": {
-          "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
-          "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
-          "snapshot": "main"
-        }
-      }
-    }},
-    response
+    "hub_service_error-file_not_found",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }

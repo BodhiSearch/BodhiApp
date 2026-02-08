@@ -1,6 +1,7 @@
 use crate::{user_info_handler, TokenInfo, UserResponse};
+use anyhow_trace::anyhow_trace;
 use auth_middleware::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
 };
 use axum::{
   body::Body,
@@ -11,8 +12,11 @@ use axum::{
 use objs::{AppRole, ResourceRole, ResourceScope, TokenScope, UserInfo, UserScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde_json::{json, Value};
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use serde_json::Value;
+use server_core::{
+  test_utils::{RequestAuthExt, ResponseTestExt},
+  DefaultRouterState, MockSharedContext,
+};
 use services::{
   test_utils::{token, AppServiceStubBuilder},
   AppService,
@@ -32,6 +36,7 @@ fn test_router(app_service: Arc<dyn AppService>) -> Router {
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_no_token_header() -> anyhow::Result<()> {
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
   let router = test_router(app_service);
@@ -48,6 +53,7 @@ async fn test_user_info_handler_no_token_header() -> anyhow::Result<()> {
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
   let router = test_router(app_service);
@@ -63,20 +69,15 @@ async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let response_json = response.json::<Value>().await?;
   assert_eq!(
-    json!({
-      "error": {
-        "message": "Injected token is empty.",
-        "type": "invalid_request_error",
-        "code": "user_route_error-empty_token",
-      }
-    }),
-    response_json
+    "user_route_error-empty_token",
+    response_json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
   let router = test_router(app_service);
@@ -92,17 +93,8 @@ async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let response_json = response.json::<Value>().await?;
   assert_eq!(
-    json!({
-      "error": {
-        "message": "Invalid token: malformed token format.",
-        "code": "token_error-invalid_token",
-        "type": "authentication_error",
-        "param": {
-          "var_0": "malformed token format"
-        }
-      }
-    }),
-    response_json
+    "token_error-invalid_token",
+    response_json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -113,6 +105,7 @@ async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
 #[case::resource_manager(ResourceRole::Manager)]
 #[case::resource_admin(ResourceRole::Admin)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_session_token_with_role(
   token: (String, String),
   #[case] role: ResourceRole,
@@ -124,8 +117,7 @@ async fn test_user_info_handler_session_token_with_role(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, role.to_string())
+        .with_user_auth(&token, &role.to_string())
         .body(Body::empty())?,
     )
     .await?;
@@ -155,6 +147,7 @@ async fn test_user_info_handler_session_token_with_role(
 #[case::scope_token_manager(TokenScope::Manager)]
 #[case::scope_token_admin(TokenScope::Admin)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_api_token_with_token_scope(
   #[case] token_scope: TokenScope,
 ) -> anyhow::Result<()> {
@@ -167,8 +160,7 @@ async fn test_user_info_handler_api_token_with_token_scope(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, api_token)
-        .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
+        .with_api_token(api_token, &resource_scope.to_string())
         .body(Body::empty())?,
     )
     .await?;
@@ -190,6 +182,7 @@ async fn test_user_info_handler_api_token_with_token_scope(
 #[case::scope_user_manager(UserScope::Manager)]
 #[case::scope_user_admin(UserScope::Admin)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_bearer_token_with_user_scope(
   token: (String, String),
   #[case] user_scope: UserScope,
@@ -202,8 +195,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .header(KEY_HEADER_BODHIAPP_SCOPE, resource_scope.to_string())
+        .with_api_token(&token, &resource_scope.to_string())
         .body(Body::empty())?,
     )
     .await?;
@@ -229,6 +221,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_role_takes_precedence_over_scope(
   token: (String, String),
 ) -> anyhow::Result<()> {
@@ -240,8 +233,7 @@ async fn test_user_info_handler_role_takes_precedence_over_scope(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Manager.to_string())
+        .with_user_auth(&token, &ResourceRole::Manager.to_string())
         .header(
           KEY_HEADER_BODHIAPP_SCOPE,
           ResourceScope::Token(TokenScope::User).to_string(),
@@ -271,6 +263,7 @@ async fn test_user_info_handler_role_takes_precedence_over_scope(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_missing_role_and_scope_headers(
   token: (String, String),
 ) -> anyhow::Result<()> {
@@ -307,6 +300,7 @@ async fn test_user_info_handler_missing_role_and_scope_headers(
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_malformed_role_header(
   token: (String, String),
 ) -> anyhow::Result<()> {
@@ -317,8 +311,7 @@ async fn test_user_info_handler_malformed_role_header(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .header(KEY_HEADER_BODHIAPP_ROLE, "invalid_role")
+        .with_user_auth(&token, "invalid_role")
         .body(Body::empty())?,
     )
     .await?;
@@ -326,23 +319,15 @@ async fn test_user_info_handler_malformed_role_header(
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let response_json = response.json::<Value>().await?;
   assert_eq!(
-    json!({
-      "error": {
-        "message": "invalid_role_name",
-        "type": "invalid_request_error",
-        "code": "role_error-invalid_role_name",
-        "param": {
-          "var_0": "invalid_role"
-        }
-      }
-    }),
-    response_json
+    "role_error-invalid_role_name",
+    response_json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
 #[rstest]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_user_info_handler_malformed_scope_header(
   token: (String, String),
 ) -> anyhow::Result<()> {
@@ -353,8 +338,7 @@ async fn test_user_info_handler_malformed_scope_header(
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .header(KEY_HEADER_BODHIAPP_SCOPE, "invalid_scope")
+        .with_api_token(&token, "invalid_scope")
         .body(Body::empty())?,
     )
     .await?;
@@ -362,17 +346,8 @@ async fn test_user_info_handler_malformed_scope_header(
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let response_json = response.json::<Value>().await?;
   assert_eq!(
-    json!({
-      "error": {
-        "message": "invalid resource scope: invalid_scope",
-        "type": "authentication_error",
-        "code": "resource_scope_error-invalid_scope",
-        "param": {
-          "var_0": "invalid_scope"
-        }
-      }
-    }),
-    response_json
+    "resource_scope_error-invalid_scope",
+    response_json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }

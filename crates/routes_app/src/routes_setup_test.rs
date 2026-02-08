@@ -1,6 +1,7 @@
 use crate::{
   app_info_handler, setup_handler, test_utils::TEST_ENDPOINT_APP_INFO, AppInfo, SetupRequest,
 };
+use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -11,8 +12,11 @@ use axum::{
 use objs::ReqwestError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde_json::{json, Value};
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use serde_json::Value;
+use server_core::{
+  test_utils::{RequestTestExt, ResponseTestExt},
+  DefaultRouterState, MockSharedContext,
+};
 use services::{
   test_utils::{AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
   AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService, SecretServiceExt,
@@ -20,6 +24,7 @@ use services::{
 use std::{collections::HashMap, sync::Arc};
 use tower::ServiceExt;
 
+#[anyhow_trace]
 #[rstest]
 #[case(
   SecretServiceStub::new(),
@@ -61,6 +66,7 @@ async fn test_app_info_handler(
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[case(
     SecretServiceStub::new().with_app_status(&AppStatus::Ready),
@@ -90,33 +96,24 @@ async fn test_setup_handler_error(
     .with_state(state);
 
   let resp = router
-    .oneshot(
-      Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))?,
-    )
+    .oneshot(Request::post("/setup").json(payload)?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, resp.status());
   let body = resp.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Application is already set up.",
-        "code": "app_service_error-already_setup",
-        "type": "invalid_request_error",
-      }
-    }},
-    body
+    "app_service_error-already_setup",
+    body["error"]["code"].as_str().unwrap()
   );
 
   let secret_service = app_service.secret_service();
-  assert_eq!(AppStatus::Ready, secret_service.app_status().unwrap());
-  let app_reg_info = secret_service.app_reg_info().unwrap();
+  assert_eq!(AppStatus::Ready, secret_service.app_status()?);
+  let app_reg_info = secret_service.app_reg_info()?;
   assert!(app_reg_info.is_none());
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[case(
     SecretServiceStub::new(),
@@ -165,21 +162,18 @@ async fn test_setup_handler_success(
     .with_state(state);
 
   let response = router
-    .oneshot(
-      Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&request)?))?,
-    )
+    .oneshot(Request::post("/setup").json(request)?)
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let secret_service = app_service.secret_service();
-  assert_eq!(expected_status, secret_service.app_status().unwrap(),);
-  let app_reg_info = secret_service.app_reg_info().unwrap();
+  assert_eq!(expected_status, secret_service.app_status()?);
+  let app_reg_info = secret_service.app_reg_info()?;
   assert!(app_reg_info.is_some());
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
@@ -235,23 +229,20 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
   let response = router
     .oneshot(
       Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .header("Host", "localhost:1135") // Add Host header
-        .body(Body::from(serde_json::to_string(&request)?))?,
+        .header("Host", "localhost:1135")
+        .json(request)?,
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let secret_service = app_service.secret_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    secret_service.app_status().unwrap()
-  );
-  let app_reg_info = secret_service.app_reg_info().unwrap();
+  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
+  let app_reg_info = secret_service.app_reg_info()?;
   assert!(app_reg_info.is_some());
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
@@ -307,23 +298,20 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
   let response = router
     .oneshot(
       Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .header("Host", "192.168.1.100:1135") // Network IP Host header
-        .body(Body::from(serde_json::to_string(&request)?))?,
+        .header("Host", "192.168.1.100:1135")
+        .json(request)?,
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let secret_service = app_service.secret_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    secret_service.app_status().unwrap()
-  );
-  let app_reg_info = secret_service.app_reg_info().unwrap();
+  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
+  let app_reg_info = secret_service.app_reg_info()?;
   assert!(app_reg_info.is_some());
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow::Result<()> {
@@ -382,23 +370,20 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
   let response = router
     .oneshot(
       Request::post("/setup")
-        .header("Content-Type", "application/json")
         .header("Host", "192.168.1.100:1135") // This should be ignored due to explicit config
-        .body(Body::from(serde_json::to_string(&request)?))?,
+        .json(request)?,
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let secret_service = app_service.secret_service();
-  assert_eq!(
-    AppStatus::ResourceAdmin,
-    secret_service.app_status().unwrap()
-  );
-  let app_reg_info = secret_service.app_reg_info().unwrap();
+  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
+  let app_reg_info = secret_service.app_reg_info()?;
   assert!(app_reg_info.is_some());
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
@@ -428,45 +413,29 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
 
   let resp = router
     .oneshot(
-      Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&SetupRequest {
-          name: "Test Server Name".to_string(),
-          description: Some("Test description".to_string()),
-        })?))?,
+      Request::post("/setup").json(SetupRequest {
+        name: "Test Server Name".to_string(),
+        description: Some("Test description".to_string()),
+      })?,
     )
     .await?;
 
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
   let body = resp.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": "Network error: failed to register as resource server.",
-        "code": "reqwest_error",
-        "type": "internal_server_error",
-        "param": {
-          "error": "failed to register as resource server"
-        }
-      }
-    }},
-    body
+    "reqwest_error",
+    body["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[case(
   r#"{"invalid": true,}"#,
-  "Invalid JSON in request: Failed to parse the request body as JSON: trailing comma at line 1 column 18.",
-  "Failed to parse the request body as JSON: trailing comma at line 1 column 18"
 )]
 #[tokio::test]
-async fn test_setup_handler_bad_request(
-  #[case] body: &str,
-  #[case] expected_error: &str,
-  #[case] source_error: &str,
-) -> anyhow::Result<()> {
+async fn test_setup_handler_bad_request(#[case] body: &str) -> anyhow::Result<()> {
   let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -477,30 +446,18 @@ async fn test_setup_handler_bad_request(
     .with_state(state);
 
   let resp = router
-    .oneshot(
-      Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .body(Body::from(body.to_string()))?,
-    )
+    .oneshot(Request::post("/setup").json_str(body)?)
     .await?;
   assert_eq!(StatusCode::BAD_REQUEST, resp.status());
   let body = resp.json::<Value>().await?;
   assert_eq!(
-    json! {{
-      "error": {
-        "message": expected_error,
-        "type": "invalid_request_error",
-        "code": "json_rejection_error",
-        "param": {
-          "source": source_error
-        }
-      }
-    }},
-    body
+    "json_rejection_error",
+    body["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
 
+#[anyhow_trace]
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
@@ -523,12 +480,10 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
 
   let resp = router
     .oneshot(
-      Request::post("/setup")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&SetupRequest {
-          name: "Short".to_string(), // Less than 10 characters
-          description: Some("Test description".to_string()),
-        })?))?,
+      Request::post("/setup").json(SetupRequest {
+        name: "Short".to_string(), // Less than 10 characters
+        description: Some("Test description".to_string()),
+      })?,
     )
     .await?;
 

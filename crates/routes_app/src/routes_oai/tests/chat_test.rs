@@ -13,6 +13,7 @@ use futures_util::StreamExt;
 use llama_server_proc::test_utils::mock_response;
 use mockall::predicate::eq;
 use objs::{Alias, UserAlias};
+use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
@@ -43,9 +44,10 @@ fn non_streamed_response() -> reqwest::Response {
 }
 
 #[rstest]
+#[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_routes_chat_completions_non_stream() -> anyhow::Result<()> {
+async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
@@ -76,21 +78,20 @@ async fn test_routes_chat_completions_non_stream() -> anyhow::Result<()> {
     .route("/v1/chat/completions", post(chat_completions_handler))
     .with_state(Arc::new(router_state));
   let response = app
-    .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
-    .await
-    .unwrap();
+    .oneshot(Request::post("/v1/chat/completions").json(request)?)
+    .await?;
   assert_eq!(StatusCode::OK, response.status());
-  let result: CreateChatCompletionResponse = response.json().await.unwrap();
+  let result: CreateChatCompletionResponse = response.json().await?;
   assert_eq!(
     "The day that comes after Monday is Tuesday.",
     result
       .choices
       .first()
-      .unwrap()
+      .expect("expected at least one choice")
       .message
       .content
       .as_ref()
-      .unwrap()
+      .expect("expected content in message")
   );
   Ok(())
 }
@@ -115,8 +116,10 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
       "created": 1704067200,
       "object": "chat.completion.chunk",
     }};
-    let response: CreateChatCompletionStreamResponse = serde_json::from_value(response).unwrap();
-    let response = serde_json::to_string(&response).unwrap();
+    let response: CreateChatCompletionStreamResponse =
+      serde_json::from_value(response).expect("failed to deserialize stream response");
+    let response =
+      serde_json::to_string(&response).expect("failed to serialize stream response");
     format!("data: {response}\n\n")
   })
   .chain(futures_util::stream::iter([format!("data: {}\n\n", r#"{"choices":[{"finish_reason":"stop","index":0,"delta":{}}],"created":1717317061,"id":"chatcmpl-Twf1ixroh9WzY9Pvm4IGwNF4kB4EjTp4","model":"llama2:chat","object":"chat.completion.chunk","usage":{"completion_tokens":13,"prompt_tokens":15,"total_tokens":28}}"#)]))
@@ -131,14 +134,15 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
       .status(200)
       .header("content-type", "text/event-stream")
       .body(body)
-      .unwrap(),
+      .expect("failed to build http response"),
   ))
 }
 
 #[rstest]
+#[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_routes_chat_completions_stream() -> anyhow::Result<()> {
+async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
@@ -171,7 +175,7 @@ async fn test_routes_chat_completions_stream() -> anyhow::Result<()> {
     .route("/v1/chat/completions", post(chat_completions_handler))
     .with_state(Arc::new(router_state));
   let response = app
-    .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
+    .oneshot(Request::post("/v1/chat/completions").json(request)?)
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let response: Vec<CreateChatCompletionStreamResponse> = response.sse().await?;
@@ -179,7 +183,7 @@ async fn test_routes_chat_completions_stream() -> anyhow::Result<()> {
     let content = r
       .choices
       .first()
-      .unwrap()
+      .expect("expected at least one choice")
       .delta
       .content
       .as_deref()
@@ -211,9 +215,10 @@ fn embeddings_response() -> reqwest::Response {
 }
 
 #[rstest]
+#[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_routes_embeddings_non_stream() -> anyhow::Result<()> {
+async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
@@ -239,11 +244,10 @@ async fn test_routes_embeddings_non_stream() -> anyhow::Result<()> {
     .route("/v1/embeddings", post(embeddings_handler))
     .with_state(Arc::new(router_state));
   let response = app
-    .oneshot(Request::post("/v1/embeddings").json(request).unwrap())
-    .await
-    .unwrap();
+    .oneshot(Request::post("/v1/embeddings").json(request)?)
+    .await?;
   assert_eq!(StatusCode::OK, response.status());
-  let result: CreateEmbeddingResponse = response.json().await.unwrap();
+  let result: CreateEmbeddingResponse = response.json().await?;
   assert_eq!("list", result.object);
   assert_eq!("testalias-exists:instruct", result.model);
   assert_eq!(1, result.data.len());
@@ -251,5 +255,107 @@ async fn test_routes_embeddings_non_stream() -> anyhow::Result<()> {
   assert_eq!(vec![0.1, 0.2, 0.3, 0.4, 0.5], result.data[0].embedding);
   assert_eq!(8, result.usage.prompt_tokens);
   assert_eq!(8, result.usage.total_tokens);
+  Ok(())
+}
+
+// ============================================================================
+// validate_chat_completion_request error path tests
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_missing_model_field() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()?;
+  let ctx = MockSharedContext::default();
+  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(Arc::new(router_state));
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions").json(json!({
+        "messages": [{"role": "user", "content": "Hello"}]
+      }))?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_missing_messages_field() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()?;
+  let ctx = MockSharedContext::default();
+  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(Arc::new(router_state));
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions").json(json!({
+        "model": "test-model"
+      }))?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
+  let app_service = AppServiceStubBuilder::default()
+    .with_data_service()
+    .await
+    .build()?;
+  let ctx = MockSharedContext::default();
+  let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
+  let app = Router::new()
+    .route("/v1/chat/completions", post(chat_completions_handler))
+    .with_state(Arc::new(router_state));
+
+  let response = app
+    .oneshot(
+      Request::post("/v1/chat/completions").json(json!({
+        "model": "test-model",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "stream": "yes"
+      }))?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let body = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    "oai_route_error-invalid_request",
+    body["error"]["code"].as_str().unwrap()
+  );
   Ok(())
 }

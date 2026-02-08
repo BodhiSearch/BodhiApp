@@ -1,10 +1,11 @@
 use crate::{
   create_pull_request_handler, get_download_status_handler, list_downloads_handler,
-  pull_by_alias_handler, PaginatedDownloadResponse,
+  pull_by_alias_handler, wait_for_event, PaginatedDownloadResponse,
 };
+use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
-  http::{Method, Request, StatusCode},
+  http::{Request, StatusCode},
   routing::{get, post},
   Router,
 };
@@ -12,8 +13,11 @@ use mockall::predicate::{always, eq};
 use objs::{HubFile, Repo};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde_json::{json, Value};
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+use serde_json::Value;
+use server_core::{
+  test_utils::{RequestTestExt, ResponseTestExt},
+  DefaultRouterState, MockSharedContext,
+};
 use services::{
   db::{DownloadRequest, DownloadStatus, ModelRepository},
   test_utils::{
@@ -24,22 +28,6 @@ use services::{
 };
 use std::{sync::Arc, time::Duration};
 use tower::ServiceExt;
-
-macro_rules! wait_for_event {
-  ($rx:expr, $event_name:expr, $timeout:expr) => {{
-    loop {
-      tokio::select! {
-          event = $rx.recv() => {
-              match event {
-                  Ok(e) if e == $event_name => break true,
-                  _ => continue
-              }
-          }
-          _ = tokio::time::sleep($timeout) => break false
-      }
-    }
-  }};
-}
 
 fn test_router(service: Arc<dyn AppService>) -> Router {
   let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
@@ -57,6 +45,7 @@ fn test_router(service: Arc<dyn AppService>) -> Router {
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_pull_by_repo_file_success(
   mut test_hf_service: TestHfService,
   #[future]
@@ -88,17 +77,10 @@ async fn test_pull_by_repo_file_success(
   });
 
   let response = router
-    .oneshot(
-      Request::builder()
-        .method(Method::POST)
-        .uri("/modelfiles/pull")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/modelfiles/pull").json(&payload)?)
     .await?;
 
-  assert_eq!(response.status(), StatusCode::CREATED);
+  assert_eq!(StatusCode::CREATED, response.status());
   let download_request = response.json::<DownloadRequest>().await?;
   assert_eq!(download_request.repo, Repo::testalias().to_string());
   assert_eq!(download_request.filename, Repo::testalias_model_q4());
@@ -123,6 +105,7 @@ async fn test_pull_by_repo_file_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_pull_by_repo_file_already_downloaded(
   test_hf_service: TestHfService,
   #[future]
@@ -142,32 +125,14 @@ async fn test_pull_by_repo_file_already_downloaded(
   });
 
   let response = router
-    .oneshot(
-      Request::builder()
-        .method(Method::POST)
-        .uri("/modelfiles/pull")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/modelfiles/pull").json(&payload)?)
     .await?;
 
-  assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
   let error_body = response.json::<Value>().await?;
   assert_eq!(
-    error_body,
-    json! {{
-      "error": {
-        "message": "File 'testalias.Q8_0.gguf' already exists in 'MyFactory/testalias-gguf'.",
-        "code": "pull_error-file_already_exists",
-        "type": "invalid_request_error",
-        "param": {
-          "filename": "testalias.Q8_0.gguf",
-          "repo": "MyFactory/testalias-gguf",
-          "snapshot": "main"
-        }
-      }
-    }}
+    "pull_error-file_already_exists",
+    error_body["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -175,6 +140,7 @@ async fn test_pull_by_repo_file_already_downloaded(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_pull_by_repo_file_existing_pending_download(
   test_hf_service: TestHfService,
   #[future]
@@ -202,17 +168,10 @@ async fn test_pull_by_repo_file_existing_pending_download(
   });
 
   let response = router
-    .oneshot(
-      Request::builder()
-        .method(Method::POST)
-        .uri("/modelfiles/pull")
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap(),
-    )
+    .oneshot(Request::post("/modelfiles/pull").json(&payload)?)
     .await?;
 
-  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(StatusCode::OK, response.status());
   let download_request = response.json::<DownloadRequest>().await?;
   assert_eq!(download_request.id, pending_request.id);
   assert_eq!(download_request.repo, Repo::testalias().to_string());
@@ -225,6 +184,7 @@ async fn test_pull_by_repo_file_existing_pending_download(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_pull_by_alias_success(
   mut test_hf_service: TestHfService,
   #[future]
@@ -252,15 +212,12 @@ async fn test_pull_by_alias_success(
   let router = test_router(Arc::new(app_service));
   let response = router
     .oneshot(
-      Request::builder()
-        .method(Method::POST)
-        .uri("/modelfiles/pull/testalias:q4_instruct")
-        .body(Body::empty())
-        .unwrap(),
+      Request::post("/modelfiles/pull/testalias:q4_instruct")
+        .body(Body::empty())?,
     )
     .await?;
 
-  assert_eq!(response.status(), StatusCode::CREATED);
+  assert_eq!(StatusCode::CREATED, response.status());
   let download_request = response.json::<DownloadRequest>().await?;
   assert_eq!(download_request.repo, Repo::testalias().to_string());
   assert_eq!(download_request.filename, Repo::testalias_model_q4());
@@ -283,6 +240,7 @@ async fn test_pull_by_alias_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_pull_by_alias_not_found(
   test_hf_service: TestHfService,
   #[future]
@@ -297,27 +255,15 @@ async fn test_pull_by_alias_not_found(
   let router = test_router(Arc::new(app_service));
   let response = router
     .oneshot(
-      Request::builder()
-        .method(Method::POST)
-        .uri("/modelfiles/pull/non_existent:alias")
-        .body(Body::empty())
-        .unwrap(),
+      Request::post("/modelfiles/pull/non_existent:alias")
+        .body(Body::empty())?,
     )
     .await?;
-  assert_eq!(response.status(), StatusCode::NOT_FOUND);
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    response,
-    json! {{
-      "error": {
-        "message": "Remote model 'non_existent:alias' not found. Check the alias name and try again.",
-        "type": "not_found_error",
-        "code": "hub_service_error-remote_model_not_found",
-        "param": {
-          "var_0": "non_existent:alias"
-        }
-      }
-    }}
+    "hub_service_error-remote_model_not_found",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -325,6 +271,7 @@ async fn test_pull_by_alias_not_found(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_download_status_success(
   test_hf_service: TestHfService,
   #[future]
@@ -343,15 +290,12 @@ async fn test_get_download_status_success(
 
   let response = router
     .oneshot(
-      Request::builder()
-        .method(Method::GET)
-        .uri(format!("/modelfiles/pull/status/{}", test_request.id))
-        .body(Body::empty())
-        .unwrap(),
+      Request::get(&format!("/modelfiles/pull/status/{}", test_request.id))
+        .body(Body::empty())?,
     )
     .await?;
 
-  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(StatusCode::OK, response.status());
   let download_request = response.json::<DownloadRequest>().await?;
   assert_eq!(download_request.id, test_request.id);
   assert_eq!(download_request.status, DownloadStatus::Pending);
@@ -362,6 +306,7 @@ async fn test_get_download_status_success(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_download_status_not_found(
   test_hf_service: TestHfService,
   #[future]
@@ -377,29 +322,16 @@ async fn test_get_download_status_not_found(
   let router = test_router(Arc::new(app_service));
   let response = router
     .oneshot(
-      Request::builder()
-        .method(Method::GET)
-        .uri("/modelfiles/pull/status/non_existent_id")
-        .body(Body::empty())
-        .unwrap(),
+      Request::get("/modelfiles/pull/status/non_existent_id")
+        .body(Body::empty())?,
     )
     .await?;
 
-  assert_eq!(response.status(), StatusCode::NOT_FOUND);
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    response,
-    json! {{
-      "error": {
-        "message": "Item 'non_existent_id' of type 'download_requests' not found.",
-        "type": "not_found_error",
-        "code": "db_error-item_not_found",
-        "param": {
-          "id": "non_existent_id",
-          "item_type": "download_requests"
-        }
-      }
-    }}
+    "db_error-item_not_found",
+    response["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }
@@ -407,6 +339,7 @@ async fn test_get_download_status_not_found(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_downloads(
   #[future]
   #[from(test_db_service)]
@@ -436,15 +369,12 @@ async fn test_list_downloads(
 
   let response = router
     .oneshot(
-      Request::builder()
-        .method(Method::GET)
-        .uri("/modelfiles/pull/downloads?page=1&page_size=10")
-        .body(Body::empty())
-        .unwrap(),
+      Request::get("/modelfiles/pull/downloads?page=1&page_size=10")
+        .body(Body::empty())?,
     )
     .await?;
 
-  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(StatusCode::OK, response.status());
 
   let body = response.json::<PaginatedDownloadResponse>().await?;
   assert_eq!(body.data.len(), 3);

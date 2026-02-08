@@ -1,8 +1,9 @@
 use crate::{routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse};
+use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOOL_SCOPES,
 };
-use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
+use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
@@ -11,7 +12,9 @@ use objs::{
   AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse,
   ToolsetWithTools,
 };
+use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
+use server_core::test_utils::RequestAuthExt;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
 use std::sync::Arc;
@@ -58,18 +61,17 @@ fn setup_type_mocks(mock: &mut MockToolService) {
     .returning(move |_| Some(type_def.clone()));
 }
 
-fn test_router(mock_tool_service: MockToolService) -> Router {
+fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Router> {
   let app_service = AppServiceStubBuilder::default()
     .with_tool_service(Arc::new(mock_tool_service))
-    .build()
-    .unwrap();
+    .build()?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::new()),
     Arc::new(app_service),
   ));
 
-  routes_toolsets(state)
+  Ok(routes_toolsets(state))
 }
 
 // ============================================================================
@@ -81,12 +83,13 @@ fn test_router(mock_tool_service: MockToolService) -> Router {
 #[case::oauth_filters_by_scope(false, true, 0)]
 #[case::empty_list(true, false, 0)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_list_toolsets(
   test_instance: Toolset,
   #[case] is_session: bool,
   #[case] is_oauth_filtered: bool,
   #[case] expected_count: usize,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
 
@@ -120,7 +123,7 @@ async fn test_list_toolsets(
       .returning(|_| Ok(vec![]));
   }
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let mut request_builder = Request::builder()
     .method("GET")
@@ -137,16 +140,19 @@ async fn test_list_toolsets(
   }
 
   let response = app
-    .oneshot(request_builder.body(Body::empty()).unwrap())
-    .await
-    .unwrap();
+    .oneshot(request_builder.body(Body::empty())?)
+    .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_list_toolsets_session_returns_all_toolset_types(test_instance: Toolset) {
+#[anyhow_trace]
+async fn test_list_toolsets_session_returns_all_toolset_types(
+  test_instance: Toolset,
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
 
@@ -172,7 +178,7 @@ async fn test_list_toolsets_session_returns_all_toolset_types(test_instance: Too
     .times(1)
     .returning(move || Ok(vec![config.clone()]));
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -181,29 +187,29 @@ async fn test_list_toolsets_session_returns_all_toolset_types(test_instance: Too
         .uri("/toolsets")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(StatusCode::OK, response.status());
 
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
-    .await
-    .unwrap();
-  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
+  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes)?;
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
     "scope_toolset-builtin-exa-web-search",
     list_response.toolset_types[0].scope
   );
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_list_toolsets_oauth_returns_scoped_toolset_types(test_instance: Toolset) {
+#[anyhow_trace]
+async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
+  test_instance: Toolset,
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
 
@@ -231,7 +237,7 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(test_instance: To
     .times(1)
     .returning(move |_| Ok(vec![config.clone()]));
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -244,29 +250,27 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(test_instance: To
           KEY_HEADER_BODHIAPP_TOOL_SCOPES,
           "scope_toolset-builtin-exa-web-search",
         )
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(StatusCode::OK, response.status());
 
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
-    .await
-    .unwrap();
-  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
+  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes)?;
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
     "scope_toolset-builtin-exa-web-search",
     list_response.toolset_types[0].scope
   );
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
+#[anyhow_trace]
+async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   mock_tool_service
@@ -282,7 +286,7 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
     .times(1)
     .returning(|_| Ok(vec![]));
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -292,20 +296,17 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
         .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "")
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(StatusCode::OK, response.status());
 
-  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
-    .await
-    .unwrap();
-  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
+  let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes)?;
 
   assert_eq!(0, list_response.toolset_types.len());
+  Ok(())
 }
 
 // ============================================================================
@@ -323,12 +324,13 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
 )]
 #[case::name_conflict("Existing Name", StatusCode::CONFLICT, Some("entity_error"))]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_create_toolset(
   test_instance: Toolset,
   #[case] name: &str,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   if expected_status == StatusCode::CREATED {
@@ -345,7 +347,7 @@ async fn test_create_toolset(
       .returning(|_, _, _, _, _, _| Err(services::ToolsetError::NameExists("name".to_string())));
   }
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
     "scope_uuid": "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
@@ -363,13 +365,12 @@ async fn test_create_toolset(
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body).unwrap()))
-        .unwrap(),
+        .body(Body::from(serde_json::to_string(&request_body)?))?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -381,11 +382,12 @@ async fn test_create_toolset(
 #[case::not_found(false, StatusCode::NOT_FOUND)]
 #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_get_toolset(
   test_instance: Toolset,
   #[case] returns_instance: bool,
   #[case] expected_status: StatusCode,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
   let instance_clone = test_instance.clone();
 
@@ -404,7 +406,7 @@ async fn test_get_toolset(
       }
     });
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -413,13 +415,12 @@ async fn test_get_toolset(
         .uri(format!("/toolsets/{}", test_instance.id))
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -443,13 +444,14 @@ async fn test_get_toolset(
   Some("entity_error")
 )]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_toolset(
   test_instance: Toolset,
   #[case] name: &str,
   #[case] api_key: ApiKeyUpdateDto,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   if expected_status == StatusCode::OK {
@@ -466,7 +468,7 @@ async fn test_update_toolset(
       .returning(|_, _, _, _, _, _| Err(services::ToolsetError::NameExists("name".to_string())));
   }
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
     "name": name,
@@ -483,24 +485,24 @@ async fn test_update_toolset(
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body).unwrap()))
-        .unwrap(),
+        .body(Body::from(serde_json::to_string(&request_body)?))?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 #[rstest]
 #[case::not_found(false, StatusCode::NOT_FOUND)]
 #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_update_toolset_not_found(
   test_instance: Toolset,
   #[case] _returns_instance: bool,
   #[case] expected_status: StatusCode,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   mock_tool_service
@@ -512,7 +514,7 @@ async fn test_update_toolset_not_found(
       ))
     });
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
     "name": "Updated Name",
@@ -529,13 +531,12 @@ async fn test_update_toolset_not_found(
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body).unwrap()))
-        .unwrap(),
+        .body(Body::from(serde_json::to_string(&request_body)?))?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -547,11 +548,12 @@ async fn test_update_toolset_not_found(
 #[case::not_found(false, StatusCode::NOT_FOUND)]
 #[case::not_owned_returns_404(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_delete_toolset(
   test_instance: Toolset,
   #[case] succeeds: bool,
   #[case] expected_status: StatusCode,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   if succeeds {
@@ -570,7 +572,7 @@ async fn test_delete_toolset(
       });
   }
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -579,13 +581,12 @@ async fn test_delete_toolset(
         .uri(format!("/toolsets/{}", test_instance.id))
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())
-        .unwrap(),
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -596,11 +597,12 @@ async fn test_delete_toolset(
 #[case::success(true, StatusCode::OK)]
 #[case::method_not_found(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_execute_toolset(
   test_instance: Toolset,
   #[case] succeeds: bool,
   #[case] expected_status: StatusCode,
-) {
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   if succeeds {
@@ -620,7 +622,7 @@ async fn test_execute_toolset(
       .returning(|_, _, _, _| Err(services::ToolsetError::MethodNotFound("search".to_string())));
   }
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
     "params": {"query": "test"}
@@ -634,13 +636,12 @@ async fn test_execute_toolset(
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body).unwrap()))
-        .unwrap(),
+        .body(Body::from(serde_json::to_string(&request_body)?))?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -651,7 +652,11 @@ async fn test_execute_toolset(
 #[case::session_returns_all(true, 1)]
 #[case::oauth_filters(false, 0)]
 #[tokio::test]
-async fn test_list_toolset_types(#[case] is_session: bool, #[case] expected_count: usize) {
+#[anyhow_trace]
+async fn test_list_toolset_types(
+  #[case] is_session: bool,
+  #[case] expected_count: usize,
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   let toolset_type = ToolsetWithTools {
@@ -681,7 +686,7 @@ async fn test_list_toolset_types(#[case] is_session: bool, #[case] expected_coun
     .times(1)
     .returning(move || Ok(types_to_return.clone()));
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let mut request_builder = Request::builder()
     .method("GET")
@@ -698,11 +703,11 @@ async fn test_list_toolset_types(#[case] is_session: bool, #[case] expected_coun
   }
 
   let response = app
-    .oneshot(request_builder.body(Body::empty()).unwrap())
-    .await
-    .unwrap();
+    .oneshot(request_builder.body(Body::empty())?)
+    .await?;
 
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
 }
 
 // ============================================================================
@@ -713,7 +718,11 @@ async fn test_list_toolset_types(#[case] is_session: bool, #[case] expected_coun
 #[case::success(true, StatusCode::OK)]
 #[case::type_not_found(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
-async fn test_enable_type(#[case] succeeds: bool, #[case] expected_status: StatusCode) {
+#[anyhow_trace]
+async fn test_enable_type(
+  #[case] succeeds: bool,
+  #[case] expected_status: StatusCode,
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   // Mock list_types to return toolset definition
@@ -746,7 +755,7 @@ async fn test_enable_type(#[case] succeeds: bool, #[case] expected_status: Statu
   // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
   // No need to mock set_app_toolset_enabled in that case
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -754,22 +763,24 @@ async fn test_enable_type(#[case] succeeds: bool, #[case] expected_status: Statu
         .method("PUT")
         .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, "admin-token")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string())
-        .body(Body::empty())
-        .unwrap(),
+        .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }
 
 #[rstest]
 #[case::success(true, StatusCode::OK)]
 #[case::type_not_found(false, StatusCode::NOT_FOUND)]
 #[tokio::test]
-async fn test_disable_type(#[case] succeeds: bool, #[case] expected_status: StatusCode) {
+#[anyhow_trace]
+async fn test_disable_type(
+  #[case] succeeds: bool,
+  #[case] expected_status: StatusCode,
+) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
   // Mock list_types to return toolset definition
@@ -802,7 +813,7 @@ async fn test_disable_type(#[case] succeeds: bool, #[case] expected_status: Stat
   // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
   // No need to mock set_app_toolset_enabled in that case
 
-  let app = test_router(mock_tool_service);
+  let app = test_router(mock_tool_service)?;
 
   let response = app
     .oneshot(
@@ -810,13 +821,11 @@ async fn test_disable_type(#[case] succeeds: bool, #[case] expected_status: Stat
         .method("DELETE")
         .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, "admin-token")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string())
-        .body(Body::empty())
-        .unwrap(),
+        .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
+        .body(Body::empty())?,
     )
-    .await
-    .unwrap();
+    .await?;
 
   assert_eq!(expected_status, response.status());
+  Ok(())
 }

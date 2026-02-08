@@ -1,10 +1,12 @@
-use crate::{refresh_metadata_handler, RefreshResponse};
-use axum::{body::Body, http::Request, http::StatusCode, routing::post, Router};
+use crate::{queue_status_handler, refresh_metadata_handler, RefreshResponse};
+use anyhow_trace::anyhow_trace;
+use axum::{http::Request, http::StatusCode, routing::get, routing::post, Router};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
 use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
+  test_utils::{RequestTestExt, ResponseTestExt},
+  DefaultRouterState, MockSharedContext, RouterState,
 };
 use services::{
   test_utils::{app_service_stub_builder, AppServiceStubBuilder},
@@ -16,6 +18,7 @@ use tower::ServiceExt;
 fn test_metadata_router(state: Arc<dyn RouterState>) -> Router {
   Router::new()
     .route("/api/models/refresh", post(refresh_metadata_handler))
+    .route("/api/queue", get(queue_status_handler))
     .with_state(state)
 }
 
@@ -26,6 +29,7 @@ fn test_metadata_router(state: Arc<dyn RouterState>) -> Router {
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_refresh_metadata_no_params_returns_202_accepted(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
@@ -40,8 +44,7 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
 
   let app_service = app_service_stub_builder
     .queue_producer(Arc::new(mock_queue))
-    .build()
-    .unwrap();
+    .build()?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -50,10 +53,7 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
 
   let response = test_metadata_router(state)
     .oneshot(
-      Request::post("/api/models/refresh")
-        .header("content-type", "application/json")
-        .body(Body::from(r#"{"source":"all"}"#))
-        .unwrap(),
+      Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?,
     )
     .await?;
 
@@ -69,6 +69,7 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
 #[rstest]
 #[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_refresh_metadata_enqueue_failure_returns_400(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
@@ -83,8 +84,7 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
 
   let app_service = app_service_stub_builder
     .queue_producer(Arc::new(mock_queue))
-    .build()
-    .unwrap();
+    .build()?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -93,20 +93,130 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
 
   let response = test_metadata_router(state)
     .oneshot(
-      Request::post("/api/models/refresh")
-        .header("content-type", "application/json")
-        .body(Body::from(r#"{"source":"all"}"#))
-        .unwrap(),
+      Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?,
     )
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
   let body = response.json::<Value>().await?;
-  assert!(body["error"]["message"]
-    .as_str()
-    .unwrap()
-    .contains("enqueue"));
+  assert_eq!(
+    "metadata_error-enqueue_failed",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// refresh_metadata_handler - sync model path tests
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_refresh_metadata_model_invalid_repo_format(
+  #[future] app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let app_service = app_service_stub_builder.build()?;
+
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let response = test_metadata_router(state)
+    .oneshot(
+      Request::post("/api/models/refresh").json_str(
+        r#"{"source":"model","repo":"invalid-repo-no-slash","filename":"test.gguf","snapshot":"abc123"}"#,
+      )?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "metadata_error-invalid_repo_format",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_refresh_metadata_model_alias_not_found(
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let app_service = app_service_stub_builder
+    .with_data_service()
+    .await
+    .build()?;
+
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let response = test_metadata_router(state)
+    .oneshot(
+      Request::post("/api/models/refresh").json_str(
+        r#"{"source":"model","repo":"nonexistent/model","filename":"nonexistent.gguf","snapshot":"abc123"}"#,
+      )?,
+    )
+    .await?;
+
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "metadata_error-alias_not_found",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// queue_status_handler tests
+// ============================================================================
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_queue_status_handler_returns_idle(
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+) -> anyhow::Result<()> {
+  let mut mock_queue = MockQueueProducer::new();
+  mock_queue
+    .expect_enqueue()
+    .returning(|_| Box::pin(async { Ok(()) }));
+  mock_queue
+    .expect_queue_status()
+    .returning(|| "idle".to_string());
+
+  let app_service = app_service_stub_builder
+    .queue_producer(Arc::new(mock_queue))
+    .build()?;
+
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  ));
+
+  let response = test_metadata_router(state)
+    .oneshot(Request::get("/api/queue").body(axum::body::Body::empty())?)
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!("idle", body["status"].as_str().unwrap());
 
   Ok(())
 }
