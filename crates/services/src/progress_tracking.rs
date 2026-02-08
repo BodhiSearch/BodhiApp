@@ -194,8 +194,10 @@ mod tests {
     hub_service::HubService,
     test_utils::{test_db_service, test_hf_service, TestDbService, TestHfService},
   };
+  use anyhow_trace::anyhow_trace;
   use hf_hub::api::tokio::Progress as HfProgress;
   use objs::{HubFile, Repo};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::{sync::Arc, time::Duration};
 
@@ -219,6 +221,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_database_progress_integration(
     #[future]
     #[from(test_db_service)]
@@ -277,6 +280,7 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hub_service_with_database_progress(
     #[future]
     #[from(test_db_service)]

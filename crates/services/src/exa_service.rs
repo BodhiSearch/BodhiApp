@@ -2,10 +2,6 @@ use objs::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-const EXA_SEARCH_URL: &str = "https://api.exa.ai/search";
-const EXA_FIND_SIMILAR_URL: &str = "https://api.exa.ai/findSimilar";
-const EXA_CONTENTS_URL: &str = "https://api.exa.ai/contents";
-const EXA_ANSWER_URL: &str = "https://api.exa.ai/answer";
 const EXA_TIMEOUT_SECS: u64 = 30;
 
 // ============================================================================
@@ -173,6 +169,7 @@ pub struct ExaAnswerResponse {
 #[derive(Debug)]
 pub struct DefaultExaService {
   client: reqwest::Client,
+  base_url: String,
 }
 
 impl Default for DefaultExaService {
@@ -183,12 +180,16 @@ impl Default for DefaultExaService {
 
 impl DefaultExaService {
   pub fn new() -> Self {
+    Self::with_base_url("https://api.exa.ai".to_string())
+  }
+
+  pub fn with_base_url(base_url: String) -> Self {
     let client = reqwest::Client::builder()
       .timeout(std::time::Duration::from_secs(EXA_TIMEOUT_SECS))
       .build()
       .expect("Failed to create HTTP client");
 
-    Self { client }
+    Self { client, base_url }
   }
 }
 
@@ -213,7 +214,7 @@ impl ExaService for DefaultExaService {
 
     let response = self
       .client
-      .post(EXA_SEARCH_URL)
+      .post(format!("{}/search", self.base_url))
       .header("x-api-key", api_key)
       .header("Content-Type", "application/json")
       .json(&request)
@@ -268,7 +269,7 @@ impl ExaService for DefaultExaService {
 
     let response = self
       .client
-      .post(EXA_FIND_SIMILAR_URL)
+      .post(format!("{}/findSimilar", self.base_url))
       .header("x-api-key", api_key)
       .header("Content-Type", "application/json")
       .json(&request)
@@ -316,7 +317,7 @@ impl ExaService for DefaultExaService {
 
     let response = self
       .client
-      .post(EXA_CONTENTS_URL)
+      .post(format!("{}/contents", self.base_url))
       .header("x-api-key", api_key)
       .header("Content-Type", "application/json")
       .json(&request)
@@ -367,7 +368,7 @@ impl ExaService for DefaultExaService {
 
     let response = self
       .client
-      .post(EXA_ANSWER_URL)
+      .post(format!("{}/answer", self.base_url))
       .header("x-api-key", api_key)
       .header("Content-Type", "application/json")
       .json(&request)
@@ -409,16 +410,19 @@ impl ExaService for DefaultExaService {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use anyhow_trace::anyhow_trace;
   use mockito::{Matcher, Server};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_search_success() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_search_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
-    let mock = server
+    let _mock = server
       .mock("POST", "/search")
       .match_header("x-api-key", "test-key")
       .match_header("content-type", "application/json")
@@ -457,44 +461,24 @@ mod tests {
       .create_async()
       .await;
 
-    // Create service with mock server URL
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
-    let service = DefaultExaService { client };
+    let service = DefaultExaService::with_base_url(server.url());
+    let response = service.search("test-key", "rust programming", None).await?;
 
-    // Temporarily replace the EXA_API_URL for testing
-    let result = service
-      .client
-      .post(server.url() + "/search")
-      .header("x-api-key", "test-key")
-      .header("Content-Type", "application/json")
-      .json(&ExaSearchRequest {
-        query: "rust programming".to_string(),
-        search_type: "neural".to_string(),
-        use_autoprompt: true,
-        num_results: 5,
-        contents: ExaContents {
-          text: true,
-          highlights: true,
-        },
-      })
-      .send()
-      .await?;
-
-    assert_eq!(200, result.status());
-    let response: ExaSearchResponse = result.json().await?;
     assert_eq!(1, response.results.len());
     assert_eq!("Rust Programming Language", response.results[0].title);
     assert_eq!("https://rust-lang.org", response.results[0].url);
+    assert_eq!(
+      Some("rust programming language".to_string()),
+      response.autoprompt_string
+    );
 
-    mock.assert_async().await;
     Ok(())
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_search_unauthorized() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_search_unauthorized() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -504,34 +488,20 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service.search("invalid-key", "test", None).await;
 
-    let response = client
-      .post(server.url() + "/search")
-      .header("x-api-key", "invalid-key")
-      .json(&ExaSearchRequest {
-        query: "test".to_string(),
-        search_type: "neural".to_string(),
-        use_autoprompt: true,
-        num_results: 5,
-        contents: ExaContents {
-          text: true,
-          highlights: true,
-        },
-      })
-      .send()
-      .await?;
-
-    assert_eq!(reqwest::StatusCode::UNAUTHORIZED, response.status());
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-invalid_api_key", err.code());
 
     Ok(())
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_search_rate_limited() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_search_rate_limited() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -541,34 +511,20 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service.search("test-key", "test", None).await;
 
-    let response = client
-      .post(server.url() + "/search")
-      .header("x-api-key", "test-key")
-      .json(&ExaSearchRequest {
-        query: "test".to_string(),
-        search_type: "neural".to_string(),
-        use_autoprompt: true,
-        num_results: 5,
-        contents: ExaContents {
-          text: true,
-          highlights: true,
-        },
-      })
-      .send()
-      .await?;
-
-    assert_eq!(reqwest::StatusCode::TOO_MANY_REQUESTS, response.status());
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-rate_limited", err.code());
 
     Ok(())
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_search_server_error() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_search_server_error() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -578,38 +534,98 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service.search("test-key", "test", None).await;
 
-    let response = client
-      .post(server.url() + "/search")
-      .header("x-api-key", "test-key")
-      .json(&ExaSearchRequest {
-        query: "test".to_string(),
-        search_type: "neural".to_string(),
-        use_autoprompt: true,
-        num_results: 5,
-        contents: ExaContents {
-          text: true,
-          highlights: true,
-        },
-      })
-      .send()
-      .await?;
-
-    assert!(!response.status().is_success());
-    assert_eq!(
-      reqwest::StatusCode::INTERNAL_SERVER_ERROR,
-      response.status()
-    );
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-request_failed", err.code());
 
     Ok(())
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_find_similar_success() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_search_num_results_default() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/search")
+      .match_body(Matcher::JsonString(
+        json!({
+          "query": "test",
+          "type": "neural",
+          "useAutoprompt": true,
+          "numResults": 5,
+          "contents": {
+            "text": true,
+            "highlights": true
+          }
+        })
+        .to_string(),
+      ))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "results": [],
+          "autopromptString": null
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let _response = service.search("test-key", "test", None).await?;
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_search_num_results_clamped() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/search")
+      .match_body(Matcher::JsonString(
+        json!({
+          "query": "test",
+          "type": "neural",
+          "useAutoprompt": true,
+          "numResults": 10,
+          "contents": {
+            "text": true,
+            "highlights": true
+          }
+        })
+        .to_string(),
+      ))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "results": [],
+          "autopromptString": null
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let _response = service.search("test-key", "test", Some(20)).await?;
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_find_similar_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -636,27 +652,11 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
-
-    let response = client
-      .post(server.url() + "/findSimilar")
-      .header("x-api-key", "test-key")
-      .header("Content-Type", "application/json")
-      .json(&ExaFindSimilarRequest {
-        url: "https://example.com".to_string(),
-        num_results: 5,
-        contents: ExaContents {
-          text: true,
-          highlights: true,
-        },
-      })
-      .send()
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service
+      .find_similar("test-key", "https://example.com", None)
       .await?;
 
-    assert_eq!(200, response.status());
-    let result: ExaFindSimilarResponse = response.json().await?;
     assert_eq!(1, result.results.len());
     assert_eq!("Similar Page", result.results[0].title);
 
@@ -665,7 +665,33 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_get_contents_success() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_find_similar_error() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/findSimilar")
+      .with_status(500)
+      .with_body("Internal server error")
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service
+      .find_similar("test-key", "https://example.com", None)
+      .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-request_failed", err.code());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_get_contents_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -688,23 +714,11 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
-
-    let response = client
-      .post(server.url() + "/contents")
-      .header("x-api-key", "test-key")
-      .header("Content-Type", "application/json")
-      .json(&ExaGetContentsRequest {
-        urls: vec!["https://example.com".to_string()],
-        text: true,
-      })
-      .send()
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service
+      .get_contents("test-key", vec!["https://example.com".to_string()], true)
       .await?;
 
-    assert_eq!(200, response.status());
-    let result: ExaContentsResponse = response.json().await?;
     assert_eq!(1, result.results.len());
     assert_eq!("https://example.com", result.results[0].url);
     assert_eq!(Some("Example Page".to_string()), result.results[0].title);
@@ -714,7 +728,33 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_exa_answer_success() -> anyhow::Result<()> {
+  #[anyhow_trace]
+  async fn test_get_contents_error() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/contents")
+      .with_status(500)
+      .with_body("Internal server error")
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service
+      .get_contents("test-key", vec!["https://example.com".to_string()], true)
+      .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-request_failed", err.code());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_answer_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
 
     let _mock = server
@@ -742,25 +782,60 @@ mod tests {
       .create_async()
       .await;
 
-    let client = reqwest::Client::builder()
-      .timeout(std::time::Duration::from_secs(30))
-      .build()?;
-
-    let response = client
-      .post(server.url() + "/answer")
-      .header("x-api-key", "test-key")
-      .header("Content-Type", "application/json")
-      .json(&ExaAnswerRequest {
-        query: "what is the answer".to_string(),
-        text: true,
-      })
-      .send()
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service
+      .answer("test-key", "what is the answer", true)
       .await?;
 
-    assert_eq!(200, response.status());
-    let result: ExaAnswerResponse = response.json().await?;
     assert_eq!("The answer is 42", result.answer);
     assert_eq!(1, result.results.len());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_answer_error() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/answer")
+      .with_status(500)
+      .with_body("Internal server error")
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service.answer("test-key", "what is the answer", true).await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-request_failed", err.code());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_search_parse_error() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+
+    let _mock = server
+      .mock("POST", "/search")
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body("invalid json {")
+      .create_async()
+      .await;
+
+    let service = DefaultExaService::with_base_url(server.url());
+    let result = service.search("test-key", "test", None).await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!("exa_error-request_failed", err.code());
 
     Ok(())
   }

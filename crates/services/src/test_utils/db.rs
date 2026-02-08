@@ -1,8 +1,7 @@
 use crate::db::{
   AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
-  DbError, DownloadRequest, ModelMetadataRow, ModelRepository, SqliteDbService,
-  TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
-  UserAccessRequestStatus,
+  DbError, DownloadRequest, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
+  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -427,10 +426,7 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("get_toolset_by_name"))
   }
 
-  async fn create_toolset(
-    &self,
-    row: &ToolsetRow,
-  ) -> Result<ToolsetRow, DbError> {
+  async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError> {
     self
       .inner
       .create_toolset(row)

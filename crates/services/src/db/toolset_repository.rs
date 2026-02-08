@@ -13,10 +13,7 @@ pub trait ToolsetRepository: Send + Sync {
     name: &str,
   ) -> Result<Option<ToolsetRow>, DbError>;
 
-  async fn create_toolset(
-    &self,
-    row: &ToolsetRow,
-  ) -> Result<ToolsetRow, DbError>;
+  async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError>;
 
   async fn update_toolset(
     &self,

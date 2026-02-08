@@ -63,10 +63,7 @@ async fn test_list_local_aliases_page_size(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(
-      Request::get("/api/models?page=2&page_size=4")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/api/models?page=2&page_size=4").body(Body::empty())?)
     .await?
     .json::<Value>()
     .await?;
@@ -86,10 +83,7 @@ async fn test_list_local_aliases_over_limit_page_size(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(
-      Request::get("/api/models?page_size=150")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/api/models?page_size=150").body(Body::empty())?)
     .await?
     .json::<Value>()
     .await?;
@@ -138,10 +132,7 @@ async fn test_list_local_aliases_sorting(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(
-      Request::get("/api/models?sort=repo&sort_order=desc")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/api/models?sort=repo&sort_order=desc").body(Body::empty())?)
     .await?
     .json::<PaginatedAliasResponse>()
     .await?;
@@ -158,10 +149,7 @@ async fn test_get_alias_handler(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(
-      Request::get("/api/models/llama3:instruct")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/api/models/llama3:instruct").body(Body::empty())?)
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let alias_response = response.json::<UserAliasResponse>().await?;
@@ -178,10 +166,7 @@ async fn test_get_alias_handler_non_existent(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(
-      Request::get("/api/models/non_existent_alias")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/api/models/non_existent_alias").body(Body::empty())?)
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
@@ -442,12 +427,7 @@ async fn test_create_alias_repo_not_downloaded_error(
   #[case] url: String,
 ) -> anyhow::Result<()> {
   let response = app
-    .oneshot(
-      Request::builder()
-        .method(method)
-        .uri(url)
-        .json(&payload)?,
-    )
+    .oneshot(Request::builder().method(method).uri(url).json(&payload)?)
     .await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());

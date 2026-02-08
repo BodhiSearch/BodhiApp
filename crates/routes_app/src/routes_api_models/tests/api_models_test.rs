@@ -1,4 +1,3 @@
-use anyhow_trace::anyhow_trace;
 use crate::{
   create_api_model_handler, delete_api_model_handler, fetch_models_handler, get_api_model_handler,
   list_api_models_handler, sync_models_handler, test_api_model_handler, update_api_model_handler,
@@ -6,6 +5,7 @@ use crate::{
   PaginatedApiModelResponse, TestCreds, TestPromptRequest, UpdateApiModelRequest,
   ENDPOINT_API_MODELS,
 };
+use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -24,7 +24,7 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::{ModelRepository},
+  db::ModelRepository,
   test_utils::{seed_test_api_models, test_db_service, AppServiceStubBuilder, TestDbService},
 };
 use std::sync::Arc;
@@ -148,10 +148,7 @@ async fn test_list_api_models_handler(
 
   // Make request to list API models
   let response = test_router(Arc::new(app_service))
-    .oneshot(
-      Request::get(ENDPOINT_API_MODELS)
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get(ENDPOINT_API_MODELS).body(Body::empty())?)
     .await?
     .json::<PaginatedApiModelResponse>()
     .await?;
@@ -503,7 +500,10 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   // Verify error response contains validation error code for prefix
   let error_response = response.json::<serde_json::Value>().await?;
   let error_code = error_response["error"]["code"].as_str().unwrap();
-  assert_eq!("obj_validation_error-forward_all_requires_prefix", error_code);
+  assert_eq!(
+    "obj_validation_error-forward_all_requires_prefix",
+    error_code
+  );
 
   Ok(())
 }
@@ -714,10 +714,7 @@ async fn test_delete_api_model_handler_success(
 
   // Make DELETE request to delete existing API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(
-      Request::delete(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS))
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::delete(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
     .await?;
 
   // Verify response status is 204 No Content
@@ -749,8 +746,7 @@ async fn test_delete_api_model_handler_not_found(
   // Make DELETE request to delete non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::delete(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS))
-        .body(Body::empty())?,
+      Request::delete(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
     )
     .await?;
 
@@ -787,10 +783,7 @@ async fn test_get_api_model_handler_success(
 
   // Make GET request to retrieve specific API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(
-      Request::get(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS))
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
     .await?;
 
   // Verify response status
@@ -834,8 +827,7 @@ async fn test_get_api_model_handler_not_found(
   // Make GET request to retrieve non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::get(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS))
-        .body(Body::empty())?,
+      Request::get(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
     )
     .await?;
 

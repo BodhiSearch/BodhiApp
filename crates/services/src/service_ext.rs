@@ -66,6 +66,7 @@ mod tests {
   };
   use anyhow_trace::anyhow_trace;
   use objs::test_utils::temp_dir;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use tempfile::TempDir;
 

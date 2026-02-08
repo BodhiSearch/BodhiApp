@@ -1,9 +1,9 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
-  AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow,
-  DbCore, DbError, DownloadRequest, DownloadStatus, ModelMetadataRow, ModelRepository,
-  SqlxError, TimeService, TokenRepository, TokenStatus, ToolsetRepository, ToolsetRow,
-  UserAccessRequest, UserAccessRequestStatus,
+  AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
+  DbError, DownloadRequest, DownloadStatus, ModelMetadataRow, ModelRepository, SqlxError,
+  TimeService, TokenRepository, TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest,
+  UserAccessRequestStatus,
 };
 use chrono::{DateTime, Utc};
 use derive_new::new;
@@ -1457,10 +1457,7 @@ impl ToolsetRepository for SqliteDbService {
     ))
   }
 
-  async fn create_toolset(
-    &self,
-    row: &ToolsetRow,
-  ) -> Result<ToolsetRow, DbError> {
+  async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError> {
     let enabled = if row.enabled { 1 } else { 0 };
 
     sqlx::query(
@@ -1664,16 +1661,14 @@ impl ToolsetRepository for SqliteDbService {
     .await?;
 
     Ok(result.map(
-      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
-        AppToolsetConfigRow {
-          id,
-          scope,
-          scope_uuid,
-          enabled: enabled != 0,
-          updated_by,
-          created_at,
-          updated_at,
-        }
+      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
+        id,
+        scope,
+        scope_uuid,
+        enabled: enabled != 0,
+        updated_by,
+        created_at,
+        updated_at,
       },
     ))
   }
@@ -1690,16 +1685,14 @@ impl ToolsetRepository for SqliteDbService {
     .await?;
 
     Ok(result.map(
-      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
-        AppToolsetConfigRow {
-          id,
-          scope,
-          scope_uuid,
-          enabled: enabled != 0,
-          updated_by,
-          created_at,
-          updated_at,
-        }
+      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
+        id,
+        scope,
+        scope_uuid,
+        enabled: enabled != 0,
+        updated_by,
+        created_at,
+        updated_at,
       },
     ))
   }

@@ -15,9 +15,7 @@ use objs::{test_utils::temp_bodhi_home, AppRole, ResourceRole, UserInfo};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext,
-};
+use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
 use services::{
   test_utils::{build_token_with_exp, AppServiceStubBuilder},
   MockAuthService, MockSessionService, UserListResponse,
@@ -177,8 +175,7 @@ async fn test_list_users_handler_missing_token(_temp_bodhi_home: TempDir) -> any
     .with_state(state);
 
   // Make request without token header
-  let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
-    .body(Body::empty())?;
+  let request = Request::get("/bodhi/v1/users?page=1&page_size=10").body(Body::empty())?;
 
   // Send request through router
   let response = router.oneshot(request).await?;
@@ -367,15 +364,12 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
   let (test_token, _) = build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp())?;
 
   let mut mock_auth = MockAuthService::default();
-  mock_auth
-    .expect_remove_user()
-    .times(1)
-    .return_once(|_, _| {
-      Err(services::AuthServiceError::AuthServiceApiError {
-        status: 404,
-        body: "User not found".to_string(),
-      })
-    });
+  mock_auth.expect_remove_user().times(1).return_once(|_, _| {
+    Err(services::AuthServiceError::AuthServiceApiError {
+      status: 404,
+      body: "User not found".to_string(),
+    })
+  });
 
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))

@@ -278,11 +278,9 @@ async fn test_chat_completions_missing_model_field() -> anyhow::Result<()> {
     .with_state(Arc::new(router_state));
 
   let response = app
-    .oneshot(
-      Request::post("/v1/chat/completions").json(json!({
-        "messages": [{"role": "user", "content": "Hello"}]
-      }))?,
-    )
+    .oneshot(Request::post("/v1/chat/completions").json(json!({
+      "messages": [{"role": "user", "content": "Hello"}]
+    }))?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -310,11 +308,9 @@ async fn test_chat_completions_missing_messages_field() -> anyhow::Result<()> {
     .with_state(Arc::new(router_state));
 
   let response = app
-    .oneshot(
-      Request::post("/v1/chat/completions").json(json!({
-        "model": "test-model"
-      }))?,
-    )
+    .oneshot(Request::post("/v1/chat/completions").json(json!({
+      "model": "test-model"
+    }))?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -342,13 +338,11 @@ async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
     .with_state(Arc::new(router_state));
 
   let response = app
-    .oneshot(
-      Request::post("/v1/chat/completions").json(json!({
-        "model": "test-model",
-        "messages": [{"role": "user", "content": "Hello"}],
-        "stream": "yes"
-      }))?,
-    )
+    .oneshot(Request::post("/v1/chat/completions").json(json!({
+      "model": "test-model",
+      "messages": [{"role": "user", "content": "Hello"}],
+      "stream": "yes"
+    }))?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());

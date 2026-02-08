@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use objs::{Alias, ApiAlias, AppError, ErrorType};
-use services::{DataServiceError, DataService};
+use services::{DataService, DataServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

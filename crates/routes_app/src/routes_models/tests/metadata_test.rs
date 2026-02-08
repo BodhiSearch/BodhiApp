@@ -52,9 +52,7 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
   ));
 
   let response = test_metadata_router(state)
-    .oneshot(
-      Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?,
-    )
+    .oneshot(Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?)
     .await?;
 
   assert_eq!(StatusCode::ACCEPTED, response.status());
@@ -92,9 +90,7 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
   ));
 
   let response = test_metadata_router(state)
-    .oneshot(
-      Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?,
-    )
+    .oneshot(Request::post("/api/models/refresh").json_str(r#"{"source":"all"}"#)?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -152,10 +148,7 @@ async fn test_refresh_metadata_model_invalid_repo_format(
 async fn test_refresh_metadata_model_alias_not_found(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  let app_service = app_service_stub_builder
-    .with_data_service()
-    .await
-    .build()?;
+  let app_service = app_service_stub_builder.with_data_service().await.build()?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

@@ -1,8 +1,6 @@
 use crate::{user_info_handler, TokenInfo, UserResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{
-  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
-};
+use auth_middleware::{KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN};
 use axum::{
   body::Body,
   http::{status::StatusCode, Request},

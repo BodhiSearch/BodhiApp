@@ -58,6 +58,8 @@ impl EnvWrapper for DefaultEnvWrapper {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use anyhow_trace::anyhow_trace;
+  use pretty_assertions::assert_eq;
   use std::io::Write;
   use tempfile::NamedTempFile;
 

@@ -1,9 +1,9 @@
 use crate::{routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse};
 use anyhow_trace::anyhow_trace;
+use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
 use auth_middleware::{
   KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOOL_SCOPES,
 };
-use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
@@ -139,9 +139,7 @@ async fn test_list_toolsets(
       .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "");
   }
 
-  let response = app
-    .oneshot(request_builder.body(Body::empty())?)
-    .await?;
+  let response = app.oneshot(request_builder.body(Body::empty())?).await?;
 
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
@@ -702,9 +700,7 @@ async fn test_list_toolset_types(
       .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "");
   }
 
-  let response = app
-    .oneshot(request_builder.body(Body::empty())?)
-    .await?;
+  let response = app.oneshot(request_builder.body(Body::empty())?).await?;
 
   assert_eq!(StatusCode::OK, response.status());
   Ok(())

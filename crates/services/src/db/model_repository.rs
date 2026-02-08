@@ -1,7 +1,7 @@
-use crate::db::{ApiKeyUpdate, DownloadRequest, ModelMetadataRow};
 use crate::db::DbError;
+use crate::db::{ApiKeyUpdate, DownloadRequest, ModelMetadataRow};
 use chrono::{DateTime, Utc};
-use objs::{ApiAlias};
+use objs::ApiAlias;
 
 #[async_trait::async_trait]
 pub trait ModelRepository: Send + Sync {
@@ -60,10 +60,7 @@ pub trait ModelRepository: Send + Sync {
   ) -> Result<bool, DbError>;
 
   // Model Metadata
-  async fn upsert_model_metadata(
-    &self,
-    metadata: &ModelMetadataRow,
-  ) -> Result<(), DbError>;
+  async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError>;
 
   async fn get_model_metadata_by_file(
     &self,
@@ -75,10 +72,7 @@ pub trait ModelRepository: Send + Sync {
   async fn batch_get_metadata_by_files(
     &self,
     files: &[(String, String, String)],
-  ) -> Result<
-    std::collections::HashMap<(String, String, String), ModelMetadataRow>,
-    DbError,
-  >;
+  ) -> Result<std::collections::HashMap<(String, String, String), ModelMetadataRow>, DbError>;
 
   async fn list_model_metadata(&self) -> Result<Vec<ModelMetadataRow>, DbError>;
 }

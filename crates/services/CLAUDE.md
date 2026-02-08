@@ -246,6 +246,49 @@ HTTP sessions use specific security settings:
 - AppSessionStore wraps tower-sessions SqliteStore with user_id tracking
 - Session clearing by user_id enables targeted session invalidation
 
+## Testing Conventions
+
+All tests in the services crate follow a standardized canonical pattern. For comprehensive reference with code examples, see the `.claude/skills/test-services/` skill directory.
+
+### Canonical Test Pattern
+
+- **Async tests**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]`, return `-> anyhow::Result<()>`
+- **Sync tests**: `#[rstest]` only (no `#[anyhow_trace]`), return `-> anyhow::Result<()>`
+- **Database fixture tests**: Add `#[awt]` only when `#[future]` fixture params are used
+- **Module naming**: Always `mod tests` (not `mod test`)
+
+### Error Code Assertions
+
+Assert error codes via `.code()` method, never error message text:
+
+```rust
+let err = result.unwrap_err();
+assert_eq!("auth_service_error-auth_service_api_error", err.code());
+```
+
+Error codes are auto-generated as `enum_name-variant_name` in snake_case. **Important**: transparent errors delegate to the inner error code (e.g., `DbError::SqlxError` produces `"sqlx_error"`, not `"db_error-sqlx_error"`).
+
+### Assertion Style
+
+Use `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;` in every test module.
+
+### Key Test Infrastructure
+
+- **TestDbService**: Real SQLite in temp directory with `FrozenTimeService` for deterministic timestamps, event broadcasting for operation verification. See `src/test_utils/db.rs`.
+- **MockDbService**: Composite `mockall::mock!` implementation covering all repository traits. See `src/test_utils/db.rs`.
+- **mockito::Server**: HTTP mock server for testing AuthService, AiApiService, ExaService. See `src/auth_service.rs`, `src/ai_api_service.rs`, `src/exa_service.rs`.
+- **EnvWrapperStub**: In-memory environment variable stub for SettingService tests. See `src/test_utils/envs.rs`.
+- **MockSettingsChangeListener**: Verifies setting change notifications with expectation-driven assertions.
+
+### Skill Reference
+
+For detailed patterns with full code examples:
+- `.claude/skills/test-services/SKILL.md` -- Quick reference and migration checklist
+- `.claude/skills/test-services/db-testing.md` -- TestDbService fixture, FrozenTimeService, real SQLite
+- `.claude/skills/test-services/api-testing.md` -- mockito HTTP mocking patterns
+- `.claude/skills/test-services/mock-patterns.md` -- mockall setup and MockDbService
+- `.claude/skills/test-services/advanced.md` -- Concurrency, progress tracking, notifications, parameterized tests
+
 ## Extension Guidelines
 
 ### Adding New Services

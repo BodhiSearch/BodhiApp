@@ -484,10 +484,9 @@ async fn execute_create_alias(
   } else {
     debug!("Creating new alias: '{}'", alias);
   }
-  let file_exists =
-    service
-      .hub_service()
-      .local_file_exists(&repo, &filename, snapshot.clone())?;
+  let file_exists = service
+    .hub_service()
+    .local_file_exists(&repo, &filename, snapshot.clone())?;
   let local_model_file = match file_exists {
     true => {
       debug!(

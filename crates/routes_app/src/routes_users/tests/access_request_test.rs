@@ -253,7 +253,10 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
   ));
 
   let router = Router::new()
-    .route(ENDPOINT_USER_REQUEST_ACCESS, post(user_request_access_handler))
+    .route(
+      ENDPOINT_USER_REQUEST_ACCESS,
+      post(user_request_access_handler),
+    )
     .with_state(state);
 
   let response = router
@@ -284,7 +287,10 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
   ));
 
   let router = Router::new()
-    .route(ENDPOINT_USER_REQUEST_ACCESS, post(user_request_access_handler))
+    .route(
+      ENDPOINT_USER_REQUEST_ACCESS,
+      post(user_request_access_handler),
+    )
     .with_state(state);
 
   let response = router
@@ -297,7 +303,10 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
     )
     .await?;
 
-  assert_eq!(axum::http::StatusCode::UNPROCESSABLE_ENTITY, response.status());
+  assert_eq!(
+    axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+    response.status()
+  );
   let body = response.json::<Value>().await?;
   assert_eq!(
     "access_request_error-already_has_access",
@@ -314,7 +323,10 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
 
   // Insert a pending request first
   db_service
-    .insert_pending_request("duplicate@example.com".to_string(), "dup-user-id".to_string())
+    .insert_pending_request(
+      "duplicate@example.com".to_string(),
+      "dup-user-id".to_string(),
+    )
     .await?;
 
   let app_service = AppServiceStubBuilder::default()
@@ -327,7 +339,10 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
   ));
 
   let router = Router::new()
-    .route(ENDPOINT_USER_REQUEST_ACCESS, post(user_request_access_handler))
+    .route(
+      ENDPOINT_USER_REQUEST_ACCESS,
+      post(user_request_access_handler),
+    )
     .with_state(state);
 
   let response = router
@@ -358,7 +373,10 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
 async fn test_request_status_found(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   db_service
-    .insert_pending_request("status@example.com".to_string(), "status-user-id".to_string())
+    .insert_pending_request(
+      "status@example.com".to_string(),
+      "status-user-id".to_string(),
+    )
     .await?;
 
   let app_service = AppServiceStubBuilder::default()
@@ -458,8 +476,11 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
 
   let response = router
     .oneshot(
-      Request::get(&format!("{}?page=1&page_size=10", ENDPOINT_ACCESS_REQUESTS_PENDING))
-        .body(Body::empty())?,
+      Request::get(&format!(
+        "{}?page=1&page_size=10",
+        ENDPOINT_ACCESS_REQUESTS_PENDING
+      ))
+      .body(Body::empty())?,
     )
     .await?;
 
@@ -498,8 +519,11 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
 
   let response = router
     .oneshot(
-      Request::get(&format!("{}?page=1&page_size=10", ENDPOINT_ACCESS_REQUESTS_ALL))
-        .body(Body::empty())?,
+      Request::get(&format!(
+        "{}?page=1&page_size=10",
+        ENDPOINT_ACCESS_REQUESTS_ALL
+      ))
+      .body(Body::empty())?,
     )
     .await?;
 
@@ -519,7 +543,10 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
 async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let access_request = db_service
-    .insert_pending_request("toreject@example.com".to_string(), "reject-user-id".to_string())
+    .insert_pending_request(
+      "toreject@example.com".to_string(),
+      "reject-user-id".to_string(),
+    )
     .await?;
 
   let (test_token, _) =
@@ -607,9 +634,9 @@ async fn test_approve_request_insufficient_privileges(
       .header(KEY_HEADER_BODHIAPP_USERNAME, "lowpriv@example.com")
       .header(KEY_HEADER_BODHIAPP_USER_ID, "lowpriv-user-id")
       .header("content-type", "application/json")
-      .body(Body::from(
-        serde_json::to_string(&json!({ "role": "resource_admin" }))?,
-      ))?,
+      .body(Body::from(serde_json::to_string(
+        &json!({ "role": "resource_admin" }),
+      )?))?,
     )
     .await?;
 
@@ -649,17 +676,14 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
 
   let response = router
     .oneshot(
-      Request::post(&format!(
-        "{}/99999/approve",
-        ENDPOINT_ACCESS_REQUESTS_ALL
-      ))
-      .with_user_auth("dummy-token", "resource_admin")
-      .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
-      .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
-      .header("content-type", "application/json")
-      .body(Body::from(
-        serde_json::to_string(&json!({ "role": "resource_user" }))?,
-      ))?,
+      Request::post(&format!("{}/99999/approve", ENDPOINT_ACCESS_REQUESTS_ALL))
+        .with_user_auth("dummy-token", "resource_admin")
+        .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
+        .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_string(
+          &json!({ "role": "resource_user" }),
+        )?))?,
     )
     .await?;
 

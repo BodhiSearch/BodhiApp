@@ -125,6 +125,8 @@ impl ConcurrencyService for LocalConcurrencyService {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use anyhow_trace::anyhow_trace;
+  use pretty_assertions::assert_eq;
   use std::sync::atomic::{AtomicU32, Ordering};
   use std::time::Duration;
   use tokio::time::sleep;

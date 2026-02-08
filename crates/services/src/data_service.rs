@@ -320,23 +320,27 @@ impl LocalDataService {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
   use crate::{
     db::ModelRepository,
     test_utils::{
       test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
       TestHfService,
     },
-    DataService, DataServiceError, LocalDataService,
+    DataService, LocalDataService,
   };
   use anyhow_trace::anyhow_trace;
-  use objs::{test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, RemoteModel, UserAlias};
+  use objs::{
+    test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, AppError, RemoteModel, UserAlias,
+  };
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::{fs, sync::Arc};
   use tempfile::TempDir;
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_models_file_missing(
     #[future]
@@ -345,11 +349,8 @@ mod test {
   ) -> anyhow::Result<()> {
     fs::remove_file(service.bodhi_home().join("models.yaml"))?;
     let result = service.find_remote_model("testalias:instruct");
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      DataServiceError::FileNotFound { filename, dirname } if filename == "models.yaml" && dirname.is_empty()
-    ));
+    let err = result.unwrap_err();
+    assert_eq!("data_service_error-file_not_found", err.code());
     Ok(())
   }
 
@@ -373,11 +374,8 @@ chat_template: llama3
 "#,
     )?;
     let result = service.find_remote_model("testalias:instruct");
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      DataServiceError::SerdeYamlError(_)
-    ));
+    let err = result.unwrap_err();
+    assert_eq!("serde_yaml_error", err.code());
     Ok(())
   }
 
@@ -385,6 +383,7 @@ chat_template: llama3
   #[case("testalias:instruct", true)]
   #[case("testalias-notexists", false)]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_find_remote_model(
     #[future]
@@ -400,6 +399,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_list_remote_models(
     #[future]
@@ -417,6 +417,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_find_alias(
     #[future]
@@ -431,6 +432,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_not_found(
     #[future]
@@ -444,6 +446,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_api_by_model_name(
     temp_bodhi_home: TempDir,
@@ -486,6 +489,7 @@ chat_template: llama3
   #[case("gpt-4", true, "api")] // API model will be inserted
   #[case("nonexistent-model", false, "none")] // Should not exist
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_priority_cases(
     temp_bodhi_home: TempDir,
@@ -535,6 +539,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_user_priority_over_api(
     temp_bodhi_home: TempDir,
@@ -571,6 +576,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_list_aliases(
     #[future]
@@ -586,6 +592,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_delete_alias(
     #[future]
@@ -610,6 +617,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_delete_alias_not_found(
     #[future]
@@ -617,15 +625,14 @@ chat_template: llama3
     service: TestDataService,
   ) -> anyhow::Result<()> {
     let result = service.delete_alias("notexists--instruct.yaml").await;
-    assert!(result.is_err());
-    assert!(
-      matches!(result.unwrap_err(), DataServiceError::AliasNotFound(alias) if alias == "notexists--instruct.yaml")
-    );
+    let err = result.unwrap_err();
+    assert_eq!("data_service_error-alias_not_found", err.code());
     Ok(())
   }
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_copy_alias(
     #[future]
@@ -646,6 +653,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_read_file(
     #[future]
@@ -668,6 +676,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_write_file(
     #[future]
@@ -694,6 +703,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_write_file_create_folder(
     #[future]
@@ -714,6 +724,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_local_data_service_read_file_not_found(
     #[future]
@@ -724,11 +735,8 @@ chat_template: llama3
     let filename = "non_existent_file.txt";
 
     let result = service.read_file(folder, filename);
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      DataServiceError::FileNotFound { filename, dirname } if filename == "non_existent_file.txt" && dirname == "non_existent_folder"
-    ));
+    let err = result.unwrap_err();
+    assert_eq!("data_service_error-file_not_found", err.code());
     Ok(())
   }
 
@@ -736,6 +744,7 @@ chat_template: llama3
   #[case("azure/gpt-4", Some("azure/".to_string()), vec!["gpt-4".to_string()], "azure-openai")]
   #[case("gpt-4", None, vec!["gpt-4".to_string()], "legacy-api")]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_with_prefix_matches(
     temp_bodhi_home: TempDir,
@@ -778,6 +787,7 @@ chat_template: llama3
   #[rstest]
   #[case("non-matching-term")]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_with_non_matching_prefix_returns_none(
     #[case] search_term: &str,
@@ -813,6 +823,7 @@ chat_template: llama3
 
   #[rstest]
   #[tokio::test]
+  #[anyhow_trace]
   #[awt]
   async fn test_find_alias_without_prefix_does_not_match_prefixed_api(
     temp_bodhi_home: TempDir,

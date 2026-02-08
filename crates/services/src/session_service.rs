@@ -208,6 +208,8 @@ impl SessionService for SqliteSessionService {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use anyhow_trace::anyhow_trace;
+  use pretty_assertions::assert_eq;
   use sqlx::SqlitePool;
   use std::collections::HashMap;
   use tempfile::TempDir;
@@ -229,6 +231,7 @@ mod tests {
     (service, temp_dir)
   }
 
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_app_session_store_migration() {
     let (service, _temp_dir) = create_test_session_service().await;
@@ -264,6 +267,7 @@ mod tests {
     );
   }
 
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_session_save_with_user_id() {
     let (service, _temp_dir) = create_test_session_service().await;
@@ -301,6 +305,7 @@ mod tests {
     assert_eq!(stored_user_id, Some("user123".to_string()));
   }
 
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_session_save_without_user_id() {
     let (service, _temp_dir) = create_test_session_service().await;
@@ -334,6 +339,7 @@ mod tests {
     assert_eq!(stored_user_id, None);
   }
 
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_clear_sessions_for_user() {
     let (service, _temp_dir) = create_test_session_service().await;
@@ -399,6 +405,7 @@ mod tests {
     assert_eq!(remaining_user456_sessions, 1);
   }
 
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_clear_sessions_for_nonexistent_user() {
     let (service, _temp_dir) = create_test_session_service().await;

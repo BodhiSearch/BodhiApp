@@ -289,15 +289,18 @@ impl AiApiService for DefaultAiApiService {
 mod tests {
   use crate::ai_api_service::{AiApiService, AiApiServiceError, DefaultAiApiService};
   use crate::test_utils::MockDbService;
+  use anyhow_trace::anyhow_trace;
   use axum::http::StatusCode;
   use chrono::Utc;
   use mockito::Server;
   use objs::{ApiAlias, ApiFormat};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
   use std::sync::Arc;
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_test_prompt_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
@@ -330,6 +333,7 @@ mod tests {
   }
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_test_prompt_too_long() -> anyhow::Result<()> {
     let server = Server::new_async().await;
@@ -359,6 +363,7 @@ mod tests {
   }
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_fetch_models_success() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
@@ -391,6 +396,7 @@ mod tests {
   }
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_api_unauthorized_error() -> anyhow::Result<()> {
     let mut server = Server::new_async().await;
@@ -415,6 +421,7 @@ mod tests {
   }
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_model_not_found() -> anyhow::Result<()> {
     let mock_db = MockDbService::new();
@@ -468,6 +475,7 @@ mod tests {
     "openrouter/openai/gpt-4",
     "openai/gpt-4"
   )]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_forward_chat_completion_model_prefix_handling(
     #[case] api_id: &str,
@@ -537,6 +545,7 @@ mod tests {
   }
 
   #[rstest]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_forward_request_without_api_key() -> anyhow::Result<()> {
     let mut mock_db = MockDbService::new();
@@ -614,6 +623,7 @@ mod tests {
     r#"{"choices":[{"message":{"content":"Response without auth"}}]}"#,
     "Response without auth"
   )]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_test_prompt_success_parameterized(
     #[case] api_key: Option<&str>,
@@ -651,6 +661,7 @@ mod tests {
   #[rstest]
   #[case::with_api_key(Some("bad-key"), 401, "Unauthorized")]
   #[case::without_api_key(None, 401, "Unauthorized")]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_test_prompt_failure_parameterized(
     #[case] api_key: Option<&str>,
@@ -687,6 +698,7 @@ mod tests {
   #[rstest]
   #[case::with_api_key(Some("test-key"), r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
   #[case::without_api_key(None, r#"{"data": [{"id": "gpt-4"}, {"id": "gpt-3.5-turbo"}]}"#, vec!["gpt-4", "gpt-3.5-turbo"])]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_fetch_models_success_parameterized(
     #[case] api_key: Option<&str>,
@@ -724,6 +736,7 @@ mod tests {
   #[rstest]
   #[case::with_api_key(Some("bad-key"), 401, "Unauthorized")]
   #[case::without_api_key(None, 401, "Unauthorized")]
+  #[anyhow_trace]
   #[tokio::test]
   async fn test_fetch_models_failure_parameterized(
     #[case] api_key: Option<&str>,

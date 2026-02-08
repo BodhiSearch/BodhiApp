@@ -229,6 +229,68 @@ let alias = data_service.find_alias("gpt-4").await;
 // Returns User > Model > Api alias priority
 ```
 
+## Test Infrastructure
+
+### Test Organization
+
+All service modules contain inline `#[cfg(test)] mod tests` blocks. Three modules use separate test files:
+
+| Module | Test Location |
+|--------|--------------|
+| `db` | `src/db/tests.rs` (separate file) |
+| `setting_service` | `src/setting_service/tests.rs` (separate file) |
+| `tool_service` | `src/tool_service/tests.rs` (separate file) |
+| All other services | Inline `mod tests` at bottom of source file |
+
+Additionally, `src/db/encryption.rs`, `src/db/error.rs`, and `src/db/sqlite_pool.rs` have inline test modules for their focused concerns.
+
+### Modules with Inline Tests
+
+- `src/auth_service.rs` -- OAuth2 flow tests with mockito
+- `src/ai_api_service.rs` -- AI API tests with mockito
+- `src/exa_service.rs` -- Exa search API tests with mockito
+- `src/secret_service.rs` -- Encryption/decryption tests
+- `src/hub_service.rs` -- HuggingFace integration tests
+- `src/data_service.rs` -- Local model/alias management tests
+- `src/session_service.rs` -- Session management tests
+- `src/concurrency_service.rs` -- Per-key locking tests
+- `src/progress_tracking.rs` -- Download progress tests with event broadcasting
+- `src/queue_service.rs` -- Background queue tests
+- `src/cache_service.rs` -- Cache layer tests
+- `src/keyring_service.rs` -- Credential storage tests
+- `src/token.rs` -- JWT parsing/validation tests
+- `src/env_wrapper.rs` -- Environment variable tests
+- `src/service_ext.rs` -- Service extension tests
+
+### Test Utilities (`test-utils` feature)
+
+The `src/test_utils/` module provides reusable test infrastructure:
+
+| File | Key Exports | Purpose |
+|------|-------------|---------|
+| `db.rs` | `TestDbService`, `FrozenTimeService`, `MockDbService`, `test_db_service` | Real SQLite fixture with event broadcasting, frozen timestamps, composite mock |
+| `app.rs` | `AppServiceStub`, `AppServiceStubBuilder` | Full service composition for integration-style tests |
+| `auth.rs` | `test_auth_service`, embedded RSA keys | AuthService with configurable base URL for mockito |
+| `data.rs` | Data service helpers | Temp directory fixtures for alias/model tests |
+| `hf.rs` | `TestHfService`, `OfflineHubService` | HuggingFace mock with configurable real/mock modes |
+| `secret.rs` | `SecretServiceStub`, `KeyringStoreStub` | In-memory secret/keyring storage |
+| `session.rs` | Session mocks | Session service test helpers |
+| `envs.rs` | `EnvWrapperStub` | In-memory environment variable stub |
+| `objs.rs` | Domain object builders | Test data construction helpers |
+| `settings.rs` | `bodhi_home_setting` | Setting service test configuration |
+
+### Canonical Test Pattern
+
+All tests follow the standardized pattern established in the services test revamp:
+
+- **Annotations**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]` (async) or `#[rstest]` only (sync)
+- **Return type**: `-> anyhow::Result<()>` with `Ok(())` at end
+- **Assertions**: `assert_eq!(expected, actual)` with `pretty_assertions`
+- **Error handling**: `?` operator instead of `.unwrap()`, error code assertions via `.code()`
+- **Fixtures**: `#[awt]` + `#[future]` only for async fixture params like `test_db_service`
+
+For detailed patterns and migration checklists, see `.claude/skills/test-services/SKILL.md`.
+
 ## Feature Flags
 
 - `test-utils`: Enables comprehensive test utilities, mock services, and rstest fixtures

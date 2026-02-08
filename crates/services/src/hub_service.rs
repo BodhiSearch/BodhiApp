@@ -471,10 +471,12 @@ impl HfHubService {
                 repo: repo.to_string(),
                 error: error_msg,
               },
-              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => HubServiceError::Transport {
-                repo: repo.to_string(),
-                error: error_msg,
-              },
+              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => {
+                HubServiceError::Transport {
+                  repo: repo.to_string(),
+                  error: error_msg,
+                }
+              }
               _ => HubServiceError::Unknown {
                 repo: repo.to_string(),
                 error: error_msg,
@@ -495,7 +497,7 @@ impl HfHubService {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
   use crate::{
     test_utils::{
       build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
@@ -505,7 +507,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use objs::{
     test_utils::{generate_test_data_gguf_files, temp_hf_home, SNAPSHOT},
-    HubFile, Repo,
+    AppError, HubFile, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -531,6 +533,7 @@ mod test {
     "1"
   )]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hf_hub_service_download_public_file_with_snapshot(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
@@ -581,6 +584,7 @@ mod test {
   #[case::anon_older("amir36/test-gated-repo", Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()))]
   #[case::anon_not_exists("amir36/test-gated-repo", Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hf_hub_service_download_gets_unauth_error_if_downloading_as_anon(
     temp_hf_home: TempDir,
     #[case] repo: String,
@@ -607,10 +611,7 @@ mod test {
         assert_eq!(error, actual_error);
         assert_eq!(repo, actual_repo);
       }
-      _ => panic!(
-        "Expected HubServiceError::MayNotExist, got {}",
-        err
-      ),
+      _ => panic!("Expected HubServiceError::MayNotExist, got {}", err),
     }
     Ok(())
   }
@@ -631,6 +632,7 @@ mod test {
     GATED_ERR
   )]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hf_hub_service_download_gated_error_if_downloading_with_token_for_gated_repo(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
@@ -658,10 +660,7 @@ mod test {
         assert_eq!(error, actual_error);
         assert_eq!("amir36/test-gated-repo", repo);
       }
-      _ => panic!(
-        "Expected HubServiceError::GatedAccess, got {}",
-        err
-      ),
+      _ => panic!("Expected HubServiceError::GatedAccess, got {}", err),
     }
     Ok(())
   }
@@ -684,6 +683,7 @@ mod test {
   #[case(hf_test_token_allowed(), Some("main".to_string()))]
   #[case(hf_test_token_allowed(), Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hf_hub_service_download_not_found_if_downloading_with_token_for_not_exists_repo(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
@@ -706,10 +706,7 @@ mod test {
         assert_eq!(error, actual_error);
         assert_eq!("amir36/not-exists", actual_repo);
       }
-      err => panic!(
-        "Expected HubServiceError::RepoDisabled, got {}",
-        err
-      ),
+      err => panic!("Expected HubServiceError::RepoDisabled, got {}", err),
     }
     Ok(())
   }
@@ -720,6 +717,7 @@ mod test {
   #[case( Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()), "2" )]
   #[case( Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()), "1" )]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_hf_hub_service_download_gated_file_allowed(
     #[with(hf_test_token_allowed(), true)]
     #[from(test_hf_service)]
@@ -797,12 +795,8 @@ mod test {
     let filename = "tokenizer_config.json";
     let snapshot = "cfe96d938c52db7c6d936f99370c0801b24233c4";
     let local_model_file = service.find_local_file(&repo, filename, Some(snapshot.to_string()));
-    assert!(local_model_file.is_err());
-    assert!(matches!(
-      local_model_file.unwrap_err(),
-      HubServiceError::FileNotFound { filename: f, repo: r, snapshot: s }
-      if f == filename && r == repo.to_string() && s == snapshot
-    ));
+    let err = local_model_file.unwrap_err();
+    assert_eq!("hub_service_error-file_not_found", err.code());
     Ok(())
   }
 
@@ -836,12 +830,8 @@ mod test {
     let filename = "some-model-file.gguf";
     let repo = Repo::try_from("TheBloke/NotDownloaded")?;
     let result = service.find_local_file(&repo, filename, Some(SNAPSHOT_MAIN.to_string()));
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      HubServiceError::FileNotFound { filename: f, repo: r, snapshot: s }
-      if f == filename && r == repo.to_string() && s == SNAPSHOT_MAIN
-    ));
+    let err = result.unwrap_err();
+    assert_eq!("hub_service_error-file_not_found", err.code());
     Ok(())
   }
 

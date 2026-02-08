@@ -118,8 +118,10 @@ pub fn extract_claims<T: for<'de> Deserialize<'de>>(access_token: &str) -> Resul
 #[cfg(test)]
 mod tests {
   use crate::{extract_claims, test_utils::build_token, TokenError};
+  use anyhow_trace::anyhow_trace;
   use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
   use chrono::Utc;
+  use pretty_assertions::assert_eq;
   use serde::Deserialize;
   use serde_json::{json, Value};
   use std::collections::HashMap;

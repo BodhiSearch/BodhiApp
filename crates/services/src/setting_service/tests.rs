@@ -246,12 +246,7 @@ fn test_change_notifications(
   #[case] initial_file_value: Option<&str>,
   #[case] default_value: Option<&str>,
   #[case] new_value: Option<&str>,
-  #[case] expected_notification: Option<(
-    Option<&str>,
-    SettingSource,
-    Option<&str>,
-    SettingSource,
-  )>,
+  #[case] expected_notification: Option<(Option<&str>, SettingSource, Option<&str>, SettingSource)>,
 ) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   if let Some(file_val) = initial_file_value {

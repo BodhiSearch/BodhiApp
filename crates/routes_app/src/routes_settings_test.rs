@@ -119,14 +119,8 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     Some(&log_level),
     settings.iter().find(|k| k.key == BODHI_LOG_LEVEL)
   );
-  assert_eq!(
-    Some(&host),
-    settings.iter().find(|k| k.key == BODHI_HOST)
-  );
-  assert_eq!(
-    Some(&port),
-    settings.iter().find(|k| k.key == BODHI_PORT)
-  );
+  assert_eq!(Some(&host), settings.iter().find(|k| k.key == BODHI_HOST));
+  assert_eq!(Some(&port), settings.iter().find(|k| k.key == BODHI_PORT));
   Ok(())
 }
 

@@ -425,9 +425,10 @@ async fn execute_pull_by_repo_file(
   snapshot: Option<String>,
   progress: Option<Progress>,
 ) -> Result<(), PullError> {
-  let model_file_exists = service
-    .hub_service()
-    .local_file_exists(&repo, &filename, snapshot.clone())?;
+  let model_file_exists =
+    service
+      .hub_service()
+      .local_file_exists(&repo, &filename, snapshot.clone())?;
   if model_file_exists {
     debug!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
     return Ok(());

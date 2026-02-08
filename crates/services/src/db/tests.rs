@@ -9,14 +9,17 @@ use crate::{
     test_db_service, TestDbService,
   },
 };
+use anyhow_trace::anyhow_trace;
 use chrono::Utc;
 use objs::ApiAlias;
 use objs::ApiFormat;
+use pretty_assertions::assert_eq;
 use rstest::rstest;
 use uuid::Uuid;
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_create_download_request(
   #[future]
@@ -34,6 +37,7 @@ async fn test_db_service_create_download_request(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_update_download_request(
   #[future]
@@ -71,6 +75,7 @@ async fn test_db_service_update_download_request(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_download_request_progress_tracking(
   #[future]
@@ -106,6 +111,7 @@ async fn test_db_service_download_request_progress_tracking(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_insert_pending_request(
   #[future]
@@ -133,6 +139,7 @@ async fn test_db_service_insert_pending_request(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_get_pending_request(
   #[future]
@@ -152,6 +159,7 @@ async fn test_db_service_get_pending_request(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_list_pending_requests(
   #[future]
@@ -201,6 +209,7 @@ async fn test_db_service_list_pending_requests(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_db_service_update_request_status(
   #[future]
@@ -226,6 +235,7 @@ async fn test_db_service_update_request_status(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_api_token(
   #[future]
@@ -261,6 +271,7 @@ async fn test_create_api_token(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_api_token(
   #[future]
@@ -304,6 +315,7 @@ async fn test_update_api_token(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_api_tokens_user_scoped(
   #[future]
@@ -363,6 +375,7 @@ async fn test_list_api_tokens_user_scoped(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_api_token_user_scoped(
   #[future]
@@ -420,6 +433,7 @@ async fn test_update_api_token_user_scoped(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_and_get_api_model_alias(
   #[future]
@@ -456,6 +470,7 @@ async fn test_create_and_get_api_model_alias(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_api_model_alias_without_key(
   #[future]
@@ -490,6 +505,7 @@ async fn test_create_api_model_alias_without_key(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_api_model_alias_with_new_key(
   #[future]
@@ -537,6 +553,7 @@ async fn test_update_api_model_alias_with_new_key(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_api_model_alias_without_key_change(
   #[future]
@@ -582,6 +599,7 @@ async fn test_update_api_model_alias_without_key_change(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_api_model_aliases(
   #[future]
@@ -625,6 +643,7 @@ async fn test_list_api_model_aliases(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_delete_api_model_alias(
   #[future]
@@ -658,6 +677,7 @@ async fn test_delete_api_model_alias(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_api_key_encryption_security(
   #[future]
@@ -713,6 +733,7 @@ async fn test_api_key_encryption_security(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_nonexistent_api_model_alias(
   #[future]
@@ -732,6 +753,7 @@ async fn test_get_nonexistent_api_model_alias(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_api_model_alias_keeps_key_when_none_provided(
   #[future]
@@ -830,6 +852,7 @@ async fn test_update_api_model_alias_clear_key(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_batch_get_metadata_by_files_returns_inserted_data(
   #[future]
@@ -884,6 +907,7 @@ async fn test_batch_get_metadata_by_files_returns_inserted_data(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_batch_get_metadata_by_files_returns_empty_for_empty_input(
   #[future]
@@ -898,6 +922,7 @@ async fn test_batch_get_metadata_by_files_returns_empty_for_empty_input(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_upsert_model_metadata_inserts_new_row(
   #[future]
@@ -916,7 +941,9 @@ async fn test_upsert_model_metadata_inserts_new_row(
     .capabilities_function_calling(1_i64)
     .context_max_input_tokens(8192_i64)
     .context_max_output_tokens(4096_i64)
-    .architecture(r#"{"family":"llama","parameter_count":7000000000,"quantization":"Q4_K_M","format":"gguf"}"#)
+    .architecture(
+      r#"{"family":"llama","parameter_count":7000000000,"quantization":"Q4_K_M","format":"gguf"}"#,
+    )
     .chat_template("{% for msg in messages %}{{ msg.role }}: {{ msg.content }}{% endfor %}");
   let row = builder.build()?;
 
@@ -942,6 +969,7 @@ async fn test_upsert_model_metadata_inserts_new_row(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_upsert_model_metadata_updates_existing_row(
   #[future]
@@ -992,6 +1020,7 @@ async fn test_upsert_model_metadata_updates_existing_row(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_upsert_model_metadata_with_api_model_id(
   #[future]
@@ -1022,6 +1051,7 @@ async fn test_upsert_model_metadata_with_api_model_id(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_model_metadata_by_file_returns_none_for_nonexistent(
   #[future]
@@ -1037,6 +1067,7 @@ async fn test_get_model_metadata_by_file_returns_none_for_nonexistent(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_model_metadata_by_file_filters_by_source(
   #[future]
@@ -1079,6 +1110,7 @@ async fn test_get_model_metadata_by_file_filters_by_source(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_model_metadata_returns_all_rows(
   #[future]
@@ -1107,6 +1139,7 @@ async fn test_list_model_metadata_returns_all_rows(
 
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_model_metadata_returns_empty_when_no_data(
   #[future]
@@ -1124,6 +1157,7 @@ async fn test_list_model_metadata_returns_empty_when_no_data(
 /// where UserAlias requests are translated to store under source='model'.
 #[rstest]
 #[awt]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_metadata_stored_with_source_model_only(
   #[future]

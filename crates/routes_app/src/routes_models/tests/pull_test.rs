@@ -211,10 +211,7 @@ async fn test_pull_by_alias_success(
     .build()?;
   let router = test_router(Arc::new(app_service));
   let response = router
-    .oneshot(
-      Request::post("/modelfiles/pull/testalias:q4_instruct")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::post("/modelfiles/pull/testalias:q4_instruct").body(Body::empty())?)
     .await?;
 
   assert_eq!(StatusCode::CREATED, response.status());
@@ -254,10 +251,7 @@ async fn test_pull_by_alias_not_found(
     .build()?;
   let router = test_router(Arc::new(app_service));
   let response = router
-    .oneshot(
-      Request::post("/modelfiles/pull/non_existent:alias")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::post("/modelfiles/pull/non_existent:alias").body(Body::empty())?)
     .await?;
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
@@ -290,8 +284,7 @@ async fn test_get_download_status_success(
 
   let response = router
     .oneshot(
-      Request::get(&format!("/modelfiles/pull/status/{}", test_request.id))
-        .body(Body::empty())?,
+      Request::get(&format!("/modelfiles/pull/status/{}", test_request.id)).body(Body::empty())?,
     )
     .await?;
 
@@ -321,10 +314,7 @@ async fn test_get_download_status_not_found(
 
   let router = test_router(Arc::new(app_service));
   let response = router
-    .oneshot(
-      Request::get("/modelfiles/pull/status/non_existent_id")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/modelfiles/pull/status/non_existent_id").body(Body::empty())?)
     .await?;
 
   assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -368,10 +358,7 @@ async fn test_list_downloads(
   let router = test_router(Arc::new(app_service));
 
   let response = router
-    .oneshot(
-      Request::get("/modelfiles/pull/downloads?page=1&page_size=10")
-        .body(Body::empty())?,
-    )
+    .oneshot(Request::get("/modelfiles/pull/downloads?page=1&page_size=10").body(Body::empty())?)
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());

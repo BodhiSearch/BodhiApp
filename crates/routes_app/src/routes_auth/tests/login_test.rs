@@ -98,12 +98,26 @@ async fn test_auth_initiate_handler(
 
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  assert_eq!(Some("code"), query_params.get("response_type").map(|s| s.as_str()));
-  assert_eq!(Some("test_client_id"), query_params.get("client_id").map(|s| s.as_str()));
-  assert_eq!(Some(callback_url), query_params.get("redirect_uri").map(|s| s.as_str()));
+  assert_eq!(
+    Some("code"),
+    query_params.get("response_type").map(|s| s.as_str())
+  );
+  assert_eq!(
+    Some("test_client_id"),
+    query_params.get("client_id").map(|s| s.as_str())
+  );
+  assert_eq!(
+    Some(callback_url),
+    query_params.get("redirect_uri").map(|s| s.as_str())
+  );
   assert!(query_params.contains_key("state"));
   assert!(query_params.contains_key("code_challenge"));
-  assert_eq!(Some("S256"), query_params.get("code_challenge_method").map(|s| s.as_str()));
+  assert_eq!(
+    Some("S256"),
+    query_params
+      .get("code_challenge_method")
+      .map(|s| s.as_str())
+  );
   assert_eq!(
     Some("openid email profile roles"),
     query_params.get("scope").map(|s| s.as_str())
@@ -581,7 +595,9 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
   // Verify callback URL uses localhost from Host header
-  let callback_url = query_params.get("redirect_uri").expect("redirect_uri param missing");
+  let callback_url = query_params
+    .get("redirect_uri")
+    .expect("redirect_uri param missing");
   assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
 
   // Extract state for the callback request
@@ -648,7 +664,10 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  let state = format!("modified-{}", query_params.get("state").expect("state param missing"));
+  let state = format!(
+    "modified-{}",
+    query_params.get("state").expect("state param missing")
+  );
 
   let resp = client
     .post("/auth/callback")
@@ -715,7 +734,10 @@ async fn test_auth_callback_handler_auth_service_error(
   let body: RedirectResponse = login_resp.json();
   let url = Url::parse(&body.location)?;
   let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-  let state = query_params.get("state").expect("state param missing").to_string();
+  let state = query_params
+    .get("state")
+    .expect("state param missing")
+    .to_string();
   let code = "test_code".to_string();
   let resp = client
     .post("/auth/callback")

@@ -248,7 +248,9 @@ mod tests {
     generate_random_key, get_secret, set_secret, DefaultSecretService, SecretService,
     SecretServiceError,
   };
+  use anyhow_trace::anyhow_trace;
   use objs::test_utils::temp_dir;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use tempfile::TempDir;

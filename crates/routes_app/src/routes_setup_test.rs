@@ -412,28 +412,21 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
     .with_state(state);
 
   let resp = router
-    .oneshot(
-      Request::post("/setup").json(SetupRequest {
-        name: "Test Server Name".to_string(),
-        description: Some("Test description".to_string()),
-      })?,
-    )
+    .oneshot(Request::post("/setup").json(SetupRequest {
+      name: "Test Server Name".to_string(),
+      description: Some("Test description".to_string()),
+    })?)
     .await?;
 
   assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
   let body = resp.json::<Value>().await?;
-  assert_eq!(
-    "reqwest_error",
-    body["error"]["code"].as_str().unwrap()
-  );
+  assert_eq!("reqwest_error", body["error"]["code"].as_str().unwrap());
   Ok(())
 }
 
 #[anyhow_trace]
 #[rstest]
-#[case(
-  r#"{"invalid": true,}"#,
-)]
+#[case(r#"{"invalid": true,}"#)]
 #[tokio::test]
 async fn test_setup_handler_bad_request(#[case] body: &str) -> anyhow::Result<()> {
   let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
@@ -479,12 +472,10 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
     .with_state(state);
 
   let resp = router
-    .oneshot(
-      Request::post("/setup").json(SetupRequest {
-        name: "Short".to_string(), // Less than 10 characters
-        description: Some("Test description".to_string()),
-      })?,
-    )
+    .oneshot(Request::post("/setup").json(SetupRequest {
+      name: "Short".to_string(), // Less than 10 characters
+      description: Some("Test description".to_string()),
+    })?)
     .await?;
 
   assert_eq!(StatusCode::BAD_REQUEST, resp.status());

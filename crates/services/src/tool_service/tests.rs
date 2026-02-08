@@ -1,9 +1,11 @@
 use crate::db::{ApiKeyUpdate, AppToolsetConfigRow, MockTimeService, ToolsetRow};
-use crate::test_utils::MockDbService;
 use crate::exa_service::MockExaService;
+use crate::test_utils::MockDbService;
 use crate::tool_service::{DefaultToolService, ToolService, ToolsetError};
+use anyhow_trace::anyhow_trace;
 use chrono::{TimeZone, Utc};
 use mockall::predicate::eq;
+use pretty_assertions::assert_eq;
 use rstest::rstest;
 use std::sync::Arc;
 
@@ -127,6 +129,7 @@ fn test_validate_type_fails_for_unknown() {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_tools_for_user_returns_tools_for_enabled_instances() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -153,6 +156,7 @@ async fn test_list_tools_for_user_returns_tools_for_enabled_instances() -> anyho
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_tools_for_user_returns_empty_when_no_instances() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -171,6 +175,7 @@ async fn test_list_tools_for_user_returns_empty_when_no_instances() -> anyhow::R
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_tools_for_user_deduplicates_same_type() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -198,6 +203,7 @@ async fn test_list_tools_for_user_deduplicates_same_type() -> anyhow::Result<()>
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_all_toolsets_returns_toolsets_with_app_status() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -217,6 +223,7 @@ async fn test_list_all_toolsets_returns_toolsets_with_app_status() -> anyhow::Re
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_all_toolsets_shows_disabled_when_no_config() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -240,6 +247,7 @@ async fn test_list_all_toolsets_shows_disabled_when_no_config() -> anyhow::Resul
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_returns_user_toolsets() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -265,6 +273,7 @@ async fn test_list_returns_user_toolsets() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_list_returns_empty_for_user_with_no_toolsets() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -287,6 +296,7 @@ async fn test_list_returns_empty_for_user_with_no_toolsets() -> anyhow::Result<(
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_returns_owned_toolset() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -306,6 +316,7 @@ async fn test_get_returns_owned_toolset() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_returns_none_for_other_users_toolset() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -324,6 +335,7 @@ async fn test_get_returns_none_for_other_users_toolset() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_get_returns_none_when_not_found() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -346,6 +358,7 @@ async fn test_get_returns_none_when_not_found() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_success() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -384,6 +397,7 @@ async fn test_create_success() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_fails_when_name_already_exists() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -444,6 +458,7 @@ async fn test_create_fails_with_invalid_name(
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_fails_with_too_long_name() -> anyhow::Result<()> {
   let db = MockDbService::new();
@@ -469,6 +484,7 @@ async fn test_create_fails_with_too_long_name() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_fails_with_invalid_toolset_type() -> anyhow::Result<()> {
   let db = MockDbService::new();
@@ -496,6 +512,7 @@ async fn test_create_fails_with_invalid_toolset_type() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_fails_when_app_disabled() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -527,6 +544,7 @@ async fn test_create_fails_when_app_disabled() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_create_same_name_different_user_succeeds() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -568,6 +586,7 @@ async fn test_create_same_name_different_user_succeeds() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_success() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -609,6 +628,7 @@ async fn test_update_success() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_fails_when_not_found() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -633,6 +653,7 @@ async fn test_update_fails_when_not_found() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_fails_when_not_owned() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -657,6 +678,7 @@ async fn test_update_fails_when_not_owned() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_fails_when_name_conflicts() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -681,6 +703,7 @@ async fn test_update_fails_when_name_conflicts() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_same_name_different_case_succeeds() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -712,6 +735,7 @@ async fn test_update_same_name_different_case_succeeds() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_enable_fails_when_app_disabled() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -742,6 +766,7 @@ async fn test_update_enable_fails_when_app_disabled() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_with_api_key_set() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -780,6 +805,7 @@ async fn test_update_with_api_key_set() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_update_with_api_key_keep() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -815,6 +841,7 @@ async fn test_update_with_api_key_keep() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_delete_success() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -836,6 +863,7 @@ async fn test_delete_success() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_delete_fails_when_not_found() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -858,6 +886,7 @@ async fn test_delete_fails_when_not_found() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_delete_fails_when_not_owned() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -880,6 +909,7 @@ async fn test_delete_fails_when_not_owned() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_delete_succeeds_even_when_app_disabled() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -905,6 +935,7 @@ async fn test_delete_succeeds_even_when_app_disabled() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_type_enabled_true() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -925,6 +956,7 @@ async fn test_is_type_enabled_true() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_type_enabled_false_when_disabled() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -950,6 +982,7 @@ async fn test_is_type_enabled_false_when_disabled() -> anyhow::Result<()> {
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_type_enabled_false_when_no_config() -> anyhow::Result<()> {
   let mut db = MockDbService::new();
@@ -974,6 +1007,7 @@ async fn test_is_type_enabled_false_when_no_config() -> anyhow::Result<()> {
 // ============================================================================
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_app_client_registered_for_toolset_returns_true_when_registered(
 ) -> anyhow::Result<()> {
@@ -1005,6 +1039,7 @@ async fn test_is_app_client_registered_for_toolset_returns_true_when_registered(
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_app_client_registered_for_toolset_returns_false_when_toolset_not_in_config(
 ) -> anyhow::Result<()> {
@@ -1038,6 +1073,7 @@ async fn test_is_app_client_registered_for_toolset_returns_false_when_toolset_no
 }
 
 #[rstest]
+#[anyhow_trace]
 #[tokio::test]
 async fn test_is_app_client_registered_for_toolset_returns_false_when_no_config(
 ) -> anyhow::Result<()> {
