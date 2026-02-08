@@ -173,8 +173,8 @@ mod tests {
   };
   use services::{
     db::AppClientToolsetConfigRow,
-    test_utils::{test_auth_service, AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
-    AppAccessResponse, AppRegInfo, AppService, AppStatus, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+    test_utils::{test_auth_service, AppServiceStubBuilder, SecretServiceStub},
+    AppAccessResponse, AppRegInfo, AppService, AppStatus,
   };
   use std::sync::Arc;
   use tempfile::TempDir;
