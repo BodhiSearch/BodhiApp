@@ -1,7 +1,7 @@
 use crate::{
-  AliasResponse, CreateAliasRequest, LocalModelResponse, ModelError, PaginatedAliasResponse,
-  PaginatedLocalModelResponse, PaginationSortParams, UpdateAliasRequest, UserAliasResponse,
-  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  AliasResponse, CreateAliasError, CreateAliasRequest, LocalModelResponse, ModelError,
+  PaginatedAliasResponse, PaginatedLocalModelResponse, PaginationSortParams, UpdateAliasRequest,
+  UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -9,11 +9,14 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use commands::CreateCommand;
-use objs::{Alias, ApiError, HubFile, OpenAIApiError, Repo, API_TAG_MODELS};
+use objs::{
+  Alias, ApiError, HubFile, OAIRequestParams, OpenAIApiError, Repo, UserAliasBuilder,
+  API_TAG_MODELS,
+};
 use server_core::RouterState;
-use services::AliasNotFoundError;
+use services::{AppService, DataServiceError, HubServiceError, SNAPSHOT_MAIN};
 use std::sync::Arc;
+use tracing::debug;
 
 /// List all model aliases as discriminated union (user, model, and API aliases)
 #[utoipa::path(
@@ -358,7 +361,7 @@ pub async fn get_user_alias_handler(
     .app_service()
     .data_service()
     .find_user_alias(&alias)
-    .ok_or(AliasNotFoundError(alias))?;
+    .ok_or(DataServiceError::AliasNotFound(alias))?;
 
   // Query metadata for this alias
   let metadata = state
@@ -399,22 +402,22 @@ pub async fn create_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let command = CreateCommand::new(
-    &payload.alias,
+  execute_create_alias(
+    state.app_service().as_ref(),
+    payload.alias.clone(),
     Repo::try_from(payload.repo)?,
-    &payload.filename,
+    payload.filename,
     payload.snapshot,
-    false,
-    false,
     payload.request_params.unwrap_or_default(),
     payload.context_params.unwrap_or_default(),
-  );
-  command.execute(state.app_service()).await?;
+    false,
+  )
+  .await?;
   let alias = state
     .app_service()
     .data_service()
     .find_user_alias(&payload.alias)
-    .ok_or(AliasNotFoundError(payload.alias))?;
+    .ok_or(DataServiceError::AliasNotFound(payload.alias))?;
   Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
 
@@ -443,21 +446,82 @@ pub async fn update_alias_handler(
   axum::extract::Path(id): axum::extract::Path<String>,
   WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  let command = CreateCommand::new(
-    &id,
+  execute_create_alias(
+    state.app_service().as_ref(),
+    id.clone(),
     Repo::try_from(payload.repo)?,
     payload.filename,
     payload.snapshot,
-    false,
-    true,
     payload.request_params.unwrap_or_default(),
     payload.context_params.unwrap_or_default(),
-  );
-  command.execute(state.app_service()).await?;
+    true,
+  )
+  .await?;
   let alias = state
     .app_service()
     .data_service()
     .find_user_alias(&id)
-    .ok_or(AliasNotFoundError(id))?;
+    .ok_or(DataServiceError::AliasNotFound(id))?;
   Ok((StatusCode::OK, Json(UserAliasResponse::from(alias))))
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_create_alias(
+  service: &dyn AppService,
+  alias: String,
+  repo: Repo,
+  filename: String,
+  snapshot: Option<String>,
+  oai_request_params: OAIRequestParams,
+  context_params: Vec<String>,
+  update: bool,
+) -> Result<(), CreateAliasError> {
+  if service.data_service().find_user_alias(&alias).is_some() {
+    if !update {
+      return Err(DataServiceError::AliasExists(alias.clone()).into());
+    }
+    debug!("Updating existing alias: '{}'", alias);
+  } else {
+    debug!("Creating new alias: '{}'", alias);
+  }
+  let file_exists =
+    service
+      .hub_service()
+      .local_file_exists(&repo, &filename, snapshot.clone())?;
+  let local_model_file = match file_exists {
+    true => {
+      debug!(
+        "repo: '{}', filename: '{}', already exists in $HF_HOME",
+        &repo, &filename
+      );
+      service
+        .hub_service()
+        .find_local_file(&repo, &filename, snapshot.clone())?
+    }
+    false => {
+      return Err(CreateAliasError::HubService(
+        HubServiceError::FileNotFound {
+          filename: filename.clone(),
+          repo: repo.to_string(),
+          snapshot: snapshot
+            .clone()
+            .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
+        },
+      ));
+    }
+  };
+  let user_alias = UserAliasBuilder::default()
+    .alias(alias)
+    .repo(repo)
+    .filename(filename)
+    .snapshot(local_model_file.snapshot)
+    .request_params(oai_request_params)
+    .context_params(context_params)
+    .build()?;
+  service.data_service().save_alias(&user_alias)?;
+  debug!(
+    "model alias: '{}' saved to $BODHI_HOME/aliases",
+    user_alias.alias
+  );
+  Ok(())
 }

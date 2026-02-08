@@ -15,7 +15,7 @@ use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
 use services::{
-  db::{DbService, DownloadRequest, DownloadStatus},
+  db::{DownloadRequest, DownloadStatus, ModelRepository},
   test_utils::{
     app_service_stub_builder, test_db_service, test_hf_service, AppServiceStubBuilder,
     TestDbService, TestHfService,
@@ -312,9 +312,9 @@ async fn test_pull_by_alias_not_found(
       "error": {
         "message": "Remote model 'non_existent:alias' not found. Check the alias name and try again.",
         "type": "not_found_error",
-        "code": "remote_model_not_found_error",
+        "code": "hub_service_error-remote_model_not_found",
         "param": {
-          "alias": "non_existent:alias"
+          "var_0": "non_existent:alias"
         }
       }
     }}
@@ -393,7 +393,7 @@ async fn test_get_download_status_not_found(
       "error": {
         "message": "Item 'non_existent_id' of type 'download_requests' not found.",
         "type": "not_found_error",
-        "code": "item_not_found",
+        "code": "db_error-item_not_found",
         "param": {
           "id": "non_existent_id",
           "item_type": "download_requests"

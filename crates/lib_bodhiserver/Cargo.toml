@@ -9,7 +9,6 @@ errmeta_derive = { workspace = true }
 objs = { workspace = true }
 services = { workspace = true }
 llama_server_proc = { workspace = true }
-commands = { workspace = true }
 server_core = { workspace = true }
 auth_middleware = { workspace = true }
 routes_oai = { workspace = true }

@@ -442,7 +442,7 @@ mod tests {
   use rstest::rstest;
   use serde_json::json;
   use services::{
-    db::{ApiToken, DbService, TokenStatus},
+    db::{ApiToken, TokenRepository, TokenStatus},
     test_utils::{
       build_token, test_db_service, SecretServiceStub, SettingServiceStub, TestDbService, ISSUER,
       TEST_CLIENT_ID, TEST_CLIENT_SECRET,

@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use objs::{Alias, ApiAlias, AppError, ErrorType};
-use services::{AliasNotFoundError, DataService};
+use services::{DataServiceError, DataService};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ModelRouterError {
   #[error(transparent)]
-  AliasNotFound(#[from] AliasNotFoundError),
+  DataService(#[from] DataServiceError),
 
   #[error("Model '{0}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]

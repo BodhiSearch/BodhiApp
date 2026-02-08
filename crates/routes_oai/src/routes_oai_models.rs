@@ -6,7 +6,7 @@ use axum::{
 };
 use objs::{Alias, ApiAlias, ApiError, ModelAlias, OpenAIApiError, UserAlias, API_TAG_OPENAI};
 use server_core::RouterState;
-use services::AliasNotFoundError;
+use services::DataServiceError;
 use std::{collections::HashSet, sync::Arc};
 
 /// List available models
@@ -162,7 +162,7 @@ pub async fn oai_model_handler(
       }
     }
   } else {
-    Err(ApiError::from(AliasNotFoundError(id)))
+    Err(ApiError::from(DataServiceError::AliasNotFound(id)))
   }
 }
 

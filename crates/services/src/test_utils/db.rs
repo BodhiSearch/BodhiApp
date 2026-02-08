@@ -1,6 +1,8 @@
 use crate::db::{
-  ApiKeyUpdate, ApiToken, AppToolsetConfigRow, DbError, DbService, DownloadRequest,
-  ModelMetadataRow, SqliteDbService, TimeService, UserAccessRequest, UserAccessRequestStatus,
+  AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
+  DbError, DownloadRequest, ModelMetadataRow, ModelRepository, SqliteDbService,
+  TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
+  UserAccessRequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -93,11 +95,22 @@ impl TestDbService {
 }
 
 #[async_trait::async_trait]
-impl DbService for TestDbService {
+impl DbCore for TestDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     self.inner.migrate().await.tap(|_| self.notify("migrate"))
   }
 
+  fn now(&self) -> DateTime<Utc> {
+    self.now
+  }
+
+  fn encryption_key(&self) -> &[u8] {
+    &self.encryption_key
+  }
+}
+
+#[async_trait::async_trait]
+impl ModelRepository for TestDbService {
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
     self
       .inner
@@ -132,123 +145,6 @@ impl DbService for TestDbService {
       .list_download_requests(page, page_size)
       .await
       .tap(|_| self.notify("list_download_requests"))
-  }
-
-  async fn insert_pending_request(
-    &self,
-    username: String,
-    user_id: String,
-  ) -> Result<UserAccessRequest, DbError> {
-    self
-      .inner
-      .insert_pending_request(username, user_id)
-      .await
-      .tap(|_| self.notify("insert_pending_request"))
-  }
-
-  async fn get_pending_request(
-    &self,
-    user_id: String,
-  ) -> Result<Option<UserAccessRequest>, DbError> {
-    self
-      .inner
-      .get_pending_request(user_id)
-      .await
-      .tap(|_| self.notify("get_pending_request"))
-  }
-
-  async fn list_pending_requests(
-    &self,
-    page: u32,
-    per_page: u32,
-  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
-    self
-      .inner
-      .list_pending_requests(page, per_page)
-      .await
-      .tap(|_| self.notify("list_pending_requests"))
-  }
-
-  async fn list_all_requests(
-    &self,
-    page: u32,
-    per_page: u32,
-  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
-    self
-      .inner
-      .list_all_requests(page, per_page)
-      .await
-      .tap(|_| self.notify("list_all_requests"))
-  }
-
-  async fn update_request_status(
-    &self,
-    id: i64,
-    status: UserAccessRequestStatus,
-    reviewer: String,
-  ) -> Result<(), DbError> {
-    self
-      .inner
-      .update_request_status(id, status, reviewer)
-      .await
-      .tap(|_| self.notify("update_request_status"))
-  }
-
-  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
-    self
-      .inner
-      .get_request_by_id(id)
-      .await
-      .tap(|_| self.notify("get_request_by_id"))
-  }
-
-  async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
-    self
-      .inner
-      .create_api_token(token)
-      .await
-      .tap(|_| self.notify("create_api_token"))
-  }
-
-  async fn list_api_tokens(
-    &self,
-    user_id: &str,
-    page: usize,
-    per_page: usize,
-  ) -> Result<(Vec<ApiToken>, usize), DbError> {
-    self
-      .inner
-      .list_api_tokens(user_id, page, per_page)
-      .await
-      .tap(|_| self.notify("list_api_tokens"))
-  }
-
-  async fn get_api_token_by_id(
-    &self,
-    user_id: &str,
-    id: &str,
-  ) -> Result<Option<ApiToken>, DbError> {
-    self
-      .inner
-      .get_api_token_by_id(user_id, id)
-      .await
-      .tap(|_| self.notify("get_api_token_by_id"))
-  }
-
-  async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError> {
-    self
-      .inner
-      .get_api_token_by_prefix(prefix)
-      .await
-      .tap(|_| self.notify("get_api_token_by_prefix"))
-  }
-
-  async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError> {
-    self
-      .inner
-      .update_api_token(user_id, token)
-      .await
-      .tap(|_| self.notify("update_api_token"))
   }
 
   async fn find_download_request_by_repo_filename(
@@ -384,8 +280,134 @@ impl DbService for TestDbService {
       .await
       .tap(|_| self.notify("list_model_metadata"))
   }
+}
 
-  async fn get_toolset(&self, id: &str) -> Result<Option<crate::db::ToolsetRow>, DbError> {
+#[async_trait::async_trait]
+impl AccessRepository for TestDbService {
+  async fn insert_pending_request(
+    &self,
+    username: String,
+    user_id: String,
+  ) -> Result<UserAccessRequest, DbError> {
+    self
+      .inner
+      .insert_pending_request(username, user_id)
+      .await
+      .tap(|_| self.notify("insert_pending_request"))
+  }
+
+  async fn get_pending_request(
+    &self,
+    user_id: String,
+  ) -> Result<Option<UserAccessRequest>, DbError> {
+    self
+      .inner
+      .get_pending_request(user_id)
+      .await
+      .tap(|_| self.notify("get_pending_request"))
+  }
+
+  async fn list_pending_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
+    self
+      .inner
+      .list_pending_requests(page, per_page)
+      .await
+      .tap(|_| self.notify("list_pending_requests"))
+  }
+
+  async fn list_all_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
+    self
+      .inner
+      .list_all_requests(page, per_page)
+      .await
+      .tap(|_| self.notify("list_all_requests"))
+  }
+
+  async fn update_request_status(
+    &self,
+    id: i64,
+    status: UserAccessRequestStatus,
+    reviewer: String,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_request_status(id, status, reviewer)
+      .await
+      .tap(|_| self.notify("update_request_status"))
+  }
+
+  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
+    self
+      .inner
+      .get_request_by_id(id)
+      .await
+      .tap(|_| self.notify("get_request_by_id"))
+  }
+}
+
+#[async_trait::async_trait]
+impl TokenRepository for TestDbService {
+  async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+    self
+      .inner
+      .create_api_token(token)
+      .await
+      .tap(|_| self.notify("create_api_token"))
+  }
+
+  async fn list_api_tokens(
+    &self,
+    user_id: &str,
+    page: usize,
+    per_page: usize,
+  ) -> Result<(Vec<ApiToken>, usize), DbError> {
+    self
+      .inner
+      .list_api_tokens(user_id, page, per_page)
+      .await
+      .tap(|_| self.notify("list_api_tokens"))
+  }
+
+  async fn get_api_token_by_id(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiToken>, DbError> {
+    self
+      .inner
+      .get_api_token_by_id(user_id, id)
+      .await
+      .tap(|_| self.notify("get_api_token_by_id"))
+  }
+
+  async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError> {
+    self
+      .inner
+      .get_api_token_by_prefix(prefix)
+      .await
+      .tap(|_| self.notify("get_api_token_by_prefix"))
+  }
+
+  async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError> {
+    self
+      .inner
+      .update_api_token(user_id, token)
+      .await
+      .tap(|_| self.notify("update_api_token"))
+  }
+}
+
+#[async_trait::async_trait]
+impl ToolsetRepository for TestDbService {
+  async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError> {
     self
       .inner
       .get_toolset(id)
@@ -397,7 +419,7 @@ impl DbService for TestDbService {
     &self,
     user_id: &str,
     name: &str,
-  ) -> Result<Option<crate::db::ToolsetRow>, DbError> {
+  ) -> Result<Option<ToolsetRow>, DbError> {
     self
       .inner
       .get_toolset_by_name(user_id, name)
@@ -407,8 +429,8 @@ impl DbService for TestDbService {
 
   async fn create_toolset(
     &self,
-    row: &crate::db::ToolsetRow,
-  ) -> Result<crate::db::ToolsetRow, DbError> {
+    row: &ToolsetRow,
+  ) -> Result<ToolsetRow, DbError> {
     self
       .inner
       .create_toolset(row)
@@ -418,9 +440,9 @@ impl DbService for TestDbService {
 
   async fn update_toolset(
     &self,
-    row: &crate::db::ToolsetRow,
-    api_key_update: crate::db::ApiKeyUpdate,
-  ) -> Result<crate::db::ToolsetRow, DbError> {
+    row: &ToolsetRow,
+    api_key_update: ApiKeyUpdate,
+  ) -> Result<ToolsetRow, DbError> {
     self
       .inner
       .update_toolset(row, api_key_update)
@@ -428,7 +450,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("update_toolset"))
   }
 
-  async fn list_toolsets(&self, user_id: &str) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+  async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError> {
     self
       .inner
       .list_toolsets(user_id)
@@ -440,7 +462,7 @@ impl DbService for TestDbService {
     &self,
     user_id: &str,
     scope_uuid: &str,
-  ) -> Result<Vec<crate::db::ToolsetRow>, DbError> {
+  ) -> Result<Vec<ToolsetRow>, DbError> {
     self
       .inner
       .list_toolsets_by_scope_uuid(user_id, scope_uuid)
@@ -519,7 +541,7 @@ impl DbService for TestDbService {
   async fn get_app_client_toolset_config(
     &self,
     app_client_id: &str,
-  ) -> Result<Option<crate::db::AppClientToolsetConfigRow>, DbError> {
+  ) -> Result<Option<AppClientToolsetConfigRow>, DbError> {
     self
       .inner
       .get_app_client_toolset_config(app_client_id)
@@ -529,20 +551,87 @@ impl DbService for TestDbService {
 
   async fn upsert_app_client_toolset_config(
     &self,
-    config: &crate::db::AppClientToolsetConfigRow,
-  ) -> Result<crate::db::AppClientToolsetConfigRow, DbError> {
+    config: &AppClientToolsetConfigRow,
+  ) -> Result<AppClientToolsetConfigRow, DbError> {
     self
       .inner
       .upsert_app_client_toolset_config(config)
       .await
       .tap(|_| self.notify("upsert_app_client_toolset_config"))
   }
+}
 
-  fn now(&self) -> DateTime<Utc> {
-    self.now
+// Composite mock using mockall::mock! that preserves MockDbService name
+mockall::mock! {
+  pub DbService {}
+
+  impl std::fmt::Debug for DbService {
+    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
   }
 
-  fn encryption_key(&self) -> &[u8] {
-    &self.encryption_key
+  #[async_trait::async_trait]
+  impl DbCore for DbService {
+    async fn migrate(&self) -> Result<(), DbError>;
+    fn now(&self) -> DateTime<Utc>;
+    fn encryption_key(&self) -> &[u8];
+  }
+
+  #[async_trait::async_trait]
+  impl ModelRepository for DbService {
+    async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
+    async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError>;
+    async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
+    async fn list_download_requests(&self, page: usize, page_size: usize) -> Result<(Vec<DownloadRequest>, usize), DbError>;
+    async fn find_download_request_by_repo_filename(&self, repo: &str, filename: &str) -> Result<Vec<DownloadRequest>, DbError>;
+    async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: Option<String>) -> Result<(), DbError>;
+    async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
+    async fn update_api_model_alias(&self, id: &str, model: &ApiAlias, api_key: ApiKeyUpdate) -> Result<(), DbError>;
+    async fn update_api_model_cache(&self, id: &str, models: Vec<String>, fetched_at: DateTime<Utc>) -> Result<(), DbError>;
+    async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
+    async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
+    async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
+    async fn check_prefix_exists(&self, prefix: &str, exclude_id: Option<String>) -> Result<bool, DbError>;
+    async fn upsert_model_metadata(&self, metadata: &ModelMetadataRow) -> Result<(), DbError>;
+    async fn get_model_metadata_by_file(&self, repo: &str, filename: &str, snapshot: &str) -> Result<Option<ModelMetadataRow>, DbError>;
+    async fn batch_get_metadata_by_files(&self, files: &[(String, String, String)]) -> Result<std::collections::HashMap<(String, String, String), ModelMetadataRow>, DbError>;
+    async fn list_model_metadata(&self) -> Result<Vec<ModelMetadataRow>, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl AccessRepository for DbService {
+    async fn insert_pending_request(&self, username: String, user_id: String) -> Result<UserAccessRequest, DbError>;
+    async fn get_pending_request(&self, user_id: String) -> Result<Option<UserAccessRequest>, DbError>;
+    async fn list_pending_requests(&self, page: u32, per_page: u32) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
+    async fn list_all_requests(&self, page: u32, per_page: u32) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
+    async fn update_request_status(&self, id: i64, status: UserAccessRequestStatus, reviewer: String) -> Result<(), DbError>;
+    async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl TokenRepository for DbService {
+    async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
+    async fn list_api_tokens(&self, user_id: &str, page: usize, per_page: usize) -> Result<(Vec<ApiToken>, usize), DbError>;
+    async fn get_api_token_by_id(&self, user_id: &str, id: &str) -> Result<Option<ApiToken>, DbError>;
+    async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError>;
+    async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl ToolsetRepository for DbService {
+    async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError>;
+    async fn get_toolset_by_name(&self, user_id: &str, name: &str) -> Result<Option<ToolsetRow>, DbError>;
+    async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError>;
+    async fn update_toolset(&self, row: &ToolsetRow, api_key_update: ApiKeyUpdate) -> Result<ToolsetRow, DbError>;
+    async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError>;
+    async fn list_toolsets_by_scope_uuid(&self, user_id: &str, scope_uuid: &str) -> Result<Vec<ToolsetRow>, DbError>;
+    async fn delete_toolset(&self, id: &str) -> Result<(), DbError>;
+    async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError>;
+    async fn get_app_toolset_config_by_scope_uuid(&self, scope_uuid: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
+    async fn get_app_toolset_config_by_scope(&self, scope: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
+    async fn upsert_app_toolset_config(&self, config: &AppToolsetConfigRow) -> Result<AppToolsetConfigRow, DbError>;
+    async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError>;
+    async fn list_app_toolset_configs_by_scopes(&self, scopes: &[String]) -> Result<Vec<AppToolsetConfigRow>, DbError>;
+    async fn get_app_client_toolset_config(&self, app_client_id: &str) -> Result<Option<AppClientToolsetConfigRow>, DbError>;
+    async fn upsert_app_client_toolset_config(&self, config: &AppClientToolsetConfigRow) -> Result<AppClientToolsetConfigRow, DbError>;
   }
 }

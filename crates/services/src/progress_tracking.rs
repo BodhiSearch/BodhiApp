@@ -190,7 +190,7 @@ mod tests {
   use super::DatabaseProgress;
   use crate::Progress;
   use crate::{
-    db::{DbService, DownloadRequest},
+    db::{DownloadRequest, ModelRepository},
     hub_service::HubService,
     test_utils::{test_db_service, test_hf_service, TestDbService, TestHfService},
   };

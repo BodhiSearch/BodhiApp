@@ -7,7 +7,7 @@ use futures::StreamExt;
 use objs::ObjValidationError;
 use serde_json::Value;
 use services::{
-  AiApiService, AiApiServiceError, AliasNotFoundError, AppService, DefaultAiApiService,
+  AiApiService, AiApiServiceError, AppService, DataServiceError, DefaultAiApiService,
   HubServiceError,
 };
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -70,7 +70,7 @@ pub enum RouterStateError {
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
-  AliasNotFound(#[from] AliasNotFoundError),
+  DataService(#[from] DataServiceError),
   #[error(transparent)]
   HubService(#[from] HubServiceError),
   #[error(transparent)]

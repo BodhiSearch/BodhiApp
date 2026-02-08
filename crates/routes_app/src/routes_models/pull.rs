@@ -9,17 +9,17 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
-use commands::PullCommand;
-use objs::{ApiError, OpenAIApiError, Repo, API_TAG_MODELS};
+use objs::{ApiError, OpenAIApiError, Repo, UserAliasBuilder, API_TAG_MODELS};
 use server_core::RouterState;
-use services::db::ItemNotFound;
-use services::RemoteModelNotFoundError;
+use services::db::DbError;
+use services::HubServiceError;
 use services::{
   db::{DownloadRequest, DownloadStatus},
-  AppService, DatabaseProgress, Progress,
+  AppService, DataServiceError, DatabaseProgress, Progress,
 };
 use std::sync::Arc;
 use tokio::spawn;
+use tracing::debug;
 
 /// List all model download requests
 #[utoipa::path(
@@ -168,20 +168,17 @@ pub async fn create_pull_request_handler(
   let request_id = download_request.id.clone();
 
   spawn(async move {
-    let command = PullCommand::ByRepoFile {
+    let result = execute_pull_by_repo_file(
+      app_service.as_ref(),
       repo,
-      filename: payload.filename,
-      snapshot: None,
-    };
-    let result = command
-      .execute(
-        app_service.clone(),
-        Some(Progress::Database(DatabaseProgress::new(
-          app_service.db_service().clone(),
-          request_id.clone(),
-        ))),
-      )
-      .await;
+      payload.filename,
+      None,
+      Some(Progress::Database(DatabaseProgress::new(
+        app_service.db_service().clone(),
+        request_id.clone(),
+      ))),
+    )
+    .await;
     update_download_status(app_service, request_id, result).await;
   });
 
@@ -227,7 +224,7 @@ pub async fn create_pull_request_handler(
              "error": {
                  "message": "remote model alias 'invalid:model' not found, check your alias and try again",
                  "type": "not_found_error",
-                 "code": "remote_model_not_found_error"
+                 "code": "hub_service_error-remote_model_not_found"
              }
          })),
     ),
@@ -245,7 +242,7 @@ pub async fn pull_by_alias_handler(
     .app_service()
     .data_service()
     .find_remote_model(&alias)?
-    .ok_or(RemoteModelNotFoundError::new(alias.clone()))?;
+    .ok_or(HubServiceError::RemoteModelNotFound(alias.clone()))?;
 
   // Check if the file is already downloaded
   if let Ok(true) =
@@ -289,16 +286,15 @@ pub async fn pull_by_alias_handler(
   let request_id = download_request.id.clone();
 
   spawn(async move {
-    let command = PullCommand::ByAlias { alias };
-    let result = command
-      .execute(
-        app_service.clone(),
-        Some(Progress::Database(DatabaseProgress::new(
-          app_service.db_service().clone(),
-          request_id.clone(),
-        ))),
-      )
-      .await;
+    let result = execute_pull_by_alias(
+      app_service.as_ref(),
+      alias,
+      Some(Progress::Database(DatabaseProgress::new(
+        app_service.db_service().clone(),
+        request_id.clone(),
+      ))),
+    )
+    .await;
     update_download_status(app_service, request_id, result).await;
   });
 
@@ -334,7 +330,7 @@ pub async fn pull_by_alias_handler(
              "error": {
                  "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
                  "type": "not_found_error",
-                 "code": "item_not_found"
+                 "code": "db_error-item_not_found"
              }
          })),
     ),
@@ -353,7 +349,10 @@ pub async fn get_download_status_handler(
     .db_service()
     .get_download_request(&id)
     .await?
-    .ok_or_else(|| ItemNotFound::new(id, "download_requests".to_string()))?;
+    .ok_or_else(|| DbError::ItemNotFound {
+      id,
+      item_type: "download_requests".to_string(),
+    })?;
 
   Ok(Json(download_request))
 }
@@ -361,7 +360,7 @@ pub async fn get_download_status_handler(
 async fn update_download_status(
   app_service: Arc<dyn AppService>,
   request_id: String,
-  result: Result<(), commands::PullCommandError>,
+  result: Result<(), PullError>,
 ) {
   let mut download_request = app_service
     .db_service()
@@ -386,4 +385,58 @@ async fn update_download_status(
     .update_download_request(&download_request)
     .await
     .expect("Failed to update download request");
+}
+
+async fn execute_pull_by_alias(
+  service: &dyn AppService,
+  alias: String,
+  progress: Option<Progress>,
+) -> Result<(), PullError> {
+  if service.data_service().find_user_alias(&alias).is_some() {
+    return Err(DataServiceError::AliasExists(alias.clone()).into());
+  }
+  let Some(model) = service.data_service().find_remote_model(&alias)? else {
+    return Err(HubServiceError::RemoteModelNotFound(alias.clone()).into());
+  };
+  let local_model_file = service
+    .hub_service()
+    .download(&model.repo, &model.filename, None, progress)
+    .await?;
+  let user_alias = UserAliasBuilder::default()
+    .alias(model.alias)
+    .repo(model.repo)
+    .filename(model.filename)
+    .snapshot(local_model_file.snapshot)
+    .request_params(model.request_params)
+    .context_params(model.context_params)
+    .build()?;
+  service.data_service().save_alias(&user_alias)?;
+  debug!(
+    "model alias: '{}' saved to $BODHI_HOME/aliases",
+    user_alias.alias
+  );
+  Ok(())
+}
+
+async fn execute_pull_by_repo_file(
+  service: &dyn AppService,
+  repo: Repo,
+  filename: String,
+  snapshot: Option<String>,
+  progress: Option<Progress>,
+) -> Result<(), PullError> {
+  let model_file_exists = service
+    .hub_service()
+    .local_file_exists(&repo, &filename, snapshot.clone())?;
+  if model_file_exists {
+    debug!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
+    return Ok(());
+  } else {
+    service
+      .hub_service()
+      .download(&repo, &filename, snapshot.clone(), progress)
+      .await?;
+    debug!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
+  }
+  Ok(())
 }

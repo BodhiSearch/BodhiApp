@@ -1168,7 +1168,7 @@ mod tests {
       if let Some(example) = &content.example {
         let error = example.get("error").unwrap();
         assert_eq!(error.get("type").unwrap(), "not_found_error");
-        assert_eq!(error.get("code").unwrap(), "item_not_found");
+        assert_eq!(error.get("code").unwrap(), "db_error-item_not_found");
       } else {
         panic!("No example found for 404 status");
       }

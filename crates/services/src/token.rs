@@ -1,34 +1,14 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use jsonwebtoken::errors::ErrorKind;
 use objs::{impl_error_from, AppError, ErrorType, SerdeJsonError};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, result::Result};
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
-#[error("Invalid token: {source}.")]
-pub struct JsonWebTokenError {
-  #[from]
-  source: jsonwebtoken::errors::Error,
-}
-
-impl JsonWebTokenError {
-  fn code(&self) -> String {
-    match self.source.kind() {
-      ErrorKind::InvalidToken
-      | ErrorKind::InvalidSignature
-      | ErrorKind::InvalidIssuer
-      | ErrorKind::InvalidAudience => {
-        format!("json_web_token_error-{:?}", self.source.kind())
-      }
-      _ => "json_web_token_error-Unknown".to_string(),
-    }
-  }
-}
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum TokenError {
+  #[error("Invalid token: {0}.")]
+  #[error_meta(error_type = ErrorType::Authentication, code = "token_error-json_web_token")]
+  JsonWebToken(jsonwebtoken::errors::Error),
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidToken(String),

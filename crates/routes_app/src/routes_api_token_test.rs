@@ -19,7 +19,7 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::{ApiToken, DbService, TokenStatus},
+  db::{ApiToken, TokenRepository, TokenStatus},
   test_utils::{
     access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
     TestDbService,

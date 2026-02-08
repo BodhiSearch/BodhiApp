@@ -16,25 +16,9 @@ use crate::Progress;
 
 pub static SNAPSHOT_MAIN: &str = "main";
 
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("File '{filename}' not found in repository '{repo}'.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
-pub struct HubFileNotFoundError {
-  pub filename: String,
-  pub repo: String,
-  pub snapshot: String,
-}
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("Remote model '{alias}' not found. Check the alias name and try again.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
-pub struct RemoteModelNotFoundError {
-  pub alias: String,
-}
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum HubApiError {
+pub enum HubServiceError {
   #[error(
     "Access to '{repo}' requires approval. Visit https://huggingface.co/{repo} to request access."
   )]
@@ -60,15 +44,19 @@ pub enum HubApiError {
   #[error("Failed to build API client: {error}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   Request { repo: String, error: String },
-}
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum HubServiceError {
-  #[error(transparent)]
-  HubApiError(#[from] HubApiError),
-  #[error(transparent)]
-  HubFileNotFound(#[from] HubFileNotFoundError),
+  #[error("File '{filename}' not found in repository '{repo}'.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  FileNotFound {
+    filename: String,
+    repo: String,
+    snapshot: String,
+  },
+
+  #[error("Remote model '{0}' not found. Check the alias name and try again.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  RemoteModelNotFound(String),
+
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
@@ -237,9 +225,11 @@ impl HubService for HfHubService {
       if snapshot_dir.exists() {
         snapshot
       } else {
-        return Err(
-          HubFileNotFoundError::new(filename.to_string(), repo.to_string(), snapshot).into(),
-        );
+        return Err(HubServiceError::FileNotFound {
+          filename: filename.to_string(),
+          repo: repo.to_string(),
+          snapshot,
+        });
       }
     };
     let filepath = self
@@ -262,7 +252,11 @@ impl HubService for HfHubService {
       );
       Ok(local_model_file)
     } else {
-      Err(HubFileNotFoundError::new(filename.to_string(), repo.to_string(), snapshot).into())
+      Err(HubServiceError::FileNotFound {
+        filename: filename.to_string(),
+        repo: repo.to_string(),
+        snapshot,
+      })
     }
   }
 
@@ -441,7 +435,7 @@ impl HfHubService {
       .with_progress(self.progress_bar)
       .with_token(self.token.clone())
       .build()
-      .map_err(|err| HubApiError::Request {
+      .map_err(|err| HubServiceError::Request {
         repo: model_repo.url(),
         error: err.to_string(),
       })?;
@@ -465,34 +459,34 @@ impl HfHubService {
           ApiError::RequestError(reqwest_err) => {
             let status = reqwest_err.status().map(|s| s.as_u16()).unwrap_or(500);
             match status {
-              403 => HubApiError::GatedAccess {
+              403 => HubServiceError::GatedAccess {
                 repo: repo.to_string(),
                 error: error_msg,
               },
-              401 if self.token.is_none() => HubApiError::MayNotExist {
+              401 if self.token.is_none() => HubServiceError::MayNotExist {
                 repo: repo.to_string(),
                 error: error_msg,
               },
-              404 if self.token.is_some() => HubApiError::RepoDisabled {
+              404 if self.token.is_some() => HubServiceError::RepoDisabled {
                 repo: repo.to_string(),
                 error: error_msg,
               },
-              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => HubApiError::Transport {
+              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => HubServiceError::Transport {
                 repo: repo.to_string(),
                 error: error_msg,
               },
-              _ => HubApiError::Unknown {
+              _ => HubServiceError::Unknown {
                 repo: repo.to_string(),
                 error: error_msg,
               },
             }
           }
-          _ => HubApiError::Request {
+          _ => HubServiceError::Request {
             repo: repo.to_string(),
             error: error_msg,
           },
         };
-        return Err(HubServiceError::HubApiError(err));
+        return Err(err);
       }
     };
 
@@ -506,7 +500,7 @@ mod test {
     test_utils::{
       build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
     },
-    HubApiError, HubFileNotFoundError, HubService, HubServiceError, SNAPSHOT_MAIN,
+    HubService, HubServiceError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
@@ -606,15 +600,15 @@ mod test {
     let error = strfmt!(UNAUTH_ERR, repo => repo.clone(), sha)?;
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError::MayNotExist {
+      HubServiceError::MayNotExist {
         repo: actual_repo,
         error: actual_error,
-      }) => {
+      } => {
         assert_eq!(error, actual_error);
         assert_eq!(repo, actual_repo);
       }
       _ => panic!(
-        "Expected HubServiceError::HubApiError::MayNotExist, got {}",
+        "Expected HubServiceError::MayNotExist, got {}",
         err
       ),
     }
@@ -657,15 +651,15 @@ mod test {
     let error = strfmt!(error, repo => "amir36/test-gated-repo", sha)?;
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError::GatedAccess {
+      HubServiceError::GatedAccess {
         repo,
         error: actual_error,
-      }) => {
+      } => {
         assert_eq!(error, actual_error);
         assert_eq!("amir36/test-gated-repo", repo);
       }
       _ => panic!(
-        "Expected HubServiceError::HubApiError::GatedAccess, got {}",
+        "Expected HubServiceError::GatedAccess, got {}",
         err
       ),
     }
@@ -705,15 +699,15 @@ mod test {
     assert!(local_model_file.is_err());
     let err = local_model_file.unwrap_err();
     match err {
-      HubServiceError::HubApiError(HubApiError::RepoDisabled {
+      HubServiceError::RepoDisabled {
         repo: actual_repo,
         error: actual_error,
-      }) => {
+      } => {
         assert_eq!(error, actual_error);
         assert_eq!("amir36/not-exists", actual_repo);
       }
       err => panic!(
-        "Expected HubServiceError::HubApiError::RepoDisabled, got {}",
+        "Expected HubServiceError::RepoDisabled, got {}",
         err
       ),
     }
@@ -806,8 +800,8 @@ mod test {
     assert!(local_model_file.is_err());
     assert!(matches!(
       local_model_file.unwrap_err(),
-      HubServiceError::HubFileNotFound(hub_file_not_found_error)
-      if hub_file_not_found_error == HubFileNotFoundError::new(filename.to_string(), repo.to_string(), snapshot.to_string())
+      HubServiceError::FileNotFound { filename: f, repo: r, snapshot: s }
+      if f == filename && r == repo.to_string() && s == snapshot
     ));
     Ok(())
   }
@@ -845,8 +839,8 @@ mod test {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      HubServiceError::HubFileNotFound(error)
-      if error == HubFileNotFoundError::new(filename.to_string(), repo.to_string(), SNAPSHOT_MAIN.to_string())
+      HubServiceError::FileNotFound { filename: f, repo: r, snapshot: s }
+      if f == filename && r == repo.to_string() && s == SNAPSHOT_MAIN
     ));
     Ok(())
   }

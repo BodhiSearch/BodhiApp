@@ -8,35 +8,20 @@ use objs::{
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("Model configuration '{0}' already exists.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
-pub struct AliasExistsError(pub String);
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("Model configuration '{0}' not found.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
-pub struct AliasNotFoundError(pub String);
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("File '{filename}' not found in '{dirname}' folder.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
-pub struct DataFileNotFoundError {
-  filename: String,
-  dirname: String,
-}
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
-  #[error(transparent)]
-  DataFileNotFound(#[from] DataFileNotFoundError),
+  #[error("Model configuration '{0}' already exists.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  AliasExists(String),
+  #[error("Model configuration '{0}' not found.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  AliasNotFound(String),
+  #[error("File '{filename}' not found in '{dirname}' folder.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  FileNotFound { filename: String, dirname: String },
   #[error(transparent)]
   Io(#[from] IoError),
-  #[error(transparent)]
-  AliasNotExists(#[from] AliasNotFoundError),
-  #[error(transparent)]
-  AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
@@ -211,7 +196,10 @@ impl DataService for LocalDataService {
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
     let models_file = self.models_yaml();
     if !models_file.exists() {
-      return Err(DataFileNotFoundError::new(String::from(MODELS_YAML), "".to_string()).into());
+      return Err(DataServiceError::FileNotFound {
+        filename: String::from(MODELS_YAML),
+        dirname: "".to_string(),
+      });
     }
     let content = fs::read_to_string(models_file.clone())
       .map_err(|err| IoError::file_read(err, models_file.display().to_string()))?;
@@ -223,10 +211,10 @@ impl DataService for LocalDataService {
   async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
     let mut user_alias = self
       .find_user_alias(alias)
-      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
+      .ok_or_else(|| DataServiceError::AliasNotFound(alias.to_string()))?;
 
     match self.find_user_alias(new_alias) {
-      Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
+      Some(_) => Err(DataServiceError::AliasExists(new_alias.to_string()))?,
       None => {
         user_alias.alias = new_alias.to_string();
         self.save_alias(&user_alias)?;
@@ -240,7 +228,7 @@ impl DataService for LocalDataService {
       .list_user_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
+      .ok_or_else(|| DataServiceError::AliasNotFound(alias.to_string()))?;
     fs::remove_file(&filename).map_err(|err| IoError::file_delete(err, filename))?;
     Ok(())
   }
@@ -250,16 +238,17 @@ impl DataService for LocalDataService {
       .list_user_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
+      .ok_or_else(|| DataServiceError::AliasNotFound(alias.to_string()))?;
     Ok(PathBuf::from(filename))
   }
 
   fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf> {
     let path = self.construct_path(&folder, filename);
     if !path.exists() {
-      return Err(
-        DataFileNotFoundError::new(filename.to_string(), folder.unwrap_or_default()).into(),
-      );
+      return Err(DataServiceError::FileNotFound {
+        filename: filename.to_string(),
+        dirname: folder.unwrap_or_default(),
+      });
     }
     Ok(path)
   }
@@ -333,12 +322,12 @@ impl LocalDataService {
 #[cfg(test)]
 mod test {
   use crate::{
-    db::DbService,
+    db::ModelRepository,
     test_utils::{
       test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
       TestHfService,
     },
-    AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError, LocalDataService,
+    DataService, DataServiceError, LocalDataService,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, RemoteModel, UserAlias};
@@ -359,7 +348,7 @@ mod test {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      DataServiceError::DataFileNotFound(error) if error == DataFileNotFoundError::new("models.yaml".to_string(), "".to_string())
+      DataServiceError::FileNotFound { filename, dirname } if filename == "models.yaml" && dirname.is_empty()
     ));
     Ok(())
   }
@@ -630,7 +619,7 @@ chat_template: llama3
     let result = service.delete_alias("notexists--instruct.yaml").await;
     assert!(result.is_err());
     assert!(
-      matches!(result.unwrap_err(), DataServiceError::AliasNotExists(alias) if alias == AliasNotFoundError("notexists--instruct.yaml".to_string()))
+      matches!(result.unwrap_err(), DataServiceError::AliasNotFound(alias) if alias == "notexists--instruct.yaml")
     );
     Ok(())
   }
@@ -738,7 +727,7 @@ chat_template: llama3
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      DataServiceError::DataFileNotFound(error) if error == DataFileNotFoundError::new("non_existent_file.txt".to_string(), "non_existent_folder".to_string())
+      DataServiceError::FileNotFound { filename, dirname } if filename == "non_existent_file.txt" && dirname == "non_existent_folder"
     ));
     Ok(())
   }

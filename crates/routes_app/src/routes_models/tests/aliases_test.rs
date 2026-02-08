@@ -186,7 +186,7 @@ async fn test_get_alias_handler_non_existent(
     json! {{
       "error": {
         "message": "Model configuration 'non_existent_alias' not found.",
-        "code": "alias_not_found_error",
+        "code": "data_service_error-alias_not_found",
         "type": "not_found_error",
         "param": {
           "var_0": "non_existent_alias"
@@ -340,7 +340,7 @@ async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> a
     json! {{
       "error": {
         "type": "not_found_error",
-        "code": "hub_file_not_found_error",
+        "code": "hub_service_error-file_not_found",
         "message": "File 'fakemodel.Q4_0.gguf' not found in repository 'FakeFactory/not-exists'.",
         "param": {
           "filename": "fakemodel.Q4_0.gguf",
@@ -498,7 +498,7 @@ async fn test_create_alias_repo_not_downloaded_error(
     json! {{
       "error": {
         "type": "not_found_error",
-        "code": "hub_file_not_found_error",
+        "code": "hub_service_error-file_not_found",
         "message": "File 'tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf' not found in repository 'TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF'.",
         "param": {
           "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",

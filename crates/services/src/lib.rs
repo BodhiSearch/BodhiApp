@@ -38,7 +38,6 @@ mod progress_tracking;
 mod queue_service;
 
 // -- Domain object extensions
-mod obj_exts;
 mod objs;
 mod service_ext;
 
@@ -72,6 +71,5 @@ pub use progress_tracking::*;
 pub use queue_service::*;
 
 // -- Re-exports: domain object extensions
-// obj_exts module is currently empty after chat template removal
 pub use objs::*;
 pub use service_ext::*;

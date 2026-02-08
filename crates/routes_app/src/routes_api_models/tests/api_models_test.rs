@@ -23,7 +23,7 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  db::DbService,
+  db::{ModelRepository},
   test_utils::{seed_test_api_models, test_db_service, AppServiceStubBuilder, TestDbService},
 };
 use std::sync::Arc;

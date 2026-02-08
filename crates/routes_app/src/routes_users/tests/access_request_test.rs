@@ -14,7 +14,7 @@ use rstest::rstest;
 use serde_json::json;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{
-  db::{DbService, UserAccessRequest, UserAccessRequestStatus},
+  db::{AccessRepository, UserAccessRequest, UserAccessRequestStatus},
   test_utils::{test_db_service_with_temp_dir, AppServiceStubBuilder, SecretServiceStub},
   AppRegInfo, MockAuthService, SessionService, SqliteSessionService,
 };

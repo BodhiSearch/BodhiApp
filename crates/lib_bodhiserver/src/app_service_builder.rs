@@ -1,7 +1,7 @@
 use crate::{AppServiceBuilderError, AppStateOption};
 use objs::{ApiError, ErrorMessage};
 use services::{
-  db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
+  db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
   DefaultAppService, DefaultExaService, DefaultSecretService, DefaultToolService, ExaService,
   HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,

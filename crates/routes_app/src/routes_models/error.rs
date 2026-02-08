@@ -1,6 +1,5 @@
-use commands::CreateCommandError;
-use objs::{AppError, ErrorType, ObjValidationError};
-use services::AliasNotFoundError;
+use objs::{AppError, BuilderError, ErrorType, ObjValidationError};
+use services::{DataServiceError, HubServiceError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -14,9 +13,13 @@ pub enum ModelError {
 #[error_meta(trait_to_impl = AppError)]
 pub enum CreateAliasError {
   #[error(transparent)]
-  AliasNotFound(#[from] AliasNotFoundError),
+  DataService(#[from] DataServiceError),
   #[error(transparent)]
-  CreateCommand(#[from] CreateCommandError),
+  HubService(#[from] HubServiceError),
+  #[error(transparent)]
+  ObjValidation(#[from] ObjValidationError),
+  #[error(transparent)]
+  Builder(#[from] BuilderError),
   #[error("Model alias in path '{path}' does not match alias in request '{request}'.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   AliasMismatch { path: String, request: String },
@@ -33,9 +36,13 @@ pub enum PullError {
     snapshot: String,
   },
   #[error(transparent)]
-  PullCommand(#[from] commands::PullCommandError),
+  DataService(#[from] DataServiceError),
+  #[error(transparent)]
+  HubService(#[from] HubServiceError),
   #[error(transparent)]
   ObjValidation(#[from] ObjValidationError),
+  #[error(transparent)]
+  Builder(#[from] BuilderError),
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

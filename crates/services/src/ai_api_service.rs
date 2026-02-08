@@ -288,7 +288,7 @@ impl AiApiService for DefaultAiApiService {
 #[cfg(test)]
 mod tests {
   use crate::ai_api_service::{AiApiService, AiApiServiceError, DefaultAiApiService};
-  use crate::db::MockDbService;
+  use crate::test_utils::MockDbService;
   use axum::http::StatusCode;
   use chrono::Utc;
   use mockito::Server;
