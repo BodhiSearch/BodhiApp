@@ -18,7 +18,6 @@ mod routes_api_models;
 mod routes_toolsets;
 
 // -- Standalone route files
-mod routes_app_request_access;
 mod routes_api_token;
 mod routes_setup;
 mod routes_settings;
@@ -40,7 +39,6 @@ pub use routes_users::*;
 pub use routes_models::*;
 pub use routes_api_models::*;
 pub use routes_toolsets::*;
-pub use routes_app_request_access::*;
 pub use routes_api_token::*;
 pub use routes_setup::*;
 pub use routes_settings::*;
