@@ -2073,7 +2073,10 @@ export interface components {
         /** @example {
          *       "code": "validation_error",
          *       "message": "Validation failed: name is required",
-         *       "param": "name",
+         *       "param": {
+         *         "field": "name",
+         *         "value": "invalid"
+         *       },
          *       "type": "invalid_request_error"
          *     } */
         ErrorBody: {
@@ -2093,10 +2096,15 @@ export interface components {
              */
             code?: string | null;
             /**
-             * @description Parameter name that caused the error (for validation errors)
-             * @example name
+             * @description Additional error parameters as key-value pairs (for validation errors)
+             * @example {
+             *       "field": "name",
+             *       "value": "invalid"
+             *     }
              */
-            param?: string | null;
+            param?: {
+                [key: string]: string;
+            } | null;
         };
         /** @description Request to execute a toolset */
         ExecuteToolsetRequest: {
@@ -4341,6 +4349,9 @@ export interface operations {
             content: {
                 /** @example {
                  *       "app_client_id": "my_app_client_123",
+                 *       "toolset_scope_ids": [
+                 *         "uuid-for-toolset-scope-1"
+                 *       ],
                  *       "version": "v1.0.0"
                  *     } */
                 "application/json": components["schemas"]["AppAccessRequest"];

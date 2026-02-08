@@ -1269,9 +1269,11 @@ export type ErrorBody = {
      */
     code?: string | null;
     /**
-     * Parameter name that caused the error (for validation errors)
+     * Additional error parameters as key-value pairs (for validation errors)
      */
-    param?: string | null;
+    param?: {
+        [key: string]: string;
+    } | null;
 };
 
 /**

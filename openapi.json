@@ -11,7 +11,7 @@
     "license": {
       "name": ""
     },
-    "version": "0.0.45-dev"
+    "version": "0.0.46-dev"
   },
   "servers": [
     {
@@ -1698,6 +1698,9 @@
               },
               "example": {
                 "app_client_id": "my_app_client_123",
+                "toolset_scope_ids": [
+                  "uuid-for-toolset-scope-1"
+                ],
                 "version": "v1.0.0"
               }
             }
@@ -9303,17 +9306,29 @@
           },
           "param": {
             "type": [
-              "string",
+              "object",
               "null"
             ],
-            "description": "Parameter name that caused the error (for validation errors)",
-            "example": "name"
+            "description": "Additional error parameters as key-value pairs (for validation errors)",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "field": "name",
+              "value": "invalid"
+            }
           }
         },
         "example": {
           "code": "validation_error",
           "message": "Validation failed: name is required",
-          "param": "name",
+          "param": {
+            "field": "name",
+            "value": "invalid"
+          },
           "type": "invalid_request_error"
         }
       },
