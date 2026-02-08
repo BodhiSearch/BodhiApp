@@ -16,6 +16,13 @@ mod routes_toolsets;
 mod routes_users;
 mod shared;
 
+#[cfg(test)]
+mod routes_api_token_test;
+#[cfg(test)]
+mod routes_setup_test;
+#[cfg(test)]
+mod routes_settings_test;
+
 pub use api_dto::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;
