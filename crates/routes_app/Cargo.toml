@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
-routes_oai = { workspace = true }
 services = { workspace = true }
 auth_middleware = { workspace = true }
 server_core = { workspace = true }
@@ -15,6 +14,8 @@ async-openai = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 base64 = { workspace = true }
+futures-util = { workspace = true }
+http = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
@@ -41,7 +42,8 @@ uuid = { workspace = true, features = ["v4"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }
-llama_server_proc = { workspace = true }
+objs = { workspace = true, features = ["test-utils"] }
+llama_server_proc = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
@@ -51,6 +53,7 @@ maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }
 pretty_assertions = { workspace = true }
+reqwest = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 time = { workspace = true }

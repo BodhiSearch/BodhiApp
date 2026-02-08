@@ -54,9 +54,12 @@ use objs::{
   API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
   API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
-use routes_oai::{
+use crate::routes_oai::{
   __path_chat_completions_handler, __path_embeddings_handler, __path_oai_model_handler,
-  __path_oai_models_handler, __path_ollama_model_chat_handler, __path_ollama_model_show_handler,
+  __path_oai_models_handler,
+};
+use crate::routes_ollama::{
+  __path_ollama_model_chat_handler, __path_ollama_model_show_handler,
   __path_ollama_models_handler,
 };
 use services::db::DownloadStatus;

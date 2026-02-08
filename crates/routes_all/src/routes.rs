@@ -41,10 +41,12 @@ use routes_app::{
   ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
   ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use routes_oai::{
+use routes_app::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
-  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
+};
+use routes_app::{
+  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
 use server_core::{DefaultRouterState, RouterState, SharedContext};

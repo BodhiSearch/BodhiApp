@@ -9,7 +9,6 @@ services = { workspace = true }
 auth_middleware = { workspace = true }
 server_core = { workspace = true }
 routes_app = { workspace = true }
-routes_oai = { workspace = true }
 
 axum = { workspace = true }
 include_dir = { workspace = true }
