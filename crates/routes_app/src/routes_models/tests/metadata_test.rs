@@ -3,7 +3,9 @@ use axum::{body::Body, http::Request, http::StatusCode, routing::post, Router};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::Value;
-use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState};
+use server_core::{
+  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
+};
 use services::{
   test_utils::{app_service_stub_builder, AppServiceStubBuilder},
   MockQueueProducer,

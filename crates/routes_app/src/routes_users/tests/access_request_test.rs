@@ -80,9 +80,7 @@ fn test_paginated_user_access_response_serde() {
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_approve_request_clears_user_sessions(
-  temp_bodhi_home: TempDir,
-) -> anyhow::Result<()> {
+async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // 1. Setup: Create real databases for both app and session
   let session_db = temp_bodhi_home.path().join("session.sqlite");
 

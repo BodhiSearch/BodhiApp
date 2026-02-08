@@ -1,7 +1,7 @@
 use crate::{
-  AccessRequestError, ApproveUserAccessRequest, PaginatedUserAccessResponse,
-  PaginationSortParams, UserAccessStatusResponse, ENDPOINT_ACCESS_REQUESTS_ALL,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+  AccessRequestError, ApproveUserAccessRequest, PaginatedUserAccessResponse, PaginationSortParams,
+  UserAccessStatusResponse, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
+  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
 use auth_middleware::{ExtractRole, ExtractToken, ExtractUserId, ExtractUsername, MaybeRole};
 use axum::{
@@ -11,10 +11,7 @@ use axum::{
 };
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
-use services::{
-  db::UserAccessRequestStatus,
-  extract_claims, Claims,
-};
+use services::{db::UserAccessRequestStatus, extract_claims, Claims};
 use std::sync::Arc;
 use tracing::{debug, error, info};
 

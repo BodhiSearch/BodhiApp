@@ -34,8 +34,8 @@ mod setting_service;
 
 // -- Concurrency & async processing
 mod concurrency_service;
-mod queue_service;
 mod progress_tracking;
+mod queue_service;
 
 // -- Domain object extensions
 mod obj_exts;
@@ -68,8 +68,8 @@ pub use setting_service::*;
 
 // -- Re-exports: concurrency & async processing
 pub use concurrency_service::*;
-pub use queue_service::*;
 pub use progress_tracking::*;
+pub use queue_service::*;
 
 // -- Re-exports: domain object extensions
 // obj_exts module is currently empty after chat template removal

@@ -1,7 +1,6 @@
 use crate::{
-  create_api_model_handler, delete_api_model_handler, fetch_models_handler,
-  get_api_model_handler, list_api_models_handler, sync_models_handler, test_api_model_handler,
-  update_api_model_handler,
+  create_api_model_handler, delete_api_model_handler, fetch_models_handler, get_api_model_handler,
+  list_api_models_handler, sync_models_handler, test_api_model_handler, update_api_model_handler,
   ApiKey, ApiKeyUpdateAction, ApiModelResponse, CreateApiModelRequest, FetchModelsRequest,
   PaginatedApiModelResponse, TestCreds, TestPromptRequest, UpdateApiModelRequest,
   ENDPOINT_API_MODELS,
@@ -608,9 +607,7 @@ async fn test_update_api_model_handler_success(
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
     base_url: input_url.to_string(), // Updated URL with potential trailing slashes
-    api_key: ApiKeyUpdateAction::Set(
-      ApiKey::some("sk-updated123456789".to_string()).unwrap(),
-    ), // New API key
+    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string()).unwrap()), // New API key
     models: vec!["gpt-4-turbo".to_string(), "gpt-4".to_string()], // Updated models
     prefix: Some("openai".to_string()),
     forward_all_with_prefix: false,
@@ -661,9 +658,7 @@ async fn test_update_api_model_handler_not_found(
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
     base_url: "https://api.openai.com/v2".to_string(),
-    api_key: ApiKeyUpdateAction::Set(
-      ApiKey::some("sk-updated123456789".to_string()).unwrap(),
-    ),
+    api_key: ApiKeyUpdateAction::Set(ApiKey::some("sk-updated123456789".to_string()).unwrap()),
     models: vec!["gpt-4-turbo".to_string()],
     prefix: None,
     forward_all_with_prefix: false,
@@ -672,8 +667,7 @@ async fn test_update_api_model_handler_not_found(
   // Make PUT request to update non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::put(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS))
-        .json(update_request)?,
+      Request::put(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).json(update_request)?,
     )
     .await?;
 
@@ -1361,8 +1355,7 @@ async fn test_update_api_model_duplicate_prefix_error(
 
   let response = test_router(app_service)
     .oneshot(
-      Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, second_model_id))
-        .json(update_request)?,
+      Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, second_model_id)).json(update_request)?,
     )
     .await?;
 

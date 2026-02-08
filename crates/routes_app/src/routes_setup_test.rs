@@ -336,8 +336,7 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
     .withf(|_name, _description, redirect_uris| {
       // When public host is explicitly set, should only register that one
       redirect_uris.len() == 1
-        && redirect_uris
-          .contains(&"https://my-bodhi.example.com:8443/ui/auth/callback".to_string())
+        && redirect_uris.contains(&"https://my-bodhi.example.com:8443/ui/auth/callback".to_string())
     })
     .return_once(|_name, _description, _redirect_uris| {
       Ok(AppRegInfo {

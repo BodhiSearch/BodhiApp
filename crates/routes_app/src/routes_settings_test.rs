@@ -1,4 +1,6 @@
-use crate::{delete_setting_handler, list_settings_handler, update_setting_handler, ENDPOINT_SETTINGS};
+use crate::{
+  delete_setting_handler, list_settings_handler, update_setting_handler, ENDPOINT_SETTINGS,
+};
 use anyhow_trace::anyhow_trace;
 use axum::{
   body::Body,
@@ -134,8 +136,7 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
 #[awt]
 #[tokio::test]
 async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;
@@ -170,8 +171,7 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
 #[awt]
 #[tokio::test]
 async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;
@@ -205,8 +205,7 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
 #[awt]
 #[tokio::test]
 async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;
@@ -244,8 +243,7 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
 async fn test_routes_setting_update_invalid_value_out_of_range(
   temp_dir: TempDir,
 ) -> anyhow::Result<()> {
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;
@@ -324,8 +322,7 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;
@@ -403,8 +400,7 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
 #[tokio::test]
 async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app with no custom settings
-  let setting_service =
-    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()?;

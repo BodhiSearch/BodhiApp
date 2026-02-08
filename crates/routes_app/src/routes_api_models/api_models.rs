@@ -1,9 +1,8 @@
 use crate::{
   ApiFormatsResponse, ApiModelResponse, CreateApiModelRequest, FetchModelsRequest,
-  FetchModelsResponse, PaginatedApiModelResponse, TestCreds, TestPromptRequest,
-  TestPromptResponse, UpdateApiModelRequest,
-  PaginationSortParams, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
-  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  FetchModelsResponse, PaginatedApiModelResponse, PaginationSortParams, TestCreds,
+  TestPromptRequest, TestPromptResponse, UpdateApiModelRequest, ENDPOINT_API_MODELS,
+  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
 };
 use axum::{
   extract::{Path, Query, State},

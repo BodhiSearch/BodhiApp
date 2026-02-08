@@ -1,14 +1,14 @@
-use crate::{
-  routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse,
+use crate::{routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse};
+use auth_middleware::{
+  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOOL_SCOPES,
 };
 use auth_middleware::{KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USER_ID};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
-use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOOL_SCOPES};
 use chrono::Utc;
 use objs::{
-  ApiError, AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse,
+  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse,
   ToolsetWithTools,
 };
 use rstest::{fixture, rstest};
@@ -192,8 +192,7 @@ async fn test_list_toolsets_session_returns_all_toolset_types(test_instance: Too
   let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
     .await
     .unwrap();
-  let list_response: ListToolsetsResponse =
-    serde_json::from_slice(&body_bytes).unwrap();
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
@@ -256,8 +255,7 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(test_instance: To
   let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
     .await
     .unwrap();
-  let list_response: ListToolsetsResponse =
-    serde_json::from_slice(&body_bytes).unwrap();
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
@@ -305,8 +303,7 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() {
   let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
     .await
     .unwrap();
-  let list_response: ListToolsetsResponse =
-    serde_json::from_slice(&body_bytes).unwrap();
+  let list_response: ListToolsetsResponse = serde_json::from_slice(&body_bytes).unwrap();
 
   assert_eq!(0, list_response.toolset_types.len());
 }

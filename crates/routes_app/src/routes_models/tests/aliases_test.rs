@@ -114,9 +114,7 @@ async fn test_list_local_aliases_response_structure(
     .data
     .iter()
     .find_map(|alias| match alias {
-      AliasResponse::User(user_alias) if user_alias.alias == "llama3:instruct" => {
-        Some(user_alias)
-      }
+      AliasResponse::User(user_alias) if user_alias.alias == "llama3:instruct" => Some(user_alias),
       _ => None,
     })
     .unwrap();
@@ -313,9 +311,7 @@ async fn test_create_alias_handler(
 #[rstest]
 #[awt]
 #[tokio::test]
-async fn test_create_alias_handler_non_existent_repo(
-  #[future] app: Router,
-) -> anyhow::Result<()> {
+async fn test_create_alias_handler_non_existent_repo(#[future] app: Router) -> anyhow::Result<()> {
   let payload = serde_json::json!({
     "alias": "test:newalias",
     "repo": "FakeFactory/not-exists",

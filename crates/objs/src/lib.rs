@@ -10,13 +10,13 @@ mod error;
 // -- Model & alias system
 mod alias;
 mod api_model_alias;
+pub mod gguf;
+mod hub_file;
 mod model_alias;
 mod model_metadata;
-mod user_alias;
-mod hub_file;
-pub mod gguf;
 mod remote_file;
 mod repo;
+mod user_alias;
 
 // -- OpenAI API compatibility
 mod oai;
@@ -47,12 +47,12 @@ pub use error::*;
 // -- Re-exports: model & alias system
 pub use alias::*;
 pub use api_model_alias::*;
+pub use hub_file::*;
 pub use model_alias::*;
 pub use model_metadata::*;
-pub use user_alias::*;
-pub use hub_file::*;
 pub use remote_file::*;
 pub use repo::*;
+pub use user_alias::*;
 
 // -- Re-exports: OpenAI API compatibility
 pub use oai::*;
