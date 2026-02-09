@@ -771,3 +771,7 @@ async fn test_access_request_endpoints_allow_manager_and_admin(
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
+
+// VIOLATION: POST endpoints for access request management cannot be added to allow test
+// Reason: POST /access-requests/{id}/approve calls auth_service.assign_user_role() requiring MockAuthService
+// These cannot work with build_test_router() without mock expectations.

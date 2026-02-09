@@ -1,8 +1,10 @@
 mod alias_response;
+mod assertions;
 mod router;
 
 #[allow(unused_imports)]
 pub use alias_response::*;
+pub use assertions::*;
 pub use router::*;
 
 #[macro_export]

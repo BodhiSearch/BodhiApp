@@ -102,6 +102,22 @@ assert_eq!("Updated Name", db_record.name);
 assert_eq!(TokenStatus::Inactive, db_record.status);
 ```
 
+## Allow Test Assertions
+
+For allow tests that may return 200 or 404:
+
+```rust
+use http::StatusCode;
+
+let response = router.oneshot(session_request(method, path, &cookie)).await?;
+assert!(
+  response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+  "Expected 200 or 404, got {}", response.status()
+);
+```
+
+**Rationale**: 404 proves authorization passed; resource just doesn't exist in test data.
+
 ## Anti-Patterns
 
 ```rust

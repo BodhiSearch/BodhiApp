@@ -123,3 +123,42 @@ pub fn unauth_request(method: &str, path: &str) -> Request<Body> {
     .body(Body::empty())
     .unwrap()
 }
+
+/// Builds an HTTP request with session authentication and a JSON body.
+///
+/// Sets:
+/// - `Cookie` header with the session cookie
+/// - `Sec-Fetch-Site: same-origin` header (required for session auth path)
+/// - `Host: localhost:1135` header (required for same-origin check)
+/// - `Content-Type: application/json` header
+pub fn session_request_with_body(
+  method: &str,
+  path: &str,
+  session_cookie: &str,
+  body: Body,
+) -> Request<Body> {
+  Request::builder()
+    .method(method)
+    .uri(path)
+    .header("Cookie", session_cookie)
+    .header("Sec-Fetch-Site", "same-origin")
+    .header("Host", "localhost:1135")
+    .header("Content-Type", "application/json")
+    .body(body)
+    .unwrap()
+}
+
+/// Builds an HTTP request without authentication but with a JSON body.
+///
+/// Sets:
+/// - `Host` header for proper routing
+/// - `Content-Type: application/json` header
+pub fn unauth_request_with_body(method: &str, path: &str, body: Body) -> Request<Body> {
+  Request::builder()
+    .method(method)
+    .uri(path)
+    .header("Host", "localhost:1135")
+    .header("Content-Type", "application/json")
+    .body(body)
+    .unwrap()
+}

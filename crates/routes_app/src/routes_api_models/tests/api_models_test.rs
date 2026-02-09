@@ -1440,6 +1440,7 @@ async fn test_api_models_endpoints_allow_power_user_and_above(
   #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
   #[values(
     ("GET", "/bodhi/v1/api-models"),
+    ("GET", "/bodhi/v1/api-models/non-existent-id"),
     ("GET", "/bodhi/v1/api-models/api-formats")
   )]
   endpoint: (&str, &str),
@@ -1450,10 +1451,10 @@ async fn test_api_models_endpoints_allow_power_user_and_above(
   let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
   let response = router.oneshot(session_request(method, path, &cookie)).await?;
-  assert_eq!(
-    StatusCode::OK,
-    response.status(),
-    "{role} should be allowed to {method} {path}"
+  // May return 200 OK (list/formats) or 404 Not Found (non-existent ID)
+  assert!(
+    response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+    "Expected 200 or 404, got {} for {} {}", response.status(), method, path
   );
   Ok(())
 }

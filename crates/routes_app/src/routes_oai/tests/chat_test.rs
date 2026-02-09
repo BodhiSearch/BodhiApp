@@ -1,3 +1,11 @@
+// ============================================================================
+// VIOLATION DOCUMENTATION:
+// Handler tests in this file use MockSharedContext.expect_forward_request() for SSE streaming.
+// These tests CANNOT be migrated to build_test_router() without complex mock setup.
+// The 401 test for chat/embeddings endpoints is already in models_test.rs.
+// No allow tests are added here because they would require MockSharedContext expectations.
+// ============================================================================
+
 use crate::routes_oai::{chat_completions_handler, embeddings_handler};
 use anyhow_trace::anyhow_trace;
 use async_openai::types::{

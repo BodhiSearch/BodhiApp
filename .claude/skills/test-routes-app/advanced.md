@@ -8,75 +8,91 @@ Auth tests are now **inline in module test files** at `crates/routes_app/src/<mo
 - Auth tests placed at the bottom of the file after handler tests
 - Example: `src/routes_oai/tests/chat_completions_test.rs` contains both handler logic tests and auth tier tests for OpenAI endpoints
 
-### Auth Test Template
+### Auth Test Patterns
 
-Auth tests follow three patterns, all using `#[anyhow_trace]` and `anyhow::Result<()>`:
-
-1. **Unauthenticated rejection (401)** -- `#[case]` per endpoint
-2. **Insufficient role rejection (403)** -- `#[values]` cartesian product (roles × endpoints)
-3. **Authorized access (200/OK)** -- `#[values]` cartesian product (eligible roles × safe endpoints)
+#### 1. Unauthenticated Rejection (401)
+Use `#[case]` with named variants:
 
 ```rust
-// 1. Unauthenticated rejection
-#[rstest]
-#[case::endpoint_a("GET", "/path/a")]
-#[case::endpoint_b("POST", "/path/b")]
-#[tokio::test]
 #[anyhow_trace]
-async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) -> anyhow::Result<()> {
+#[rstest]
+#[case::endpoint_name("METHOD", "/path")]
+#[tokio::test]
+async fn test_endpoints_reject_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
   let (router, _, _temp) = build_test_router().await?;
-  let response = router
-    .oneshot(unauth_request(method, path))
-    .await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   Ok(())
 }
+```
 
-// 2. Insufficient role rejection (cartesian product)
-#[rstest]
-#[case::user("resource_user")]
-#[case::power_user("resource_power_user")]
-#[tokio::test]
+#### 2. Insufficient Role Rejection (403)
+Use `#[values]` cartesian product:
+
+```rust
 #[anyhow_trace]
+#[rstest]
+#[tokio::test]
 async fn test_endpoints_reject_insufficient_role(
-  #[case] role: &str,
-  #[values("GET", "POST")] method: &str,
-  #[values("/path/a", "/path/b")] path: &str,
+  #[values("resource_user")] role: &str,
+  #[values(
+    ("GET", "/path1"),
+    ("POST", "/path2")
+  )]
+  endpoint: (&str, &str),
 ) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(
-    app_service.session_service().as_ref(), &[role]
-  ).await?;
-
-  let response = router
-    .oneshot(session_request(method, path, &cookie))
-    .await?;
-  assert_eq!(StatusCode::FORBIDDEN, response.status(),
-    "{role} should be forbidden from {method} {path}");
-  Ok(())
-}
-
-// 3. Authorized access (safe endpoints only - see "Safe Endpoint Identification" below)
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_endpoints_allow_sufficient_role(
-  #[values("resource_admin", "resource_manager")] role: &str,
-  #[values("GET")] method: &str,
-  #[values("/path/a")] path: &str,  // Only safe endpoints - see comment below
-) -> anyhow::Result<()> {
-  let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(
-    app_service.session_service().as_ref(), &[role]
-  ).await?;
-
-  let response = router
-    .oneshot(session_request(method, path, &cookie))
-    .await?;
-  assert_eq!(StatusCode::OK, response.status());
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "{role} should be forbidden from {method} {path}"
+  );
   Ok(())
 }
 ```
+
+#### 3. Authorized Access (Allow)
+Use `#[values]` for eligible roles, test safe endpoints only:
+
+```rust
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_endpoints_allow_eligible_roles(
+  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(
+    ("GET", "/safe-endpoint")
+  )]
+  endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert!(
+    response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+    "Expected 200 or 404, got {}", response.status()
+  );
+  Ok(())
+}
+```
+
+**Safe Endpoints**: Only test GET endpoints that use real services (DbService, DataService, SessionService). Skip:
+- Endpoints requiring MockAuthService expectations
+- Endpoints requiring MockToolService expectations
+- Streaming endpoints using MockSharedContext
+- POST/PUT/DELETE requiring complex request bodies or mock setup
+
+Document violations when full-router pattern isn't feasible.
 
 ## Safe Endpoint Identification Pattern
 

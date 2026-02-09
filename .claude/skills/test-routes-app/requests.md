@@ -116,6 +116,27 @@ let response = router
   .await?;
 ```
 
+## Request Helpers with Body
+
+For POST/PUT endpoints:
+
+```rust
+use crate::test_utils::{session_request_with_body, unauth_request_with_body};
+use axum::body::Body;
+
+// With authentication
+let body = Body::from(serde_json::to_string(&json!({"key": "value"}))?);
+let response = router.oneshot(
+  session_request_with_body("POST", "/path", &cookie, body)
+).await?;
+
+// Without authentication
+let body = Body::from(serde_json::to_string(&json!({"key": "value"}))?);
+let response = router.oneshot(
+  unauth_request_with_body("POST", "/path", body)
+).await?;
+```
+
 ## Sending the Request
 
 Always use `tower::ServiceExt::oneshot()` for single-request tests:

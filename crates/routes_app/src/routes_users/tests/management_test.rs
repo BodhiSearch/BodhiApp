@@ -557,3 +557,11 @@ async fn test_user_management_endpoints_reject_insufficient_role(
   );
   Ok(())
 }
+
+// VIOLATION: Allow test for user management endpoints cannot be added
+// Reason: All endpoints (GET /users, PUT /users/{id}/role, DELETE /users/{id})
+// require MockAuthService expectations:
+// - GET /users calls auth_service.list_users() requiring MockAuthService
+// - PUT /users/{id}/role calls auth_service.assign_user_role() requiring MockAuthService
+// - DELETE /users/{id} calls auth_service.remove_user() requiring MockAuthService
+// These cannot work with build_test_router() without mock expectations.

@@ -415,11 +415,8 @@ async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()
 #[case::list_settings("GET", "/bodhi/v1/settings")]
 #[case::update_setting("PUT", "/bodhi/v1/settings/some_key")]
 #[case::delete_setting("DELETE", "/bodhi/v1/settings/some_key")]
-#[case::list_toolset_types("GET", "/bodhi/v1/toolset_types")]
-#[case::enable_toolset_type("PUT", "/bodhi/v1/toolset_types/some_type/app-config")]
-#[case::disable_toolset_type("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")]
 #[tokio::test]
-async fn test_admin_endpoints_reject_unauthenticated(
+async fn test_settings_endpoints_reject_unauthenticated(
   #[case] method: &str,
   #[case] path: &str,
 ) -> anyhow::Result<()> {
@@ -433,15 +430,12 @@ async fn test_admin_endpoints_reject_unauthenticated(
 #[anyhow_trace]
 #[rstest]
 #[tokio::test]
-async fn test_admin_endpoints_reject_insufficient_role(
+async fn test_settings_endpoints_reject_insufficient_role(
   #[values("resource_user", "resource_power_user", "resource_manager")] role: &str,
   #[values(
     ("GET", "/bodhi/v1/settings"),
     ("PUT", "/bodhi/v1/settings/some_key"),
-    ("DELETE", "/bodhi/v1/settings/some_key"),
-    ("GET", "/bodhi/v1/toolset_types"),
-    ("PUT", "/bodhi/v1/toolset_types/some_type/app-config"),
-    ("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")
+    ("DELETE", "/bodhi/v1/settings/some_key")
   )]
   endpoint: (&str, &str),
 ) -> anyhow::Result<()> {
@@ -462,7 +456,7 @@ async fn test_admin_endpoints_reject_insufficient_role(
 #[rstest]
 #[case::list_settings("GET", "/bodhi/v1/settings")]
 #[tokio::test]
-async fn test_admin_endpoints_allow_admin(
+async fn test_settings_endpoints_allow_admin(
   #[case] method: &str,
   #[case] path: &str,
 ) -> anyhow::Result<()> {

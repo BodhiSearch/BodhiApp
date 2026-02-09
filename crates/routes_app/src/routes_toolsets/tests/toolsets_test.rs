@@ -837,6 +837,9 @@ async fn test_disable_type(
 #[case::update_toolset("PUT", "/bodhi/v1/toolsets/some_id")]
 #[case::delete_toolset("DELETE", "/bodhi/v1/toolsets/some_id")]
 #[case::execute_toolset("POST", "/bodhi/v1/toolsets/some_id/execute/some_method")]
+#[case::list_toolset_types("GET", "/bodhi/v1/toolset_types")]
+#[case::enable_toolset_type("PUT", "/bodhi/v1/toolset_types/some_type/app-config")]
+#[case::disable_toolset_type("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")]
 #[tokio::test]
 async fn test_toolset_endpoints_reject_unauthenticated(
   #[case] method: &str,
@@ -848,3 +851,38 @@ async fn test_toolset_endpoints_reject_unauthenticated(
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   Ok(())
 }
+
+// Test that toolset_type endpoints (Admin-only) reject insufficient roles
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_toolset_type_endpoints_reject_insufficient_role(
+  #[values("resource_user", "resource_power_user", "resource_manager")] role: &str,
+  #[values(
+    ("GET", "/bodhi/v1/toolset_types"),
+    ("PUT", "/bodhi/v1/toolset_types/some_type/app-config"),
+    ("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")
+  )]
+  endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "{role} should be forbidden from {method} {path}"
+  );
+  Ok(())
+}
+
+// No allow test for toolset_type endpoints - they use MockToolService which panics without expectations
+// The 401 and 403 tests verify the auth layer works correctly
+
+// VIOLATION: No allow test for toolset CRUD endpoints (including list)
+// All toolset endpoints (create, list, get, update, delete, execute) use MockToolService
+// which panics without expectations. Cannot migrate to build_test_router() without refactoring
+// the handlers to use real services or injecting mock expectations via AppServiceStubBuilder.
+// The 401 test proves the auth layer works correctly.

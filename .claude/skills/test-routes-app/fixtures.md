@@ -15,6 +15,12 @@ Returns:
 - `Arc<dyn AppService>` -- for accessing services to seed data or create sessions
 - `Arc<TempDir>` -- keeps temp directory alive for test duration
 
+**When to use**:
+- ✅ Auth tier tests (401, 403, allow)
+- ✅ Integration tests needing full route composition
+- ❌ Tests requiring MockAuthService/MockToolService expectations (use AppServiceStubBuilder)
+- ❌ Streaming tests (use MockSharedContext with router_state_stub)
+
 ### Services Wired
 
 | Service | Implementation | Notes |

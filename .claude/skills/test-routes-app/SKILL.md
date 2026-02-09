@@ -91,6 +91,24 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
 5. **Error codes**: Assert `body["error"]["code"]`, never message text
 6. **"Allowed" tests with build_test_router()**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockToolService/MockSharedContext.
 
+## Canonical Test Patterns (Uniformity Guidelines)
+
+**Router Construction**: Prefer `build_test_router()` for auth tier tests. Use `AppServiceStubBuilder` only for isolated handler logic tests requiring specific mock services.
+
+**Auth Test Patterns**:
+- **401 (Unauthenticated)**: Use `#[case]` with named variants per endpoint
+- **403 (Insufficient role)**: Use `#[values]` cartesian product (roles × endpoints)
+- **Allow (Authorized)**: Use `#[values]` for eligible roles, test safe endpoints only
+
+**Safe Endpoints**: Only test endpoints using real services (DbService, DataService, SessionService) in allow tests. Skip endpoints requiring MockAuthService, MockToolService, or MockSharedContext.
+
+**Exemptions**:
+- Multi-step OAuth/session flows using `TestServer` are acceptable
+- Streaming tests using `MockSharedContext.expect_forward_request()` are acceptable
+- Document violations clearly when full-router pattern isn't feasible
+
+**Module Ownership**: Each module owns its auth tests. No cross-module auth testing (e.g., settings tests don't test toolset_types).
+
 ## Pattern Files
 
 - **[fixtures.md](fixtures.md)** -- AppServiceStubBuilder, build_test_router, DB fixtures, mock injection

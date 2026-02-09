@@ -218,14 +218,57 @@ async fn test_queue_status_handler_returns_idle(
 
 #[anyhow_trace]
 #[rstest]
+#[case::refresh_metadata("POST", "/bodhi/v1/models/refresh")]
+#[case::queue_status("GET", "/bodhi/v1/queue")]
 #[tokio::test]
-async fn test_queue_status_allows_power_user_and_above(
-  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+async fn test_metadata_endpoints_reject_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_metadata_endpoints_reject_insufficient_role(
+  #[values("resource_user")] role: &str,
+  #[values(
+    ("POST", "/bodhi/v1/models/refresh"),
+    ("GET", "/bodhi/v1/queue")
+  )]
+  endpoint: (&str, &str),
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
   let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
-  let response = router.oneshot(session_request("GET", "/bodhi/v1/queue", &cookie)).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "{role} should be forbidden from {method} {path}"
+  );
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_metadata_endpoints_allow_power_user_and_above(
+  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(("GET", "/bodhi/v1/queue"))]
+  endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
   // GET /bodhi/v1/queue returns 200 OK with StubQueue returning "idle"
   assert_eq!(StatusCode::OK, response.status());
   Ok(())

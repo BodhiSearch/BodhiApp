@@ -311,17 +311,67 @@ async fn test_list_downloads(
 
 #[anyhow_trace]
 #[rstest]
+#[case::list_downloads("GET", "/bodhi/v1/modelfiles/pull")]
+#[case::create_pull_request("POST", "/bodhi/v1/modelfiles/pull")]
+#[case::get_download_status("GET", "/bodhi/v1/modelfiles/pull/some-id")]
 #[tokio::test]
-async fn test_list_downloads_allows_power_user_and_above(
-  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+async fn test_pull_endpoints_reject_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_pull_endpoints_reject_insufficient_role(
+  #[values("resource_user")] role: &str,
+  #[values(
+    ("GET", "/bodhi/v1/modelfiles/pull"),
+    ("POST", "/bodhi/v1/modelfiles/pull"),
+    ("GET", "/bodhi/v1/modelfiles/pull/some-id")
+  )]
+  endpoint: (&str, &str),
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
   let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
-  let response = router
-    .oneshot(session_request("GET", "/bodhi/v1/modelfiles/pull", &cookie))
-    .await?;
-  // GET /bodhi/v1/modelfiles/pull returns 200 OK with empty list from real DbService
-  assert_eq!(StatusCode::OK, response.status());
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(
+    StatusCode::FORBIDDEN,
+    response.status(),
+    "{role} should be forbidden from {method} {path}"
+  );
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_pull_endpoints_allow_power_user_and_above(
+  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(
+    ("GET", "/bodhi/v1/modelfiles/pull"),
+    ("GET", "/bodhi/v1/modelfiles/pull/some-id")
+  )]
+  endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  // Both GET endpoints return 200/404 from real services (proves auth passed)
+  assert!(
+    response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+    "Expected 200 or 404, got {}",
+    response.status()
+  );
   Ok(())
 }

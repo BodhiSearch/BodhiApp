@@ -1,5 +1,13 @@
 #[cfg(test)]
 mod test {
+  // ============================================================================
+  // VIOLATION DOCUMENTATION:
+  // Handler tests in this module use inner `mod test` with `router_state_stub`.
+  // POST /api/chat uses MockSharedContext for SSE streaming and cannot be tested
+  // with build_test_router() without complex mock setup.
+  // Both patterns are acceptable violations - auth coverage is provided separately.
+  // ============================================================================
+
   use crate::routes_ollama::{ollama_model_show_handler, ollama_models_handler};
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -127,6 +135,36 @@ stop:
       StatusCode::OK,
       response.status(),
       "{role} should be allowed to {method} {path}"
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_ollama_show_endpoint_allows_all_roles(
+    #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")]
+    role: &str,
+  ) -> anyhow::Result<()> {
+    use crate::test_utils::{build_test_router, create_authenticated_session, session_request_with_body};
+    use axum::{body::Body, http::StatusCode};
+    use tower::ServiceExt;
+
+    let (router, app_service, _temp) = build_test_router().await?;
+    let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+
+    let body = Body::from(serde_json::to_string(&json!({
+      "name": "non_existent_model"
+    }))?);
+
+    let response = router.oneshot(
+      session_request_with_body("POST", "/api/show", &cookie, body)
+    ).await?;
+
+    // May return 200 or 404 depending on model existence
+    assert!(
+      response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
+      "{role} should be allowed to POST /api/show, got {}", response.status()
     );
     Ok(())
   }
