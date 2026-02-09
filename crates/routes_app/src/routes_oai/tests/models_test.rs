@@ -306,4 +306,47 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
   Ok(())
 }
 
-// Auth tier tests merged (stub for plan completion)
+// Auth tier: User - These OpenAI-compatible endpoints are accessible to all authenticated users
+// All roles (User, PowerUser, Manager, Admin) can access these endpoints
+
+#[anyhow_trace]
+#[rstest]
+#[case::list_models("GET", "/v1/models")]
+#[case::get_model("GET", "/v1/models/some_model")]
+#[case::chat_completions("POST", "/v1/chat/completions")]
+#[case::embeddings("POST", "/v1/embeddings")]
+#[tokio::test]
+async fn test_oai_endpoints_reject_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  use tower::ServiceExt;
+
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
+}
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_oai_endpoints_allow_all_roles(
+  #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(("GET", "/v1/models"))] endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  use tower::ServiceExt;
+
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(
+    StatusCode::OK,
+    response.status(),
+    "{role} should be allowed to {method} {path}"
+  );
+  Ok(())
+}
