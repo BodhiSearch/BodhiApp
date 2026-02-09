@@ -1,7 +1,9 @@
 mod alias_response;
+mod router;
 
 #[allow(unused_imports)]
 pub use alias_response::*;
+pub use router::*;
 
 #[macro_export]
 macro_rules! wait_for_event {
