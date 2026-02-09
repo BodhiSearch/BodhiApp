@@ -826,4 +826,25 @@ async fn test_disable_type(
   Ok(())
 }
 
-// Auth tier tests merged (stub for plan completion)
+// Test that toolset endpoints reject unauthenticated requests
+// All toolset endpoints require User-level session authentication
+// No allow test needed - MockToolService panics without expectations, proving auth layer works
+#[anyhow_trace]
+#[rstest]
+#[case::create_toolset("POST", "/bodhi/v1/toolsets")]
+#[case::list_toolsets("GET", "/bodhi/v1/toolsets")]
+#[case::get_toolset("GET", "/bodhi/v1/toolsets/some_id")]
+#[case::update_toolset("PUT", "/bodhi/v1/toolsets/some_id")]
+#[case::delete_toolset("DELETE", "/bodhi/v1/toolsets/some_id")]
+#[case::execute_toolset("POST", "/bodhi/v1/toolsets/some_id/execute/some_method")]
+#[tokio::test]
+async fn test_toolset_endpoints_reject_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
+}

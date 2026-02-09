@@ -440,4 +440,25 @@ async fn test_request_access_handler_auth_service_error(
   Ok(())
 }
 
-// Auth tier tests merged (stub for plan completion)
+// Test that optional auth endpoints accept unauthenticated requests
+// These endpoints are public and should not return 401/403 for unauthenticated requests
+// They should return other errors (typically 400 BAD_REQUEST for missing/invalid body)
+#[anyhow_trace]
+#[rstest]
+#[case::auth_initiate("POST", "/bodhi/v1/auth/initiate")]
+#[case::auth_callback("POST", "/bodhi/v1/auth/callback")]
+#[case::request_access("POST", "/bodhi/v1/apps/request-access")]
+#[tokio::test]
+async fn test_optional_auth_endpoints_accept_unauthenticated(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, unauth_request};
+  let (router, _, _temp) = build_test_router().await?;
+  let response = router.oneshot(unauth_request(method, path)).await?;
+  // These endpoints don't require auth - verify they return non-auth errors
+  // POST without body should return BAD_REQUEST or other validation errors, not UNAUTHORIZED/FORBIDDEN
+  assert_ne!(StatusCode::UNAUTHORIZED, response.status());
+  assert_ne!(StatusCode::FORBIDDEN, response.status());
+  Ok(())
+}
