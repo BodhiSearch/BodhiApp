@@ -333,3 +333,6 @@ pub async fn list_tokens_handler(
   };
   Ok(Json(paginated))
 }
+
+#[cfg(test)]
+mod tests;
