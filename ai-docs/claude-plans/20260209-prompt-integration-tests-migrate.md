@@ -1,166 +1,350 @@
-  Task: Migrate integration-tests to lib_bodhiserver_napi and routes_app                                   
-                                                                                         
-  Context from Previous Migration
+# Task: Migrate integration-tests to lib_bodhiserver_napi and routes_app
 
-  We just completed a successful migration that:
-  - Consolidated routes_all into routes_app
-  - Created 102 new router-level auth tests using build_test_router()
-  - Established dual-pattern testing: router-level (auth + integration) vs handler-level (isolated business
-   logic)
-  - Used sub-agents for each phase with clear verification steps
+## Context from Recent Work
 
-  Key lessons learned:
-  - Real services (TestDbService, SqliteSessionService, LocalDataService) work well in tests
-  - Mock services (MockAuthService, MockToolService, MockSharedContext) should only be used when external
-  I/O is unavoidable
-  - Router-level tests use the fully-composed router with real middleware
-  - Session auth requires: JWT in session store + Cookie + Sec-Fetch-Site: same-origin + Host headers
+### routes_app Test Infrastructure (February 2026)
 
-  Current State Analysis Needed
+Recent migrations consolidated `routes_all` into `routes_app` and established comprehensive test patterns:
 
-  Before starting, explore and document:
+**Test Architecture (397 tests in routes_app)**:
+- **Router-level tests**: Use `build_test_router()` from `crates/routes_app/src/test_utils/router.rs`
+- **Real services**: `TestDbService`, `SqliteSessionService`, `LocalDataService` - work well in-process
+- **Mock services**: `MockAuthService`, `MockToolService`, `MockSharedContext` - only when external I/O unavoidable
+- **Authentication**: `create_authenticated_session()` + `session_request()` for JWT + cookie-based auth
+- **Test execution**: Parallel, fast (~5 seconds for 397 tests)
 
-  1. integration-tests crate structure
-    - Current dependencies (server_app? lib_bodhiserver? routes_all?)
-    - Test organization and patterns
-    - How tests start servers and manage lifecycle
-    - Authentication patterns used (OAuth2 tokens, sessions, cookies)
-    - What services are mocked vs real
-  2. lib_bodhiserver_napi structure
-    - Purpose and current capabilities
-    - NAPI bindings architecture
-    - Test infrastructure (if any)
-    - How it relates to integration testing
-  3. Migration goal clarification
-    - What does "migrate to lib_bodhiserver_napi and routes_app" mean?
-    - Should integration-tests be deleted or refactored?
-    - Should tests move into lib_bodhiserver_napi/tests/?
-    - Should tests use routes_app test infrastructure?
+**Key Test Utilities**:
+```rust
+// crates/routes_app/src/test_utils/router.rs
+pub async fn build_test_router() -> Result<(Router, Arc<dyn AppService>, TempDir)>
+pub async fn create_authenticated_session(session_service: &dyn SessionService, roles: &[&str]) -> Result<String>
+pub fn session_request(method: &str, path: &str, cookie: &str) -> Request<Body>
+pub fn unauth_request(method: &str, path: &str) -> Request<Body>
+```
 
-  Exploration Phase (Before Planning)
+**Test Pattern**:
+```rust
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_endpoint(#[case] method: &str, #[case] path: &str) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"]).await?;
+  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+```
 
-  Launch exploration agents to answer:
+**Test Categories in routes_app**:
+1. **Auth tier tests** (78 tests) - Verify authentication/authorization middleware for all endpoints
+2. **Handler logic tests** (~200 tests) - Verify business logic, error handling, request/response formats
+3. **Integration tests** (~119 tests) - Multi-handler flows, OpenAPI spec validation, SSE streaming
 
-  Question 1: What is lib_bodhiserver_napi?
+**Characteristics**:
+- No real server startup (uses `axum_test::TestServer` or `tower::ServiceExt::oneshot`)
+- No real OAuth2 (uses in-memory test sessions)
+- No real LLM inference (uses `MockSharedContext` for chat/embeddings)
+- Tests execute in milliseconds
+- Suitable for TDD workflows
 
-  - Read crates/lib_bodhiserver_napi/CLAUDE.md and PACKAGE.md
-  - Understand its purpose and current test coverage
-  - Check if it already has integration tests or test infrastructure
-  - Identify any existing patterns for testing server lifecycle
+### integration-tests Crate Structure (Current State)
 
-  Question 2: How do integration-tests currently work?
+**Purpose**: End-to-end validation with real servers, OAuth2, and LLM inference
 
-  - Read crates/integration-tests/CLAUDE.md thoroughly
-  - Map out the test categories (live server, chat completions, OAuth flow, etc.)
-  - Document the TestServerHandle pattern and fixtures
-  - Identify dependencies on server_app, routes_all, and other crates
+**Test Inventory (8 test files, 12+ tests)**:
+1. `test_live_api_ping.rs` - Server connectivity
+2. `test_live_chat_completions_non_streamed.rs` - Full OAuth2 → chat API → model inference
+3. `test_live_chat_completions_streamed.rs` - Streaming chat with SSE parsing
+4. `test_live_tool_calling_non_streamed.rs` - Non-streaming tool/function calling (multi-turn flow)
+5. `test_live_tool_calling_streamed.rs` - Streaming tool calling with SSE parsing
+6. `test_live_thinking_disabled.rs` (3 tests) - Reasoning content validation
+7. `test_live_lib.rs` (4 tests) - Direct llama.cpp server testing, SharedContext reload
+8. `test_live_agentic_chat_with_exa.rs` - Full toolset integration (Exa web search)
 
-  Question 3: What's the dependency relationship?
+**Test Infrastructure (384 lines)**:
+- **TestServerHandle** - Real server lifecycle: random port allocation, temp directories, graceful shutdown
+- **llama2_7b_setup fixture** - Complete service registry with real SQLite, HuggingFace cache, OAuth2 client
+- **live_server fixture** - Running HTTP server via `server_app::ServeCommand`
+- **get_oauth_tokens()** - Real Keycloak password flow authentication
+- **create_authenticated_session()** - Database-backed session creation
+- **Tool calling utilities** - SSE stream parsers, tool definition helpers
 
-  - Grep for imports: what does integration-tests import from server_app, routes_all, etc.?
-  - What does lib_bodhiserver_napi import?
-  - Can lib_bodhiserver_napi depend on routes_app/test-utils?
-  - Should there be a new test-utils feature in lib_bodhiserver_napi?
+**Dependencies**:
+```toml
+[dev-dependencies]
+server_app = { features = ["test-utils"] }      # ServeCommand, ServerShutdownHandle
+lib_bodhiserver = { features = ["test-utils"] } # AppServiceBuilder, AppOptionsBuilder
+auth_middleware = { features = ["test-utils"] } # AuthServerTestClient, session keys
+services = { features = ["test-utils"] }        # OfflineHubService, test_auth_service()
+```
 
-  Question 4: What test patterns overlap with routes_app?
+**Characteristics**:
+- Real Axum server on random port (2000-60000)
+- Real OAuth2 with Keycloak test instance (via `.env.test`)
+- Real llama.cpp inference with test models (Llama-68M, Qwen3-1.7B)
+- Real SQLite for sessions and tokens
+- Serial execution with `#[serial_test::serial(live)]`
+- 5-minute timeout per test
+- Tests execute in seconds to minutes (depending on model inference)
 
-  - Compare integration-tests test patterns with routes_app router-level tests
-  - Identify which tests are truly "integration" (real server, OAuth, LLM) vs "router-level" (could use
-  build_test_router)
-  - Determine if some integration-tests should actually move to routes_app/tests/
+**Key Distinction**: integration-tests validates **complete workflows** that routes_app cannot test with mocks.
 
-  Decision Points (After Exploration)
+### lib_bodhiserver_napi Structure
 
-  Present findings and ask user:
+**Purpose**: Node.js bindings for BodhiApp server functionality
 
-  1. Test categorization: Which tests belong where?
-    - True integration tests (real server, llama.cpp, OAuth2 server) → where?
-    - Router-level tests (HTTP API, auth middleware, no real LLM) → routes_app/tests/?
-    - NAPI binding tests → lib_bodhiserver_napi/tests/?
-  2. Crate fate: What happens to integration-tests crate?
-    - Keep it for true end-to-end tests only?
-    - Delete it and distribute tests to other crates?
-    - Rename/refactor it?
-  3. Test infrastructure: Where should server lifecycle utilities live?
-    - Keep TestServerHandle in integration-tests?
-    - Move to lib_bodhiserver_napi/test-utils?
-    - Use routes_app test infrastructure where possible?
-  4. Dependencies: How should test dependencies flow?
-    - Should lib_bodhiserver_napi depend on routes_app/test-utils?
-    - Should integration-tests depend on lib_bodhiserver_napi/test-utils?
-    - What about circular dependencies?
+**Current State** (to be explored):
+- NAPI bindings for server lifecycle management
+- TypeScript/JavaScript testing infrastructure
+- Integration with Next.js frontend development workflow
+- Potential home for JavaScript-based E2E tests
 
-  Proposed Phased Approach (Flexible)
+**Test Location Options**:
+- `crates/lib_bodhiserver_napi/tests-js/` - JavaScript/TypeScript tests
+- `crates/lib_bodhiserver_napi/__tests__/` - Jest/Vitest convention
 
-  Phase 0: Research & Decision (1-2 sub-agents)
+## Architectural Insights for Migration Planning
 
-  - Exploration agents gather information
-  - Present findings with architectural options
-  - User makes decisions on test categorization and crate structure
+### Test Categorization Framework
 
-  Phase 1: Test Categorization (potential sub-agents)
+Based on the current state, tests naturally fall into three categories:
 
-  - Audit all integration-tests tests
-  - Categorize each test: integration vs router-level vs NAPI
-  - Identify tests that can be deleted (redundant with routes_app tests)
-  - Document dependencies for each test
+**Category 1: Router-Level Tests (routes_app)**
+- **Characteristics**: In-process, mocked services, fast execution, parallel-safe
+- **Testing**: Routing logic, auth middleware, request/response formats, error handling
+- **Infrastructure**: `build_test_router()`, test utilities, in-memory services
+- **Execution Time**: Milliseconds per test
+- **CI/CD**: Always run, no external dependencies
 
-  Phase 2: Infrastructure Setup (potential sub-agents)
+**Category 2: Integration Tests (Rust-based E2E)**
+- **Characteristics**: Real server, real OAuth2, real LLM inference, serial execution
+- **Testing**: Complete workflows, service coordination, real model inference
+- **Infrastructure**: TestServerHandle, OAuth2 test environment, model files
+- **Execution Time**: Seconds to minutes per test
+- **CI/CD**: Conditional (requires OAuth2 server, model files)
 
-  - Create test-utils in lib_bodhiserver_napi if needed
-  - Set up any new test infrastructure
-  - Establish patterns for NAPI testing vs integration testing
+**Category 3: E2E Tests (JavaScript-based, via NAPI)**
+- **Characteristics**: Node.js runtime, TypeScript/JavaScript, browser-like environment
+- **Testing**: Frontend integration, NAPI bindings, desktop app workflows
+- **Infrastructure**: To be designed (possibly similar to TestServerHandle)
+- **Execution Time**: Seconds per test (likely faster than Rust E2E)
+- **CI/CD**: Desktop app testing, frontend/backend integration
 
-  Phase 3: Migration Execution (multiple sub-agents)
+### Natural Boundaries
 
-  - Move/rewrite tests according to categorization
-  - Update dependencies
-  - Ensure all tests pass in new locations
+**routes_app** is appropriate for:
+- Tests that validate **routing and middleware** behavior
+- Tests that validate **handler business logic** with mocked external dependencies
+- Tests that validate **API contracts** (request/response formats, error codes)
+- Tests that require **fast feedback loops** for TDD workflows
+- Tests that can run in **parallel** without resource conflicts
 
-  Phase 4: Cleanup (sub-agent)
+**integration-tests** (Rust E2E) is appropriate for:
+- Tests that validate **real OAuth2 authentication flows** end-to-end
+- Tests that require **actual LLM inference** to validate streaming, tool calling, reasoning
+- Tests that validate **service coordination** across the full stack
+- Tests that validate **llama.cpp integration** and model loading
+- Tests that require **real file system operations** (model downloads, cache management)
 
-  - Remove redundant tests
-  - Update documentation
-  - Remove or refactor integration-tests crate as decided
+**lib_bodhiserver_napi/tests-js** (JavaScript E2E) is appropriate for:
+- Tests that validate **NAPI bindings** work correctly from Node.js
+- Tests that validate **TypeScript/JavaScript API** contracts
+- Tests that simulate **frontend usage patterns** (desktop app, Next.js integration)
+- Tests that validate **server lifecycle** from JavaScript (start, stop, reload)
+- Tests that require **browser-like environments** for realistic frontend integration
 
-  Test-Driven Principles
+### Key Insights from Exploration
 
-  - Each phase should maintain a green test suite
-  - Don't delete tests until replacements pass
-  - Verify test count before/after each change
-  - Use cargo test --workspace as the ultimate verification
+**Overlap Analysis**:
+- **Minimal overlap** between routes_app and integration-tests
+- routes_app tests **cannot replace** integration-tests (no real OAuth2, no real inference)
+- integration-tests tests **should not replace** routes_app (too slow, serial execution)
+- Tests serve **complementary roles** in the test pyramid
 
-  Sub-Agent Strategy
+**Current integration-tests Analysis**:
+All 12+ tests in integration-tests are **genuine integration tests** that require:
+- Real server startup with llama.cpp integration
+- Real OAuth2 authentication via Keycloak
+- Real model inference (cannot be mocked)
+- Real streaming response validation
+- Real toolset execution flows
 
-  Each sub-agent should:
-  1. Explore first: Read current state, understand context
-  2. Plan: Propose specific changes for their scope
-  3. Implement: Make changes incrementally
-  4. Verify: Run tests, check compilation
-  5. Report: Document what was done, what was learned, blockers encountered
+**None of these tests should move to routes_app** - they serve a different purpose.
 
-  Non-Prescriptive Guidance
+**Migration Question**: Should any of these tests move to lib_bodhiserver_napi/tests-js?
 
-  Do explore:
-  - Whether some "integration" tests are actually just router-level tests in disguise
-  - If NAPI bindings need different test patterns than Rust integration tests
-  - How test data management (model files, OAuth config) should work across crates
-  - Whether fixtures like live_server and llama2_7b_setup belong in a shared test-utils
+Consider:
+- JavaScript E2E tests could provide **faster feedback** than Rust E2E tests
+- JavaScript tests could better simulate **frontend usage patterns**
+- JavaScript tests could validate **NAPI bindings** under realistic conditions
+- But JavaScript tests might **lose Rust-level validation** of internal state
 
-  Do NOT assume:
-  - That all tests must move
-  - That lib_bodhiserver_napi must become the new home for everything
-  - That the current integration-tests structure is optimal
-  - That test patterns from one crate directly apply to another
+## Exploratory Questions for Planning
 
-  Consider:
-  - Test execution time (integration tests are slow, router tests are fast)
-  - CI/CD implications (some tests need OAuth servers, others don't)
-  - Developer experience (where do I add a new integration test?)
-  - Maintenance burden (how many test patterns to maintain?)
+### Question 1: What is the migration goal?
 
-  Starting Point
+**Possible interpretations**:
+1. Move all integration-tests to lib_bodhiserver_napi/tests-js for JavaScript-based E2E testing
+2. Distribute tests: some to routes_app, some to lib_bodhiserver_napi, some stay
+3. Add JavaScript E2E tests alongside existing Rust integration tests
+4. Consolidate test infrastructure into lib_bodhiserver_napi for reuse
 
-  Begin with Phase 0: Launch 2-3 exploration agents in parallel to answer the key questions above. Based on
-   their findings, we'll create a detailed migration plan with clear decision points for user approval
-  before executing.
+**Explore**:
+- User's vision for JavaScript vs Rust E2E testing
+- Whether lib_bodhiserver_napi should become the primary E2E test location
+- If integration-tests crate should be deleted, renamed, or refocused
+
+### Question 2: What does lib_bodhiserver_napi need?
+
+**Explore**:
+- Does lib_bodhiserver_napi already have test infrastructure?
+- Should it provide TestServerHandle-like utilities for JavaScript?
+- How would JavaScript tests handle OAuth2, model files, and temp directories?
+- What JavaScript testing framework should be used (Jest, Vitest, Playwright)?
+
+### Question 3: What test infrastructure should be shared?
+
+**Current situation**:
+- `routes_app/src/test_utils/` - Router-level testing utilities
+- `integration-tests/src/live_server_utils.rs` - E2E testing utilities
+- Both use `AppServiceBuilder` from `lib_bodhiserver` with test-utils features
+
+**Explore**:
+- Should lib_bodhiserver_napi expose similar test utilities for JavaScript?
+- Can TestServerHandle pattern be adapted for JavaScript consumers?
+- Should test data (model files, OAuth config) be shared across test crates?
+- How should test fixtures be managed (Rust rstest vs JavaScript beforeAll)?
+
+### Question 4: How should test execution be organized?
+
+**Current execution**:
+- `make test.backend` runs routes_app (fast) + integration-tests (slow)
+- routes_app runs in parallel, integration-tests runs serially
+- CI can skip integration-tests if OAuth2 server unavailable
+
+**Explore**:
+- Should JavaScript E2E tests be part of `make test.backend` or separate?
+- How should CI distinguish between fast unit tests and slow E2E tests?
+- Should there be separate `make test.e2e.rust` and `make test.e2e.js` commands?
+- What's the developer experience for running different test suites?
+
+## Suggested Exploration Approach
+
+### Phase 0: Understand lib_bodhiserver_napi
+
+**Explore**:
+1. Read `crates/lib_bodhiserver_napi/CLAUDE.md` and `PACKAGE.md` thoroughly
+2. Check for existing test infrastructure (`tests-js/`, `__tests__/`, `*.test.ts`)
+3. Understand NAPI bindings architecture (what's exposed to JavaScript?)
+4. Identify if server lifecycle management is already available
+5. Check `package.json` for test scripts and testing frameworks
+
+**Deliverable**: Understanding of lib_bodhiserver_napi's current state and capabilities
+
+### Phase 1: Analyze Test Distribution Options
+
+**Explore**:
+1. For each integration-tests test file, consider:
+   - Could this be a JavaScript E2E test instead of Rust?
+   - What would be gained/lost by moving to JavaScript?
+   - Does this test validate Rust internals that JavaScript can't see?
+   - Would this test provide better frontend integration coverage in JavaScript?
+
+2. Consider architectural patterns:
+   - **Option A**: Keep all Rust E2E tests, add JavaScript E2E tests for frontend scenarios
+   - **Option B**: Move most E2E tests to JavaScript, keep minimal Rust tests for internal validation
+   - **Option C**: Duplicate critical tests (Rust for internals, JavaScript for API contracts)
+   - **Option D**: Specialize by concern (Rust for LLM/services, JavaScript for HTTP API)
+
+**Deliverable**: Recommendation on test distribution with pros/cons
+
+### Phase 2: Design Test Infrastructure
+
+Based on Phase 1 decisions, design:
+1. JavaScript test utilities (if needed)
+2. TestServerHandle equivalent for JavaScript (if needed)
+3. OAuth2 test helpers for JavaScript (if needed)
+4. Model file and fixture management (if needed)
+5. Test execution strategy (parallel/serial, CI integration)
+
+**Deliverable**: Architecture design for new test infrastructure
+
+### Phase 3: Create Migration Plan
+
+Based on Phases 0-2, create a detailed plan with:
+1. Specific tests to move (with rationale)
+2. New infrastructure to build
+3. Dependencies to update
+4. Test execution changes
+5. CI/CD modifications
+6. Documentation updates
+7. Verification steps
+
+**Deliverable**: Executable migration plan with clear phases and acceptance criteria
+
+## Key Considerations for Decision-Making
+
+### Performance Trade-offs
+- **Rust E2E**: Slower to compile, slower to execute, but validates internal state
+- **JavaScript E2E**: Faster to iterate, faster to execute, but treats server as black box
+- **Developer Experience**: JavaScript tests may be more familiar to frontend developers
+
+### Test Coverage Strategy
+- **Rust E2E**: Essential for validating service coordination, LLM integration
+- **JavaScript E2E**: Essential for validating NAPI bindings, frontend integration
+- **Overlap**: Some tests might benefit from both perspectives
+
+### Maintenance Burden
+- **One test suite**: Simpler, but might not cover all scenarios
+- **Two test suites**: More comprehensive, but requires maintaining two patterns
+- **Hybrid approach**: Balance coverage vs maintenance cost
+
+### CI/CD Constraints
+- OAuth2 server availability
+- Model file storage (large binaries in Git LFS?)
+- Test execution time budgets
+- Parallel vs serial execution requirements
+
+## Anti-Patterns to Avoid
+
+**Don't**:
+1. Move tests just for the sake of moving them (preserve working tests)
+2. Assume all E2E tests should be JavaScript (Rust E2E validates internal state)
+3. Duplicate every test in both Rust and JavaScript (maintenance burden)
+4. Ignore test execution time in CI (slow tests impact developer productivity)
+5. Break working tests during migration (maintain green test suite)
+
+**Do**:
+1. Preserve test coverage during migration (verify before/after test counts)
+2. Consider the natural boundaries (what each test type does best)
+3. Design for developer experience (where do I add a new test?)
+4. Plan for CI/CD execution (fast feedback loops vs comprehensive coverage)
+5. Document the testing strategy (why tests live where they live)
+
+## Success Criteria
+
+A successful migration should achieve:
+1. **Preserved Coverage**: All existing test scenarios remain covered
+2. **Clear Organization**: Obvious where to add new tests
+3. **Fast Feedback**: Unit/router tests run in seconds, E2E tests separate
+4. **CI/CD Optimized**: Fast tests always run, slow tests conditional
+5. **Maintainable**: Test patterns are consistent and well-documented
+6. **Comprehensive**: Both Rust internals and JavaScript API validated
+
+## Starting Point
+
+Begin by exploring lib_bodhiserver_napi thoroughly to understand:
+- Its current test infrastructure (if any)
+- Its NAPI bindings architecture
+- Its relationship to integration testing
+- Its potential as an E2E test host
+
+Then analyze each integration-tests test to determine:
+- Natural home (Rust E2E vs JavaScript E2E)
+- Value proposition (what does this test validate?)
+- Migration cost (how much work to move it?)
+- Maintenance benefit (is the new location better?)
+
+Present findings with architectural recommendations and trade-off analysis before proposing a detailed migration plan.
