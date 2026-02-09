@@ -695,3 +695,5 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
   );
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

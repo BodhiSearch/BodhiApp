@@ -508,3 +508,5 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

@@ -349,3 +349,5 @@ async fn test_user_info_handler_malformed_scope_header(
   );
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

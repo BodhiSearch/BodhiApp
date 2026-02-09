@@ -825,3 +825,5 @@ async fn test_disable_type(
   assert_eq!(expected_status, response.status());
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

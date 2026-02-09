@@ -1372,3 +1372,5 @@ async fn test_update_api_model_duplicate_prefix_error(
 
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

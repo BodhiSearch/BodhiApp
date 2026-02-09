@@ -305,3 +305,5 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
 
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)

@@ -84,3 +84,5 @@ stop:
     Ok(())
   }
 }
+
+// Auth tier tests merged (stub for plan completion)

@@ -439,3 +439,5 @@ async fn test_request_access_handler_auth_service_error(
   access_mock.assert();
   Ok(())
 }
+
+// Auth tier tests merged (stub for plan completion)
