@@ -213,3 +213,20 @@ async fn test_queue_status_handler_returns_idle(
 
   Ok(())
 }
+
+// Auth tier tests (merged from tests/routes_models_metadata_auth_test.rs)
+
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_queue_status_allows_power_user_and_above(
+  #[values("resource_power_user", "resource_manager", "resource_admin")] role: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let response = router.oneshot(session_request("GET", "/bodhi/v1/queue", &cookie)).await?;
+  // GET /bodhi/v1/queue returns 200 OK with StubQueue returning "idle"
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
