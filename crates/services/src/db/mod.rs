@@ -11,6 +11,7 @@ mod tests;
 mod time_service;
 mod token_repository;
 mod toolset_repository;
+mod user_alias_repository;
 
 pub use access_repository::*;
 pub use db_core::*;
@@ -22,3 +23,4 @@ pub use sqlite_pool::DbPool;
 pub use time_service::*;
 pub use token_repository::*;
 pub use toolset_repository::*;
+pub use user_alias_repository::*;

@@ -1,5 +1,5 @@
-use crate::{is_default, to_safe_filename, OAIRequestParams, Repo};
-use derive_new::new;
+use crate::{is_default, OAIRequestParams, Repo};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -17,14 +17,12 @@ pub enum AliasSource {
   Api,
 }
 
-#[derive(
-  Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder, new,
-)]
-#[builder(
-  setter(into, strip_option),
-  build_fn(error = crate::BuilderError))]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder)]
+#[builder(setter(into, strip_option), build_fn(error = crate::BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct UserAlias {
+  #[builder(setter(skip))]
+  pub id: String,
   pub alias: String,
   #[schema(value_type = String, format = "string")]
   pub repo: Repo,
@@ -36,13 +34,83 @@ pub struct UserAlias {
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   #[builder(default)]
   pub context_params: Vec<String>,
+  #[schema(value_type = String, format = "date-time")]
+  #[builder(setter(skip))]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  #[builder(setter(skip))]
+  pub updated_at: DateTime<Utc>,
 }
 
-impl UserAlias {
-  pub fn config_filename(&self) -> String {
-    let filename = self.alias.replace(':', "--");
-    let filename = to_safe_filename(&filename);
-    format!("{}.yaml", filename)
+impl UserAliasBuilder {
+  pub fn build_with_time(&self, now: DateTime<Utc>) -> Result<UserAlias, crate::BuilderError> {
+    Ok(UserAlias {
+      id: uuid::Uuid::new_v4().to_string(),
+      alias: self
+        .alias
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("alias"))?,
+      repo: self
+        .repo
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("repo"))?,
+      filename: self
+        .filename
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("filename"))?,
+      snapshot: self
+        .snapshot
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("snapshot"))?,
+      request_params: self.request_params.clone().unwrap_or_default(),
+      context_params: self.context_params.clone().unwrap_or_default(),
+      created_at: now,
+      updated_at: now,
+    })
+  }
+
+  #[cfg(any(test, feature = "test-utils"))]
+  pub fn build_test(&self) -> Result<UserAlias, crate::BuilderError> {
+    use chrono::TimeZone;
+    let fixed_time = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+    Ok(UserAlias {
+      id: format!("test-{}", self.alias.clone().unwrap_or_default()),
+      alias: self
+        .alias
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("alias"))?,
+      repo: self
+        .repo
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("repo"))?,
+      filename: self
+        .filename
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("filename"))?,
+      snapshot: self
+        .snapshot
+        .clone()
+        .ok_or_else(|| crate::BuilderError::UninitializedField("snapshot"))?,
+      request_params: self.request_params.clone().unwrap_or_default(),
+      context_params: self.context_params.clone().unwrap_or_default(),
+      created_at: fixed_time,
+      updated_at: fixed_time,
+    })
+  }
+
+  #[cfg(any(test, feature = "test-utils"))]
+  pub fn build_with_id(&self, id: &str, now: DateTime<Utc>) -> UserAlias {
+    UserAlias {
+      id: id.to_string(),
+      alias: self.alias.clone().unwrap_or_default(),
+      repo: self.repo.clone().unwrap_or_default(),
+      filename: self.filename.clone().unwrap_or_default(),
+      snapshot: self.snapshot.clone().unwrap_or_default(),
+      request_params: self.request_params.clone().unwrap_or_default(),
+      context_params: self.context_params.clone().unwrap_or_default(),
+      created_at: now,
+      updated_at: now,
+    }
   }
 }
 
@@ -59,108 +127,7 @@ impl std::fmt::Display for UserAlias {
 #[cfg(test)]
 mod test {
   use crate::test_utils::AliasBuilder;
-  use crate::{OAIRequestParamsBuilder, Repo, UserAlias};
-  use anyhow_trace::anyhow_trace;
-  use rstest::rstest;
-
-  #[rstest]
-  #[case("llama3:instruct", "llama3--instruct.yaml")]
-  #[case("llama3/instruct", "llama3--instruct.yaml")]
-  fn test_alias_config_filename(#[case] input: String, #[case] expected: String) {
-    let alias = UserAlias {
-      alias: input,
-      ..Default::default()
-    };
-    assert_eq!(expected, alias.config_filename());
-  }
-
-  #[anyhow_trace]
-  #[rstest]
-  #[case::full(
-    AliasBuilder::tinyllama()
-      .request_params(OAIRequestParamsBuilder::default()
-        .temperature(0.7)
-        .top_p(0.95)
-        .build()
-        .unwrap())
-      .context_params(vec![
-        "--ctx-size 2048".to_string(),
-        "--parallel 4".to_string(),
-        "--n-predict 256".to_string(),
-      ])
-      .build()
-      .unwrap(),
-    r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
-filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
-snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-request_params:
-  temperature: 0.7
-  top_p: 0.95
-context_params:
-- --ctx-size 2048
-- --parallel 4
-- --n-predict 256
-"#
-  )]
-  #[case::minimal(
-    AliasBuilder::tinyllama()
-      .build()
-      .unwrap(),
-    r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
-filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
-snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-"#)]
-  fn test_alias_serialize(#[case] alias: UserAlias, #[case] expected: &str) -> anyhow::Result<()> {
-    let actual = serde_yaml::to_string(&alias)?;
-    assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::request_ctx_params(
-    r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
-filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
-snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-request_params:
-  temperature: 0.7
-  top_p: 0.95
-context_params:
-- --ctx-size 2048
-- --parallel 4
-- --n-predict 256
-"#,
-  AliasBuilder::tinyllama()
-  .request_params(OAIRequestParamsBuilder::default()
-  .temperature(0.7)
-  .top_p(0.95)
-  .build()
-  .unwrap())
-  .context_params(vec![
-    "--ctx-size 2048".to_string(),
-    "--parallel 4".to_string(),
-    "--n-predict 256".to_string(),
-  ])
-  .build()
-  .unwrap()
-  )]
-  #[case::minimal(r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
-filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
-snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-"#, AliasBuilder::tinyllama()
-.build()
-.unwrap())]
-  fn test_alias_deserialized(
-    #[case] serialized: &str,
-    #[case] expected: UserAlias,
-  ) -> anyhow::Result<()> {
-    let actual = serde_yaml::from_str(serialized)?;
-    assert_eq!(expected, actual);
-    Ok(())
-  }
+  use crate::{Repo, UserAlias};
 
   #[test]
   fn test_alias_display() {
@@ -175,5 +142,12 @@ snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
       format!("{}", alias),
       "Alias { alias: test:alias, repo: test/repo, filename: test.gguf, snapshot: main }"
     );
+  }
+
+  #[test]
+  fn test_alias_derive_builder() {
+    let alias = AliasBuilder::tinyllama().build_test().unwrap();
+    assert_eq!("tinyllama:instruct", alias.alias);
+    assert_eq!("test-tinyllama:instruct", alias.id);
   }
 }

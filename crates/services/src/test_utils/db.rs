@@ -2,7 +2,9 @@ use crate::db::{
   AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
   DbError, DownloadRequest, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
   TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
+  UserAliasRepository,
 };
+use objs::UserAlias;
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
 use objs::ApiAlias;
@@ -557,6 +559,57 @@ impl ToolsetRepository for TestDbService {
   }
 }
 
+#[async_trait::async_trait]
+impl UserAliasRepository for TestDbService {
+  async fn create_user_alias(&self, alias: &UserAlias) -> Result<(), DbError> {
+    self
+      .inner
+      .create_user_alias(alias)
+      .await
+      .tap(|_| self.notify("create_user_alias"))
+  }
+
+  async fn get_user_alias_by_id(&self, id: &str) -> Result<Option<UserAlias>, DbError> {
+    self
+      .inner
+      .get_user_alias_by_id(id)
+      .await
+      .tap(|_| self.notify("get_user_alias_by_id"))
+  }
+
+  async fn get_user_alias_by_name(&self, alias: &str) -> Result<Option<UserAlias>, DbError> {
+    self
+      .inner
+      .get_user_alias_by_name(alias)
+      .await
+      .tap(|_| self.notify("get_user_alias_by_name"))
+  }
+
+  async fn update_user_alias(&self, id: &str, alias: &UserAlias) -> Result<(), DbError> {
+    self
+      .inner
+      .update_user_alias(id, alias)
+      .await
+      .tap(|_| self.notify("update_user_alias"))
+  }
+
+  async fn delete_user_alias(&self, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_user_alias(id)
+      .await
+      .tap(|_| self.notify("delete_user_alias"))
+  }
+
+  async fn list_user_aliases(&self) -> Result<Vec<UserAlias>, DbError> {
+    self
+      .inner
+      .list_user_aliases()
+      .await
+      .tap(|_| self.notify("list_user_aliases"))
+  }
+}
+
 // Composite mock using mockall::mock! that preserves MockDbService name
 mockall::mock! {
   pub DbService {}
@@ -610,6 +663,16 @@ mockall::mock! {
     async fn get_api_token_by_id(&self, user_id: &str, id: &str) -> Result<Option<ApiToken>, DbError>;
     async fn get_api_token_by_prefix(&self, prefix: &str) -> Result<Option<ApiToken>, DbError>;
     async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl UserAliasRepository for DbService {
+    async fn create_user_alias(&self, alias: &UserAlias) -> Result<(), DbError>;
+    async fn get_user_alias_by_id(&self, id: &str) -> Result<Option<UserAlias>, DbError>;
+    async fn get_user_alias_by_name(&self, alias: &str) -> Result<Option<UserAlias>, DbError>;
+    async fn update_user_alias(&self, id: &str, alias: &UserAlias) -> Result<(), DbError>;
+    async fn delete_user_alias(&self, id: &str) -> Result<(), DbError>;
+    async fn list_user_aliases(&self) -> Result<Vec<UserAlias>, DbError>;
   }
 
   #[async_trait::async_trait]

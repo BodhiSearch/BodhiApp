@@ -301,10 +301,6 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     self.hf_home().join("hub")
   }
 
-  fn aliases_dir(&self) -> PathBuf {
-    self.bodhi_home().join("aliases")
-  }
-
   fn login_url(&self) -> String {
     format!(
       "{}/realms/{}/protocol/openid-connect/auth",

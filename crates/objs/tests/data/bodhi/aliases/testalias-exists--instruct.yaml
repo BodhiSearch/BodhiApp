@@ -1,6 +1,0 @@
-source: user
-alias: testalias-exists:instruct
-repo: MyFactory/testalias-gguf
-filename: testalias.Q8_0.gguf
-chat_template: llama3
-snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213

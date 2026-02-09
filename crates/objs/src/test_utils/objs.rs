@@ -2,6 +2,7 @@ use crate::{
   test_utils::SNAPSHOT, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, Repo,
   UserAlias, TOKENIZER_CONFIG_JSON,
 };
+use chrono::{DateTime, Utc};
 use derive_builder::Builder;
 use std::{path::PathBuf, str::FromStr};
 
@@ -239,23 +240,23 @@ impl AliasBuilder {
 
 impl UserAlias {
   pub fn testalias() -> UserAlias {
-    AliasBuilder::testalias().build().unwrap()
+    AliasBuilder::testalias().build_test().unwrap()
   }
 
   pub fn testalias_q4() -> UserAlias {
-    AliasBuilder::testalias_q4().build().unwrap()
+    AliasBuilder::testalias_q4().build_test().unwrap()
   }
 
   pub fn testalias_exists() -> UserAlias {
-    AliasBuilder::testalias_exists().build().unwrap()
+    AliasBuilder::testalias_exists().build_test().unwrap()
   }
 
   pub fn llama3() -> UserAlias {
-    AliasBuilder::llama3().build().unwrap()
+    AliasBuilder::llama3().build_test().unwrap()
   }
 
   pub fn tinyllama() -> UserAlias {
-    AliasBuilder::tinyllama().build().unwrap()
+    AliasBuilder::tinyllama().build_test().unwrap()
   }
 
   pub fn tinyllama_model() -> UserAlias {
@@ -266,7 +267,7 @@ impl UserAlias {
       .snapshot(Repo::SNAPSHOT_LATEST)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
-      .build()
+      .build_test()
       .unwrap()
   }
 
@@ -278,7 +279,7 @@ impl UserAlias {
       .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
-      .build()
+      .build_test()
       .unwrap()
   }
 
@@ -290,8 +291,20 @@ impl UserAlias {
       .snapshot("9ca625120374ddaae21f067cb006517d14dc91a6")
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
-      .build()
+      .build_test()
       .unwrap()
+  }
+
+  pub fn llama3_with_time(now: DateTime<Utc>) -> UserAlias {
+    AliasBuilder::llama3().build_with_id("test-llama3-instruct", now)
+  }
+
+  pub fn testalias_exists_with_time(now: DateTime<Utc>) -> UserAlias {
+    AliasBuilder::testalias_exists().build_with_id("test-testalias-exists-instruct", now)
+  }
+
+  pub fn tinyllama_with_time(now: DateTime<Utc>) -> UserAlias {
+    AliasBuilder::tinyllama().build_with_id("test-tinyllama-instruct", now)
   }
 }
 

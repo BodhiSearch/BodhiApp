@@ -1,6 +1,6 @@
 use crate::{db::ModelMetadataRowBuilder, AppRegInfo};
 use chrono::{DateTime, Utc};
-use objs::{ApiAlias, ApiAliasBuilder};
+use objs::{ApiAlias, ApiAliasBuilder, UserAlias};
 use rstest::fixture;
 
 #[fixture]
@@ -179,4 +179,22 @@ pub fn create_test_api_model_metadata_with_context(
   builder
     .build()
     .expect("Failed to build test API ModelMetadataRow with context")
+}
+
+/// Seed database with test user aliases (replaces YAML fixture files)
+pub async fn seed_test_user_aliases(
+  db_service: &dyn crate::db::DbService,
+) -> anyhow::Result<Vec<UserAlias>> {
+  let now = db_service.now();
+  let aliases = vec![
+    UserAlias::llama3_with_time(now),
+    UserAlias::testalias_exists_with_time(now),
+    UserAlias::tinyllama_with_time(now),
+  ];
+
+  for alias in &aliases {
+    db_service.create_user_alias(alias).await?;
+  }
+
+  Ok(aliases)
 }

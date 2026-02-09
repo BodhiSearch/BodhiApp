@@ -62,9 +62,6 @@ pub const CHAT_PATH: &str = "/ui/chat";
 const PROD_DB: &str = "bodhi.sqlite";
 const SESSION_DB: &str = "session.sqlite";
 
-// TODO: remove the pub
-pub const ALIASES_DIR: &str = "aliases";
-
 const LOGS_DIR: &str = "logs";
 
 pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";

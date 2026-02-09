@@ -171,14 +171,12 @@ impl AppServiceStubBuilder {
     if let Some(Some(_)) = self.data_service.as_ref() {
       return self;
     }
-    let temp_home = self.setup_temp_home();
-    let bodhi_home = temp_home.path().join("bodhi");
-    copy_test_dir("tests/data/bodhi", &bodhi_home);
-    let data_service = LocalDataService::new(
-      bodhi_home,
-      self.get_hub_service(),
-      self.get_db_service().await,
-    );
+    let db_service = self.get_db_service().await;
+    // Seed user aliases into DB
+    crate::test_utils::seed_test_user_aliases(db_service.as_ref())
+      .await
+      .unwrap();
+    let data_service = LocalDataService::new(self.get_hub_service(), db_service);
     self.data_service = Some(Some(Arc::new(data_service)));
     self
   }
