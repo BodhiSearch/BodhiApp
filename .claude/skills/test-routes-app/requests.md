@@ -1,8 +1,6 @@
 # Request Construction
 
-## Router-Level Request Helpers
-
-Import: `use routes_app::test_utils::{session_request, unauth_request};`
+## Request Helpers for build_test_router()
 
 ### Unauthenticated request
 
@@ -33,24 +31,33 @@ Sets `Cookie`, `Sec-Fetch-Site: same-origin`, and `Host: localhost:1135` headers
 
 ### Multiple requests with same router
 
-Clone the router for each request:
+Use `#[values]` for cartesian product testing (preferred):
 
 ```rust
-for (method, path) in endpoints {
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_endpoints_reject_insufficient_role(
+  #[case] role: &str,
+  #[values("GET", "POST")] method: &str,
+  #[values("/path/a", "/path/b")] path: &str,
+) -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(
+    app_service.session_service().as_ref(), &[role]
+  ).await?;
+
   let response = router
-    .clone()
     .oneshot(session_request(method, path, &cookie))
-    .await
-    .unwrap();
+    .await?;
   assert_eq!(StatusCode::FORBIDDEN, response.status());
+  Ok(())
 }
 ```
 
-## Handler-Level Request Construction
+## Request Construction with AppServiceStubBuilder
 
 ### RequestTestExt -- JSON Body
-
-Import: `use server_core::test_utils::RequestTestExt;`
 
 ```rust
 // POST with typed body
@@ -75,12 +82,10 @@ Request::builder()
   .json(&update_payload)?
 ```
 
-### RequestAuthExt -- Auth Headers (handler-level only)
-
-Import: `use server_core::test_utils::RequestAuthExt;`
+### RequestAuthExt -- Auth Headers
 
 Sets `X-BodhiApp-Token` + `X-BodhiApp-Role` or `X-BodhiApp-Scope` headers.
-**Only for handler-level tests** -- router-level tests use real session auth.
+**Only for isolated handler tests with AppServiceStubBuilder** -- auth tier tests use real session auth.
 
 ```rust
 // Session-based user auth

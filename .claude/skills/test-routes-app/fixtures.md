@@ -1,13 +1,13 @@
 # Fixtures & Service Setup
 
-## Router-Level: build_test_router()
+## build_test_router()
 
-The primary fixture for auth tier and integration tests. Returns a fully-composed router with all middleware layers (auth, session, CORS).
+The primary fixture for auth tier and integration tests. Returns a fully-composed router with all middleware layers (auth, session, CORS). Use for both auth tier tests and integration-style handler tests that need real middleware.
 
 ```rust
 use routes_app::test_utils::build_test_router;
 
-let (router, app_service, _temp) = build_test_router().await.unwrap();
+let (router, app_service, _temp) = build_test_router().await?;
 ```
 
 Returns:
@@ -36,7 +36,7 @@ use routes_app::test_utils::create_authenticated_session;
 let cookie = create_authenticated_session(
   app_service.session_service().as_ref(),
   &["resource_user"],  // or &["resource_admin"], &["resource_manager"], etc.
-).await.unwrap();
+).await?;
 ```
 
 Creates a JWT with specified roles, stores it in the session store, returns a cookie string.
@@ -56,9 +56,9 @@ let db_service = app_service.db_service();
 let session_service = app_service.session_service();
 ```
 
-## Handler-Level: AppServiceStubBuilder
+## AppServiceStubBuilder
 
-For isolated handler tests with specific mock expectations.
+For isolated handler tests with specific mock expectations. Use when you need to control individual service behavior with mocks.
 
 ### Minimal (all mocks)
 
@@ -103,7 +103,7 @@ let app_service = AppServiceStubBuilder::default()
   .build()?;
 ```
 
-## Handler-Level: Router Construction
+## Router Construction for Isolated Handler Tests
 
 Always wrap state in `Arc<DefaultRouterState>` and register only the handler(s) under test.
 

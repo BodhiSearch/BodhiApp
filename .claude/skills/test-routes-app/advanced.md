@@ -2,95 +2,115 @@
 
 ## Auth Test Organization
 
-Auth tests are organized as **per-module test files** in `crates/routes_app/tests/`:
+Auth tests are now **inline in module test files** at `crates/routes_app/src/<module>/tests/*_test.rs`:
 
-```
-tests/
-  test_router_smoke.rs          # 3 basic smoke tests
-  routes_setup_auth_test.rs     # Public endpoint auth
-  routes_settings_auth_test.rs  # Admin tier auth
-  routes_models_auth_test.rs    # User + PowerUser tiers
-  routes_models_metadata_auth_test.rs
-  routes_models_pull_auth_test.rs
-  routes_users_info_auth_test.rs          # Optional auth
-  routes_users_access_request_auth_test.rs # Manager tier
-  routes_users_management_auth_test.rs     # Manager tier
-  routes_api_token_auth_test.rs  # PowerUser session tier
-  routes_auth_auth_test.rs       # Optional auth (OAuth)
-  routes_toolsets_auth_test.rs   # User session/OAuth tiers
-  routes_oai_auth_test.rs        # User tier
-  routes_ollama_auth_test.rs     # User tier
-  routes_api_models_auth_test.rs # PowerUser tier
-```
+- Each module file contains both handler tests AND auth tests
+- Auth tests placed at the bottom of the file after handler tests
+- Example: `src/routes_oai/tests/chat_completions_test.rs` contains both handler logic tests and auth tier tests for OpenAI endpoints
 
 ### Auth Test Template
 
-Each auth test file tests three categories:
+Auth tests follow three patterns, all using `#[anyhow_trace]` and `anyhow::Result<()>`:
 
-1. **Unauthenticated rejection (401)** -- rstest with endpoint cases
-2. **Insufficient role rejection (403)** -- roles below the tier's minimum
-3. **Authorized access (not 401/403)** -- only for endpoints with real services
+1. **Unauthenticated rejection (401)** -- `#[case]` per endpoint
+2. **Insufficient role rejection (403)** -- `#[values]` cartesian product (roles × endpoints)
+3. **Authorized access (200/OK)** -- `#[values]` cartesian product (eligible roles × safe endpoints)
 
 ```rust
-// 1. Unauthenticated
+// 1. Unauthenticated rejection
 #[rstest]
 #[case::endpoint_a("GET", "/path/a")]
 #[case::endpoint_b("POST", "/path/b")]
 #[tokio::test]
-async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) {
-  let (router, _, _temp) = build_test_router().await.unwrap();
+#[anyhow_trace]
+async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) -> anyhow::Result<()> {
+  let (router, _, _temp) = build_test_router().await?;
   let response = router
     .oneshot(unauth_request(method, path))
-    .await
-    .unwrap();
+    .await?;
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
 }
 
-// 2. Insufficient role
+// 2. Insufficient role rejection (cartesian product)
 #[rstest]
 #[case::user("resource_user")]
+#[case::power_user("resource_power_user")]
 #[tokio::test]
-async fn test_endpoints_reject_insufficient_role(#[case] role: &str) {
-  let endpoints = vec![("GET", "/path/a"), ("POST", "/path/b")];
-  let (router, app_service, _temp) = build_test_router().await.unwrap();
+#[anyhow_trace]
+async fn test_endpoints_reject_insufficient_role(
+  #[case] role: &str,
+  #[values("GET", "POST")] method: &str,
+  #[values("/path/a", "/path/b")] path: &str,
+) -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
   let cookie = create_authenticated_session(
     app_service.session_service().as_ref(), &[role]
-  ).await.unwrap();
+  ).await?;
 
-  for (method, path) in endpoints {
-    let response = router.clone()
-      .oneshot(session_request(method, path, &cookie))
-      .await.unwrap();
-    assert_eq!(StatusCode::FORBIDDEN, response.status(),
-      "{role} should be forbidden from {method} {path}");
-  }
-}
-
-// 3. Authorized
-#[rstest]
-#[case::safe_endpoint("GET", "/path/a")]
-#[tokio::test]
-async fn test_endpoints_allow_role(#[case] method: &str, #[case] path: &str) {
-  let (router, app_service, _temp) = build_test_router().await.unwrap();
-  let cookie = create_authenticated_session(
-    app_service.session_service().as_ref(), &["resource_admin"]
-  ).await.unwrap();
   let response = router
     .oneshot(session_request(method, path, &cookie))
-    .await.unwrap();
-  assert_ne!(StatusCode::UNAUTHORIZED, response.status());
-  assert_ne!(StatusCode::FORBIDDEN, response.status());
+    .await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status(),
+    "{role} should be forbidden from {method} {path}");
+  Ok(())
+}
+
+// 3. Authorized access (safe endpoints only - see "Safe Endpoint Identification" below)
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_endpoints_allow_sufficient_role(
+  #[values("resource_admin", "resource_manager")] role: &str,
+  #[values("GET")] method: &str,
+  #[values("/path/a")] path: &str,  // Only safe endpoints - see comment below
+) -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie = create_authenticated_session(
+    app_service.session_service().as_ref(), &[role]
+  ).await?;
+
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+  Ok(())
 }
 ```
 
-### Skipping "Allowed" Tests
+## Safe Endpoint Identification Pattern
 
-When a handler calls a mock service (MockAuthService, MockToolService, MockSharedContext), the "allowed" test would panic. Skip these with a comment:
+When writing "allowed" tests with `build_test_router()`, you must identify **safe endpoints** that won't panic:
+
+**Safe endpoints** use real services in `build_test_router()`:
+- `DbService` (real SQLite)
+- `DataService` (real file-based)
+- `SessionService` (real SQLite)
+
+**Unsafe endpoints** call mock services that panic without expectations:
+- `MockAuthService`
+- `MockToolService`
+- `MockSharedContext`
+
+**Rule of thumb:**
+- GET list endpoints typically safe (return empty list/OK)
+- Mutating endpoints or those calling external services typically unsafe
+
+**Always document why endpoints are excluded:**
 
 ```rust
-// Manager-allowed tests skipped: all endpoints call MockAuthService which panics
-// without expectations. Auth middleware is proven by the access-request tests
-// which share the same route_layer.
+// Only testing GET /bodhi/v1/users (safe - uses real DbService)
+// Excluding POST /bodhi/v1/users/*/role (calls MockAuthService - would panic)
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_endpoints_allow_manager(
+  #[values("resource_manager", "resource_admin")] role: &str,
+  #[values("GET")] method: &str,
+  #[values("/bodhi/v1/users")] path: &str,
+) -> anyhow::Result<()> {
+  // ...
+}
 ```
 
 ## Background Task Testing (wait_for_event!)
@@ -211,7 +231,7 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
 
 ## Test File Organization
 
-- **Router-level auth tests**: `crates/routes_app/tests/<module>_auth_test.rs`
+- **Auth tests**: Inline in `src/<module>/tests/*_test.rs` (bottom of file, after handler tests)
 - **Handler-level inline** (`mod tests` in source file): Only for <5 simple tests
 - **Handler-level separate** (`<module>/tests/<name>_test.rs`): For modules with 5+ tests
 
@@ -219,7 +239,6 @@ fn streamed_response() -> Result<reqwest::Response, ContextError> {
 
 ```bash
 cargo test -p routes_app                    # All tests
-cargo test -p routes_app -- routes_oai      # Module filter
-cargo test -p routes_app --test routes_oai_auth_test  # Specific auth test file
+cargo test -p routes_app --lib -- routes_oai  # Module filter (includes auth + handler tests)
 cargo check -p routes_app                   # Quick compile check
 ```

@@ -10,16 +10,18 @@ description: >
 
 # routes_app Test Skill
 
-Write and migrate tests for the `routes_app` crate using two complementary patterns:
-**router-level** (auth + integration) and **handler-level** (isolated business logic).
+Write and migrate tests for the `routes_app` crate using a unified test pattern with two fixture approaches:
+**build_test_router()** (auth tier + integration) and **AppServiceStubBuilder** (isolated handler logic).
 
-## Two Test Patterns
+## Unified Test Pattern
 
-### 1. Router-Level Tests (Auth Tier + Integration)
+All tests use the same annotations and error handling approach. Choose your fixture based on what you're testing:
 
-Use for: auth tier verification, end-to-end request flow through real middleware.
+### Auth Tier + Integration Tests (build_test_router)
 
-Located in: `crates/routes_app/tests/*_auth_test.rs`
+Use for: auth tier verification (401/403), endpoint reachability with correct role, integration tests with real middleware.
+
+Located in: `crates/routes_app/src/<module>/tests/*_test.rs` (inline with handler tests)
 
 ```rust
 use axum::http::StatusCode;
@@ -34,19 +36,20 @@ use tower::ServiceExt;
 #[case::list_models("GET", "/bodhi/v1/models")]
 #[case::get_model("GET", "/bodhi/v1/models/some-id")]
 #[tokio::test]
-async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) {
-  let (router, _, _temp) = build_test_router().await.unwrap();
+#[anyhow_trace]
+async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) -> anyhow::Result<()> {
+  let (router, _, _temp) = build_test_router().await?;
   let response = router
     .oneshot(unauth_request(method, path))
-    .await
-    .unwrap();
+    .await?;
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+  Ok(())
 }
 ```
 
-### 2. Handler-Level Tests (Business Logic)
+### Isolated Handler Tests (AppServiceStubBuilder)
 
-Use for: isolated handler testing with specific mock expectations, edge cases.
+Use for: business logic with mock expectations, error path testing, SSE streaming.
 
 Located in: `crates/routes_app/src/<module>/tests/*_test.rs`
 
@@ -71,23 +74,22 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
 
 ## When to Use Which
 
-| Scenario | Pattern |
+| Scenario | Fixture |
 |----------|---------|
-| Auth tier verification (401/403) | Router-level |
-| Endpoint reachability with correct role | Router-level |
-| Business logic with mock expectations | Handler-level |
-| Edge cases needing MockAuthService/MockToolService/MockSharedContext | Handler-level |
-| Error path testing with specific service failures | Handler-level |
-| SSE streaming response validation | Handler-level |
+| Auth tier verification (401/403) | `build_test_router()` |
+| Endpoint reachability with correct role | `build_test_router()` |
+| Business logic with mock expectations | `AppServiceStubBuilder` |
+| Error path testing | `AppServiceStubBuilder` |
+| SSE streaming | `AppServiceStubBuilder` |
 
 ## Core Rules
 
-1. **Annotations (handler-level)**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]`. Add `#[awt]` ONLY with `#[future]` params.
-2. **Annotations (router-level)**: `#[rstest]` + `#[tokio::test]` (no `#[anyhow_trace]`, use `.unwrap()`)
-3. **Naming**: `test_<handler_name>_<scenario>` (handler) or `test_<tier>_endpoints_<behavior>` (router)
+1. **Annotations**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]`. Add `#[awt]` ONLY with `#[future]` params.
+2. **Return type**: `-> anyhow::Result<()>`, use `?` for error propagation (not `.unwrap()`)
+3. **Naming**: `test_<handler_name>_<scenario>` (handler) or `test_<tier>_endpoints_<behavior>` (auth)
 4. **Assertions**: `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;`
 5. **Error codes**: Assert `body["error"]["code"]`, never message text
-6. **Router-level "allowed" tests**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockToolService/MockSharedContext.
+6. **"Allowed" tests with build_test_router()**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockToolService/MockSharedContext.
 
 ## Pattern Files
 
@@ -98,18 +100,8 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
 
 ## Standard Imports
 
-### Router-level tests
-```rust
-use axum::http::StatusCode;
-use pretty_assertions::assert_eq;
-use routes_app::test_utils::{
-  build_test_router, create_authenticated_session, session_request, unauth_request,
-};
-use rstest::rstest;
-use tower::ServiceExt;
-```
+Typical module-level imports for routes_app tests:
 
-### Handler-level tests
 ```rust
 use axum::{body::Body, http::Request, routing::{get, post, put, delete}, Router};
 use tower::ServiceExt;
@@ -124,6 +116,9 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::test_utils::AppServiceStubBuilder;
+use routes_app::test_utils::{
+  build_test_router, create_authenticated_session, session_request, unauth_request,
+};
 ```
 
 ## Auth Tier Reference
