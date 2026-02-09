@@ -50,12 +50,15 @@ import { createWrapper } from '@/tests/wrapper';
 // Mock data
 const mockModelData: Alias = {
   source: 'user',
+  id: 'test-uuid-1',
   alias: 'test-model',
   repo: 'test-repo',
   filename: 'test-file.bin',
   snapshot: 'abc123',
   request_params: {},
   context_params: [],
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
 };
 
 const mockModelsData: PaginatedAliasResponse = {
@@ -228,7 +231,15 @@ describe('Model Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toEqual(mockModelsData);
+      expect(result.current.data?.data).toHaveLength(1);
+      expect(result.current.data?.data[0]).toEqual(expect.objectContaining({
+        alias: mockModelData.alias,
+        repo: mockModelData.repo,
+        source: 'user',
+      }));
+      expect(result.current.data?.page).toBe(1);
+      expect(result.current.data?.page_size).toBe(30);
+      expect(result.current.data?.total).toBe(1);
     });
 
     it('fetches models with custom pagination', async () => {
@@ -284,14 +295,14 @@ describe('Model Hooks', () => {
   });
 
   describe('useModel', () => {
-    const alias = 'test-model';
+    const id = 'test-uuid-1';
 
     beforeEach(() => {
-      server.use(...mockGetModel(alias, { repo: mockModelData.repo, filename: mockModelData.filename }));
+      server.use(...mockGetModel(id, { alias: 'test-model', repo: mockModelData.repo, filename: mockModelData.filename }));
     });
 
     it('fetches individual model successfully', async () => {
-      const { result } = renderHook(() => useModel(alias), {
+      const { result } = renderHook(() => useModel(id), {
         wrapper: createWrapper(),
       });
 
@@ -299,11 +310,11 @@ describe('Model Hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect((result.current.data as any)?.alias).toBe(alias);
+      expect((result.current.data as any)?.id).toBe(id);
       expect((result.current.data as any)?.repo).toBe(mockModelData.repo);
     });
 
-    it('is disabled when alias is empty', async () => {
+    it('is disabled when id is empty', async () => {
       const { result } = renderHook(() => useModel(''), {
         wrapper: createWrapper(),
       });
@@ -313,10 +324,10 @@ describe('Model Hooks', () => {
     });
 
     it('handles model not found error', async () => {
-      const notFoundAlias = 'non-existent-model';
-      server.use(...mockGetModelNotFoundError(notFoundAlias));
+      const notFoundId = 'non-existent-uuid';
+      server.use(...mockGetModelNotFoundError(notFoundId));
 
-      const { result } = renderHook(() => useModel(notFoundAlias), {
+      const { result } = renderHook(() => useModel(notFoundId), {
         wrapper: createWrapper(),
       });
 
@@ -401,7 +412,7 @@ describe('Model Hooks', () => {
   });
 
   describe('useUpdateModel', () => {
-    const alias = 'test-model';
+    const id = 'test-uuid-1';
     const updateRequest: UpdateAliasRequest = {
       repo: 'updated/repo',
       filename: 'updated-model.gguf',
@@ -409,12 +420,12 @@ describe('Model Hooks', () => {
     };
 
     beforeEach(() => {
-      server.use(...mockUpdateModel(alias, { repo: updateRequest.repo, filename: updateRequest.filename }));
+      server.use(...mockUpdateModel(id, { alias: 'test-model', repo: updateRequest.repo, filename: updateRequest.filename }));
     });
 
     it('updates model successfully', async () => {
       const onSuccess = vi.fn();
-      const { result } = renderHook(() => useUpdateModel(alias, { onSuccess }), {
+      const { result } = renderHook(() => useUpdateModel(id, { onSuccess }), {
         wrapper: createWrapper(),
       });
 
@@ -425,7 +436,7 @@ describe('Model Hooks', () => {
       expect(result.current.isSuccess).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith(
         expect.objectContaining({
-          alias: alias,
+          id: id,
           repo: updateRequest.repo,
           filename: updateRequest.filename,
         })
@@ -434,9 +445,9 @@ describe('Model Hooks', () => {
 
     it('calls onError on update failure', async () => {
       const onError = vi.fn();
-      server.use(...mockUpdateModelError(alias, { message: 'Update failed', status: 400 }));
+      server.use(...mockUpdateModelError(id, { message: 'Update failed', status: 400 }));
 
-      const { result } = renderHook(() => useUpdateModel(alias, { onError }), {
+      const { result } = renderHook(() => useUpdateModel(id, { onError }), {
         wrapper: createWrapper(),
       });
 
@@ -453,9 +464,9 @@ describe('Model Hooks', () => {
 
     it('uses default error message when none provided', async () => {
       const onError = vi.fn();
-      server.use(...mockUpdateModelError(alias, { status: 500 }));
+      server.use(...mockUpdateModelError(id, { status: 500 }));
 
-      const { result } = renderHook(() => useUpdateModel(alias, { onError }), {
+      const { result } = renderHook(() => useUpdateModel(id, { onError }), {
         wrapper: createWrapper(),
       });
 
@@ -467,7 +478,7 @@ describe('Model Hooks', () => {
         }
       });
 
-      expect(onError).toHaveBeenCalledWith('Failed to update model test-model');
+      expect(onError).toHaveBeenCalledWith('Failed to update model test-uuid-1');
     });
   });
 

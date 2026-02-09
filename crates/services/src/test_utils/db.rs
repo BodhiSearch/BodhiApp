@@ -5,7 +5,7 @@ use crate::db::{
   UserAliasRepository,
 };
 use objs::UserAlias;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
 use objs::ApiAlias;
 use rstest::fixture;
@@ -42,7 +42,9 @@ pub struct FrozenTimeService(DateTime<Utc>);
 
 impl Default for FrozenTimeService {
   fn default() -> Self {
-    FrozenTimeService(chrono::Utc::now().with_nanosecond(0).unwrap())
+    FrozenTimeService(
+      chrono::TimeZone::with_ymd_and_hms(&chrono::Utc, 2025, 1, 1, 0, 0, 0).unwrap(),
+    )
   }
 }
 

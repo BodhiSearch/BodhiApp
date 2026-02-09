@@ -166,15 +166,21 @@ export class ModelsListPage extends BasePage {
   }
 
   async editLocalModel(alias) {
+    // Get model UUID from the row's data-test-model-id attribute
+    const aliasCell = this.page.locator(this.selectors.localAliasCell(alias));
+    await expect(aliasCell).toBeVisible();
+    const row = aliasCell.locator('xpath=ancestor::tr');
+    const modelId = await row.getAttribute('data-test-model-id');
+
     const editBtn = this.page.locator(this.selectors.editButton(alias));
     await expect(editBtn).toBeVisible();
     await editBtn.click();
     await this.waitForUrl('/ui/models/edit/');
     await this.waitForSPAReady();
 
-    // Verify we're on the edit page with correct alias
+    // Verify we're on the edit page with correct model UUID
     const currentUrl = new URL(this.page.url());
-    expect(currentUrl.searchParams.get('alias')).toBe(alias);
+    expect(currentUrl.searchParams.get('id')).toBe(modelId);
   }
 
   async deleteLocalModel(alias) {

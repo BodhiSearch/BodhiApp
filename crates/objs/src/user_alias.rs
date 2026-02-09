@@ -74,7 +74,10 @@ impl UserAliasBuilder {
     use chrono::TimeZone;
     let fixed_time = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
     Ok(UserAlias {
-      id: format!("test-{}", self.alias.clone().unwrap_or_default()),
+      id: format!(
+        "test-{}",
+        self.alias.clone().unwrap_or_default().replace(':', "-")
+      ),
       alias: self
         .alias
         .clone()
@@ -148,6 +151,6 @@ mod test {
   fn test_alias_derive_builder() {
     let alias = AliasBuilder::tinyllama().build_test().unwrap();
     assert_eq!("tinyllama:instruct", alias.alias);
-    assert_eq!("test-tinyllama:instruct", alias.id);
+    assert_eq!("test-tinyllama-instruct", alias.id);
   }
 }

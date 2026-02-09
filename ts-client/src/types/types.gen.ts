@@ -773,6 +773,10 @@ export type ContextLimits = {
     max_output_tokens?: number | null;
 };
 
+export type CopyAliasRequest = {
+    alias: string;
+};
+
 export type CreateAliasRequest = {
     alias: string;
     repo: string;
@@ -2352,15 +2356,19 @@ export type UserAccessStatusResponse = {
 };
 
 export type UserAlias = {
+    id: string;
     alias: string;
     repo: string;
     filename: string;
     snapshot: string;
     request_params?: OaiRequestParams;
     context_params?: Array<string>;
+    created_at: string;
+    updated_at: string;
 };
 
 export type UserAliasResponse = {
+    id: string;
     alias: string;
     repo: string;
     filename: string;
@@ -2369,6 +2377,8 @@ export type UserAliasResponse = {
     model_params: {};
     request_params: OaiRequestParams;
     context_params: Array<string>;
+    created_at: string;
+    updated_at: string;
     metadata?: null | ModelMetadata;
 };
 
@@ -3506,56 +3516,6 @@ export type PullModelFileResponses = {
 
 export type PullModelFileResponse = PullModelFileResponses[keyof PullModelFileResponses];
 
-export type PullModelByAliasData = {
-    body?: never;
-    path: {
-        /**
-         * Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.
-         */
-        alias: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/modelfiles/pull/{alias}';
-};
-
-export type PullModelByAliasErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Alias not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type PullModelByAliasError = PullModelByAliasErrors[keyof PullModelByAliasErrors];
-
-export type PullModelByAliasResponses = {
-    /**
-     * Existing download request found
-     */
-    200: DownloadRequest;
-    /**
-     * Download request created
-     */
-    201: DownloadRequest;
-};
-
-export type PullModelByAliasResponse = PullModelByAliasResponses[keyof PullModelByAliasResponses];
-
 export type GetDownloadStatusData = {
     body?: never;
     path: {
@@ -3741,16 +3701,60 @@ export type RefreshModelMetadataResponses = {
 
 export type RefreshModelMetadataResponse = RefreshModelMetadataResponses[keyof RefreshModelMetadataResponses];
 
+export type DeleteAliasData = {
+    body?: never;
+    path: {
+        /**
+         * UUID of the alias to delete
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/{id}';
+};
+
+export type DeleteAliasErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Alias not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteAliasError = DeleteAliasErrors[keyof DeleteAliasErrors];
+
+export type DeleteAliasResponses = {
+    /**
+     * Alias deleted successfully
+     */
+    200: unknown;
+};
+
 export type GetAliasData = {
     body?: never;
     path: {
         /**
-         * Alias identifier for the model
+         * UUID of the alias
          */
-        alias: string;
+        id: string;
     };
     query?: never;
-    url: '/bodhi/v1/models/{alias}';
+    url: '/bodhi/v1/models/{id}';
 };
 
 export type GetAliasErrors = {
@@ -3791,7 +3795,7 @@ export type UpdateAliasData = {
     body: UpdateAliasRequest;
     path: {
         /**
-         * Alias identifier
+         * UUID of the alias to update
          */
         id: string;
     };
@@ -3828,6 +3832,52 @@ export type UpdateAliasResponses = {
 };
 
 export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
+
+export type CopyAliasData = {
+    body: CopyAliasRequest;
+    path: {
+        /**
+         * UUID of the alias to copy
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/{id}/copy';
+};
+
+export type CopyAliasErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Source alias not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CopyAliasError = CopyAliasErrors[keyof CopyAliasErrors];
+
+export type CopyAliasResponses = {
+    /**
+     * Alias copied successfully
+     */
+    201: UserAliasResponse;
+};
+
+export type CopyAliasResponse = CopyAliasResponses[keyof CopyAliasResponses];
 
 export type GetQueueStatusData = {
     body?: never;

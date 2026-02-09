@@ -55,7 +55,7 @@ async fn test_live_tool_calling_streamed(
 
   // Build request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
-    .model("qwen3:1.7b-instruct")
+    .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
     .stream(true)
     .tools(get_weather_tool())
@@ -161,7 +161,7 @@ async fn test_live_tool_calling_multi_turn_streamed(
 
   // Build Turn 1 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
-    .model("qwen3:1.7b-instruct")
+    .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
     .stream(true)
     .tools(get_weather_tool())
@@ -240,7 +240,7 @@ async fn test_live_tool_calling_multi_turn_streamed(
 
   // Build Turn 2 request using async_openai types
   let request = CreateChatCompletionRequestArgs::default()
-    .model("qwen3:1.7b-instruct")
+    .model("ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .seed(42_i64)
     .stream(true)
     .tools(get_weather_tool())

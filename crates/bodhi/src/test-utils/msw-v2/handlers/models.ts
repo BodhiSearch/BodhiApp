@@ -2,7 +2,7 @@
  * Type-safe MSW v2 handlers for models endpoint using openapi-msw
  */
 import { ENDPOINT_MODELS_REFRESH, ENDPOINT_QUEUE } from '@/hooks/useModelMetadata';
-import { ENDPOINT_MODELS, ENDPOINT_MODEL_ALIAS, ENDPOINT_MODEL_ID } from '@/hooks/useModels';
+import { ENDPOINT_MODELS, ENDPOINT_MODEL_ID } from '@/hooks/useModels';
 
 import { typedHttp, type components, INTERNAL_SERVER_ERROR } from '../setup';
 
@@ -55,12 +55,16 @@ export function mockModelsDefault() {
     data: [
       {
         source: 'user',
+        id: 'test-uuid-1',
         alias: 'test-model',
         repo: 'test-repo',
         filename: 'test-file.bin',
         snapshot: 'abc123',
         request_params: {},
         context_params: [],
+        model_params: {},
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       },
     ],
     total: 1,
@@ -188,6 +192,7 @@ export function mockModelsInternalError(config: { message?: string } = {}) {
  */
 export function mockCreateModel(
   {
+    id = 'test-uuid-create',
     alias = 'new-model',
     repo = 'test-repo',
     filename = 'test-file.bin',
@@ -196,6 +201,8 @@ export function mockCreateModel(
     context_params = [],
     model_params = {},
     source = 'user',
+    created_at = new Date().toISOString(),
+    updated_at = new Date().toISOString(),
     ...rest
   }: Partial<components['schemas']['UserAliasResponse']> = {},
   { stub }: { stub?: boolean } = {}
@@ -208,6 +215,7 @@ export function mockCreateModel(
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
+        id,
         alias,
         repo,
         filename,
@@ -216,6 +224,8 @@ export function mockCreateModel(
         context_params,
         model_params,
         source,
+        created_at,
+        updated_at,
         ...rest,
       };
       return response(201 as const).json(responseData);
@@ -296,8 +306,9 @@ export function mockCreateModelBadRequestError(config: { message?: string } = {}
  * Create type-safe MSW v2 handler for individual model retrieval
  */
 export function mockGetModel(
-  alias: string,
+  id: string,
   {
+    alias = 'test-model',
     repo = 'test-repo',
     filename = 'test-file.bin',
     snapshot = 'abc123',
@@ -306,17 +317,17 @@ export function mockGetModel(
     model_params = {},
     source = 'user',
     ...rest
-  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'id'>> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
 
   return [
-    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
-      const { alias: paramAlias } = params;
+    typedHttp.get(ENDPOINT_MODEL_ID, async ({ response, params }) => {
+      const { id: paramId } = params;
 
-      // Only respond if alias matches
-      if (paramAlias !== alias) {
+      // Only respond if id matches
+      if (paramId !== id) {
         return; // Pass through to next handler
       }
 
@@ -324,7 +335,8 @@ export function mockGetModel(
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
-        alias: paramAlias as string,
+        id: paramId as string,
+        alias,
         repo,
         filename,
         snapshot,
@@ -332,6 +344,8 @@ export function mockGetModel(
         context_params,
         model_params,
         source,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         ...rest,
       };
       return response(200 as const).json(responseData);
@@ -346,7 +360,7 @@ export function mockGetModel(
  * Uses generated OpenAPI types directly
  */
 export function mockGetModelError(
-  alias: string,
+  id: string,
   {
     code = 'not_found',
     message,
@@ -359,11 +373,11 @@ export function mockGetModelError(
   let hasBeenCalled = false;
 
   return [
-    typedHttp.get(ENDPOINT_MODEL_ALIAS, async ({ response, params }) => {
-      const { alias: paramAlias } = params;
+    typedHttp.get(ENDPOINT_MODEL_ID, async ({ response, params }) => {
+      const { id: paramId } = params;
 
-      // Only respond if alias matches
-      if (paramAlias !== alias) {
+      // Only respond if id matches
+      if (paramId !== id) {
         return; // Pass through to next handler
       }
 
@@ -372,7 +386,7 @@ export function mockGetModelError(
 
       const errorBody = {
         code,
-        message: message || `Model ${paramAlias} not found`,
+        message: message || `Model ${paramId} not found`,
         type,
         ...rest,
       };
@@ -387,10 +401,10 @@ export function mockGetModelError(
  * Mock handler for model not found error
  * Uses delegation pattern
  */
-export function mockGetModelNotFoundError(alias: string, _config: Record<string, never> = {}) {
-  return mockGetModelError(alias, {
+export function mockGetModelNotFoundError(id: string, _config: Record<string, never> = {}) {
+  return mockGetModelError(id, {
     code: 'not_found',
-    message: `Model ${alias} not found`,
+    message: `Model ${id} not found`,
     type: 'not_found_error',
     status: 404,
   });
@@ -400,8 +414,8 @@ export function mockGetModelNotFoundError(alias: string, _config: Record<string,
  * Mock handler for individual model retrieval internal server error
  * Uses delegation pattern
  */
-export function mockGetModelInternalError(alias: string, _config: Record<string, never> = {}) {
-  return mockGetModelError(alias, {
+export function mockGetModelInternalError(id: string, _config: Record<string, never> = {}) {
+  return mockGetModelError(id, {
     code: 'internal_error',
     message: 'Internal server error',
     type: 'internal_server_error',
@@ -421,6 +435,7 @@ export function mockGetModelInternalError(alias: string, _config: Record<string,
 export function mockUpdateModel(
   id: string,
   {
+    alias = 'test-model',
     repo = 'test-repo',
     filename = 'test-file.bin',
     snapshot = 'abc123',
@@ -429,7 +444,7 @@ export function mockUpdateModel(
     model_params = {},
     source = 'user',
     ...rest
-  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'alias'>> = {},
+  }: Partial<Omit<components['schemas']['UserAliasResponse'], 'id'>> = {},
   { stub }: { stub?: boolean } = {}
 ) {
   let hasBeenCalled = false;
@@ -447,7 +462,8 @@ export function mockUpdateModel(
       hasBeenCalled = true;
 
       const responseData: components['schemas']['UserAliasResponse'] = {
-        alias: paramId as string,
+        id: paramId as string,
+        alias,
         repo,
         filename,
         snapshot,
@@ -455,6 +471,8 @@ export function mockUpdateModel(
         context_params,
         model_params,
         source,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         ...rest,
       };
       return response(200 as const).json(responseData);

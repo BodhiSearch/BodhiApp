@@ -405,26 +405,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/modelfiles/pull/{alias}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Download Model by Alias
-         * @description Initiates a model download using a predefined alias that maps to specific repository and file combinations. This provides a convenient way to download popular models without specifying exact repository details.
-         */
-        post: operations["pullModelByAlias"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/bodhi/v1/modelfiles/pull/{id}": {
         parameters: {
             query?: never;
@@ -492,7 +472,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/models/{alias}": {
+    "/bodhi/v1/models/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -501,18 +481,20 @@ export interface paths {
         };
         /**
          * Get Model Alias Details
-         * @description Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).
+         * @description Retrieves detailed information for a specific model alias by UUID. Requires any authenticated user (User level permissions or higher).
          */
         get: operations["getAlias"];
-        put?: never;
+        /** Update Alias */
+        put: operations["updateAlias"];
         post?: never;
-        delete?: never;
+        /** Delete a model alias by UUID */
+        delete: operations["deleteAlias"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/models/{id}": {
+    "/bodhi/v1/models/{id}/copy": {
         parameters: {
             query?: never;
             header?: never;
@@ -520,9 +502,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update Alias */
-        put: operations["updateAlias"];
-        post?: never;
+        put?: never;
+        /** Copy a model alias */
+        post: operations["copyAlias"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1663,6 +1645,9 @@ export interface components {
             max_input_tokens?: number | null;
             /** Format: int64 */
             max_output_tokens?: number | null;
+        };
+        CopyAliasRequest: {
+            alias: string;
         };
         CreateAliasRequest: {
             alias: string;
@@ -3038,6 +3023,7 @@ export interface components {
             updated_at: string;
         };
         UserAlias: {
+            id: string;
             alias: string;
             /** Format: string */
             repo: string;
@@ -3045,8 +3031,13 @@ export interface components {
             snapshot: string;
             request_params?: components["schemas"]["OAIRequestParams"];
             context_params?: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         UserAliasResponse: {
+            id: string;
             alias: string;
             repo: string;
             filename: string;
@@ -3057,6 +3048,10 @@ export interface components {
             };
             request_params: components["schemas"]["OAIRequestParams"];
             context_params: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
         UserInfo: {
@@ -4927,111 +4922,6 @@ export interface operations {
             };
         };
     };
-    pullModelByAlias: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.
-                 * @example llama2:chat
-                 */
-                alias: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Existing download request found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "created_at": "2024-11-10T04:52:06.786Z",
-                     *       "error": null,
-                     *       "filename": "llama-2-7b-chat.Q8_0.gguf",
-                     *       "id": "550e8400-e29b-41d4-a716-446655440000",
-                     *       "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                     *       "status": "pending",
-                     *       "updated_at": "2024-11-10T04:52:06.786Z"
-                     *     } */
-                    "application/json": components["schemas"]["DownloadRequest"];
-                };
-            };
-            /** @description Download request created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "created_at": "2024-11-10T04:52:06.786Z",
-                     *       "error": null,
-                     *       "filename": "llama-2-7b-chat.Q8_0.gguf",
-                     *       "id": "550e8400-e29b-41d4-a716-446655440000",
-                     *       "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                     *       "status": "pending",
-                     *       "updated_at": "2024-11-10T04:52:06.786Z"
-                     *     } */
-                    "application/json": components["schemas"]["DownloadRequest"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Alias not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /** @example {
-                     *       "error": {
-                     *         "code": "remote_model_not_found_error",
-                     *         "message": "remote model alias 'invalid:model' not found, check your alias and try again",
-                     *         "type": "not_found_error"
-                     *       }
-                     *     } */
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
     getDownloadStatus: {
         parameters: {
             query?: never;
@@ -5100,7 +4990,7 @@ export interface operations {
                 content: {
                     /** @example {
                      *       "error": {
-                     *         "code": "item_not_found",
+                     *         "code": "db_error-item_not_found",
                      *         "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
                      *         "type": "not_found_error"
                      *       }
@@ -5370,8 +5260,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Alias identifier for the model */
-                alias: string;
+                /** @description UUID of the alias */
+                id: string;
             };
             cookie?: never;
         };
@@ -5383,27 +5273,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "alias": "llama2:chat",
-                     *       "chat_template": "llama2",
-                     *       "context_params": {
-                     *         "n_keep": 24,
-                     *         "stop": [
-                     *           "<|end_of_turn|>"
-                     *         ]
-                     *       },
-                     *       "filename": "llama-2-7b-chat.Q8_0.gguf",
-                     *       "model_params": {},
-                     *       "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                     *       "request_params": {
-                     *         "frequency_penalty": 0,
-                     *         "presence_penalty": 0,
-                     *         "temperature": 0.7,
-                     *         "top_p": 1
-                     *       },
-                     *       "snapshot": "sha256:abc123",
-                     *       "source": "config"
-                     *     } */
                     "application/json": components["schemas"]["UserAliasResponse"];
                 };
             };
@@ -5466,10 +5335,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description Alias identifier
-                 * @example llama--3
-                 */
+                /** @description UUID of the alias to update */
                 id: string;
             };
             cookie?: never;
@@ -5515,6 +5381,140 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the alias to delete */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Alias deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Alias not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    copyAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the alias to copy */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias copied successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAliasResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Source alias not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {

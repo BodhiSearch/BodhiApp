@@ -13,7 +13,6 @@ impl DbPool {
 #[cfg(test)]
 mod tests {
   use crate::db::{DbError, DbPool};
-  use anyhow_trace::anyhow_trace;
   use pretty_assertions::assert_eq;
   use std::error::Error;
 

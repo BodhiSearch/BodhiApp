@@ -10,9 +10,9 @@ import { useModel } from '@/hooks/useModels';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();
-  const alias = searchParams?.get('alias');
+  const id = searchParams?.get('id');
 
-  const { data: modelData, isLoading, error } = useModel(alias ?? '');
+  const { data: modelData, isLoading, error } = useModel(id ?? '');
 
   if (isLoading) {
     return <Loading message="Loading model data..." />;

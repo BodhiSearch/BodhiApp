@@ -39,7 +39,7 @@ async fn test_live_chat_completions_thinking_disabled(
     .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "qwen3:1.7b-instruct",
+      "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
       "seed": 42,
       "chat_template_kwargs": {
         "enable_thinking": false
@@ -75,7 +75,7 @@ async fn test_live_chat_completions_thinking_disabled(
     reasoning_content
   );
 
-  assert_eq!("qwen3:1.7b-instruct", response["model"]);
+  assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
 
   Ok(())
@@ -111,7 +111,7 @@ async fn test_live_chat_completions_reasoning_format_none(
     .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "qwen3:1.7b-instruct",
+      "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
       "seed": 42,
       "reasoning_format": "none",
       "messages": [
@@ -146,7 +146,7 @@ async fn test_live_chat_completions_reasoning_format_none(
     reasoning_content
   );
 
-  assert_eq!("qwen3:1.7b-instruct", response["model"]);
+  assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
 
   Ok(())
@@ -184,7 +184,7 @@ async fn test_live_chat_completions_thinking_enabled_default(
     .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "qwen3:1.7b-instruct",
+      "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
       "seed": 42,
       "messages": [
         {
@@ -225,7 +225,7 @@ async fn test_live_chat_completions_thinking_enabled_default(
     reasoning_text
   );
 
-  assert_eq!("qwen3:1.7b-instruct", response["model"]);
+  assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
 
   Ok(())

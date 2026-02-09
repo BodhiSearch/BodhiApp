@@ -174,7 +174,7 @@ describe('ModelsPage', () => {
         editButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?alias=test-model');
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?id=test-uuid-1');
     });
 
     it('shows chat and huggingface buttons for all models', async () => {

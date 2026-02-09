@@ -146,7 +146,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
   ];
 
   let request = json!({
-    "model": "qwen3:1.7b-instruct",
+    "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "seed": 42,
     "stream": false,
     "tools": chat_tools,
@@ -271,7 +271,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
   final_messages.push(tool_msg.into());
 
   let final_request = json!({
-    "model": "qwen3:1.7b-instruct",
+    "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
     "seed": 42,
     "stream": false,
     "tools": chat_tools,

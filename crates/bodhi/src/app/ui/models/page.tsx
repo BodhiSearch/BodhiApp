@@ -36,7 +36,7 @@ import { UserOnboarding } from '@/components/UserOnboarding';
 import { useToast } from '@/hooks/use-toast';
 import { useDeleteApiModel } from '@/hooks/useApiModels';
 import { useModels } from '@/hooks/useModels';
-import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
+import { hasLocalFileProperties, isApiAlias, isUserAlias } from '@/lib/utils';
 import { formatPrefixedModel } from '@/schemas/apiModel';
 import { SortState } from '@/types/models';
 
@@ -159,8 +159,8 @@ function ModelsPageContent() {
   const handleEdit = (model: AliasResponse) => {
     if (isApiAlias(model)) {
       router.push(`/ui/api-models/edit?id=${model.id}`);
-    } else {
-      router.push(`/ui/models/edit?alias=${model.alias}`);
+    } else if (isUserAlias(model)) {
+      router.push(`/ui/models/edit?id=${model.id}`);
     }
   };
 
@@ -557,6 +557,9 @@ function ModelsPageContent() {
           onSortChange={toggleSort}
           renderRow={renderRow}
           getItemId={getItemId}
+          getRowProps={(model: AliasResponse) => ({
+            'data-test-model-id': isUserAlias(model) ? model.id : isApiAlias(model) ? model.id : undefined,
+          })}
         />
       </div>
       <div className="mt-6 mb-4">

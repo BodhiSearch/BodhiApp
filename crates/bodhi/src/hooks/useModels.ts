@@ -20,7 +20,6 @@ export const BODHI_API_BASE = '/bodhi/v1';
 export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/modelfiles`;
 export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
-export const ENDPOINT_MODEL_ALIAS = `${BODHI_API_BASE}/models/{alias}`;
 export const ENDPOINT_MODEL_ID = `${BODHI_API_BASE}/models/{id}`;
 
 // Type alias
@@ -44,9 +43,9 @@ export function useModels(page: number, pageSize: number, sort: string, sortOrde
   );
 }
 
-export function useModel(alias: string) {
-  return useQuery<Alias>(['model', alias], `${ENDPOINT_MODELS}/${alias}`, undefined, {
-    enabled: !!alias,
+export function useModel(id: string) {
+  return useQuery<Alias>(['model', id], `${ENDPOINT_MODELS}/${id}`, undefined, {
+    enabled: !!id,
   });
 }
 
@@ -68,7 +67,7 @@ export function useCreateModel(options?: {
 }
 
 export function useUpdateModel(
-  alias: string,
+  id: string,
   options?: {
     onSuccess?: (model: Alias) => void;
     onError?: (message: string) => void;
@@ -76,11 +75,11 @@ export function useUpdateModel(
 ): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UpdateAliasRequest> {
   const queryClient = useQueryClient();
   return useMutationQuery<Alias, UpdateAliasRequest>(
-    () => `${ENDPOINT_MODELS}/${alias}`,
+    () => `${ENDPOINT_MODELS}/${id}`,
     'put',
     {
       onSuccess: (response) => {
-        queryClient.invalidateQueries(['model', alias]);
+        queryClient.invalidateQueries(['model', id]);
         options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {

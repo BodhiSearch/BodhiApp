@@ -50,14 +50,14 @@ async fn test_live_chat_completions_non_streamed(
 
   let qwen_model = models
     .iter()
-    .find(|m| m["id"] == "qwen3:1.7b-instruct")
+    .find(|m| m["id"] == "ggml-org/Qwen3-1.7B-GGUF:Q8_0")
     .unwrap_or_else(|| {
       panic!(
-        "Expected to find qwen3:1.7b-instruct model in /v1/models response. Actual response: {}",
+        "Expected to find ggml-org/Qwen3-1.7B-GGUF:Q8_0 model in /v1/models response. Actual response: {}",
         serde_json::to_string_pretty(&models_json).unwrap()
       )
     });
-  assert_eq!("qwen3:1.7b-instruct", qwen_model["id"]);
+  assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", qwen_model["id"]);
 
   // Now test chat completions
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
@@ -67,7 +67,7 @@ async fn test_live_chat_completions_non_streamed(
     .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "qwen3:1.7b-instruct",
+      "model": "ggml-org/Qwen3-1.7B-GGUF:Q8_0",
       "seed": 42,
       "messages": [
         {
@@ -90,7 +90,7 @@ async fn test_live_chat_completions_non_streamed(
     .as_str()
     .unwrap();
   assert!(content.contains("Tuesday"));
-  assert_eq!("qwen3:1.7b-instruct", response["model"]);
+  assert_eq!("ggml-org/Qwen3-1.7B-GGUF:Q8_0", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
   Ok(())
 }

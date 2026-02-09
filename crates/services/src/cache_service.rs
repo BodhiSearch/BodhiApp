@@ -39,7 +39,6 @@ impl CacheService for MokaCacheService {
 #[cfg(test)]
 mod tests {
   use crate::{CacheService, MokaCacheService};
-  use anyhow_trace::anyhow_trace;
   use pretty_assertions::assert_eq;
 
   #[test]

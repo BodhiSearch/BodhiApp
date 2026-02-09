@@ -161,8 +161,16 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
+  const editId = initialData
+    ? isUserAlias(initialData)
+      ? initialData.id
+      : isApiAlias(initialData)
+        ? initialData.id
+        : ''
+    : '';
+
   const updateModel = useUpdateModel(
-    initialData ? (isApiAlias(initialData) ? initialData.id : initialData.alias) : '',
+    editId,
     {
       onSuccess: (model) => {
         const identifier = isApiAlias(model) ? model.id : model.alias;

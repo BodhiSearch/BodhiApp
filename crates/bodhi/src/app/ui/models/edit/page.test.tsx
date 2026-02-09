@@ -50,7 +50,10 @@ vi.mock('next/navigation', () => ({
     push: pushMock,
   }),
   useSearchParams: () => ({
-    get: vi.fn().mockReturnValue('test-alias'),
+    get: (key: string) => {
+      if (key === 'id') return 'test-uuid-1';
+      return null;
+    },
   }),
 }));
 
@@ -75,7 +78,8 @@ describe('EditAliasPage', () => {
     server.use(
       ...mockAppInfo({ status: 'ready' }),
       ...mockUserLoggedIn({ role: 'resource_user' }),
-      ...mockGetModel('test-alias', {
+      ...mockGetModel('test-uuid-1', {
+        alias: 'test-alias',
         repo: 'owner1/repo1',
         filename: 'file1.gguf',
         snapshot: 'main',
@@ -119,7 +123,8 @@ describe('EditAliasPage', () => {
           { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main', size: 1000000, model_params: {} },
         ],
       }),
-      ...mockUpdateModel('test-alias', {
+      ...mockUpdateModel('test-uuid-1', {
+        alias: 'test-alias',
         repo: 'owner1/repo1',
         filename: 'file1.gguf',
         snapshot: 'main',
@@ -251,7 +256,7 @@ describe('EditAliasPage', () => {
   });
 
   it('displays error message when model data fails to load', async () => {
-    server.use(...mockGetModelInternalError('test-alias'));
+    server.use(...mockGetModelInternalError('test-uuid-1'));
 
     await act(async () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
