@@ -3,7 +3,7 @@ use crate::{
   DataService, DataServiceError, LocalDataService,
 };
 use async_trait::async_trait;
-use objs::{test_utils::temp_bodhi_home, Alias, RemoteModel, UserAlias};
+use objs::{test_utils::temp_bodhi_home, Alias, UserAlias};
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
@@ -56,14 +56,6 @@ impl DataService for TestDataService {
 
   fn find_user_alias(&self, alias: &str) -> Option<UserAlias> {
     self.inner.find_user_alias(alias)
-  }
-
-  fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
-    self.inner.list_remote_models()
-  }
-
-  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
-    self.inner.find_remote_model(alias)
   }
 
   async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {

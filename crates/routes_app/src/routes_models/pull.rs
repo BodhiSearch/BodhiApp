@@ -9,13 +9,12 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
-use objs::{ApiError, OpenAIApiError, Repo, UserAliasBuilder, API_TAG_MODELS};
+use objs::{ApiError, OpenAIApiError, Repo, API_TAG_MODELS};
 use server_core::RouterState;
 use services::db::DbError;
-use services::HubServiceError;
 use services::{
   db::{DownloadRequest, DownloadStatus},
-  AppService, DataServiceError, DatabaseProgress, Progress,
+  AppService, DatabaseProgress, Progress,
 };
 use std::sync::Arc;
 use tokio::spawn;
@@ -185,122 +184,6 @@ pub async fn create_pull_request_handler(
   Ok((StatusCode::CREATED, Json(download_request)))
 }
 
-/// Start a model file download using a predefined alias
-#[utoipa::path(
-    post,
-    path = ENDPOINT_MODEL_PULL.to_owned() + "/{alias}",
-    tag = API_TAG_MODELS,
-    operation_id = "pullModelByAlias",
-    summary = "Download Model by Alias",
-    description = "Initiates a model download using a predefined alias that maps to specific repository and file combinations. This provides a convenient way to download popular models without specifying exact repository details.",
-    params(
-        ("alias" = String, Path,
-         description = "Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.",
-         example = "llama2:chat")
-    ),
-    responses(
-        (status = 201, description = "Download request created", body = DownloadRequest,
-         example = json!({
-             "id": "550e8400-e29b-41d4-a716-446655440000",
-             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-             "filename": "llama-2-7b-chat.Q8_0.gguf",
-             "status": "pending",
-             "error": null,
-             "created_at": "2024-11-10T04:52:06.786Z",
-             "updated_at": "2024-11-10T04:52:06.786Z"
-         })),
-        (status = 200, description = "Existing download request found", body = DownloadRequest,
-         example = json!({
-             "id": "550e8400-e29b-41d4-a716-446655440000",
-             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-             "filename": "llama-2-7b-chat.Q8_0.gguf",
-             "status": "pending",
-             "error": null,
-             "created_at": "2024-11-10T04:52:06.786Z",
-             "updated_at": "2024-11-10T04:52:06.786Z"
-         })),
-        (status = 404, description = "Alias not found", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "remote model alias 'invalid:model' not found, check your alias and try again",
-                 "type": "not_found_error",
-                 "code": "hub_service_error-remote_model_not_found"
-             }
-         })),
-    ),
-    security(
-        ("bearer_api_token" = ["scope_token_power_user"]),
-        ("bearer_oauth_token" = ["scope_user_power_user"]),
-        ("session_auth" = ["resource_power_user"])
-    ),
-)]
-pub async fn pull_by_alias_handler(
-  State(state): State<Arc<dyn RouterState>>,
-  Path(alias): Path<String>,
-) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
-  let model = state
-    .app_service()
-    .data_service()
-    .find_remote_model(&alias)?
-    .ok_or(HubServiceError::RemoteModelNotFound(alias.clone()))?;
-
-  // Check if the file is already downloaded
-  if let Ok(true) =
-    state
-      .app_service()
-      .hub_service()
-      .local_file_exists(&model.repo, &model.filename, None)
-  {
-    return Err(PullError::FileAlreadyExists {
-      repo: model.repo.to_string(),
-      filename: model.filename.clone(),
-      snapshot: "main".to_string(),
-    })?;
-  }
-
-  // Check for existing pending download request
-  let pending_downloads = state
-    .app_service()
-    .db_service()
-    .find_download_request_by_repo_filename(&model.repo.to_string(), &model.filename)
-    .await?
-    .into_iter()
-    .find(|r| r.status == DownloadStatus::Pending);
-
-  if let Some(existing_request) = pending_downloads {
-    return Ok((StatusCode::OK, Json(existing_request)));
-  }
-
-  let download_request = DownloadRequest::new_pending(
-    model.repo.to_string().as_str(),
-    model.filename.as_str(),
-    state.app_service().time_service().utc_now(),
-  );
-  state
-    .app_service()
-    .db_service()
-    .create_download_request(&download_request)
-    .await?;
-
-  let app_service = state.app_service().clone();
-  let request_id = download_request.id.clone();
-
-  spawn(async move {
-    let result = execute_pull_by_alias(
-      app_service.as_ref(),
-      alias,
-      Some(Progress::Database(DatabaseProgress::new(
-        app_service.db_service().clone(),
-        request_id.clone(),
-      ))),
-    )
-    .await;
-    update_download_status(app_service, request_id, result).await;
-  });
-
-  Ok((StatusCode::CREATED, Json(download_request)))
-}
-
 /// Get the status of a specific download request
 #[utoipa::path(
     get,
@@ -385,37 +268,6 @@ async fn update_download_status(
     .update_download_request(&download_request)
     .await
     .expect("Failed to update download request");
-}
-
-async fn execute_pull_by_alias(
-  service: &dyn AppService,
-  alias: String,
-  progress: Option<Progress>,
-) -> Result<(), PullError> {
-  if service.data_service().find_user_alias(&alias).is_some() {
-    return Err(DataServiceError::AliasExists(alias.clone()).into());
-  }
-  let Some(model) = service.data_service().find_remote_model(&alias)? else {
-    return Err(HubServiceError::RemoteModelNotFound(alias.clone()).into());
-  };
-  let local_model_file = service
-    .hub_service()
-    .download(&model.repo, &model.filename, None, progress)
-    .await?;
-  let user_alias = UserAliasBuilder::default()
-    .alias(model.alias)
-    .repo(model.repo)
-    .filename(model.filename)
-    .snapshot(local_model_file.snapshot)
-    .request_params(model.request_params)
-    .context_params(model.context_params)
-    .build()?;
-  service.data_service().save_alias(&user_alias)?;
-  debug!(
-    "model alias: '{}' saved to $BODHI_HOME/aliases",
-    user_alias.alias
-  );
-  Ok(())
 }
 
 async fn execute_pull_by_repo_file(

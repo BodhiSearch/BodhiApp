@@ -64,7 +64,6 @@ const SESSION_DB: &str = "session.sqlite";
 
 // TODO: remove the pub
 pub const ALIASES_DIR: &str = "aliases";
-pub const MODELS_YAML: &str = "models.yaml";
 
 const LOGS_DIR: &str = "logs";
 

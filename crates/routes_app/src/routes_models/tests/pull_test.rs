@@ -1,6 +1,6 @@
 use crate::{
   create_pull_request_handler, get_download_status_handler, list_downloads_handler,
-  pull_by_alias_handler, wait_for_event, PaginatedDownloadResponse,
+  wait_for_event, PaginatedDownloadResponse,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -33,7 +33,6 @@ fn test_router(service: Arc<dyn AppService>) -> Router {
   let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
   Router::new()
     .route("/modelfiles/pull", post(create_pull_request_handler))
-    .route("/modelfiles/pull/{alias}", post(pull_by_alias_handler))
     .route(
       "/modelfiles/pull/status/{id}",
       get(get_download_status_handler),
@@ -178,87 +177,6 @@ async fn test_pull_by_repo_file_existing_pending_download(
   assert_eq!(download_request.filename, Repo::testalias_model_q4());
   assert_eq!(download_request.status, DownloadStatus::Pending);
 
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_pull_by_alias_success(
-  mut test_hf_service: TestHfService,
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
-) -> anyhow::Result<()> {
-  test_hf_service
-    .inner_mock
-    .expect_download()
-    .with(
-      eq(Repo::testalias()),
-      eq(Repo::testalias_model_q4()),
-      eq(None),
-      always(),
-    )
-    .times(1)
-    .return_once(|_, _, _, _| Ok(HubFile::testalias()));
-  let mut rx = db_service.subscribe();
-  let db_service = Arc::new(db_service);
-  let app_service = app_service_stub_builder
-    .db_service(db_service.clone())
-    .hub_service(Arc::new(test_hf_service))
-    .build()?;
-  let router = test_router(Arc::new(app_service));
-  let response = router
-    .oneshot(Request::post("/modelfiles/pull/testalias:q4_instruct").body(Body::empty())?)
-    .await?;
-
-  assert_eq!(StatusCode::CREATED, response.status());
-  let download_request = response.json::<DownloadRequest>().await?;
-  assert_eq!(download_request.repo, Repo::testalias().to_string());
-  assert_eq!(download_request.filename, Repo::testalias_model_q4());
-  assert_eq!(download_request.status, DownloadStatus::Pending);
-
-  let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(500));
-  assert!(
-    event_received,
-    "Timed out waiting for update_download_request event"
-  );
-
-  let final_status = db_service
-    .get_download_request(&download_request.id)
-    .await?
-    .unwrap();
-  assert_eq!(final_status.status, DownloadStatus::Completed);
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_pull_by_alias_not_found(
-  test_hf_service: TestHfService,
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
-) -> anyhow::Result<()> {
-  let app_service = app_service_stub_builder
-    .db_service(Arc::new(db_service))
-    .hub_service(Arc::new(test_hf_service))
-    .build()?;
-  let router = test_router(Arc::new(app_service));
-  let response = router
-    .oneshot(Request::post("/modelfiles/pull/non_existent:alias").body(Body::empty())?)
-    .await?;
-  assert_eq!(StatusCode::NOT_FOUND, response.status());
-  let response = response.json::<Value>().await?;
-  assert_eq!(
-    "hub_service_error-remote_model_not_found",
-    response["error"]["code"].as_str().unwrap()
-  );
   Ok(())
 }
 

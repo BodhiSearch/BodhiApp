@@ -78,10 +78,6 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     PathBuf::from(bodhi_home)
   }
 
-  fn models_yaml(&self) -> PathBuf {
-    self.bodhi_home().join(MODELS_YAML)
-  }
-
   fn env_type(&self) -> EnvType {
     self
       .get_setting(BODHI_ENV_TYPE)

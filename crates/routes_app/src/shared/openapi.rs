@@ -20,7 +20,7 @@ use crate::{
   __path_list_all_requests_handler, __path_list_api_models_handler, __path_list_downloads_handler,
   __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
   __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
-  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
+  __path_logout_handler, __path_ping_handler,
   __path_queue_status_handler, __path_refresh_metadata_handler, __path_reject_request_handler,
   __path_remove_user_handler, __path_request_access_handler, __path_request_status_handler,
   __path_setup_handler, __path_sync_models_handler, __path_test_api_model_handler,
@@ -393,7 +393,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         get_user_alias_handler,
         list_downloads_handler,
         create_pull_request_handler,
-        pull_by_alias_handler,
         get_download_status_handler,
         refresh_metadata_handler,
         queue_status_handler,
@@ -1061,53 +1060,6 @@ mod tests {
     if let RefOr::T(response) = success_response {
       let content = response.content.get("application/json").unwrap();
       assert!(content.schema.is_some());
-    }
-  }
-
-  #[test]
-  fn test_pull_by_alias_endpoint() {
-    let api_doc = get_openapi_with_modifiers();
-    // Verify endpoint
-    let paths = &api_doc.paths;
-    let pull_alias = paths
-      .paths
-      .get("/bodhi/v1/modelfiles/pull/{alias}")
-      .expect("Pull by alias endpoint not found");
-
-    // Check POST operation
-    let post_op = pull_alias.post.as_ref().expect("POST operation not found");
-    assert_eq!(post_op.tags.as_ref().unwrap()[0], "models");
-    assert_eq!(post_op.operation_id.as_ref().unwrap(), "pullModelByAlias");
-
-    // Check path parameters
-    let params = post_op.parameters.as_ref().unwrap();
-    let alias_param = params
-      .iter()
-      .find(|p| p.name == "alias")
-      .expect("Alias parameter not found");
-    assert_eq!(
-      serde_json::to_string(&alias_param.parameter_in).unwrap(),
-      serde_json::to_string(&ParameterIn::Path).unwrap()
-    );
-
-    // Check responses
-    let responses = &post_op.responses;
-    assert!(responses.responses.contains_key("201"));
-    assert!(responses.responses.contains_key("200"));
-    assert!(responses.responses.contains_key("404"));
-    assert!(responses.responses.contains_key("400"));
-    assert!(responses.responses.contains_key("500"));
-
-    // Verify response schema references DownloadRequest
-    let created_response = responses.responses.get("201").unwrap();
-    if let RefOr::T(response) = created_response {
-      let content = response.content.get("application/json").unwrap();
-      if let Some(example) = &content.example {
-        assert!(example.get("id").is_some());
-        assert!(example.get("repo").is_some());
-        assert!(example.get("filename").is_some());
-        assert!(example.get("status").is_some());
-      }
     }
   }
 

@@ -1,10 +1,10 @@
 use crate::{
   db::{DbError, DbService},
-  HubService, HubServiceError, ALIASES_DIR, MODELS_YAML,
+  HubService, HubServiceError, ALIASES_DIR,
 };
 use async_trait::async_trait;
 use objs::{
-  impl_error_from, Alias, AppError, ErrorType, IoError, RemoteModel, SerdeYamlError, UserAlias,
+  impl_error_from, Alias, AppError, ErrorType, IoError, SerdeYamlError, UserAlias,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
@@ -50,10 +50,6 @@ pub trait DataService: Send + Sync + std::fmt::Debug {
 
   fn find_user_alias(&self, alias: &str) -> Option<UserAlias>;
 
-  fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
-
-  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
-
   async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()>;
 
   async fn delete_alias(&self, alias: &str) -> Result<()>;
@@ -92,11 +88,6 @@ impl LocalDataService {
     self.bodhi_home.join(ALIASES_DIR)
   }
 
-  fn models_yaml(&self) -> PathBuf {
-    // TODO: take from setting service
-    self.bodhi_home.join(MODELS_YAML)
-  }
-
   fn construct_path(&self, folder: &Option<String>, filename: &str) -> PathBuf {
     let mut path = self.bodhi_home.clone();
     if let Some(folder) = folder {
@@ -108,11 +99,6 @@ impl LocalDataService {
 
 #[async_trait]
 impl DataService for LocalDataService {
-  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
-    let models = self.list_remote_models()?;
-    Ok(models.into_iter().find(|model| model.alias.eq(alias)))
-  }
-
   fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf> {
     let contents = serde_yaml::to_string(alias)?;
     let filename = self.aliases_dir().join(alias.config_filename());
@@ -191,21 +177,6 @@ impl DataService for LocalDataService {
     } else {
       None
     }
-  }
-
-  fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
-    let models_file = self.models_yaml();
-    if !models_file.exists() {
-      return Err(DataServiceError::FileNotFound {
-        filename: String::from(MODELS_YAML),
-        dirname: "".to_string(),
-      });
-    }
-    let content = fs::read_to_string(models_file.clone())
-      .map_err(|err| IoError::file_read(err, models_file.display().to_string()))?;
-    let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content)
-      .map_err(|err| SerdeYamlError::with_path(err, models_file.display().to_string()))?;
-    Ok(models)
   }
 
   async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
@@ -331,89 +302,12 @@ mod tests {
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, AppError, RemoteModel, UserAlias,
+    test_utils::temp_bodhi_home, Alias, ApiAlias, ApiFormat, AppError, UserAlias,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::{fs, sync::Arc};
   use tempfile::TempDir;
-
-  #[rstest]
-  #[tokio::test]
-  #[anyhow_trace]
-  #[awt]
-  async fn test_local_data_service_models_file_missing(
-    #[future]
-    #[from(test_data_service)]
-    service: TestDataService,
-  ) -> anyhow::Result<()> {
-    fs::remove_file(service.bodhi_home().join("models.yaml"))?;
-    let result = service.find_remote_model("testalias:instruct");
-    let err = result.unwrap_err();
-    assert_eq!("data_service_error-file_not_found", err.code());
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  #[awt]
-  #[anyhow_trace]
-  async fn test_local_data_service_models_file_corrupt(
-    #[future]
-    #[from(test_data_service)]
-    service: TestDataService,
-  ) -> anyhow::Result<()> {
-    let models_file = service.bodhi_home().join("models.yaml");
-    fs::write(
-      &models_file,
-      r#"
-# alias is missing
-repo: MyFactory/testalias-gguf
-filename: testalias.Q8_0.gguf
-chat_template: llama3
-"#,
-    )?;
-    let result = service.find_remote_model("testalias:instruct");
-    let err = result.unwrap_err();
-    assert_eq!("serde_yaml_error", err.code());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case("testalias:instruct", true)]
-  #[case("testalias-notexists", false)]
-  #[tokio::test]
-  #[anyhow_trace]
-  #[awt]
-  async fn test_local_data_service_find_remote_model(
-    #[future]
-    #[from(test_data_service)]
-    service: TestDataService,
-    #[case] alias: String,
-    #[case] found: bool,
-  ) -> anyhow::Result<()> {
-    let remote_model = service.find_remote_model(&alias)?;
-    assert_eq!(found, remote_model.is_some());
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  #[anyhow_trace]
-  #[awt]
-  async fn test_local_data_service_list_remote_models(
-    #[future]
-    #[from(test_data_service)]
-    service: TestDataService,
-  ) -> anyhow::Result<()> {
-    let models = service.list_remote_models()?;
-    let expected_1 = RemoteModel::llama3();
-    let expected_2 = RemoteModel::testalias();
-    assert_eq!(7, models.len());
-    assert!(models.contains(&expected_1));
-    assert!(models.contains(&expected_2));
-    Ok(())
-  }
 
   #[rstest]
   #[tokio::test]

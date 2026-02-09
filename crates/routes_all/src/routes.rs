@@ -27,7 +27,7 @@ use routes_app::{
   list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
   list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
   list_tokens_handler, list_toolset_types_handler, list_toolsets_handler, list_users_handler,
-  logout_handler, ping_handler, pull_by_alias_handler, queue_status_handler,
+  logout_handler, ping_handler, queue_status_handler,
   refresh_metadata_handler, reject_request_handler, remove_user_handler, request_access_handler,
   request_status_handler, setup_handler, sync_models_handler, test_api_model_handler,
   update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
@@ -203,10 +203,6 @@ pub fn build_routes(
     )
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
     .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
-    .route(
-      &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
-      post(pull_by_alias_handler),
-    )
     .route(
       &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
       get(get_download_status_handler),

@@ -1,6 +1,6 @@
 use crate::{
-  test_utils::SNAPSHOT, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
-  RemoteModel, Repo, UserAlias, TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, Repo,
+  UserAlias, TOKENIZER_CONFIG_JSON,
 };
 use derive_builder::Builder;
 use std::{path::PathBuf, str::FromStr};
@@ -177,30 +177,6 @@ impl HubFile {
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
-  }
-}
-
-impl RemoteModel {
-  pub fn llama3() -> RemoteModel {
-    RemoteModel::new(
-      "llama3:instruct".to_string(),
-      Repo::llama3(),
-      Repo::LLAMA3_Q8.to_string(),
-      None,
-      OAIRequestParams::default(),
-      Vec::default(),
-    )
-  }
-
-  pub fn testalias() -> RemoteModel {
-    RemoteModel::new(
-      String::from("testalias:instruct"),
-      Repo::testalias(),
-      Repo::TESTALIAS_FILENAME.to_string(),
-      None,
-      OAIRequestParams::default(),
-      Vec::default(),
-    )
   }
 }
 

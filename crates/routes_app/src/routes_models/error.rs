@@ -36,13 +36,7 @@ pub enum PullError {
     snapshot: String,
   },
   #[error(transparent)]
-  DataService(#[from] DataServiceError),
-  #[error(transparent)]
   HubService(#[from] HubServiceError),
-  #[error(transparent)]
-  ObjValidation(#[from] ObjValidationError),
-  #[error(transparent)]
-  Builder(#[from] BuilderError),
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

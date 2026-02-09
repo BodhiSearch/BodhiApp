@@ -14,7 +14,6 @@ pub mod gguf;
 mod hub_file;
 mod model_alias;
 mod model_metadata;
-mod remote_file;
 mod repo;
 mod user_alias;
 
@@ -50,7 +49,6 @@ pub use api_model_alias::*;
 pub use hub_file::*;
 pub use model_alias::*;
 pub use model_metadata::*;
-pub use remote_file::*;
 pub use repo::*;
 pub use user_alias::*;
 

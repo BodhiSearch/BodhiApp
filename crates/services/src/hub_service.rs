@@ -53,10 +53,6 @@ pub enum HubServiceError {
     snapshot: String,
   },
 
-  #[error("Remote model '{0}' not found. Check the alias name and try again.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
-  RemoteModelNotFound(String),
-
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
