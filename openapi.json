@@ -2950,19 +2950,19 @@
         ]
       }
     },
-    "/bodhi/v1/models/{alias}": {
+    "/bodhi/v1/models/{id}": {
       "get": {
         "tags": [
           "models"
         ],
         "summary": "Get Model Alias Details",
-        "description": "Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).",
+        "description": "Retrieves detailed information for a specific model alias by UUID. Requires any authenticated user (User level permissions or higher).",
         "operationId": "getAlias",
         "parameters": [
           {
-            "name": "alias",
+            "name": "id",
             "in": "path",
-            "description": "Alias identifier for the model",
+            "description": "UUID of the alias",
             "required": true,
             "schema": {
               "type": "string"
@@ -2976,27 +2976,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserAliasResponse"
-                },
-                "example": {
-                  "alias": "llama2:chat",
-                  "chat_template": "llama2",
-                  "context_params": {
-                    "n_keep": 24,
-                    "stop": [
-                      "<|end_of_turn|>"
-                    ]
-                  },
-                  "filename": "llama-2-7b-chat.Q8_0.gguf",
-                  "model_params": {},
-                  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                  "request_params": {
-                    "frequency_penalty": 0.0,
-                    "presence_penalty": 0.0,
-                    "temperature": 0.7,
-                    "top_p": 1.0
-                  },
-                  "snapshot": "sha256:abc123",
-                  "source": "config"
                 }
               }
             }
@@ -3076,9 +3055,7 @@
             ]
           }
         ]
-      }
-    },
-    "/bodhi/v1/models/{id}": {
+      },
       "put": {
         "tags": [
           "models"
@@ -3089,12 +3066,11 @@
           {
             "name": "id",
             "in": "path",
-            "description": "Alias identifier",
+            "description": "UUID of the alias to update",
             "required": true,
             "schema": {
               "type": "string"
-            },
-            "example": "llama--3"
+            }
           }
         ],
         "requestBody": {
@@ -3147,6 +3123,191 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Delete a model alias by UUID",
+        "operationId": "deleteAlias",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of the alias to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alias deleted successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alias not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_api_token": [
+              "scope_token_power_user"
+            ]
+          },
+          {
+            "bearer_oauth_token": [
+              "scope_user_power_user"
+            ]
+          },
+          {
+            "session_auth": [
+              "resource_power_user"
+            ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/{id}/copy": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Copy a model alias",
+        "operationId": "copyAlias",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of the alias to copy",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyAliasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Alias copied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source alias not found"
           },
           "500": {
             "description": "Internal server error",
@@ -8165,6 +8326,17 @@
           }
         }
       },
+      "CopyAliasRequest": {
+        "type": "object",
+        "required": [
+          "alias"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          }
+        }
+      },
       "CreateAliasRequest": {
         "type": "object",
         "required": [
@@ -11722,12 +11894,18 @@
       "UserAlias": {
         "type": "object",
         "required": [
+          "id",
           "alias",
           "repo",
           "filename",
-          "snapshot"
+          "snapshot",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "alias": {
             "type": "string"
           },
@@ -11749,12 +11927,21 @@
             "items": {
               "type": "string"
             }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
       "UserAliasResponse": {
         "type": "object",
         "required": [
+          "id",
           "alias",
           "repo",
           "filename",
@@ -11762,9 +11949,14 @@
           "source",
           "model_params",
           "request_params",
-          "context_params"
+          "context_params",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "alias": {
             "type": "string"
           },
@@ -11795,6 +11987,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           },
           "metadata": {
             "oneOf": [

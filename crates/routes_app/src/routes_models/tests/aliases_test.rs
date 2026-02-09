@@ -1,6 +1,7 @@
 use crate::{
-  create_alias_handler, get_user_alias_handler, list_aliases_handler, update_alias_handler,
-  AliasResponse, PaginatedAliasResponse, UserAliasResponse, UserAliasResponseBuilder,
+  copy_alias_handler, create_alias_handler, delete_alias_handler, get_user_alias_handler,
+  list_aliases_handler, update_alias_handler, AliasResponse, PaginatedAliasResponse,
+  UserAliasResponse,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -18,7 +19,6 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::test_utils::{app_service_stub, AppServiceStub};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -27,7 +27,11 @@ use tower::ServiceExt;
 fn test_router(router_state_stub: DefaultRouterState) -> Router {
   Router::new()
     .route("/api/models", get(list_aliases_handler))
-    .route("/api/models/{id}", get(get_user_alias_handler))
+    .route(
+      "/api/models/{id}",
+      get(get_user_alias_handler).delete(delete_alias_handler),
+    )
+    .route("/api/models/{id}/copy", post(copy_alias_handler))
     .with_state(Arc::new(router_state_stub))
 }
 
@@ -149,12 +153,14 @@ async fn test_get_alias_handler(
   #[future] router_state_stub: DefaultRouterState,
 ) -> anyhow::Result<()> {
   let response = test_router(router_state_stub)
-    .oneshot(Request::get("/api/models/llama3:instruct").body(Body::empty())?)
+    .oneshot(Request::get("/api/models/test-llama3-instruct").body(Body::empty())?)
     .await?;
   assert_eq!(StatusCode::OK, response.status());
   let alias_response = response.json::<UserAliasResponse>().await?;
-  let expected = UserAliasResponse::llama3();
-  assert_eq!(expected, alias_response);
+  assert_eq!("test-llama3-instruct", alias_response.id);
+  assert_eq!("llama3:instruct", alias_response.alias);
+  assert_eq!("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF", alias_response.repo);
+  assert_eq!("user", alias_response.source);
   Ok(())
 }
 
@@ -188,7 +194,11 @@ async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
   );
   Router::new()
     .route("/api/models", post(create_alias_handler))
-    .route("/api/models/{id}", put(update_alias_handler))
+    .route(
+      "/api/models/{id}",
+      put(update_alias_handler).delete(delete_alias_handler),
+    )
+    .route("/api/models/{id}/copy", post(copy_alias_handler))
     .with_state(Arc::new(router_state))
 }
 
@@ -208,23 +218,21 @@ fn payload() -> Value {
   })
 }
 
-fn expected() -> UserAliasResponse {
-  UserAliasResponseBuilder::default()
-    .alias("testalias:instruct".to_string())
-    .repo("MyFactory/testalias-gguf")
-    .filename("testalias.Q8_0.gguf")
-    .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-    .source("user")
-    .model_params(HashMap::new())
-    .request_params(
-      OAIRequestParamsBuilder::default()
-        .temperature(0.7)
-        .build()
-        .unwrap(),
-    )
-    .context_params(vec!["--ctx-size 2048".to_string()])
-    .build()
-    .unwrap()
+fn assert_create_alias_response(response: &UserAliasResponse, expected_snapshot: &str) {
+  assert!(!response.id.is_empty(), "id should be a UUID");
+  assert_eq!("testalias:instruct", response.alias);
+  assert_eq!("MyFactory/testalias-gguf", response.repo);
+  assert_eq!("testalias.Q8_0.gguf", response.filename);
+  assert_eq!(expected_snapshot, response.snapshot);
+  assert_eq!("user", response.source);
+  assert_eq!(
+    OAIRequestParamsBuilder::default()
+      .temperature(0.7)
+      .build()
+      .unwrap(),
+    response.request_params,
+  );
+  assert_eq!(vec!["--ctx-size 2048".to_string()], response.context_params);
 }
 
 fn payload_with_snapshot() -> Value {
@@ -244,42 +252,23 @@ fn payload_with_snapshot() -> Value {
   })
 }
 
-fn expected_with_snapshot() -> UserAliasResponse {
-  UserAliasResponseBuilder::default()
-    .alias("testalias:instruct".to_string())
-    .repo("MyFactory/testalias-gguf")
-    .filename("testalias.Q8_0.gguf")
-    .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-    .source("user")
-    .model_params(HashMap::new())
-    .request_params(
-      OAIRequestParamsBuilder::default()
-        .temperature(0.7)
-        .build()
-        .unwrap(),
-    )
-    .context_params(vec!["--ctx-size 2048".to_string()])
-    .build()
-    .unwrap()
-}
-
 #[rstest]
-#[case(payload(), expected())]
-#[case(payload_with_snapshot(), expected_with_snapshot())]
+#[case(payload(), "5007652f7a641fe7170e0bad4f63839419bd9213")]
+#[case(payload_with_snapshot(), "5007652f7a641fe7170e0bad4f63839419bd9213")]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_alias_handler(
   #[future] app: Router,
   #[case] payload: Value,
-  #[case] expected: UserAliasResponse,
+  #[case] expected_snapshot: &str,
 ) -> anyhow::Result<()> {
   let response = app
     .oneshot(Request::post("/api/models").json(&payload)?)
     .await?;
   assert_eq!(StatusCode::CREATED, response.status());
   let response = response.json::<UserAliasResponse>().await?;
-  assert_eq!(expected, response);
+  assert_create_alias_response(&response, expected_snapshot);
   Ok(())
 }
 
@@ -337,23 +326,26 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
     .oneshot(
       Request::builder()
         .method(Method::PUT)
-        .uri("/api/models/tinyllama:instruct")
+        .uri("/api/models/test-tinyllama-instruct")
         .json(&payload)?,
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let updated_alias: UserAliasResponse = response.json::<UserAliasResponse>().await?;
-  let expected = UserAliasResponseBuilder::tinyllama_builder()
-    .request_params(
-      OAIRequestParamsBuilder::default()
-        .temperature(0.8)
-        .max_tokens(2000_u16)
-        .build()?,
-    )
-    .context_params(vec!["--ctx-size 4096".to_string()])
-    .build()?;
-  assert_eq!(expected, updated_alias);
+  assert_eq!("test-tinyllama-instruct", updated_alias.id);
+  assert_eq!("tinyllama:instruct", updated_alias.alias);
+  assert_eq!("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF", updated_alias.repo);
+  assert_eq!("tinyllama-1.1b-chat-v0.3.Q2_K.gguf", updated_alias.filename);
+  assert_eq!("user", updated_alias.source);
+  assert_eq!(
+    OAIRequestParamsBuilder::default()
+      .temperature(0.8)
+      .max_tokens(2000_u16)
+      .build()?,
+    updated_alias.request_params,
+  );
+  assert_eq!(vec!["--ctx-size 4096".to_string()], updated_alias.context_params);
   Ok(())
 }
 
@@ -402,9 +394,8 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   "context_params": [
     "--ctx-size 4096"
   ]
-}), Method::POST, "/api/models")]
+}), Method::POST, "/api/models", "hub_service_error-file_not_found")]
 #[case(serde_json::json!({
-  "alias": "tinyllama:instruct",
   "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
   "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
 
@@ -416,7 +407,7 @@ async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyho
   "context_params": [
     "--ctx-size 4096"
   ]
-}), Method::PUT, "/api/models/tinyllama:instruct")]
+}), Method::PUT, "/api/models/test-tinyllama-instruct", "hub_service_error-file_not_found")]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
@@ -425,6 +416,7 @@ async fn test_create_alias_repo_not_downloaded_error(
   #[case] payload: Value,
   #[case] method: Method,
   #[case] url: String,
+  #[case] expected_error_code: &str,
 ) -> anyhow::Result<()> {
   let response = app
     .oneshot(Request::builder().method(method).uri(url).json(&payload)?)
@@ -433,7 +425,7 @@ async fn test_create_alias_repo_not_downloaded_error(
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   let response = response.json::<Value>().await?;
   assert_eq!(
-    "hub_service_error-file_not_found",
+    expected_error_code,
     response["error"]["code"].as_str().unwrap()
   );
   Ok(())

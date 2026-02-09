@@ -79,18 +79,10 @@ pub async fn ollama_models_handler(
   Ok(Json(ModelsResponse { models }))
 }
 
-pub fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
-  let bodhi_home = &state.app_service().setting_service().bodhi_home();
-  let path = bodhi_home.join("aliases").join(alias.config_filename());
-  let created = fs::metadata(path)
-    .map_err(|e| e.to_string())
-    .and_then(|m| m.created().map_err(|e| e.to_string()))
-    .and_then(|t| t.duration_since(UNIX_EPOCH).map_err(|e| e.to_string()))
-    .unwrap_or_default()
-    .as_secs() as u32;
+pub fn user_alias_to_ollama_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   Model {
     model: alias.alias,
-    modified_at: created,
+    modified_at: alias.created_at.timestamp() as u32,
     size: 0,
     digest: alias.snapshot,
     details: ModelDetails {

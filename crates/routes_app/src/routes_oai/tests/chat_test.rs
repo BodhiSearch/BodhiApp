@@ -11,8 +11,8 @@ use async_openai::types::{
 use axum::{extract::Request, routing::post, Router};
 use futures_util::StreamExt;
 use llama_server_proc::test_utils::mock_response;
-use mockall::predicate::eq;
-use objs::{Alias, UserAlias};
+use mockall::predicate::{eq, function};
+use objs::Alias;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use rstest::rstest;
@@ -60,8 +60,6 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
         .build()?,
     )])
     .build()?;
-  let user_alias = UserAlias::testalias_exists();
-  let alias = Alias::User(user_alias);
   let request_value = serde_json::to_value(&request)?;
   let mut ctx = MockSharedContext::default();
   ctx
@@ -69,7 +67,7 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
-      eq(alias),
+      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
     )
     .times(1)
     .return_once(move |_, _, _| Ok(non_streamed_response()));
@@ -156,8 +154,6 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
         .build()?,
     )])
     .build()?;
-  let user_alias = UserAlias::testalias_exists();
-  let alias = Alias::User(user_alias);
   let request_value = serde_json::to_value(&request)?;
   let mut ctx = MockSharedContext::default();
   ctx
@@ -165,7 +161,7 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
-      eq(alias),
+      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
     )
     .times(1)
     .return_once(move |_, _, _| streamed_response());
@@ -230,13 +226,15 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
     user: None,
     dimensions: None,
   };
-  let user_alias = UserAlias::testalias_exists();
-  let alias = Alias::User(user_alias);
   let request_value = serde_json::to_value(&request)?;
   let mut ctx = MockSharedContext::default();
   ctx
     .expect_forward_request()
-    .with(eq(LlmEndpoint::Embeddings), eq(request_value), eq(alias))
+    .with(
+      eq(LlmEndpoint::Embeddings),
+      eq(request_value),
+      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
+    )
     .times(1)
     .return_once(move |_, _, _| Ok(embeddings_response()));
   let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));

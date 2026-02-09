@@ -166,14 +166,11 @@ pub async fn oai_model_handler(
   }
 }
 
-fn user_alias_to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
-  let bodhi_home = &state.app_service().setting_service().bodhi_home();
-  let path = bodhi_home.join("aliases").join(alias.config_filename());
-  let created = state.app_service().time_service().created_at(&path);
+fn user_alias_to_oai_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   Model {
     id: alias.alias,
     object: "model".to_string(),
-    created,
+    created: alias.created_at.timestamp() as u32,
     owned_by: "system".to_string(),
   }
 }

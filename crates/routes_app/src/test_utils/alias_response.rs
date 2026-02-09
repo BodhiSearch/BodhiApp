@@ -1,10 +1,12 @@
 use crate::{UserAliasResponse, UserAliasResponseBuilder};
+use chrono::{DateTime, Utc};
 use objs::{OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;
 
 impl UserAliasResponse {
-  pub fn llama3() -> Self {
+  pub fn llama3_with_time(now: DateTime<Utc>) -> Self {
     UserAliasResponseBuilder::default()
+      .id("test-llama3-instruct")
       .alias("llama3:instruct")
       .repo(Repo::LLAMA3)
       .filename(Repo::LLAMA3_Q8)
@@ -22,20 +24,23 @@ impl UserAliasResponse {
           .unwrap(),
       )
       .context_params(vec!["--n-keep 24".to_string()])
+      .created_at(now)
+      .updated_at(now)
       .build()
       .unwrap()
   }
 
-  pub fn tinyllama() -> Self {
-    UserAliasResponseBuilder::tinyllama_builder()
+  pub fn tinyllama_with_time(now: DateTime<Utc>) -> Self {
+    UserAliasResponseBuilder::tinyllama_builder(now)
       .build()
       .unwrap()
   }
 }
 
 impl UserAliasResponseBuilder {
-  pub fn tinyllama_builder() -> Self {
+  pub fn tinyllama_builder(now: DateTime<Utc>) -> Self {
     UserAliasResponseBuilder::default()
+      .id("test-tinyllama-instruct")
       .alias("tinyllama:instruct".to_string())
       .repo(Repo::TINYLLAMA)
       .filename(Repo::TINYLLAMA_FILENAME)
@@ -44,6 +49,8 @@ impl UserAliasResponseBuilder {
       .model_params(HashMap::new())
       .request_params(OAIRequestParamsBuilder::default().build().unwrap())
       .context_params(Vec::<String>::new())
+      .created_at(now)
+      .updated_at(now)
       .to_owned()
   }
 }

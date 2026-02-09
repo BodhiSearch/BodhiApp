@@ -18,11 +18,11 @@ use axum::{
 use objs::{ResourceRole, TokenScope, UserScope};
 use routes_app::{
   app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
-  change_user_role_handler, create_alias_handler, create_api_model_handler,
+  change_user_role_handler, copy_alias_handler, create_alias_handler, create_api_model_handler,
   create_pull_request_handler, create_token_handler, create_toolset_handler,
-  delete_api_model_handler, delete_setting_handler, delete_toolset_handler, dev_secrets_handler,
-  disable_type_handler, enable_type_handler, envs_handler, execute_toolset_handler,
-  fetch_models_handler, get_api_formats_handler, get_api_model_handler,
+  delete_alias_handler, delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
+  dev_secrets_handler, disable_type_handler, enable_type_handler, envs_handler,
+  execute_toolset_handler, fetch_models_handler, get_api_formats_handler, get_api_model_handler,
   get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
   list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
   list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
@@ -199,7 +199,11 @@ pub fn build_routes(
     .route(ENDPOINT_MODELS, post(create_alias_handler))
     .route(
       &format!("{ENDPOINT_MODELS}/{{id}}"),
-      put(update_alias_handler),
+      put(update_alias_handler).delete(delete_alias_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MODELS}/{{id}}/copy"),
+      post(copy_alias_handler),
     )
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
     .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))

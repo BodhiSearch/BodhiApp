@@ -255,8 +255,7 @@ impl AppServiceBuilder {
       return service;
     }
 
-    let bodhi_home = self.setting_service.bodhi_home();
-    Arc::new(LocalDataService::new(bodhi_home, hub_service, db_service))
+    Arc::new(LocalDataService::new(hub_service, db_service))
   }
 
   /// Gets or builds the time service.

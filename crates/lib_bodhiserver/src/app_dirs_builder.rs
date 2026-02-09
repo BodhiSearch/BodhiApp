@@ -224,15 +224,8 @@ fn find_bodhi_home(
   Ok(bodhi_home)
 }
 
-/// Sets up subdirectories within the Bodhi home directory (aliases, databases).
+/// Sets up subdirectories within the Bodhi home directory (databases).
 fn setup_bodhi_subdirs(setting_service: &dyn SettingService) -> Result<(), AppDirsBuilderError> {
-  let alias_home = setting_service.aliases_dir();
-  if !alias_home.exists() {
-    fs::create_dir_all(&alias_home).map_err(|err| AppDirsBuilderError::DirCreate {
-      source: err,
-      path: alias_home.display().to_string(),
-    })?;
-  }
   let db_path = setting_service.app_db_path();
   if !db_path.exists() {
     File::create_new(&db_path).map_err(|err| AppDirsBuilderError::IoFileWrite {
@@ -295,7 +288,7 @@ mod tests {
   use rstest::rstest;
   use serde_yaml::Value;
   use services::{
-    test_utils::{TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB},
+    test_utils::{TEST_PROD_DB, TEST_SESSION_DB},
     EnvWrapper, MockEnvWrapper, MockSettingService, SettingService, BODHI_HOME, HF_HOME,
   };
   use std::collections::HashMap;
@@ -386,7 +379,6 @@ mod tests {
       .set_env(BODHI_HOME, &bodhi_home.display().to_string())
       .build()?;
     let _settings_service = setup_app_dirs(&options)?;
-    assert!(bodhi_home.join(TEST_ALIASES_DIR).exists());
     assert!(bodhi_home.join(TEST_PROD_DB).exists());
     assert!(bodhi_home.join(TEST_SESSION_DB).exists());
     Ok(())
@@ -486,11 +478,9 @@ mod tests {
     let setting_service = setup_app_dirs(&options)?;
 
     // The setup_app_dirs already calls setup_bodhi_subdirs, so we just verify the results
-    let aliases_dir = setting_service.aliases_dir();
     let app_db_path = setting_service.app_db_path();
     let session_db_path = setting_service.session_db_path();
 
-    assert!(aliases_dir.exists());
     assert!(app_db_path.exists());
     assert!(session_db_path.exists());
     Ok(())

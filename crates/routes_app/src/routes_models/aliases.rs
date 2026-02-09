@@ -1,7 +1,7 @@
 use crate::{
-  AliasResponse, CreateAliasError, CreateAliasRequest, LocalModelResponse, ModelError,
-  PaginatedAliasResponse, PaginatedLocalModelResponse, PaginationSortParams, UpdateAliasRequest,
-  UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  AliasResponse, CopyAliasRequest, CreateAliasError, CreateAliasRequest, LocalModelResponse,
+  ModelError, PaginatedAliasResponse, PaginatedLocalModelResponse, PaginationSortParams,
+  UpdateAliasRequest, UserAliasResponse, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Path, Query, State},
@@ -10,7 +10,7 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use objs::{
-  Alias, ApiError, HubFile, OAIRequestParams, OpenAIApiError, Repo, UserAliasBuilder,
+  Alias, ApiError, HubFile, OAIRequestParams, OpenAIApiError, Repo, UserAlias, UserAliasBuilder,
   API_TAG_MODELS,
 };
 use server_core::RouterState;
@@ -304,40 +304,19 @@ fn get_alias_source(alias: &Alias) -> &str {
   }
 }
 
-/// Get details for a specific model alias
+/// Get details for a specific model alias by UUID
 #[utoipa::path(
     get,
-    path = ENDPOINT_MODELS.to_owned() + "/{alias}",
+    path = ENDPOINT_MODELS.to_owned() + "/{id}",
     tag = API_TAG_MODELS,
     operation_id = "getAlias",
     summary = "Get Model Alias Details",
-    description = "Retrieves detailed information for a specific model alias. Requires any authenticated user (User level permissions or higher).",
+    description = "Retrieves detailed information for a specific model alias by UUID. Requires any authenticated user (User level permissions or higher).",
     params(
-        ("alias" = String, Path, description = "Alias identifier for the model")
+        ("id" = String, Path, description = "UUID of the alias")
     ),
     responses(
-        (status = 200, description = "Model alias details", body = UserAliasResponse,
-         example = json!({
-             "alias": "llama2:chat",
-             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-             "filename": "llama-2-7b-chat.Q8_0.gguf",
-             "snapshot": "sha256:abc123",
-             "source": "config",
-             "chat_template": "llama2",
-             "model_params": {},
-             "request_params": {
-                 "temperature": 0.7,
-                 "top_p": 1.0,
-                 "frequency_penalty": 0.0,
-                 "presence_penalty": 0.0
-             },
-             "context_params": {
-                 "n_keep": 24,
-                 "stop": [
-                     "<|end_of_turn|>"
-                 ]
-             }
-         })),
+        (status = 200, description = "Model alias details", body = UserAliasResponse),
         (status = 404, description = "Alias not found", body = OpenAIApiError,
          example = json!({
              "error": {
@@ -355,13 +334,14 @@ fn get_alias_source(alias: &Alias) -> &str {
 )]
 pub async fn get_user_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Path(alias): Path<String>,
+  Path(id): Path<String>,
 ) -> Result<Json<UserAliasResponse>, ApiError> {
   let user_alias = state
     .app_service()
     .data_service()
-    .find_user_alias(&alias)
-    .ok_or(DataServiceError::AliasNotFound(alias))?;
+    .get_user_alias_by_id(&id)
+    .await
+    .ok_or(DataServiceError::AliasNotFound(id))?;
 
   // Query metadata for this alias
   let metadata = state
@@ -402,7 +382,7 @@ pub async fn create_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  execute_create_alias(
+  let alias = execute_create_alias(
     state.app_service().as_ref(),
     payload.alias.clone(),
     Repo::try_from(payload.repo)?,
@@ -413,11 +393,6 @@ pub async fn create_alias_handler(
     false,
   )
   .await?;
-  let alias = state
-    .app_service()
-    .data_service()
-    .find_user_alias(&payload.alias)
-    .ok_or(DataServiceError::AliasNotFound(payload.alias))?;
   Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
 
@@ -427,8 +402,7 @@ pub async fn create_alias_handler(
     path = ENDPOINT_MODELS.to_owned() + "/{id}",
     tag = API_TAG_MODELS,
     params(
-        ("id" = String, Path, description = "Alias identifier",
-         example = "llama--3")
+        ("id" = String, Path, description = "UUID of the alias to update")
     ),
     operation_id = "updateAlias",
     request_body = UpdateAliasRequest,
@@ -443,26 +417,123 @@ pub async fn create_alias_handler(
 )]
 pub async fn update_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
-  axum::extract::Path(id): axum::extract::Path<String>,
+  Path(id): Path<String>,
   WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
-  execute_create_alias(
-    state.app_service().as_ref(),
-    id.clone(),
-    Repo::try_from(payload.repo)?,
-    payload.filename,
-    payload.snapshot,
-    payload.request_params.unwrap_or_default(),
-    payload.context_params.unwrap_or_default(),
-    true,
-  )
-  .await?;
-  let alias = state
+  // Get existing alias by UUID to verify it exists
+  let existing = state
     .app_service()
     .data_service()
-    .find_user_alias(&id)
-    .ok_or(DataServiceError::AliasNotFound(id))?;
-  Ok((StatusCode::OK, Json(UserAliasResponse::from(alias))))
+    .get_user_alias_by_id(&id)
+    .await
+    .ok_or(DataServiceError::AliasNotFound(id.clone()))?;
+
+  let repo = Repo::try_from(payload.repo)?;
+  let filename = payload.filename;
+  let snapshot = payload.snapshot;
+
+  // Verify file exists locally
+  let file_exists = state
+    .app_service()
+    .hub_service()
+    .local_file_exists(&repo, &filename, snapshot.clone())?;
+  if !file_exists {
+    return Err(
+      CreateAliasError::HubService(HubServiceError::FileNotFound {
+        filename: filename.clone(),
+        repo: repo.to_string(),
+        snapshot: snapshot
+          .clone()
+          .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
+      })
+      .into(),
+    );
+  }
+  let local_model_file = state
+    .app_service()
+    .hub_service()
+    .find_local_file(&repo, &filename, snapshot)?;
+
+  let updated_alias = UserAlias {
+    id: existing.id.clone(),
+    alias: existing.alias.clone(),
+    repo,
+    filename,
+    snapshot: local_model_file.snapshot,
+    request_params: payload.request_params.unwrap_or_default(),
+    context_params: payload.context_params.unwrap_or_default(),
+    created_at: existing.created_at,
+    updated_at: state.app_service().time_service().utc_now(),
+  };
+
+  state
+    .app_service()
+    .db_service()
+    .update_user_alias(&existing.id, &updated_alias)
+    .await
+    .map_err(DataServiceError::from)?;
+
+  Ok((StatusCode::OK, Json(UserAliasResponse::from(updated_alias))))
+}
+
+/// Delete a model alias by UUID
+#[utoipa::path(
+    delete,
+    path = ENDPOINT_MODELS.to_owned() + "/{id}",
+    tag = API_TAG_MODELS,
+    operation_id = "deleteAlias",
+    params(("id" = String, Path, description = "UUID of the alias to delete")),
+    responses(
+      (status = 200, description = "Alias deleted successfully"),
+      (status = 404, description = "Alias not found"),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn delete_alias_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+  state
+    .app_service()
+    .data_service()
+    .delete_alias(&id)
+    .await?;
+  Ok(StatusCode::OK)
+}
+
+/// Copy a model alias
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS.to_owned() + "/{id}/copy",
+    tag = API_TAG_MODELS,
+    operation_id = "copyAlias",
+    params(("id" = String, Path, description = "UUID of the alias to copy")),
+    request_body = CopyAliasRequest,
+    responses(
+      (status = 201, description = "Alias copied successfully", body = UserAliasResponse),
+      (status = 404, description = "Source alias not found"),
+    ),
+    security(
+        ("bearer_api_token" = ["scope_token_power_user"]),
+        ("bearer_oauth_token" = ["scope_user_power_user"]),
+        ("session_auth" = ["resource_power_user"])
+    ),
+)]
+pub async fn copy_alias_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+  WithRejection(Json(payload), _): WithRejection<Json<CopyAliasRequest>, ApiError>,
+) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
+  let new_alias = state
+    .app_service()
+    .data_service()
+    .copy_alias(&id, &payload.alias)
+    .await?;
+  Ok((StatusCode::CREATED, Json(UserAliasResponse::from(new_alias))))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -475,8 +546,13 @@ async fn execute_create_alias(
   oai_request_params: OAIRequestParams,
   context_params: Vec<String>,
   update: bool,
-) -> Result<(), CreateAliasError> {
-  if service.data_service().find_user_alias(&alias).is_some() {
+) -> Result<UserAlias, CreateAliasError> {
+  if service
+    .data_service()
+    .find_user_alias(&alias)
+    .await
+    .is_some()
+  {
     if !update {
       return Err(DataServiceError::AliasExists(alias.clone()).into());
     }
@@ -509,6 +585,7 @@ async fn execute_create_alias(
       ));
     }
   };
+  let now = service.time_service().utc_now();
   let user_alias = UserAliasBuilder::default()
     .alias(alias)
     .repo(repo)
@@ -516,11 +593,8 @@ async fn execute_create_alias(
     .snapshot(local_model_file.snapshot)
     .request_params(oai_request_params)
     .context_params(context_params)
-    .build()?;
-  service.data_service().save_alias(&user_alias)?;
-  debug!(
-    "model alias: '{}' saved to $BODHI_HOME/aliases",
-    user_alias.alias
-  );
-  Ok(())
+    .build_with_time(now)?;
+  service.data_service().save_alias(&user_alias).await?;
+  debug!("model alias: '{}' saved to database", user_alias.alias);
+  Ok(user_alias)
 }

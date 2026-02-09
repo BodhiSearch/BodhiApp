@@ -24,6 +24,11 @@ pub struct UpdateAliasRequest {
   pub context_params: Option<Vec<String>>,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CopyAliasRequest {
+  pub alias: String,
+}
+
 /// Request to pull a model file from HuggingFace
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(example = json!({

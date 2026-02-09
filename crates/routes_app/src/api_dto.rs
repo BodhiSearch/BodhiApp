@@ -90,6 +90,7 @@ impl LocalModelResponse {
     setter(into),
     build_fn(error = objs::BuilderError)))]
 pub struct UserAliasResponse {
+  pub id: String,
   pub alias: String,
   pub repo: String,
   pub filename: String,
@@ -100,6 +101,11 @@ pub struct UserAliasResponse {
   pub request_params: OAIRequestParams,
   pub context_params: Vec<String>,
 
+  #[schema(value_type = String, format = "date-time")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
+  pub updated_at: DateTime<Utc>,
+
   /// Model metadata extracted from GGUF file (optional)
   #[serde(skip_serializing_if = "Option::is_none")]
   #[cfg_attr(any(test, feature = "test-utils"), builder(default))]
@@ -109,6 +115,7 @@ pub struct UserAliasResponse {
 impl From<UserAlias> for UserAliasResponse {
   fn from(alias: UserAlias) -> Self {
     UserAliasResponse {
+      id: alias.id,
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
@@ -118,6 +125,8 @@ impl From<UserAlias> for UserAliasResponse {
       model_params: HashMap::new(),
       request_params: alias.request_params,
       context_params: alias.context_params,
+      created_at: alias.created_at,
+      updated_at: alias.updated_at,
       metadata: None,
     }
   }

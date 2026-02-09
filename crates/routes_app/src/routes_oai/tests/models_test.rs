@@ -46,62 +46,30 @@ async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Resu
 
   assert_eq!(StatusCode::OK, response.status());
   let response = response.json::<Value>().await?;
-  assert_eq!(
-    json! {{
-      "object": "list",
-      "data": [
-        {
-          "id": "FakeFactory/fakemodel-gguf:Q4_0",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "MyFactory/testalias-gguf:Q8_0",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "google/gemma-1.1-2b-it-GGUF:2b_it_v1p1",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "llama3:instruct",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "testalias-exists:instruct",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-        {
-          "id": "tinyllama:instruct",
-          "object": "model",
-          "created": 0,
-          "owned_by": "system"
-        },
-      ]
-    }},
-    response
-  );
+  assert_eq!("list", response["object"].as_str().unwrap());
+  let data = response["data"].as_array().unwrap();
+  assert_eq!(8, data.len());
+  let model_ids: Vec<&str> = data
+    .iter()
+    .map(|m| m["id"].as_str().unwrap())
+    .collect();
+  // Verify all expected models are present (sorted alphabetically)
+  let expected_ids = vec![
+    "FakeFactory/fakemodel-gguf:Q4_0",
+    "MyFactory/testalias-gguf:Q8_0",
+    "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0",
+    "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K",
+    "google/gemma-1.1-2b-it-GGUF:2b_it_v1p1",
+    "llama3:instruct",
+    "testalias-exists:instruct",
+    "tinyllama:instruct",
+  ];
+  assert_eq!(expected_ids, model_ids);
+  // Model aliases have created=0 (from filesystem), user aliases have non-zero timestamps
+  for model in data {
+    assert_eq!("model", model["object"].as_str().unwrap());
+    assert_eq!("system", model["owned_by"].as_str().unwrap());
+  }
   Ok(())
 }
 
@@ -120,15 +88,11 @@ async fn test_oai_model_handler_found(#[future] app: Router) -> anyhow::Result<(
 
   assert_eq!(StatusCode::OK, response.status());
   let response = response.json::<Value>().await?;
-  assert_eq!(
-    json! {{
-      "id": "llama3:instruct",
-      "object": "model",
-      "created": 0,
-      "owned_by": "system",
-    }},
-    response
-  );
+  assert_eq!("llama3:instruct", response["id"].as_str().unwrap());
+  assert_eq!("model", response["object"].as_str().unwrap());
+  assert_eq!("system", response["owned_by"].as_str().unwrap());
+  // User aliases now have non-zero created timestamp from DB
+  assert!(response["created"].as_u64().unwrap() > 0);
   Ok(())
 }
 
