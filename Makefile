@@ -10,7 +10,7 @@ include Makefile.website.mk
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	format format.all \
 	run run.native app.clear app.run \
-	test.extension-download
+	test.extension-download test.model-download
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -111,3 +111,9 @@ app.run: ## Run the BodhiApp
 
 test.extension-download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)
 	@$(MAKE) -C crates/lib_bodhiserver_napi download-extension FORCE=$(FORCE)
+
+test.model-download: ## Download test model for integration tests (Qwen3-1.7B Q8_0 GGUF)
+	@echo "==> Downloading test model for integration tests"
+	@command -v hf >/dev/null 2>&1 || { echo "Error: 'hf' command not found. Install with: pip install -U huggingface_hub[cli]"; exit 1; }
+	@hf download --revision daeb8e2d528a760970442092f6bf1e55c3b659eb ggml-org/Qwen3-1.7B-GGUF Qwen3-1.7B-Q8_0.gguf
+	@echo "✓ Test model downloaded successfully"
