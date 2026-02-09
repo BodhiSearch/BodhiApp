@@ -1,8 +1,64 @@
 # Fixtures & Service Setup
 
-## AppServiceStubBuilder
+## Router-Level: build_test_router()
 
-The primary fixture builder. Provides mock defaults for all services; override only what the test needs.
+The primary fixture for auth tier and integration tests. Returns a fully-composed router with all middleware layers (auth, session, CORS).
+
+```rust
+use routes_app::test_utils::build_test_router;
+
+let (router, app_service, _temp) = build_test_router().await.unwrap();
+```
+
+Returns:
+- `Router` -- fully composed with `build_routes()`, session layer, auth middleware
+- `Arc<dyn AppService>` -- for accessing services to seed data or create sessions
+- `Arc<TempDir>` -- keeps temp directory alive for test duration
+
+### Services Wired
+
+| Service | Implementation | Notes |
+|---------|---------------|-------|
+| DbService | TestDbService (real SQLite) | Safe to call |
+| SessionService | SqliteSessionService | Safe to call |
+| SecretService | SecretServiceStub | In-memory, AppRegInfo set |
+| HubService | OfflineHubService | Downloads fail |
+| DataService | LocalDataService | Real, file-based |
+| AuthService | MockAuthService | **Panics** if called |
+| ToolService | MockToolService | **Panics** if called |
+| SharedContext | MockSharedContext | **Panics** if called |
+
+### Creating Authenticated Sessions
+
+```rust
+use routes_app::test_utils::create_authenticated_session;
+
+let cookie = create_authenticated_session(
+  app_service.session_service().as_ref(),
+  &["resource_user"],  // or &["resource_admin"], &["resource_manager"], etc.
+).await.unwrap();
+```
+
+Creates a JWT with specified roles, stores it in the session store, returns a cookie string.
+
+### Data Seeding via Service Handles
+
+```rust
+// Seed aliases via DataService
+let data_service = app_service.data_service();
+// data_service.create_alias(...).await?;
+
+// Seed tokens via DbService
+let db_service = app_service.db_service();
+// db_service.create_api_token(&mut token).await?;
+
+// Access session store
+let session_service = app_service.session_service();
+```
+
+## Handler-Level: AppServiceStubBuilder
+
+For isolated handler tests with specific mock expectations.
 
 ### Minimal (all mocks)
 
@@ -10,7 +66,7 @@ The primary fixture builder. Provides mock defaults for all services; override o
 let app_service = AppServiceStubBuilder::default().build()?;
 ```
 
-### With real DataService (copies test model data into temp dir)
+### With real DataService
 
 ```rust
 let app_service = AppServiceStubBuilder::default()
@@ -18,19 +74,11 @@ let app_service = AppServiceStubBuilder::default()
   .build()?;
 ```
 
-### With real DbService (SQLite)
+### With real DbService
 
 ```rust
 let app_service = AppServiceStubBuilder::default()
   .db_service(Arc::new(db_service))
-  .build()?;
-```
-
-### With real SessionService
-
-```rust
-let app_service = AppServiceStubBuilder::default()
-  .build_session_service(dbfile).await
   .build()?;
 ```
 
@@ -55,7 +103,7 @@ let app_service = AppServiceStubBuilder::default()
   .build()?;
 ```
 
-## Router Construction
+## Handler-Level: Router Construction
 
 Always wrap state in `Arc<DefaultRouterState>` and register only the handler(s) under test.
 
@@ -69,21 +117,6 @@ let router = Router::new()
   .with_state(state);
 ```
 
-For multi-route modules that share state, extract a helper:
-
-```rust
-fn test_router(mock_service: MockToolService) -> anyhow::Result<Router> {
-  let app_service = AppServiceStubBuilder::default()
-    .with_tool_service(Arc::new(mock_service))
-    .build()?;
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    Arc::new(app_service),
-  ));
-  Ok(routes_toolsets(state))
-}
-```
-
 ## DB Fixtures
 
 ### rstest async fixture
@@ -95,7 +128,6 @@ async fn test_handler(
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let db_service = Arc::new(db_service);
-  // Seed data
   db_service.create_api_token(&mut token).await?;
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_service.clone())
@@ -106,20 +138,9 @@ async fn test_handler(
 
 Requires `#[awt]` on the test because of `#[future]`.
 
-### Manual temp dir fixture
-
-```rust
-async fn test_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
-  let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
-  // Seed and test ...
-}
-```
-
-No `#[awt]` needed (sync fixture).
-
 ## Mock Service Injection
 
-### MockToolService example
+### MockToolService
 
 ```rust
 let mut mock = MockToolService::new();

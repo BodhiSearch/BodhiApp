@@ -8,22 +8,54 @@ description: >
   "migrate old tests to canonical pattern", "add coverage for error paths".
 ---
 
-# routes_app Unit Test Skill
+# routes_app Test Skill
 
-Write and migrate unit tests for the `routes_app` crate following uniform conventions.
+Write and migrate tests for the `routes_app` crate using two complementary patterns:
+**router-level** (auth + integration) and **handler-level** (isolated business logic).
 
-## Quick Reference
+## Two Test Patterns
 
-Every route test follows this shape:
+### 1. Router-Level Tests (Auth Tier + Integration)
+
+Use for: auth tier verification, end-to-end request flow through real middleware.
+
+Located in: `crates/routes_app/tests/*_auth_test.rs`
+
+```rust
+use axum::http::StatusCode;
+use pretty_assertions::assert_eq;
+use routes_app::test_utils::{
+  build_test_router, create_authenticated_session, session_request, unauth_request,
+};
+use rstest::rstest;
+use tower::ServiceExt;
+
+#[rstest]
+#[case::list_models("GET", "/bodhi/v1/models")]
+#[case::get_model("GET", "/bodhi/v1/models/some-id")]
+#[tokio::test]
+async fn test_endpoints_reject_unauthenticated(#[case] method: &str, #[case] path: &str) {
+  let (router, _, _temp) = build_test_router().await.unwrap();
+  let response = router
+    .oneshot(unauth_request(method, path))
+    .await
+    .unwrap();
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+}
+```
+
+### 2. Handler-Level Tests (Business Logic)
+
+Use for: isolated handler testing with specific mock expectations, edge cases.
+
+Located in: `crates/routes_app/src/<module>/tests/*_test.rs`
 
 ```rust
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
-  // 1. Build service stub
   let app_service = AppServiceStubBuilder::default().build()?;
-  // 2. Create single-handler router
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     Arc::new(app_service),
@@ -31,39 +63,53 @@ async fn test_<handler>_<scenario>() -> anyhow::Result<()> {
   let router = Router::new()
     .route("/path", post(handler_under_test))
     .with_state(state);
-  // 3. Send request
   let response = router.oneshot(Request::post("/path").json(payload)?).await?;
-  // 4. Assert
   assert_eq!(StatusCode::OK, response.status());
-  let body: ExpectedType = response.json().await?;
-  assert_eq!(expected, body);
   Ok(())
 }
 ```
 
+## When to Use Which
+
+| Scenario | Pattern |
+|----------|---------|
+| Auth tier verification (401/403) | Router-level |
+| Endpoint reachability with correct role | Router-level |
+| Business logic with mock expectations | Handler-level |
+| Edge cases needing MockAuthService/MockToolService/MockSharedContext | Handler-level |
+| Error path testing with specific service failures | Handler-level |
+| SSE streaming response validation | Handler-level |
+
 ## Core Rules
 
-1. **Annotations**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]` on every async test. Add `#[awt]` ONLY when `#[future]` fixture params are used.
-2. **Naming**: `test_<handler_name>_<scenario>` (e.g. `test_create_token_handler_missing_role`)
-3. **Module**: `mod tests` (not `mod test`)
-4. **Return**: Always `-> anyhow::Result<()>` with `Ok(())` at end
-5. **Errors**: Use `?` not `.unwrap()`. Use `.expect("msg")` only in non-`?` contexts (closures, Option chains)
-6. **Assertions**: `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;`
-7. **Error codes**: Assert `body["error"]["code"]`, never message text. Codes are `enum_name-variant_name` in snake_case.
-8. **Router scope**: Minimal single-handler router per test (pure unit test)
-9. **Auth bypass**: Tests bypass auth middleware; use `RequestAuthExt` to set headers directly
+1. **Annotations (handler-level)**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]`. Add `#[awt]` ONLY with `#[future]` params.
+2. **Annotations (router-level)**: `#[rstest]` + `#[tokio::test]` (no `#[anyhow_trace]`, use `.unwrap()`)
+3. **Naming**: `test_<handler_name>_<scenario>` (handler) or `test_<tier>_endpoints_<behavior>` (router)
+4. **Assertions**: `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;`
+5. **Error codes**: Assert `body["error"]["code"]`, never message text
+6. **Router-level "allowed" tests**: Only test endpoints using real services (db_service, data_service). Skip endpoints calling MockAuthService/MockToolService/MockSharedContext.
 
 ## Pattern Files
 
-For detailed patterns with full code examples, see:
-
-- **[fixtures.md](fixtures.md)** -- AppServiceStubBuilder, DB fixtures, mock injection
-- **[requests.md](requests.md)** -- Request construction, auth headers, pagination
+- **[fixtures.md](fixtures.md)** -- AppServiceStubBuilder, build_test_router, DB fixtures, mock injection
+- **[requests.md](requests.md)** -- Request construction, auth headers, session helpers
 - **[assertions.md](assertions.md)** -- Response parsing, error codes, SSE streams, DB verification
-- **[advanced.md](advanced.md)** -- Background tasks, session/cookie tests, parameterized tests, mock servers
+- **[advanced.md](advanced.md)** -- Background tasks, session/cookie tests, parameterized tests, mock servers, auth test organization
 
 ## Standard Imports
 
+### Router-level tests
+```rust
+use axum::http::StatusCode;
+use pretty_assertions::assert_eq;
+use routes_app::test_utils::{
+  build_test_router, create_authenticated_session, session_request, unauth_request,
+};
+use rstest::rstest;
+use tower::ServiceExt;
+```
+
+### Handler-level tests
 ```rust
 use axum::{body::Body, http::Request, routing::{get, post, put, delete}, Router};
 use tower::ServiceExt;
@@ -80,25 +126,16 @@ use server_core::{
 use services::test_utils::AppServiceStubBuilder;
 ```
 
-## Migration Checklist
+## Auth Tier Reference
 
-When migrating existing tests to the canonical pattern:
-
-- [ ] Add `use pretty_assertions::assert_eq;`
-- [ ] Add `use anyhow_trace::anyhow_trace;`
-- [ ] Ensure `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]` annotation order
-- [ ] Add `#[awt]` only if `#[future]` fixture params exist
-- [ ] Replace `.unwrap()` with `?` (or `.expect()` in closures)
-- [ ] Replace manual `Content-Type` + `Body::from()` with `Request::post(uri).json(body)?`
-- [ ] Replace manual auth headers with `.with_user_auth()` / `.with_api_token()`
-- [ ] Convert error message assertions to error code assertions
-- [ ] Remove unused imports (`json!`, auth constant imports, `Body` if no longer direct)
-- [ ] Verify `assert_eq!(expected, actual)` order
-- [ ] Remove `#[allow(unused)]` or dead helper code
-
-## When NOT to Use This Skill
-
-- `routes_ollama/` tests (separate conventions)
-- Integration tests in `routes_all` (auth middleware integration)
-- Frontend/UI tests (use the `playwright` skill instead)
-- Service-layer tests in `services` crate (different patterns)
+| Tier | Role | Endpoints |
+|------|------|-----------|
+| Public | None | /ping, /health, /app/info, /app/setup, /logout |
+| Optional Auth | Any | /bodhi/v1/user, /bodhi/v1/auth/*, /bodhi/v1/user/request-* |
+| User | resource_user | /v1/models, /v1/chat/completions, /api/tags, /bodhi/v1/models (read) |
+| User Session | resource_user | /bodhi/v1/toolsets (CRUD) |
+| User OAuth | resource_user | /bodhi/v1/toolsets (list) |
+| PowerUser | resource_power_user | /bodhi/v1/models (write), /bodhi/v1/modelfiles/*, /bodhi/v1/api-models |
+| PowerUser Session | resource_power_user | /bodhi/v1/tokens |
+| Admin Session | resource_admin | /bodhi/v1/settings, /bodhi/v1/toolset_types |
+| Manager Session | resource_manager | /bodhi/v1/access-requests/*, /bodhi/v1/users |
