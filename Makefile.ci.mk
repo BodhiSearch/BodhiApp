@@ -17,8 +17,9 @@ ci.coverage: ## Run coverage in CI environment
 ci.build-only: ## Build without running tests for faster CI
 	cargo build -p async-openai; \
 	cargo build -p llama_server_proc; \
-	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai") | .name' | sed 's/^/-p /'); \
-	cargo build --all-features $$PACKAGES
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai" and .name != "bodhi") | .name' | sed 's/^/-p /'); \
+	cargo build --all-features $$PACKAGES; \
+	cargo build --all-features -p bodhi
 
 ci.build: ## Build the Tauri application
 	cd crates/bodhi/src-tauri && \
