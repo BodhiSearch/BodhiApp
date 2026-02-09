@@ -205,3 +205,5 @@ pub async fn setup_handler(
   })
 }
 
+#[cfg(test)]
+mod tests;
