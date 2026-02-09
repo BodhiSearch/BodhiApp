@@ -3,11 +3,11 @@ use objs::{ApiError, ErrorMessage};
 use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
-  DefaultAppService, DefaultExaService, DefaultSecretService, DefaultToolService, ExaService,
-  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
-  LocalConcurrencyService, LocalDataService, MokaCacheService, QueueConsumer, QueueProducer,
-  RefreshWorker, SecretService, SecretServiceExt, SessionService, SettingService,
-  SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
+  DefaultAppService, DefaultExaService, DefaultNetworkService, DefaultSecretService,
+  DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
+  KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService, NetworkService,
+  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
+  SettingService, SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -34,6 +34,7 @@ pub struct AppServiceBuilder {
   cache_service: Option<Arc<dyn CacheService>>,
   auth_service: Option<Arc<dyn AuthService>>,
   ai_api_service: Option<Arc<dyn AiApiService>>,
+  network_service: Option<Arc<dyn NetworkService>>,
   encryption_key: Option<Vec<u8>>,
 }
 
@@ -51,6 +52,7 @@ impl AppServiceBuilder {
       cache_service: None,
       auth_service: None,
       ai_api_service: None,
+      network_service: None,
       encryption_key: None,
     }
   }
@@ -196,6 +198,7 @@ impl AppServiceBuilder {
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
     let tool_service = self.get_or_build_tool_service(db_service.clone(), time_service.clone());
+    let network_service = self.get_or_build_network_service();
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -230,6 +233,7 @@ impl AppServiceBuilder {
       concurrency_service,
       queue_producer,
       tool_service,
+      network_service,
     );
     Ok(app_service)
   }
@@ -409,6 +413,15 @@ impl AppServiceBuilder {
       time_service,
       is_production,
     ))
+  }
+
+  /// Gets or builds the network service.
+  fn get_or_build_network_service(&mut self) -> Arc<dyn NetworkService> {
+    if let Some(service) = self.network_service.take() {
+      return service;
+    }
+
+    Arc::new(DefaultNetworkService::default())
   }
 }
 

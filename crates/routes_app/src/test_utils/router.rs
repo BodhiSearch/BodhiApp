@@ -2,8 +2,8 @@ use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
 use server_core::{MockSharedContext, SharedContext};
 use services::{
-  test_utils::{access_token_claims, build_token, AppServiceStubBuilder, TEST_CLIENT_ID},
-  AppService, SessionService,
+  test_utils::{access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID},
+  AppService, SessionService, StubNetworkService,
 };
 use std::{collections::HashMap, sync::Arc};
 use tempfile::TempDir;
@@ -22,6 +22,9 @@ use tower_sessions::{
 /// - `Arc<TempDir>` - temp directory ownership to keep it alive for the test duration
 pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>, Arc<TempDir>)> {
   let mut builder = AppServiceStubBuilder::default();
+  let stub_queue: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
+  let stub_network: Arc<dyn services::NetworkService> =
+    Arc::new(StubNetworkService { ip: Some("192.168.1.100".to_string()) });
   builder
     .with_hub_service()
     .with_data_service()
@@ -30,7 +33,9 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .await
     .with_session_service()
     .await
-    .with_secret_service();
+    .with_secret_service()
+    .queue_producer(stub_queue)
+    .network_service(stub_network);
   let app_service_stub = builder.build()?;
   let temp_home = app_service_stub
     .temp_home

@@ -181,7 +181,7 @@ pub async fn setup_handler(
     }
 
     // Add server IP for future-proofing (even if current request is from loopback)
-    if let Some(server_ip) = get_server_ip() {
+    if let Some(server_ip) = state.app_service().network_service().get_server_ip() {
       let server_uri = format!("{}://{}:{}{}", scheme, server_ip, port, LOGIN_CALLBACK_PATH);
       // Only add if not already present
       if !redirect_uris.contains(&server_uri) {
@@ -262,25 +262,4 @@ pub async fn health_handler() -> Json<PingResponse> {
   Json(PingResponse {
     message: "pong".to_string(),
   })
-}
-
-/// Get the server's local IP address for future-proofing redirect URIs
-fn get_server_ip() -> Option<String> {
-  use std::net::UdpSocket;
-
-  // Try to get local IP by connecting to a remote address
-  // This doesn't actually send data, just determines which local interface would be used
-  if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
-    if let Ok(_) = socket.connect("8.8.8.8:80") {
-      if let Ok(local_addr) = socket.local_addr() {
-        let ip = local_addr.ip();
-        // Only return if it's not a loopback address
-        if !ip.is_loopback() {
-          return Some(ip.to_string());
-        }
-      }
-    }
-  }
-
-  None
 }

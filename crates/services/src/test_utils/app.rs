@@ -7,8 +7,9 @@ use crate::{
   },
   AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, ConcurrencyService,
   DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
-  MockAuthService, MockHubService, MockToolService, MokaCacheService, SecretService,
-  SessionService, SettingService, SqliteSessionService, ToolService,
+  MockAuthService, MockHubService, MockToolService, MokaCacheService, NetworkService,
+  SecretService, SessionService, SettingService, SqliteSessionService, StubNetworkService,
+  ToolService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -69,6 +70,8 @@ pub struct AppServiceStub {
   pub queue_producer: Option<Arc<dyn QueueProducer>>,
   #[builder(default = "self.default_tool_service()")]
   pub tool_service: Option<Arc<dyn ToolService>>,
+  #[builder(default = "self.default_network_service()")]
+  pub network_service: Option<Arc<dyn NetworkService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -106,6 +109,10 @@ impl AppServiceStubBuilder {
 
   fn default_tool_service(&self) -> Option<Arc<dyn ToolService>> {
     Some(Arc::new(MockToolService::default()))
+  }
+
+  fn default_network_service(&self) -> Option<Arc<dyn NetworkService>> {
+    Some(Arc::new(StubNetworkService { ip: None }))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -305,5 +312,9 @@ impl AppService for AppServiceStub {
 
   fn tool_service(&self) -> Arc<dyn ToolService> {
     self.tool_service.clone().unwrap()
+  }
+
+  fn network_service(&self) -> Arc<dyn NetworkService> {
+    self.network_service.clone().unwrap()
   }
 }

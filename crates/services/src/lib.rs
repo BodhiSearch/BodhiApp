@@ -26,6 +26,9 @@ mod cache_service;
 mod data_service;
 mod hub_service;
 
+// -- Network operations
+mod network_service;
+
 // -- Persistence
 pub mod db;
 
@@ -61,6 +64,9 @@ pub use tool_service::*;
 pub use cache_service::*;
 pub use data_service::*;
 pub use hub_service::*;
+
+// -- Re-exports: network operations
+pub use network_service::*;
 
 // -- Re-exports: configuration
 pub use setting_service::*;
