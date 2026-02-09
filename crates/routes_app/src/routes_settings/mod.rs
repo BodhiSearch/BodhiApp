@@ -242,3 +242,6 @@ pub async fn delete_setting_handler(
 
   Ok(Json(updated))
 }
+
+#[cfg(test)]
+mod tests;

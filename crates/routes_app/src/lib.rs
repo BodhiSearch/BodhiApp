@@ -31,8 +31,6 @@ mod routes_setup;
 // -- Test modules
 #[cfg(test)]
 mod routes_api_token_test;
-#[cfg(test)]
-mod routes_settings_test;
 
 // -- Re-exports
 pub use api_dto::*;
