@@ -20,8 +20,10 @@ mod routes_toolsets;
 mod routes_users;
 
 // -- Standalone route files
+mod routes;
 mod routes_api_token;
 mod routes_dev;
+mod routes_proxy;
 mod routes_settings;
 mod routes_setup;
 
@@ -35,10 +37,12 @@ mod routes_setup_test;
 
 // -- Re-exports
 pub use api_dto::*;
+pub use routes::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;
 pub use routes_auth::*;
 pub use routes_dev::*;
+pub use routes_proxy::*;
 pub use routes_models::*;
 pub use routes_oai::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,

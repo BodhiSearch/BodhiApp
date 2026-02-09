@@ -16,6 +16,8 @@ axum-extra = { workspace = true }
 base64 = { workspace = true }
 futures-util = { workspace = true }
 http = { workspace = true }
+hyper-util = { workspace = true }
+include_dir = { workspace = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
@@ -32,13 +34,22 @@ sha2 = { workspace = true }
 
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
+tower-http = { workspace = true, features = ["cors", "trace"] }
 tower-sessions = { workspace = true }
 tracing = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 utoipa = { workspace = true, features = ["axum_extras"] }
+utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
 uuid = { workspace = true, features = ["v4"] }
 
+# Optional deps for test-utils feature
+anyhow = { workspace = true, optional = true }
+maplit = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
+time = { workspace = true, optional = true }
+
 [dev-dependencies]
+routes_app = { path = ".", features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }
@@ -55,6 +66,7 @@ mockito = { workspace = true }
 pretty_assertions = { workspace = true }
 reqwest = { workspace = true }
 rstest = { workspace = true }
+sqlx = { workspace = true }
 tempfile = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
@@ -62,4 +74,13 @@ tower = { workspace = true, features = ["util"] }
 url = { workspace = true }
 
 [features]
-test-utils = ["rstest", "auth_middleware/test-utils"]
+test-utils = [
+  "rstest",
+  "anyhow",
+  "maplit",
+  "tempfile",
+  "time",
+  "auth_middleware/test-utils",
+  "services/test-utils",
+  "server_core/test-utils",
+]
