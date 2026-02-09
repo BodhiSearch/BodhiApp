@@ -29,7 +29,7 @@ Sophisticated event-driven coordination with cross-service integration:
 Comprehensive service initialization with sophisticated dependency management:
 - **AppService Registry Bootstrap**: Complete service composition with DefaultAppService initialization and dependency injection
 - **SharedContext Integration**: LLM server context management with DefaultSharedContext initialization and listener registration
-- **Route Composition Coordination**: Integration with routes_all for complete HTTP route and middleware stack composition
+- **Route Composition Coordination**: Integration with routes_app for complete HTTP route and middleware stack composition
 - **Resource Validation**: Executable path validation, database connectivity checks, and service health verification
 
 ## Architecture Position
@@ -46,7 +46,7 @@ The `server_app` crate serves as BodhiApp's **main HTTP server executable orches
 Complex service initialization coordinated across BodhiApp's entire architecture:
 - **AppService Registry Initialization**: Complete service composition with all 10 business services including authentication, model management, and configuration
 - **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management
-- **Route Integration**: routes_all coordination for complete HTTP route composition with middleware stack and static asset serving
+- **Route Integration**: routes_app coordination for complete HTTP route composition with middleware stack and static asset serving
 - **Error Translation**: Service errors converted to appropriate HTTP responses with comprehensive error handling and graceful degradation
 
 ### Infrastructure Integration Architecture
@@ -71,7 +71,7 @@ Complex application initialization with comprehensive service orchestration:
 1. **Service Registry Initialization**: AppService registry bootstrap with all 10 business services including dependency injection and configuration validation
 2. **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management capabilities
 3. **Listener Registration**: Advanced listener pattern setup with ServerKeepAlive and VariantChangeListener for real-time configuration management
-4. **Route Composition**: routes_all integration for complete HTTP route and middleware stack with static asset serving configuration
+4. **Route Composition**: routes_app integration for complete HTTP route and middleware stack with static asset serving configuration
 5. **Server Lifecycle Management**: TCP listener binding, ready notification, and graceful shutdown coordination with signal handling
 
 ### Advanced Listener Orchestration Workflows
@@ -108,7 +108,7 @@ Comprehensive shutdown coordination with resource cleanup:
 - All services must be initialized through AppService registry pattern for consistent dependency injection and configuration management
 - SharedContext initialization must coordinate with HubService and SettingService for proper LLM server management capabilities
 - Listener registration must follow observer pattern with proper error handling and async coordination
-- Route composition must integrate with routes_all for complete HTTP stack with middleware and static asset serving
+- Route composition must integrate with routes_app for complete HTTP stack with middleware and static asset serving
 
 ### Listener Pattern Integration Rules
 - ServerKeepAlive must coordinate with both SettingsChangeListener and ServerStateListener for comprehensive timer management
@@ -147,7 +147,7 @@ For new server orchestration and coordination patterns:
 
 1. **Service Integration**: Coordinate with AppService registry for consistent business logic access and service composition
 2. **Context Management**: Integrate with SharedContext for LLM server lifecycle coordination and state management
-3. **Route Composition**: Coordinate with routes_all for HTTP route and middleware integration with proper error boundaries
+3. **Route Composition**: Coordinate with routes_app for HTTP route and middleware integration with proper error boundaries
 4. **Resource Management**: Implement proper resource lifecycle management with cleanup and error recovery
 5. **Integration Testing**: Support comprehensive server orchestration testing with realistic service interactions
 
@@ -158,7 +158,7 @@ Comprehensive error management during server initialization:
 - **Service Initialization Failures**: AppService registry initialization errors with detailed service-specific error reporting
 - **SharedContext Bootstrap Errors**: LLM server context initialization failures with executable path validation and resource checking
 - **Listener Registration Failures**: Observer pattern setup errors with proper error isolation and service degradation
-- **Route Composition Errors**: routes_all integration failures with middleware and static asset serving error handling
+- **Route Composition Errors**: routes_app integration failures with middleware and static asset serving error handling
 
 ### Runtime Error Management
 Advanced error handling during server operation:
@@ -187,7 +187,7 @@ Comprehensive testing of server orchestration and lifecycle management:
 Server-level integration testing with service mock coordination:
 - **Service Registry Testing**: AppService registry initialization with comprehensive service mocking
 - **Context Management Testing**: SharedContext integration testing with LLM server lifecycle coordination
-- **Route Composition Testing**: routes_all integration testing with HTTP stack and middleware validation
+- **Route Composition Testing**: routes_app integration testing with HTTP stack and middleware validation
 - **Configuration Testing**: Settings management and listener pattern testing with real-time configuration updates
 
 ### Resource Management Testing

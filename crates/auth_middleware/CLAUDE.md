@@ -86,7 +86,7 @@ Authentication middleware coordinates with HTTP infrastructure for request proce
 - **OpenAI API Security**: Bearer token authentication for OpenAI-compatible endpoints through routes_oai integration
 - **Application API Security**: Session-based and bearer token authentication for application endpoints through routes_app integration
 - **API Token Management**: Database-backed API token validation for external client access to OpenAI endpoints
-- **Route Composition Integration**: Coordinated with routes_all for comprehensive middleware orchestration with hierarchical authorization and multi-layer security
+- **Route Composition Integration**: Coordinated with routes_app for comprehensive middleware orchestration with hierarchical authorization and multi-layer security
 
 ### Domain Object Integration
 Extensive use of objs crate for authentication and authorization:

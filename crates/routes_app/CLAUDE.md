@@ -52,7 +52,7 @@ The crate uses **typed Axum extractors** from `auth_middleware` instead of manua
 
 The `routes_app` crate sits in the **API layer** of BodhiApp's architecture:
 - **Depends on**: `objs` (domain types, errors), `services` (business logic), `commands` (CLI orchestration), `auth_middleware` (extractors, session helpers), `server_core` (RouterState)
-- **Consumed by**: `routes_all` (route composition), `server_app` (standalone server), `bodhi` (Tauri app)
+- **Consumed by**: `server_app` (standalone server), `bodhi` (Tauri app)
 - **Parallel to**: `routes_oai` (OpenAI-compatible endpoints)
 
 ## Cross-Crate Integration Patterns

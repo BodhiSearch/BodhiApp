@@ -1,1 +1,0 @@
-../../crates/routes_all/CLAUDE.md

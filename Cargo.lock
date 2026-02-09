@@ -3315,7 +3315,6 @@ dependencies = [
  "maplit",
  "mockall",
  "objs",
- "routes_all",
  "routes_app",
  "rstest",
  "serde",
@@ -5360,30 +5359,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "routes_all"
-version = "0.0.46-dev"
-dependencies = [
- "anyhow",
- "auth_middleware",
- "axum",
- "hyper-util",
- "include_dir",
- "mockall",
- "objs",
- "routes_app",
- "rstest",
- "serde_json",
- "server_core",
- "services",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "utoipa",
- "utoipa-swagger-ui",
-]
-
-[[package]]
 name = "routes_app"
 version = "0.0.46-dev"
 dependencies = [
@@ -5402,6 +5377,8 @@ dependencies = [
  "futures-util",
  "http",
  "hyper",
+ "hyper-util",
+ "include_dir",
  "jsonwebtoken",
  "llama_server_proc",
  "maplit",
@@ -5414,6 +5391,7 @@ dependencies = [
  "rand 0.9.1",
  "regex",
  "reqwest",
+ "routes_app",
  "rstest",
  "serde",
  "serde_json",
@@ -5421,15 +5399,18 @@ dependencies = [
  "server_core",
  "services",
  "sha2",
+ "sqlx",
  "tempfile",
  "thiserror 2.0.12",
  "time",
  "tokio",
  "tower",
+ "tower-http",
  "tower-sessions",
  "tracing",
  "url",
  "utoipa",
+ "utoipa-swagger-ui",
  "uuid",
  "validator",
 ]
@@ -6003,7 +5984,7 @@ dependencies = [
  "pretty_assertions",
  "rand 0.9.1",
  "reqwest",
- "routes_all",
+ "routes_app",
  "rstest",
  "serde_json",
  "serde_yaml",

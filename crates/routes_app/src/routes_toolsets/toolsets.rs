@@ -57,7 +57,7 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
     .route("/toolsets/{id}", get(get_toolset_handler))
     .route("/toolsets/{id}", put(update_toolset_handler))
     .route("/toolsets/{id}", delete(delete_toolset_handler))
-    // Execute (middleware at routes_all level)
+    // Execute (middleware at routes level)
     .route(
       "/toolsets/{id}/execute/{method}",
       post(execute_toolset_handler),

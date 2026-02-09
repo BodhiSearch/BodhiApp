@@ -10,7 +10,6 @@ members = [
   "crates/server_core",
   "crates/auth_middleware",
   "crates/routes_app",
-  "crates/routes_all",
   "crates/server_app",
   "crates/lib_bodhiserver",
   "crates/lib_bodhiserver_napi",
@@ -37,7 +36,6 @@ services = { path = "crates/services" }
 server_core = { path = "crates/server_core" }
 auth_middleware = { path = "crates/auth_middleware" }
 routes_app = { path = "crates/routes_app" }
-routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
 lib_bodhiserver = { path = "crates/lib_bodhiserver" }
 lib_bodhiserver_napi = { path = "crates/lib_bodhiserver_napi" }

@@ -1,1 +1,0 @@
-../../crates/routes_all/src/test_utils/PACKAGE.md

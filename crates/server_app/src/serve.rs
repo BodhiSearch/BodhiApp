@@ -5,7 +5,7 @@ use crate::{
 use axum::Router;
 use include_dir::Dir;
 use objs::{impl_error_from, AppError, ErrorType};
-use routes_all::build_routes;
+use routes_app::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::{AppService, SettingServiceError};
 use std::sync::Arc;

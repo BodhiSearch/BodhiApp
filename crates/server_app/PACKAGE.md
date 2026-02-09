@@ -210,7 +210,7 @@ let static_router = static_dir.map(|dir| {
   Router::new().fallback_service(static_service)
 });
 
-// Integration with routes_all for complete HTTP stack
+// Integration with routes_app for complete HTTP stack
 let app = build_routes(ctx.clone(), service, static_router);
 ```
 
@@ -219,7 +219,7 @@ let app = build_routes(ctx.clone(), service, static_router);
 - SharedContext bootstrap with HubService and SettingService coordination for LLM server management
 - Advanced listener registration with ServerKeepAlive and VariantChangeListener for real-time coordination
 - Static asset serving with development proxy support and production embedded assets
-- Route composition integration with routes_all for complete HTTP middleware stack
+- Route composition integration with routes_app for complete HTTP middleware stack
 
 ## Cross-Platform Signal Handling Implementation
 
