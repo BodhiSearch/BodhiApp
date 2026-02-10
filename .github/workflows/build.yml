@@ -86,7 +86,7 @@ jobs:
     needs: build-and-test
     if: needs.build-and-test.outputs.coverage-success == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30 
+    timeout-minutes: 60 
     env:
       HF_HOME: /home/runner/.cache/huggingface
     permissions:
