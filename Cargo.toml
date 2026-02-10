@@ -14,7 +14,6 @@ members = [
   "crates/lib_bodhiserver",
   "crates/lib_bodhiserver_napi",
   "crates/bodhi/src-tauri",
-  "crates/integration-tests",
   "crates/ci_optims",
 ]
 resolver = "2"

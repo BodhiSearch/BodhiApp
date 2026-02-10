@@ -37,7 +37,7 @@ The project has a linear dependency structure that must be followed:
 ```
 objs → services → commands → server_core → auth_middleware → 
 routes_oai → routes_app → routes_all → server_app → 
-lib_bodhiserver → lib_bodhiserver_napi → bodhi → integration-tests
+lib_bodhiserver → lib_bodhiserver_napi → bodhi
 ```
 
 Changes should flow from lowest to highest dependency level to avoid compilation breaks.

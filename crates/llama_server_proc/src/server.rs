@@ -113,6 +113,14 @@ pub struct LlamaServer {
 impl LlamaServer {
   pub fn new<T: Into<LlamaServerArgs>>(executable_path: &Path, server_args: T) -> Result<Self> {
     let server_args = server_args.into();
+    if !server_args.model.exists() {
+      let model_path = server_args.model.to_string_lossy().to_string();
+      let model_path = match model_path.find("/huggingface/") {
+        Some(pos) => format!("$HF_HOME/{}", &model_path[pos + "/huggingface/".len()..]),
+        None => model_path,
+      };
+      return Err(ServerError::ModelNotFound(model_path));
+    }
     let port = server_args.port;
     let base_url = format!("http://127.0.0.1:{}", port);
     let client = reqwest::Client::builder()
@@ -274,6 +282,7 @@ impl From<&LlamaServerArgs> for LlamaServerArgs {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use objs::AppError;
   use std::path::PathBuf;
 
   #[test]
@@ -313,5 +322,41 @@ mod tests {
       ],
       cmd_args.iter().map(|s| s.as_str()).collect::<Vec<_>>()
     );
+  }
+
+  #[test]
+  fn test_model_not_found_sanitizes_huggingface_path() {
+    let args = LlamaServerArgsBuilder::default()
+      .model(PathBuf::from(
+        "/home/user/.cache/huggingface/hub/models--org--name/model.gguf",
+      ))
+      .alias("test".to_string())
+      .port(12345u16)
+      .build()
+      .unwrap();
+
+    let err = LlamaServer::new(Path::new("/path/to/exec"), args).unwrap_err();
+    assert_eq!(
+      "Model file does not exist: $HF_HOME/hub/models--org--name/model.gguf.",
+      err.to_string()
+    );
+    assert_eq!("server_error-model_not_found", err.code());
+  }
+
+  #[test]
+  fn test_model_not_found_preserves_non_huggingface_path() {
+    let args = LlamaServerArgsBuilder::default()
+      .model(PathBuf::from("/some/other/path/model.gguf"))
+      .alias("test".to_string())
+      .port(12345u16)
+      .build()
+      .unwrap();
+
+    let err = LlamaServer::new(Path::new("/path/to/exec"), args).unwrap_err();
+    assert_eq!(
+      "Model file does not exist: /some/other/path/model.gguf.",
+      err.to_string()
+    );
+    assert_eq!("server_error-model_not_found", err.code());
   }
 }

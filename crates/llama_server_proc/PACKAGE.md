@@ -13,6 +13,7 @@ See [crates/llama_server_proc/CLAUDE.md](crates/llama_server_proc/CLAUDE.md) for
 pub trait Server: std::fmt::Debug + Send + Sync {
   async fn start(&self) -> Result<()>;
   async fn stop(self: Box<Self>) -> Result<()>;
+  async fn stop_unboxed(self) -> Result<()>;
   async fn chat_completions(&self, body: &Value) -> Result<Response>;
   async fn embeddings(&self, body: &Value) -> Result<Response>;
   // ...
@@ -70,7 +71,7 @@ async fn start(&self) -> Result<()> {
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
     .spawn()?;
-  
+
   Self::monitor_output(stdout, stderr);
   self.wait_for_server_ready().await?;
 }
@@ -135,10 +136,10 @@ pub enum ServerError {
 ```
 
 **Error Messages** (defined via thiserror templates in `src/error.rs`):
-- ServerNotReady: "Server not ready: the server process has not completed initialization."
-- StartupError: "Failed to start server: {0}."
-- HealthCheckError: "Server health check failed: {0}."
-- TimeoutError: "Server health check timed out after {0} seconds."
+- ServerNotReady: "Model server is starting up. Please wait and try again."
+- StartupError: "Failed to start model server: {0}."
+- HealthCheckError: "Model server health check failed: {0}."
+- TimeoutError: "Model server did not respond within {0} seconds."
 
 ### Build System Architecture
 
@@ -178,7 +179,7 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
 pub fn llama2_7b() -> PathBuf {
   let model_path = dirs::home_dir().unwrap()
     .join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/...");
-  assert!(model_path.exists(), "Model path does not exist: {}", model_path.display());
+  assert!(model_path.exists());
   model_path.canonicalize().unwrap()
 }
 ```
@@ -195,13 +196,74 @@ pub fn mock_response(body: impl Into<String>) -> Response {
 ## Core Implementation Files
 
 ### Main Components
-- `src/lib.rs` - Library exports
+- `src/lib.rs` - Library exports and module declarations
 - `src/server.rs` - Server trait definition and LlamaServer implementation
 - `src/error.rs` - ServerError enum with thiserror templates
 - `src/build_envs.rs` - Build environment constants and configuration
 - `src/test_utils/mod.rs` - Testing utilities and fixtures
 - `build.rs` - Build script for cross-platform binary management
-- `tests/test_server_proc.rs` - Integration tests with real server processes
+
+### Test Files
+- `tests/test_server_proc.rs` - Integration tests with real server processes (Qwen3-1.7B from HF cache)
+- `tests/test_live_server_proc.rs` - Live process lifecycle tests with bundled Llama-68M model
+
+### Test Data
+- `tests/data/live/huggingface/` - Mirrors HuggingFace cache structure for self-contained live tests
+- `tests/data/live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/` - Primary live test model (Q8_0 quantized, ~68M params)
+- `tests/data/live/huggingface/hub/models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/` - Additional test model
+
+## Test Infrastructure
+
+### Live Tests (`tests/test_live_server_proc.rs`)
+
+Self-contained tests that validate LlamaServer process lifecycle using bundled model files.
+
+**Key fixtures:**
+```rust
+#[fixture]
+fn lookup_path() -> PathBuf {
+  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("bin")
+}
+
+#[fixture]
+fn tests_data() -> PathBuf {
+  PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    .join("tests")
+    .join("data")
+}
+```
+
+**Test pattern** -- starts server, verifies readiness, stops explicitly:
+```rust
+#[rstest]
+#[tokio::test]
+async fn test_live_llama_server_load_exec_with_server(
+  tests_data: PathBuf,
+  lookup_path: PathBuf,
+) -> anyhow::Result<()> {
+  let server = LlamaServer::new(&exec_path, args)?;
+  let result = server.start().await;
+  server.stop_unboxed().await?;
+  assert!(result.is_ok());
+  Ok(())
+}
+```
+
+**Prerequisites:**
+- Real llama-server binary at `bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
+- Model file at `tests/data/live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/.../llama-68m-chat-v1.q8_0.gguf`
+
+### Integration Tests (`tests/test_server_proc.rs`)
+
+Full inference validation tests using Qwen3-1.7B from the system HuggingFace cache.
+
+**Prerequisites:**
+- Real llama-server binary (same path as live tests)
+- Qwen3-1.7B model in `~/.cache/huggingface/hub/` (or `$HF_HOME/hub/`)
+
+**Test cases:**
+- `test_server_proc_chat_completions` -- Non-streaming chat completion, validates response content and model alias
+- `test_server_proc_chat_completions_streamed` -- Streaming SSE chat completion, validates chunk parsing and finish_reason
 
 ## Usage Examples
 
@@ -241,7 +303,7 @@ mock_server
   .expect_start()
   .times(1)
   .returning(|| Ok(()));
-  
+
 mock_server
   .expect_chat_completions()
   .with(eq(request_body))
@@ -255,10 +317,16 @@ mock_server
 # Build default variant for current platform
 cargo build -p llama_server_proc
 
-# Run tests
+# Run unit tests only
 cargo test -p llama_server_proc
 
-# Run integration tests (requires model files)
+# Run live tests (requires llama-server binary + bundled Llama-68M model)
+cargo test -p llama_server_proc --test test_live_server_proc
+
+# Run integration tests (requires llama-server binary + Qwen3-1.7B in HF cache)
+cargo test -p llama_server_proc --test test_server_proc
+
+# Run with test-utils feature
 cargo test -p llama_server_proc --features test-utils
 ```
 

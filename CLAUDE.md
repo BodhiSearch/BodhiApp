@@ -90,7 +90,6 @@ The project uses a Cargo workspace with these main crates:
 **Utility Crates:**
 - `llama_server_proc` - LLM process management
 - `lib_bodhiserver_napi` - Node.js bindings for server functionality
-- `integration-tests` - End-to-end testing
 - `xtask` - Build automation and code generation
 
 ### Frontend Structure

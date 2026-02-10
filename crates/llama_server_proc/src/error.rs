@@ -24,6 +24,10 @@ pub enum ServerError {
   #[error("Model server did not respond within {0} seconds.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   TimeoutError(u64),
+
+  #[error("Model file does not exist: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  ModelNotFound(String),
 }
 
 impl_error_from!(::std::io::Error, ServerError::IoError, ::objs::IoError);

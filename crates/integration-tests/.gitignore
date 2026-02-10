@@ -1,4 +1,0 @@
-tests/data/live/huggingface/hub/models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/blobs
-tests/data/live/huggingface/hub/models--ggml-org--Qwen3-1.7B-GGUF/blobs
-tests/data/live/huggingface/hub/.locks/
-tests/data/live/huggingface/.check_for_update_done

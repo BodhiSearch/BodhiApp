@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code when working with the llama_server_proc crate.
 
+See [crates/llama_server_proc/PACKAGE.md](crates/llama_server_proc/PACKAGE.md) for implementation details.
+
 ## Purpose
 
 The `llama_server_proc` crate provides comprehensive process management and HTTP client functionality for interacting with llama.cpp server processes in BodhiApp's local LLM inference infrastructure. It serves as the foundational layer for managing external llama.cpp server processes with sophisticated lifecycle management, health monitoring, and cross-platform binary distribution.
@@ -11,6 +13,8 @@ The `llama_server_proc` crate provides comprehensive process management and HTTP
 ### Process Management System
 
 The crate implements a sophisticated process lifecycle management system that handles llama.cpp server processes with comprehensive monitoring and health checking. The architecture provides async trait-based abstraction (`Server` trait) enabling dependency injection and testing through mockall integration, while the concrete `LlamaServer` implementation manages actual process spawning, monitoring, and cleanup with automatic resource management through Drop trait implementation.
+
+The `Server` trait exposes two stop methods: `stop(self: Box<Self>)` for trait-object consumers and `stop_unboxed(self)` for direct struct usage. This dual-method design addresses Rust's limitation where `self` methods cannot be called on `Box<dyn Trait>` -- higher-level services hold `Box<dyn Server>` and call `stop()`, while tests and direct consumers can call `stop_unboxed()` without boxing overhead.
 
 ### Cross-Platform Binary Distribution Architecture
 
@@ -49,6 +53,37 @@ Higher-level services integrate with this crate through the `Server` trait abstr
 
 The build system coordinates with BodhiApp's overall build infrastructure through environment variable configuration and Makefile integration, supporting both CI/CD automated binary downloading and local development build workflows. The system uses file locking to coordinate concurrent builds and integrates with the project's cross-platform build strategy.
 
+## Testing Architecture
+
+### Two-Tier Test Strategy
+
+The crate employs two distinct test tiers with fundamentally different purposes:
+
+1. **Integration tests with large models** (`tests/test_server_proc.rs`): Tests use Qwen3-1.7B from the system HuggingFace cache (`~/.cache/huggingface/hub`). These tests validate full chat completion flows (streaming and non-streaming) against a real llama.cpp server, requiring significant model download (~1.7GB) and startup time. They require the `HF_HOME` or default HuggingFace cache to contain the model.
+
+2. **Live tests with bundled lightweight models** (`tests/test_live_server_proc.rs`): Tests use Llama-68M (afrideva/Llama-68M-Chat-v1-GGUF), a tiny 68M parameter model stored directly in the test data directory at `tests/data/live/huggingface/`. These tests validate core process lifecycle (start/stop) without needing external model downloads. The model's small size enables fast startup and minimal resource usage, making these tests suitable for CI/CD environments.
+
+### Why Two Tiers
+
+The integration tests (`test_server_proc.rs`) validate end-to-end inference correctness with production-sized models, covering streaming SSE parsing, response format validation, and model alias propagation. The live tests (`test_live_server_proc.rs`) focus on process management correctness -- can the binary be found, spawned, health-checked, and stopped cleanly? By using a bundled 68M model, live tests avoid external dependencies while still exercising the real llama.cpp binary.
+
+### Live Test Data Layout
+
+The `tests/data/live/huggingface/` directory mirrors the standard HuggingFace cache structure:
+- `hub/models--afrideva--Llama-68M-Chat-v1-GGUF/` -- GGUF quantized model for process lifecycle tests
+- `hub/models--Felladrin--Llama-68M-Chat-v1/` -- Original safetensors model (source reference)
+- `hub/models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/` -- Additional test model
+- Snapshots use symlinks to blobs, exactly as HuggingFace CLI downloads them
+
+### Test Binary Resolution
+
+Both test tiers resolve the llama-server binary using compile-time constants from `build_envs.rs`:
+- `BUILD_TARGET` -- platform triple (e.g., `aarch64-apple-darwin`)
+- `DEFAULT_VARIANT` -- acceleration variant (e.g., `metal`, `cpu`)
+- `EXEC_NAME` -- executable name (e.g., `llama-server`)
+
+The binary is expected at `bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}` relative to the crate manifest directory.
+
 ## Important Constraints
 
 ### Process Lifecycle Management Constraints
@@ -76,7 +111,3 @@ The test_utils module provides sophisticated model fixture management through rs
 ### HTTP Response Mocking Patterns
 
 The `mock_response` function enables comprehensive HTTP response mocking for unit tests by creating reqwest Response objects from hyper response builders. This pattern allows tests to simulate llama.cpp server responses without requiring actual server processes, enabling fast and reliable unit testing of HTTP client functionality.
-
-### Integration Test Patterns
-
-Integration tests demonstrate sophisticated server lifecycle testing using real llama.cpp executables and models, with rstest fixtures managing server startup and cleanup. The tests validate both streaming and non-streaming chat completions, demonstrating proper request/response handling and server process management in realistic scenarios using actual Phi-4 Mini Instruct models from Hugging Face cache.

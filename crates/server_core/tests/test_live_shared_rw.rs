@@ -1,6 +1,4 @@
-use llama_server_proc::{
-  LlamaServer, LlamaServerArgsBuilder, Server, BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME,
-};
+use llama_server_proc::LlamaServerArgsBuilder;
 use rstest::{fixture, rstest};
 use server_core::{DefaultServerFactory, DefaultSharedContext, SharedContext};
 use services::{test_utils::OfflineHubService, HfHubService, MockSettingService};
@@ -19,35 +17,6 @@ fn tests_data() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
     .join("data")
-}
-
-#[rstest]
-#[tokio::test]
-async fn test_live_llama_server_load_exec_with_server(
-  tests_data: PathBuf,
-  lookup_path: PathBuf,
-) -> anyhow::Result<()> {
-  let llama_68m = tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf");
-  let exec_path = &lookup_path
-    .join(BUILD_TARGET)
-    .join(DEFAULT_VARIANT)
-    .join(EXEC_NAME);
-  let server = LlamaServer::new(
-    &exec_path,
-    LlamaServerArgsBuilder::default()
-      .alias("testalias")
-      .model(llama_68m)
-      .build()
-      .unwrap(),
-  )?;
-  let result = server.start().await;
-  server.stop_unboxed().await?;
-  assert!(
-    result.is_ok(),
-    "server start failed with error: {:?}",
-    result
-  );
-  Ok(())
 }
 
 #[rstest]

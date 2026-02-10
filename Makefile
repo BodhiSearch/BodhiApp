@@ -116,4 +116,5 @@ test.model-download: ## Download test model for integration tests (Qwen3-1.7B Q8
 	@echo "==> Downloading test model for integration tests"
 	@command -v hf >/dev/null 2>&1 || { echo "Error: 'hf' command not found. Install with: pip install -U huggingface_hub[cli]"; exit 1; }
 	@hf download --revision daeb8e2d528a760970442092f6bf1e55c3b659eb ggml-org/Qwen3-1.7B-GGUF Qwen3-1.7B-Q8_0.gguf
+	@hf download --revision 4bcbc666d2f0d2b04d06f046d6baccdab79eac61 afrideva/Llama-68M-Chat-v1-GGUF llama-68m-chat-v1.q8_0.gguf
 	@echo "✓ Test model downloaded successfully"

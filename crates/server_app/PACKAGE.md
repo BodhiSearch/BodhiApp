@@ -12,7 +12,7 @@ The `server_app` crate serves as BodhiApp's **main HTTP server executable orches
 Advanced server lifecycle management with comprehensive coordination:
 
 ```rust
-// Pattern structure (see crates/server_app/src/server.rs for complete implementation)
+// Pattern structure (see crates/server_app/src/server.rs)
 pub struct Server {
   host: String,
   port: u16,
@@ -38,7 +38,7 @@ pub fn build_server_handle(host: &str, port: u16) -> ServerHandle {
 Sophisticated shutdown coordination with resource cleanup:
 
 ```rust
-// Shutdown callback pattern (see crates/server_app/src/serve.rs for complete implementation)
+// Shutdown callback pattern (see crates/server_app/src/serve.rs)
 #[async_trait::async_trait]
 pub trait ShutdownCallback: Send + Sync {
   async fn shutdown(&self);
@@ -46,15 +46,6 @@ pub trait ShutdownCallback: Send + Sync {
 
 pub struct ShutdownContextCallback {
   ctx: Arc<dyn SharedContext>,
-}
-
-#[async_trait::async_trait]
-impl ShutdownCallback for ShutdownContextCallback {
-  async fn shutdown(&self) {
-    if let Err(err) = self.ctx.stop().await {
-      tracing::warn!(err = ?err, "error stopping llama context");
-    }
-  }
 }
 ```
 
@@ -71,62 +62,28 @@ impl ShutdownCallback for ShutdownContextCallback {
 Intelligent server lifecycle management with configurable keep-alive coordination:
 
 ```rust
-// Keep-alive pattern (see crates/server_app/src/listener_keep_alive.rs for complete implementation)
-#[derive(Debug)]
+// Keep-alive pattern (see crates/server_app/src/listener_keep_alive.rs)
 pub struct ServerKeepAlive {
   keep_alive: RwLock<i64>,
   timer_handle: RwLock<Option<JoinHandle<()>>>,
   shared_context: Arc<dyn SharedContext>,
 }
-
-impl ServerKeepAlive {
-  pub fn new(shared_context: Arc<dyn SharedContext>, keep_alive: i64) -> Self {
-    Self {
-      keep_alive: RwLock::new(keep_alive),
-      timer_handle: RwLock::new(None),
-      shared_context,
-    }
-  }
-
-  fn start_timer(&self) {
-    let keep_alive = *self.keep_alive.read().unwrap();
-    match keep_alive {
-      -1 => { /* Never stop - cancel timer */ }
-      0 => { /* Immediate stop - stop server now */ }
-      n => { /* Timed stop - start timer for n seconds */ }
-    }
-  }
-}
+// Values: -1 = never stop, 0 = immediate stop, n = stop after n seconds
 ```
 
 ### VariantChangeListener Implementation
 Dynamic execution variant switching with SharedContext coordination:
 
 ```rust
-// Variant change pattern (see crates/server_app/src/listener_variant.rs for complete implementation)
-#[derive(Debug, derive_new::new)]
+// Variant change pattern (see crates/server_app/src/listener_variant.rs)
 pub struct VariantChangeListener {
   ctx: Arc<dyn SharedContext>,
 }
 
 impl SettingsChangeListener for VariantChangeListener {
-  fn on_change(&self, key: &str, prev_value: &Option<serde_yaml::Value>, _prev_source: &SettingSource, new_value: &Option<serde_yaml::Value>, _new_source: &SettingSource) {
+  fn on_change(&self, key: &str, ...) {
     if key != BODHI_EXEC_VARIANT { return; }
-    if prev_value.is_some() && new_value.is_some() && prev_value.as_ref() == new_value.as_ref() { return; }
-    
-    let ctx_clone = self.ctx.clone();
-    let new_value = if let Some(serde_yaml::Value::String(new_value)) = new_value {
-      new_value.to_string()
-    } else {
-      tracing::error!("BODHI_EXEC_VARIANT is not set, or not a string type, skipping updating the server config");
-      return;
-    };
-    
-    task::spawn(async move {
-      if let Err(err) = ctx_clone.set_exec_variant(&new_value).await {
-        tracing::error!(?err, "failed to set exec variant");
-      }
-    });
+    // Spawns async task to update SharedContext exec variant
   }
 }
 ```
@@ -141,81 +98,19 @@ impl SettingsChangeListener for VariantChangeListener {
 ## Service Bootstrap Orchestration Architecture
 
 ### Complete Service Initialization Pattern
-Comprehensive service bootstrap with dependency injection and configuration validation:
+The bootstrap sequence in `crates/server_app/src/serve.rs`:
 
-```rust
-// Service bootstrap pattern (see crates/server_app/src/serve.rs for complete implementation)
-impl ServeCommand {
-  pub async fn get_server_handle(
-    &self,
-    service: Arc<dyn AppService>,
-    static_dir: Option<&'static Dir<'static>>,
-  ) -> Result<ServerShutdownHandle> {
-    let ServeCommand::ByParams { host, port } = self;
-    let setting_service = service.setting_service();
-    
-    // 1. Create server handle with lifecycle coordination
-    let ServerHandle { server, shutdown, ready_rx } = build_server_handle(host, *port);
-
-    // 2. Validate executable path for LLM server
-    let exec_path = service.setting_service().exec_path_from();
-    if !exec_path.exists() {
-      error!("exec not found at {}", exec_path.to_string_lossy());
-      return Err(ContextError::ExecNotExists(exec_path.to_string_lossy().to_string()))?;
-    }
-
-    // 3. Initialize SharedContext with service coordination
-    let ctx = DefaultSharedContext::new(service.hub_service(), service.setting_service());
-    let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
-    
-    // 4. Register advanced listeners for real-time coordination
-    setting_service.add_listener(Arc::new(VariantChangeListener::new(ctx.clone())));
-    let keep_alive = Arc::new(ServerKeepAlive::new(ctx.clone(), setting_service.keep_alive()));
-    setting_service.add_listener(keep_alive.clone());
-    ctx.add_state_listener(keep_alive).await;
-
-    // 5. Create static router with environment-specific configuration
-    let static_router = static_dir.map(|dir| {
-      let static_service = ServeDir::new(dir).append_index_html_on_directories(true);
-      Router::new().fallback_service(static_service)
-    });
-
-    // 6. Build complete route composition with middleware stack
-    let app = build_routes(ctx.clone(), service, static_router);
-    
-    // 7. Start server with graceful shutdown coordination
-    let join_handle = tokio::spawn(async move {
-      let callback = Box::new(ShutdownContextCallback { ctx });
-      server.start_new(app, Some(callback)).await
-    });
-    
-    // 8. Wait for ready notification and provide server URL information
-    ready_rx.await?;
-    let server_url = format!("{}://{host}:{port}", setting_service.scheme());
-    let public_url = setting_service.public_server_url();
-    println!("server started on server_url={server_url}, public_url={public_url}");
-    
-    Ok(ServerShutdownHandle { join_handle, shutdown })
-  }
-}
-```
-
-### Static Asset Serving Architecture
-Dynamic UI serving with environment-specific configuration:
-
-```rust
-// Static asset serving pattern with environment detection
-let static_router = static_dir.map(|dir| {
-  let static_service = ServeDir::new(dir).append_index_html_on_directories(true);
-  Router::new().fallback_service(static_service)
-});
-
-// Integration with routes_app for complete HTTP stack
-let app = build_routes(ctx.clone(), service, static_router);
-```
+1. Create server handle with lifecycle coordination channels
+2. Validate executable path for LLM server binary
+3. Initialize SharedContext with HubService and SettingService
+4. Register VariantChangeListener and ServerKeepAlive listeners
+5. Build static router with environment-specific configuration
+6. Compose routes via `build_routes()` integration with routes_app
+7. Spawn server task with ShutdownContextCallback
+8. Wait for ready notification and report server URL
 
 **Service Bootstrap Features**:
-- Complete AppService registry initialization with all 10 business services
+- Complete AppService registry initialization with all business services
 - SharedContext bootstrap with HubService and SettingService coordination for LLM server management
 - Advanced listener registration with ServerKeepAlive and VariantChangeListener for real-time coordination
 - Static asset serving with development proxy support and production embedded assets
@@ -224,88 +119,25 @@ let app = build_routes(ctx.clone(), service, static_router);
 ## Cross-Platform Signal Handling Implementation
 
 ### Signal Coordination Architecture
-Comprehensive signal handling with cross-platform support:
-
-```rust
-// Signal handling pattern (see crates/server_app/src/shutdown.rs for complete implementation)
-pub async fn shutdown_signal() {
-  let ctrl_c = async {
-    signal::ctrl_c()
-      .await
-      .expect("failed to install Ctrl+C handler");
-    tracing::info!("received Ctrl+C, stopping server");
-  };
-
-  #[cfg(unix)]
-  let terminate = async {
-    signal::unix::signal(signal::unix::SignalKind::terminate())
-      .expect("failed to install signal handler")
-      .recv()
-      .await;
-    tracing::info!("received SIGTERM, stopping server");
-  };
-
-  #[cfg(not(unix))]
-  let terminate = async {
-    signal::windows::ctrl_break()
-      .expect("failed to install Ctrl+Break handler")
-      .recv()
-      .await;
-    tracing::info!("received Ctrl+Break, stopping server");
-  };
-
-  tokio::select! {
-    _ = ctrl_c => {},
-    _ = terminate => {},
-  }
-}
-```
-
-**Signal Handling Features**:
-- Cross-platform signal support (Unix SIGTERM, Windows Ctrl+Break) with proper signal registration
-- Graceful shutdown coordination with resource cleanup and service termination
-- Signal handler installation with error handling and fallback mechanisms
-- Integration with server lifecycle for clean shutdown coordination
+See `crates/server_app/src/shutdown.rs` for the `shutdown_signal()` function implementing:
+- Unix: Ctrl+C and SIGTERM via `tokio::signal::unix::signal(SignalKind::terminate())`
+- Windows: Ctrl+C and Ctrl+Break via `tokio::signal::windows::ctrl_break()`
+- Uses `tokio::select!` to await whichever signal arrives first
 
 ## Error Handling Architecture
 
 ### Server-Specific Error Types
-Comprehensive error handling with domain-specific error types:
+See `crates/server_app/src/error.rs` for `TaskJoinError` and `crates/server_app/src/serve.rs` for `ServeError`:
 
 ```rust
-// Server error types (see crates/server_app/src/error.rs for TaskJoinError, crates/server_app/src/serve.rs for ServeError)
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("task_join_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
-pub struct TaskJoinError {
-  #[from]
-  source: JoinError,
-}
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
+// ServeError aggregates all server-layer errors
 pub enum ServeError {
-  #[error(transparent)]
-  Setting(#[from] SettingServiceError),
-  #[error(transparent)]
-  Join(#[from] TaskJoinError),
-  #[error(transparent)]
-  Context(#[from] ContextError),
-  #[error(transparent)]
-  Server(#[from] ServerError),
-  #[error("unknown")]
-  #[error_meta(error_type = ErrorType::Unknown)]
+  Setting(SettingServiceError),
+  Join(TaskJoinError),
+  Context(ContextError),
+  Server(ServerError),
   Unknown,
 }
-```
-
-### Error Coordination Patterns
-Sophisticated error handling across service boundaries:
-
-```rust
-// Error handling with transparent wrapping and context preservation
-impl_error_from!(tokio::task::JoinError, ServeError::Join, TaskJoinError);
-impl_error_from!(::std::io::Error, ServerError::Io, ::objs::IoError);
 ```
 
 **Error Handling Features**:
@@ -314,100 +146,142 @@ impl_error_from!(::std::io::Error, ServerError::Io, ::objs::IoError);
 - Comprehensive error boundaries for server lifecycle, service bootstrap, and listener operations
 - Error isolation prevents listener failures from interrupting server operation
 
-## Extension Guidelines for Server Orchestration
+## Live Integration Test Infrastructure
 
-### Adding New Server Lifecycle Components
-When creating new server lifecycle management features:
+### File Structure
 
-1. **Listener Pattern Integration**: Implement SettingsChangeListener or ServerStateListener for real-time configuration and state management
-2. **Service Bootstrap Extensions**: Coordinate with AppService registry for new service initialization and dependency injection
-3. **Shutdown Callback Integration**: Implement ShutdownCallback trait for proper resource cleanup during graceful shutdown
-4. **Error Handling**: Create server-specific errors that implement AppError trait for consistent error reporting and recovery
-5. **Testing Infrastructure**: Use comprehensive service mocking for isolated server lifecycle testing scenarios
+| File | Purpose |
+|------|---------|
+| `crates/server_app/tests/utils/live_server_utils.rs` | Inline AppService setup, `live_server` fixture, OAuth2 helpers |
+| `crates/server_app/tests/utils/tool_call.rs` | SSE stream parsing, weather tool definitions |
+| `crates/server_app/tests/utils/mod.rs` | Re-exports |
+| `crates/server_app/tests/resources/.env.test` | OAuth2 credentials (gitignored) |
+| `crates/server_app/tests/resources/.env.test.example` | Template for required env vars |
 
-### Extending Configuration Management
-For new configuration and settings management patterns:
-
-1. **Settings Listener Integration**: Implement SettingsChangeListener for real-time configuration updates without service restart
-2. **Environment Validation**: Add configuration validation during server bootstrap with clear error reporting
-3. **Service Coordination**: Coordinate configuration changes across service boundaries with proper error handling
-4. **Dynamic Updates**: Support runtime configuration updates through listener pattern with validation and rollback
-5. **Configuration Testing**: Test configuration management with different environment scenarios and validation failures
-
-## Server Testing Architecture
-
-### Server Lifecycle Testing Patterns
-Comprehensive testing of server orchestration and lifecycle management:
+### TestServerHandle
+The central test fixture struct returned by the `live_server` rstest fixture:
 
 ```rust
-// Server testing pattern (see crates/server_app/src/serve.rs for complete test implementation)
-#[rstest]
-#[tokio::test]
-async fn test_server_fails_when_port_already_in_use(temp_dir: TempDir) -> anyhow::Result<()> {
-  // Bind to a random port first to ensure it's in use
-  let port = 8000 + (rand::random::<u16>() % 1000);
-  let host = "127.0.0.1";
-  let addr = format!("{}:{}", host, port);
-  let _listener = TcpListener::bind(&addr).await?;
-  
-  let app_service = Arc::new(
-    AppServiceStubBuilder::default()
-      .with_temp_home_as(temp_dir)
-      .with_session_service().await
-      .with_db_service().await
-      .build().unwrap(),
-  );
-  
-  let serve_command = ServeCommand::ByParams { host: host.to_string(), port };
-  let result = serve_command.get_server_handle(app_service, None).await;
-  
-  assert!(result.is_err());
-  match result.unwrap_err() {
-    ServeError::Server(ServerError::Io(_)) => {
-      // Expected - binding to port should fail
-    }
-    other => panic!("Expected IO error for port conflict, got: {:?}", other),
-  }
-  Ok(())
+// See crates/server_app/tests/utils/live_server_utils.rs
+pub struct TestServerHandle {
+  pub temp_cache_dir: TempDir,
+  pub host: String,
+  pub port: u16,
+  pub handle: ServerShutdownHandle,
+  pub app_service: Arc<dyn AppService>,
 }
 ```
 
-### Listener Integration Testing
-Advanced listener pattern testing with service coordination:
+Each test receives a fully bootstrapped HTTP server on a random port with:
+- Temp directory for `BODHI_HOME` (app DB, session DB, secrets, settings)
+- Real HuggingFace cache at `~/.cache/huggingface` via `OfflineHubService`
+- Real OAuth2 resource client created dynamically via Keycloak admin API
+- Real llama.cpp binary from `crates/llama_server_proc/bin/`
+
+### Authentication Helpers
 
 ```rust
-// Listener testing patterns with comprehensive mock coordination
-#[rstest]
-#[tokio::test]
-async fn test_keep_alive_setting_changes_starts_timer(#[case] from: i64, #[case] to: i64) {
-  let mut mock_ctx = MockSharedContext::new();
-  mock_ctx.expect_stop().never();
+// Get OAuth2 tokens via resource-owner password grant
+pub async fn get_oauth_tokens(app_service: &dyn AppService)
+  -> anyhow::Result<(String, String)>
 
-  let keep_alive = ServerKeepAlive::new(Arc::new(mock_ctx), from);
-  keep_alive.on_state_change(ServerState::Start).await;
+// Create session record in SQLite session store
+pub async fn create_authenticated_session(
+  app_service: &Arc<dyn AppService>,
+  access_token: &str,
+  refresh_token: &str,
+) -> anyhow::Result<String>
 
-  keep_alive.on_change(
-    BODHI_KEEP_ALIVE_SECS,
-    &Some(Value::Number(from.into())),
-    &SettingSource::SettingsFile,
-    &Some(Value::Number(to.into())),
-    &SettingSource::SettingsFile,
-  );
-  
-  tokio::time::sleep(Duration::from_millis(100)).await;
-  assert_eq!(*keep_alive.keep_alive.read().unwrap(), to);
-  assert!(keep_alive.timer_handle.read().unwrap().is_some());
-}
+// Build session cookie for reqwest client
+pub fn create_session_cookie(session_id: &str) -> Cookie
 ```
 
-**Testing Infrastructure Features**:
-- Server lifecycle testing with AppServiceStubBuilder for comprehensive service mocking
-- Listener pattern testing with MockSharedContext for isolated listener behavior validation
-- Error scenario testing with port conflicts, service failures, and configuration errors
-- Integration testing with realistic service interactions and resource management
+### SSE Stream Parsing Utilities
+See `crates/server_app/tests/utils/tool_call.rs`:
+
+- `get_weather_tool()` -- Returns `ChatCompletionTools` with `get_current_temperature` function definition
+- `parse_streaming_tool_calls(response_text)` -- Parses SSE `data:` lines, accumulates tool call arguments by index, returns `(Vec<Value>, String)` of tool calls and finish reason
+- `parse_streaming_content(response_text)` -- Parses SSE `data:` lines, concatenates `delta.content` strings, returns `(String, String)` of content and finish reason
+
+### Live Test Files
+
+| Test File | Tests | Key Assertions |
+|-----------|-------|----------------|
+| `test_live_chat_completions_non_streamed.rs` | `test_live_chat_completions_non_streamed` | Model available in /v1/models, response contains "Tuesday", finish_reason is "stop" |
+| `test_live_chat_completions_streamed.rs` | `test_live_chat_completions_stream` | SSE stream parses correctly, content contains "Tuesday", last chunk has finish_reason "stop" |
+| `test_live_tool_calling_non_streamed.rs` | `test_live_tool_calling_non_streamed`, `test_live_tool_calling_multi_turn_non_streamed` | finish_reason "tool_calls", function name is "get_current_temperature", multi-turn returns "stop" with temperature info |
+| `test_live_tool_calling_streamed.rs` | `test_live_tool_calling_streamed`, `test_live_tool_calling_multi_turn_streamed` | Streaming tool call accumulation, multi-turn streaming with tool result follow-up |
+| `test_live_thinking_disabled.rs` | `test_live_chat_completions_thinking_disabled`, `test_live_chat_completions_reasoning_format_none`, `test_live_chat_completions_thinking_enabled_default` | `reasoning_content` absent when thinking disabled, present by default |
+| `test_live_agentic_chat_with_exa.rs` | `test_live_agentic_chat_with_exa_toolset` | Exa toolset enablement, user config, qualified tool names, backend tool execution, multi-turn with real Exa API |
+
+### Common Test Pattern
+All live tests follow the same structure:
+
+1. Destructure `live_server` fixture into `TestServerHandle` components
+2. Obtain OAuth2 tokens via `get_oauth_tokens`
+3. Create authenticated session via `create_authenticated_session`
+4. Build session cookie via `create_session_cookie`
+5. Use `reqwest::Client` to make HTTP requests with cookie header and `Sec-Fetch-Site: same-origin`
+6. Assert response status, parse JSON or SSE stream
+7. Call `handle.shutdown().await?` before final assertions
+
+### Agentic Chat Test (Exa) Workflow
+The `test_live_agentic_chat_with_exa_toolset` test exercises the full agentic pipeline:
+
+1. **Enable toolset type**: `PUT /bodhi/v1/toolset_types/{scope_uuid}/app-config`
+2. **Configure user toolset**: `POST /bodhi/v1/toolsets` with API key
+3. **Verify toolset**: `GET /bodhi/v1/toolsets` confirms `enabled`, `has_api_key`, 4 tools
+4. **Chat with tools**: `POST /v1/chat/completions` with qualified tool names (`toolset__builtin-exa-web-search__<method>`)
+5. **Execute tool**: `POST /bodhi/v1/toolsets/{id}/execute/{method}` with parsed arguments
+6. **Follow-up**: Second chat completion with tool result produces final "stop" response
+
+## Source File Index
+
+| File | Purpose |
+|------|---------|
+| `crates/server_app/src/lib.rs` | Module declarations and public re-exports |
+| `crates/server_app/src/server.rs` | Server, ServerHandle, build_server_handle, TCP binding |
+| `crates/server_app/src/serve.rs` | ServeCommand, get_server_handle, ServerShutdownHandle, ServeError |
+| `crates/server_app/src/shutdown.rs` | shutdown_signal() cross-platform signal handling |
+| `crates/server_app/src/listener_keep_alive.rs` | ServerKeepAlive listener with timer management |
+| `crates/server_app/src/listener_variant.rs` | VariantChangeListener for exec variant switching |
+| `crates/server_app/src/error.rs` | TaskJoinError, ServerError types |
+| `crates/server_app/src/test_utils/mod.rs` | Feature-gated test utilities (currently empty) |
 
 ## Commands
 
-**Testing**: `cargo test -p server_app` (includes server lifecycle and listener integration tests)  
-**Building**: Standard `cargo build -p server_app`  
-**Server Testing**: `cargo test -p server_app --features test-utils` (includes comprehensive server testing infrastructure)
+### Unit Tests
+```
+cargo test -p server_app
+```
+Runs server lifecycle, listener integration, and error handling tests.
+
+### Live Integration Tests
+```
+cargo test -p server_app -- --ignored 2>/dev/null || \
+cargo test -p server_app --test test_live_chat_completions_non_streamed
+```
+
+Run a specific live test:
+```
+cargo test -p server_app --test test_live_chat_completions_non_streamed
+cargo test -p server_app --test test_live_chat_completions_streamed
+cargo test -p server_app --test test_live_tool_calling_non_streamed
+cargo test -p server_app --test test_live_tool_calling_streamed
+cargo test -p server_app --test test_live_thinking_disabled
+cargo test -p server_app --test test_live_agentic_chat_with_exa
+```
+
+### Prerequisites for Live Tests
+1. Download the model:
+   ```
+   huggingface-cli download ggml-org/Qwen3-1.7B-GGUF
+   ```
+2. Ensure llama.cpp binary exists at `crates/llama_server_proc/bin/`
+3. Copy `tests/resources/.env.test.example` to `tests/resources/.env.test` and fill in OAuth2 credentials
+4. For Exa test: set `INTEG_TEST_EXA_API_KEY` environment variable
+
+### Building
+```
+cargo build -p server_app
+```

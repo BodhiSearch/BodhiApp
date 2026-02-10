@@ -16,7 +16,6 @@ alwaysApply: false
 - `ai-docs/01-architecture/testing-strategy.md` - High-level testing approach and quality assurance strategy
 - `ai-docs/01-architecture/frontend-testing.md` - Frontend testing patterns, React components, and user interactions
 - `ai-docs/01-architecture/backend-testing.md` - Backend testing approaches, database testing, and API integration
-- `ai-docs/03-crates/integration-tests.md` - End-to-end testing framework
 
 ## Critical Testing Standards
 

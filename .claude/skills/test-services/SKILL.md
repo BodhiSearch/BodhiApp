@@ -170,6 +170,6 @@ When migrating existing tests to the canonical pattern:
 ## When NOT to Use This Skill
 
 - Route handler tests in `routes_app` (use the `test-routes-app` skill instead)
-- Integration tests in `routes_all` or `integration-tests`
+- Integration tests in `routes_all`
 - Frontend/UI tests (use the `playwright` skill instead)
 - Tests in `objs` crate (different patterns, no service infrastructure)

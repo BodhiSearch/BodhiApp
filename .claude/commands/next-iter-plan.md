@@ -103,7 +103,7 @@ Following crate dependency chain:
 ```
 objs → services → commands → server_core → auth_middleware → 
 routes_oai → routes_app → routes_all → server_app → 
-lib_bodhiserver → lib_bodhiserver_napi → bodhi → integration-tests
+lib_bodhiserver → lib_bodhiserver_napi → bodhi
 ```
 
 **B. Phase Optimization Opportunities**

@@ -22,8 +22,12 @@
 ### Test Utilities (`test-utils` feature)
 - `src/test_utils/mod.rs` - Test fixture exports
 - `src/test_utils/http.rs` - HTTP testing utilities
-- `src/test_utils/state.rs` - RouterState test fixtures
-- `src/test_utils/server.rs` - Mock LLM server implementations
+- `src/test_utils/state.rs` - RouterState test fixtures and `ServerFactoryStub`
+- `src/test_utils/server.rs` - Mock LLM server implementations and `bin_path` fixture
+
+### Live Integration Tests
+- `tests/test_live_shared_rw.rs` - Live SharedContext tests with real llama.cpp binary
+- `tests/data/live/huggingface/hub/` - HuggingFace cache layout with GGUF model files (Llama-68M)
 
 ## Key Implementation Examples
 
@@ -205,6 +209,43 @@ pub async fn forward_sse(response: reqwest::Response) -> axum::Response {
 }
 ```
 
+## Live SharedContext Tests
+
+Integration tests in `tests/test_live_shared_rw.rs` exercise `DefaultSharedContext` with the real llama.cpp binary. They do not start an HTTP server -- they test server process lifecycle directly.
+
+### Test Cases
+- `test_live_shared_rw_reload` -- Reload with no model args (stop-only path)
+- `test_live_shared_rw_reload_with_model_as_symlink` -- Load model via symlinked snapshot path
+- `test_live_shared_rw_reload_with_actual_file` -- Load model via direct blob path
+
+### Test Setup Pattern
+```rust
+// Fixtures resolve paths relative to CARGO_MANIFEST_DIR
+let lookup_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  .join("../llama_server_proc/bin");
+let tests_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  .join("tests/data");
+
+// OfflineHubService wraps HfHubService for local-only operation
+let hub_service = OfflineHubService::new(HfHubService::new(
+  tests_data.join("live/huggingface/hub"), false, None,
+));
+```
+
+### Test Data Structure
+```
+tests/data/live/huggingface/hub/
+  models--afrideva--Llama-68M-Chat-v1-GGUF/
+    blobs/cdd6bad...   # Actual GGUF binary
+    snapshots/4bcbc.../
+      llama-68m-chat-v1.q8_0.gguf -> ../../blobs/cdd6bad...
+    refs/main           # Snapshot hash reference
+```
+
+### Prerequisites
+- Pre-built llama.cpp binary at `crates/llama_server_proc/bin/`
+- Tests are excluded from `cargo test -p server_core` by default (no `#[ignore]` but require the binary to exist)
+
 ## Crate Commands
 
 ### Building
@@ -215,8 +256,14 @@ cargo build -p server_core --features test-utils
 
 ### Testing
 ```bash
+# Unit tests (mock-based, no external dependencies)
 cargo test -p server_core
-cargo test -p server_core --features test-utils
+
+# All tests including live integration (requires llama.cpp binary)
+cargo test -p server_core
+
+# Run only live SharedContext tests
+cargo test -p server_core test_live_shared_rw
 ```
 
 ### Documentation
@@ -310,3 +357,5 @@ See individual module files for complete implementation details:
 - Model routing: `src/model_router.rs`
 - Argument merging: `src/server_args_merge.rs`
 - Test utilities: `src/test_utils/*.rs`
+- Live integration tests: `tests/test_live_shared_rw.rs`
+- Live test data: `tests/data/live/huggingface/hub/`

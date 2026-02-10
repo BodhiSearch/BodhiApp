@@ -25,6 +25,7 @@ url = { workspace = true, optional = true }
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
 
+anyhow = { workspace = true }
 axum = { workspace = true }
 dirs = { workspace = true }
 http = { workspace = true }

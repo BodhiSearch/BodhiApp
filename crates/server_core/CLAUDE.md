@@ -325,6 +325,46 @@ To add routing strategies:
 
 ## Testing Architecture
 
+### Two-Tier Testing Strategy
+
+The crate employs a deliberate two-tier testing approach that separates unit-level mock testing from live integration testing:
+
+**Unit Tests (in-module, `src/shared_rw.rs`)**: Use `MockServer` and `ServerFactoryStub` to validate SharedContext logic (ModelLoadStrategy decisions, forward_request routing, state transitions) without real LLM server processes. These tests use `#[serial(BodhiServerContext)]` for sequential execution of mock-based context tests.
+
+**Live Integration Tests (`tests/test_live_shared_rw.rs`)**: Exercise `DefaultSharedContext` with the real llama.cpp server binary and actual GGUF model files. These validate that the server lifecycle (start, reload, stop) works end-to-end without an HTTP layer.
+
+### Why Live SharedContext Tests Exist Separately
+
+The live tests fill a critical gap between mock-based unit tests and full HTTP integration tests:
+
+1. **Real Process Lifecycle Validation**: Mock tests cannot verify that `DefaultServerFactory` correctly spawns and manages an actual llama.cpp process. The live tests confirm that the executable path resolution, server startup, and graceful shutdown work with real binaries.
+2. **Model File Resolution**: HuggingFace hub layouts use symlinks from snapshot directories to blob files. The live tests verify that `OfflineHubService` wrapping `HfHubService` correctly resolves both symlinked model files and direct blob references -- a subtlety that mocks cannot capture.
+3. **No HTTP Overhead**: Unlike routes_app live tests that require a full HTTP server, these tests exercise SharedContext directly, isolating server process management from HTTP concerns.
+4. **Sequential Execution**: Live tests use `serial_test::serial(live)` to prevent concurrent llama.cpp processes from conflicting over resources (ports, GPU memory).
+
+### Live Test Infrastructure Requirements
+
+The live tests depend on:
+
+- **llama.cpp server binary**: Must be pre-built at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
+- **Test model files**: Small GGUF models (Llama-68M) stored in `tests/data/live/huggingface/hub/` following the HuggingFace cache directory layout
+- **OfflineHubService**: A services test utility that wraps `HfHubService` for local-only hub operations without network access
+- **MockSettingService**: Provides executable path and variant configuration pointing to the real binary
+
+### Test Data Layout for Live Tests
+
+The `tests/data/live/huggingface/hub/` directory mirrors a real HuggingFace cache:
+
+```
+tests/data/live/huggingface/hub/
+  models--afrideva--Llama-68M-Chat-v1-GGUF/
+    blobs/          # Actual GGUF model binary (content-addressed)
+    snapshots/      # Symlinks from snapshot hash to blob files
+    refs/main       # Points to current snapshot hash
+```
+
+This layout exercises the full HuggingFace file resolution path: ref -> snapshot -> symlink -> blob. The symlink test (`test_live_shared_rw_reload_with_model_as_symlink`) validates that SharedContext handles symlinked model paths, while `test_live_shared_rw_reload_with_actual_file` validates direct blob paths.
+
 ### HTTP Infrastructure Testing
 
 Comprehensive test utilities for HTTP handlers:

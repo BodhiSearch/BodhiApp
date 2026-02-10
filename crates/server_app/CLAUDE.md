@@ -44,7 +44,7 @@ The `server_app` crate serves as BodhiApp's **main HTTP server executable orches
 
 ### Service Layer Bootstrap Coordination
 Complex service initialization coordinated across BodhiApp's entire architecture:
-- **AppService Registry Initialization**: Complete service composition with all 10 business services including authentication, model management, and configuration
+- **AppService Registry Initialization**: Complete service composition with all business services including authentication, model management, and configuration
 - **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management
 - **Route Integration**: routes_app coordination for complete HTTP route composition with middleware stack and static asset serving
 - **Error Translation**: Service errors converted to appropriate HTTP responses with comprehensive error handling and graceful degradation
@@ -68,14 +68,13 @@ Advanced event-driven coordination across service boundaries:
 ### Multi-Service Bootstrap Coordination
 Complex application initialization with comprehensive service orchestration:
 
-1. **Service Registry Initialization**: AppService registry bootstrap with all 10 business services including dependency injection and configuration validation
+1. **Service Registry Initialization**: AppService registry bootstrap with all business services including dependency injection and configuration validation
 2. **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management capabilities
 3. **Listener Registration**: Advanced listener pattern setup with ServerKeepAlive and VariantChangeListener for real-time configuration management
 4. **Route Composition**: routes_app integration for complete HTTP route and middleware stack with static asset serving configuration
 5. **Server Lifecycle Management**: TCP listener binding, ready notification, and graceful shutdown coordination with signal handling
 
 ### Advanced Listener Orchestration Workflows
-Sophisticated event-driven coordination across service boundaries:
 
 **ServerKeepAlive Workflow**:
 1. **Timer Management**: Configurable keep-alive timer with automatic server shutdown coordination based on inactivity
@@ -142,14 +141,43 @@ For new configuration and settings management patterns:
 4. **Dynamic Updates**: Support runtime configuration updates through listener pattern with validation and rollback
 5. **Configuration Testing**: Test configuration management with different environment scenarios and validation failures
 
-### Server Orchestration Extensions
-For new server orchestration and coordination patterns:
+## Live Integration Test Architecture
 
-1. **Service Integration**: Coordinate with AppService registry for consistent business logic access and service composition
-2. **Context Management**: Integrate with SharedContext for LLM server lifecycle coordination and state management
-3. **Route Composition**: Coordinate with routes_app for HTTP route and middleware integration with proper error boundaries
-4. **Resource Management**: Implement proper resource lifecycle management with cleanup and error recovery
-5. **Integration Testing**: Support comprehensive server orchestration testing with realistic service interactions
+### Design Philosophy
+The live integration tests validate the full end-to-end stack: real HTTP server, real llama.cpp inference, real OAuth2 authentication, and real API responses. They intentionally avoid mocks to verify that the complete system works correctly when all components are wired together. This catches integration issues that unit tests with mocked services cannot detect.
+
+### Why Inline AppService Setup (No lib_bodhiserver Dependency)
+The `setup_minimal_app_service` function in `tests/utils/live_server_utils.rs` manually constructs a `DefaultAppService` with all real service implementations rather than depending on `lib_bodhiserver`. This design decision exists because:
+- **Avoiding circular dependencies**: `lib_bodhiserver` depends on `server_app`, so `server_app` cannot depend back on it
+- **Test isolation**: The inline setup gives precise control over which services are real vs stubbed (e.g., `OfflineHubService` wraps real `HfHubService` to prevent network downloads during tests)
+- **Transparency**: Every service dependency is visible in the test setup code, making failures easier to diagnose
+
+### OAuth2 Authentication Flow for Tests
+Live tests require real OAuth2 authentication because the server enforces auth middleware. The test infrastructure:
+1. Creates a **resource client** via Keycloak admin API using dev-console credentials
+2. Makes the test user an **admin** of the newly created resource client
+3. Obtains **access/refresh tokens** via OAuth2 resource-owner password grant
+4. Injects tokens into a **session record** in the SQLite session store
+5. Creates a **session cookie** that the HTTP client sends with every request
+
+This mirrors the production auth flow except it uses the password grant for automation (production uses authorization code flow).
+
+### Serial Execution Constraint
+All live tests use `#[serial_test::serial(live)]` because they share the same llama.cpp server binary and model file. Running them in parallel would cause port conflicts and race conditions on the LLM process. The `live` group name ensures only tests within this crate are serialized -- other crate tests can still run in parallel.
+
+### Test Coverage Categories
+The live tests cover distinct LLM inference scenarios:
+- **Basic chat completion**: Non-streamed and streamed responses validating OpenAI-compatible response format
+- **Tool calling**: Single-turn and multi-turn tool invocations (both non-streamed and streamed) verifying the `tool_calls` finish reason, function name extraction, argument parsing, and follow-up response generation
+- **Thinking/reasoning**: Verifying `chat_template_kwargs.enable_thinking`, `reasoning_format: "none"`, and default thinking behavior with `reasoning_content` field presence/absence
+- **Agentic chat with Exa**: End-to-end agentic workflow including toolset type enablement, user-level toolset configuration with API key, qualified tool name generation, backend tool execution via `/bodhi/v1/toolsets/:id/execute/:method`, and multi-turn completion with tool results
+
+### Environment Requirements
+Live tests require external resources that cannot be committed to the repository:
+- **Model**: Pre-downloaded `ggml-org/Qwen3-1.7B-GGUF` in `~/.cache/huggingface/hub/`
+- **llama.cpp binary**: Present at `crates/llama_server_proc/bin/`
+- **OAuth2 config**: `tests/resources/.env.test` with Keycloak credentials (see `.env.test.example`)
+- **Exa API key**: `INTEG_TEST_EXA_API_KEY` environment variable (for agentic chat test only)
 
 ## Server Lifecycle Error Coordination
 
@@ -173,27 +201,3 @@ Sophisticated error recovery for resource management:
 - **Static Asset Serving Errors**: Development proxy and production asset serving errors with graceful fallback
 - **Service Health Check Failures**: Comprehensive service health validation with detailed error reporting and recovery guidance
 - **Shutdown Coordination Errors**: Graceful shutdown error handling with resource cleanup and error isolation
-
-## Server Testing Architecture
-
-### Server Lifecycle Testing
-Comprehensive testing of server orchestration and lifecycle management:
-- **Bootstrap Testing**: Complete service initialization testing with AppService registry and SharedContext coordination
-- **Listener Integration Testing**: ServerKeepAlive and VariantChangeListener testing with mock service coordination
-- **Graceful Shutdown Testing**: Signal handling and shutdown coordination testing with resource cleanup validation
-- **Error Scenario Testing**: Server startup and runtime error handling with comprehensive error recovery validation
-
-### Service Integration Testing
-Server-level integration testing with service mock coordination:
-- **Service Registry Testing**: AppService registry initialization with comprehensive service mocking
-- **Context Management Testing**: SharedContext integration testing with LLM server lifecycle coordination
-- **Route Composition Testing**: routes_app integration testing with HTTP stack and middleware validation
-- **Configuration Testing**: Settings management and listener pattern testing with real-time configuration updates
-
-### Resource Management Testing
-Server resource management and validation testing:
-- **TCP Listener Testing**: Port binding, conflict detection, and error handling with realistic network scenarios
-- **Static Asset Testing**: Development proxy and production asset serving with environment-specific configuration
-- **Service Health Testing**: Comprehensive service health validation with connectivity and permission checking
-- **Performance Testing**: Server performance under load with resource usage monitoring and optimization
-
