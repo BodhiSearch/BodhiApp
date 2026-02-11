@@ -5,11 +5,11 @@ use crate::{
     test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
     TestDbService,
   },
-  AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, ConcurrencyService,
-  DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
-  MockAuthService, MockHubService, MockToolService, MokaCacheService, NetworkService,
-  SecretService, SessionService, SettingService, SqliteSessionService, StubNetworkService,
-  ToolService, BODHI_EXEC_LOOKUP_PATH,
+  AccessRequestService, AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService,
+  ConcurrencyService, DataService, HfHubService, HubService, LocalConcurrencyService,
+  LocalDataService, MockAccessRequestService, MockAuthService, MockHubService, MockToolService,
+  MokaCacheService, NetworkService, SecretService, SessionService, SettingService,
+  SqliteSessionService, StubNetworkService, ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -72,6 +72,8 @@ pub struct AppServiceStub {
   pub tool_service: Option<Arc<dyn ToolService>>,
   #[builder(default = "self.default_network_service()")]
   pub network_service: Option<Arc<dyn NetworkService>>,
+  #[builder(default = "self.default_access_request_service()")]
+  pub access_request_service: Option<Arc<dyn AccessRequestService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -113,6 +115,10 @@ impl AppServiceStubBuilder {
 
   fn default_network_service(&self) -> Option<Arc<dyn NetworkService>> {
     Some(Arc::new(StubNetworkService { ip: None }))
+  }
+
+  fn default_access_request_service(&self) -> Option<Arc<dyn AccessRequestService>> {
+    Some(Arc::new(MockAccessRequestService::new()))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -247,8 +253,8 @@ impl AppServiceStubBuilder {
     let _temp_home = self.setup_temp_home();
 
     // Override exec lookup to real binary at crates/llama_server_proc/bin/
-    let exec_lookup_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .join("../llama_server_proc/bin");
+    let exec_lookup_path =
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../llama_server_proc/bin");
     let exec_lookup_str = exec_lookup_path.display().to_string();
     self.with_settings(HashMap::from([(
       BODHI_EXEC_LOOKUP_PATH,
@@ -340,5 +346,9 @@ impl AppService for AppServiceStub {
 
   fn network_service(&self) -> Arc<dyn NetworkService> {
     self.network_service.clone().unwrap()
+  }
+
+  fn access_request_service(&self) -> Arc<dyn AccessRequestService> {
+    self.access_request_service.clone().unwrap()
   }
 }

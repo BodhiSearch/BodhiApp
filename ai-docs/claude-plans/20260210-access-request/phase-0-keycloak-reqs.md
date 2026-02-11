@@ -10,7 +10,7 @@ Verify that Keycloak changes are deployed and working before starting BodhiApp i
 
 ## Reference Documents
 
-- **KC Integration Doc**: `/Users/amir36/Documents/workspace/src/github.com/BodhiSearch/keycloak-bodhi-ext/ai-docs/claude-plans/20260210-access-request-doc-integration.md`
+- **KC Integration Doc**: `$REPO_HOME/BodhiSearch/keycloak-bodhi-ext/ai-docs/claude-plans/20260210-access-request-doc-integration.md`
 - **Context Archive**: `ai-docs/claude-plans/20260210-ctx-access-request.md`
 
 ## Key Requirements

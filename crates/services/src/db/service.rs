@@ -1,9 +1,10 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
-  AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
-  DbError, DownloadRequest, DownloadStatus, ModelMetadataRow, ModelRepository, SqlxError,
-  TimeService, TokenRepository, TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest,
-  UserAccessRequestStatus, UserAliasRepository,
+  AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
+  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
+  DownloadStatus, ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository,
+  TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
+  UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use derive_new::new;
@@ -17,6 +18,7 @@ use std::{str::FromStr, sync::Arc};
 pub trait DbService:
   ModelRepository
   + AccessRepository
+  + AccessRequestRepository
   + TokenRepository
   + ToolsetRepository
   + UserAliasRepository
@@ -30,6 +32,7 @@ pub trait DbService:
 impl<T> DbService for T where
   T: ModelRepository
     + AccessRepository
+    + AccessRequestRepository
     + TokenRepository
     + ToolsetRepository
     + UserAliasRepository
@@ -2103,5 +2106,208 @@ impl UserAliasRepository for SqliteDbService {
     }
 
     Ok(aliases)
+  }
+}
+
+// ============================================================================
+// AccessRequestRepository Implementation
+// ============================================================================
+
+#[async_trait::async_trait]
+impl AccessRequestRepository for SqliteDbService {
+  async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError> {
+    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "INSERT INTO app_access_requests
+        (id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+         tools_approved, user_id, resource_scope, access_request_scope, error_message,
+         expires_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+                 expires_at, created_at, updated_at"
+    )
+    .bind(&row.id)
+    .bind(&row.app_client_id)
+    .bind(&row.flow_type)
+    .bind(&row.redirect_uri)
+    .bind(&row.status)
+    .bind(&row.tools_requested)
+    .bind(&row.tools_approved)
+    .bind(&row.user_id)
+    .bind(&row.resource_scope)
+    .bind(&row.access_request_scope)
+    .bind(&row.error_message)
+    .bind(row.expires_at)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(AppAccessRequestRow {
+      id: result.0,
+      app_client_id: result.1,
+      flow_type: result.2,
+      redirect_uri: result.3,
+      status: result.4,
+      tools_requested: result.5,
+      tools_approved: result.6,
+      user_id: result.7,
+      resource_scope: result.8,
+      access_request_scope: result.9,
+      error_message: result.10,
+      expires_at: result.11,
+      created_at: result.12,
+      updated_at: result.13,
+    })
+  }
+
+  async fn get(&self, id: &str) -> Result<Option<AppAccessRequestRow>, DbError> {
+    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "SELECT id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+              tools_approved, user_id, resource_scope, access_request_scope, error_message,
+              expires_at, created_at, updated_at
+       FROM app_access_requests WHERE id = ?"
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(|r| AppAccessRequestRow {
+      id: r.0,
+      app_client_id: r.1,
+      flow_type: r.2,
+      redirect_uri: r.3,
+      status: r.4,
+      tools_requested: r.5,
+      tools_approved: r.6,
+      user_id: r.7,
+      resource_scope: r.8,
+      access_request_scope: r.9,
+      error_message: r.10,
+      expires_at: r.11,
+      created_at: r.12,
+      updated_at: r.13,
+    }))
+  }
+
+  async fn update_approval(
+    &self,
+    id: &str,
+    user_id: &str,
+    tools_approved: &str,
+    resource_scope: &str,
+    access_request_scope: &str,
+  ) -> Result<AppAccessRequestRow, DbError> {
+    let now = self.time_service.utc_now().timestamp();
+    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "UPDATE app_access_requests
+       SET status = 'approved', user_id = ?, tools_approved = ?,
+           resource_scope = ?, access_request_scope = ?, updated_at = ?
+       WHERE id = ?
+       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+                 expires_at, created_at, updated_at"
+    )
+    .bind(user_id)
+    .bind(tools_approved)
+    .bind(resource_scope)
+    .bind(access_request_scope)
+    .bind(now)
+    .bind(id)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(AppAccessRequestRow {
+      id: result.0,
+      app_client_id: result.1,
+      flow_type: result.2,
+      redirect_uri: result.3,
+      status: result.4,
+      tools_requested: result.5,
+      tools_approved: result.6,
+      user_id: result.7,
+      resource_scope: result.8,
+      access_request_scope: result.9,
+      error_message: result.10,
+      expires_at: result.11,
+      created_at: result.12,
+      updated_at: result.13,
+    })
+  }
+
+  async fn update_denial(
+    &self,
+    id: &str,
+    user_id: &str,
+  ) -> Result<AppAccessRequestRow, DbError> {
+    let now = self.time_service.utc_now().timestamp();
+    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "UPDATE app_access_requests
+       SET status = 'denied', user_id = ?, updated_at = ?
+       WHERE id = ?
+       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+                 expires_at, created_at, updated_at"
+    )
+    .bind(user_id)
+    .bind(now)
+    .bind(id)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(AppAccessRequestRow {
+      id: result.0,
+      app_client_id: result.1,
+      flow_type: result.2,
+      redirect_uri: result.3,
+      status: result.4,
+      tools_requested: result.5,
+      tools_approved: result.6,
+      user_id: result.7,
+      resource_scope: result.8,
+      access_request_scope: result.9,
+      error_message: result.10,
+      expires_at: result.11,
+      created_at: result.12,
+      updated_at: result.13,
+    })
+  }
+
+  async fn update_failure(
+    &self,
+    id: &str,
+    error_message: &str,
+  ) -> Result<AppAccessRequestRow, DbError> {
+    let now = self.time_service.utc_now().timestamp();
+    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "UPDATE app_access_requests
+       SET status = 'failed', error_message = ?, updated_at = ?
+       WHERE id = ?
+       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
+                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+                 expires_at, created_at, updated_at"
+    )
+    .bind(error_message)
+    .bind(now)
+    .bind(id)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(AppAccessRequestRow {
+      id: result.0,
+      app_client_id: result.1,
+      flow_type: result.2,
+      redirect_uri: result.3,
+      status: result.4,
+      tools_requested: result.5,
+      tools_approved: result.6,
+      user_id: result.7,
+      resource_scope: result.8,
+      access_request_scope: result.9,
+      error_message: result.10,
+      expires_at: result.11,
+      created_at: result.12,
+      updated_at: result.13,
+    })
   }
 }

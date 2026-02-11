@@ -6,28 +6,27 @@ use crate::{
 };
 use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
-  CreateAliasRequest,
-  CreateApiTokenRequest, ListUsersParams, NewDownloadRequest, PaginatedAliasResponse,
-  PaginatedApiTokenResponse, PaginatedDownloadResponse, PaginatedLocalModelResponse,
-  PaginatedUserAccessResponse, PaginatedUserAliasResponse, QueueStatusResponse, RedirectResponse,
-  RefreshRequest, RefreshResponse, RefreshSource, SetupRequest, SetupResponse, UpdateAliasRequest,
-  UpdateSettingRequest, UserAccessStatusResponse, UserAliasResponse, UserResponse,
-  __path_app_info_handler, __path_approve_request_handler, __path_auth_callback_handler,
-  __path_auth_initiate_handler, __path_change_user_role_handler, __path_copy_alias_handler,
-  __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
-  __path_create_token_handler, __path_delete_alias_handler, __path_delete_api_model_handler,
-  __path_delete_setting_handler, __path_fetch_models_handler,
-  __path_get_api_formats_handler, __path_get_api_model_handler, __path_get_download_status_handler,
-  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
-  __path_list_all_requests_handler, __path_list_api_models_handler, __path_list_downloads_handler,
-  __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
-  __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
-  __path_logout_handler, __path_ping_handler,
+  CreateAliasRequest, CreateApiTokenRequest, ListUsersParams, NewDownloadRequest,
+  PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
+  PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
+  QueueStatusResponse, RedirectResponse, RefreshRequest, RefreshResponse, RefreshSource,
+  SetupRequest, SetupResponse, UpdateAliasRequest, UpdateSettingRequest,
+  UserAccessStatusResponse, UserAliasResponse, UserResponse, __path_app_info_handler,
+  __path_approve_request_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
+  __path_change_user_role_handler, __path_copy_alias_handler, __path_create_alias_handler,
+  __path_create_api_model_handler, __path_create_pull_request_handler, __path_create_token_handler,
+  __path_delete_alias_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
+  __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
+  __path_get_download_status_handler, __path_get_user_alias_handler, __path_health_handler,
+  __path_list_aliases_handler, __path_list_all_requests_handler, __path_list_api_models_handler,
+  __path_list_downloads_handler, __path_list_local_modelfiles_handler,
+  __path_list_pending_requests_handler, __path_list_settings_handler, __path_list_tokens_handler,
+  __path_list_users_handler, __path_logout_handler, __path_ping_handler,
   __path_queue_status_handler, __path_refresh_metadata_handler, __path_reject_request_handler,
-  __path_remove_user_handler, __path_request_access_handler, __path_request_status_handler,
-  __path_setup_handler, __path_sync_models_handler, __path_test_api_model_handler,
-  __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
-  __path_update_token_handler, __path_user_info_handler, __path_user_request_access_handler,
+  __path_remove_user_handler, __path_request_status_handler, __path_setup_handler,
+  __path_sync_models_handler, __path_test_api_model_handler, __path_update_alias_handler,
+  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
+  __path_user_info_handler, __path_user_request_access_handler,
 };
 // Toolsets DTOs and handlers
 use crate::routes_oai::{
@@ -66,7 +65,7 @@ use objs::{
 use services::db::DownloadStatus;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppAccessRequest, AppAccessResponse, AppStatus, SettingService, UserListResponse,
+  AppStatus, SettingService, UserListResponse,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -96,7 +95,6 @@ make_ui_endpoint!(ENDPOINT_ACCESS_REQUESTS_ALL, "access-requests");
 make_ui_endpoint!(ENDPOINT_USERS, "users");
 make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
 make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
-make_ui_endpoint!(ENDPOINT_APPS_REQUEST_ACCESS, "apps/request-access");
 
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
@@ -260,8 +258,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             SetupResponse,
             // auth
             AuthCallbackRequest,
-            AppAccessRequest,
-            AppAccessResponse,
             UserResponse,
             AppRole,
             ResourceRole,
@@ -369,7 +365,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         auth_initiate_handler,
         auth_callback_handler,
         logout_handler,
-        request_access_handler,
         user_info_handler,
 
         // API Keys endpoints

@@ -20,14 +20,13 @@ use crate::{
   list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
   list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
   list_tokens_handler, list_toolset_types_handler, list_toolsets_handler, list_users_handler,
-  logout_handler, ping_handler, queue_status_handler,
-  refresh_metadata_handler, reject_request_handler, remove_user_handler, request_access_handler,
-  request_status_handler, setup_handler, sync_models_handler, test_api_model_handler,
-  update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
-  update_toolset_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
-  GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
-  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST, ENDPOINT_APPS_REQUEST_ACCESS,
+  logout_handler, ping_handler, queue_status_handler, refresh_metadata_handler,
+  reject_request_handler, remove_user_handler, request_status_handler, setup_handler,
+  sync_models_handler, test_api_model_handler, update_alias_handler, update_api_model_handler,
+  update_setting_handler, update_token_handler, update_toolset_handler, user_info_handler,
+  user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
+  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS,
+  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
   ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
   ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
   ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
@@ -73,7 +72,6 @@ pub fn build_routes(
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
-    .route(ENDPOINT_APPS_REQUEST_ACCESS, post(request_access_handler))
     .route(
       ENDPOINT_USER_REQUEST_ACCESS,
       post(user_request_access_handler),

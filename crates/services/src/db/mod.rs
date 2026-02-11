@@ -1,4 +1,5 @@
 mod access_repository;
+mod access_request_repository;
 mod db_core;
 pub mod encryption;
 mod error;
@@ -14,6 +15,7 @@ mod toolset_repository;
 mod user_alias_repository;
 
 pub use access_repository::*;
+pub use access_request_repository::*;
 pub use db_core::*;
 pub use error::*;
 pub use model_repository::*;

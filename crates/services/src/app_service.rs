@@ -1,7 +1,8 @@
 use crate::{
   db::{DbService, TimeService},
-  AiApiService, AuthService, CacheService, ConcurrencyService, DataService, HubService,
-  NetworkService, QueueProducer, SecretService, SessionService, SettingService, ToolService,
+  AccessRequestService, AiApiService, AuthService, CacheService, ConcurrencyService, DataService,
+  HubService, NetworkService, QueueProducer, SecretService, SessionService, SettingService,
+  ToolService,
 };
 use std::sync::Arc;
 
@@ -35,6 +36,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn network_service(&self) -> Arc<dyn NetworkService>;
 
+  fn access_request_service(&self) -> Arc<dyn AccessRequestService>;
+
   fn queue_status(&self) -> String {
     self.queue_producer().queue_status()
   }
@@ -57,6 +60,7 @@ pub struct DefaultAppService {
   queue_producer: Arc<dyn QueueProducer>,
   tool_service: Arc<dyn ToolService>,
   network_service: Arc<dyn NetworkService>,
+  access_request_service: Arc<dyn AccessRequestService>,
 }
 
 impl AppService for DefaultAppService {
@@ -114,5 +118,9 @@ impl AppService for DefaultAppService {
 
   fn network_service(&self) -> Arc<dyn NetworkService> {
     self.network_service.clone()
+  }
+
+  fn access_request_service(&self) -> Arc<dyn AccessRequestService> {
+    self.access_request_service.clone()
   }
 }

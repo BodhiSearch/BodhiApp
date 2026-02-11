@@ -1,8 +1,8 @@
 use crate::db::{
-  AccessRepository, ApiKeyUpdate, ApiToken, AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore,
-  DbError, DownloadRequest, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
-  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
-  UserAliasRepository,
+  AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
+  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
+  ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
+  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use objs::UserAlias;
 use chrono::{DateTime, Utc};
@@ -612,6 +612,56 @@ impl UserAliasRepository for TestDbService {
   }
 }
 
+#[async_trait::async_trait]
+impl AccessRequestRepository for TestDbService {
+  async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError> {
+    self
+      .inner
+      .create(row)
+      .await
+      .tap(|_| self.notify("access_request_create"))
+  }
+
+  async fn get(&self, id: &str) -> Result<Option<AppAccessRequestRow>, DbError> {
+    self
+      .inner
+      .get(id)
+      .await
+      .tap(|_| self.notify("access_request_get"))
+  }
+
+  async fn update_approval(
+    &self,
+    id: &str,
+    user_id: &str,
+    tools_approved: &str,
+    resource_scope: &str,
+    access_request_scope: &str,
+  ) -> Result<AppAccessRequestRow, DbError> {
+    self
+      .inner
+      .update_approval(id, user_id, tools_approved, resource_scope, access_request_scope)
+      .await
+      .tap(|_| self.notify("access_request_update_approval"))
+  }
+
+  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError> {
+    self
+      .inner
+      .update_denial(id, user_id)
+      .await
+      .tap(|_| self.notify("access_request_update_denial"))
+  }
+
+  async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError> {
+    self
+      .inner
+      .update_failure(id, error_message)
+      .await
+      .tap(|_| self.notify("access_request_update_failure"))
+  }
+}
+
 // Composite mock using mockall::mock! that preserves MockDbService name
 mockall::mock! {
   pub DbService {}
@@ -694,5 +744,21 @@ mockall::mock! {
     async fn list_app_toolset_configs_by_scopes(&self, scopes: &[String]) -> Result<Vec<AppToolsetConfigRow>, DbError>;
     async fn get_app_client_toolset_config(&self, app_client_id: &str) -> Result<Option<AppClientToolsetConfigRow>, DbError>;
     async fn upsert_app_client_toolset_config(&self, config: &AppClientToolsetConfigRow) -> Result<AppClientToolsetConfigRow, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl AccessRequestRepository for DbService {
+    async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError>;
+    async fn get(&self, id: &str) -> Result<Option<AppAccessRequestRow>, DbError>;
+    async fn update_approval(
+      &self,
+      id: &str,
+      user_id: &str,
+      tools_approved: &str,
+      resource_scope: &str,
+      access_request_scope: &str,
+    ) -> Result<AppAccessRequestRow, DbError>;
+    async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError>;
+    async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError>;
   }
 }

@@ -81,14 +81,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     user_id: &str,
   ) -> Result<()>;
 
-  async fn request_access(
-    &self,
-    client_id: &str,
-    client_secret: &str,
-    app_client_id: &str,
-    toolset_scope_ids: Option<Vec<String>>,
-  ) -> Result<RequestAccessResponse>;
-
   async fn assign_user_role(&self, reveiwer_token: &str, user_id: &str, role: &str) -> Result<()>;
 
   async fn remove_user(&self, reviewer_token: &str, user_id: &str) -> Result<()>;
@@ -99,6 +91,14 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     page: Option<u32>,
     page_size: Option<u32>,
   ) -> Result<UserListResponse>;
+
+  async fn register_access_request_consent(
+    &self,
+    user_token: &str,
+    app_client_id: &str,
+    access_request_id: &str,
+    description: &str,
+  ) -> Result<RegisterAccessRequestConsentResponse>;
 }
 
 #[derive(Debug)]
@@ -114,6 +114,13 @@ struct KeycloakError {
   error: String,
   #[serde(default)]
   error_description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterAccessRequestConsentResponse {
+  pub scope: String,
+  pub access_request_id: String,
+  pub access_request_scope: String,
 }
 
 impl From<KeycloakError> for AuthServiceError {
@@ -195,17 +202,6 @@ pub struct RegisterClientRequest {
   pub redirect_uris: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct AppAccessRequest {
-  pub app_client_id: String,
-  /// Optional version for cache lookup - if matches cached config, skips auth server call
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub version: Option<String>,
-  /// Optional toolset scope IDs to register with resource-client for token exchange
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub toolset_scope_ids: Option<Vec<String>>,
-}
-
 /// Toolset configuration from app-client registration
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct AppClientToolset {
@@ -217,36 +213,6 @@ pub struct AppClientToolset {
   /// True if scope has been added to resource-client as optional scope
   #[serde(skip_serializing_if = "Option::is_none")]
   pub added_to_resource_client: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct AppAccessResponse {
-  pub scope: String,
-  /// List of toolsets the app-client is configured to access
-  #[serde(default)]
-  pub toolsets: Vec<AppClientToolset>,
-  /// Version of app-client's toolset configuration on auth server
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub app_client_config_version: Option<String>,
-}
-
-/// Internal request to auth server (without version field)
-#[derive(Debug, Serialize, Deserialize)]
-struct RequestAccessRequest {
-  pub app_client_id: String,
-  /// Toolset scope IDs to add as optional scopes on resource-client
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub toolset_scope_ids: Option<Vec<String>>,
-}
-
-/// Response from auth server /resources/request-access
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RequestAccessResponse {
-  pub scope: String,
-  #[serde(default)]
-  pub toolsets: Vec<AppClientToolset>,
-  #[serde(default)]
-  pub app_client_config_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -628,46 +594,6 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  async fn request_access(
-    &self,
-    client_id: &str,
-    client_secret: &str,
-    app_client_id: &str,
-    toolset_scope_ids: Option<Vec<String>>,
-  ) -> Result<RequestAccessResponse> {
-    // Get client access token
-    let access_token = self
-      .get_client_access_token(client_id, client_secret)
-      .await?;
-
-    // Make API call to request access
-    let endpoint = format!(
-      "{}/realms/{}/bodhi/resources/request-access",
-      self.auth_url, self.realm
-    );
-    log::log_http_request("POST", &endpoint, "auth_service", None);
-
-    let response = self
-      .client
-      .post(&endpoint)
-      .bearer_auth(access_token.secret())
-      .json(&RequestAccessRequest {
-        app_client_id: app_client_id.to_string(),
-        toolset_scope_ids,
-      })
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    if response.status().is_success() {
-      Ok(response.json().await?)
-    } else {
-      let error = response.json::<KeycloakError>().await?;
-      log::log_http_error("POST", &endpoint, "auth_service", &error.error);
-      Err(error.into())
-    }
-  }
-
   async fn assign_user_role(&self, reviewer_token: &str, user_id: &str, role: &str) -> Result<()> {
     // Make API call to assign role to user
     let endpoint = format!(
@@ -772,6 +698,56 @@ impl AuthService for KeycloakAuthService {
       let error = response.json::<KeycloakError>().await?;
       log::log_http_error("GET", &endpoint, "auth_service", &error.error);
       Err(error.into())
+    }
+  }
+
+  async fn register_access_request_consent(
+    &self,
+    user_token: &str,
+    app_client_id: &str,
+    access_request_id: &str,
+    description: &str,
+  ) -> Result<RegisterAccessRequestConsentResponse> {
+    let endpoint = format!("{}/users/request-access", self.auth_api_url());
+
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let request_body = serde_json::json!({
+      "app_client_id": app_client_id,
+      "access_request_id": access_request_id,
+      "description": description,
+    });
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .json(&request_body)
+      .header("Authorization", format!("Bearer {}", user_token))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+
+    if status.is_success() {
+      // 201 Created or 200 OK (idempotent retry)
+      Ok(response.json::<RegisterAccessRequestConsentResponse>().await?)
+    } else if status == 409 {
+      // UUID collision - different context
+      let error_text = response.text().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::TokenExchangeError(format!(
+        "UUID collision (409): {}",
+        error_text
+      )))
+    } else {
+      // 400, 401, or other errors
+      let error_text = response.text().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
     }
   }
 }
@@ -1091,168 +1067,6 @@ mod tests {
   }
 
   #[rstest]
-  #[tokio::test]
-  #[anyhow_trace]
-  async fn test_request_access_success() -> anyhow::Result<()> {
-    let mut server = Server::new_async().await;
-    let url = server.url();
-
-    let client_id = "test_client_id";
-    let client_secret = "test_client_secret";
-    let app_client_id = "test_app_client_id";
-
-    // Mock token endpoint
-    let token_mock = server
-      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
-      .match_body(Matcher::AllOf(vec![
-        Matcher::UrlEncoded("grant_type".into(), "client_credentials".into()),
-        Matcher::UrlEncoded("client_id".into(), client_id.into()),
-        Matcher::UrlEncoded("client_secret".into(), client_secret.into()),
-      ]))
-      .with_status(200)
-      .with_body(
-        json!({
-            "access_token": "test_access_token",
-            "token_type": "Bearer",
-            "expires_in": 300,
-        })
-        .to_string(),
-      )
-      .create();
-
-    // Mock request-access endpoint - corrected path
-    let access_mock = server
-      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
-      .match_header("Authorization", "Bearer test_access_token")
-      .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
-      .with_status(200)
-      .with_body(
-        json!({
-          "scope": "scope_resource_test-resource-server",
-          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}],
-          "app_client_config_version": "v1.0.0"
-        })
-        .to_string(),
-      )
-      .create();
-
-    let service = test_auth_service(&url);
-    let response = service
-      .request_access(client_id, client_secret, app_client_id, None)
-      .await?;
-
-    assert_eq!("scope_resource_test-resource-server", response.scope);
-    assert_eq!(1, response.toolsets.len());
-    assert_eq!("builtin-exa-web-search", response.toolsets[0].id);
-    assert_eq!(
-      Some("v1.0.0".to_string()),
-      response.app_client_config_version
-    );
-    token_mock.assert();
-    access_mock.assert();
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  #[anyhow_trace]
-  async fn test_request_access_without_config_version() -> anyhow::Result<()> {
-    let mut server = Server::new_async().await;
-    let url = server.url();
-
-    let client_id = "test_client_id";
-    let client_secret = "test_client_secret";
-    let app_client_id = "test_app_client_id";
-
-    let token_mock = server
-      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
-      .match_header("Content-Type", "application/x-www-form-urlencoded")
-      .with_status(200)
-      .with_body(
-        json!({
-          "access_token": "test_access_token",
-          "token_type": "Bearer",
-          "expires_in": 3600
-        })
-        .to_string(),
-      )
-      .create();
-
-    let access_mock = server
-      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
-      .match_header("Authorization", "Bearer test_access_token")
-      .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
-      .with_status(200)
-      .with_body(
-        json!({
-          "scope": "scope_resource_test-resource-server",
-          "toolsets": [{"id": "builtin-exa-web-search", "scope": "scope_toolset-builtin-exa-web-search"}]
-        })
-        .to_string(),
-      )
-      .create();
-
-    let service = test_auth_service(&url);
-    let response = service
-      .request_access(client_id, client_secret, app_client_id, None)
-      .await?;
-
-    assert_eq!("scope_resource_test-resource-server", response.scope);
-    assert_eq!(1, response.toolsets.len());
-    assert_eq!("builtin-exa-web-search", response.toolsets[0].id);
-    assert_eq!(None, response.app_client_config_version);
-    token_mock.assert();
-    access_mock.assert();
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  #[anyhow_trace]
-  async fn test_request_access_error() -> anyhow::Result<()> {
-    let mut server = Server::new_async().await;
-    let url = server.url();
-
-    let client_id = "test_client_id";
-    let client_secret = "test_client_secret";
-    let app_client_id = "invalid_app_client_id";
-
-    // Mock token endpoint
-    let token_mock = server
-      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
-      .with_status(200)
-      .with_body(
-        json!({
-            "access_token": "test_access_token",
-            "token_type": "Bearer",
-            "expires_in": 300,
-        })
-        .to_string(),
-      )
-      .create();
-
-    // Mock request-access endpoint with error
-    let access_mock = server
-      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
-      .with_status(400)
-      .with_body(json!({"error": "app_client_not_found"}).to_string())
-      .create();
-
-    let service = test_auth_service(&url);
-    let result = service
-      .request_access(client_id, client_secret, app_client_id, None)
-      .await;
-
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!("auth_service_error-auth_service_api_error", err.code());
-    token_mock.assert();
-    access_mock.assert();
-
-    Ok(())
-  }
 
   #[rstest]
   #[tokio::test]

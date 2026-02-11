@@ -2,12 +2,13 @@ use crate::{AppServiceBuilderError, AppStateOption};
 use objs::{ApiError, ErrorMessage};
 use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
-  DefaultAppService, DefaultExaService, DefaultNetworkService, DefaultSecretService,
-  DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
-  KeyringStore, LocalConcurrencyService, LocalDataService, MokaCacheService, NetworkService,
-  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
-  SettingService, SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
+  hash_key, AccessRequestService, AiApiService, AppService, AuthService, CacheService, DataService,
+  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
+  DefaultNetworkService, DefaultSecretService, DefaultToolService, ExaService, HfHubService,
+  HubService, InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService,
+  LocalDataService, MokaCacheService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker,
+  SecretService, SecretServiceExt, SessionService, SettingService, SqliteSessionService,
+  SystemKeyringStore, ToolService, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -34,6 +35,7 @@ pub struct AppServiceBuilder {
   cache_service: Option<Arc<dyn CacheService>>,
   auth_service: Option<Arc<dyn AuthService>>,
   ai_api_service: Option<Arc<dyn AiApiService>>,
+  access_request_service: Option<Arc<dyn AccessRequestService>>,
   network_service: Option<Arc<dyn NetworkService>>,
   encryption_key: Option<Vec<u8>>,
 }
@@ -52,6 +54,7 @@ impl AppServiceBuilder {
       cache_service: None,
       auth_service: None,
       ai_api_service: None,
+      access_request_service: None,
       network_service: None,
       encryption_key: None,
     }
@@ -198,6 +201,12 @@ impl AppServiceBuilder {
     let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
     let concurrency_service = self.get_or_build_concurrency_service();
     let tool_service = self.get_or_build_tool_service(db_service.clone(), time_service.clone());
+    let access_request_service = self.get_or_build_access_request_service(
+      db_service.clone(),
+      auth_service.clone(),
+      tool_service.clone(),
+      time_service.clone(),
+    );
     let network_service = self.get_or_build_network_service();
 
     // Create queue and spawn refresh worker
@@ -234,6 +243,7 @@ impl AppServiceBuilder {
       queue_producer,
       tool_service,
       network_service,
+      access_request_service,
     );
     Ok(app_service)
   }
@@ -412,6 +422,30 @@ impl AppServiceBuilder {
       exa_service,
       time_service,
       is_production,
+    ))
+  }
+
+  /// Gets or builds the access request service.
+  fn get_or_build_access_request_service(
+    &mut self,
+    db_service: Arc<dyn DbService>,
+    auth_service: Arc<dyn AuthService>,
+    tool_service: Arc<dyn ToolService>,
+    time_service: Arc<dyn TimeService>,
+  ) -> Arc<dyn AccessRequestService> {
+    if let Some(service) = self.access_request_service.take() {
+      return service;
+    }
+
+    // Get frontend URL from settings
+    let frontend_url = self.setting_service.public_server_url();
+
+    Arc::new(DefaultAccessRequestService::new(
+      db_service,
+      auth_service,
+      tool_service,
+      time_service,
+      frontend_url,
     ))
   }
 

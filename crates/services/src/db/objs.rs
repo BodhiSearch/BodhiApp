@@ -228,3 +228,25 @@ pub struct AppClientToolsetConfigRow {
   pub created_at: i64,
   pub updated_at: i64,
 }
+
+// ============================================================================
+// AppAccessRequestRow - Database row for app access request consent tracking
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppAccessRequestRow {
+  pub id: String,              // UUID (access_request_id)
+  pub app_client_id: String,
+  pub flow_type: String,       // "redirect" | "popup"
+  pub redirect_uri: Option<String>,
+  pub status: String,          // "draft" | "approved" | "denied" | "failed"
+  pub tools_requested: String, // JSON: [{"tool_type":"..."}]
+  pub tools_approved: Option<String>, // JSON: [{"tool_type":"...", "status":"approved", "toolset_id":"..."}]
+  pub user_id: Option<String>,
+  pub resource_scope: Option<String>,         // KC-returned scope
+  pub access_request_scope: Option<String>,   // KC-returned scope
+  pub error_message: Option<String>,          // Error details for 'failed' status
+  pub expires_at: i64,         // Unix timestamp
+  pub created_at: i64,
+  pub updated_at: i64,
+}

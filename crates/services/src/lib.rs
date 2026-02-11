@@ -10,6 +10,7 @@ mod env_wrapper;
 mod macros;
 
 // -- Authentication & security
+mod access_request_service;
 mod auth_service;
 mod keyring_service;
 mod secret_service;
@@ -49,6 +50,7 @@ pub use app_service::*;
 pub use env_wrapper::*;
 
 // -- Re-exports: authentication & security
+pub use access_request_service::*;
 pub use auth_service::*;
 pub use keyring_service::*;
 pub use secret_service::*;
