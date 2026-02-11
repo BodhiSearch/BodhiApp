@@ -1,6 +1,6 @@
 use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
-use server_core::{MockSharedContext, SharedContext};
+use server_core::{DefaultSharedContext, MockSharedContext, SharedContext};
 use services::{
   test_utils::{access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID},
   AppService, SessionService, StubNetworkService,
@@ -161,4 +161,59 @@ pub fn unauth_request_with_body(method: &str, path: &str, body: Body) -> Request
     .header("Content-Type", "application/json")
     .body(body)
     .unwrap()
+}
+
+/// Builds a fully-composed router with live services for integration testing with real LLM inference.
+///
+/// This function creates a router that exercises the complete request flow through real services:
+/// - Real HF cache discovery (discovers models from ~/.cache/huggingface/hub)
+/// - Real llama.cpp binary execution (from crates/llama_server_proc/bin/)
+/// - Real LocalDataService with live hub service
+/// - DefaultSharedContext with DefaultServerFactory (spawns actual llama.cpp processes)
+///
+/// Returns:
+/// - `Router` - fully composed router with session layer, auth middleware, DefaultSharedContext
+/// - `Arc<dyn AppService>` - app service handle for test setup
+/// - `Arc<dyn SharedContext>` - shared context for cleanup (call ctx.stop().await after test)
+/// - `Arc<TempDir>` - temp directory ownership to keep it alive for test duration
+///
+/// # Prerequisites
+/// - Pre-downloaded model at `~/.cache/huggingface/hub/` (e.g., ggml-org/Qwen3-1.7B-GGUF)
+/// - llama.cpp binary at `crates/llama_server_proc/bin/{BUILD_TARGET}/{DEFAULT_VARIANT}/{EXEC_NAME}`
+pub async fn build_live_test_router() -> anyhow::Result<(
+  Router,
+  Arc<dyn AppService>,
+  Arc<dyn SharedContext>,
+  Arc<TempDir>,
+)> {
+  let mut builder = AppServiceStubBuilder::default();
+  let stub_queue: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
+  let stub_network: Arc<dyn services::NetworkService> =
+    Arc::new(StubNetworkService { ip: Some("192.168.1.100".to_string()) });
+  builder
+    .with_live_services() // real HF cache + real binary path
+    .with_data_service()
+    .await // LocalDataService using live hub (discovers Qwen3)
+    .with_db_service()
+    .await
+    .with_session_service()
+    .await
+    .with_secret_service()
+    .queue_producer(stub_queue)
+    .network_service(stub_network);
+  let app_service_stub = builder.build()?;
+  let temp_home = app_service_stub
+    .temp_home
+    .clone()
+    .expect("temp_home should be set");
+
+  let hub_service = app_service_stub.hub_service.clone().unwrap();
+  let setting_service = app_service_stub.setting_service.clone().unwrap();
+  let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
+
+  // DefaultSharedContext::new uses DefaultServerFactory (spawns real llama.cpp)
+  let ctx: Arc<dyn SharedContext> =
+    Arc::new(DefaultSharedContext::new(hub_service, setting_service));
+  let router = build_routes(ctx.clone(), app_service.clone(), None);
+  Ok((router, app_service, ctx, temp_home))
 }

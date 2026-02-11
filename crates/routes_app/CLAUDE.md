@@ -122,6 +122,38 @@ Only specific settings can be modified via the API (`BODHI_EXEC_VARIANT`, `BODHI
 ### Network Installation Support
 The setup and login flows dynamically detect the request host to support network installations where the server is accessed from different machines. When `BODHI_PUBLIC_HOST` is not explicitly configured, the handler extracts the `Host` header to construct callback URLs. When explicitly configured (e.g., RunPod deployment), only the configured host is used.
 
+### Testing Philosophy: Route-Level Unit Tests vs Server Integration Tests
+The `routes_app` crate's live tests (`test_live_*`) are **route-level unit tests** that test individual API endpoints in isolation, not full application integration scenarios:
+
+**What routes_app live tests do:**
+- Use `build_live_test_router()` to create a `Router` with real services (real llama.cpp, real HF cache)
+- Test single API endpoint per test via `router.oneshot(request)`
+- Authenticate with `create_authenticated_session()` (session cookie injection, no OAuth flow)
+- Assert on single response structure and content
+- **Single-turn only** - one request, one response, cleanup
+
+**What routes_app live tests do NOT do:**
+- Multiple sequential API calls (multi-turn workflows)
+- Full HTTP server lifecycle (TCP listener, signal handling, graceful shutdown)
+- OAuth2 authorization code flow (only session-based auth)
+- Cross-request state management (session persistence across requests)
+- Real-world deployment scenarios (network access, multiple clients)
+
+**When to use server_app integration tests instead:**
+Multi-turn workflows requiring multiple API calls belong in `server_app` tests, which run a full HTTP server with TCP listener:
+- Multi-turn tool calling (initial tool call → tool result → final answer)
+- OAuth2 code exchange flow (initiate → callback → protected endpoint)
+- Sequential operations requiring session persistence
+- Testing server lifecycle (startup, shutdown, signal handling)
+- Testing real HTTP semantics (redirects, cookies, streaming over network)
+
+**Example distinction:**
+- ✅ `routes_app`: Single-turn tool calling test - send request with tools, assert response has `finish_reason: "tool_calls"`
+- ❌ `routes_app`: Multi-turn tool calling - NOT supported, belongs in `server_app`
+- ✅ `server_app`: Multi-turn tool calling - request tool call, extract tool_call_id, send tool result, assert final answer
+
+This distinction keeps `routes_app` tests fast (no TCP listener overhead), focused (route handler logic only), and easy to debug (single request-response cycle).
+
 ## Extension Patterns
 
 ### Adding New Application Endpoints

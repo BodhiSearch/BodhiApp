@@ -9,7 +9,7 @@ use crate::{
   DataService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
   MockAuthService, MockHubService, MockToolService, MokaCacheService, NetworkService,
   SecretService, SessionService, SettingService, SqliteSessionService, StubNetworkService,
-  ToolService,
+  ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -238,6 +238,30 @@ impl AppServiceStubBuilder {
 
   pub fn with_tool_service(&mut self, tool_service: Arc<dyn ToolService>) -> &mut Self {
     self.tool_service = Some(Some(tool_service));
+    self
+  }
+
+  pub fn with_live_services(&mut self) -> &mut Self {
+    // setup_temp_home() creates SettingServiceStub with all defaults
+    // (BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME from compile-time constants)
+    let _temp_home = self.setup_temp_home();
+
+    // Override exec lookup to real binary at crates/llama_server_proc/bin/
+    let exec_lookup_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("../llama_server_proc/bin");
+    let exec_lookup_str = exec_lookup_path.display().to_string();
+    self.with_settings(HashMap::from([(
+      BODHI_EXEC_LOOKUP_PATH,
+      exec_lookup_str.as_str(),
+    )]));
+
+    // Real HF cache with OfflineHubService (panics on download, allows local reads)
+    let hf_cache = dirs::home_dir()
+      .expect("home dir should exist")
+      .join(".cache/huggingface/hub");
+    let hub_service = OfflineHubService::new(HfHubService::new(hf_cache, false, None));
+    self.hub_service = Some(Some(Arc::new(hub_service)));
+
     self
   }
 }

@@ -146,6 +146,42 @@ For new configuration and settings management patterns:
 ### Design Philosophy
 The live integration tests validate the full end-to-end stack: real HTTP server, real llama.cpp inference, real OAuth2 authentication, and real API responses. They intentionally avoid mocks to verify that the complete system works correctly when all components are wired together. This catches integration issues that unit tests with mocked services cannot detect.
 
+### Server Integration Tests vs Route Unit Tests
+The `server_app` crate's live tests are **full server integration tests** that test complete application workflows with a running HTTP server, not just individual route handlers:
+
+**What server_app integration tests do:**
+- Use `live_server` fixture to start a full HTTP server with TCP listener on localhost
+- Test multi-turn workflows requiring multiple sequential HTTP requests
+- Validate complete OAuth2 code exchange flow (not just session injection)
+- Assert on cross-request state (session persistence, cookie handling)
+- Test HTTP semantics (redirects, streaming over network, connection handling)
+- **Multi-turn capable** - multiple requests in sequence with shared state
+
+**What server_app integration tests do NOT do:**
+- Test individual route handlers in isolation (use `routes_app` for this)
+- Bypass HTTP layer (always goes through TCP listener → HTTP server → routes)
+
+**Complementary to routes_app tests:**
+The `routes_app` crate has route-level unit tests (`test_live_*`) that test individual endpoints without a TCP listener:
+- Use `build_live_test_router()` + `tower::oneshot()` to invoke routes directly
+- Single-turn only - one request, one response per test
+- Session injection (no OAuth code flow)
+- Faster execution (no TCP listener overhead)
+- Easier debugging (single request-response cycle)
+
+**When to add tests to server_app vs routes_app:**
+- ✅ `server_app`: Multi-turn workflows (tool calling with follow-up, OAuth flow + protected endpoint access)
+- ✅ `server_app`: Server lifecycle testing (startup, shutdown, signal handling)
+- ✅ `server_app`: Real HTTP semantics (network streaming, cookie handling across requests)
+- ✅ `routes_app`: Single-turn endpoint tests (one request, assert response structure)
+- ✅ `routes_app`: Route handler logic in isolation (without full server infrastructure)
+
+**Example distinction:**
+- ✅ `server_app`: Multi-turn tool calling test - Turn 1: request tool call (POST /v1/chat/completions) → Turn 2: send tool result (POST /v1/chat/completions with assistant + tool messages) → assert final answer
+- ✅ `routes_app`: Single-turn tool calling test - one POST /v1/chat/completions with tools → assert response has `finish_reason: "tool_calls"`
+
+This separation keeps `server_app` tests focused on integration scenarios requiring full server infrastructure, while `routes_app` tests remain fast and focused on individual route handler correctness.
+
 ### Why Inline AppService Setup (No lib_bodhiserver Dependency)
 The `setup_minimal_app_service` function in `tests/utils/live_server_utils.rs` manually constructs a `DefaultAppService` with all real service implementations rather than depending on `lib_bodhiserver`. This design decision exists because:
 - **Avoiding circular dependencies**: `lib_bodhiserver` depends on `server_app`, so `server_app` cannot depend back on it
