@@ -15,12 +15,12 @@ use services::{
   db::{DbCore, DefaultTimeService, SqliteDbService},
   hash_key,
   test_utils::{test_auth_service, OfflineHubService, StubQueue},
-  AppRegInfoBuilder, AppService, AppStatus, DefaultAiApiService, DefaultAppService,
-  DefaultEnvWrapper, DefaultExaService, DefaultSecretService, DefaultSettingService,
-  DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService, LocalDataService,
-  MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService, StubNetworkService,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
-  BODHI_HOME, BODHI_LOGS, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
+  AppRegInfoBuilder, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
+  DefaultAppService, DefaultEnvWrapper, DefaultExaService, DefaultSecretService,
+  DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService,
+  LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
+  StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
@@ -54,10 +54,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
 
   // Build env wrapper with test environment
   let mut env_vars = HashMap::new();
-  env_vars.insert(
-    BODHI_HOME.to_string(),
-    bodhi_home.display().to_string(),
-  );
+  env_vars.insert(BODHI_HOME.to_string(), bodhi_home.display().to_string());
   env_vars.insert(BODHI_LOGS.to_string(), logs_dir.display().to_string());
   env_vars.insert(HF_HOME.to_string(), hf_home.display().to_string());
 
@@ -190,7 +187,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     app_pool,
     time_service.clone(),
     encryption_key,
-    false,
   ));
   db_service.migrate().await?;
 
@@ -241,6 +237,13 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     time_service.clone(),
     false, // is_production
   ));
+  let access_request_service = Arc::new(DefaultAccessRequestService::new(
+    db_service.clone(),
+    auth_service.clone(),
+    tool_service.clone(),
+    time_service.clone(),
+    setting_service.public_server_url(),
+  ));
 
   // Build network service (need to provide ip field for struct)
   let network_service = Arc::new(StubNetworkService {
@@ -263,6 +266,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     queue_producer,
     tool_service,
     network_service,
+    access_request_service,
   );
 
   Ok(Arc::new(app_service))

@@ -53,7 +53,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
   println!("Step 1: Enabling Exa toolset at app level...");
   let enable_response = client
     .put(format!(
-      "{}/bodhi/v1/toolset_types/scope_toolset-builtin-exa-web-search/app-config",
+      "{}/bodhi/v1/toolset_types/builtin-exa-search/app-config",
       base_url
     ))
     .header("Cookie", session_cookie.to_string())
@@ -75,8 +75,8 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .post(format!("{}/bodhi/v1/toolsets", base_url))
     .header("Cookie", session_cookie.to_string())
     .json(&json!({
-      "scope_uuid": "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
-      "name": "builtin-exa-web-search",
+      "toolset_type": "builtin-exa-search",
+      "name": "exa-web-search",
       "description": "Exa web search toolset",
       "enabled": true,
       "api_key": exa_api_key
@@ -106,7 +106,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .and_then(|toolsets| {
       toolsets
         .iter()
-        .find(|t| t["scope_uuid"] == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+        .find(|t| t["toolset_type"] == "builtin-exa-search")
     })
     .expect("Exa toolset not found in available toolsets");
 
