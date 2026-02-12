@@ -127,7 +127,7 @@ function buildToolsArray(
 ): ToolDefinition[] {
   const result: ToolDefinition[] = [];
   for (const toolset of toolsets) {
-    const isAdminEnabled = scopeEnabledMap.get(toolset.scope) ?? true;
+    const isAdminEnabled = scopeEnabledMap.get(toolset.toolset_type) ?? true;
 
     // Skip unavailable toolsets
     if (!isAdminEnabled || !toolset.enabled || !toolset.has_api_key) {
@@ -153,7 +153,7 @@ function buildToolsArray(
 export interface UseChatOptions {
   enabledTools?: Record<string, string[]>;
   toolsets?: ToolsetResponse[];
-  toolsetTypes?: { scope: string; enabled: boolean }[];
+  toolsetTypes?: { toolset_type: string; enabled: boolean }[];
 }
 
 export function useChat(options?: UseChatOptions) {
@@ -169,7 +169,7 @@ export function useChat(options?: UseChatOptions) {
   // Build scope→enabled mapping from toolset types
   const scopeEnabledMap = useMemo(() => {
     const map = new Map<string, boolean>();
-    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
     return map;
   }, [toolsetTypes]);
 

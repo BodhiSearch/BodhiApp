@@ -6,11 +6,11 @@ import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
-import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToastMessages } from '@/hooks/use-toast-messages';

@@ -52,7 +52,7 @@ function AdminToolsetsPageContent() {
   const scopeEnabledMap = useMemo(() => {
     const map = new Map<string, boolean>();
     const toolsetTypes = toolsetsData?.toolset_types || [];
-    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
     return map;
   }, [toolsetsData?.toolset_types]);
 
@@ -89,39 +89,39 @@ function AdminToolsetsPageContent() {
 
   const handleEnableConfirm = () => {
     if (selectedType) {
-      enableMutation.mutate({ scope: selectedType.scope });
+      enableMutation.mutate({ toolset_type: selectedType.toolset_type });
     }
   };
 
   const handleDisableConfirm = () => {
     if (selectedType) {
-      disableMutation.mutate({ scope: selectedType.scope });
+      disableMutation.mutate({ toolset_type: selectedType.toolset_type });
     }
   };
 
   const renderRow = (type: ToolsetTypeResponse) => {
     const isToggling =
-      selectedType?.scope_uuid === type.scope_uuid && (enableMutation.isLoading || disableMutation.isLoading);
-    const isEnabled = scopeEnabledMap.get(type.scope) ?? false;
+      selectedType?.toolset_type === type.toolset_type && (enableMutation.isLoading || disableMutation.isLoading);
+    const isEnabled = scopeEnabledMap.get(type.toolset_type) ?? false;
 
     return [
-      <TableCell key="name" data-testid={`type-name-${type.scope_uuid}`}>
+      <TableCell key="name" data-testid={`type-name-${type.toolset_type}`}>
         <span className="font-medium">{type.name}</span>
       </TableCell>,
-      <TableCell key="description" data-testid={`type-description-${type.scope_uuid}`}>
+      <TableCell key="description" data-testid={`type-description-${type.toolset_type}`}>
         <span className="text-muted-foreground">{type.description}</span>
       </TableCell>,
-      <TableCell key="status" data-testid={`type-status-${type.scope_uuid}`}>
+      <TableCell key="status" data-testid={`type-status-${type.toolset_type}`}>
         <Badge variant={isEnabled ? 'default' : 'secondary'}>{isEnabled ? 'Enabled' : 'Disabled'}</Badge>
       </TableCell>,
-      <TableCell key="actions" data-testid={`type-actions-${type.scope_uuid}`}>
+      <TableCell key="actions" data-testid={`type-actions-${type.toolset_type}`}>
         <div className="flex items-center gap-2">
           <Switch
             checked={isEnabled}
             onCheckedChange={(checked) => handleToggle(type, checked)}
             disabled={isToggling}
-            data-testid={`type-toggle-${type.scope_uuid}`}
-            data-test-scope={type.scope}
+            data-testid={`type-toggle-${type.toolset_type}`}
+            data-test-scope={type.toolset_type}
           />
           <span className="text-sm text-muted-foreground">{isEnabled ? 'Enabled' : 'Disabled'}</span>
         </div>
@@ -187,12 +187,12 @@ function AdminToolsetsPageContent() {
           columns={columns}
           loading={isLoading}
           renderRow={renderRow}
-          getItemId={(type) => type.scope_uuid}
+          getItemId={(type) => type.toolset_type}
           getRowProps={(type) => {
-            const isEnabled = scopeEnabledMap.get(type.scope) ?? false;
+            const isEnabled = scopeEnabledMap.get(type.toolset_type) ?? false;
             return {
-              'data-testid': `type-row-${type.scope_uuid}`,
-              'data-test-scope': type.scope,
+              'data-testid': `type-row-${type.toolset_type}`,
+              'data-test-scope': type.toolset_type,
               'data-test-state': isEnabled ? 'enabled' : 'disabled',
             };
           }}

@@ -33,7 +33,7 @@ import {
   useToolsetTypes,
 } from '@/hooks/useToolsets';
 
-const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+const TOOLSET_TYPE = 'builtin-exa-search';
 
 const createToolsetSchema = z.object({
   name: z
@@ -58,14 +58,14 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
-  const toolsetType = typesData?.types?.find((t) => t.scope === TOOLSET_SCOPE);
+  const toolsetType = typesData?.types?.find((t) => t.toolset_type === TOOLSET_TYPE);
 
   // Check if admin enabled using toolset_types
   const isAppEnabled = useMemo(() => {
     if (!toolsetType || !toolsetsData?.toolset_types) return false;
     const scopeEnabledMap = new Map<string, boolean>();
-    toolsetsData.toolset_types.forEach((config) => scopeEnabledMap.set(config.scope, config.enabled));
-    return scopeEnabledMap.get(toolsetType.scope) ?? false;
+    toolsetsData.toolset_types.forEach((config) => scopeEnabledMap.set(config.toolset_type, config.enabled));
+    return scopeEnabledMap.get(toolsetType.toolset_type) ?? false;
   }, [toolsetType, toolsetsData?.toolset_types]);
 
   const enableMutation = useEnableToolsetType({
@@ -110,13 +110,12 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
     },
   });
 
-  // Update form name when toolsetType loads - derive from scope
+  // Update form name when toolsetType loads
   useEffect(() => {
-    if (toolsetType?.scope) {
-      const derivedName = toolsetType.scope.replace(/^scope_toolset-/, '');
-      form.setValue('name', derivedName);
+    if (toolsetType?.toolset_type) {
+      form.setValue('name', toolsetType.toolset_type);
     }
-  }, [toolsetType?.scope, form]);
+  }, [toolsetType?.toolset_type, form]);
 
   const handleToggleClick = (checked: boolean) => {
     if (checked) {
@@ -128,20 +127,20 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
 
   const handleEnableConfirm = () => {
     if (toolsetType) {
-      enableMutation.mutate({ scope: toolsetType.scope });
+      enableMutation.mutate({ toolset_type: toolsetType.toolset_type });
     }
   };
 
   const handleDisableConfirm = () => {
     if (toolsetType) {
-      disableMutation.mutate({ scope: toolsetType.scope });
+      disableMutation.mutate({ toolset_type: toolsetType.toolset_type });
     }
   };
 
   const onSubmit = (data: CreateToolsetFormData) => {
     if (!toolsetType) return;
     createMutation.mutate({
-      scope_uuid: toolsetType.scope_uuid,
+      toolset_type: toolsetType.toolset_type,
       name: data.name,
       description: data.description || undefined,
       api_key: data.api_key,
@@ -223,7 +222,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder={toolsetType?.scope.replace(/^scope_toolset-/, '') || 'my-toolset'}
+                            placeholder={toolsetType?.name || 'my-toolset'}
                             disabled={isFormDisabled}
                             data-testid="toolset-name-input"
                           />
@@ -305,7 +304,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           </Card>
 
           {/* Info Box - Only show for Exa */}
-          {toolsetType?.scope === TOOLSET_SCOPE && (
+          {toolsetType?.toolset_type === TOOLSET_TYPE && (
             <Card className="bg-muted/50">
               <CardContent className="pt-6">
                 <div className="flex items-start gap-3">

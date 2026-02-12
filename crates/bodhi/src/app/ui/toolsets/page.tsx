@@ -44,7 +44,7 @@ function getToolsetStatus(
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
 } {
-  const isAdminEnabled = scopeEnabledMap.get(toolset.scope) ?? true;
+  const isAdminEnabled = scopeEnabledMap.get(toolset.toolset_type) ?? true;
 
   if (!isAdminEnabled) {
     return { label: 'App Disabled', variant: 'destructive' };
@@ -84,7 +84,7 @@ function ToolsetsPageContent() {
   const scopeEnabledMap = useMemo(() => {
     const map = new Map<string, boolean>();
     const toolsetTypes = data?.toolset_types || [];
-    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
     return map;
   }, [data?.toolset_types]);
 
@@ -107,7 +107,7 @@ function ToolsetsPageContent() {
 
   const renderRow = (toolset: ToolsetResponse) => {
     const status = getToolsetStatus(toolset, scopeEnabledMap);
-    const canEdit = scopeEnabledMap.get(toolset.scope) ?? true;
+    const canEdit = scopeEnabledMap.get(toolset.toolset_type) ?? true;
 
     return [
       <TableCell key="name">
@@ -117,7 +117,7 @@ function ToolsetsPageContent() {
         </div>
       </TableCell>,
       <TableCell key="type" className="hidden md:table-cell" data-testid={`toolset-type-${toolset.id}`}>
-        <span className="text-muted-foreground">{toolset.scope}</span>
+        <span className="text-muted-foreground">{toolset.toolset_type}</span>
       </TableCell>,
       <TableCell key="status" data-testid={`toolset-status-${toolset.id}`}>
         <Badge variant={status.variant}>{status.label}</Badge>
@@ -132,7 +132,7 @@ function ToolsetsPageContent() {
             title={canEdit ? `Edit ${toolset.name}` : 'Disabled by administrator'}
             className="h-8 w-8 p-0"
             data-testid={`toolset-edit-button-${toolset.id}`}
-            data-testid-scope={toolset.scope}
+            data-testid-scope={toolset.toolset_type}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -228,7 +228,7 @@ function ToolsetsPageContent() {
           getRowProps={(toolset) => ({
             'data-test-uuid': toolset.id,
             'data-testid': `toolset-row-${toolset.id}`,
-            'data-test-scope': toolset.scope,
+            'data-test-scope': toolset.toolset_type,
             'data-test-toolset-name': toolset.name,
           })}
         />

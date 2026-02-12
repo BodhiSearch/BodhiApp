@@ -60,8 +60,8 @@ function EditToolsetContent() {
   const isAdminEnabled = useMemo(() => {
     if (!toolset || !toolsetsResponse?.toolset_types) return true;
     const scopeEnabledMap = new Map<string, boolean>();
-    toolsetsResponse.toolset_types.forEach((config) => scopeEnabledMap.set(config.scope, config.enabled));
-    return scopeEnabledMap.get(toolset.scope) ?? true;
+    toolsetsResponse.toolset_types.forEach((config) => scopeEnabledMap.set(config.toolset_type, config.enabled));
+    return scopeEnabledMap.get(toolset.toolset_type) ?? true;
   }, [toolset, toolsetsResponse?.toolset_types]);
 
   const updateMutation = useUpdateToolset({
@@ -179,7 +179,7 @@ function EditToolsetContent() {
               <FormItem>
                 <FormLabel>Toolset Type</FormLabel>
                 <FormControl>
-                  <Input value={toolset.scope} disabled data-testid="toolset-type-display" />
+                  <Input value={toolset.toolset_type} disabled data-testid="toolset-type-display" />
                 </FormControl>
                 <FormDescription>The type of toolset (read-only)</FormDescription>
               </FormItem>

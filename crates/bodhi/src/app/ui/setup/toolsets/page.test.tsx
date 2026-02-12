@@ -73,8 +73,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -93,15 +94,15 @@ describe('ToolsetsSetupPage', () => {
 
   describe('Form Display', () => {
     it('shows toggle and form fields when type is disabled', async () => {
-      const disabledType = { ...mockType, app_enabled: false };
       server.use(
-        mockListTypes([disabledType]),
+        mockListTypes([mockType]),
         mockListToolsets(
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: false,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -130,8 +131,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -156,8 +158,7 @@ describe('ToolsetsSetupPage', () => {
 
   describe('Toggle Disabled State', () => {
     it('disables form fields when app-config is off', async () => {
-      const disabledType = { ...mockType, app_enabled: false };
-      server.use(mockListTypes([disabledType]));
+      server.use(mockListTypes([mockType]));
 
       renderWithSetupProvider(<ToolsetsSetupPage />);
       await waitForPageLoad();
@@ -183,8 +184,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -215,16 +217,16 @@ describe('ToolsetsSetupPage', () => {
   describe('Enable Flow', () => {
     it('shows enable dialog when toggle is clicked on', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      const disabledType = { ...mockType, app_enabled: false };
       server.use(
-        mockListTypes([disabledType]),
+        mockListTypes([mockType]),
         mockEnableType(),
         mockListToolsets(
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: false,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -249,16 +251,16 @@ describe('ToolsetsSetupPage', () => {
 
     it('enables toolset when confirm is clicked', async () => {
       const user = await import('@testing-library/user-event').then((m) => m.default.setup());
-      const disabledType = { ...mockType, app_enabled: false };
       server.use(
-        mockListTypes([disabledType]),
+        mockListTypes([mockType]),
         mockEnableType(),
         mockListToolsets(
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: false,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -298,8 +300,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -331,8 +334,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -372,8 +376,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -410,8 +415,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -446,8 +452,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',
@@ -462,7 +469,7 @@ describe('ToolsetsSetupPage', () => {
       await waitForFormLoad();
 
       const nameInput = screen.getByTestId('toolset-name-input') as HTMLInputElement;
-      expect(nameInput.value).toBe('builtin-exa-web-search');
+      expect(nameInput.value).toBe('builtin-exa-search');
     });
   });
 
@@ -475,8 +482,9 @@ describe('ToolsetsSetupPage', () => {
           [],
           [
             {
-              scope: 'scope_toolset-builtin-exa-web-search',
-              scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+              toolset_type: 'builtin-exa-search',
+              name: 'Exa Web Search',
+              description: 'Search the web using Exa AI',
               enabled: true,
               updated_by: 'system',
               created_at: '2024-01-01T00:00:00Z',

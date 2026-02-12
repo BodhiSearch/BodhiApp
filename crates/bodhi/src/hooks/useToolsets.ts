@@ -1,5 +1,5 @@
 import {
-  AppToolsetConfigResponse,
+  AppToolsetConfig,
   ToolsetResponse,
   CreateToolsetRequest,
   UpdateToolsetRequest,
@@ -26,7 +26,7 @@ export type {
   ApiKeyUpdateDto,
   ToolsetTypeResponse,
   ToolDefinition,
-  AppToolsetConfigResponse,
+  AppToolsetConfig,
 };
 
 // ============================================================================
@@ -161,13 +161,13 @@ export function useToolsetTypes(options?: {
  * Enable a toolset type at app level (admin only)
  */
 export function useEnableToolsetType(options?: {
-  onSuccess?: (response: AppToolsetConfigResponse) => void;
+  onSuccess?: (response: AppToolsetConfig) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { scope: string }> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfig>, AxiosError<ErrorResponse>, { toolset_type: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, { scope: string }>(
-    ({ scope }) => `${TOOLSET_TYPES_ENDPOINT}/${scope}/app-config`,
+  return useMutationQuery<AppToolsetConfig, { toolset_type: string }>(
+    ({ toolset_type }) => `${TOOLSET_TYPES_ENDPOINT}/${toolset_type}/app-config`,
     'put',
     {
       onSuccess: (response) => {
@@ -187,13 +187,13 @@ export function useEnableToolsetType(options?: {
  * Disable a toolset type at app level (admin only)
  */
 export function useDisableToolsetType(options?: {
-  onSuccess?: (response: AppToolsetConfigResponse) => void;
+  onSuccess?: (response: AppToolsetConfig) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppToolsetConfigResponse>, AxiosError<ErrorResponse>, { scope: string }> {
+}): UseMutationResult<AxiosResponse<AppToolsetConfig>, AxiosError<ErrorResponse>, { toolset_type: string }> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<AppToolsetConfigResponse, { scope: string }>(
-    ({ scope }) => `${TOOLSET_TYPES_ENDPOINT}/${scope}/app-config`,
+  return useMutationQuery<AppToolsetConfig, { toolset_type: string }>(
+    ({ toolset_type }) => `${TOOLSET_TYPES_ENDPOINT}/${toolset_type}/app-config`,
     'delete',
     {
       onSuccess: (response) => {

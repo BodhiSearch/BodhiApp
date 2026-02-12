@@ -231,7 +231,7 @@ export function ChatUI() {
   // Create scope enabled map from toolset_types
   const scopeEnabledMap = useMemo(() => {
     const map = new Map<string, boolean>();
-    toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+    toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
     return map;
   }, [toolsetTypes]);
 
@@ -240,7 +240,9 @@ export function ChatUI() {
     if (toolsets.length === 0) return;
 
     const availableIds = new Set(
-      toolsets.filter((t) => (scopeEnabledMap.get(t.scope) ?? true) && t.enabled && t.has_api_key).map((t) => t.id)
+      toolsets
+        .filter((t) => (scopeEnabledMap.get(t.toolset_type) ?? true) && t.enabled && t.has_api_key)
+        .map((t) => t.id)
     );
 
     const filtered: Record<string, string[]> = {};

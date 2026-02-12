@@ -4,7 +4,7 @@
 import { http, HttpResponse } from 'msw';
 
 import { BODHI_API_BASE } from '@/hooks/useQuery';
-import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfigResponse } from '@/hooks/useToolsets';
+import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfig } from '@/hooks/useToolsets';
 
 // ============================================================================
 // Mock Data
@@ -13,8 +13,7 @@ import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfigResponse } f
 export const mockToolset: ToolsetResponse = {
   id: 'uuid-test-toolset',
   name: 'my-exa-search',
-  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-  scope: 'scope_toolset-builtin-exa-web-search',
+  toolset_type: 'builtin-exa-search',
   description: 'Test toolset',
   enabled: true,
   has_api_key: true,
@@ -38,10 +37,11 @@ export const mockToolset: ToolsetResponse = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-export const mockToolsetTypes = [
+export const mockToolsetTypes: AppToolsetConfig[] = [
   {
-    scope: 'scope_toolset-builtin-exa-web-search',
-    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+    toolset_type: 'builtin-exa-search',
+    name: 'Exa Web Search',
+    description: 'Search the web using Exa AI',
     enabled: true,
     updated_by: 'system',
     created_at: '2024-01-01T00:00:00Z',
@@ -50,11 +50,9 @@ export const mockToolsetTypes = [
 ];
 
 export const mockType: ToolsetTypeResponse = {
-  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-  scope: 'scope_toolset-builtin-exa-web-search',
+  toolset_type: 'builtin-exa-search',
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
-  app_enabled: true,
   tools: [
     {
       type: 'function',
@@ -120,35 +118,37 @@ export function mockListTypes(types: ToolsetTypeResponse[] = [mockType]) {
 }
 
 /**
- * Mock PUT /bodhi/v1/toolset_types/:scope/app-config - Enable toolset type (admin)
+ * Mock PUT /bodhi/v1/toolset_types/:toolset_type/app-config - Enable toolset type (admin)
  */
-export function mockEnableType(response?: AppToolsetConfigResponse) {
-  const defaultResponse: AppToolsetConfigResponse = {
-    scope: 'scope_toolset-builtin-exa-web-search',
-    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+export function mockEnableType(response?: AppToolsetConfig) {
+  const defaultResponse: AppToolsetConfig = {
+    toolset_type: 'builtin-exa-search',
+    name: 'Exa Web Search',
+    description: 'Search the web using Exa AI',
     enabled: true,
     updated_by: 'admin123',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };
-  return http.put(`${BODHI_API_BASE}/toolset_types/:scope/app-config`, () =>
+  return http.put(`${BODHI_API_BASE}/toolset_types/:toolset_type/app-config`, () =>
     HttpResponse.json(response || defaultResponse)
   );
 }
 
 /**
- * Mock DELETE /bodhi/v1/toolset_types/:scope/app-config - Disable toolset type (admin)
+ * Mock DELETE /bodhi/v1/toolset_types/:toolset_type/app-config - Disable toolset type (admin)
  */
-export function mockDisableType(response?: AppToolsetConfigResponse) {
-  const defaultResponse: AppToolsetConfigResponse = {
-    scope: 'scope_toolset-builtin-exa-web-search',
-    scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+export function mockDisableType(response?: AppToolsetConfig) {
+  const defaultResponse: AppToolsetConfig = {
+    toolset_type: 'builtin-exa-search',
+    name: 'Exa Web Search',
+    description: 'Search the web using Exa AI',
     enabled: false,
     updated_by: 'admin123',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };
-  return http.delete(`${BODHI_API_BASE}/toolset_types/:scope/app-config`, () =>
+  return http.delete(`${BODHI_API_BASE}/toolset_types/:toolset_type/app-config`, () =>
     HttpResponse.json(response || defaultResponse)
   );
 }

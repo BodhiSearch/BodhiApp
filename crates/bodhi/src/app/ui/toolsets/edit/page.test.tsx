@@ -116,8 +116,7 @@ describe('EditToolsetPage - Form Display', () => {
       mockGetToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
@@ -129,8 +128,9 @@ describe('EditToolsetPage - Form Display', () => {
         [],
         [
           {
-            scope: 'scope_toolset-builtin-exa-web-search',
-            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            toolset_type: 'builtin-exa-search',
+            name: 'Exa Web Search',
+            description: 'Search the web using Exa AI',
             enabled: true,
             updated_by: 'system',
             created_at: '2024-01-01T00:00:00Z',
@@ -159,8 +159,7 @@ describe('EditToolsetPage - Form Display', () => {
       mockGetToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
@@ -172,8 +171,9 @@ describe('EditToolsetPage - Form Display', () => {
         [],
         [
           {
-            scope: 'scope_toolset-builtin-exa-web-search',
-            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            toolset_type: 'builtin-exa-search',
+            name: 'Exa Web Search',
+            description: 'Search the web using Exa AI',
             enabled: false,
             updated_by: 'system',
             created_at: '2024-01-01T00:00:00Z',
@@ -210,8 +210,7 @@ describe('EditToolsetPage - Update Functionality', () => {
       mockGetToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: false,
         has_api_key: true,
@@ -223,8 +222,9 @@ describe('EditToolsetPage - Update Functionality', () => {
         [],
         [
           {
-            scope: 'scope_toolset-builtin-exa-web-search',
-            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            toolset_type: 'builtin-exa-search',
+            name: 'Exa Web Search',
+            description: 'Search the web using Exa AI',
             enabled: true,
             updated_by: 'system',
             created_at: '2024-01-01T00:00:00Z',
@@ -242,8 +242,7 @@ describe('EditToolsetPage - Update Functionality', () => {
       mockUpdateToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Updated description',
         enabled: true,
         has_api_key: true,
@@ -287,8 +286,7 @@ describe('EditToolsetPage - Update Functionality', () => {
       mockUpdateToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
@@ -365,8 +363,7 @@ describe('EditToolsetPage - Delete Functionality', () => {
       mockGetToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
@@ -378,8 +375,9 @@ describe('EditToolsetPage - Delete Functionality', () => {
         [],
         [
           {
-            scope: 'scope_toolset-builtin-exa-web-search',
-            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            toolset_type: 'builtin-exa-search',
+            name: 'Exa Web Search',
+            description: 'Search the web using Exa AI',
             enabled: true,
             updated_by: 'system',
             created_at: '2024-01-01T00:00:00Z',
@@ -455,8 +453,7 @@ describe('EditToolsetPage - Form Validation', () => {
       mockGetToolset({
         id: 'uuid-test-toolset',
         name: 'my-exa-search',
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
         has_api_key: true,
@@ -468,8 +465,9 @@ describe('EditToolsetPage - Form Validation', () => {
         [],
         [
           {
-            scope: 'scope_toolset-builtin-exa-web-search',
-            scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
+            toolset_type: 'builtin-exa-search',
+            name: 'Exa Web Search',
+            description: 'Search the web using Exa AI',
             enabled: true,
             updated_by: 'system',
             created_at: '2024-01-01T00:00:00Z',

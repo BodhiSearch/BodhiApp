@@ -2,7 +2,18 @@
  * Test fixtures for chat completion testing
  * Uses types from @bodhiapp/ts-client with llama.cpp extensions
  */
-import type { CreateChatCompletionResponse, ToolsetWithTools } from '@bodhiapp/ts-client';
+import type { CreateChatCompletionResponse, ToolDefinition } from '@bodhiapp/ts-client';
+
+/**
+ * Local replacement for ToolsetWithTools (removed from ts-client)
+ */
+interface ToolsetWithTools {
+  toolset_type: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  tools: ToolDefinition[];
+}
 
 /**
  * llama.cpp-specific timing extensions
@@ -183,11 +194,10 @@ export const mockToolExecutionError = {
  * Mock toolset with nested tools (configured and enabled)
  */
 export const mockToolsetWithTools: ToolsetWithTools = {
-  scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-  scope: 'scope_toolset-builtin-exa-web-search',
+  toolset_type: 'builtin-exa-search',
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
-  app_enabled: true,
+  enabled: true,
   tools: [
     {
       type: 'function',
@@ -273,11 +283,10 @@ export const mockToolsetWithTools: ToolsetWithTools = {
  * Mock toolset not configured (missing API key)
  */
 export const mockToolsetWithToolsNotConfigured: ToolsetWithTools = {
-  scope_uuid: 'builtin-calculator-uuid',
-  scope: 'scope_toolset-builtin-calculator',
+  toolset_type: 'builtin-calculator',
   name: 'Calculator',
   description: 'Perform mathematical calculations',
-  app_enabled: true,
+  enabled: true,
   tools: [
     {
       type: 'function',

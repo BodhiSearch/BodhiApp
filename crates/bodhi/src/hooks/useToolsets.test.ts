@@ -37,12 +37,10 @@ const mockToolsetsResponse: ListToolsetsResponse = {
     {
       id: 'uuid-test-toolset',
       name: 'my-exa-search',
-      scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-      scope: 'scope_toolset-builtin-exa-web-search',
+      toolset_type: 'builtin-exa-search',
       description: 'Test toolset',
       enabled: true,
       has_api_key: true,
-      app_enabled: true,
       tools: [
         {
           type: 'function',
@@ -63,6 +61,7 @@ const mockToolsetsResponse: ListToolsetsResponse = {
       updated_at: '2024-01-01T00:00:00Z',
     },
   ],
+  toolset_types: [],
 };
 
 const mockToolsetResponse: ToolsetResponse = mockToolsetsResponse.toolsets[0];
@@ -181,8 +180,7 @@ describe('useCreateToolset', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         name: 'my-new-toolset',
         description: 'New toolset',
         enabled: true,
@@ -205,8 +203,7 @@ describe('useCreateToolset', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-        scope: 'scope_toolset-builtin-exa-web-search',
+        toolset_type: 'builtin-exa-search',
         name: 'my-exa-search',
         enabled: true,
         api_key: 'test-api-key',
@@ -232,8 +229,7 @@ describe('useCreateToolset', () => {
     await act(async () => {
       await result.current
         .mutateAsync({
-          scope_uuid: '4ff0e163-36fb-47d6-a5ef-26e396f067d6',
-          scope: 'scope_toolset-builtin-exa-web-search',
+          toolset_type: 'builtin-exa-search',
           name: 'duplicate-name',
           enabled: true,
           api_key: 'test-api-key',
@@ -365,8 +361,7 @@ describe('useToolsetTypes', () => {
     });
 
     expect(result.current.data?.types).toHaveLength(1);
-    expect(result.current.data?.types[0].scope_uuid).toBe('4ff0e163-36fb-47d6-a5ef-26e396f067d6');
-    expect(result.current.data?.types[0].scope).toBe('scope_toolset-builtin-exa-web-search');
+    expect(result.current.data?.types[0].toolset_type).toBe('builtin-exa-search');
     expect(result.current.data?.types[0].name).toBe('Exa Web Search');
   });
 });

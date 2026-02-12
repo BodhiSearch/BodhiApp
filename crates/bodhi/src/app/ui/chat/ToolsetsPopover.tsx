@@ -26,7 +26,7 @@ interface ToolsetsPopoverProps {
  */
 function createScopeEnabledMap(toolsetTypes: AppToolsetConfig[]): Map<string, boolean> {
   const map = new Map<string, boolean>();
-  toolsetTypes.forEach((config) => map.set(config.scope, config.enabled));
+  toolsetTypes.forEach((config) => map.set(config.toolset_type, config.enabled));
   return map;
 }
 
@@ -34,7 +34,7 @@ function createScopeEnabledMap(toolsetTypes: AppToolsetConfig[]): Map<string, bo
  * Check if a toolset type is admin-enabled based on scope map.
  */
 function isAdminEnabled(toolset: ToolsetResponse, scopeEnabledMap: Map<string, boolean>): boolean {
-  return scopeEnabledMap.get(toolset.scope) ?? true;
+  return scopeEnabledMap.get(toolset.toolset_type) ?? true;
 }
 
 /**
@@ -171,7 +171,7 @@ function ToolsetItem({
   return (
     <div
       data-testid={`toolset-item-${toolset.id}`}
-      data-testid-scope={toolset.scope}
+      data-testid-scope={toolset.toolset_type}
       data-test-toolset-name={toolset.name}
     >
       {rowWithTooltip}
@@ -227,7 +227,7 @@ export function ToolsetsPopover({
   // Create a map from scope UUID to display name
   const typeDisplayNames = useMemo(() => {
     const map = new Map<string, string>();
-    types.forEach((type) => map.set(type.scope_uuid, type.name));
+    types.forEach((type) => map.set(type.toolset_type, type.name));
     return map;
   }, [types]);
 
@@ -235,11 +235,11 @@ export function ToolsetsPopover({
   const groupedToolsets = useMemo(() => {
     const groups: Record<string, ToolsetResponse[]> = {};
     toolsets.forEach((toolset) => {
-      const scopeUuid = toolset.scope_uuid;
-      if (!groups[scopeUuid]) {
-        groups[scopeUuid] = [];
+      const toolsetType = toolset.toolset_type;
+      if (!groups[toolsetType]) {
+        groups[toolsetType] = [];
       }
-      groups[scopeUuid].push(toolset);
+      groups[toolsetType].push(toolset);
     });
     return groups;
   }, [toolsets]);
@@ -322,10 +322,10 @@ export function ToolsetsPopover({
             </div>
           ) : (
             <div className="space-y-2">
-              {Object.entries(groupedToolsets).map(([scopeUuid, tools]) => {
-                const displayName = typeDisplayNames.get(scopeUuid) || scopeUuid;
+              {Object.entries(groupedToolsets).map(([toolsetType, tools]) => {
+                const displayName = typeDisplayNames.get(toolsetType) || toolsetType;
                 const isSingleToolset = tools.length === 1;
-                const isGroupExpanded = expandedGroups.has(scopeUuid);
+                const isGroupExpanded = expandedGroups.has(toolsetType);
 
                 // For single toolset, just show the toolset without group header
                 if (isSingleToolset) {
@@ -346,13 +346,17 @@ export function ToolsetsPopover({
 
                 // Multiple toolsets: show group header with collapsible section
                 return (
-                  <div key={scopeUuid} data-testid={`toolset-group-${scopeUuid}`} data-test-toolset-name={displayName}>
+                  <div
+                    key={toolsetType}
+                    data-testid={`toolset-group-${toolsetType}`}
+                    data-test-toolset-name={displayName}
+                  >
                     <Button
                       type="button"
                       variant="ghost"
                       className="w-full justify-start p-2 h-auto font-medium text-sm"
-                      onClick={() => toggleGroup(scopeUuid)}
-                      data-testid={`toolset-group-toggle-${scopeUuid}`}
+                      onClick={() => toggleGroup(toolsetType)}
+                      data-testid={`toolset-group-toggle-${toolsetType}`}
                     >
                       {isGroupExpanded ? (
                         <ChevronDown className="h-4 w-4 mr-2" />
