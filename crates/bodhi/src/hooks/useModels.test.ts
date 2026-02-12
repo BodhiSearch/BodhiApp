@@ -232,11 +232,13 @@ describe('Model Hooks', () => {
       });
 
       expect(result.current.data?.data).toHaveLength(1);
-      expect(result.current.data?.data[0]).toEqual(expect.objectContaining({
-        alias: mockModelData.alias,
-        repo: mockModelData.repo,
-        source: 'user',
-      }));
+      expect(result.current.data?.data[0]).toEqual(
+        expect.objectContaining({
+          alias: mockModelData.alias,
+          repo: mockModelData.repo,
+          source: 'user',
+        })
+      );
       expect(result.current.data?.page).toBe(1);
       expect(result.current.data?.page_size).toBe(30);
       expect(result.current.data?.total).toBe(1);
@@ -298,7 +300,9 @@ describe('Model Hooks', () => {
     const id = 'test-uuid-1';
 
     beforeEach(() => {
-      server.use(...mockGetModel(id, { alias: 'test-model', repo: mockModelData.repo, filename: mockModelData.filename }));
+      server.use(
+        ...mockGetModel(id, { alias: 'test-model', repo: mockModelData.repo, filename: mockModelData.filename })
+      );
     });
 
     it('fetches individual model successfully', async () => {
@@ -420,7 +424,9 @@ describe('Model Hooks', () => {
     };
 
     beforeEach(() => {
-      server.use(...mockUpdateModel(id, { alias: 'test-model', repo: updateRequest.repo, filename: updateRequest.filename }));
+      server.use(
+        ...mockUpdateModel(id, { alias: 'test-model', repo: updateRequest.repo, filename: updateRequest.filename })
+      );
     });
 
     it('updates model successfully', async () => {

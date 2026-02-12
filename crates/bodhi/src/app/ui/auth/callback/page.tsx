@@ -20,6 +20,14 @@ function AuthCallbackContent() {
 
   const { mutate: submitCallback, isLoading } = useOAuthCallback({
     onSuccess: (response) => {
+      // Check for stored return URL (e.g., from access request review page)
+      const returnUrl = sessionStorage.getItem('bodhi-return-url');
+      if (returnUrl) {
+        sessionStorage.removeItem('bodhi-return-url');
+        handleSmartRedirect(returnUrl, router);
+        return;
+      }
+
       // Handle redirect based on backend response
       const location = response.data?.location;
       if (!location) {

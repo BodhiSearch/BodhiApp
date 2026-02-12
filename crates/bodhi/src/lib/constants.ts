@@ -15,6 +15,7 @@ export const ROUTE_SETUP_BROWSER_EXTENSION = '/ui/setup/browser-extension';
 
 // Access request routes
 export const ROUTE_REQUEST_ACCESS = '/ui/request-access';
+export const ROUTE_APP_REVIEW_ACCESS = '/ui/apps/access-requests/review';
 export const ROUTE_ACCESS_REQUESTS_PENDING = '/ui/users/pending';
 export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/users/access-requests';
 export const ROUTE_USERS = '/ui/users';

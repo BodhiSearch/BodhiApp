@@ -169,19 +169,16 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
         : ''
     : '';
 
-  const updateModel = useUpdateModel(
-    editId,
-    {
-      onSuccess: (model) => {
-        const identifier = isApiAlias(model) ? model.id : model.alias;
-        showSuccess('Success', `Alias ${identifier} successfully updated`);
-        router.push('/ui/models');
-      },
-      onError: (message) => {
-        showError('Error', message);
-      },
-    }
-  );
+  const updateModel = useUpdateModel(editId, {
+    onSuccess: (model) => {
+      const identifier = isApiAlias(model) ? model.id : model.alias;
+      showSuccess('Success', `Alias ${identifier} successfully updated`);
+      router.push('/ui/models');
+    },
+    onError: (message) => {
+      showError('Error', message);
+    },
+  });
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
