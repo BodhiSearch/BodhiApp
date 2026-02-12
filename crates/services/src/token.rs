@@ -5,6 +5,34 @@ use std::{collections::HashMap, result::Result};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
+pub enum AccessRequestValidationError {
+  #[error("Access request scope '{scope}' not found in database.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  ScopeNotFound { scope: String },
+
+  #[error(
+    "Access request '{id}' has status '{status}'. Only approved requests are valid for token exchange."
+  )]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  NotApproved { id: String, status: String },
+
+  #[error("Access request app client mismatch: expected '{expected}', token has '{found}'.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AppClientMismatch { expected: String, found: String },
+
+  #[error("Access request user mismatch: expected '{expected}', token has '{found}'.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  UserMismatch { expected: String, found: String },
+
+  #[error(
+    "Access request ID mismatch: KC returned '{claim}', expected '{expected}' from scope validation."
+  )]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AccessRequestIdMismatch { claim: String, expected: String },
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum TokenError {
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication, code = "token_error-json_web_token")]
@@ -26,6 +54,8 @@ pub enum TokenError {
   #[error("Invalid token audience: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAudience(String),
+  #[error(transparent)]
+  AccessRequestValidation(#[from] AccessRequestValidationError),
 }
 
 impl_error_from!(

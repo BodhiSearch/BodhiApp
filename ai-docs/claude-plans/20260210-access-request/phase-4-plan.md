@@ -678,3 +678,69 @@ This implementation completes the scope cleanup that was partially addressed in 
 - **Access request authorization**: `scope_access_request_*` (instance-specific toolset access)
 
 The legacy `scope_toolset-*` OAuth authorization pattern is completely removed from the codebase.
+
+---
+
+## Phase 4b: Pre/Post-Exchange Validation (Completed 2026-02-12)
+
+### Context
+
+After Phase 4 implementation (commits 25fd85f1-33c51630), external OAuth clients could present `scope_access_request:<uuid>` scopes without pre-validation. The token exchange occurred before verifying the scope existed in the database or was approved, creating a security gap.
+
+### What Was Implemented
+
+Added two-layer validation around Keycloak token exchange:
+
+**Pre-Exchange Validation (Fail Fast)**:
+1. Extract `scope_access_request:<uuid>` from external token
+2. Look up access request by scope in database
+3. Validate: status=approved, app_client_id matches azp, user_id matches sub
+4. Return 403 Forbidden on any validation failure
+5. Store validated record for post-verification
+
+**Post-Exchange Verification (Integrity Check)**:
+1. Extract `access_request_id` claim from exchanged token
+2. Verify claim matches database record.id from pre-validation
+3. Log warning and return 403 if mismatch detected
+
+### Changes Made
+
+**Database Schema** (`migrations/0011_app_access_requests.up.sql`):
+- Added unique index on `access_request_scope` (NULL-aware) to prevent duplicate KC-assigned scopes
+
+**Repository** (`services/src/db/`):
+- Added `get_by_access_request_scope()` method to `AccessRequestRepository`
+- Implemented using `fetch_optional` pattern in `SqliteDbService`
+
+**Error Handling** (`services/src/token.rs`):
+- Added `AccessRequestValidationError` enum with 5 variants: ScopeNotFound, NotApproved, AppClientMismatch, UserMismatch, AccessRequestIdMismatch
+- Integrated into `TokenError` via transparent wrapping
+
+**Validation Logic** (`auth_middleware/src/token_service.rs`):
+- Pre-validation runs before token exchange when `scope_access_request:*` present
+- Post-verification runs after token exchange to validate KC returned correct `access_request_id` claim
+- Tokens without access request scopes skip validation entirely
+
+**Testing**:
+- 5 repository tests (found, not found, NULL handling, unique constraint)
+- 11 token service tests (5 pre-validation failures, 2 post-verification, 2 happy path, 2 integration)
+- All 291+ tests passing across objs, services, server_core, auth_middleware, routes_app, server_app
+
+### Success Criteria - Completed
+
+- ✅ Unique index on `access_request_scope` with NULL support
+- ✅ Repository method `get_by_access_request_scope()` implemented
+- ✅ `AccessRequestValidationError` enum with 5 specific error variants
+- ✅ Pre-validation logic validates status, app_client_id, user_id before exchange
+- ✅ Post-verification logic validates `access_request_id` claim after exchange
+- ✅ 16 new tests covering all validation scenarios
+- ✅ All compilation checks pass
+- ✅ Full test suite passing (291+ tests)
+
+### Key Design Decisions
+
+**Fail Fast Strategy**: Invalid scopes rejected before Keycloak call, reducing unnecessary token exchange operations.
+
+**Conditional Validation**: Only validates when `scope_access_request:*` present. Tokens with only user scopes skip validation.
+
+**Separation of Concerns**: Scope UUID lookup separate from access_request_id claim verification, allowing KC claim format flexibility.

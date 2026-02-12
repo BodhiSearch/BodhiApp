@@ -217,6 +217,86 @@ impl DefaultTokenService {
     if !has_user_scope {
       return Err(TokenError::ScopeEmpty)?;
     }
+
+    // Pre-token-exchange validation: verify scope_access_request:* exists and is approved
+    // Only validate if scope_access_request:* is present in external token
+    let access_request_scopes: Vec<&str> = scopes
+      .iter()
+      .filter(|s| s.starts_with("scope_access_request:"))
+      .copied()
+      .collect();
+
+    let validated_record = if let Some(&access_request_scope) = access_request_scopes.first() {
+      // Look up access request by scope
+      let record = self
+        .db_service
+        .get_by_access_request_scope(access_request_scope)
+        .await
+        .map_err(AuthError::DbError)?
+        .ok_or_else(|| {
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::ScopeNotFound {
+              scope: access_request_scope.to_string(),
+            },
+          )
+        })?;
+
+      // Validate status = approved
+      if record.status != "approved" {
+        return Err(
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::NotApproved {
+              id: record.id.clone(),
+              status: record.status.clone(),
+            },
+          )
+          .into(),
+        );
+      }
+
+      // Validate app_client_id matches azp claim
+      if record.app_client_id != original_azp {
+        return Err(
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::AppClientMismatch {
+              expected: record.app_client_id,
+              found: original_azp.clone(),
+            },
+          )
+          .into(),
+        );
+      }
+
+      // Validate user_id matches sub claim (must be present for approved requests)
+      let user_id = record
+        .user_id
+        .as_ref()
+        .ok_or_else(|| {
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::NotApproved {
+              id: record.id.clone(),
+              status: "missing user_id in approved request".to_string(),
+            },
+          )
+        })?;
+
+      if user_id != &claims.sub {
+        return Err(
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::UserMismatch {
+              expected: user_id.clone(),
+              found: claims.sub.clone(),
+            },
+          )
+          .into(),
+        );
+      }
+
+      Some(record) // Store validated record for post-verification
+    } else {
+      None // No scope_access_request:* in token, skip validation
+    };
+
     scopes.extend(["openid", "email", "profile", "roles"]);
     // Exchange the external token for our client token
     let (access_token, _) = self
@@ -231,6 +311,46 @@ impl DefaultTokenService {
 
     // Extract scope from exchanged token
     let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
+
+    // Post-token-exchange verification: ensure access_request_id claim matches record.id
+    if let Some(validated_record) = validated_record {
+      if let Some(access_request_id) = &scope_claims.access_request_id {
+        // Verify claim matches DB record primary key
+        if access_request_id != &validated_record.id {
+          tracing::warn!(
+            expected_id = %validated_record.id,
+            claim_id = %access_request_id,
+            "Access request ID mismatch between KC claim and DB record"
+          );
+          return Err(
+            TokenError::AccessRequestValidation(
+              services::AccessRequestValidationError::AccessRequestIdMismatch {
+                claim: access_request_id.clone(),
+                expected: validated_record.id.clone(),
+              },
+            )
+            .into(),
+          );
+        }
+      } else {
+        // KC should have returned access_request_id claim for this scope
+        tracing::error!(
+          scope = %access_request_scopes[0],
+          record_id = %validated_record.id,
+          "KC did not return access_request_id claim despite valid scope"
+        );
+        return Err(
+          TokenError::AccessRequestValidation(
+            services::AccessRequestValidationError::AccessRequestIdMismatch {
+              claim: "missing".to_string(),
+              expected: validated_record.id.clone(),
+            },
+          )
+          .into(),
+        );
+      }
+    }
+
     let user_scope = UserScope::from_scope(&scope_claims.scope)?;
 
     Ok((access_token, ResourceScope::User(user_scope), original_azp))
@@ -928,4 +1048,703 @@ mod tests {
 
     Ok(())
   }
+
+  // ============================================================================
+  // Phase 4b: Access Request Pre/Post-Exchange Validation Tests
+  // ============================================================================
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_scope_not_found(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // External token with scope_access_request:nonexistent
+    let sub = Uuid::new_v4().to_string();
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub,
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": "openid scope_user_user scope_access_request:nonexistent",
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // DB lookup returns None, expect 403 ScopeNotFound
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    // Error should be TokenError::AccessRequestValidation(ScopeNotFound)
+    assert!(matches!(err, AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_scope_not_approved(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:draft-test";
+
+    // Create access request with status=draft
+    let row = AppAccessRequestRow {
+      id: "ar-draft".to_string(),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "draft".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: None,
+      user_id: None,
+      resource_scope: None,
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    let sub = Uuid::new_v4().to_string();
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub,
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 NotApproved
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_app_client_mismatch(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:app-mismatch-test";
+    let sub = Uuid::new_v4().to_string();
+
+    // Create approved access request with app_client_id=app2
+    let row = AppAccessRequestRow {
+      id: "ar-mismatch".to_string(),
+      app_client_id: "app2".to_string(), // Different from token azp
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: Some(r#"{"toolset_types":[]}"#.to_string()),
+      user_id: Some(sub.clone()),
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    // External token azp=external-client (different from record)
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub,
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 AppClientMismatch
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_user_mismatch(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:user-mismatch-test";
+
+    // Create approved access request with user_id=user2
+    let row = AppAccessRequestRow {
+      id: "ar-user-mismatch".to_string(),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: Some(r#"{"toolset_types":[]}"#.to_string()),
+      user_id: Some("user2".to_string()), // Different from token sub
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    // External token sub=user1 (different from record)
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": "user1",
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 UserMismatch
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[case::denied("denied")]
+  #[case::expired("expired")]
+  #[case::failed("failed")]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_invalid_status(
+    #[case] status: &str,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = format!("scope_access_request:status-{}-test", status);
+    let sub = Uuid::new_v4().to_string();
+
+    // Create access request with invalid status
+    let row = AppAccessRequestRow {
+      id: format!("ar-{}", status),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: status.to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: None,
+      user_id: Some(sub.clone()),
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.clone()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub,
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(MockAuthService::default()),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 NotApproved
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_access_request_id_mismatch(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:mismatch-test";
+    let sub = Uuid::new_v4().to_string();
+    let record_id = "ar-correct-id";
+
+    // Create approved access request
+    let row = AppAccessRequestRow {
+      id: record_id.to_string(),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: Some(r#"{"toolset_types":[]}"#.to_string()),
+      user_id: Some(sub.clone()),
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub.clone(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    // Mock token exchange to return token with WRONG access_request_id
+    let (exchanged_token, _) = build_token(json!({
+      "iss": ISSUER,
+      "azp": TEST_CLIENT_ID,
+      "jti": "test-jti",
+      "sub": sub,
+      "exp": Utc::now().timestamp() + 3600,
+      "scope": format!("scope_user_user {}", scope),
+      "access_request_id": "wrong-id" // Different from record.id
+    }))?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut mock_auth = MockAuthService::new();
+    mock_auth
+      .expect_exchange_app_token()
+      .return_once(|_, _, _, _| Ok((exchanged_token, None)));
+
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 AccessRequestIdMismatch
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_missing_access_request_id_claim(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:missing-claim-test";
+    let sub = Uuid::new_v4().to_string();
+
+    // Create approved access request
+    let row = AppAccessRequestRow {
+      id: "ar-missing-claim".to_string(),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: Some(r#"{"toolset_types":[]}"#.to_string()),
+      user_id: Some(sub.clone()),
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub.clone(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    // Mock token exchange to return token WITHOUT access_request_id claim
+    let (exchanged_token, _) = build_token(json!({
+      "iss": ISSUER,
+      "azp": TEST_CLIENT_ID,
+      "jti": "test-jti",
+      "sub": sub,
+      "exp": Utc::now().timestamp() + 3600,
+      "scope": format!("scope_user_user {}", scope),
+      // NO access_request_id claim
+    }))?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut mock_auth = MockAuthService::new();
+    mock_auth
+      .expect_exchange_app_token()
+      .return_once(|_, _, _, _| Ok((exchanged_token, None)));
+
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect 403 AccessRequestIdMismatch (claim="missing")
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), AuthError::Token(_)));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_with_access_request_scope_success(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    use services::db::{AccessRequestRepository, AppAccessRequestRow};
+
+    let now = test_db_service.now();
+    let expires_at = now + chrono::Duration::hours(1);
+    let scope = "scope_access_request:success-test";
+    let sub = Uuid::new_v4().to_string();
+    let record_id = "ar-success";
+
+    // Create approved access request with matching details
+    let row = AppAccessRequestRow {
+      id: record_id.to_string(),
+      app_client_id: "external-client".to_string(),
+      app_name: Some("Test App".to_string()),
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: Some(r#"{"toolset_types":[]}"#.to_string()),
+      user_id: Some(sub.clone()),
+      resource_scope: Some("scope_resource-xyz".to_string()),
+      access_request_scope: Some(scope.to_string()),
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+    test_db_service.create(&row).await?;
+
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub.clone(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": format!("openid scope_user_user {}", scope),
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    // Mock token exchange to return token with MATCHING access_request_id
+    let (exchanged_token, _) = build_token(json!({
+      "iss": ISSUER,
+      "azp": TEST_CLIENT_ID,
+      "jti": "test-jti",
+      "sub": sub,
+      "exp": Utc::now().timestamp() + 3600,
+      "scope": format!("scope_user_user {}", scope),
+      "access_request_id": record_id // Matches record.id
+    }))?;
+    let exchanged_token_cl = exchanged_token.clone();
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut mock_auth = MockAuthService::new();
+    mock_auth
+      .expect_exchange_app_token()
+      .return_once(move |_, _, _, _| Ok((exchanged_token_cl.clone(), None)));
+
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect success
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_ok());
+    let (access_token, scope, azp) = result.unwrap();
+    assert_eq!(exchanged_token, access_token);
+    assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(Some("external-client".to_string()), azp);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_validate_bearer_token_without_access_request_scope(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // External token with only scope_user_* (no scope_access_request:*)
+    let sub = Uuid::new_v4().to_string();
+    let external_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER,
+      "sub": sub.clone(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": "external-client",
+      "aud": TEST_CLIENT_ID,
+      "scope": "openid scope_user_user", // No scope_access_request:*
+    });
+    let (external_token, _) = build_token(external_token_claims)?;
+
+    // Mock token exchange
+    let (exchanged_token, _) = build_token(json!({
+      "iss": ISSUER,
+      "azp": TEST_CLIENT_ID,
+      "jti": "test-jti",
+      "sub": sub,
+      "exp": Utc::now().timestamp() + 3600,
+      "scope": "scope_user_user",
+    }))?;
+    let exchanged_token_cl = exchanged_token.clone();
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut mock_auth = MockAuthService::new();
+    mock_auth
+      .expect_exchange_app_token()
+      .return_once(move |_, _, _, _| Ok((exchanged_token_cl.clone(), None)));
+
+    let mut setting_service = MockSettingService::default();
+    setting_service
+      .expect_auth_issuer()
+      .return_once(|| ISSUER.to_string());
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+      Arc::new(LocalConcurrencyService::new()),
+    );
+
+    // Expect success - validation skipped, token exchange proceeds normally
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", external_token))
+      .await;
+
+    assert!(result.is_ok());
+    let (access_token, scope, azp) = result.unwrap();
+    assert_eq!(exchanged_token, access_token);
+    assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(Some("external-client".to_string()), azp);
+    Ok(())
+  }
 }
+

@@ -29,4 +29,9 @@ pub trait AccessRequestRepository: Send + Sync {
     id: &str,
     error_message: &str,
   ) -> Result<AppAccessRequestRow, DbError>;
+
+  async fn get_by_access_request_scope(
+    &self,
+    scope: &str,
+  ) -> Result<Option<AppAccessRequestRow>, DbError>;
 }

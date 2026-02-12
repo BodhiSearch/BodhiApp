@@ -19,3 +19,8 @@ CREATE TABLE IF NOT EXISTS app_access_requests (
 
 CREATE INDEX idx_app_access_requests_status ON app_access_requests(status);
 CREATE INDEX idx_app_access_requests_app_client ON app_access_requests(app_client_id);
+
+-- Unique constraint on access_request_scope (allows multiple NULLs for auto-approved requests)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_access_request_scope_unique
+ON app_access_requests(access_request_scope)
+WHERE access_request_scope IS NOT NULL;

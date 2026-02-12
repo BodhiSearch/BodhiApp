@@ -2220,4 +2220,40 @@ impl AccessRequestRepository for SqliteDbService {
       updated_at: result.15,
     })
   }
+
+  async fn get_by_access_request_scope(
+    &self,
+    scope: &str,
+  ) -> Result<Option<AppAccessRequestRow>, DbError> {
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "SELECT id, app_client_id, app_name, app_description, flow_type,
+              redirect_uri, status, requested, approved, user_id,
+              resource_scope, access_request_scope, error_message,
+              expires_at, created_at, updated_at
+       FROM app_access_requests
+       WHERE access_request_scope = ?"
+    )
+    .bind(scope)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(|r| AppAccessRequestRow {
+      id: r.0,
+      app_client_id: r.1,
+      app_name: r.2,
+      app_description: r.3,
+      flow_type: r.4,
+      redirect_uri: r.5,
+      status: r.6,
+      requested: r.7,
+      approved: r.8,
+      user_id: r.9,
+      resource_scope: r.10,
+      access_request_scope: r.11,
+      error_message: r.12,
+      expires_at: r.13,
+      created_at: r.14,
+      updated_at: r.15,
+    }))
+  }
 }

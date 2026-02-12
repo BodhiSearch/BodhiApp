@@ -1,8 +1,8 @@
 use crate::{
   db::{
-    AccessRepository, ApiKeyUpdate, ApiToken, DbError, DownloadRequest, DownloadStatus,
-    ModelRepository, SqlxError, TokenRepository, TokenStatus, UserAccessRequest,
-    UserAccessRequestStatus,
+    AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
+    DbError, DownloadRequest, DownloadStatus, ModelRepository, SqlxError, TokenRepository,
+    TokenStatus, UserAccessRequest, UserAccessRequestStatus,
   },
   test_utils::{
     create_test_api_model_metadata, create_test_model_metadata, model_metadata_builder,
@@ -11,8 +11,7 @@ use crate::{
 };
 use anyhow_trace::anyhow_trace;
 use chrono::Utc;
-use objs::ApiAlias;
-use objs::ApiFormat;
+use objs::{ApiAlias, ApiFormat, AppError};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use uuid::Uuid;
@@ -1204,8 +1203,6 @@ async fn test_metadata_stored_with_source_model_only(
 // Access Request Repository Tests
 // ============================================================================
 
-use crate::db::{AccessRequestRepository, AppAccessRequestRow};
-
 #[rstest]
 #[awt]
 #[anyhow_trace]
@@ -1451,6 +1448,260 @@ async fn test_update_failure(
 
   assert_eq!(result.status, "failed");
   assert_eq!(result.error_message, Some(error_msg.to_string()));
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_get_by_access_request_scope_found(
+  #[future]
+  #[from(test_db_service)]
+  service: TestDbService,
+) -> anyhow::Result<()> {
+  let now = service.now();
+  let expires_at = now + chrono::Duration::hours(1);
+
+  // Create access request with access_request_scope
+  let scope = "scope_access_request:test-uuid";
+  let row = AppAccessRequestRow {
+    id: "ar-test-001".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: Some(scope.to_string()),
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  service.create(&row).await?;
+
+  // Lookup by scope
+  let result = service.get_by_access_request_scope(scope).await?;
+
+  // Verify found
+  assert!(result.is_some());
+  let found = result.unwrap();
+  assert_eq!(found.id, row.id);
+  assert_eq!(found.access_request_scope.as_deref(), Some(scope));
+  assert_eq!(found.status, "approved");
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_get_by_access_request_scope_not_found(
+  #[future]
+  #[from(test_db_service)]
+  service: TestDbService,
+) -> anyhow::Result<()> {
+  // Lookup non-existent scope
+  let result = service
+    .get_by_access_request_scope("scope_access_request:nonexistent")
+    .await?;
+
+  // Verify not found
+  assert!(result.is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_get_by_access_request_scope_null(
+  #[future]
+  #[from(test_db_service)]
+  service: TestDbService,
+) -> anyhow::Result<()> {
+  let now = service.now();
+  let expires_at = now + chrono::Duration::hours(1);
+
+  // Create access request with NULL scope
+  let row = AppAccessRequestRow {
+    id: "ar-null-001".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: None,
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  service.create(&row).await?;
+
+  // Lookup by any scope - should not match NULL
+  let result = service
+    .get_by_access_request_scope("scope_access_request:anything")
+    .await?;
+
+  // Verify not found (NULL doesn't match any scope)
+  assert!(result.is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_access_request_scope_unique_constraint(
+  #[future]
+  #[from(test_db_service)]
+  service: TestDbService,
+) -> anyhow::Result<()> {
+  let now = service.now();
+  let expires_at = now + chrono::Duration::hours(1);
+
+  let scope = "scope_access_request:duplicate-test";
+
+  // Create first access request with scope
+  let row1 = AppAccessRequestRow {
+    id: "ar-dup-1".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: Some(scope.to_string()),
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  service.create(&row1).await?;
+
+  // Attempt to create second with same scope
+  let row2 = AppAccessRequestRow {
+    id: "ar-dup-2".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: Some(scope.to_string()),
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  let result = service.create(&row2).await;
+
+  // Verify constraint violation
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  // Check for unique constraint error code
+  assert_eq!(err.code(), "sqlx_error"); // SQLx wraps SQLite constraint error
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[anyhow_trace]
+#[tokio::test]
+async fn test_access_request_scope_multiple_nulls_allowed(
+  #[future]
+  #[from(test_db_service)]
+  service: TestDbService,
+) -> anyhow::Result<()> {
+  let now = service.now();
+  let expires_at = now + chrono::Duration::hours(1);
+
+  // Create first access request with NULL scope
+  let row1 = AppAccessRequestRow {
+    id: "ar-null-1".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: None,
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  service.create(&row1).await?;
+
+  // Create second with NULL scope
+  let row2 = AppAccessRequestRow {
+    id: "ar-null-2".to_string(),
+    app_client_id: "test-client".to_string(),
+    app_name: Some("Test App".to_string()),
+    app_description: Some("Test Description".to_string()),
+    flow_type: "redirect".to_string(),
+    redirect_uri: Some("http://localhost:3000/callback".to_string()),
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+    approved: Some(
+      r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+        .to_string(),
+    ),
+    user_id: Some("user-001".to_string()),
+    resource_scope: Some("scope_resource-xyz".to_string()),
+    access_request_scope: None,
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  let result = service.create(&row2).await;
+
+  // Verify multiple NULLs allowed
+  assert!(result.is_ok());
 
   Ok(())
 }

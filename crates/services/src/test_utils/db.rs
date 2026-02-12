@@ -640,6 +640,17 @@ impl AccessRequestRepository for TestDbService {
       .await
       .tap(|_| self.notify("access_request_update_failure"))
   }
+
+  async fn get_by_access_request_scope(
+    &self,
+    scope: &str,
+  ) -> Result<Option<AppAccessRequestRow>, DbError> {
+    self
+      .inner
+      .get_by_access_request_scope(scope)
+      .await
+      .tap(|_| self.notify("access_request_get_by_scope"))
+  }
 }
 
 // Composite mock using mockall::mock! that preserves MockDbService name
@@ -738,5 +749,9 @@ mockall::mock! {
     ) -> Result<AppAccessRequestRow, DbError>;
     async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError>;
     async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError>;
+    async fn get_by_access_request_scope(
+      &self,
+      scope: &str,
+    ) -> Result<Option<AppAccessRequestRow>, DbError>;
   }
 }
