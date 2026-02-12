@@ -103,8 +103,10 @@ impl AccessRequestService for DefaultAccessRequestService {
     let now = self.time_service.utc_now();
     let expires_at = now + Duration::minutes(10);
 
-    // Serialize tools_requested to JSON
-    let requested_json = serde_json::to_string(&tools_requested)
+    // Serialize tools_requested to JSON with wrapper object
+    let requested_json = serde_json::to_string(&serde_json::json!({
+      "toolset_types": tools_requested
+    }))
       .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
     // Modify redirect_uri to include access_request_id
@@ -234,8 +236,10 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     };
 
-    // Serialize tool_approvals to JSON
-    let approved_json = serde_json::to_string(&tool_approvals).map_err(|e| {
+    // Serialize tool_approvals to JSON with wrapper object
+    let approved_json = serde_json::to_string(&serde_json::json!({
+      "toolset_types": tool_approvals
+    })).map_err(|e| {
       AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
     })?;
 

@@ -32,7 +32,7 @@ pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> Tes
   let now = time_service.utc_now();
   let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
   let db_service =
-    SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone(), false);
+    SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
   db_service.migrate().await.unwrap();
   TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
 }

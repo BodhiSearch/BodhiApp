@@ -8,7 +8,7 @@ use utoipa::ToSchema;
     "flow_type": "redirect",
     "redirect_url": "https://myapp.com/callback",
     "requested": {
-        "tool_types": [
+        "toolset_types": [
             {"tool_type": "builtin-exa-search"}
         ]
     }
@@ -27,9 +27,9 @@ pub struct CreateAccessRequestBody {
 // Wrapper for requested resources
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RequestedResources {
-  /// Tool types being requested
+  /// Toolset types being requested
   #[serde(default)]
-  pub tool_types: Vec<ToolTypeRequest>,
+  pub toolset_types: Vec<ToolTypeRequest>,
 }
 
 // Tool type request
@@ -95,7 +95,7 @@ pub struct AccessRequestStatusResponse {
     "flow_type": "redirect",
     "status": "draft",
     "requested": {
-        "tool_types": [
+        "toolset_types": [
             {"tool_type": "builtin-exa-search"}
         ]
     },
@@ -164,7 +164,7 @@ pub struct ToolInstanceInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "approved": {
-        "tool_types": [
+        "toolset_types": [
             {
                 "tool_type": "builtin-exa-search",
                 "status": "approved",
@@ -181,9 +181,9 @@ pub struct ApproveAccessRequestBody {
 // Wrapper for approved resources
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ApprovedResources {
-  /// Tool approvals with instance selections
+  /// Toolset approvals with instance selections
   #[serde(default)]
-  pub tool_types: Vec<ToolApproval>,
+  pub toolset_types: Vec<ToolApproval>,
 }
 
 // Tool approval with instance selection

@@ -79,7 +79,7 @@ pub async fn create_access_request_handler(
     .requested
     .as_ref()
     .map(|r| {
-      r.tool_types
+      r.toolset_types
         .iter()
         .map(|t| ToolTypeRequest {
           tool_type: t.tool_type.clone(),
@@ -222,14 +222,14 @@ pub async fn get_access_request_review_handler(
   // Parse requested tools
   let requested: RequestedResources = serde_json::from_str(&request.requested)
     .unwrap_or_else(|_| RequestedResources {
-      tool_types: vec![],
+      toolset_types: vec![],
     });
 
   // Enrich with tool info
   let tool_service = state.app_service().tool_service();
   let mut tools_info = Vec::new();
 
-  for tool_type_req in &requested.tool_types {
+  for tool_type_req in &requested.toolset_types {
     // Get tool type definition
     let tool_def = tool_service
       .get_type(&tool_type_req.tool_type)
@@ -305,7 +305,7 @@ pub async fn approve_access_request_handler(
   // Validate tool instances
   let tool_service = state.app_service().tool_service();
 
-  for approval in &body.approved.tool_types {
+  for approval in &body.approved.toolset_types {
     if approval.status == "approved" {
       let instance_id = approval.instance_id.as_ref().ok_or_else(|| {
         AppAccessRequestError::ToolInstanceNotConfigured(format!(
@@ -348,7 +348,7 @@ pub async fn approve_access_request_handler(
   // Convert to objs::ToolApproval for service call
   let objs_tool_approvals: Vec<ToolApproval> = body
     .approved
-    .tool_types
+    .toolset_types
     .iter()
     .map(|a| ToolApproval {
       tool_type: a.tool_type.clone(),
