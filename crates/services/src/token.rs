@@ -54,6 +54,8 @@ pub struct ScopeClaims {
   pub aud: Option<String>,
   pub exp: u64,
   pub scope: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub access_request_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

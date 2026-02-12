@@ -37,6 +37,8 @@ pub const KEY_HEADER_BODHIAPP_USER_ID: &str = bodhi_header!("User-Id");
 // Phase 7.6: External app tool authorization headers
 pub const KEY_HEADER_BODHIAPP_TOOL_SCOPES: &str = bodhi_header!("Tool-Scopes");
 pub const KEY_HEADER_BODHIAPP_AZP: &str = bodhi_header!("Azp");
+// Phase 4: Access request authorization header
+pub const KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID: &str = bodhi_header!("Access-Request-Id");
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
@@ -177,6 +179,13 @@ pub async fn auth_middleware(
         KEY_HEADER_BODHIAPP_USER_ID,
         scope_claims.sub.parse().unwrap(),
       );
+      // Set access_request_id if present in token claims (Phase 4: access request authorization)
+      if let Some(access_request_id) = scope_claims.access_request_id {
+        req.headers_mut().insert(
+          KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID,
+          access_request_id.parse().unwrap(),
+        );
+      }
     }
 
     // Set azp (authorized party / app-client ID) from validate_bearer_token result

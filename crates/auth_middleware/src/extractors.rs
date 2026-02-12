@@ -3,8 +3,8 @@ use objs::{ApiError, AppError, ErrorType, ResourceRole};
 use std::str::FromStr;
 
 use crate::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
-  KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
+  KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE,
+  KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
 };
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -169,6 +169,20 @@ impl<S: Send + Sync> FromRequestParts<S> for MaybeRole {
         Ok(MaybeRole(Some(role)))
       }
     }
+  }
+}
+
+/// Optionally extracts the access request ID from the request headers.
+/// Returns None if the header is missing or empty. Never fails.
+pub struct MaybeAccessRequestId(pub Option<String>);
+
+impl<S: Send + Sync> FromRequestParts<S> for MaybeAccessRequestId {
+  type Rejection = ApiError;
+
+  async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    let access_request_id = extract_optional_header(parts, KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID)
+      .map_err(ApiError::from)?;
+    Ok(MaybeAccessRequestId(access_request_id))
   }
 }
 
