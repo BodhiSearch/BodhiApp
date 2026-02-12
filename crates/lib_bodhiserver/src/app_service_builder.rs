@@ -296,8 +296,7 @@ impl AppServiceBuilder {
       self.setting_service.app_db_path().display()
     ))
     .await?;
-    let is_production = self.setting_service.is_production();
-    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key, is_production);
+    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }
