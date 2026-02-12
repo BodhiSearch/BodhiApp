@@ -1,16 +1,12 @@
-use crate::{
-  KEY_HEADER_BODHIAPP_AZP, KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE,
-  KEY_HEADER_BODHIAPP_TOOL_SCOPES, KEY_HEADER_BODHIAPP_USER_ID,
-};
+use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_USER_ID};
 use axum::{
   extract::{Path, Request, State},
   middleware::Next,
   response::Response,
 };
-use objs::{ApiError, AppError, ErrorType, ToolsetScope};
+use objs::{ApiError, AppError, ErrorType};
 use server_core::RouterState;
 use services::ToolsetError;
-use std::str::FromStr;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -24,18 +20,6 @@ pub enum ToolsetAuthError {
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingAuth,
 
-  #[error("app_client_not_registered")]
-  #[error_meta(error_type = ErrorType::Forbidden)]
-  AppClientNotRegistered,
-
-  #[error("missing_toolset_scope")]
-  #[error_meta(error_type = ErrorType::Forbidden)]
-  MissingToolsetScope,
-
-  #[error("missing_azp_header")]
-  #[error_meta(error_type = ErrorType::Forbidden)]
-  MissingAzpHeader,
-
   #[error("Toolset not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ToolsetNotFound,
@@ -46,11 +30,12 @@ pub enum ToolsetAuthError {
 
 /// Middleware for toolset execution endpoints
 ///
-/// Authorization rules depend on auth type:
+/// Authorization rules:
 /// - Session (has ROLE header): Check toolset ownership + app-level type enabled + toolset available
-/// - External OAuth (has SCOPE starting with "scope_user_"): Check toolset ownership + app-level type enabled + app-client registered + scope + toolset available
 ///
-/// Note: API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
+/// Note:
+/// - API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
+/// - OAuth auth will be re-implemented in Phase 4 using access_request-based checks.
 pub async fn toolset_auth_middleware(
   State(state): State<Arc<dyn RouterState>>,
   Path((id, method)): Path<(String, String)>,
@@ -76,19 +61,11 @@ async fn _impl(
 
   // Determine auth type:
   // - Session auth: has ROLE header (from session tokens)
-  // - OAuth (external app): has SCOPE header starting with "scope_user_" (from OAuth tokens)
   //
   // Note: API tokens (scope_token_*) are blocked at route level and won't reach here.
   let is_session_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
 
-  let scope_header = headers
-    .get(KEY_HEADER_BODHIAPP_SCOPE)
-    .and_then(|v| v.to_str().ok())
-    .unwrap_or("");
-
-  let is_oauth_auth = scope_header.starts_with("scope_user_") && !is_session_auth;
-
-  if !is_session_auth && !is_oauth_auth {
+  if !is_session_auth {
     return Err(ToolsetAuthError::MissingAuth);
   }
 
@@ -100,49 +77,17 @@ async fn _impl(
     .await?
     .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
-  let scope_uuid = &toolset.scope_uuid;
+  let toolset_type = &toolset.toolset_type;
 
-  // 2. Check app-level type enabled (both auth types)
-  if !tool_service.is_type_enabled(scope_uuid).await? {
+  // 2. Check app-level type enabled
+  if !tool_service.is_type_enabled(toolset_type).await? {
     return Err(ToolsetError::ToolsetAppDisabled.into());
   }
 
-  // For OAuth (external apps), additional checks are required
-  if is_oauth_auth {
-    // 3. Check app-client registered for toolset scope_uuid
-    let azp = headers
-      .get(KEY_HEADER_BODHIAPP_AZP)
-      .and_then(|v| v.to_str().ok())
-      .ok_or(ToolsetAuthError::MissingAzpHeader)?;
+  // TODO(Phase 4): Implement access_request-based auth for OAuth flow
+  // For now, OAuth auth is not supported for toolset execution
 
-    if !tool_service
-      .is_app_client_registered_for_toolset(azp, scope_uuid)
-      .await?
-    {
-      return Err(ToolsetAuthError::AppClientNotRegistered);
-    }
-
-    // 4. Check scope_toolset-{type} in token
-    let toolset_scopes_header = headers
-      .get(KEY_HEADER_BODHIAPP_TOOL_SCOPES)
-      .and_then(|v| v.to_str().ok())
-      .unwrap_or("");
-
-    // Get required scope from toolset
-    let required_scope = ToolsetScope::from_str(&toolset.scope)
-      .map_err(|_| ToolsetError::ToolsetNotFound(toolset.scope_uuid.clone()))?;
-
-    // Check if required scope is present (space-separated)
-    let has_scope = toolset_scopes_header
-      .split_whitespace()
-      .any(|s| s == required_scope.to_string());
-
-    if !has_scope {
-      return Err(ToolsetAuthError::MissingToolsetScope);
-    }
-  }
-
-  // 5. Check toolset is available (has API key and is enabled)
+  // 3. Check toolset is available (has API key and is enabled)
   if !toolset.enabled || !toolset.has_api_key {
     return Err(ToolsetError::ToolsetNotConfigured.into());
   }
@@ -161,7 +106,7 @@ mod tests {
     Router,
   };
   use chrono::Utc;
-  use objs::{ResourceRole, Toolset, UserScope};
+  use objs::{ResourceRole, Toolset};
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{test_utils::AppServiceStubBuilder, MockToolService};
@@ -200,8 +145,7 @@ mod tests {
     Toolset {
       id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
       name: "My Exa Search".to_string(),
-      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-      scope: "scope_toolset-builtin-exa-web-search".to_string(),
+      toolset_type: "builtin-exa-search".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
       has_api_key: true,
@@ -249,7 +193,7 @@ mod tests {
     if get_returns_instance {
       mock_tool_service
         .expect_is_type_enabled()
-        .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+        .withf(|tool_type| tool_type == "builtin-exa-search")
         .times(1)
         .returning(move |_| Ok(type_enabled));
     }
@@ -272,81 +216,6 @@ mod tests {
     assert_eq!(response.status(), expected_status);
   }
 
-  // OAuth auth tests
-  #[rstest]
-  #[case::success(true, true, true, true, StatusCode::OK)]
-  #[case::instance_not_found(false, false, false, false, StatusCode::NOT_FOUND)]
-  #[case::type_disabled(true, false, false, false, StatusCode::BAD_REQUEST)]
-  #[case::app_client_not_registered(true, true, false, false, StatusCode::FORBIDDEN)]
-  #[case::missing_scope(true, true, true, false, StatusCode::FORBIDDEN)]
-  #[tokio::test]
-  async fn test_oauth_auth(
-    test_instance: Toolset,
-    #[case] get_returns_instance: bool,
-    #[case] type_enabled: bool,
-    #[case] client_registered: bool,
-    #[case] has_scope: bool,
-    #[case] expected_status: StatusCode,
-  ) {
-    let mut mock_tool_service = MockToolService::new();
-    let instance_id = test_instance.id.clone();
-    let instance_id_for_uri = test_instance.id.clone();
-    let instance_clone = test_instance.clone();
-
-    // Setup expectations
-    mock_tool_service
-      .expect_get()
-      .withf(move |user_id, id| user_id == "user123" && id == &instance_id)
-      .times(1)
-      .returning(move |_, _| {
-        if get_returns_instance {
-          Ok(Some(instance_clone.clone()))
-        } else {
-          Ok(None)
-        }
-      });
-
-    if get_returns_instance {
-      mock_tool_service
-        .expect_is_type_enabled()
-        .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
-        .times(1)
-        .returning(move |_| Ok(type_enabled));
-
-      if type_enabled {
-        mock_tool_service
-          .expect_is_app_client_registered_for_toolset()
-          .withf(|app_client_id, scope_uuid| {
-            app_client_id == "external-app" && scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
-          })
-          .times(1)
-          .returning(move |_, _| Ok(client_registered));
-      }
-    }
-
-    let app = test_router_with_tool_service(mock_tool_service);
-
-    let mut builder = Request::builder()
-      .method("POST")
-      .uri(format!("/toolsets/{}/execute/search", instance_id_for_uri))
-      .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, UserScope::User.to_string())
-      .header(KEY_HEADER_BODHIAPP_AZP, "external-app");
-
-    if has_scope {
-      builder = builder.header(
-        KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-        "scope_toolset-builtin-exa-web-search",
-      );
-    }
-
-    let response = app
-      .oneshot(builder.body(Body::empty()).unwrap())
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), expected_status);
-  }
 
   // Error condition tests
   #[rstest]

@@ -1,84 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
 use utoipa::ToSchema;
-
-// ============================================================================
-// ToolsetScope - OAuth scope for toolset authorization
-// ============================================================================
-
-/// Toolset-specific OAuth scopes for third-party app authorization
-///
-/// These are discrete permissions (not hierarchical like TokenScope).
-/// One scope grants access to all tools within the toolset.
-/// First-party clients (session, bodhiapp_ tokens) bypass scope checks.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
-pub struct ToolsetScope {
-  /// The scope string (e.g., "scope_toolset-builtin-exa-web-search")
-  scope: String,
-}
-
-/// Known toolset scope identifiers
-pub mod toolset_scopes {
-  pub const BUILTIN_EXA_WEB_SEARCH_SCOPE: &str = "scope_toolset-builtin-exa-web-search";
-}
-
-impl ToolsetScope {
-  /// Create the Exa Web Search toolset scope
-  pub fn builtin_exa_web_search() -> Self {
-    Self {
-      scope: toolset_scopes::BUILTIN_EXA_WEB_SEARCH_SCOPE.to_string(),
-    }
-  }
-
-  /// Get all known toolset scopes
-  pub fn all() -> Vec<Self> {
-    vec![Self::builtin_exa_web_search()]
-  }
-
-  /// Extract toolset scopes from space-separated scope string
-  pub fn from_scope_string(scope: &str) -> Vec<Self> {
-    scope
-      .split_whitespace()
-      .filter_map(|s| s.parse::<ToolsetScope>().ok())
-      .collect()
-  }
-
-  /// Get the scope string for OAuth authorization
-  pub fn scope_string(&self) -> &str {
-    &self.scope
-  }
-}
-
-impl fmt::Display for ToolsetScope {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.scope)
-  }
-}
-
-/// Error when parsing an invalid toolset scope string
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseToolsetScopeError(String);
-
-impl fmt::Display for ParseToolsetScopeError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "invalid toolset scope: {}", self.0)
-  }
-}
-
-impl std::error::Error for ParseToolsetScopeError {}
-
-impl FromStr for ToolsetScope {
-  type Err = ParseToolsetScopeError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Self::all()
-      .into_iter()
-      .find(|scope| scope.scope == s)
-      .ok_or_else(|| ParseToolsetScopeError(s.to_string()))
-  }
-}
 
 // ============================================================================
 // ToolsetDefinition - Toolset containing multiple tools
@@ -88,32 +10,13 @@ impl FromStr for ToolsetScope {
 /// Example: Exa Web Search toolset provides search, find_similar, get_contents, answer tools.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetDefinition {
-  /// Keycloak client scope UUID (environment-specific)
-  pub scope_uuid: String,
-  /// OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
-  pub scope: String,
+  /// Toolset type identifier (e.g., "builtin-exa-search")
+  pub toolset_type: String,
   /// Human-readable name (e.g., "Exa Web Search")
   pub name: String,
   /// Description of the toolset
   pub description: String,
   /// Tools provided by this toolset (in OpenAI format)
-  pub tools: Vec<ToolDefinition>,
-}
-
-/// Toolset with app-level configuration status (API response model)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct ToolsetWithTools {
-  /// Keycloak client scope UUID (environment-specific)
-  pub scope_uuid: String,
-  /// OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
-  pub scope: String,
-  /// Human-readable name (e.g., "Exa Web Search")
-  pub name: String,
-  /// Description of the toolset
-  pub description: String,
-  /// Whether the toolset is enabled at app level (admin-controlled)
-  pub app_enabled: bool,
-  /// Tools provided by this toolset
   pub tools: Vec<ToolDefinition>,
 }
 
@@ -154,10 +57,8 @@ pub struct Toolset {
   pub id: String,
   /// User-defined name for this instance
   pub name: String,
-  /// Keycloak client scope UUID (environment-specific, stored in DB)
-  pub scope_uuid: String,
-  /// OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search", derived from registry)
-  pub scope: String,
+  /// Toolset type identifier (e.g., "builtin-exa-search")
+  pub toolset_type: String,
   /// Optional description for this instance
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
@@ -169,6 +70,27 @@ pub struct Toolset {
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   /// When this instance was last updated
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub updated_at: DateTime<Utc>,
+}
+
+/// Application-level toolset configuration
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct AppToolsetConfig {
+  /// Toolset type identifier (e.g., "builtin-exa-search")
+  pub toolset_type: String,
+  /// Human-readable name (e.g., "Exa Web Search")
+  pub name: String,
+  /// Description of the toolset
+  pub description: String,
+  /// Whether this toolset type is enabled at app level
+  pub enabled: bool,
+  /// User who last updated this config
+  pub updated_by: String,
+  /// When this config was created
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub created_at: DateTime<Utc>,
+  /// When this config was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
@@ -215,61 +137,6 @@ pub fn validate_toolset_description(description: &str) -> Result<(), String> {
 }
 
 // ============================================================================
-// AppToolsetConfig - App-level toolset configuration (public API model)
-// ============================================================================
-
-/// App-level configuration for a toolset (admin-controlled)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppToolsetConfig {
-  /// OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
-  pub scope: String,
-  /// Keycloak client scope UUID (environment-specific)
-  pub scope_uuid: String,
-  /// Whether the toolset is enabled for this app instance
-  pub enabled: bool,
-  /// User ID of the admin who last updated this configuration
-  pub updated_by: String,
-  /// When this configuration was created
-  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
-  pub created_at: DateTime<Utc>,
-  /// When this configuration was last updated
-  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
-  pub updated_at: DateTime<Utc>,
-}
-
-// ============================================================================
-// ToolsetTypeInfo - Toolset type status information for API responses
-// ============================================================================
-
-/// Information about a toolset type's status based on OAuth scopes and app configuration
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-#[serde(tag = "status")]
-pub enum ToolsetTypeInfo {
-  /// Toolset type is enabled at app level and user has OAuth scope
-  #[serde(rename = "enabled")]
-  Enabled {
-    /// OAuth scope string
-    scope: String,
-    /// Keycloak client scope UUID
-    scope_uuid: String,
-  },
-  /// Toolset type is disabled at app level but user has OAuth scope
-  #[serde(rename = "disabled")]
-  Disabled {
-    /// OAuth scope string
-    scope: String,
-    /// Keycloak client scope UUID
-    scope_uuid: String,
-  },
-  /// User does not have OAuth scope for this toolset type
-  #[serde(rename = "not_installed")]
-  NotInstalled {
-    /// OAuth scope string
-    scope: String,
-  },
-}
-
-// ============================================================================
 // ToolsetExecution - Request/Response for toolset tool execution
 // ============================================================================
 
@@ -294,28 +161,9 @@ pub struct ToolsetExecutionResponse {
 #[cfg(test)]
 mod tests {
   use crate::toolsets::{
-    validate_toolset_description, validate_toolset_name, ToolsetScope, MAX_TOOLSET_DESCRIPTION_LEN,
+    validate_toolset_description, validate_toolset_name, MAX_TOOLSET_DESCRIPTION_LEN,
     MAX_TOOLSET_NAME_LEN,
   };
-
-  #[test]
-  fn test_toolset_scope_from_scope_string_extracts_known_scopes() {
-    let scope = "offline_access scope_toolset-builtin-exa-web-search openid";
-    let scopes = ToolsetScope::from_scope_string(scope);
-    assert_eq!(scopes, vec![ToolsetScope::builtin_exa_web_search()]);
-  }
-
-  #[test]
-  fn test_toolset_scope_from_scope_string_returns_empty_for_no_matches() {
-    let scope = "offline_access openid";
-    let scopes = ToolsetScope::from_scope_string(scope);
-    assert!(scopes.is_empty());
-  }
-
-  #[test]
-  fn test_toolset_scope_all_registry() {
-    assert!(ToolsetScope::all().contains(&ToolsetScope::builtin_exa_web_search()));
-  }
 
   #[test]
   fn test_validate_toolset_name_accepts_valid_names() {

@@ -188,28 +188,13 @@ impl From<ModelMetadataRow> for objs::ModelMetadata {
 pub struct ToolsetRow {
   pub id: String,
   pub user_id: String,
-  pub scope_uuid: String,
+  pub toolset_type: String,
   pub name: String,
   pub description: Option<String>,
   pub enabled: bool,
   pub encrypted_api_key: Option<String>,
   pub salt: Option<String>,
   pub nonce: Option<String>,
-  pub created_at: i64,
-  pub updated_at: i64,
-}
-
-// ============================================================================
-// AppToolsetConfigRow - Database row for app-level toolset configuration
-// ============================================================================
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AppToolsetConfigRow {
-  pub id: i64,
-  pub scope: String,
-  pub scope_uuid: String,
-  pub enabled: bool,
-  pub updated_by: String,
   pub created_at: i64,
   pub updated_at: i64,
 }
@@ -230,6 +215,19 @@ pub struct AppClientToolsetConfigRow {
 }
 
 // ============================================================================
+// AppToolsetConfigRow - Database row for app-level toolset type configuration
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppToolsetConfigRow {
+  pub toolset_type: String,
+  pub enabled: bool,
+  pub updated_by: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
+
+// ============================================================================
 // AppAccessRequestRow - Database row for app access request consent tracking
 // ============================================================================
 
@@ -237,14 +235,16 @@ pub struct AppClientToolsetConfigRow {
 pub struct AppAccessRequestRow {
   pub id: String,              // UUID (access_request_id)
   pub app_client_id: String,
+  pub app_name: Option<String>,
+  pub app_description: Option<String>,
   pub flow_type: String,       // "redirect" | "popup"
   pub redirect_uri: Option<String>,
   pub status: String,          // "draft" | "approved" | "denied" | "failed"
-  pub tools_requested: String, // JSON: [{"tool_type":"..."}]
-  pub tools_approved: Option<String>, // JSON: [{"tool_type":"...", "status":"approved", "toolset_id":"..."}]
+  pub requested: String,       // JSON: {"tool_types": [{"tool_type":"..."}]}
+  pub approved: Option<String>, // JSON: {"tool_types": [{"tool_type":"...", "status":"approved", "instance_id":"..."}]}
   pub user_id: Option<String>,
   pub resource_scope: Option<String>,         // KC-returned scope
-  pub access_request_scope: Option<String>,   // KC-returned scope
+  pub access_request_scope: Option<String>,   // KC-returned scope (NULL for auto-approve)
   pub error_message: Option<String>,          // Error details for 'failed' status
   pub expires_at: i64,         // Unix timestamp
   pub created_at: i64,

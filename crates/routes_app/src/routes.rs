@@ -10,26 +10,31 @@ use axum::{
 };
 use objs::{ResourceRole, TokenScope, UserScope};
 use crate::{
-  app_info_handler, approve_request_handler, auth_callback_handler, auth_initiate_handler,
-  change_user_role_handler, copy_alias_handler, create_alias_handler, create_api_model_handler,
+  app_info_handler, approve_access_request_handler, approve_request_handler,
+  auth_callback_handler, auth_initiate_handler, change_user_role_handler, copy_alias_handler,
+  create_access_request_handler, create_alias_handler, create_api_model_handler,
   create_pull_request_handler, create_token_handler, create_toolset_handler,
   delete_alias_handler, delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
-  dev_secrets_handler, disable_type_handler, enable_type_handler, envs_handler,
-  execute_toolset_handler, fetch_models_handler, get_api_formats_handler, get_api_model_handler,
+  deny_access_request_handler, dev_secrets_handler, disable_type_handler, enable_type_handler,
+  envs_handler, execute_toolset_handler, fetch_models_handler, get_access_request_review_handler,
+  get_access_request_status_handler, get_api_formats_handler, get_api_model_handler,
   get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
-  list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
-  list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
-  list_tokens_handler, list_toolset_types_handler, list_toolsets_handler, list_users_handler,
-  logout_handler, ping_handler, queue_status_handler, refresh_metadata_handler,
-  reject_request_handler, remove_user_handler, request_status_handler, setup_handler,
-  sync_models_handler, test_api_model_handler, update_alias_handler, update_api_model_handler,
-  update_setting_handler, update_token_handler, update_toolset_handler, user_info_handler,
-  user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
-  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS,
-  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
-  ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE,
-  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-  ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+  list_aliases_handler, list_all_requests_handler, list_api_models_handler,
+  list_downloads_handler, list_local_modelfiles_handler, list_pending_requests_handler,
+  list_settings_handler, list_tokens_handler, list_toolset_types_handler,
+  list_toolsets_handler, list_users_handler, logout_handler, ping_handler,
+  queue_status_handler, refresh_metadata_handler, reject_request_handler, remove_user_handler,
+  request_status_handler, setup_handler, sync_models_handler, test_api_model_handler,
+  update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
+  update_toolset_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
+  GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
+  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
+  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_APPS_ACCESS_REQUEST_APPROVE, ENDPOINT_APPS_ACCESS_REQUEST_DENY,
+  ENDPOINT_APPS_ACCESS_REQUEST_ID, ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
+  ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
+  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT,
+  ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
   ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
   ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
@@ -66,7 +71,16 @@ pub fn build_routes(
     .route(ENDPOINT_APP_INFO, get(app_info_handler))
     .route(ENDPOINT_APP_SETUP, post(setup_handler))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
-    .route(ENDPOINT_LOGOUT, post(logout_handler));
+    .route(ENDPOINT_LOGOUT, post(logout_handler))
+    // App access request endpoints (unauthenticated)
+    .route(
+      ENDPOINT_APPS_REQUEST_ACCESS,
+      post(create_access_request_handler),
+    )
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUEST_ID,
+      get(get_access_request_status_handler),
+    );
 
   let mut optional_auth = Router::new()
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
@@ -141,6 +155,19 @@ pub fn build_routes(
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
       delete(delete_toolset_handler),
+    )
+    // App access request review/approve/deny (session-only)
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
+      get(get_access_request_review_handler),
+    )
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUEST_APPROVE,
+      put(approve_access_request_handler),
+    )
+    .route(
+      ENDPOINT_APPS_ACCESS_REQUEST_DENY,
+      post(deny_access_request_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -268,14 +295,15 @@ pub fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
-    // Toolset types listing and admin configuration
+    // Toolset types listing
     .route(ENDPOINT_TOOLSET_TYPES, get(list_toolset_types_handler))
+    // Toolset type enable/disable (admin only)
     .route(
-      &format!("{ENDPOINT_TOOLSET_TYPES}/{{type_id}}/app-config"),
+      "/bodhi/v1/toolset_types/{toolset_type}/app-config",
       put(enable_type_handler),
     )
     .route(
-      &format!("{ENDPOINT_TOOLSET_TYPES}/{{type_id}}/app-config"),
+      "/bodhi/v1/toolset_types/{toolset_type}/app-config",
       delete(disable_type_handler),
     )
     .route_layer(from_fn_with_state(

@@ -52,5 +52,5 @@ pub struct ToolApproval {
   pub tool_type: String,
   pub status: String, // "approved" | "denied"
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub toolset_id: Option<String>, // Present if status == "approved"
+  pub instance_id: Option<String>, // Present if status == "approved"
 }

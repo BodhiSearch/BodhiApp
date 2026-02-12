@@ -48,24 +48,17 @@ pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeService>,
   encryption_key: Vec<u8>,
-  is_production: bool,
 }
 
 impl SqliteDbService {
   async fn seed_toolset_configs(&self) -> Result<(), DbError> {
-    let scope_uuid = if self.is_production {
-      "7a89e236-9d23-4856-aa77-b52823ff9972"
-    } else {
-      "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
-    };
-
     sqlx::query(
       "INSERT OR IGNORE INTO app_toolset_configs
-       (scope, scope_uuid, enabled, updated_by, created_at, updated_at)
+       (scope, toolset_type, enabled, updated_by, created_at, updated_at)
        VALUES (?, ?, 0, 'system', strftime('%s', 'now'), strftime('%s', 'now'))",
     )
     .bind("scope_toolset-builtin-exa-web-search")
-    .bind(scope_uuid)
+    .bind("builtin-exa-search")
     .execute(&self.pool)
     .await?;
 
@@ -1381,7 +1374,7 @@ impl TokenRepository for SqliteDbService {
 impl ToolsetRepository for SqliteDbService {
   async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
@@ -1391,7 +1384,7 @@ impl ToolsetRepository for SqliteDbService {
       |(
         id,
         user_id,
-        scope_uuid,
+        toolset_type,
         name,
         description,
         enabled,
@@ -1404,7 +1397,7 @@ impl ToolsetRepository for SqliteDbService {
         ToolsetRow {
           id,
           user_id,
-          scope_uuid,
+          toolset_type,
           name,
           description,
           enabled: enabled != 0,
@@ -1424,7 +1417,7 @@ impl ToolsetRepository for SqliteDbService {
     name: &str,
   ) -> Result<Option<ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
     )
     .bind(user_id)
     .bind(name)
@@ -1435,7 +1428,7 @@ impl ToolsetRepository for SqliteDbService {
       |(
         id,
         user_id,
-        scope_uuid,
+        toolset_type,
         name,
         description,
         enabled,
@@ -1448,7 +1441,7 @@ impl ToolsetRepository for SqliteDbService {
         ToolsetRow {
           id,
           user_id,
-          scope_uuid,
+          toolset_type,
           name,
           description,
           enabled: enabled != 0,
@@ -1467,13 +1460,13 @@ impl ToolsetRepository for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO toolsets (id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
+      INSERT INTO toolsets (id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&row.id)
     .bind(&row.user_id)
-    .bind(&row.scope_uuid)
+    .bind(&row.toolset_type)
     .bind(&row.name)
     .bind(&row.description)
     .bind(enabled)
@@ -1538,7 +1531,7 @@ impl ToolsetRepository for SqliteDbService {
 
   async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
     )
     .bind(user_id)
     .fetch_all(&self.pool)
@@ -1551,7 +1544,7 @@ impl ToolsetRepository for SqliteDbService {
           |(
             id,
             user_id,
-            scope_uuid,
+            toolset_type,
             name,
             description,
             enabled,
@@ -1564,7 +1557,7 @@ impl ToolsetRepository for SqliteDbService {
             ToolsetRow {
               id,
               user_id,
-              scope_uuid,
+              toolset_type,
               name,
               description,
               enabled: enabled != 0,
@@ -1580,16 +1573,16 @@ impl ToolsetRepository for SqliteDbService {
     )
   }
 
-  async fn list_toolsets_by_scope_uuid(
+  async fn list_toolsets_by_toolset_type(
     &self,
     user_id: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
   ) -> Result<Vec<ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, scope_uuid, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND scope_uuid = ?",
+      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND toolset_type = ?",
     )
     .bind(user_id)
-    .bind(scope_uuid)
+    .bind(toolset_type)
     .fetch_all(&self.pool)
     .await?;
 
@@ -1600,7 +1593,7 @@ impl ToolsetRepository for SqliteDbService {
           |(
             id,
             user_id,
-            scope_uuid,
+            toolset_type,
             name,
             description,
             enabled,
@@ -1613,7 +1606,7 @@ impl ToolsetRepository for SqliteDbService {
             ToolsetRow {
               id,
               user_id,
-              scope_uuid,
+              toolset_type,
               name,
               description,
               enabled: enabled != 0,
@@ -1654,116 +1647,47 @@ impl ToolsetRepository for SqliteDbService {
     Ok(None)
   }
 
-  async fn get_app_toolset_config_by_scope_uuid(
+  async fn set_app_toolset_enabled(
     &self,
-    scope_uuid: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
-      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs WHERE scope_uuid = ?",
-    )
-    .bind(scope_uuid)
-    .fetch_optional(&self.pool)
-    .await?;
-
-    Ok(result.map(
-      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
-        id,
-        scope,
-        scope_uuid,
-        enabled: enabled != 0,
-        updated_by,
-        created_at,
-        updated_at,
-      },
-    ))
-  }
-
-  async fn get_app_toolset_config_by_scope(
-    &self,
-    scope: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
-      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs WHERE scope = ?",
-    )
-    .bind(scope)
-    .fetch_optional(&self.pool)
-    .await?;
-
-    Ok(result.map(
-      |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
-        id,
-        scope,
-        scope_uuid,
-        enabled: enabled != 0,
-        updated_by,
-        created_at,
-        updated_at,
-      },
-    ))
-  }
-
-  async fn upsert_app_toolset_config(
-    &self,
-    config: &AppToolsetConfigRow,
+    toolset_type: &str,
+    enabled: bool,
+    updated_by: &str,
   ) -> Result<AppToolsetConfigRow, DbError> {
-    let enabled = if config.enabled { 1 } else { 0 };
+    let now = self.time_service.utc_now().timestamp();
+    let enabled_int = if enabled { 1 } else { 0 };
 
-    // Check if config exists
-    let existing = self.get_app_toolset_config_by_scope(&config.scope).await?;
+    let result = sqlx::query_as::<_, (String, i64, String, i64, i64)>(
+      r#"
+      INSERT INTO app_toolset_configs (toolset_type, enabled, updated_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (toolset_type) DO UPDATE SET
+        enabled = excluded.enabled,
+        updated_by = excluded.updated_by,
+        updated_at = excluded.updated_at
+      RETURNING toolset_type, enabled, updated_by, created_at, updated_at
+      "#,
+    )
+    .bind(toolset_type)
+    .bind(enabled_int)
+    .bind(updated_by)
+    .bind(now)
+    .bind(now)
+    .fetch_one(&self.pool)
+    .await?;
 
-    let id = if let Some(existing) = existing {
-      // Update existing config
-      sqlx::query(
-        r#"
-        UPDATE app_toolset_configs
-        SET scope_uuid = ?, enabled = ?, updated_by = ?, updated_at = ?
-        WHERE scope = ?
-        "#,
-      )
-      .bind(&config.scope_uuid)
-      .bind(enabled)
-      .bind(&config.updated_by)
-      .bind(config.updated_at)
-      .bind(&config.scope)
-      .execute(&self.pool)
-      .await?;
-
-      existing.id
-    } else {
-      // Insert new config
-      let result = sqlx::query(
-        r#"
-        INSERT INTO app_toolset_configs (scope, scope_uuid, enabled, updated_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-      )
-      .bind(&config.scope)
-      .bind(&config.scope_uuid)
-      .bind(enabled)
-      .bind(&config.updated_by)
-      .bind(config.created_at)
-      .bind(config.updated_at)
-      .execute(&self.pool)
-      .await?;
-
-      result.last_insert_rowid()
-    };
-
-    // Return the updated/inserted config
     Ok(AppToolsetConfigRow {
-      id,
-      scope: config.scope.clone(),
-      scope_uuid: config.scope_uuid.clone(),
-      enabled: config.enabled,
-      updated_by: config.updated_by.clone(),
-      created_at: config.created_at,
-      updated_at: config.updated_at,
+      toolset_type: result.0,
+      enabled: result.1 != 0,
+      updated_by: result.2,
+      created_at: result.3,
+      updated_at: result.4,
     })
   }
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError> {
-    let results = sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(
-      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at FROM app_toolset_configs ORDER BY scope",
+    let results = sqlx::query_as::<_, (String, i64, String, i64, i64)>(
+      "SELECT toolset_type, enabled, updated_by, created_at, updated_at
+       FROM app_toolset_configs",
     )
     .fetch_all(&self.pool)
     .await?;
@@ -1771,66 +1695,41 @@ impl ToolsetRepository for SqliteDbService {
     Ok(
       results
         .into_iter()
-        .map(
-          |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
-            AppToolsetConfigRow {
-              id,
-              scope,
-              scope_uuid,
-              enabled: enabled != 0,
-              updated_by,
-              created_at,
-              updated_at,
-            }
-          },
-        )
+        .map(|(toolset_type, enabled, updated_by, created_at, updated_at)| {
+          AppToolsetConfigRow {
+            toolset_type,
+            enabled: enabled != 0,
+            updated_by,
+            created_at,
+            updated_at,
+          }
+        })
         .collect(),
     )
   }
 
-  async fn list_app_toolset_configs_by_scopes(
+  async fn get_app_toolset_config(
     &self,
-    scopes: &[String],
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError> {
-    if scopes.is_empty() {
-      return Ok(vec![]);
-    }
-
-    let placeholders = scopes.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let query = format!(
-      "SELECT id, scope, scope_uuid, enabled, updated_by, created_at, updated_at
+    toolset_type: &str,
+  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, i64, String, i64, i64)>(
+      "SELECT toolset_type, enabled, updated_by, created_at, updated_at
        FROM app_toolset_configs
-       WHERE scope IN ({})
-       ORDER BY scope",
-      placeholders
-    );
-
-    let mut query_builder =
-      sqlx::query_as::<_, (i64, String, String, i64, String, i64, i64)>(&query);
-    for scope in scopes {
-      query_builder = query_builder.bind(scope);
-    }
-
-    let results = query_builder.fetch_all(&self.pool).await?;
-
-    Ok(
-      results
-        .into_iter()
-        .map(
-          |(id, scope, scope_uuid, enabled, updated_by, created_at, updated_at)| {
-            AppToolsetConfigRow {
-              id,
-              scope,
-              scope_uuid,
-              enabled: enabled != 0,
-              updated_by,
-              created_at,
-              updated_at,
-            }
-          },
-        )
-        .collect(),
+       WHERE toolset_type = ?",
     )
+    .bind(toolset_type)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(|(toolset_type, enabled, updated_by, created_at, updated_at)| {
+      AppToolsetConfigRow {
+        toolset_type,
+        enabled: enabled != 0,
+        updated_by,
+        created_at,
+        updated_at,
+      }
+    }))
   }
 
   async fn get_app_client_toolset_config(
@@ -2116,23 +2015,25 @@ impl UserAliasRepository for SqliteDbService {
 #[async_trait::async_trait]
 impl AccessRequestRepository for SqliteDbService {
   async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError> {
-    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
       "INSERT INTO app_access_requests
-        (id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-         tools_approved, user_id, resource_scope, access_request_scope, error_message,
+        (id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+         approved, user_id, resource_scope, access_request_scope, error_message,
          expires_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       RETURNING id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+                 approved, user_id, resource_scope, access_request_scope, error_message,
                  expires_at, created_at, updated_at"
     )
     .bind(&row.id)
     .bind(&row.app_client_id)
+    .bind(&row.app_name)
+    .bind(&row.app_description)
     .bind(&row.flow_type)
     .bind(&row.redirect_uri)
     .bind(&row.status)
-    .bind(&row.tools_requested)
-    .bind(&row.tools_approved)
+    .bind(&row.requested)
+    .bind(&row.approved)
     .bind(&row.user_id)
     .bind(&row.resource_scope)
     .bind(&row.access_request_scope)
@@ -2146,25 +2047,27 @@ impl AccessRequestRepository for SqliteDbService {
     Ok(AppAccessRequestRow {
       id: result.0,
       app_client_id: result.1,
-      flow_type: result.2,
-      redirect_uri: result.3,
-      status: result.4,
-      tools_requested: result.5,
-      tools_approved: result.6,
-      user_id: result.7,
-      resource_scope: result.8,
-      access_request_scope: result.9,
-      error_message: result.10,
-      expires_at: result.11,
-      created_at: result.12,
-      updated_at: result.13,
+      app_name: result.2,
+      app_description: result.3,
+      flow_type: result.4,
+      redirect_uri: result.5,
+      status: result.6,
+      requested: result.7,
+      approved: result.8,
+      user_id: result.9,
+      resource_scope: result.10,
+      access_request_scope: result.11,
+      error_message: result.12,
+      expires_at: result.13,
+      created_at: result.14,
+      updated_at: result.15,
     })
   }
 
   async fn get(&self, id: &str) -> Result<Option<AppAccessRequestRow>, DbError> {
-    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
-      "SELECT id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-              tools_approved, user_id, resource_scope, access_request_scope, error_message,
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+      "SELECT id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+              approved, user_id, resource_scope, access_request_scope, error_message,
               expires_at, created_at, updated_at
        FROM app_access_requests WHERE id = ?"
     )
@@ -2175,18 +2078,20 @@ impl AccessRequestRepository for SqliteDbService {
     Ok(result.map(|r| AppAccessRequestRow {
       id: r.0,
       app_client_id: r.1,
-      flow_type: r.2,
-      redirect_uri: r.3,
-      status: r.4,
-      tools_requested: r.5,
-      tools_approved: r.6,
-      user_id: r.7,
-      resource_scope: r.8,
-      access_request_scope: r.9,
-      error_message: r.10,
-      expires_at: r.11,
-      created_at: r.12,
-      updated_at: r.13,
+      app_name: r.2,
+      app_description: r.3,
+      flow_type: r.4,
+      redirect_uri: r.5,
+      status: r.6,
+      requested: r.7,
+      approved: r.8,
+      user_id: r.9,
+      resource_scope: r.10,
+      access_request_scope: r.11,
+      error_message: r.12,
+      expires_at: r.13,
+      created_at: r.14,
+      updated_at: r.15,
     }))
   }
 
@@ -2194,22 +2099,22 @@ impl AccessRequestRepository for SqliteDbService {
     &self,
     id: &str,
     user_id: &str,
-    tools_approved: &str,
+    approved: &str,
     resource_scope: &str,
-    access_request_scope: &str,
+    access_request_scope: Option<String>,
   ) -> Result<AppAccessRequestRow, DbError> {
     let now = self.time_service.utc_now().timestamp();
-    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
       "UPDATE app_access_requests
-       SET status = 'approved', user_id = ?, tools_approved = ?,
+       SET status = 'approved', user_id = ?, approved = ?,
            resource_scope = ?, access_request_scope = ?, updated_at = ?
        WHERE id = ?
-       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+       RETURNING id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+                 approved, user_id, resource_scope, access_request_scope, error_message,
                  expires_at, created_at, updated_at"
     )
     .bind(user_id)
-    .bind(tools_approved)
+    .bind(approved)
     .bind(resource_scope)
     .bind(access_request_scope)
     .bind(now)
@@ -2220,18 +2125,20 @@ impl AccessRequestRepository for SqliteDbService {
     Ok(AppAccessRequestRow {
       id: result.0,
       app_client_id: result.1,
-      flow_type: result.2,
-      redirect_uri: result.3,
-      status: result.4,
-      tools_requested: result.5,
-      tools_approved: result.6,
-      user_id: result.7,
-      resource_scope: result.8,
-      access_request_scope: result.9,
-      error_message: result.10,
-      expires_at: result.11,
-      created_at: result.12,
-      updated_at: result.13,
+      app_name: result.2,
+      app_description: result.3,
+      flow_type: result.4,
+      redirect_uri: result.5,
+      status: result.6,
+      requested: result.7,
+      approved: result.8,
+      user_id: result.9,
+      resource_scope: result.10,
+      access_request_scope: result.11,
+      error_message: result.12,
+      expires_at: result.13,
+      created_at: result.14,
+      updated_at: result.15,
     })
   }
 
@@ -2241,12 +2148,12 @@ impl AccessRequestRepository for SqliteDbService {
     user_id: &str,
   ) -> Result<AppAccessRequestRow, DbError> {
     let now = self.time_service.utc_now().timestamp();
-    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
       "UPDATE app_access_requests
        SET status = 'denied', user_id = ?, updated_at = ?
        WHERE id = ?
-       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+       RETURNING id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+                 approved, user_id, resource_scope, access_request_scope, error_message,
                  expires_at, created_at, updated_at"
     )
     .bind(user_id)
@@ -2258,18 +2165,20 @@ impl AccessRequestRepository for SqliteDbService {
     Ok(AppAccessRequestRow {
       id: result.0,
       app_client_id: result.1,
-      flow_type: result.2,
-      redirect_uri: result.3,
-      status: result.4,
-      tools_requested: result.5,
-      tools_approved: result.6,
-      user_id: result.7,
-      resource_scope: result.8,
-      access_request_scope: result.9,
-      error_message: result.10,
-      expires_at: result.11,
-      created_at: result.12,
-      updated_at: result.13,
+      app_name: result.2,
+      app_description: result.3,
+      flow_type: result.4,
+      redirect_uri: result.5,
+      status: result.6,
+      requested: result.7,
+      approved: result.8,
+      user_id: result.9,
+      resource_scope: result.10,
+      access_request_scope: result.11,
+      error_message: result.12,
+      expires_at: result.13,
+      created_at: result.14,
+      updated_at: result.15,
     })
   }
 
@@ -2279,12 +2188,12 @@ impl AccessRequestRepository for SqliteDbService {
     error_message: &str,
   ) -> Result<AppAccessRequestRow, DbError> {
     let now = self.time_service.utc_now().timestamp();
-    let result = query_as::<_, (String, String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
       "UPDATE app_access_requests
        SET status = 'failed', error_message = ?, updated_at = ?
        WHERE id = ?
-       RETURNING id, app_client_id, flow_type, redirect_uri, status, tools_requested,
-                 tools_approved, user_id, resource_scope, access_request_scope, error_message,
+       RETURNING id, app_client_id, app_name, app_description, flow_type, redirect_uri, status, requested,
+                 approved, user_id, resource_scope, access_request_scope, error_message,
                  expires_at, created_at, updated_at"
     )
     .bind(error_message)
@@ -2296,18 +2205,20 @@ impl AccessRequestRepository for SqliteDbService {
     Ok(AppAccessRequestRow {
       id: result.0,
       app_client_id: result.1,
-      flow_type: result.2,
-      redirect_uri: result.3,
-      status: result.4,
-      tools_requested: result.5,
-      tools_approved: result.6,
-      user_id: result.7,
-      resource_scope: result.8,
-      access_request_scope: result.9,
-      error_message: result.10,
-      expires_at: result.11,
-      created_at: result.12,
-      updated_at: result.13,
+      app_name: result.2,
+      app_description: result.3,
+      flow_type: result.4,
+      redirect_uri: result.5,
+      status: result.6,
+      requested: result.7,
+      approved: result.8,
+      user_id: result.9,
+      resource_scope: result.10,
+      access_request_scope: result.11,
+      error_message: result.12,
+      expires_at: result.13,
+      created_at: result.14,
+      updated_at: result.15,
     })
   }
 }

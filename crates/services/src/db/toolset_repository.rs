@@ -23,38 +23,30 @@ pub trait ToolsetRepository: Send + Sync {
 
   async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError>;
 
-  async fn list_toolsets_by_scope_uuid(
+  async fn list_toolsets_by_toolset_type(
     &self,
     user_id: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
   ) -> Result<Vec<ToolsetRow>, DbError>;
 
   async fn delete_toolset(&self, id: &str) -> Result<(), DbError>;
 
   async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError>;
 
-  // App-level toolset configuration
-  async fn get_app_toolset_config_by_scope_uuid(
+  // App-level toolset type config
+  async fn set_app_toolset_enabled(
     &self,
-    scope_uuid: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError>;
-
-  async fn get_app_toolset_config_by_scope(
-    &self,
-    scope: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError>;
-
-  async fn upsert_app_toolset_config(
-    &self,
-    config: &AppToolsetConfigRow,
+    toolset_type: &str,
+    enabled: bool,
+    updated_by: &str,
   ) -> Result<AppToolsetConfigRow, DbError>;
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError>;
 
-  async fn list_app_toolset_configs_by_scopes(
+  async fn get_app_toolset_config(
     &self,
-    scopes: &[String],
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError>;
+    toolset_type: &str,
+  ) -> Result<Option<AppToolsetConfigRow>, DbError>;
 
   // App-Client toolset config
   async fn get_app_client_toolset_config(

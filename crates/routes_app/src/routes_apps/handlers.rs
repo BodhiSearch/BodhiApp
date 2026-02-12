@@ -1,0 +1,402 @@
+use crate::routes_apps::{
+  AccessRequestReviewResponse, AccessRequestStatusResponse, AppAccessRequestError,
+  ApproveAccessRequestBody, CreateAccessRequestBody, CreateAccessRequestResponse,
+  RequestedResources, ToolInstanceInfo, ToolTypeReviewInfo,
+};
+use auth_middleware::{ExtractToken, ExtractUserId};
+use axum::{
+  extract::{Path, Query, State},
+  http::StatusCode,
+  response::Json,
+};
+use objs::{ApiError, OpenAIApiError, ToolApproval, ToolTypeRequest, API_TAG_AUTH};
+use serde::Deserialize;
+use server_core::RouterState;
+use std::sync::Arc;
+use tracing::{debug, info};
+
+pub const ENDPOINT_APPS_REQUEST_ACCESS: &str = "/bodhi/v1/apps/request-access";
+pub const ENDPOINT_APPS_ACCESS_REQUEST_ID: &str = "/bodhi/v1/apps/access-request/{id}";
+pub const ENDPOINT_APPS_ACCESS_REQUEST_REVIEW: &str = "/bodhi/v1/apps/access-request/{id}/review";
+pub const ENDPOINT_APPS_ACCESS_REQUEST_APPROVE: &str = "/bodhi/v1/apps/access-request/{id}/approve";
+pub const ENDPOINT_APPS_ACCESS_REQUEST_DENY: &str = "/bodhi/v1/apps/access-request/{id}/deny";
+
+// Query params for GET /apps/access-request/:id
+#[derive(Debug, Deserialize)]
+pub struct AccessRequestStatusQuery {
+  pub app_client_id: String,
+}
+
+/// Create access request (POST /apps/request-access)
+#[utoipa::path(
+    post,
+    path = ENDPOINT_APPS_REQUEST_ACCESS,
+    tag = API_TAG_AUTH,
+    operation_id = "createAccessRequest",
+    summary = "Create Access Request",
+    description = "Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.",
+    request_body(
+        content = CreateAccessRequestBody,
+        description = "Access request details"
+    ),
+    responses(
+        (status = 201, description = "Access request created", body = CreateAccessRequestResponse),
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 404, description = "App client not found", body = OpenAIApiError),
+    ),
+    security(())
+)]
+pub async fn create_access_request_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Json(body): Json<CreateAccessRequestBody>,
+) -> Result<(StatusCode, Json<CreateAccessRequestResponse>), ApiError> {
+  debug!(
+    "Creating access request for app_client_id: {}",
+    body.app_client_id
+  );
+
+  // Validate flow_type
+  if body.flow_type != "redirect" && body.flow_type != "popup" {
+    return Err(AppAccessRequestError::InvalidFlowType(body.flow_type))?;
+  }
+
+  // Validate redirect_url for redirect flow
+  if body.flow_type == "redirect" && body.redirect_url.is_none() {
+    return Err(AppAccessRequestError::MissingRedirectUrl)?;
+  }
+
+  // Note: We skip fetching app client info here because:
+  // 1. This endpoint is unauthenticated (no user token available)
+  // 2. KC endpoint for app client info may not be implemented yet
+  // 3. App info will be fetched during review (when user is authenticated)
+  debug!(
+    "Creating access request for app_client_id: {} (app info will be fetched during review)",
+    body.app_client_id
+  );
+
+  // Extract tool types from requested
+  let tool_types: Vec<ToolTypeRequest> = body
+    .requested
+    .as_ref()
+    .map(|r| {
+      r.tool_types
+        .iter()
+        .map(|t| ToolTypeRequest {
+          tool_type: t.tool_type.clone(),
+        })
+        .collect()
+    })
+    .unwrap_or_default();
+
+  // Validate tool types exist
+  let tool_service = state.app_service().tool_service();
+  for tool_type_req in &tool_types {
+    tool_service.validate_type(&tool_type_req.tool_type)?;
+  }
+
+  // Convert to objs::ToolTypeRequest for service call
+  let objs_tool_types: Vec<objs::ToolTypeRequest> = tool_types
+    .iter()
+    .map(|t| objs::ToolTypeRequest {
+      tool_type: t.tool_type.clone(),
+    })
+    .collect();
+
+  // Create draft or auto-approve
+  let access_request_service = state.app_service().access_request_service();
+  let created = access_request_service
+    .create_draft(
+      body.app_client_id,
+      body.flow_type,
+      body.redirect_url,
+      objs_tool_types,
+    )
+    .await?;
+
+  // Return response based on status
+  if created.status == "approved" {
+    info!("Access request {} auto-approved", created.id);
+    Ok((
+      StatusCode::CREATED,
+      Json(CreateAccessRequestResponse::Approved {
+        id: created.id,
+        resource_scope: created
+          .resource_scope
+          .expect("resource_scope must be set for approved"),
+      }),
+    ))
+  } else {
+    // Draft status
+    let review_url = access_request_service.build_review_url(&created.id);
+    info!(
+      "Access request {} created with review_url: {}",
+      created.id, review_url
+    );
+    Ok((
+      StatusCode::CREATED,
+      Json(CreateAccessRequestResponse::Draft {
+        id: created.id,
+        review_url,
+      }),
+    ))
+  }
+}
+
+/// Get access request status (GET /apps/access-request/:id)
+#[utoipa::path(
+    get,
+    path = ENDPOINT_APPS_ACCESS_REQUEST_ID,
+    tag = API_TAG_AUTH,
+    operation_id = "getAccessRequestStatus",
+    summary = "Get Access Request Status",
+    description = "Poll access request status. Requires app_client_id query parameter for security.",
+    params(
+        ("id" = String, Path, description = "Access request ID"),
+        ("app_client_id" = String, Query, description = "App client ID for verification")
+    ),
+    responses(
+        (status = 200, description = "Status retrieved", body = AccessRequestStatusResponse),
+        (status = 404, description = "Not found or app_client_id mismatch", body = OpenAIApiError),
+    ),
+    security(())
+)]
+pub async fn get_access_request_status_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+  Query(query): Query<AccessRequestStatusQuery>,
+) -> Result<Json<AccessRequestStatusResponse>, ApiError> {
+  debug!("Getting access request status for id: {}", id);
+
+  let access_request_service = state.app_service().access_request_service();
+  let request = access_request_service
+    .get_request(&id)
+    .await?
+    .ok_or(AppAccessRequestError::NotFound)?;
+
+  // Verify app_client_id matches
+  if request.app_client_id != query.app_client_id {
+    return Err(AppAccessRequestError::NotFound)?;
+  }
+
+  Ok(Json(AccessRequestStatusResponse {
+    id: request.id,
+    status: request.status,
+    resource_scope: request.resource_scope,
+    access_request_scope: request.access_request_scope,
+  }))
+}
+
+/// Get access request review data (GET /apps/access-request/:id/review)
+#[utoipa::path(
+    get,
+    path = ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
+    tag = API_TAG_AUTH,
+    operation_id = "getAccessRequestReview",
+    summary = "Get Access Request Review",
+    description = "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
+    params(
+        ("id" = String, Path, description = "Access request ID")
+    ),
+    responses(
+        (status = 200, description = "Review data retrieved", body = AccessRequestReviewResponse),
+        (status = 404, description = "Not found", body = OpenAIApiError),
+        (status = 410, description = "Request expired", body = OpenAIApiError),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn get_access_request_review_handler(
+  ExtractUserId(user_id): ExtractUserId,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<Json<AccessRequestReviewResponse>, ApiError> {
+  debug!("Getting review data for access request: {}", id);
+
+  let access_request_service = state.app_service().access_request_service();
+  let request = access_request_service
+    .get_request(&id)
+    .await?
+    .ok_or(AppAccessRequestError::NotFound)?;
+
+  // Parse requested tools
+  let requested: RequestedResources = serde_json::from_str(&request.requested)
+    .unwrap_or_else(|_| RequestedResources {
+      tool_types: vec![],
+    });
+
+  // Enrich with tool info
+  let tool_service = state.app_service().tool_service();
+  let mut tools_info = Vec::new();
+
+  for tool_type_req in &requested.tool_types {
+    // Get tool type definition
+    let tool_def = tool_service
+      .get_type(&tool_type_req.tool_type)
+      .ok_or_else(|| AppAccessRequestError::InvalidToolType(tool_type_req.tool_type.clone()))?;
+
+    // Get user's instances of this tool type
+    let user_toolsets = tool_service.list(&user_id).await?;
+    let instances: Vec<ToolInstanceInfo> = user_toolsets
+      .iter()
+      .filter(|t| t.toolset_type == tool_type_req.tool_type)
+      .map(|t| ToolInstanceInfo {
+        id: t.id.clone(),
+        name: t.name.clone(),
+        enabled: t.enabled,
+        has_api_key: t.has_api_key,
+      })
+      .collect();
+
+    tools_info.push(ToolTypeReviewInfo {
+      tool_type: tool_type_req.tool_type.clone(),
+      name: tool_def.name.clone(),
+      description: tool_def.description.clone(),
+      instances,
+    });
+  }
+
+  Ok(Json(AccessRequestReviewResponse {
+    id: request.id,
+    app_client_id: request.app_client_id,
+    app_name: request.app_name,
+    app_description: request.app_description,
+    flow_type: request.flow_type,
+    status: request.status,
+    requested,
+    tools_info,
+  }))
+}
+
+/// Approve access request (PUT /apps/access-request/:id/approve)
+#[utoipa::path(
+    put,
+    path = ENDPOINT_APPS_ACCESS_REQUEST_APPROVE,
+    tag = API_TAG_AUTH,
+    operation_id = "approveAppsAccessRequest",
+    summary = "Approve Access Request",
+    description = "Approve access request with tool instance selections. Requires session auth.",
+    params(
+        ("id" = String, Path, description = "Access request ID")
+    ),
+    request_body(
+        content = ApproveAccessRequestBody,
+        description = "Approval details with tool selections"
+    ),
+    responses(
+        (status = 200, description = "Request approved"),
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 404, description = "Not found", body = OpenAIApiError),
+        (status = 409, description = "Already processed", body = OpenAIApiError),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn approve_access_request_handler(
+  ExtractUserId(user_id): ExtractUserId,
+  ExtractToken(token): ExtractToken,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+  Json(body): Json<ApproveAccessRequestBody>,
+) -> Result<StatusCode, ApiError> {
+  info!("User {} approving access request {}", user_id, id);
+
+  // Validate tool instances
+  let tool_service = state.app_service().tool_service();
+
+  for approval in &body.approved.tool_types {
+    if approval.status == "approved" {
+      let instance_id = approval.instance_id.as_ref().ok_or_else(|| {
+        AppAccessRequestError::ToolInstanceNotConfigured(format!(
+          "instance_id required for approved tool_type: {}",
+          approval.tool_type
+        ))
+      })?;
+
+      // Get instance and validate
+      let toolset = tool_service
+        .get(&user_id, instance_id)
+        .await?
+        .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance_id.clone()))?;
+
+      // Validate tool_type matches
+      if toolset.toolset_type != approval.tool_type {
+        return Err(AppAccessRequestError::InvalidToolType(format!(
+          "Instance {} is not of type {}",
+          instance_id, approval.tool_type
+        )))?;
+      }
+
+      // Validate instance is enabled and has API key
+      if !toolset.enabled {
+        return Err(AppAccessRequestError::ToolInstanceNotConfigured(format!(
+          "Instance {} is not enabled",
+          instance_id
+        )))?;
+      }
+
+      if !toolset.has_api_key {
+        return Err(AppAccessRequestError::ToolInstanceNotConfigured(format!(
+          "Instance {} does not have API key configured",
+          instance_id
+        )))?;
+      }
+    }
+  }
+
+  // Convert to objs::ToolApproval for service call
+  let objs_tool_approvals: Vec<ToolApproval> = body
+    .approved
+    .tool_types
+    .iter()
+    .map(|a| ToolApproval {
+      tool_type: a.tool_type.clone(),
+      status: a.status.clone(),
+      instance_id: a.instance_id.clone(),
+    })
+    .collect();
+
+  // Call service to approve
+  let access_request_service = state.app_service().access_request_service();
+  let _updated = access_request_service
+    .approve_request(&id, &user_id, &token, objs_tool_approvals)
+    .await?;
+
+  info!("Access request {} approved by user {}", id, user_id);
+  Ok(StatusCode::OK)
+}
+
+/// Deny access request (POST /apps/access-request/:id/deny)
+#[utoipa::path(
+    post,
+    path = ENDPOINT_APPS_ACCESS_REQUEST_DENY,
+    tag = API_TAG_AUTH,
+    operation_id = "denyAccessRequest",
+    summary = "Deny Access Request",
+    description = "Deny access request. Requires session auth.",
+    params(
+        ("id" = String, Path, description = "Access request ID")
+    ),
+    responses(
+        (status = 200, description = "Request denied"),
+        (status = 404, description = "Not found", body = OpenAIApiError),
+        (status = 409, description = "Already processed", body = OpenAIApiError),
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn deny_access_request_handler(
+  ExtractUserId(user_id): ExtractUserId,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+  info!("User {} denying access request {}", user_id, id);
+
+  let access_request_service = state.app_service().access_request_service();
+  let _updated = access_request_service.deny_request(&id, &user_id).await?;
+
+  info!("Access request {} denied by user {}", id, user_id);
+  Ok(StatusCode::OK)
+}

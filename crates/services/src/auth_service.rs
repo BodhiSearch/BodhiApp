@@ -99,6 +99,23 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     access_request_id: &str,
     description: &str,
   ) -> Result<RegisterAccessRequestConsentResponse>;
+
+  /// Register resource access for auto-approve flow (no user token needed)
+  /// KC endpoint: POST /resources/apps/request-access
+  /// Uses resource service token, NOT user token
+  async fn register_resource_access(
+    &self,
+    app_client_id: &str,
+    access_request_id: &str,
+  ) -> Result<RegisterResourceAccessResponse>;
+
+  /// Get app client info (name, description) from Keycloak
+  /// KC endpoint: GET /users/apps/{app_client_id}/info
+  async fn get_app_client_info(
+    &self,
+    app_client_id: &str,
+    user_token: &str,
+  ) -> Result<AppClientInfo>;
 }
 
 #[derive(Debug)]
@@ -121,6 +138,17 @@ pub struct RegisterAccessRequestConsentResponse {
   pub scope: String,
   pub access_request_id: String,
   pub access_request_scope: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterResourceAccessResponse {
+  pub scope: String, // Only resource_scope returned by KC
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppClientInfo {
+  pub name: String,
+  pub description: String,
 }
 
 impl From<KeycloakError> for AuthServiceError {
@@ -744,6 +772,84 @@ impl AuthService for KeycloakAuthService {
       // 400, 401, or other errors
       let error_text = response.text().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
+    }
+  }
+
+  async fn register_resource_access(
+    &self,
+    app_client_id: &str,
+    access_request_id: &str,
+  ) -> Result<RegisterResourceAccessResponse> {
+    // TODO: Need to get resource service token - requires storing resource credentials
+    // For now, this is a placeholder implementation
+    let endpoint = format!("{}/resources/apps/request-access", self.auth_api_url());
+
+    log::log_http_request("POST", &endpoint, "auth_service", None);
+
+    let request_body = serde_json::json!({
+      "app_client_id": app_client_id,
+      "access_request_id": access_request_id,
+    });
+
+    // TODO: Replace with actual resource service token
+    let _placeholder_token = "resource_service_token";
+
+    let response = self
+      .client
+      .post(&endpoint)
+      .json(&request_body)
+      .header("Authorization", format!("Bearer {}", _placeholder_token))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+
+    if status.is_success() {
+      Ok(response.json::<RegisterResourceAccessResponse>().await?)
+    } else {
+      let error_text = response.text().await?;
+      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
+      Err(AuthServiceError::AuthServiceApiError {
+        status: status.as_u16(),
+        body: error_text,
+      })
+    }
+  }
+
+  async fn get_app_client_info(
+    &self,
+    app_client_id: &str,
+    user_token: &str,
+  ) -> Result<AppClientInfo> {
+    // TODO: KC endpoint not yet implemented
+    let endpoint = format!(
+      "{}/users/apps/{}/info",
+      self.auth_api_url(),
+      app_client_id
+    );
+
+    log::log_http_request("GET", &endpoint, "auth_service", None);
+
+    let response = self
+      .client
+      .get(&endpoint)
+      .header("Authorization", format!("Bearer {}", user_token))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
+      .send()
+      .await?;
+
+    let status = response.status();
+
+    if status.is_success() {
+      Ok(response.json::<AppClientInfo>().await?)
+    } else {
+      let error_text = response.text().await?;
+      log::log_http_error("GET", &endpoint, "auth_service", &error_text);
       Err(AuthServiceError::AuthServiceApiError {
         status: status.as_u16(),
         body: error_text,

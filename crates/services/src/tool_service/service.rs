@@ -1,13 +1,10 @@
 use super::ToolsetError;
-use crate::db::{
-  encryption::encrypt_api_key, ApiKeyUpdate, AppToolsetConfigRow, DbError, DbService, TimeService,
-  ToolsetRow,
-};
+use crate::db::{encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService, ToolsetRow};
 use crate::exa_service::ExaService;
 use chrono::DateTime;
 use objs::{
-  AppToolsetConfig, FunctionDefinition, ToolDefinition, Toolset, ToolsetDefinition,
-  ToolsetExecutionRequest, ToolsetExecutionResponse, ToolsetWithTools,
+  FunctionDefinition, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionRequest,
+  ToolsetExecutionResponse,
 };
 use serde_json::json;
 use std::fmt::Debug;
@@ -24,7 +21,7 @@ pub trait ToolService: Debug + Send + Sync {
   fn list_all_tool_definitions(&self) -> Vec<ToolDefinition>;
 
   /// List all available toolsets with their tools (nested structure)
-  async fn list_all_toolsets(&self) -> Result<Vec<ToolsetWithTools>, ToolsetError>;
+  async fn list_all_toolsets(&self) -> Result<Vec<ToolsetDefinition>, ToolsetError>;
 
   // ============================================================================
   // Toolset instance management
@@ -40,7 +37,7 @@ pub trait ToolService: Debug + Send + Sync {
   async fn create(
     &self,
     user_id: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
     name: &str,
     description: Option<String>,
     enabled: bool,
@@ -77,59 +74,35 @@ pub trait ToolService: Debug + Send + Sync {
   /// List all available toolset types
   fn list_types(&self) -> Vec<ToolsetDefinition>;
 
-  /// Get toolset type definition by scope_uuid
-  fn get_type(&self, scope_uuid: &str) -> Option<ToolsetDefinition>;
+  /// Get toolset type definition by toolset_type
+  fn get_type(&self, toolset_type: &str) -> Option<ToolsetDefinition>;
 
-  /// Validate toolset scope_uuid exists
-  fn validate_type(&self, scope_uuid: &str) -> Result<(), ToolsetError>;
+  /// Validate toolset toolset_type exists
+  fn validate_type(&self, toolset_type: &str) -> Result<(), ToolsetError>;
 
   /// Check if toolset type is enabled at app level
-  async fn is_type_enabled(&self, scope_uuid: &str) -> Result<bool, ToolsetError>;
+  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError>;
 
   // ============================================================================
-  // App-level toolset configuration (admin-controlled)
+  // App-level toolset type configuration (Admin only)
   // ============================================================================
 
-  /// Get app-level toolset config by scope
-  async fn get_app_toolset_config(
-    &self,
-    scope: &str,
-  ) -> Result<Option<AppToolsetConfig>, ToolsetError>;
-
-  /// Check if toolset is enabled at app level
-  async fn is_toolset_enabled_for_app(&self, scope: &str) -> Result<bool, ToolsetError>;
-
-  /// Set app-level toolset enabled status (admin only)
-  /// Updates local DB only (no longer syncs with auth server)
+  /// Set app-level enable/disable for a toolset type
   async fn set_app_toolset_enabled(
     &self,
-    admin_token: &str,
-    scope: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<AppToolsetConfig, ToolsetError>;
+  ) -> Result<objs::AppToolsetConfig, ToolsetError>;
 
-  /// List all app-level toolset configs
-  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
+  /// List all app-level toolset configurations
+  async fn list_app_toolset_configs(&self) -> Result<Vec<objs::AppToolsetConfig>, ToolsetError>;
 
-  /// List app-level toolset configs for specific scopes
-  async fn list_app_toolset_configs_by_scopes(
+  /// Get app-level config for specific toolset type
+  async fn get_app_toolset_config(
     &self,
-    scopes: &[String],
-  ) -> Result<Vec<AppToolsetConfig>, ToolsetError>;
-
-  // ============================================================================
-  // App-client toolset configuration (cached from auth server)
-  // ============================================================================
-
-  /// Check if an external app-client is registered for a specific toolset
-  /// Looks up the cached app_client_toolset_configs table
-  async fn is_app_client_registered_for_toolset(
-    &self,
-    app_client_id: &str,
-    scope_uuid: &str,
-  ) -> Result<bool, ToolsetError>;
+    toolset_type: &str,
+  ) -> Result<Option<objs::AppToolsetConfig>, ToolsetError>;
 }
 
 // ============================================================================
@@ -188,16 +161,9 @@ impl DefaultToolService {
   }
 
   /// Static registry of built-in toolsets with nested tools
-  fn builtin_toolsets(is_production: bool) -> Vec<ToolsetDefinition> {
-    let scope_uuid = if is_production {
-      "7a89e236-9d23-4856-aa77-b52823ff9972"
-    } else {
-      "4ff0e163-36fb-47d6-a5ef-26e396f067d6"
-    };
-
+  fn builtin_toolsets(_is_production: bool) -> Vec<ToolsetDefinition> {
     vec![ToolsetDefinition {
-      scope_uuid: scope_uuid.to_string(),
-      scope: "scope_toolset-builtin-exa-web-search".to_string(),
+      toolset_type: "builtin-exa-search".to_string(),
       name: "Exa Web Search".to_string(),
       description: "Search and analyze web content using Exa AI".to_string(),
       tools: vec![
@@ -300,33 +266,13 @@ impl DefaultToolService {
 
   /// Convert toolset row to public model
   fn toolset_row_to_model(&self, row: ToolsetRow) -> Toolset {
-    // Lookup scope from registry using scope_uuid
-    let scope = Self::builtin_toolsets(self.is_production)
-      .iter()
-      .find(|def| def.scope_uuid == row.scope_uuid)
-      .map(|def| def.scope.clone())
-      .unwrap_or_else(|| "scope_unknown".to_string());
-
     Toolset {
       id: row.id,
       name: row.name,
-      scope_uuid: row.scope_uuid,
-      scope,
+      toolset_type: row.toolset_type,
       description: row.description,
       enabled: row.enabled,
       has_api_key: row.encrypted_api_key.is_some(),
-      created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-      updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
-    }
-  }
-
-  /// Convert app toolset config row to public model
-  fn app_row_to_config(row: AppToolsetConfigRow) -> AppToolsetConfig {
-    AppToolsetConfig {
-      scope: row.scope,
-      scope_uuid: row.scope_uuid,
-      enabled: row.enabled,
-      updated_by: row.updated_by,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
@@ -338,17 +284,17 @@ impl ToolService for DefaultToolService {
   async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError> {
     let toolsets = self.db_service.list_toolsets(user_id).await?;
 
-    // Collect unique scope_uuids that are enabled with API keys
-    let enabled_scope_uuids: std::collections::HashSet<String> = toolsets
+    // Collect unique toolset_types that are enabled with API keys
+    let enabled_toolset_types: std::collections::HashSet<String> = toolsets
       .into_iter()
       .filter(|t| t.enabled && t.encrypted_api_key.is_some())
-      .map(|t| t.scope_uuid)
+      .map(|t| t.toolset_type)
       .collect();
 
     // Return tool definitions for enabled types
     let mut tools = Vec::new();
     for toolset_def in Self::builtin_toolsets(self.is_production) {
-      if enabled_scope_uuids.contains(&toolset_def.scope_uuid) {
+      if enabled_toolset_types.contains(&toolset_def.toolset_type) {
         tools.extend(toolset_def.tools);
       }
     }
@@ -360,26 +306,8 @@ impl ToolService for DefaultToolService {
     Self::builtin_tool_definitions()
   }
 
-  async fn list_all_toolsets(&self) -> Result<Vec<ToolsetWithTools>, ToolsetError> {
-    let mut result = Vec::new();
-
-    for toolset_def in Self::builtin_toolsets(self.is_production) {
-      let app_enabled = self
-        .is_toolset_enabled_for_app(&toolset_def.scope)
-        .await
-        .unwrap_or(false);
-
-      result.push(ToolsetWithTools {
-        scope_uuid: toolset_def.scope_uuid,
-        scope: toolset_def.scope,
-        name: toolset_def.name,
-        description: toolset_def.description,
-        app_enabled,
-        tools: toolset_def.tools,
-      });
-    }
-
-    Ok(result)
+  async fn list_all_toolsets(&self) -> Result<Vec<ToolsetDefinition>, ToolsetError> {
+    Ok(Self::builtin_toolsets(self.is_production))
   }
 
   // ============================================================================
@@ -409,7 +337,7 @@ impl ToolService for DefaultToolService {
   async fn create(
     &self,
     user_id: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
     name: &str,
     description: Option<String>,
     enabled: bool,
@@ -424,11 +352,11 @@ impl ToolService for DefaultToolService {
         .map_err(|reason| ToolsetError::InvalidName(reason))?;
     }
 
-    // Validate scope_uuid exists
-    self.validate_type(scope_uuid)?;
+    // Validate toolset_type exists
+    self.validate_type(toolset_type)?;
 
     // Check app-level enabled
-    if !self.is_type_enabled(scope_uuid).await? {
+    if !self.is_type_enabled(toolset_type).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -451,7 +379,7 @@ impl ToolService for DefaultToolService {
     let row = ToolsetRow {
       id: Uuid::new_v4().to_string(),
       user_id: user_id.to_string(),
-      scope_uuid: scope_uuid.to_string(),
+      toolset_type: toolset_type.to_string(),
       name: name.to_string(),
       description,
       enabled,
@@ -509,7 +437,7 @@ impl ToolService for DefaultToolService {
     }
 
     // Check app-level enabled if trying to enable
-    if enabled && !self.is_type_enabled(&existing.scope_uuid).await? {
+    if enabled && !self.is_type_enabled(&existing.toolset_type).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -539,7 +467,7 @@ impl ToolService for DefaultToolService {
     let row = ToolsetRow {
       id: id.to_string(),
       user_id: user_id.to_string(),
-      scope_uuid: existing.scope_uuid,
+      toolset_type: existing.toolset_type,
       name: name.to_string(),
       description,
       enabled,
@@ -593,7 +521,7 @@ impl ToolService for DefaultToolService {
     }
 
     // Check app-level type enabled
-    if !self.is_type_enabled(&instance.scope_uuid).await? {
+    if !self.is_type_enabled(&instance.toolset_type).await? {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
@@ -609,24 +537,22 @@ impl ToolService for DefaultToolService {
       .await?
       .ok_or(ToolsetError::ToolsetNotConfigured)?;
 
-    // Verify method exists for toolset type and get scope
+    // Verify method exists for toolset type
     let toolset_def = self
-      .get_type(&instance.scope_uuid)
-      .ok_or_else(|| ToolsetError::ToolsetNotFound(instance.scope_uuid.clone()))?;
+      .get_type(&instance.toolset_type)
+      .ok_or_else(|| ToolsetError::ToolsetNotFound(instance.toolset_type.clone()))?;
 
     if !toolset_def.tools.iter().any(|t| t.function.name == method) {
       return Err(ToolsetError::MethodNotFound(format!(
-        "Method '{}' not found in toolset scope '{}'",
-        method, toolset_def.scope
+        "Method '{}' not found in toolset type '{}'",
+        method, toolset_def.toolset_type
       )));
     }
 
-    // Execute based on scope
-    match toolset_def.scope.as_str() {
-      "scope_toolset-builtin-exa-web-search" => {
-        self.execute_exa_method(&api_key, method, request).await
-      }
-      _ => Err(ToolsetError::ToolsetNotFound(instance.scope_uuid)),
+    // Execute based on toolset_type
+    match toolset_def.toolset_type.as_str() {
+      "builtin-exa-search" => self.execute_exa_method(&api_key, method, request).await,
+      _ => Err(ToolsetError::ToolsetNotFound(instance.toolset_type)),
     }
   }
 
@@ -638,145 +564,106 @@ impl ToolService for DefaultToolService {
     Self::builtin_toolsets(self.is_production)
   }
 
-  fn get_type(&self, scope_uuid: &str) -> Option<ToolsetDefinition> {
+  fn get_type(&self, toolset_type: &str) -> Option<ToolsetDefinition> {
     Self::builtin_toolsets(self.is_production)
       .into_iter()
-      .find(|def| def.scope_uuid == scope_uuid)
+      .find(|def| def.toolset_type == toolset_type)
   }
 
-  fn validate_type(&self, scope_uuid: &str) -> Result<(), ToolsetError> {
-    if self.get_type(scope_uuid).is_some() {
+  fn validate_type(&self, toolset_type: &str) -> Result<(), ToolsetError> {
+    if self.get_type(toolset_type).is_some() {
       Ok(())
     } else {
-      Err(ToolsetError::InvalidToolsetType(scope_uuid.to_string()))
+      Err(ToolsetError::InvalidToolsetType(toolset_type.to_string()))
     }
   }
 
-  async fn is_type_enabled(&self, scope_uuid: &str) -> Result<bool, ToolsetError> {
-    // Get scope from scope_uuid for database lookup
-    let toolset_def = self
-      .get_type(scope_uuid)
-      .ok_or_else(|| ToolsetError::InvalidToolsetType(scope_uuid.to_string()))?;
-    self.is_toolset_enabled_for_app(&toolset_def.scope).await
-  }
-
-  // ============================================================================
-  // App-level toolset configuration (admin-controlled)
-  // ============================================================================
-
-  async fn get_app_toolset_config(
-    &self,
-    scope: &str,
-  ) -> Result<Option<AppToolsetConfig>, ToolsetError> {
-    // Verify scope exists in our toolset definitions
-    if !Self::builtin_toolsets(self.is_production)
-      .iter()
-      .any(|def| def.scope == scope)
-    {
-      return Err(ToolsetError::ToolsetNotFound(scope.to_string()));
+  async fn is_type_enabled(&self, toolset_type: &str) -> Result<bool, ToolsetError> {
+    // Check database for app-level configuration
+    match self.db_service.get_app_toolset_config(toolset_type).await? {
+      Some(config) => Ok(config.enabled),
+      None => Ok(false), // Default to disabled if no config exists (security-by-default)
     }
-
-    let config = self
-      .db_service
-      .get_app_toolset_config_by_scope(scope)
-      .await?;
-    Ok(config.map(Self::app_row_to_config))
   }
 
-  async fn is_toolset_enabled_for_app(&self, scope: &str) -> Result<bool, ToolsetError> {
-    let config = self
-      .db_service
-      .get_app_toolset_config_by_scope(scope)
-      .await?;
-    // No row means disabled (default state)
-    Ok(config.map(|c| c.enabled).unwrap_or(false))
-  }
+  // ============================================================================
+  // App-level toolset type configuration (Admin only)
+  // ============================================================================
 
   async fn set_app_toolset_enabled(
     &self,
-    admin_token: &str,
-    scope: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
     enabled: bool,
     updated_by: &str,
-  ) -> Result<AppToolsetConfig, ToolsetError> {
-    // Verify scope exists in our toolset definitions
-    if !Self::builtin_toolsets(self.is_production)
-      .iter()
-      .any(|def| def.scope == scope)
-    {
-      return Err(ToolsetError::ToolsetNotFound(scope.to_string()));
-    }
+  ) -> Result<objs::AppToolsetConfig, ToolsetError> {
+    // Validate toolset_type exists in ToolsetDefinition registry
+    self.validate_type(toolset_type)?;
 
-    // Note: admin_token is now unused since we removed auth server integration
-    // App-level enable/disable is now purely local DB operation
-    let _ = admin_token;
-
-    let now = self.time_service.utc_now();
-    let now_ts = now.timestamp();
-
-    // Get existing config
-    let existing = self
+    // Call db_service to upsert app_toolset_configs record
+    let db_row = self
       .db_service
-      .get_app_toolset_config_by_scope(scope)
+      .set_app_toolset_enabled(toolset_type, enabled, updated_by)
       .await?;
 
-    let config = AppToolsetConfigRow {
-      id: existing.as_ref().map(|e| e.id).unwrap_or(0),
-      scope: scope.to_string(),
-      scope_uuid: scope_uuid.to_string(),
-      enabled,
-      updated_by: updated_by.to_string(),
-      created_at: existing.as_ref().map(|e| e.created_at).unwrap_or(now_ts),
-      updated_at: now_ts,
-    };
+    // Enrich with name/description from ToolsetDefinition
+    let type_def = self
+      .get_type(toolset_type)
+      .ok_or_else(|| ToolsetError::InvalidToolsetType(toolset_type.to_string()))?;
 
-    let result = self.db_service.upsert_app_toolset_config(&config).await?;
-    Ok(Self::app_row_to_config(result))
+    Ok(objs::AppToolsetConfig {
+      toolset_type: db_row.toolset_type,
+      name: type_def.name,
+      description: type_def.description,
+      enabled: db_row.enabled,
+      updated_by: db_row.updated_by,
+      created_at: DateTime::from_timestamp(db_row.created_at, 0).unwrap(),
+      updated_at: DateTime::from_timestamp(db_row.updated_at, 0).unwrap(),
+    })
   }
 
-  async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
-    let configs = self.db_service.list_app_toolset_configs().await?;
-    Ok(configs.into_iter().map(Self::app_row_to_config).collect())
+  async fn list_app_toolset_configs(&self) -> Result<Vec<objs::AppToolsetConfig>, ToolsetError> {
+    let db_rows = self.db_service.list_app_toolset_configs().await?;
+
+    // Enrich each row with name/description from ToolsetDefinition
+    let configs = db_rows
+      .into_iter()
+      .filter_map(|row| {
+        // Only include configs for toolset types that still exist in the registry
+        self.get_type(&row.toolset_type).map(|type_def| objs::AppToolsetConfig {
+          toolset_type: row.toolset_type,
+          name: type_def.name,
+          description: type_def.description,
+          enabled: row.enabled,
+          updated_by: row.updated_by,
+          created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+          updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+        })
+      })
+      .collect();
+
+    Ok(configs)
   }
 
-  async fn list_app_toolset_configs_by_scopes(
+  async fn get_app_toolset_config(
     &self,
-    scopes: &[String],
-  ) -> Result<Vec<AppToolsetConfig>, ToolsetError> {
-    let configs = self
-      .db_service
-      .list_app_toolset_configs_by_scopes(scopes)
-      .await?;
-    Ok(configs.into_iter().map(Self::app_row_to_config).collect())
-  }
+    toolset_type: &str,
+  ) -> Result<Option<objs::AppToolsetConfig>, ToolsetError> {
+    let db_row = self.db_service.get_app_toolset_config(toolset_type).await?;
 
-  async fn is_app_client_registered_for_toolset(
-    &self,
-    app_client_id: &str,
-    scope_uuid: &str,
-  ) -> Result<bool, ToolsetError> {
-    // Look up cached app-client toolset config
-    let config = self
-      .db_service
-      .get_app_client_toolset_config(app_client_id)
-      .await?;
-
-    let Some(config) = config else {
-      return Ok(false);
-    };
-
-    // Parse the toolsets_json to check if scope_uuid is registered
-    let toolsets: Vec<serde_json::Value> =
-      serde_json::from_str(&config.toolsets_json).unwrap_or_default();
-
-    Ok(toolsets.iter().any(|t| {
-      t.get("scope_id")
-        .and_then(|v| v.as_str())
-        .map(|id| id == scope_uuid)
-        .unwrap_or(false)
+    Ok(db_row.and_then(|row| {
+      // Enrich with name/description from ToolsetDefinition
+      self.get_type(&row.toolset_type).map(|type_def| objs::AppToolsetConfig {
+        toolset_type: row.toolset_type,
+        name: type_def.name,
+        description: type_def.description,
+        enabled: row.enabled,
+        updated_by: row.updated_by,
+        created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+        updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+      })
     }))
   }
+
 }
 
 impl DefaultToolService {

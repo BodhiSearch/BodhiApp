@@ -33,14 +33,14 @@ impl NetworkService for DefaultNetworkService {
   }
 }
 
-#[cfg(feature = "test-utils")]
+#[cfg(any(test, feature = "test-utils"))]
 /// Stub implementation for testing that returns a configurable IP.
 #[derive(Debug)]
 pub struct StubNetworkService {
   pub ip: Option<String>,
 }
 
-#[cfg(feature = "test-utils")]
+#[cfg(any(test, feature = "test-utils"))]
 impl NetworkService for StubNetworkService {
   fn get_server_ip(&self) -> Option<String> {
     self.ip.clone()

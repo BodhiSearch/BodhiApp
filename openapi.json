@@ -1681,49 +1681,41 @@
         ]
       }
     },
-    "/bodhi/v1/apps/request-access": {
-      "post": {
+    "/bodhi/v1/apps/access-request/{id}": {
+      "get": {
         "tags": [
           "auth"
         ],
-        "summary": "Request Resource Access",
-        "description": "Requests access permissions for an application client to access this resource server's protected resources. Supports caching via optional version parameter.",
-        "operationId": "requestAccess",
-        "requestBody": {
-          "description": "Application client requesting access",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AppAccessRequest"
-              },
-              "example": {
-                "app_client_id": "my_app_client_123",
-                "toolset_scope_ids": [
-                  "uuid-for-toolset-scope-1"
-                ],
-                "version": "v1.0.0"
-              }
+        "summary": "Get Access Request Status",
+        "description": "Poll access request status. Requires app_client_id query parameter for security.",
+        "operationId": "getAccessRequestStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
-          "required": true
-        },
+          {
+            "name": "app_client_id",
+            "in": "query",
+            "description": "App client ID for verification",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Access granted successfully",
+            "description": "Status retrieved",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppAccessResponse"
-                },
-                "example": {
-                  "app_client_config_version": "v1.0.0",
-                  "scope": "scope_resource_bodhi-server",
-                  "toolsets": [
-                    {
-                      "id": "builtin-exa-web-search",
-                      "scope": "scope_toolset-builtin-exa-web-search"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/AccessRequestStatusResponse"
                 }
               }
             }
@@ -1758,6 +1750,16 @@
               }
             }
           },
+          "404": {
+            "description": "Not found or app_client_id mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -1770,16 +1772,384 @@
           }
         },
         "security": [
-          {},
+          {}
+        ]
+      }
+    },
+    "/bodhi/v1/apps/access-request/{id}/approve": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Approve Access Request",
+        "description": "Approve access request with tool instance selections. Requires session auth.",
+        "operationId": "approveAppsAccessRequest",
+        "parameters": [
           {
-            "bearer_api_token": []
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Approval details with tool selections",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveAccessRequestBody"
+              }
+            }
           },
-          {
-            "bearer_oauth_token": []
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request approved"
           },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
           {
             "session_auth": []
           }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/access-request/{id}/deny": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Deny Access Request",
+        "description": "Deny access request. Requires session auth.",
+        "operationId": "denyAccessRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request denied"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/access-request/{id}/review": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Access Request Review",
+        "description": "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
+        "operationId": "getAccessRequestReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review data retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRequestReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Request expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/apps/request-access": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create Access Request",
+        "description": "Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.",
+        "operationId": "createAccessRequest",
+        "requestBody": {
+          "description": "Access request details",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccessRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Access request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAccessRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "App client not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {}
         ]
       }
     },
@@ -4173,7 +4543,6 @@
           "toolsets"
         ],
         "summary": "List all available toolset types with their tools",
-        "description": "For OAuth tokens, filters types by scope_toolset-* scopes in the token.",
         "operationId": "listToolsetTypes",
         "responses": {
           "200": {
@@ -4234,18 +4603,18 @@
         ]
       }
     },
-    "/bodhi/v1/toolset_types/{type_id}/app-config": {
+    "/bodhi/v1/toolset_types/{toolset_type}/app-config": {
       "put": {
         "tags": [
           "toolsets"
         ],
-        "summary": "Enable a toolset type at app level (admin only - enforced by auth middleware)",
+        "summary": "Enable a toolset type at app level (Admin only)",
         "operationId": "enableToolsetType",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "toolset_type",
             "in": "path",
-            "description": "Toolset type identifier",
+            "description": "Toolset type identifier (e.g., 'builtin-exa-search')",
             "required": true,
             "schema": {
               "type": "string"
@@ -4258,7 +4627,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppToolsetConfigResponse"
+                  "$ref": "#/components/schemas/AppToolsetConfig"
                 }
               }
             }
@@ -4317,13 +4686,13 @@
         "tags": [
           "toolsets"
         ],
-        "summary": "Disable a toolset type at app level (admin only - enforced by auth middleware)",
+        "summary": "Disable a toolset type at app level (Admin only)",
         "operationId": "disableToolsetType",
         "parameters": [
           {
-            "name": "type_id",
+            "name": "toolset_type",
             "in": "path",
-            "description": "Toolset type identifier",
+            "description": "Toolset type identifier (e.g., 'builtin-exa-search')",
             "required": true,
             "schema": {
               "type": "string"
@@ -4336,7 +4705,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppToolsetConfigResponse"
+                  "$ref": "#/components/schemas/AppToolsetConfig"
                 }
               }
             }
@@ -4398,7 +4767,6 @@
           "toolsets"
         ],
         "summary": "List all toolsets for the authenticated user",
-        "description": "For OAuth tokens, filters toolsets by scope_toolset-* scopes in the token.",
         "operationId": "listToolsets",
         "responses": {
           "200": {
@@ -5984,6 +6352,127 @@
   },
   "components": {
     "schemas": {
+      "AccessRequestReviewResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "app_client_id",
+          "flow_type",
+          "status",
+          "requested",
+          "tools_info"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Access request ID"
+          },
+          "app_client_id": {
+            "type": "string",
+            "description": "App client ID"
+          },
+          "app_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "App name from KC (if available)"
+          },
+          "app_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "App description from KC (if available)"
+          },
+          "flow_type": {
+            "type": "string",
+            "description": "Flow type: \"redirect\" or \"popup\""
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status"
+          },
+          "requested": {
+            "$ref": "#/components/schemas/RequestedResources",
+            "description": "Resources requested"
+          },
+          "tools_info": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTypeReviewInfo"
+            },
+            "description": "Tool type information with user instances"
+          }
+        },
+        "example": {
+          "app_client_id": "my-app-client",
+          "app_description": "A sample application",
+          "app_name": "My Application",
+          "flow_type": "redirect",
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "requested": {
+            "tool_types": [
+              {
+                "tool_type": "builtin-exa-search"
+              }
+            ]
+          },
+          "status": "draft",
+          "tools_info": [
+            {
+              "description": "Search the web using Exa AI",
+              "instances": [
+                {
+                  "enabled": true,
+                  "has_api_key": true,
+                  "id": "instance-uuid",
+                  "name": "My Exa Instance"
+                }
+              ],
+              "name": "Exa Search",
+              "tool_type": "builtin-exa-search"
+            }
+          ]
+        }
+      },
+      "AccessRequestStatusResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Access request ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status: \"draft\", \"approved\", \"denied\", \"failed\""
+          },
+          "resource_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Resource scope (present when approved)"
+          },
+          "access_request_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Access request scope (present when user-approved with tools)"
+          }
+        },
+        "example": {
+          "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "resource_scope": "scope_resource:550e8400-e29b-41d4-a716-446655440000",
+          "status": "approved"
+        }
+      },
       "Alias": {
         "oneOf": [
           {
@@ -6432,86 +6921,6 @@
           "token": "bodhiapp_1234567890abcdef"
         }
       },
-      "AppAccessRequest": {
-        "type": "object",
-        "required": [
-          "app_client_id"
-        ],
-        "properties": {
-          "app_client_id": {
-            "type": "string"
-          },
-          "version": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional version for cache lookup - if matches cached config, skips auth server call"
-          },
-          "toolset_scope_ids": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            },
-            "description": "Optional toolset scope IDs to register with resource-client for token exchange"
-          }
-        }
-      },
-      "AppAccessResponse": {
-        "type": "object",
-        "required": [
-          "scope"
-        ],
-        "properties": {
-          "scope": {
-            "type": "string"
-          },
-          "toolsets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AppClientToolset"
-            },
-            "description": "List of toolsets the app-client is configured to access"
-          },
-          "app_client_config_version": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Version of app-client's toolset configuration on auth server"
-          }
-        }
-      },
-      "AppClientToolset": {
-        "type": "object",
-        "description": "Toolset configuration from app-client registration",
-        "required": [
-          "id",
-          "scope"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "scope": {
-            "type": "string"
-          },
-          "scope_id": {
-            "type": "string",
-            "description": "client scope UUID for cache validation"
-          },
-          "added_to_resource_client": {
-            "type": [
-              "boolean",
-              "null"
-            ],
-            "description": "True if scope has been added to resource-client as optional scope"
-          }
-        }
-      },
       "AppInfo": {
         "type": "object",
         "description": "Application information and status",
@@ -6566,54 +6975,73 @@
       },
       "AppToolsetConfig": {
         "type": "object",
-        "description": "App-level configuration for a toolset (admin-controlled)",
+        "description": "Application-level toolset configuration",
         "required": [
-          "scope",
-          "scope_uuid",
+          "toolset_type",
+          "name",
+          "description",
           "enabled",
           "updated_by",
           "created_at",
           "updated_at"
         ],
         "properties": {
-          "scope": {
+          "toolset_type": {
             "type": "string",
-            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\")"
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
-          "scope_uuid": {
+          "name": {
             "type": "string",
-            "description": "Keycloak client scope UUID (environment-specific)"
+            "description": "Human-readable name (e.g., \"Exa Web Search\")"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the toolset"
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether the toolset is enabled for this app instance"
+            "description": "Whether this toolset type is enabled at app level"
           },
           "updated_by": {
             "type": "string",
-            "description": "User ID of the admin who last updated this configuration"
+            "description": "User who last updated this config"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this configuration was created",
+            "description": "When this config was created",
             "example": "2024-11-10T04:52:06.786Z"
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
-            "description": "When this configuration was last updated",
+            "description": "When this config was last updated",
             "example": "2024-11-10T04:52:06.786Z"
           }
         }
       },
-      "AppToolsetConfigResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/AppToolsetConfig",
-            "description": "The app-level toolset configuration"
-          }
+      "ApproveAccessRequestBody": {
+        "type": "object",
+        "required": [
+          "approved"
         ],
-        "description": "Response with app-level toolset configuration"
+        "properties": {
+          "approved": {
+            "$ref": "#/components/schemas/ApprovedResources",
+            "description": "Approved resources with selections"
+          }
+        },
+        "example": {
+          "approved": {
+            "tool_types": [
+              {
+                "instance_id": "instance-uuid",
+                "status": "approved",
+                "tool_type": "builtin-exa-search"
+              }
+            ]
+          }
+        }
       },
       "ApproveUserAccessRequest": {
         "type": "object",
@@ -6629,6 +7057,18 @@
         },
         "example": {
           "role": "resource_user"
+        }
+      },
+      "ApprovedResources": {
+        "type": "object",
+        "properties": {
+          "tool_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolApproval"
+            },
+            "description": "Tool approvals with instance selections"
+          }
         }
       },
       "AuthCallbackRequest": {
@@ -8337,6 +8777,112 @@
           }
         }
       },
+      "CreateAccessRequestBody": {
+        "type": "object",
+        "required": [
+          "app_client_id",
+          "flow_type"
+        ],
+        "properties": {
+          "app_client_id": {
+            "type": "string",
+            "description": "App client ID from Keycloak"
+          },
+          "flow_type": {
+            "type": "string",
+            "description": "Flow type: \"redirect\" or \"popup\""
+          },
+          "redirect_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Redirect URL for result notification (required for redirect flow)"
+          },
+          "requested": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RequestedResources",
+                "description": "Resources requested (tools, etc.)"
+              }
+            ]
+          }
+        },
+        "example": {
+          "app_client_id": "my-app-client",
+          "flow_type": "redirect",
+          "redirect_url": "https://myapp.com/callback",
+          "requested": {
+            "tool_types": [
+              {
+                "tool_type": "builtin-exa-search"
+              }
+            ]
+          }
+        }
+      },
+      "CreateAccessRequestResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Draft status - requires user approval",
+            "required": [
+              "id",
+              "review_url",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Access request ID"
+              },
+              "review_url": {
+                "type": "string",
+                "description": "Review URL for user to approve/deny"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Approved status - auto-approved when no tools requested",
+            "required": [
+              "id",
+              "resource_scope",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Access request ID"
+              },
+              "resource_scope": {
+                "type": "string",
+                "description": "Resource scope granted by KC"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "approved"
+                ]
+              }
+            }
+          }
+        ],
+        "example": {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "review_url": "http://localhost:1135/ui/apps/request-access/review?id=550e8400-e29b-41d4-a716-446655440000",
+          "status": "draft"
+        }
+      },
       "CreateAliasRequest": {
         "type": "object",
         "required": [
@@ -9006,14 +9552,14 @@
         "type": "object",
         "description": "Request to create a toolset",
         "required": [
-          "scope_uuid",
+          "toolset_type",
           "name",
           "api_key"
         ],
         "properties": {
-          "scope_uuid": {
+          "toolset_type": {
             "type": "string",
-            "description": "Toolset scope UUID identifier (e.g., \"4ff0e163-36fb-47d6-a5ef-26e396f067d6\")"
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
           "name": {
             "type": "string",
@@ -10823,6 +11369,18 @@
           "model"
         ]
       },
+      "RequestedResources": {
+        "type": "object",
+        "properties": {
+          "tool_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolTypeRequest"
+            },
+            "description": "Tool types being requested"
+          }
+        }
+      },
       "ResourceRole": {
         "type": "string",
         "enum": [
@@ -11308,6 +11866,30 @@
           "inactive"
         ]
       },
+      "ToolApproval": {
+        "type": "object",
+        "required": [
+          "tool_type",
+          "status"
+        ],
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "description": "Tool type identifier"
+          },
+          "status": {
+            "type": "string",
+            "description": "Approval status: \"approved\" or \"denied\""
+          },
+          "instance_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Instance ID (required when status = \"approved\")"
+          }
+        }
+      },
       "ToolCapabilities": {
         "type": "object",
         "properties": {
@@ -11358,14 +11940,82 @@
           }
         }
       },
+      "ToolInstanceInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "has_api_key"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Instance ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Instance name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether instance is enabled"
+          },
+          "has_api_key": {
+            "type": "boolean",
+            "description": "Whether instance has API key configured"
+          }
+        }
+      },
+      "ToolTypeRequest": {
+        "type": "object",
+        "required": [
+          "tool_type"
+        ],
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "description": "Tool type identifier (e.g., \"builtin-exa-search\")"
+          }
+        }
+      },
+      "ToolTypeReviewInfo": {
+        "type": "object",
+        "required": [
+          "tool_type",
+          "name",
+          "description",
+          "instances"
+        ],
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "description": "Tool type identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tool type display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Tool type description"
+          },
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolInstanceInfo"
+            },
+            "description": "User's configured instances of this tool type"
+          }
+        }
+      },
       "Toolset": {
         "type": "object",
         "description": "User-owned toolset instance with UUID identification",
         "required": [
           "id",
           "name",
-          "scope_uuid",
-          "scope",
+          "toolset_type",
           "enabled",
           "has_api_key",
           "created_at",
@@ -11380,13 +12030,9 @@
             "type": "string",
             "description": "User-defined name for this instance"
           },
-          "scope_uuid": {
+          "toolset_type": {
             "type": "string",
-            "description": "Keycloak client scope UUID (environment-specific, stored in DB)"
-          },
-          "scope": {
-            "type": "string",
-            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\", derived from registry)"
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
           "description": {
             "type": [
@@ -11439,8 +12085,7 @@
         "required": [
           "id",
           "name",
-          "scope_uuid",
-          "scope",
+          "toolset_type",
           "enabled",
           "has_api_key",
           "tools",
@@ -11456,13 +12101,9 @@
             "type": "string",
             "description": "User-defined name for this toolset"
           },
-          "scope_uuid": {
+          "toolset_type": {
             "type": "string",
-            "description": "Toolset scope UUID identifier"
-          },
-          "scope": {
-            "type": "string",
-            "description": "Toolset scope identifier (e.g., \"scope_toolset-builtin-exa-web-search\")"
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
           "description": {
             "type": [
@@ -11502,21 +12143,15 @@
         "type": "object",
         "description": "Toolset type response (for admin listing)",
         "required": [
-          "scope_uuid",
-          "scope",
+          "toolset_type",
           "name",
           "description",
-          "app_enabled",
           "tools"
         ],
         "properties": {
-          "scope_uuid": {
+          "toolset_type": {
             "type": "string",
-            "description": "Toolset scope UUID identifier"
-          },
-          "scope": {
-            "type": "string",
-            "description": "Toolset scope identifier (e.g., \"scope_toolset-builtin-exa-web-search\")"
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
           "name": {
             "type": "string",
@@ -11525,51 +12160,6 @@
           "description": {
             "type": "string",
             "description": "Description of the toolset"
-          },
-          "app_enabled": {
-            "type": "boolean",
-            "description": "Whether the toolset is enabled at app level (admin-controlled)"
-          },
-          "tools": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ToolDefinition"
-            },
-            "description": "Tools provided by this toolset"
-          }
-        }
-      },
-      "ToolsetWithTools": {
-        "type": "object",
-        "description": "Toolset with app-level configuration status (API response model)",
-        "required": [
-          "scope_uuid",
-          "scope",
-          "name",
-          "description",
-          "app_enabled",
-          "tools"
-        ],
-        "properties": {
-          "scope_uuid": {
-            "type": "string",
-            "description": "Keycloak client scope UUID (environment-specific)"
-          },
-          "scope": {
-            "type": "string",
-            "description": "OAuth scope string (e.g., \"scope_toolset-builtin-exa-web-search\")"
-          },
-          "name": {
-            "type": "string",
-            "description": "Human-readable name (e.g., \"Exa Web Search\")"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the toolset"
-          },
-          "app_enabled": {
-            "type": "boolean",
-            "description": "Whether the toolset is enabled at app level (admin-controlled)"
           },
           "tools": {
             "type": "array",

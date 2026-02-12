@@ -9,8 +9,8 @@ use axum::http::{Request, StatusCode};
 use axum::Router;
 use chrono::Utc;
 use objs::{
-  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse,
-  ToolsetWithTools,
+  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetDefinition,
+  ToolsetExecutionResponse,
 };
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
@@ -26,8 +26,7 @@ fn test_instance() -> Toolset {
   Toolset {
     id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
     name: "My Exa Search".to_string(),
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-    scope: "scope_toolset-builtin-exa-web-search".to_string(),
+    toolset_type: "builtin-exa-search".to_string(),
     description: Some("Test instance".to_string()),
     enabled: true,
     has_api_key: true,
@@ -38,8 +37,7 @@ fn test_instance() -> Toolset {
 
 fn test_toolset_definition() -> objs::ToolsetDefinition {
   objs::ToolsetDefinition {
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-    scope: "scope_toolset-builtin-exa-web-search".to_string(),
+    toolset_type: "builtin-exa-search".to_string(),
     name: "Exa Web Search".to_string(),
     description: "Web search using Exa API".to_string(),
     tools: vec![ToolDefinition {
@@ -57,7 +55,7 @@ fn setup_type_mocks(mock: &mut MockToolService) {
   let type_def = test_toolset_definition();
   mock
     .expect_get_type()
-    .withf(|scope_uuid| scope_uuid == "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+    .withf(|toolset_type| toolset_type == "builtin-exa-search")
     .returning(move |_| Some(type_def.clone()));
 }
 
@@ -110,18 +108,11 @@ async fn test_list_toolsets(
     .times(1)
     .returning(move |_| Ok(instances_to_return.clone()));
 
-  // Mock toolset_types fetching based on auth type
-  if is_session {
-    mock_tool_service
-      .expect_list_app_toolset_configs()
-      .times(1)
-      .returning(|| Ok(vec![]));
-  } else if is_oauth_filtered {
-    mock_tool_service
-      .expect_list_app_toolset_configs_by_scopes()
-      .times(1)
-      .returning(|_| Ok(vec![]));
-  }
+  // Mock toolset_types fetching
+  mock_tool_service
+    .expect_list_app_toolset_configs()
+    .times(1)
+    .returning(|| Ok(vec![]));
 
   let app = test_router(mock_tool_service)?;
 
@@ -163,8 +154,9 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
     .returning(move |_| Ok(vec![instance_clone.clone()]));
 
   let config = AppToolsetConfig {
-    scope: "scope_toolset-builtin-exa-web-search".to_string(),
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+    toolset_type: "builtin-exa-search".to_string(),
+    name: "Exa Web Search".to_string(),
+    description: "Web search using Exa API".to_string(),
     enabled: true,
     updated_by: "admin".to_string(),
     created_at: chrono::Utc::now(),
@@ -196,8 +188,8 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
-    "scope_toolset-builtin-exa-web-search",
-    list_response.toolset_types[0].scope
+    "builtin-exa-search",
+    list_response.toolset_types[0].toolset_type
   );
   Ok(())
 }
@@ -220,20 +212,20 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
     .returning(move |_| Ok(vec![instance_clone.clone()]));
 
   let config = AppToolsetConfig {
-    scope: "scope_toolset-builtin-exa-web-search".to_string(),
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+    toolset_type: "builtin-exa-search".to_string(),
+    name: "Exa Web Search".to_string(),
+    description: "Web search using Exa API".to_string(),
     enabled: true,
     updated_by: "admin".to_string(),
     created_at: chrono::Utc::now(),
     updated_at: chrono::Utc::now(),
   };
 
-  // OAuth should use the scoped query method
+  // OAuth now returns all types (no scope filtering)
   mock_tool_service
-    .expect_list_app_toolset_configs_by_scopes()
-    .withf(|scopes| scopes.len() == 1 && scopes[0] == "scope_toolset-builtin-exa-web-search")
+    .expect_list_app_toolset_configs()
     .times(1)
-    .returning(move |_| Ok(vec![config.clone()]));
+    .returning(move || Ok(vec![config.clone()]));
 
   let app = test_router(mock_tool_service)?;
 
@@ -259,8 +251,8 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
 
   assert_eq!(1, list_response.toolset_types.len());
   assert_eq!(
-    "scope_toolset-builtin-exa-web-search",
-    list_response.toolset_types[0].scope
+    "builtin-exa-search",
+    list_response.toolset_types[0].toolset_type
   );
   Ok(())
 }
@@ -277,12 +269,11 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
     .times(1)
     .returning(|_| Ok(vec![]));
 
-  // OAuth with empty scopes should call with empty vec
+  // OAuth with empty scopes now returns all types (no filtering)
   mock_tool_service
-    .expect_list_app_toolset_configs_by_scopes()
-    .withf(|scopes| scopes.is_empty())
+    .expect_list_app_toolset_configs()
     .times(1)
-    .returning(|_| Ok(vec![]));
+    .returning(|| Ok(vec![]));
 
   let app = test_router(mock_tool_service)?;
 
@@ -348,7 +339,7 @@ async fn test_create_toolset(
   let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
-    "scope_uuid": "4ff0e163-36fb-47d6-a5ef-26e396f067d6",
+    "toolset_type": "builtin-exa-search",
     "name": name,
     "description": "Test instance",
     "enabled": true,
@@ -657,12 +648,10 @@ async fn test_list_toolset_types(
 ) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
-  let toolset_type = ToolsetWithTools {
-    scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-    scope: "scope_toolset-builtin-exa-web-search".to_string(),
+  let toolset_type = ToolsetDefinition {
+    toolset_type: "builtin-exa-search".to_string(),
     name: "Exa Web Search".to_string(),
     description: "Web search using Exa API".to_string(),
-    app_enabled: true,
     tools: vec![ToolDefinition {
       tool_type: "function".to_string(),
       function: objs::FunctionDefinition {
@@ -680,9 +669,9 @@ async fn test_list_toolset_types(
   };
 
   mock_tool_service
-    .expect_list_all_toolsets()
+    .expect_list_types()
     .times(1)
-    .returning(move || Ok(types_to_return.clone()));
+    .returning(move || types_to_return.clone());
 
   let app = test_router(mock_tool_service)?;
 
@@ -721,35 +710,33 @@ async fn test_enable_type(
 ) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
-  // Mock list_types to return toolset definition
-  mock_tool_service
-    .expect_list_types()
-    .times(1)
-    .returning(move || {
-      if succeeds {
-        vec![test_toolset_definition()]
-      } else {
-        vec![]
-      }
-    });
-
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
+      .withf(|toolset_type, enabled, _user_id| {
+        toolset_type == "builtin-exa-search" && *enabled == true
+      })
       .times(1)
-      .returning(|_, _, _, _, _| {
+      .returning(|toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
-          scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-          scope: "scope_toolset-builtin-exa-web-search".to_string(),
+          toolset_type: toolset_type.to_string(),
+          name: "Exa Web Search".to_string(),
+          description: "Web search using Exa API".to_string(),
           enabled: true,
-          updated_by: "admin123".to_string(),
+          updated_by: updated_by.to_string(),
           created_at: chrono::Utc::now(),
           updated_at: chrono::Utc::now(),
         })
       });
+  } else {
+    // Validation fails, returning error
+    mock_tool_service
+      .expect_set_app_toolset_enabled()
+      .times(1)
+      .returning(|toolset_type, _, _| {
+        Err(services::ToolsetError::InvalidToolsetType(toolset_type.to_string()))
+      });
   }
-  // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
-  // No need to mock set_app_toolset_enabled in that case
 
   let app = test_router(mock_tool_service)?;
 
@@ -757,7 +744,7 @@ async fn test_enable_type(
     .oneshot(
       Request::builder()
         .method("PUT")
-        .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
+        .uri("/toolset_types/builtin-exa-search/app-config")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
         .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
         .body(Body::empty())?,
@@ -779,35 +766,33 @@ async fn test_disable_type(
 ) -> anyhow::Result<()> {
   let mut mock_tool_service = MockToolService::new();
 
-  // Mock list_types to return toolset definition
-  mock_tool_service
-    .expect_list_types()
-    .times(1)
-    .returning(move || {
-      if succeeds {
-        vec![test_toolset_definition()]
-      } else {
-        vec![]
-      }
-    });
-
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
+      .withf(|toolset_type, enabled, _user_id| {
+        toolset_type == "builtin-exa-search" && *enabled == false
+      })
       .times(1)
-      .returning(|_, _, _, _, _| {
+      .returning(|toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
-          scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
-          scope: "scope_toolset-builtin-exa-web-search".to_string(),
+          toolset_type: toolset_type.to_string(),
+          name: "Exa Web Search".to_string(),
+          description: "Web search using Exa API".to_string(),
           enabled: false,
-          updated_by: "admin123".to_string(),
+          updated_by: updated_by.to_string(),
           created_at: chrono::Utc::now(),
           updated_at: chrono::Utc::now(),
         })
       });
+  } else {
+    // Validation fails, returning error
+    mock_tool_service
+      .expect_set_app_toolset_enabled()
+      .times(1)
+      .returning(|toolset_type, _, _| {
+        Err(services::ToolsetError::InvalidToolsetType(toolset_type.to_string()))
+      });
   }
-  // When succeeds is false, list_types returns empty vec and handler returns early with Not Found
-  // No need to mock set_app_toolset_enabled in that case
 
   let app = test_router(mock_tool_service)?;
 
@@ -815,7 +800,7 @@ async fn test_disable_type(
     .oneshot(
       Request::builder()
         .method("DELETE")
-        .uri("/toolset_types/scope_toolset-builtin-exa-web-search/app-config")
+        .uri("/toolset_types/builtin-exa-search/app-config")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
         .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
         .body(Body::empty())?,

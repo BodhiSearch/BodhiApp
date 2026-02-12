@@ -38,7 +38,7 @@ pub enum ToolsetError {
   InvalidName(String),
 
   #[error("Invalid toolset type: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
+  #[error_meta(error_type = ErrorType::NotFound)]
   InvalidToolsetType(String),
 
   #[error(transparent)]

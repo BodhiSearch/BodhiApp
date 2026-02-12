@@ -261,6 +261,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/apps/access-request/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Access Request Status
+         * @description Poll access request status. Requires app_client_id query parameter for security.
+         */
+        get: operations["getAccessRequestStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/apps/access-request/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Approve Access Request
+         * @description Approve access request with tool instance selections. Requires session auth.
+         */
+        put: operations["approveAppsAccessRequest"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/apps/access-request/{id}/deny": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deny Access Request
+         * @description Deny access request. Requires session auth.
+         */
+        post: operations["denyAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/apps/access-request/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Access Request Review
+         * @description Get full access request details for review page. Returns data regardless of status. Requires session auth.
+         */
+        get: operations["getAccessRequestReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/apps/request-access": {
         parameters: {
             query?: never;
@@ -271,10 +351,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Request Resource Access
-         * @description Requests access permissions for an application client to access this resource server's protected resources. Supports caching via optional version parameter.
+         * Create Access Request
+         * @description Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.
          */
-        post: operations["requestAccess"];
+        post: operations["createAccessRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -658,10 +738,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List all available toolset types with their tools
-         * @description For OAuth tokens, filters types by scope_toolset-* scopes in the token.
-         */
+        /** List all available toolset types with their tools */
         get: operations["listToolsetTypes"];
         put?: never;
         post?: never;
@@ -671,7 +748,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/toolset_types/{type_id}/app-config": {
+    "/bodhi/v1/toolset_types/{toolset_type}/app-config": {
         parameters: {
             query?: never;
             header?: never;
@@ -679,10 +756,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Enable a toolset type at app level (admin only - enforced by auth middleware) */
+        /** Enable a toolset type at app level (Admin only) */
         put: operations["enableToolsetType"];
         post?: never;
-        /** Disable a toolset type at app level (admin only - enforced by auth middleware) */
+        /** Disable a toolset type at app level (Admin only) */
         delete: operations["disableToolsetType"];
         options?: never;
         head?: never;
@@ -696,10 +773,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List all toolsets for the authenticated user
-         * @description For OAuth tokens, filters toolsets by scope_toolset-* scopes in the token.
-         */
+        /** List all toolsets for the authenticated user */
         get: operations["listToolsets"];
         put?: never;
         /** Create a new toolset */
@@ -990,6 +1064,70 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @example {
+         *       "app_client_id": "my-app-client",
+         *       "app_description": "A sample application",
+         *       "app_name": "My Application",
+         *       "flow_type": "redirect",
+         *       "id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "requested": {
+         *         "tool_types": [
+         *           {
+         *             "tool_type": "builtin-exa-search"
+         *           }
+         *         ]
+         *       },
+         *       "status": "draft",
+         *       "tools_info": [
+         *         {
+         *           "description": "Search the web using Exa AI",
+         *           "instances": [
+         *             {
+         *               "enabled": true,
+         *               "has_api_key": true,
+         *               "id": "instance-uuid",
+         *               "name": "My Exa Instance"
+         *             }
+         *           ],
+         *           "name": "Exa Search",
+         *           "tool_type": "builtin-exa-search"
+         *         }
+         *       ]
+         *     } */
+        AccessRequestReviewResponse: {
+            /** @description Access request ID */
+            id: string;
+            /** @description App client ID */
+            app_client_id: string;
+            /** @description App name from KC (if available) */
+            app_name?: string | null;
+            /** @description App description from KC (if available) */
+            app_description?: string | null;
+            /** @description Flow type: "redirect" or "popup" */
+            flow_type: string;
+            /** @description Current status */
+            status: string;
+            /** @description Resources requested */
+            requested: components["schemas"]["RequestedResources"];
+            /** @description Tool type information with user instances */
+            tools_info: components["schemas"]["ToolTypeReviewInfo"][];
+        };
+        /** @example {
+         *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
+         *       "id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "resource_scope": "scope_resource:550e8400-e29b-41d4-a716-446655440000",
+         *       "status": "approved"
+         *     } */
+        AccessRequestStatusResponse: {
+            /** @description Access request ID */
+            id: string;
+            /** @description Current status: "draft", "approved", "denied", "failed" */
+            status: string;
+            /** @description Resource scope (present when approved) */
+            resource_scope?: string | null;
+            /** @description Access request scope (present when user-approved with tools) */
+            access_request_scope?: string | null;
+        };
         /** @description Flat enum representing all types of model aliases
          *     Each variant is identified by the source field */
         Alias: (components["schemas"]["UserAlias"] & {
@@ -1131,29 +1269,6 @@ export interface components {
              */
             token: string;
         };
-        AppAccessRequest: {
-            app_client_id: string;
-            /** @description Optional version for cache lookup - if matches cached config, skips auth server call */
-            version?: string | null;
-            /** @description Optional toolset scope IDs to register with resource-client for token exchange */
-            toolset_scope_ids?: string[] | null;
-        };
-        AppAccessResponse: {
-            scope: string;
-            /** @description List of toolsets the app-client is configured to access */
-            toolsets?: components["schemas"]["AppClientToolset"][];
-            /** @description Version of app-client's toolset configuration on auth server */
-            app_client_config_version?: string | null;
-        };
-        /** @description Toolset configuration from app-client registration */
-        AppClientToolset: {
-            id: string;
-            scope: string;
-            /** @description client scope UUID for cache validation */
-            scope_id?: string;
-            /** @description True if scope has been added to resource-client as optional scope */
-            added_to_resource_client?: boolean | null;
-        };
         /**
          * @description Application information and status
          * @example {
@@ -1182,31 +1297,46 @@ export interface components {
          * @enum {string}
          */
         AppStatus: "setup" | "ready" | "resource-admin";
-        /** @description App-level configuration for a toolset (admin-controlled) */
+        /** @description Application-level toolset configuration */
         AppToolsetConfig: {
-            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search") */
-            scope: string;
-            /** @description Keycloak client scope UUID (environment-specific) */
-            scope_uuid: string;
-            /** @description Whether the toolset is enabled for this app instance */
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
+            /** @description Human-readable name (e.g., "Exa Web Search") */
+            name: string;
+            /** @description Description of the toolset */
+            description: string;
+            /** @description Whether this toolset type is enabled at app level */
             enabled: boolean;
-            /** @description User ID of the admin who last updated this configuration */
+            /** @description User who last updated this config */
             updated_by: string;
             /**
              * Format: date-time
-             * @description When this configuration was created
+             * @description When this config was created
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
             /**
              * Format: date-time
-             * @description When this configuration was last updated
+             * @description When this config was last updated
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
         };
-        /** @description Response with app-level toolset configuration */
-        AppToolsetConfigResponse: components["schemas"]["AppToolsetConfig"];
+        /** @example {
+         *       "approved": {
+         *         "tool_types": [
+         *           {
+         *             "instance_id": "instance-uuid",
+         *             "status": "approved",
+         *             "tool_type": "builtin-exa-search"
+         *           }
+         *         ]
+         *       }
+         *     } */
+        ApproveAccessRequestBody: {
+            /** @description Approved resources with selections */
+            approved: components["schemas"]["ApprovedResources"];
+        };
         /**
          * @description Request body for approving access with role assignment
          * @example {
@@ -1216,6 +1346,10 @@ export interface components {
         ApproveUserAccessRequest: {
             /** @description Role to assign to the user */
             role: components["schemas"]["ResourceRole"];
+        };
+        ApprovedResources: {
+            /** @description Tool approvals with instance selections */
+            tool_types?: components["schemas"]["ToolApproval"][];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -1649,6 +1783,47 @@ export interface components {
         CopyAliasRequest: {
             alias: string;
         };
+        /** @example {
+         *       "app_client_id": "my-app-client",
+         *       "flow_type": "redirect",
+         *       "redirect_url": "https://myapp.com/callback",
+         *       "requested": {
+         *         "tool_types": [
+         *           {
+         *             "tool_type": "builtin-exa-search"
+         *           }
+         *         ]
+         *       }
+         *     } */
+        CreateAccessRequestBody: {
+            /** @description App client ID from Keycloak */
+            app_client_id: string;
+            /** @description Flow type: "redirect" or "popup" */
+            flow_type: string;
+            /** @description Redirect URL for result notification (required for redirect flow) */
+            redirect_url?: string | null;
+            requested?: null | components["schemas"]["RequestedResources"];
+        };
+        /** @example {
+         *       "id": "550e8400-e29b-41d4-a716-446655440000",
+         *       "review_url": "http://localhost:1135/ui/apps/request-access/review?id=550e8400-e29b-41d4-a716-446655440000",
+         *       "status": "draft"
+         *     } */
+        CreateAccessRequestResponse: {
+            /** @description Access request ID */
+            id: string;
+            /** @description Review URL for user to approve/deny */
+            review_url: string;
+            /** @enum {string} */
+            status: "draft";
+        } | {
+            /** @description Access request ID */
+            id: string;
+            /** @description Resource scope granted by KC */
+            resource_scope: string;
+            /** @enum {string} */
+            status: "approved";
+        };
         CreateAliasRequest: {
             alias: string;
             repo: string;
@@ -1952,8 +2127,8 @@ export interface components {
         };
         /** @description Request to create a toolset */
         CreateToolsetRequest: {
-            /** @description Toolset scope UUID identifier (e.g., "4ff0e163-36fb-47d6-a5ef-26e396f067d6") */
-            scope_uuid: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
             /** @description User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore) */
             name: string;
             /** @description Optional description for this toolset */
@@ -2593,6 +2768,10 @@ export interface components {
          * @enum {string}
          */
         RefreshSource: "all" | "model";
+        RequestedResources: {
+            /** @description Tool types being requested */
+            tool_types?: components["schemas"]["ToolTypeRequest"][];
+        };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
         ResponseFormat: {
@@ -2762,6 +2941,14 @@ export interface components {
         TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
+        ToolApproval: {
+            /** @description Tool type identifier */
+            tool_type: string;
+            /** @description Approval status: "approved" or "denied" */
+            status: string;
+            /** @description Instance ID (required when status = "approved") */
+            instance_id?: string | null;
+        };
         ToolCapabilities: {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
@@ -2778,16 +2965,38 @@ export interface components {
             /** @description Function definition details */
             function: components["schemas"]["FunctionDefinition"];
         };
+        ToolInstanceInfo: {
+            /** @description Instance ID */
+            id: string;
+            /** @description Instance name */
+            name: string;
+            /** @description Whether instance is enabled */
+            enabled: boolean;
+            /** @description Whether instance has API key configured */
+            has_api_key: boolean;
+        };
+        ToolTypeRequest: {
+            /** @description Tool type identifier (e.g., "builtin-exa-search") */
+            tool_type: string;
+        };
+        ToolTypeReviewInfo: {
+            /** @description Tool type identifier */
+            tool_type: string;
+            /** @description Tool type display name */
+            name: string;
+            /** @description Tool type description */
+            description: string;
+            /** @description User's configured instances of this tool type */
+            instances: components["schemas"]["ToolInstanceInfo"][];
+        };
         /** @description User-owned toolset instance with UUID identification */
         Toolset: {
             /** @description Unique instance identifier (UUID) */
             id: string;
             /** @description User-defined name for this instance */
             name: string;
-            /** @description Keycloak client scope UUID (environment-specific, stored in DB) */
-            scope_uuid: string;
-            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search", derived from registry) */
-            scope: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
             /** @description Optional description for this instance */
             description?: string | null;
             /** @description Whether this instance is enabled */
@@ -2820,10 +3029,8 @@ export interface components {
             id: string;
             /** @description User-defined name for this toolset */
             name: string;
-            /** @description Toolset scope UUID identifier */
-            scope_uuid: string;
-            /** @description Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search") */
-            scope: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
             /** @description Optional description for this toolset */
             description?: string | null;
             /** @description Whether this toolset is enabled */
@@ -2845,31 +3052,12 @@ export interface components {
         };
         /** @description Toolset type response (for admin listing) */
         ToolsetTypeResponse: {
-            /** @description Toolset scope UUID identifier */
-            scope_uuid: string;
-            /** @description Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search") */
-            scope: string;
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
             /** @description Human-readable name (e.g., "Exa Web Search") */
             name: string;
             /** @description Description of the toolset */
             description: string;
-            /** @description Whether the toolset is enabled at app level (admin-controlled) */
-            app_enabled: boolean;
-            /** @description Tools provided by this toolset */
-            tools: components["schemas"]["ToolDefinition"][];
-        };
-        /** @description Toolset with app-level configuration status (API response model) */
-        ToolsetWithTools: {
-            /** @description Keycloak client scope UUID (environment-specific) */
-            scope_uuid: string;
-            /** @description OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search") */
-            scope: string;
-            /** @description Human-readable name (e.g., "Exa Web Search") */
-            name: string;
-            /** @description Description of the toolset */
-            description: string;
-            /** @description Whether the toolset is enabled at app level (admin-controlled) */
-            app_enabled: boolean;
             /** @description Tools provided by this toolset */
             tools: components["schemas"]["ToolDefinition"][];
         };
@@ -4332,44 +4520,28 @@ export interface operations {
             };
         };
     };
-    requestAccess: {
+    getAccessRequestStatus: {
         parameters: {
-            query?: never;
+            query: {
+                /** @description App client ID for verification */
+                app_client_id: string;
+            };
             header?: never;
-            path?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
             cookie?: never;
         };
-        /** @description Application client requesting access */
-        requestBody: {
-            content: {
-                /** @example {
-                 *       "app_client_id": "my_app_client_123",
-                 *       "toolset_scope_ids": [
-                 *         "uuid-for-toolset-scope-1"
-                 *       ],
-                 *       "version": "v1.0.0"
-                 *     } */
-                "application/json": components["schemas"]["AppAccessRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Access granted successfully */
+            /** @description Status retrieved */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example {
-                     *       "app_client_config_version": "v1.0.0",
-                     *       "scope": "scope_resource_bodhi-server",
-                     *       "toolsets": [
-                     *         {
-                     *           "id": "builtin-exa-web-search",
-                     *           "scope": "scope_toolset-builtin-exa-web-search"
-                     *         }
-                     *       ]
-                     *     } */
-                    "application/json": components["schemas"]["AppAccessResponse"];
+                    "application/json": components["schemas"]["AccessRequestStatusResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -4392,6 +4564,317 @@ export interface operations {
             };
             /** @description Insufficient permissions */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found or app_client_id mismatch */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    approveAppsAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Approval details with tool selections */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveAccessRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Request approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Already processed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    denyAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request denied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Already processed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getAccessRequestReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review data retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequestReviewResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Request expired */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Access request details */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccessRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Access request created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAccessRequestResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description App client not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6237,8 +6720,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Toolset type identifier */
-                type_id: string;
+                /** @description Toolset type identifier (e.g., 'builtin-exa-search') */
+                toolset_type: string;
             };
             cookie?: never;
         };
@@ -6250,7 +6733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
+                    "application/json": components["schemas"]["AppToolsetConfig"];
                 };
             };
             /** @description Invalid request parameters */
@@ -6303,8 +6786,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Toolset type identifier */
-                type_id: string;
+                /** @description Toolset type identifier (e.g., 'builtin-exa-search') */
+                toolset_type: string;
             };
             cookie?: never;
         };
@@ -6316,7 +6799,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AppToolsetConfigResponse"];
+                    "application/json": components["schemas"]["AppToolsetConfig"];
                 };
             };
             /** @description Invalid request parameters */

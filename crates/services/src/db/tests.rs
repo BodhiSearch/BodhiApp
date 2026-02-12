@@ -1221,11 +1221,13 @@ async fn test_create_draft_request(
   let row = AppAccessRequestRow {
     id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
     app_client_id: "app-abc123".to_string(),
+    app_name: None,
+    app_description: None,
     flow_type: "redirect".to_string(),
     redirect_uri: Some("https://example.com/callback".to_string()),
     status: "draft".to_string(),
-    tools_requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
-    tools_approved: None,
+    requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
+    approved: None,
     user_id: None,
     resource_scope: None,
     access_request_scope: None,
@@ -1245,8 +1247,8 @@ async fn test_create_draft_request(
     result.redirect_uri,
     Some("https://example.com/callback".to_string())
   );
-  assert_eq!(result.tools_requested, r#"[{"tool_type":"builtin-exa-search"}]"#);
-  assert_eq!(result.tools_approved, None);
+  assert_eq!(result.requested, r#"[{"tool_type":"builtin-exa-search"}]"#);
+  assert_eq!(result.approved, None);
   assert_eq!(result.user_id, None);
 
   Ok(())
@@ -1267,11 +1269,13 @@ async fn test_get_request(
   let row = AppAccessRequestRow {
     id: "550e8400-e29b-41d4-a716-446655440001".to_string(),
     app_client_id: "app-abc123".to_string(),
+    app_name: None,
+    app_description: None,
     flow_type: "popup".to_string(),
     redirect_uri: None,
     status: "draft".to_string(),
-    tools_requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
-    tools_approved: None,
+    requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
+    approved: None,
     user_id: None,
     resource_scope: None,
     access_request_scope: None,
@@ -1325,11 +1329,13 @@ async fn test_update_approval(
   let row = AppAccessRequestRow {
     id: "550e8400-e29b-41d4-a716-446655440002".to_string(),
     app_client_id: "app-abc123".to_string(),
+    app_name: None,
+    app_description: None,
     flow_type: "redirect".to_string(),
     redirect_uri: Some("https://example.com/callback".to_string()),
     status: "draft".to_string(),
-    tools_requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
-    tools_approved: None,
+    requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
+    approved: None,
     user_id: None,
     resource_scope: None,
     access_request_scope: None,
@@ -1349,13 +1355,13 @@ async fn test_update_approval(
       "user-uuid",
       tools_approved_json,
       "scope_resource-xyz",
-      "scope_access_request:550e8400-e29b-41d4-a716-446655440002",
+      Some("scope_access_request:550e8400-e29b-41d4-a716-446655440002".to_string()),
     )
     .await?;
 
   assert_eq!(result.status, "approved");
   assert_eq!(result.user_id, Some("user-uuid".to_string()));
-  assert_eq!(result.tools_approved, Some(tools_approved_json.to_string()));
+  assert_eq!(result.approved, Some(tools_approved_json.to_string()));
   assert_eq!(result.resource_scope, Some("scope_resource-xyz".to_string()));
   assert_eq!(
     result.access_request_scope,
@@ -1380,11 +1386,13 @@ async fn test_update_denial(
   let row = AppAccessRequestRow {
     id: "550e8400-e29b-41d4-a716-446655440003".to_string(),
     app_client_id: "app-abc123".to_string(),
+    app_name: None,
+    app_description: None,
     flow_type: "redirect".to_string(),
     redirect_uri: Some("https://example.com/callback".to_string()),
     status: "draft".to_string(),
-    tools_requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
-    tools_approved: None,
+    requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
+    approved: None,
     user_id: None,
     resource_scope: None,
     access_request_scope: None,
@@ -1400,7 +1408,7 @@ async fn test_update_denial(
 
   assert_eq!(result.status, "denied");
   assert_eq!(result.user_id, Some("user-uuid".to_string()));
-  assert_eq!(result.tools_approved, None);
+  assert_eq!(result.approved, None);
 
   Ok(())
 }
@@ -1420,11 +1428,13 @@ async fn test_update_failure(
   let row = AppAccessRequestRow {
     id: "550e8400-e29b-41d4-a716-446655440004".to_string(),
     app_client_id: "app-abc123".to_string(),
+    app_name: None,
+    app_description: None,
     flow_type: "redirect".to_string(),
     redirect_uri: Some("https://example.com/callback".to_string()),
     status: "draft".to_string(),
-    tools_requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
-    tools_approved: None,
+    requested: r#"[{"tool_type":"builtin-exa-search"}]"#.to_string(),
+    approved: None,
     user_id: None,
     resource_scope: None,
     access_request_scope: None,

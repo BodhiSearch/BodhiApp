@@ -104,28 +104,73 @@ impl AccessRequestService for DefaultAccessRequestService {
     let expires_at = now + Duration::minutes(10);
 
     // Serialize tools_requested to JSON
-    let tools_requested_json = serde_json::to_string(&tools_requested)
+    let requested_json = serde_json::to_string(&tools_requested)
       .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
-    let row = AppAccessRequestRow {
-      id: access_request_id,
-      app_client_id,
-      flow_type,
-      redirect_uri,
-      status: "draft".to_string(),
-      tools_requested: tools_requested_json,
-      tools_approved: None,
-      user_id: None,
-      resource_scope: None,
-      access_request_scope: None,
-      error_message: None,
-      expires_at: expires_at.timestamp(),
-      created_at: now.timestamp(),
-      updated_at: now.timestamp(),
-    };
+    // Modify redirect_uri to include access_request_id
+    let modified_redirect_uri = redirect_uri.map(|uri| {
+      if uri.contains('?') {
+        format!("{}&id={}", uri, access_request_id)
+      } else {
+        format!("{}?id={}", uri, access_request_id)
+      }
+    });
 
-    let created_row = self.db_service.create(&row).await?;
-    Ok(created_row)
+    // Check for auto-approve (no tools requested)
+    let is_auto_approve = tools_requested.is_empty();
+
+    if is_auto_approve {
+      // Auto-approve flow: register resource access immediately
+      let register_response = self
+        .auth_service
+        .register_resource_access(&app_client_id, &access_request_id)
+        .await?;
+
+      let row = AppAccessRequestRow {
+        id: access_request_id,
+        app_client_id,
+        app_name: None,
+        app_description: None,
+        flow_type,
+        redirect_uri: modified_redirect_uri,
+        status: "approved".to_string(),
+        requested: requested_json,
+        approved: None,
+        user_id: None,
+        resource_scope: Some(register_response.scope),
+        access_request_scope: None, // NULL for auto-approve
+        error_message: None,
+        expires_at: expires_at.timestamp(),
+        created_at: now.timestamp(),
+        updated_at: now.timestamp(),
+      };
+
+      let created_row = self.db_service.create(&row).await?;
+      Ok(created_row)
+    } else {
+      // User-approve flow: create draft
+      let row = AppAccessRequestRow {
+        id: access_request_id,
+        app_client_id,
+        app_name: None,
+        app_description: None,
+        flow_type,
+        redirect_uri: modified_redirect_uri,
+        status: "draft".to_string(),
+        requested: requested_json,
+        approved: None,
+        user_id: None,
+        resource_scope: None,
+        access_request_scope: None,
+        error_message: None,
+        expires_at: expires_at.timestamp(),
+        created_at: now.timestamp(),
+        updated_at: now.timestamp(),
+      };
+
+      let created_row = self.db_service.create(&row).await?;
+      Ok(created_row)
+    }
   }
 
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequestRow>> {
@@ -190,7 +235,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     };
 
     // Serialize tool_approvals to JSON
-    let tools_approved_json = serde_json::to_string(&tool_approvals).map_err(|e| {
+    let approved_json = serde_json::to_string(&tool_approvals).map_err(|e| {
       AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
     })?;
 
@@ -200,9 +245,9 @@ impl AccessRequestService for DefaultAccessRequestService {
       .update_approval(
         id,
         user_id,
-        &tools_approved_json,
+        &approved_json,
         &kc_response.scope,
-        &kc_response.access_request_scope,
+        Some(kc_response.access_request_scope.clone()),
       )
       .await?;
 

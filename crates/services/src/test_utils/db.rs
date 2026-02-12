@@ -458,16 +458,16 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("list_toolsets"))
   }
 
-  async fn list_toolsets_by_scope_uuid(
+  async fn list_toolsets_by_toolset_type(
     &self,
     user_id: &str,
-    scope_uuid: &str,
+    toolset_type: &str,
   ) -> Result<Vec<ToolsetRow>, DbError> {
     self
       .inner
-      .list_toolsets_by_scope_uuid(user_id, scope_uuid)
+      .list_toolsets_by_toolset_type(user_id, toolset_type)
       .await
-      .tap(|_| self.notify("list_toolsets_by_scope_uuid"))
+      .tap(|_| self.notify("list_toolsets_by_toolset_type"))
   }
 
   async fn delete_toolset(&self, id: &str) -> Result<(), DbError> {
@@ -486,37 +486,17 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("get_toolset_api_key"))
   }
 
-  async fn get_app_toolset_config_by_scope_uuid(
+  async fn set_app_toolset_enabled(
     &self,
-    scope_uuid: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
-    self
-      .inner
-      .get_app_toolset_config_by_scope_uuid(scope_uuid)
-      .await
-      .tap(|_| self.notify("get_app_toolset_config_by_scope_uuid"))
-  }
-
-  async fn get_app_toolset_config_by_scope(
-    &self,
-    scope: &str,
-  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
-    self
-      .inner
-      .get_app_toolset_config_by_scope(scope)
-      .await
-      .tap(|_| self.notify("get_app_toolset_config_by_scope"))
-  }
-
-  async fn upsert_app_toolset_config(
-    &self,
-    config: &AppToolsetConfigRow,
+    toolset_type: &str,
+    enabled: bool,
+    updated_by: &str,
   ) -> Result<AppToolsetConfigRow, DbError> {
     self
       .inner
-      .upsert_app_toolset_config(config)
+      .set_app_toolset_enabled(toolset_type, enabled, updated_by)
       .await
-      .tap(|_| self.notify("upsert_app_toolset_config"))
+      .tap(|_| self.notify("set_app_toolset_enabled"))
   }
 
   async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError> {
@@ -527,15 +507,15 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("list_app_toolset_configs"))
   }
 
-  async fn list_app_toolset_configs_by_scopes(
+  async fn get_app_toolset_config(
     &self,
-    scopes: &[String],
-  ) -> Result<Vec<AppToolsetConfigRow>, DbError> {
+    toolset_type: &str,
+  ) -> Result<Option<AppToolsetConfigRow>, DbError> {
     self
       .inner
-      .list_app_toolset_configs_by_scopes(scopes)
+      .get_app_toolset_config(toolset_type)
       .await
-      .tap(|_| self.notify("list_app_toolset_configs_by_scopes"))
+      .tap(|_| self.notify("get_app_toolset_config"))
   }
 
   async fn get_app_client_toolset_config(
@@ -634,13 +614,13 @@ impl AccessRequestRepository for TestDbService {
     &self,
     id: &str,
     user_id: &str,
-    tools_approved: &str,
+    approved: &str,
     resource_scope: &str,
-    access_request_scope: &str,
+    access_request_scope: Option<String>,
   ) -> Result<AppAccessRequestRow, DbError> {
     self
       .inner
-      .update_approval(id, user_id, tools_approved, resource_scope, access_request_scope)
+      .update_approval(id, user_id, approved, resource_scope, access_request_scope)
       .await
       .tap(|_| self.notify("access_request_update_approval"))
   }
@@ -734,14 +714,12 @@ mockall::mock! {
     async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError>;
     async fn update_toolset(&self, row: &ToolsetRow, api_key_update: ApiKeyUpdate) -> Result<ToolsetRow, DbError>;
     async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError>;
-    async fn list_toolsets_by_scope_uuid(&self, user_id: &str, scope_uuid: &str) -> Result<Vec<ToolsetRow>, DbError>;
+    async fn list_toolsets_by_toolset_type(&self, user_id: &str, toolset_type: &str) -> Result<Vec<ToolsetRow>, DbError>;
     async fn delete_toolset(&self, id: &str) -> Result<(), DbError>;
     async fn get_toolset_api_key(&self, id: &str) -> Result<Option<String>, DbError>;
-    async fn get_app_toolset_config_by_scope_uuid(&self, scope_uuid: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
-    async fn get_app_toolset_config_by_scope(&self, scope: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
-    async fn upsert_app_toolset_config(&self, config: &AppToolsetConfigRow) -> Result<AppToolsetConfigRow, DbError>;
+    async fn set_app_toolset_enabled(&self, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigRow, DbError>;
     async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError>;
-    async fn list_app_toolset_configs_by_scopes(&self, scopes: &[String]) -> Result<Vec<AppToolsetConfigRow>, DbError>;
+    async fn get_app_toolset_config(&self, toolset_type: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
     async fn get_app_client_toolset_config(&self, app_client_id: &str) -> Result<Option<AppClientToolsetConfigRow>, DbError>;
     async fn upsert_app_client_toolset_config(&self, config: &AppClientToolsetConfigRow) -> Result<AppClientToolsetConfigRow, DbError>;
   }
@@ -754,9 +732,9 @@ mockall::mock! {
       &self,
       id: &str,
       user_id: &str,
-      tools_approved: &str,
+      approved: &str,
       resource_scope: &str,
-      access_request_scope: &str,
+      access_request_scope: Option<String>,
     ) -> Result<AppAccessRequestRow, DbError>;
     async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError>;
     async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError>;

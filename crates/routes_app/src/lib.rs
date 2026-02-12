@@ -12,6 +12,7 @@ mod api_dto;
 
 // -- Domain route modules (folders)
 mod routes_api_models;
+mod routes_apps;
 mod routes_auth;
 mod routes_models;
 pub mod routes_oai;
@@ -35,6 +36,7 @@ pub use api_dto::*;
 pub use routes::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;
+pub use routes_apps::*;
 pub use routes_auth::*;
 pub use routes_dev::*;
 pub use routes_ping::*;

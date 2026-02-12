@@ -13,9 +13,9 @@ pub trait AccessRequestRepository: Send + Sync {
     &self,
     id: &str,
     user_id: &str,
-    tools_approved: &str,       // JSON string
+    approved: &str,             // JSON string
     resource_scope: &str,
-    access_request_scope: &str,
+    access_request_scope: Option<String>, // NULL for auto-approve
   ) -> Result<AppAccessRequestRow, DbError>;
 
   async fn update_denial(

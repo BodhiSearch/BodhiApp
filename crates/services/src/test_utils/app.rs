@@ -9,8 +9,10 @@ use crate::{
   ConcurrencyService, DataService, HfHubService, HubService, LocalConcurrencyService,
   LocalDataService, MockAccessRequestService, MockAuthService, MockHubService, MockToolService,
   MokaCacheService, NetworkService, SecretService, SessionService, SettingService,
-  SqliteSessionService, StubNetworkService, ToolService, BODHI_EXEC_LOOKUP_PATH,
+  SqliteSessionService, ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
+
+use crate::network_service::StubNetworkService;
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
 use rstest::fixture;

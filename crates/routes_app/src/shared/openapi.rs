@@ -1,8 +1,10 @@
 use crate::{
-  ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, AuthCallbackRequest,
-  CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse, LocalModelResponse,
-  PaginatedApiModelResponse, PaginationSortParams, PingResponse, TestCreds, TestPromptRequest,
-  TestPromptResponse, UpdateApiModelRequest, UpdateApiTokenRequest,
+  AccessRequestReviewResponse, AccessRequestStatusResponse, ApiFormatsResponse, ApiKey,
+  ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody, AuthCallbackRequest,
+  CreateAccessRequestBody, CreateAccessRequestResponse, CreateApiModelRequest, FetchModelsRequest,
+  FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse, PaginationSortParams,
+  PingResponse, TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
+  UpdateApiTokenRequest,
 };
 use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
@@ -11,22 +13,25 @@ use crate::{
   PaginatedLocalModelResponse, PaginatedUserAccessResponse, PaginatedUserAliasResponse,
   QueueStatusResponse, RedirectResponse, RefreshRequest, RefreshResponse, RefreshSource,
   SetupRequest, SetupResponse, UpdateAliasRequest, UpdateSettingRequest,
-  UserAccessStatusResponse, UserAliasResponse, UserResponse, __path_app_info_handler,
-  __path_approve_request_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
-  __path_change_user_role_handler, __path_copy_alias_handler, __path_create_alias_handler,
+  UserAccessStatusResponse, UserAliasResponse, UserResponse,
+  __path_approve_access_request_handler, __path_app_info_handler, __path_approve_request_handler,
+  __path_auth_callback_handler, __path_auth_initiate_handler, __path_change_user_role_handler,
+  __path_copy_alias_handler, __path_create_access_request_handler, __path_create_alias_handler,
   __path_create_api_model_handler, __path_create_pull_request_handler, __path_create_token_handler,
   __path_delete_alias_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
-  __path_fetch_models_handler, __path_get_api_formats_handler, __path_get_api_model_handler,
-  __path_get_download_status_handler, __path_get_user_alias_handler, __path_health_handler,
-  __path_list_aliases_handler, __path_list_all_requests_handler, __path_list_api_models_handler,
-  __path_list_downloads_handler, __path_list_local_modelfiles_handler,
-  __path_list_pending_requests_handler, __path_list_settings_handler, __path_list_tokens_handler,
-  __path_list_users_handler, __path_logout_handler, __path_ping_handler,
-  __path_queue_status_handler, __path_refresh_metadata_handler, __path_reject_request_handler,
-  __path_remove_user_handler, __path_request_status_handler, __path_setup_handler,
-  __path_sync_models_handler, __path_test_api_model_handler, __path_update_alias_handler,
-  __path_update_api_model_handler, __path_update_setting_handler, __path_update_token_handler,
-  __path_user_info_handler, __path_user_request_access_handler,
+  __path_deny_access_request_handler, __path_fetch_models_handler,
+  __path_get_access_request_review_handler, __path_get_access_request_status_handler,
+  __path_get_api_formats_handler, __path_get_api_model_handler, __path_get_download_status_handler,
+  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
+  __path_list_all_requests_handler, __path_list_api_models_handler, __path_list_downloads_handler,
+  __path_list_local_modelfiles_handler, __path_list_pending_requests_handler,
+  __path_list_settings_handler, __path_list_tokens_handler, __path_list_users_handler,
+  __path_logout_handler, __path_ping_handler, __path_queue_status_handler,
+  __path_refresh_metadata_handler, __path_reject_request_handler, __path_remove_user_handler,
+  __path_request_status_handler, __path_setup_handler, __path_sync_models_handler,
+  __path_test_api_model_handler, __path_update_alias_handler, __path_update_api_model_handler,
+  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
+  __path_user_request_access_handler,
 };
 // Toolsets DTOs and handlers
 use crate::routes_oai::{
@@ -37,12 +42,11 @@ use crate::routes_ollama::{
   __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
 };
 use crate::{
-  ApiKeyUpdateDto, AppToolsetConfigResponse, CreateToolsetRequest, ExecuteToolsetRequest,
-  ListToolsetTypesResponse, ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse,
-  UpdateToolsetRequest, __path_create_toolset_handler, __path_delete_toolset_handler,
-  __path_disable_type_handler, __path_enable_type_handler, __path_execute_toolset_handler,
-  __path_get_toolset_handler, __path_list_toolset_types_handler, __path_list_toolsets_handler,
-  __path_update_toolset_handler,
+  ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
+  ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse, UpdateToolsetRequest,
+  __path_create_toolset_handler, __path_delete_toolset_handler, __path_disable_type_handler,
+  __path_enable_type_handler, __path_execute_toolset_handler, __path_get_toolset_handler,
+  __path_list_toolset_types_handler, __path_list_toolsets_handler, __path_update_toolset_handler,
 };
 use async_openai::types::{
   chat::{
@@ -56,11 +60,11 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, AppToolsetConfig, OAIRequestParams, OpenAIApiError, ResourceRole,
-  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
-  ToolsetExecutionResponse, ToolsetWithTools, UserInfo, UserScope, API_TAG_API_KEYS,
-  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
+  SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset, ToolsetExecutionResponse,
+  UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS,
+  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  API_TAG_TOOLSETS,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -267,6 +271,12 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             UserAccessStatusResponse,
             ApproveUserAccessRequest,
             PaginatedUserAccessResponse,
+            // app access requests
+            CreateAccessRequestBody,
+            CreateAccessRequestResponse,
+            AccessRequestStatusResponse,
+            AccessRequestReviewResponse,
+            ApproveAccessRequestBody,
             // user management
             ListUsersParams,
             UserListResponse,
@@ -342,12 +352,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ListToolsetsResponse,
             ToolsetTypeResponse,
             ListToolsetTypesResponse,
-            AppToolsetConfigResponse,
             ExecuteToolsetRequest,
             ToolDefinition,
             Toolset,
-            ToolsetWithTools,
-            AppToolsetConfig,
             ToolsetExecutionResponse,
         ),
         responses( ),
@@ -420,6 +427,13 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         list_all_requests_handler,
         approve_request_handler,
         reject_request_handler,
+
+        // App access request endpoints
+        create_access_request_handler,
+        get_access_request_status_handler,
+        get_access_request_review_handler,
+        approve_access_request_handler,
+        deny_access_request_handler,
 
         // User management endpoints
         list_users_handler,

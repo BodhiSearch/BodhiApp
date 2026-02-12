@@ -1,4 +1,4 @@
-use objs::{AppToolsetConfig, ToolDefinition, ToolsetExecutionRequest};
+use objs::{ToolDefinition, ToolsetExecutionRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -30,9 +30,9 @@ fn default_true() -> bool {
 /// Request to create a toolset
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct CreateToolsetRequest {
-  /// Toolset scope UUID identifier (e.g., "4ff0e163-36fb-47d6-a5ef-26e396f067d6")
+  /// Toolset type identifier (e.g., "builtin-exa-search")
   #[validate(length(min = 1))]
-  pub scope_uuid: String,
+  pub toolset_type: String,
 
   /// User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
   #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
@@ -89,10 +89,8 @@ pub struct ToolsetResponse {
   pub id: String,
   /// User-defined name for this toolset
   pub name: String,
-  /// Toolset scope UUID identifier
-  pub scope_uuid: String,
-  /// Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
-  pub scope: String,
+  /// Toolset type identifier (e.g., "builtin-exa-search")
+  pub toolset_type: String,
   /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
@@ -114,7 +112,7 @@ pub struct ToolsetResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetsResponse {
   pub toolsets: Vec<ToolsetResponse>,
-  pub toolset_types: Vec<AppToolsetConfig>,
+  pub toolset_types: Vec<objs::AppToolsetConfig>,
 }
 
 // ============================================================================
@@ -124,16 +122,12 @@ pub struct ListToolsetsResponse {
 /// Toolset type response (for admin listing)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolsetTypeResponse {
-  /// Toolset scope UUID identifier
-  pub scope_uuid: String,
-  /// Toolset scope identifier (e.g., "scope_toolset-builtin-exa-web-search")
-  pub scope: String,
+  /// Toolset type identifier (e.g., "builtin-exa-search")
+  pub toolset_type: String,
   /// Human-readable name (e.g., "Exa Web Search")
   pub name: String,
   /// Description of the toolset
   pub description: String,
-  /// Whether the toolset is enabled at app level (admin-controlled)
-  pub app_enabled: bool,
   /// Tools provided by this toolset
   pub tools: Vec<ToolDefinition>,
 }
@@ -142,24 +136,6 @@ pub struct ToolsetTypeResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetTypesResponse {
   pub types: Vec<ToolsetTypeResponse>,
-}
-
-// ============================================================================
-// App-level Toolset Configuration DTOs
-// ============================================================================
-
-/// Response with app-level toolset configuration
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct AppToolsetConfigResponse {
-  /// The app-level toolset configuration
-  #[serde(flatten)]
-  pub config: AppToolsetConfig,
-}
-
-/// Response with list of app-level toolset configurations
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ListAppToolsetConfigsResponse {
-  pub configs: Vec<AppToolsetConfig>,
 }
 
 // ============================================================================
@@ -198,7 +174,7 @@ mod tests {
   #[rstest]
   fn test_create_toolset_request_serialization() {
     let req = CreateToolsetRequest {
-      scope_uuid: "4ff0e163-36fb-47d6-a5ef-26e396f067d6".to_string(),
+      toolset_type: "builtin-exa-search".to_string(),
       name: "My Exa".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
@@ -206,7 +182,7 @@ mod tests {
     };
 
     let json = serde_json::to_value(&req).unwrap();
-    assert_eq!("4ff0e163-36fb-47d6-a5ef-26e396f067d6", json["scope_uuid"]);
+    assert_eq!("builtin-exa-search", json["toolset_type"]);
     assert_eq!("My Exa", json["name"]);
     assert_eq!(true, json["enabled"]);
     assert_eq!("sk-test123", json["api_key"]);
