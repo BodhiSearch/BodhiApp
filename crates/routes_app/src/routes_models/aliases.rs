@@ -433,10 +433,11 @@ pub async fn update_alias_handler(
   let snapshot = payload.snapshot;
 
   // Verify file exists locally
-  let file_exists = state
-    .app_service()
-    .hub_service()
-    .local_file_exists(&repo, &filename, snapshot.clone())?;
+  let file_exists =
+    state
+      .app_service()
+      .hub_service()
+      .local_file_exists(&repo, &filename, snapshot.clone())?;
   if !file_exists {
     return Err(
       CreateAliasError::HubService(HubServiceError::FileNotFound {
@@ -497,11 +498,7 @@ pub async fn delete_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  state
-    .app_service()
-    .data_service()
-    .delete_alias(&id)
-    .await?;
+  state.app_service().data_service().delete_alias(&id).await?;
   Ok(StatusCode::OK)
 }
 
@@ -533,7 +530,10 @@ pub async fn copy_alias_handler(
     .data_service()
     .copy_alias(&id, &payload.alias)
     .await?;
-  Ok((StatusCode::CREATED, Json(UserAliasResponse::from(new_alias))))
+  Ok((
+    StatusCode::CREATED,
+    Json(UserAliasResponse::from(new_alias)),
+  ))
 }
 
 #[allow(clippy::too_many_arguments)]

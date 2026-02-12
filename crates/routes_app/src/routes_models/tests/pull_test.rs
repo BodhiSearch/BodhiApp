@@ -1,6 +1,6 @@
 use crate::{
-  create_pull_request_handler, get_download_status_handler, list_downloads_handler,
-  wait_for_event, PaginatedDownloadResponse,
+  create_pull_request_handler, get_download_status_handler, list_downloads_handler, wait_for_event,
+  PaginatedDownloadResponse,
 };
 use anyhow_trace::anyhow_trace;
 use axum::{
@@ -340,9 +340,12 @@ async fn test_pull_endpoints_reject_insufficient_role(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   assert_eq!(
     StatusCode::FORBIDDEN,
     response.status(),
@@ -364,9 +367,12 @@ async fn test_pull_endpoints_allow_power_user_and_above(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   // Both GET endpoints return 200/404 from real services (proves auth passed)
   assert!(
     response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,

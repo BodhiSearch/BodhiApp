@@ -1,10 +1,9 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
-  DownloadStatus, ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository,
-  TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
-  UserAliasRepository,
+  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus,
+  ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository, TokenStatus,
+  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use derive_new::new;
@@ -1694,15 +1693,15 @@ impl ToolsetRepository for SqliteDbService {
     Ok(
       results
         .into_iter()
-        .map(|(toolset_type, enabled, updated_by, created_at, updated_at)| {
-          AppToolsetConfigRow {
+        .map(
+          |(toolset_type, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
             toolset_type,
             enabled: enabled != 0,
             updated_by,
             created_at,
             updated_at,
-          }
-        })
+          },
+        )
         .collect(),
     )
   }
@@ -1720,15 +1719,15 @@ impl ToolsetRepository for SqliteDbService {
     .fetch_optional(&self.pool)
     .await?;
 
-    Ok(result.map(|(toolset_type, enabled, updated_by, created_at, updated_at)| {
-      AppToolsetConfigRow {
+    Ok(result.map(
+      |(toolset_type, enabled, updated_by, created_at, updated_at)| AppToolsetConfigRow {
         toolset_type,
         enabled: enabled != 0,
         updated_by,
         created_at,
         updated_at,
-      }
-    }))
+      },
+    ))
   }
 
   async fn get_app_client_toolset_config(
@@ -1816,8 +1815,8 @@ fn parse_user_alias_row(
   let repo = repo
     .parse::<objs::Repo>()
     .map_err(|e| DbError::EncryptionError(format!("Failed to parse repo: {}", e)))?;
-  let request_params: objs::OAIRequestParams = serde_json::from_str(&request_params_json)
-    .map_err(|e| {
+  let request_params: objs::OAIRequestParams =
+    serde_json::from_str(&request_params_json).map_err(|e| {
       DbError::EncryptionError(format!("Failed to deserialize request_params: {}", e))
     })?;
   let context_params: Vec<String> = serde_json::from_str(&context_params_json).map_err(|e| {
@@ -2141,11 +2140,7 @@ impl AccessRequestRepository for SqliteDbService {
     })
   }
 
-  async fn update_denial(
-    &self,
-    id: &str,
-    user_id: &str,
-  ) -> Result<AppAccessRequestRow, DbError> {
+  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError> {
     let now = self.time_service.utc_now().timestamp();
     let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
       "UPDATE app_access_requests
@@ -2225,13 +2220,33 @@ impl AccessRequestRepository for SqliteDbService {
     &self,
     scope: &str,
   ) -> Result<Option<AppAccessRequestRow>, DbError> {
-    let result = query_as::<_, (String, String, Option<String>, Option<String>, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64, i64)>(
+    let result = query_as::<
+      _,
+      (
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        String,
+        Option<String>,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        i64,
+        i64,
+        i64,
+      ),
+    >(
       "SELECT id, app_client_id, app_name, app_description, flow_type,
               redirect_uri, status, requested, approved, user_id,
               resource_scope, access_request_scope, error_message,
               expires_at, created_at, updated_at
        FROM app_access_requests
-       WHERE access_request_scope = ?"
+       WHERE access_request_scope = ?",
     )
     .bind(scope)
     .fetch_optional(&self.pool)

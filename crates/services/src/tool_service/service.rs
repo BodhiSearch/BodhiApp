@@ -1,5 +1,7 @@
 use super::ToolsetError;
-use crate::db::{encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService, ToolsetRow};
+use crate::db::{
+  encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService, ToolsetRow,
+};
 use crate::exa_service::ExaService;
 use chrono::DateTime;
 use objs::{
@@ -629,15 +631,17 @@ impl ToolService for DefaultToolService {
       .into_iter()
       .filter_map(|row| {
         // Only include configs for toolset types that still exist in the registry
-        self.get_type(&row.toolset_type).map(|type_def| objs::AppToolsetConfig {
-          toolset_type: row.toolset_type,
-          name: type_def.name,
-          description: type_def.description,
-          enabled: row.enabled,
-          updated_by: row.updated_by,
-          created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-          updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
-        })
+        self
+          .get_type(&row.toolset_type)
+          .map(|type_def| objs::AppToolsetConfig {
+            toolset_type: row.toolset_type,
+            name: type_def.name,
+            description: type_def.description,
+            enabled: row.enabled,
+            updated_by: row.updated_by,
+            created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+            updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+          })
       })
       .collect();
 
@@ -652,18 +656,19 @@ impl ToolService for DefaultToolService {
 
     Ok(db_row.and_then(|row| {
       // Enrich with name/description from ToolsetDefinition
-      self.get_type(&row.toolset_type).map(|type_def| objs::AppToolsetConfig {
-        toolset_type: row.toolset_type,
-        name: type_def.name,
-        description: type_def.description,
-        enabled: row.enabled,
-        updated_by: row.updated_by,
-        created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-        updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
-      })
+      self
+        .get_type(&row.toolset_type)
+        .map(|type_def| objs::AppToolsetConfig {
+          toolset_type: row.toolset_type,
+          name: type_def.name,
+          description: type_def.description,
+          enabled: row.enabled,
+          updated_by: row.updated_by,
+          created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+          updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+        })
     }))
   }
-
 }
 
 impl DefaultToolService {

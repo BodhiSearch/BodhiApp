@@ -49,10 +49,7 @@ async fn test_oai_models_handler_list_all(#[future] app: Router) -> anyhow::Resu
   assert_eq!("list", response["object"].as_str().unwrap());
   let data = response["data"].as_array().unwrap();
   assert_eq!(8, data.len());
-  let model_ids: Vec<&str> = data
-    .iter()
-    .map(|m| m["id"].as_str().unwrap())
-    .collect();
+  let model_ids: Vec<&str> = data.iter().map(|m| m["id"].as_str().unwrap()).collect();
   // Verify all expected models are present (sorted alphabetically)
   let expected_ids = vec![
     "FakeFactory/fakemodel-gguf:Q4_0",
@@ -333,20 +330,30 @@ async fn test_oai_endpoints_reject_unauthenticated(
 #[rstest]
 #[tokio::test]
 async fn test_oai_endpoints_allow_all_roles(
-  #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(
+    "resource_user",
+    "resource_power_user",
+    "resource_manager",
+    "resource_admin"
+  )]
+  role: &str,
   #[values(("GET", "/v1/models"), ("GET", "/v1/models/non_existent_model"))] endpoint: (&str, &str),
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   use tower::ServiceExt;
 
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   // GET /v1/models returns 200, GET /v1/models/{id} returns 404 for non-existent model
   assert!(
     response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
-    "{role} should be allowed to {method} {path}, got {}", response.status()
+    "{role} should be allowed to {method} {path}, got {}",
+    response.status()
   );
   Ok(())
 }

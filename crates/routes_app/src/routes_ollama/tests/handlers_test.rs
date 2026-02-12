@@ -119,7 +119,12 @@ stop:
   #[tokio::test]
   #[anyhow_trace]
   async fn test_ollama_endpoints_allow_all_roles(
-    #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")]
+    #[values(
+      "resource_user",
+      "resource_power_user",
+      "resource_manager",
+      "resource_admin"
+    )]
     role: &str,
     #[values(("GET", "/api/tags"))] endpoint: (&str, &str),
   ) -> anyhow::Result<()> {
@@ -128,9 +133,12 @@ stop:
     use tower::ServiceExt;
 
     let (router, app_service, _temp) = build_test_router().await?;
-    let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+    let cookie =
+      create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
     let (method, path) = endpoint;
-    let response = router.oneshot(session_request(method, path, &cookie)).await?;
+    let response = router
+      .oneshot(session_request(method, path, &cookie))
+      .await?;
     assert_eq!(
       StatusCode::OK,
       response.status(),
@@ -143,28 +151,42 @@ stop:
   #[tokio::test]
   #[anyhow_trace]
   async fn test_ollama_show_endpoint_allows_all_roles(
-    #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")]
+    #[values(
+      "resource_user",
+      "resource_power_user",
+      "resource_manager",
+      "resource_admin"
+    )]
     role: &str,
   ) -> anyhow::Result<()> {
-    use crate::test_utils::{build_test_router, create_authenticated_session, session_request_with_body};
+    use crate::test_utils::{
+      build_test_router, create_authenticated_session, session_request_with_body,
+    };
     use axum::{body::Body, http::StatusCode};
     use tower::ServiceExt;
 
     let (router, app_service, _temp) = build_test_router().await?;
-    let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+    let cookie =
+      create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
 
     let body = Body::from(serde_json::to_string(&json!({
       "name": "non_existent_model"
     }))?);
 
-    let response = router.oneshot(
-      session_request_with_body("POST", "/api/show", &cookie, body)
-    ).await?;
+    let response = router
+      .oneshot(session_request_with_body(
+        "POST",
+        "/api/show",
+        &cookie,
+        body,
+      ))
+      .await?;
 
     // May return 200 or 404 depending on model existence
     assert!(
       response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
-      "{role} should be allowed to POST /api/show, got {}", response.status()
+      "{role} should be allowed to POST /api/show, got {}",
+      response.status()
     );
     Ok(())
   }

@@ -207,10 +207,7 @@ impl DefaultTokenService {
     let mut scopes: Vec<&str> = claims
       .scope
       .split_whitespace()
-      .filter(|s| {
-        s.starts_with("scope_user_")
-          || s.starts_with("scope_access_request:")
-      })
+      .filter(|s| s.starts_with("scope_user_") || s.starts_with("scope_access_request:"))
       .collect();
     // Need at least one user scope for basic access
     let has_user_scope = scopes.iter().any(|s| s.starts_with("scope_user_"));
@@ -268,17 +265,12 @@ impl DefaultTokenService {
       }
 
       // Validate user_id matches sub claim (must be present for approved requests)
-      let user_id = record
-        .user_id
-        .as_ref()
-        .ok_or_else(|| {
-          TokenError::AccessRequestValidation(
-            services::AccessRequestValidationError::NotApproved {
-              id: record.id.clone(),
-              status: "missing user_id in approved request".to_string(),
-            },
-          )
-        })?;
+      let user_id = record.user_id.as_ref().ok_or_else(|| {
+        TokenError::AccessRequestValidation(services::AccessRequestValidationError::NotApproved {
+          id: record.id.clone(),
+          status: "missing user_id in approved request".to_string(),
+        })
+      })?;
 
       if user_id != &claims.sub {
         return Err(
@@ -1747,4 +1739,3 @@ mod tests {
     Ok(())
   }
 }
-

@@ -16,12 +16,12 @@ use std::sync::Arc;
 use tracing::{debug, info};
 
 pub const ENDPOINT_APPS_REQUEST_ACCESS: &str = "/bodhi/v1/apps/request-access";
-pub const ENDPOINT_APPS_ACCESS_REQUEST_ID: &str = "/bodhi/v1/apps/access-request/{id}";
-pub const ENDPOINT_APPS_ACCESS_REQUEST_REVIEW: &str = "/bodhi/v1/apps/access-request/{id}/review";
-pub const ENDPOINT_APPS_ACCESS_REQUEST_APPROVE: &str = "/bodhi/v1/apps/access-request/{id}/approve";
-pub const ENDPOINT_APPS_ACCESS_REQUEST_DENY: &str = "/bodhi/v1/apps/access-request/{id}/deny";
+pub const ENDPOINT_APPS_ACCESS_REQUESTS_ID: &str = "/bodhi/v1/apps/access-requests/{id}";
+pub const ENDPOINT_ACCESS_REQUESTS_REVIEW: &str = "/bodhi/v1/access-requests/{id}/review";
+pub const ENDPOINT_ACCESS_REQUESTS_APPROVE: &str = "/bodhi/v1/access-requests/{id}/approve";
+pub const ENDPOINT_ACCESS_REQUESTS_DENY: &str = "/bodhi/v1/access-requests/{id}/deny";
 
-// Query params for GET /apps/access-request/:id
+// Query params for GET /apps/access-requests/:id (polling by apps)
 #[derive(Debug, Deserialize)]
 pub struct AccessRequestStatusQuery {
   pub app_client_id: String,
@@ -142,10 +142,10 @@ pub async fn create_access_request_handler(
   }
 }
 
-/// Get access request status (GET /apps/access-request/:id)
+/// Get access request status (GET /apps/access-requests/:id)
 #[utoipa::path(
     get,
-    path = ENDPOINT_APPS_ACCESS_REQUEST_ID,
+    path = ENDPOINT_APPS_ACCESS_REQUESTS_ID,
     tag = API_TAG_AUTH,
     operation_id = "getAccessRequestStatus",
     summary = "Get Access Request Status",
@@ -186,10 +186,10 @@ pub async fn get_access_request_status_handler(
   }))
 }
 
-/// Get access request review data (GET /apps/access-request/:id/review)
+/// Get access request review data (GET /access-requests/:id/review)
 #[utoipa::path(
     get,
-    path = ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
+    path = ENDPOINT_ACCESS_REQUESTS_REVIEW,
     tag = API_TAG_AUTH,
     operation_id = "getAccessRequestReview",
     summary = "Get Access Request Review",
@@ -220,8 +220,8 @@ pub async fn get_access_request_review_handler(
     .ok_or(AppAccessRequestError::NotFound)?;
 
   // Parse requested tools
-  let requested: RequestedResources = serde_json::from_str(&request.requested)
-    .unwrap_or_else(|_| RequestedResources {
+  let requested: RequestedResources =
+    serde_json::from_str(&request.requested).unwrap_or_else(|_| RequestedResources {
       toolset_types: vec![],
     });
 
@@ -268,10 +268,10 @@ pub async fn get_access_request_review_handler(
   }))
 }
 
-/// Approve access request (PUT /apps/access-request/:id/approve)
+/// Approve access request (PUT /access-requests/:id/approve)
 #[utoipa::path(
     put,
-    path = ENDPOINT_APPS_ACCESS_REQUEST_APPROVE,
+    path = ENDPOINT_ACCESS_REQUESTS_APPROVE,
     tag = API_TAG_AUTH,
     operation_id = "approveAppsAccessRequest",
     summary = "Approve Access Request",
@@ -367,10 +367,10 @@ pub async fn approve_access_request_handler(
   Ok(StatusCode::OK)
 }
 
-/// Deny access request (POST /apps/access-request/:id/deny)
+/// Deny access request (POST /access-requests/:id/deny)
 #[utoipa::path(
     post,
-    path = ENDPOINT_APPS_ACCESS_REQUEST_DENY,
+    path = ENDPOINT_ACCESS_REQUESTS_DENY,
     tag = API_TAG_AUTH,
     operation_id = "denyAccessRequest",
     summary = "Deny Access Request",

@@ -376,7 +376,12 @@ async fn test_optional_auth_endpoints_accept_unauthenticated(
 #[rstest]
 #[tokio::test]
 async fn test_user_info_allows_authenticated(
-  #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")]
+  #[values(
+    "resource_user",
+    "resource_power_user",
+    "resource_manager",
+    "resource_admin"
+  )]
   role: &str,
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};

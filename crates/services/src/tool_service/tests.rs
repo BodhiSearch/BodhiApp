@@ -494,7 +494,6 @@ async fn test_create_fails_with_invalid_toolset_type() -> anyhow::Result<()> {
   Ok(())
 }
 
-
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -713,7 +712,6 @@ async fn test_update_same_name_different_case_succeeds() -> anyhow::Result<()> {
   Ok(())
 }
 
-
 #[rstest]
 #[anyhow_trace]
 #[tokio::test]
@@ -919,4 +917,3 @@ async fn test_is_type_enabled_defaults_false_when_no_config() -> anyhow::Result<
   assert!(!enabled);
   Ok(())
 }
-

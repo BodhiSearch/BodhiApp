@@ -4,10 +4,10 @@ use crate::db::{
   ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
   ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
-use objs::UserAlias;
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
 use objs::ApiAlias;
+use objs::UserAlias;
 use rstest::fixture;
 use sqlx::SqlitePool;
 use std::{fs::File, path::Path, sync::Arc};
@@ -31,8 +31,7 @@ pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> Tes
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
   let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
-  let db_service =
-    SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
+  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
   db_service.migrate().await.unwrap();
   TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
 }
@@ -633,7 +632,11 @@ impl AccessRequestRepository for TestDbService {
       .tap(|_| self.notify("access_request_update_denial"))
   }
 
-  async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError> {
+  async fn update_failure(
+    &self,
+    id: &str,
+    error_message: &str,
+  ) -> Result<AppAccessRequestRow, DbError> {
     self
       .inner
       .update_failure(id, error_message)

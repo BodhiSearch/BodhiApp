@@ -1,5 +1,7 @@
 use crate::{
-  test_utils::{db::test_db_service, seed_test_user_aliases, test_hf_service, TestDbService, TestHfService},
+  test_utils::{
+    db::test_db_service, seed_test_user_aliases, test_hf_service, TestDbService, TestHfService,
+  },
   DataService, DataServiceError, LocalDataService,
 };
 use async_trait::async_trait;

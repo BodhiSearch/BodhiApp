@@ -109,12 +109,13 @@ pub async fn toolset_auth_middleware(
     let ar_id = access_request_id.unwrap();
 
     // Fetch access request
-    let access_request = db_service
-      .get(&ar_id)
-      .await?
-      .ok_or(ToolsetAuthError::AccessRequestNotFound {
-        access_request_id: ar_id.clone(),
-      })?;
+    let access_request =
+      db_service
+        .get(&ar_id)
+        .await?
+        .ok_or(ToolsetAuthError::AccessRequestNotFound {
+          access_request_id: ar_id.clone(),
+        })?;
 
     // Validate status
     if access_request.status != "approved" {
@@ -145,13 +146,14 @@ pub async fn toolset_auth_middleware(
     }
 
     // Validate user_id matches (must be present for approved requests)
-    let ar_user_id = access_request
-      .user_id
-      .as_ref()
-      .ok_or(ToolsetAuthError::AccessRequestInvalid {
-        access_request_id: ar_id.clone(),
-        reason: "Missing user_id in approved access request".to_string(),
-      })?;
+    let ar_user_id =
+      access_request
+        .user_id
+        .as_ref()
+        .ok_or(ToolsetAuthError::AccessRequestInvalid {
+          access_request_id: ar_id.clone(),
+          reason: "Missing user_id in approved access request".to_string(),
+        })?;
 
     if ar_user_id != &user_id {
       return Err(
@@ -338,7 +340,6 @@ mod tests {
 
     assert_eq!(response.status(), expected_status);
   }
-
 
   // Error condition tests
   #[rstest]
@@ -716,7 +717,10 @@ mod tests {
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
           .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid-nonexistent")
+          .header(
+            crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID,
+            "ar-uuid-nonexistent",
+          )
           .header(KEY_HEADER_BODHIAPP_AZP, "app1")
           .body(Body::empty())
           .unwrap(),

@@ -1,6 +1,6 @@
 use crate::{ENDPOINT_HEALTH, ENDPOINT_PING};
 use axum::Json;
-use objs::{API_TAG_SYSTEM};
+use objs::API_TAG_SYSTEM;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -80,10 +80,7 @@ mod tests {
   #[tokio::test]
   async fn test_ping_and_health_handlers(#[case] path: &str) -> anyhow::Result<()> {
     let (router, _app_service, _temp_dir) = build_test_router().await?;
-    let req = Request::builder()
-      .uri(path)
-      .body(Body::empty())
-      .unwrap();
+    let req = Request::builder().uri(path).body(Body::empty()).unwrap();
     let response = router.oneshot(req).await?;
     assert_eq!(response.status(), StatusCode::OK);
     let body = axum::body::to_bytes(response.into_body(), usize::MAX).await?;

@@ -1359,7 +1359,10 @@ async fn test_update_approval(
   assert_eq!(result.status, "approved");
   assert_eq!(result.user_id, Some("user-uuid".to_string()));
   assert_eq!(result.approved, Some(tools_approved_json.to_string()));
-  assert_eq!(result.resource_scope, Some("scope_resource-xyz".to_string()));
+  assert_eq!(
+    result.resource_scope,
+    Some("scope_resource-xyz".to_string())
+  );
   assert_eq!(
     result.access_request_scope,
     Some("scope_access_request:550e8400-e29b-41d4-a716-446655440002".to_string())

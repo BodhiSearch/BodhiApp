@@ -1,4 +1,40 @@
 use crate::proxy_router;
+use crate::{
+  app_info_handler, approve_access_request_handler, approve_request_handler, auth_callback_handler,
+  auth_initiate_handler, change_user_role_handler, copy_alias_handler,
+  create_access_request_handler, create_alias_handler, create_api_model_handler,
+  create_pull_request_handler, create_token_handler, create_toolset_handler, delete_alias_handler,
+  delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
+  deny_access_request_handler, dev_secrets_handler, disable_type_handler, enable_type_handler,
+  envs_handler, execute_toolset_handler, fetch_models_handler, get_access_request_review_handler,
+  get_access_request_status_handler, get_api_formats_handler, get_api_model_handler,
+  get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
+  list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
+  list_local_modelfiles_handler, list_pending_requests_handler, list_settings_handler,
+  list_tokens_handler, list_toolset_types_handler, list_toolsets_handler, list_users_handler,
+  logout_handler, ping_handler, queue_status_handler, refresh_metadata_handler,
+  reject_request_handler, remove_user_handler, request_status_handler, setup_handler,
+  sync_models_handler, test_api_model_handler, update_alias_handler, update_api_model_handler,
+  update_setting_handler, update_token_handler, update_toolset_handler, user_info_handler,
+  user_request_access_handler, BodhiOpenAPIDoc, GlobalErrorResponses, OpenAPIEnvModifier,
+  ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_APPROVE, ENDPOINT_ACCESS_REQUESTS_DENY,
+  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_API_MODELS,
+  ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
+  ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
+  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS,
+  ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS,
+  ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO,
+  ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
+};
+use crate::{
+  chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
+  ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
+};
+use crate::{
+  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
+  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
+};
 use auth_middleware::canonical_url_middleware;
 use auth_middleware::{
   api_auth_middleware, auth_middleware, inject_optional_auth_info, toolset_auth_middleware,
@@ -9,43 +45,6 @@ use axum::{
   Router,
 };
 use objs::{ResourceRole, TokenScope, UserScope};
-use crate::{
-  app_info_handler, approve_access_request_handler, approve_request_handler,
-  auth_callback_handler, auth_initiate_handler, change_user_role_handler, copy_alias_handler,
-  create_access_request_handler, create_alias_handler, create_api_model_handler,
-  create_pull_request_handler, create_token_handler, create_toolset_handler,
-  delete_alias_handler, delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
-  deny_access_request_handler, dev_secrets_handler, disable_type_handler, enable_type_handler,
-  envs_handler, execute_toolset_handler, fetch_models_handler, get_access_request_review_handler,
-  get_access_request_status_handler, get_api_formats_handler, get_api_model_handler,
-  get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
-  list_aliases_handler, list_all_requests_handler, list_api_models_handler,
-  list_downloads_handler, list_local_modelfiles_handler, list_pending_requests_handler,
-  list_settings_handler, list_tokens_handler, list_toolset_types_handler,
-  list_toolsets_handler, list_users_handler, logout_handler, ping_handler,
-  queue_status_handler, refresh_metadata_handler, reject_request_handler, remove_user_handler,
-  request_status_handler, setup_handler, sync_models_handler, test_api_model_handler,
-  update_alias_handler, update_api_model_handler, update_setting_handler, update_token_handler,
-  update_toolset_handler, user_info_handler, user_request_access_handler, BodhiOpenAPIDoc,
-  GlobalErrorResponses, OpenAPIEnvModifier, ENDPOINT_ACCESS_REQUESTS_ALL,
-  ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_API_MODELS, ENDPOINT_API_MODELS_API_FORMATS,
-  ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
-  ENDPOINT_APPS_ACCESS_REQUEST_APPROVE, ENDPOINT_APPS_ACCESS_REQUEST_DENY,
-  ENDPOINT_APPS_ACCESS_REQUEST_ID, ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
-  ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
-  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT,
-  ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_QUEUE, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
-  ENDPOINT_USERS, ENDPOINT_USER_INFO, ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
-};
-use crate::{
-  chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
-  ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
-};
-use crate::{
-  ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
-  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
-};
 use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
@@ -78,7 +77,7 @@ pub fn build_routes(
       post(create_access_request_handler),
     )
     .route(
-      ENDPOINT_APPS_ACCESS_REQUEST_ID,
+      ENDPOINT_APPS_ACCESS_REQUESTS_ID,
       get(get_access_request_status_handler),
     );
 
@@ -158,15 +157,15 @@ pub fn build_routes(
     )
     // App access request review/approve/deny (session-only)
     .route(
-      ENDPOINT_APPS_ACCESS_REQUEST_REVIEW,
+      ENDPOINT_ACCESS_REQUESTS_REVIEW,
       get(get_access_request_review_handler),
     )
     .route(
-      ENDPOINT_APPS_ACCESS_REQUEST_APPROVE,
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
       put(approve_access_request_handler),
     )
     .route(
-      ENDPOINT_APPS_ACCESS_REQUEST_DENY,
+      ENDPOINT_ACCESS_REQUESTS_DENY,
       post(deny_access_request_handler),
     )
     .route_layer(from_fn_with_state(

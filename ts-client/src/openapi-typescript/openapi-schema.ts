@@ -112,12 +112,36 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Approve Access Request
+         * @description Approve access request with tool instance selections. Requires session auth.
+         */
+        put: operations["approveAppsAccessRequest"];
         /**
          * Approve Access Request
          * @description Approve an access request and assign a role. Requires manager or admin role.
          */
         post: operations["approveAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/access-requests/{id}/deny": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deny Access Request
+         * @description Deny access request. Requires session auth.
+         */
+        post: operations["denyAccessRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -138,6 +162,26 @@ export interface paths {
          * @description Reject an access request. Requires manager or admin role.
          */
         post: operations["rejectAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/access-requests/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Access Request Review
+         * @description Get full access request details for review page. Returns data regardless of status. Requires session auth.
+         */
+        get: operations["getAccessRequestReview"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -261,7 +305,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/apps/access-request/{id}": {
+    "/bodhi/v1/apps/access-requests/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -273,66 +317,6 @@ export interface paths {
          * @description Poll access request status. Requires app_client_id query parameter for security.
          */
         get: operations["getAccessRequestStatus"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/apps/access-request/{id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Approve Access Request
-         * @description Approve access request with tool instance selections. Requires session auth.
-         */
-        put: operations["approveAppsAccessRequest"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/apps/access-request/{id}/deny": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deny Access Request
-         * @description Deny access request. Requires session auth.
-         */
-        post: operations["denyAccessRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/apps/access-request/{id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Access Request Review
-         * @description Get full access request details for review page. Returns data regardless of status. Requires session auth.
-         */
-        get: operations["getAccessRequestReview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1071,7 +1055,7 @@ export interface components {
          *       "flow_type": "redirect",
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
          *       "requested": {
-         *         "tool_types": [
+         *         "toolset_types": [
          *           {
          *             "tool_type": "builtin-exa-search"
          *           }
@@ -1324,7 +1308,7 @@ export interface components {
         };
         /** @example {
          *       "approved": {
-         *         "tool_types": [
+         *         "toolset_types": [
          *           {
          *             "instance_id": "instance-uuid",
          *             "status": "approved",
@@ -1348,8 +1332,8 @@ export interface components {
             role: components["schemas"]["ResourceRole"];
         };
         ApprovedResources: {
-            /** @description Tool approvals with instance selections */
-            tool_types?: components["schemas"]["ToolApproval"][];
+            /** @description Toolset approvals with instance selections */
+            toolset_types?: components["schemas"]["ToolApproval"][];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -1788,7 +1772,7 @@ export interface components {
          *       "flow_type": "redirect",
          *       "redirect_url": "https://myapp.com/callback",
          *       "requested": {
-         *         "tool_types": [
+         *         "toolset_types": [
          *           {
          *             "tool_type": "builtin-exa-search"
          *           }
@@ -1806,7 +1790,7 @@ export interface components {
         };
         /** @example {
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "review_url": "http://localhost:1135/ui/apps/request-access/review?id=550e8400-e29b-41d4-a716-446655440000",
+         *       "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000",
          *       "status": "draft"
          *     } */
         CreateAccessRequestResponse: {
@@ -2769,8 +2753,8 @@ export interface components {
          */
         RefreshSource: "all" | "model";
         RequestedResources: {
-            /** @description Tool types being requested */
-            tool_types?: components["schemas"]["ToolTypeRequest"][];
+            /** @description Toolset types being requested */
+            toolset_types?: components["schemas"]["ToolTypeRequest"][];
         };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -3748,6 +3732,86 @@ export interface operations {
             };
         };
     };
+    approveAppsAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Approval details with tool selections */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveAccessRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Request approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Already processed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     approveAccessRequest: {
         parameters: {
             query?: never;
@@ -3819,6 +3883,81 @@ export interface operations {
             };
         };
     };
+    denyAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request denied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Already processed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
     rejectAccessRequest: {
         parameters: {
             query?: never;
@@ -3867,6 +4006,83 @@ export interface operations {
             };
             /** @description Request not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getAccessRequestReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Access request ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review data retrieved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessRequestReviewResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Request expired */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4573,238 +4789,6 @@ export interface operations {
             };
             /** @description Not found or app_client_id mismatch */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    approveAppsAccessRequest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        /** @description Approval details with tool selections */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApproveAccessRequestBody"];
-            };
-        };
-        responses: {
-            /** @description Request approved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Already processed */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    denyAccessRequest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Request denied */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Already processed */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    getAccessRequestReview: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Access request ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Review data retrieved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccessRequestReviewResponse"];
-                };
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Request expired */
-            410: {
                 headers: {
                     [name: string]: unknown;
                 };

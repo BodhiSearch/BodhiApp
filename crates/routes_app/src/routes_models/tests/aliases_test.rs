@@ -159,7 +159,10 @@ async fn test_get_alias_handler(
   let alias_response = response.json::<UserAliasResponse>().await?;
   assert_eq!("test-llama3-instruct", alias_response.id);
   assert_eq!("llama3:instruct", alias_response.alias);
-  assert_eq!("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF", alias_response.repo);
+  assert_eq!(
+    "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+    alias_response.repo
+  );
   assert_eq!("user", alias_response.source);
   Ok(())
 }
@@ -345,7 +348,10 @@ async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> 
       .build()?,
     updated_alias.request_params,
   );
-  assert_eq!(vec!["--ctx-size 4096".to_string()], updated_alias.context_params);
+  assert_eq!(
+    vec!["--ctx-size 4096".to_string()],
+    updated_alias.context_params
+  );
   Ok(())
 }
 
@@ -454,7 +460,13 @@ async fn test_read_endpoints_reject_unauthenticated(
 #[rstest]
 #[tokio::test]
 async fn test_read_endpoints_allow_all_roles(
-  #[values("resource_user", "resource_power_user", "resource_manager", "resource_admin")] role: &str,
+  #[values(
+    "resource_user",
+    "resource_power_user",
+    "resource_manager",
+    "resource_admin"
+  )]
+  role: &str,
   #[values(
     ("GET", "/bodhi/v1/models"),
     ("GET", "/bodhi/v1/modelfiles")
@@ -463,9 +475,12 @@ async fn test_read_endpoints_allow_all_roles(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   // Both endpoints return 200 OK with empty list from real DataService
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
@@ -503,9 +518,13 @@ async fn test_write_endpoints_reject_user_role(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
+      .await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   assert_eq!(StatusCode::FORBIDDEN, response.status());
   Ok(())
 }
@@ -522,9 +541,12 @@ async fn test_write_endpoints_allow_power_user_and_above(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   // DELETE returns 404 for non-existent model (proves auth passed)
   assert_eq!(StatusCode::NOT_FOUND, response.status());
   Ok(())

@@ -45,7 +45,7 @@ pub struct ToolTypeRequest {
 #[schema(example = json!({
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "status": "draft",
-    "review_url": "http://localhost:1135/ui/apps/request-access/review?id=550e8400-e29b-41d4-a716-446655440000"
+    "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000"
 }))]
 pub enum CreateAccessRequestResponse {
   /// Draft status - requires user approval
@@ -66,7 +66,7 @@ pub enum CreateAccessRequestResponse {
   },
 }
 
-// Response for GET /apps/access-request/:id (status polling)
+// Response for GET /apps/access-requests/:id (status polling by apps)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -85,7 +85,7 @@ pub struct AccessRequestStatusResponse {
   pub access_request_scope: Option<String>,
 }
 
-// Response for GET /apps/access-request/:id/review (review page data)
+// Response for GET /access-requests/:id/review (review page data)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -160,7 +160,7 @@ pub struct ToolInstanceInfo {
   pub has_api_key: bool,
 }
 
-// Request body for PUT /apps/access-request/:id/approve
+// Request body for PUT /access-requests/:id/approve
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "approved": {

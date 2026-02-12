@@ -759,7 +759,11 @@ impl AuthService for KeycloakAuthService {
 
     if status.is_success() {
       // 201 Created or 200 OK (idempotent retry)
-      Ok(response.json::<RegisterAccessRequestConsentResponse>().await?)
+      Ok(
+        response
+          .json::<RegisterAccessRequestConsentResponse>()
+          .await?,
+      )
     } else if status == 409 {
       // UUID collision - different context
       let error_text = response.text().await?;
@@ -827,11 +831,7 @@ impl AuthService for KeycloakAuthService {
     user_token: &str,
   ) -> Result<AppClientInfo> {
     // TODO: KC endpoint not yet implemented
-    let endpoint = format!(
-      "{}/users/apps/{}/info",
-      self.auth_api_url(),
-      app_client_id
-    );
+    let endpoint = format!("{}/users/apps/{}/info", self.auth_api_url(), app_client_id);
 
     log::log_http_request("GET", &endpoint, "auth_service", None);
 
@@ -1173,7 +1173,6 @@ mod tests {
   }
 
   #[rstest]
-
   #[rstest]
   #[tokio::test]
   #[anyhow_trace]

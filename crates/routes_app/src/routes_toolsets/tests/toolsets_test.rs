@@ -675,8 +675,7 @@ async fn test_list_toolset_types(
     request_builder =
       request_builder.header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string());
   } else {
-    request_builder =
-      request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_admin");
+    request_builder = request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_admin");
   }
 
   let response = app.oneshot(request_builder.body(Body::empty())?).await?;
@@ -724,7 +723,9 @@ async fn test_enable_type(
       .expect_set_app_toolset_enabled()
       .times(1)
       .returning(|toolset_type, _, _| {
-        Err(services::ToolsetError::InvalidToolsetType(toolset_type.to_string()))
+        Err(services::ToolsetError::InvalidToolsetType(
+          toolset_type.to_string(),
+        ))
       });
   }
 
@@ -780,7 +781,9 @@ async fn test_disable_type(
       .expect_set_app_toolset_enabled()
       .times(1)
       .returning(|toolset_type, _, _| {
-        Err(services::ToolsetError::InvalidToolsetType(toolset_type.to_string()))
+        Err(services::ToolsetError::InvalidToolsetType(
+          toolset_type.to_string(),
+        ))
       });
   }
 
@@ -842,9 +845,12 @@ async fn test_toolset_type_endpoints_reject_insufficient_role(
 ) -> anyhow::Result<()> {
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   assert_eq!(
     StatusCode::FORBIDDEN,
     response.status(),

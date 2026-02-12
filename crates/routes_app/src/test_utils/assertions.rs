@@ -36,11 +36,13 @@ pub fn assert_forbidden(response: &Response<Body>, role: &str, method: &str, pat
 pub fn assert_auth_passed(response: &Response<Body>) {
   let status = response.status();
   assert_ne!(
-    StatusCode::UNAUTHORIZED, status,
+    StatusCode::UNAUTHORIZED,
+    status,
     "Expected auth to pass, but got 401 Unauthorized"
   );
   assert_ne!(
-    StatusCode::FORBIDDEN, status,
+    StatusCode::FORBIDDEN,
+    status,
     "Expected auth to pass, but got 403 Forbidden"
   );
 }

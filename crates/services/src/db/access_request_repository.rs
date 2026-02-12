@@ -13,16 +13,12 @@ pub trait AccessRequestRepository: Send + Sync {
     &self,
     id: &str,
     user_id: &str,
-    approved: &str,             // JSON string
+    approved: &str, // JSON string
     resource_scope: &str,
     access_request_scope: Option<String>, // NULL for auto-approve
   ) -> Result<AppAccessRequestRow, DbError>;
 
-  async fn update_denial(
-    &self,
-    id: &str,
-    user_id: &str,
-  ) -> Result<AppAccessRequestRow, DbError>;
+  async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError>;
 
   async fn update_failure(
     &self,

@@ -59,7 +59,11 @@ impl DataService for LocalDataService {
 
   async fn list_aliases(&self) -> Result<Vec<Alias>> {
     // Get user aliases from DB
-    let user_aliases = self.db_service.list_user_aliases().await.unwrap_or_default();
+    let user_aliases = self
+      .db_service
+      .list_user_aliases()
+      .await
+      .unwrap_or_default();
     let mut result: Vec<Alias> = user_aliases.into_iter().map(Alias::User).collect();
 
     let model_aliases = self.hub_service.list_model_aliases()?;
@@ -367,8 +371,12 @@ mod tests {
     // Should have at least the 3 seeded user aliases + model aliases from hub
     assert!(result.len() >= 3);
     // Check that user aliases are present
-    assert!(result.iter().any(|a| matches!(a, Alias::User(u) if u.alias == "llama3:instruct")));
-    assert!(result.iter().any(|a| matches!(a, Alias::User(u) if u.alias == "testalias-exists:instruct")));
+    assert!(result
+      .iter()
+      .any(|a| matches!(a, Alias::User(u) if u.alias == "llama3:instruct")));
+    assert!(result
+      .iter()
+      .any(|a| matches!(a, Alias::User(u) if u.alias == "testalias-exists:instruct")));
     Ok(())
   }
 

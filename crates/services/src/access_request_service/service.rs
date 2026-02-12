@@ -107,7 +107,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     let requested_json = serde_json::to_string(&serde_json::json!({
       "toolset_types": tools_requested
     }))
-      .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
+    .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
     // Modify redirect_uri to include access_request_id
     let modified_redirect_uri = redirect_uri.map(|uri| {
@@ -239,9 +239,8 @@ impl AccessRequestService for DefaultAccessRequestService {
     // Serialize tool_approvals to JSON with wrapper object
     let approved_json = serde_json::to_string(&serde_json::json!({
       "toolset_types": tool_approvals
-    })).map_err(|e| {
-      AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e))
-    })?;
+    }))
+    .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
     // Update database with approval
     let updated_row = self
@@ -277,7 +276,7 @@ impl AccessRequestService for DefaultAccessRequestService {
 
   fn build_review_url(&self, access_request_id: &str) -> String {
     format!(
-      "{}/ui/apps/request-access/review?id={}",
+      "{}/ui/apps/access-requests/review?id={}",
       self.frontend_url, access_request_id
     )
   }

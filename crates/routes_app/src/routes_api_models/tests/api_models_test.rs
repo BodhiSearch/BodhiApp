@@ -1422,9 +1422,12 @@ async fn test_api_models_endpoints_reject_insufficient_role(
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   use tower::ServiceExt;
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   assert_eq!(
     StatusCode::FORBIDDEN,
     response.status(),
@@ -1448,13 +1451,19 @@ async fn test_api_models_endpoints_allow_power_user_and_above(
   use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
   use tower::ServiceExt;
   let (router, app_service, _temp) = build_test_router().await?;
-  let cookie = create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
   let (method, path) = endpoint;
-  let response = router.oneshot(session_request(method, path, &cookie)).await?;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
   // May return 200 OK (list/formats) or 404 Not Found (non-existent ID)
   assert!(
     response.status() == StatusCode::OK || response.status() == StatusCode::NOT_FOUND,
-    "Expected 200 or 404, got {} for {} {}", response.status(), method, path
+    "Expected 200 or 404, got {} for {} {}",
+    response.status(),
+    method,
+    path
   );
   Ok(())
 }

@@ -2,7 +2,9 @@ use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
 use server_core::{DefaultSharedContext, MockSharedContext, SharedContext};
 use services::{
-  test_utils::{access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID},
+  test_utils::{
+    access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID,
+  },
   AppService, SessionService, StubNetworkService,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -23,8 +25,9 @@ use tower_sessions::{
 pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>, Arc<TempDir>)> {
   let mut builder = AppServiceStubBuilder::default();
   let stub_queue: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
-  let stub_network: Arc<dyn services::NetworkService> =
-    Arc::new(StubNetworkService { ip: Some("192.168.1.100".to_string()) });
+  let stub_network: Arc<dyn services::NetworkService> = Arc::new(StubNetworkService {
+    ip: Some("192.168.1.100".to_string()),
+  });
   builder
     .with_hub_service()
     .with_data_service()
@@ -75,10 +78,7 @@ pub async fn create_authenticated_session(
   // Create a session record with the access_token
   let session_id = Id::default();
   let mut data = HashMap::new();
-  data.insert(
-    "access_token".to_string(),
-    serde_json::Value::String(token),
-  );
+  data.insert("access_token".to_string(), serde_json::Value::String(token));
 
   let record = Record {
     id: session_id,
@@ -188,8 +188,9 @@ pub async fn build_live_test_router() -> anyhow::Result<(
 )> {
   let mut builder = AppServiceStubBuilder::default();
   let stub_queue: Arc<dyn services::QueueProducer> = Arc::new(StubQueue);
-  let stub_network: Arc<dyn services::NetworkService> =
-    Arc::new(StubNetworkService { ip: Some("192.168.1.100".to_string()) });
+  let stub_network: Arc<dyn services::NetworkService> = Arc::new(StubNetworkService {
+    ip: Some("192.168.1.100".to_string()),
+  });
   builder
     .with_live_services() // real HF cache + real binary path
     .with_data_service()

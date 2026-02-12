@@ -39,8 +39,6 @@ pub use routes_api_token::*;
 pub use routes_apps::*;
 pub use routes_auth::*;
 pub use routes_dev::*;
-pub use routes_ping::*;
-pub use routes_proxy::*;
 pub use routes_models::*;
 pub use routes_oai::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,
@@ -50,6 +48,8 @@ pub use routes_ollama::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
+pub use routes_ping::*;
+pub use routes_proxy::*;
 pub use routes_settings::*;
 pub use routes_setup::*;
 pub use routes_toolsets::*;

@@ -75,7 +75,9 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
-      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
+      function(
+        |alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct"),
+      ),
     )
     .times(1)
     .return_once(move |_, _, _| Ok(non_streamed_response()));
@@ -169,7 +171,9 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
     .with(
       eq(LlmEndpoint::ChatCompletions),
       eq(request_value),
-      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
+      function(
+        |alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct"),
+      ),
     )
     .times(1)
     .return_once(move |_, _, _| streamed_response());
@@ -241,7 +245,9 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
     .with(
       eq(LlmEndpoint::Embeddings),
       eq(request_value),
-      function(|alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct")),
+      function(
+        |alias: &Alias| matches!(alias, Alias::User(u) if u.alias == "testalias-exists:instruct"),
+      ),
     )
     .times(1)
     .return_once(move |_, _, _| Ok(embeddings_response()));

@@ -594,6 +594,106 @@
       }
     },
     "/bodhi/v1/access-requests/{id}/approve": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Approve Access Request",
+        "description": "Approve access request with tool instance selections. Requires session auth.",
+        "operationId": "approveAppsAccessRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Approval details with tool selections",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveAccessRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request approved"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "auth"
@@ -688,6 +788,97 @@
         ]
       }
     },
+    "/bodhi/v1/access-requests/{id}/deny": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Deny Access Request",
+        "description": "Deny access request. Requires session auth.",
+        "operationId": "denyAccessRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request denied"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/access-requests/{id}/reject": {
       "post": {
         "tags": [
@@ -768,6 +959,104 @@
             "session_auth": [
               "resource_manager"
             ]
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/access-requests/{id}/review": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Access Request Review",
+        "description": "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
+        "operationId": "getAccessRequestReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review data retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRequestReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Request expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
           }
         ]
       }
@@ -1681,7 +1970,7 @@
         ]
       }
     },
-    "/bodhi/v1/apps/access-request/{id}": {
+    "/bodhi/v1/apps/access-requests/{id}": {
       "get": {
         "tags": [
           "auth"
@@ -1773,297 +2062,6 @@
         },
         "security": [
           {}
-        ]
-      }
-    },
-    "/bodhi/v1/apps/access-request/{id}/approve": {
-      "put": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Approve Access Request",
-        "description": "Approve access request with tool instance selections. Requires session auth.",
-        "operationId": "approveAppsAccessRequest",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "Approval details with tool selections",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApproveAccessRequestBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Request approved"
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/apps/access-request/{id}/deny": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Deny Access Request",
-        "description": "Deny access request. Requires session auth.",
-        "operationId": "denyAccessRequest",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Request denied"
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/apps/access-request/{id}/review": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Get Access Request Review",
-        "description": "Get full access request details for review page. Returns data regardless of status. Requires session auth.",
-        "operationId": "getAccessRequestReview",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Access request ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Review data retrieved",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessRequestReviewResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Request expired",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session_auth": []
-          }
         ]
       }
     },
@@ -6412,7 +6410,7 @@
           "flow_type": "redirect",
           "id": "550e8400-e29b-41d4-a716-446655440000",
           "requested": {
-            "tool_types": [
+            "toolset_types": [
               {
                 "tool_type": "builtin-exa-search"
               }
@@ -7033,7 +7031,7 @@
         },
         "example": {
           "approved": {
-            "tool_types": [
+            "toolset_types": [
               {
                 "instance_id": "instance-uuid",
                 "status": "approved",
@@ -7062,12 +7060,12 @@
       "ApprovedResources": {
         "type": "object",
         "properties": {
-          "tool_types": {
+          "toolset_types": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolApproval"
             },
-            "description": "Tool approvals with instance selections"
+            "description": "Toolset approvals with instance selections"
           }
         }
       },
@@ -8816,7 +8814,7 @@
           "flow_type": "redirect",
           "redirect_url": "https://myapp.com/callback",
           "requested": {
-            "tool_types": [
+            "toolset_types": [
               {
                 "tool_type": "builtin-exa-search"
               }
@@ -8879,7 +8877,7 @@
         ],
         "example": {
           "id": "550e8400-e29b-41d4-a716-446655440000",
-          "review_url": "http://localhost:1135/ui/apps/request-access/review?id=550e8400-e29b-41d4-a716-446655440000",
+          "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000",
           "status": "draft"
         }
       },
@@ -11372,12 +11370,12 @@
       "RequestedResources": {
         "type": "object",
         "properties": {
-          "tool_types": {
+          "toolset_types": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolTypeRequest"
             },
-            "description": "Tool types being requested"
+            "description": "Toolset types being requested"
           }
         }
       },

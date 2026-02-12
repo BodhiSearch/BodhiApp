@@ -255,9 +255,9 @@ export type ApproveUserAccessRequest = {
 
 export type ApprovedResources = {
     /**
-     * Tool approvals with instance selections
+     * Toolset approvals with instance selections
      */
-    tool_types?: Array<ToolApproval>;
+    toolset_types?: Array<ToolApproval>;
 };
 
 export type AuthCallbackRequest = {
@@ -1895,9 +1895,9 @@ export type RefreshSource = 'all' | 'model';
 
 export type RequestedResources = {
     /**
-     * Tool types being requested
+     * Toolset types being requested
      */
-    tool_types?: Array<ToolTypeRequest>;
+    toolset_types?: Array<ToolTypeRequest>;
 };
 
 export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
@@ -2825,6 +2825,105 @@ export type ApproveAccessRequestResponses = {
     200: unknown;
 };
 
+export type ApproveAppsAccessRequestData = {
+    /**
+     * Approval details with tool selections
+     */
+    body: ApproveAccessRequestBody;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/approve';
+};
+
+export type ApproveAppsAccessRequestErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Already processed
+     */
+    409: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ApproveAppsAccessRequestError = ApproveAppsAccessRequestErrors[keyof ApproveAppsAccessRequestErrors];
+
+export type ApproveAppsAccessRequestResponses = {
+    /**
+     * Request approved
+     */
+    200: unknown;
+};
+
+export type DenyAccessRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/deny';
+};
+
+export type DenyAccessRequestErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Already processed
+     */
+    409: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DenyAccessRequestError = DenyAccessRequestErrors[keyof DenyAccessRequestErrors];
+
+export type DenyAccessRequestResponses = {
+    /**
+     * Request denied
+     */
+    200: unknown;
+};
+
 export type RejectAccessRequestData = {
     body?: never;
     path: {
@@ -2868,6 +2967,56 @@ export type RejectAccessRequestResponses = {
      */
     200: unknown;
 };
+
+export type GetAccessRequestReviewData = {
+    body?: never;
+    path: {
+        /**
+         * Access request ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/access-requests/{id}/review';
+};
+
+export type GetAccessRequestReviewErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Request expired
+     */
+    410: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetAccessRequestReviewError = GetAccessRequestReviewErrors[keyof GetAccessRequestReviewErrors];
+
+export type GetAccessRequestReviewResponses = {
+    /**
+     * Review data retrieved
+     */
+    200: AccessRequestReviewResponse;
+};
+
+export type GetAccessRequestReviewResponse = GetAccessRequestReviewResponses[keyof GetAccessRequestReviewResponses];
 
 export type ListApiModelsData = {
     body?: never;
@@ -3273,7 +3422,7 @@ export type GetAccessRequestStatusData = {
          */
         app_client_id: string;
     };
-    url: '/bodhi/v1/apps/access-request/{id}';
+    url: '/bodhi/v1/apps/access-requests/{id}';
 };
 
 export type GetAccessRequestStatusErrors = {
@@ -3309,155 +3458,6 @@ export type GetAccessRequestStatusResponses = {
 };
 
 export type GetAccessRequestStatusResponse = GetAccessRequestStatusResponses[keyof GetAccessRequestStatusResponses];
-
-export type ApproveAppsAccessRequestData = {
-    /**
-     * Approval details with tool selections
-     */
-    body: ApproveAccessRequestBody;
-    path: {
-        /**
-         * Access request ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/apps/access-request/{id}/approve';
-};
-
-export type ApproveAppsAccessRequestErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Already processed
-     */
-    409: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ApproveAppsAccessRequestError = ApproveAppsAccessRequestErrors[keyof ApproveAppsAccessRequestErrors];
-
-export type ApproveAppsAccessRequestResponses = {
-    /**
-     * Request approved
-     */
-    200: unknown;
-};
-
-export type DenyAccessRequestData = {
-    body?: never;
-    path: {
-        /**
-         * Access request ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/apps/access-request/{id}/deny';
-};
-
-export type DenyAccessRequestErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Already processed
-     */
-    409: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type DenyAccessRequestError = DenyAccessRequestErrors[keyof DenyAccessRequestErrors];
-
-export type DenyAccessRequestResponses = {
-    /**
-     * Request denied
-     */
-    200: unknown;
-};
-
-export type GetAccessRequestReviewData = {
-    body?: never;
-    path: {
-        /**
-         * Access request ID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/apps/access-request/{id}/review';
-};
-
-export type GetAccessRequestReviewErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Not found
-     */
-    404: OpenAiApiError;
-    /**
-     * Request expired
-     */
-    410: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetAccessRequestReviewError = GetAccessRequestReviewErrors[keyof GetAccessRequestReviewErrors];
-
-export type GetAccessRequestReviewResponses = {
-    /**
-     * Review data retrieved
-     */
-    200: AccessRequestReviewResponse;
-};
-
-export type GetAccessRequestReviewResponse = GetAccessRequestReviewResponses[keyof GetAccessRequestReviewResponses];
 
 export type CreateAccessRequestData = {
     /**
