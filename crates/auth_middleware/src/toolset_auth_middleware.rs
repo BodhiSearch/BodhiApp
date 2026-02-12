@@ -1,6 +1,10 @@
-use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_USER_ID};
+use crate::{
+  extractors::{ExtractUserId, MaybeAccessRequestId, MaybeRole},
+  KEY_HEADER_BODHIAPP_AZP,
+};
 use axum::{
-  extract::{Path, Request, State},
+  body::Body,
+  extract::{Request, State},
   middleware::Next,
   response::Response,
 };
@@ -12,10 +16,6 @@ use std::sync::Arc;
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ToolsetAuthError {
-  #[error("User identification missing from request.")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  MissingUserId,
-
   #[error("Authentication required for toolset access.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingAuth,
@@ -23,6 +23,40 @@ pub enum ToolsetAuthError {
   #[error("Toolset not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ToolsetNotFound,
+
+  #[error("Access request {access_request_id} not found.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AccessRequestNotFound { access_request_id: String },
+
+  #[error("Access request {access_request_id} has status '{status}'. Only approved requests can access toolsets.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AccessRequestNotApproved {
+    access_request_id: String,
+    status: String,
+  },
+
+  #[error("Access request {access_request_id} is invalid: {reason}.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AccessRequestInvalid {
+    access_request_id: String,
+    reason: String,
+  },
+
+  #[error("Toolset {toolset_id} is not included in your approved tools for this app.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  ToolsetNotApproved { toolset_id: String },
+
+  #[error("Access request app client ID mismatch: expected {expected}, found {found}.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  AppClientMismatch { expected: String, found: String },
+
+  #[error("Access request user ID mismatch: expected {expected}, found {found}.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  UserMismatch { expected: String, found: String },
+
+  #[error("Invalid approved JSON in access request: {error}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  InvalidApprovedJson { error: String },
 
   #[error(transparent)]
   ToolsetError(#[from] ToolsetError),
@@ -32,63 +66,142 @@ pub enum ToolsetAuthError {
 ///
 /// Authorization rules:
 /// - Session (has ROLE header): Check toolset ownership + app-level type enabled + toolset available
+/// - OAuth (has access_request_id): Validate access request + instance authorization + toolset configuration
 ///
 /// Note:
 /// - API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
-/// - OAuth auth will be re-implemented in Phase 4 using access_request-based checks.
 pub async fn toolset_auth_middleware(
+  ExtractUserId(user_id): ExtractUserId,
+  MaybeRole(role): MaybeRole,
+  MaybeAccessRequestId(access_request_id): MaybeAccessRequestId,
   State(state): State<Arc<dyn RouterState>>,
-  Path((id, method)): Path<(String, String)>,
-  req: Request,
+  req: Request<Body>,
   next: Next,
 ) -> Result<Response, ApiError> {
-  Ok(_impl(State(state), Path((id, method)), req, next).await?)
-}
-
-async fn _impl(
-  State(state): State<Arc<dyn RouterState>>,
-  Path((id, _method)): Path<(String, String)>,
-  req: Request,
-  next: Next,
-) -> Result<Response, ToolsetAuthError> {
-  let headers = req.headers();
-
-  // Extract user_id
-  let user_id = headers
-    .get(KEY_HEADER_BODHIAPP_USER_ID)
-    .and_then(|v| v.to_str().ok())
-    .ok_or(ToolsetAuthError::MissingUserId)?;
-
-  // Determine auth type:
-  // - Session auth: has ROLE header (from session tokens)
-  //
-  // Note: API tokens (scope_token_*) are blocked at route level and won't reach here.
-  let is_session_auth = headers.contains_key(KEY_HEADER_BODHIAPP_ROLE);
-
-  if !is_session_auth {
-    return Err(ToolsetAuthError::MissingAuth);
-  }
+  // Extract toolset ID from path
+  let id = req
+    .uri()
+    .path()
+    .split('/')
+    .find(|seg| seg.len() == 36 && seg.contains('-'))
+    .ok_or(ToolsetAuthError::ToolsetNotFound)?
+    .to_string();
 
   let tool_service = state.app_service().tool_service();
+  let db_service = state.app_service().db_service();
 
-  // 1. Get toolset and verify ownership (returns None if not found OR not owned)
+  // Determine auth flow type
+  let is_session = role.is_some();
+  let is_oauth = access_request_id.is_some();
+
+  if !is_session && !is_oauth {
+    return Err(ToolsetAuthError::MissingAuth.into());
+  }
+
+  // BOTH FLOWS: Verify toolset exists and get type
   let toolset = tool_service
-    .get(user_id, &id)
+    .get(&user_id, &id)
     .await?
     .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
-  let toolset_type = &toolset.toolset_type;
+  // OAUTH FLOW: Access request validation
+  if is_oauth {
+    let ar_id = access_request_id.unwrap();
 
-  // 2. Check app-level type enabled
-  if !tool_service.is_type_enabled(toolset_type).await? {
+    // Fetch access request
+    let access_request = db_service
+      .get(&ar_id)
+      .await?
+      .ok_or(ToolsetAuthError::AccessRequestNotFound {
+        access_request_id: ar_id.clone(),
+      })?;
+
+    // Validate status
+    if access_request.status != "approved" {
+      return Err(
+        ToolsetAuthError::AccessRequestNotApproved {
+          access_request_id: ar_id,
+          status: access_request.status,
+        }
+        .into(),
+      );
+    }
+
+    // Validate app_client_id matches token azp
+    let azp = req
+      .headers()
+      .get(KEY_HEADER_BODHIAPP_AZP)
+      .and_then(|h| h.to_str().ok())
+      .ok_or(ToolsetAuthError::MissingAuth)?;
+
+    if access_request.app_client_id != azp {
+      return Err(
+        ToolsetAuthError::AppClientMismatch {
+          expected: access_request.app_client_id,
+          found: azp.to_string(),
+        }
+        .into(),
+      );
+    }
+
+    // Validate user_id matches (must be present for approved requests)
+    let ar_user_id = access_request
+      .user_id
+      .as_ref()
+      .ok_or(ToolsetAuthError::AccessRequestInvalid {
+        access_request_id: ar_id.clone(),
+        reason: "Missing user_id in approved access request".to_string(),
+      })?;
+
+    if ar_user_id != &user_id {
+      return Err(
+        ToolsetAuthError::UserMismatch {
+          expected: ar_user_id.clone(),
+          found: user_id.clone(),
+        }
+        .into(),
+      );
+    }
+
+    // Validate toolset instance in approved list
+    if let Some(approved_json) = &access_request.approved {
+      let approvals: serde_json::Value =
+        serde_json::from_str(approved_json).map_err(|e| ToolsetAuthError::InvalidApprovedJson {
+          error: e.to_string(),
+        })?;
+
+      let toolset_types = approvals
+        .get("toolset_types")
+        .and_then(|v| v.as_array())
+        .ok_or(ToolsetAuthError::InvalidApprovedJson {
+          error: "Missing toolset_types array".to_string(),
+        })?;
+
+      let instance_approved = toolset_types.iter().any(|approval| {
+        approval.get("status").and_then(|s| s.as_str()) == Some("approved")
+          && approval.get("instance_id").and_then(|i| i.as_str()) == Some(&id)
+      });
+
+      if !instance_approved {
+        return Err(ToolsetAuthError::ToolsetNotApproved { toolset_id: id }.into());
+      }
+    } else {
+      // approved is NULL - auto-approved request with no toolsets
+      return Err(ToolsetAuthError::ToolsetNotApproved { toolset_id: id }.into());
+    }
+  }
+
+  // BOTH FLOWS: Verify app-level type enabled
+  if !tool_service.is_type_enabled(&toolset.toolset_type).await? {
     return Err(ToolsetError::ToolsetAppDisabled.into());
   }
 
-  // TODO(Phase 4): Implement access_request-based auth for OAuth flow
-  // For now, OAuth auth is not supported for toolset execution
+  // BOTH FLOWS: Verify instance configured
+  if !toolset.enabled {
+    return Err(ToolsetError::ToolsetNotConfigured.into());
+  }
 
-  // 3. Check toolset is available (has API key and is enabled)
-  if !toolset.enabled || !toolset.has_api_key {
+  if !toolset.has_api_key {
     return Err(ToolsetError::ToolsetNotConfigured.into());
   }
 
@@ -98,6 +211,7 @@ async fn _impl(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_USER_ID};
   use axum::{
     body::Body,
     http::{Request, Response, StatusCode},
@@ -109,7 +223,10 @@ mod tests {
   use objs::{ResourceRole, Toolset};
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
-  use services::{test_utils::AppServiceStubBuilder, MockToolService};
+  use services::{
+    test_utils::{AppServiceStubBuilder, MockDbService},
+    MockToolService,
+  };
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -121,8 +238,13 @@ mod tests {
   }
 
   fn test_router_with_tool_service(mock_tool_service: MockToolService) -> Router {
+    // For session auth tests, we don't need DbService, but the middleware requires it
+    // So we provide a mock that will never be called in session auth flows
+    let mock_db_service = MockDbService::new();
+
     let app_service = AppServiceStubBuilder::default()
       .with_tool_service(Arc::new(mock_tool_service))
+      .db_service(Arc::new(mock_db_service))
       .build()
       .unwrap();
 
@@ -236,7 +358,8 @@ mod tests {
       .await
       .unwrap();
 
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    // With extractors, missing user_id header returns 400 Bad Request
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
   }
 
   #[rstest]
