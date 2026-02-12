@@ -189,6 +189,40 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   ],
 };
 
+// Draft with multiple tool types where one has instances and another has none
+export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
+  id: REQUEST_ID,
+  app_client_id: APP_CLIENT_ID,
+  app_name: 'Mixed Tool App',
+  app_description: 'An app with mixed tool availability',
+  flow_type: 'popup',
+  status: 'draft',
+  requested: {
+    toolset_types: [{ tool_type: 'builtin-exa-search' }, { tool_type: 'builtin-calculator' }],
+  },
+  tools_info: [
+    {
+      tool_type: 'builtin-exa-search',
+      name: 'Exa Web Search',
+      description: 'Search the web using Exa AI',
+      instances: [
+        {
+          id: 'instance-1',
+          name: 'My Exa Instance',
+          enabled: true,
+          has_api_key: true,
+        },
+      ],
+    },
+    {
+      tool_type: 'builtin-calculator',
+      name: 'Calculator',
+      description: 'Perform calculations',
+      instances: [],
+    },
+  ],
+};
+
 // Convenience constant for test IDs
 export const MOCK_REQUEST_ID = REQUEST_ID;
 export const MOCK_APP_CLIENT_ID = APP_CLIENT_ID;

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,11 +29,15 @@ import type { ApproveAccessRequestBody, ToolTypeReviewInfo } from '@/hooks/useAp
 const ToolTypeCard = ({
   toolInfo,
   selectedInstance,
+  isApproved,
   onSelectInstance,
+  onToggleApproval,
 }: {
   toolInfo: ToolTypeReviewInfo;
   selectedInstance: string | undefined;
+  isApproved: boolean;
   onSelectInstance: (toolType: string, instanceId: string) => void;
+  onToggleApproval: (toolType: string, approved: boolean) => void;
 }) => {
   const hasInstances = toolInfo.instances.length > 0;
   const validInstances = toolInfo.instances.filter((i) => i.enabled && i.has_api_key);
@@ -40,57 +45,66 @@ const ToolTypeCard = ({
   return (
     <Card data-testid={`review-tool-${toolInfo.tool_type}`} className="mb-3">
       <CardContent className="pt-4 pb-4">
-        <div className="flex flex-col gap-2">
-          <div className="font-medium">{toolInfo.name}</div>
-          <div className="text-sm text-muted-foreground">{toolInfo.description}</div>
+        <div className="flex items-start gap-3">
+          <Checkbox
+            checked={isApproved}
+            onCheckedChange={(checked) => onToggleApproval(toolInfo.tool_type, checked === true)}
+            title="Uncheck to deny this tool type"
+            data-testid={`review-tool-checkbox-${toolInfo.tool_type}`}
+            className="mt-1"
+          />
+          <div className={`flex flex-col gap-2 flex-1 ${!isApproved ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className="font-medium">{toolInfo.name}</div>
+            <div className="text-sm text-muted-foreground">{toolInfo.description}</div>
 
-          {!hasInstances ? (
-            <Alert variant="destructive" data-testid={`review-no-instances-${toolInfo.tool_type}`}>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No instances configured for this tool type. You need to configure an instance before you can approve.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <Select
-              value={selectedInstance ?? ''}
-              onValueChange={(value) => onSelectInstance(toolInfo.tool_type, value)}
-              data-testid={`review-instance-select-${toolInfo.tool_type}`}
-            >
-              <SelectTrigger data-testid={`review-instance-select-${toolInfo.tool_type}`}>
-                <SelectValue placeholder="Select an instance..." />
-              </SelectTrigger>
-              <SelectContent>
-                {toolInfo.instances.map((instance) => {
-                  const isDisabled = !instance.enabled || !instance.has_api_key;
-                  const statusLabel = !instance.enabled ? '(disabled)' : !instance.has_api_key ? '(no API key)' : '';
+            {!hasInstances ? (
+              <Alert variant="destructive" data-testid={`review-no-instances-${toolInfo.tool_type}`}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No instances configured for this tool type. You need to configure an instance before you can approve.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Select
+                value={selectedInstance ?? ''}
+                onValueChange={(value) => onSelectInstance(toolInfo.tool_type, value)}
+                data-testid={`review-instance-select-${toolInfo.tool_type}`}
+              >
+                <SelectTrigger data-testid={`review-instance-select-${toolInfo.tool_type}`}>
+                  <SelectValue placeholder="Select an instance..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {toolInfo.instances.map((instance) => {
+                    const isDisabled = !instance.enabled || !instance.has_api_key;
+                    const statusLabel = !instance.enabled ? '(disabled)' : !instance.has_api_key ? '(no API key)' : '';
 
-                  return (
-                    <SelectItem
-                      key={instance.id}
-                      value={instance.id}
-                      disabled={isDisabled}
-                      data-testid={`review-instance-option-${instance.id}`}
-                    >
-                      <span className="flex items-center gap-2">
-                        {instance.name}
-                        {statusLabel && <span className="text-muted-foreground text-xs">{statusLabel}</span>}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          )}
+                    return (
+                      <SelectItem
+                        key={instance.id}
+                        value={instance.id}
+                        disabled={isDisabled}
+                        data-testid={`review-instance-option-${instance.id}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {instance.name}
+                          {statusLabel && <span className="text-muted-foreground text-xs">{statusLabel}</span>}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
 
-          {hasInstances && validInstances.length === 0 && (
-            <Alert variant="destructive" data-testid={`review-no-valid-instances-${toolInfo.tool_type}`}>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                All instances are disabled or missing API keys. Configure an instance to approve.
-              </AlertDescription>
-            </Alert>
-          )}
+            {hasInstances && validInstances.length === 0 && (
+              <Alert variant="destructive" data-testid={`review-no-valid-instances-${toolInfo.tool_type}`}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  All instances are disabled or missing API keys. Configure an instance to approve.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -162,6 +176,7 @@ const ReviewContent = () => {
 
   const { showError } = useToastMessages();
   const [selectedInstances, setSelectedInstances] = useState<Record<string, string>>({});
+  const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: reviewData, isLoading, error } = useAppAccessRequestReview(id);
@@ -190,19 +205,38 @@ const ReviewContent = () => {
     },
   });
 
-  // Check if all tool types have a valid instance selected
-  const allToolTypesSelected = useMemo(() => {
+  // Initialize all tool types as approved (checked) by default
+  useEffect(() => {
+    if (reviewData?.tools_info) {
+      const initial: Record<string, boolean> = {};
+      reviewData.tools_info.forEach((tool) => {
+        initial[tool.tool_type] = true;
+      });
+      setApprovedTools(initial);
+    }
+  }, [reviewData]);
+
+  // Check if approved (checked) tool types have a valid instance selected
+  const canApprove = useMemo(() => {
     if (!reviewData?.tools_info) return false;
     return reviewData.tools_info.every((tool) => {
-      // If no instances at all, can't approve
+      // Denied (unchecked) tool types are always valid
+      if (!approvedTools[tool.tool_type]) return true;
+      // Approved tool types require valid instance selection
       if (tool.instances.length === 0) return false;
-      // If no valid instances, can't approve
       const validInstances = tool.instances.filter((i) => i.enabled && i.has_api_key);
       if (validInstances.length === 0) return false;
-      // Must have a selection
       return !!selectedInstances[tool.tool_type];
     });
-  }, [reviewData, selectedInstances]);
+  }, [reviewData, selectedInstances, approvedTools]);
+
+  // Compute approve button label
+  const approvedCount = useMemo(() => {
+    if (!reviewData?.tools_info) return 0;
+    return reviewData.tools_info.filter((t) => approvedTools[t.tool_type]).length;
+  }, [reviewData, approvedTools]);
+
+  const totalCount = reviewData?.tools_info?.length ?? 0;
 
   // No id query param
   if (!id) {
@@ -246,14 +280,18 @@ const ReviewContent = () => {
     setSelectedInstances((prev) => ({ ...prev, [toolType]: instanceId }));
   };
 
+  const handleToggleApproval = (toolType: string, approved: boolean) => {
+    setApprovedTools((prev) => ({ ...prev, [toolType]: approved }));
+  };
+
   const handleApprove = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequestBody = {
       approved: {
         toolset_types: reviewData.tools_info.map((tool) => ({
           tool_type: tool.tool_type,
-          status: selectedInstances[tool.tool_type] ? 'approved' : 'denied',
-          instance_id: selectedInstances[tool.tool_type],
+          status: approvedTools[tool.tool_type] ? 'approved' : 'denied',
+          instance_id: approvedTools[tool.tool_type] ? selectedInstances[tool.tool_type] : undefined,
         })),
       },
     };
@@ -297,7 +335,9 @@ const ReviewContent = () => {
                 key={toolInfo.tool_type}
                 toolInfo={toolInfo}
                 selectedInstance={selectedInstances[toolInfo.tool_type]}
+                isApproved={approvedTools[toolInfo.tool_type] ?? true}
                 onSelectInstance={handleSelectInstance}
+                onToggleApproval={handleToggleApproval}
               />
             ))}
           </div>
@@ -313,18 +353,16 @@ const ReviewContent = () => {
                 'Deny'
               )}
             </Button>
-            <Button
-              onClick={handleApprove}
-              disabled={!allToolTypesSelected || isSubmitting}
-              data-testid="review-approve-button"
-            >
+            <Button onClick={handleApprove} disabled={!canApprove || isSubmitting} data-testid="review-approve-button">
               {approveMutation.isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Approving...
                 </>
+              ) : approvedCount === totalCount ? (
+                'Approve All'
               ) : (
-                'Approve'
+                'Approve Selected'
               )}
             </Button>
           </div>

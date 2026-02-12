@@ -66,15 +66,24 @@ export function mockAppAccessRequestReviewError(
 
 /**
  * Mock handler for PUT /access-requests/:id/approve - success case
+ * Optionally captures the request body for assertion via onBody callback
  */
-export function mockAppAccessRequestApprove(id: string, { stub }: { stub?: boolean } = {}) {
+export function mockAppAccessRequestApprove(
+  id: string,
+  { stub, onBody }: { stub?: boolean; onBody?: (body: unknown) => void } = {}
+) {
   let hasBeenCalled = false;
 
   return [
-    typedHttp.put(ENDPOINT_ACCESS_REQUESTS_APPROVE, async ({ params, response }) => {
+    typedHttp.put(ENDPOINT_ACCESS_REQUESTS_APPROVE, async ({ params, request, response }) => {
       if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
+
+      if (onBody) {
+        const body = await request.json();
+        onBody(body);
+      }
 
       return response(200 as const).empty();
     }),

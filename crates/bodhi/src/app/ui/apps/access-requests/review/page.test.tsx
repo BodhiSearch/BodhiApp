@@ -7,6 +7,7 @@ import {
   MOCK_REQUEST_ID,
   mockApprovedReviewResponse,
   mockDeniedReviewResponse,
+  mockDraftMultiToolMixedResponse,
   mockDraftMultiToolResponse,
   mockDraftNoInstancesResponse,
   mockDraftRedirectResponse,
@@ -516,5 +517,303 @@ describe('ReviewAccessRequestPage - Multi-Tool Types', () => {
 
     expect(screen.getByText('Exa Web Search')).toBeInTheDocument();
     expect(screen.getByText('Weather Lookup')).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Partial Approve
+// ============================================================================
+
+describe('ReviewAccessRequestPage - Partial Approve', () => {
+  it('checkbox renders checked by default for each tool type', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-checkbox-builtin-exa-search')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
+    expect(checkbox).toHaveAttribute('data-state', 'checked');
+  });
+
+  it('unchecking checkbox grays out card content', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-checkbox-builtin-exa-search')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(checkbox).toHaveAttribute('data-state', 'unchecked');
+    });
+
+    // The content area should have opacity-50 class
+    const card = screen.getByTestId('review-tool-builtin-exa-search');
+    const contentDiv = card.querySelector('.opacity-50');
+    expect(contentDiv).toBeInTheDocument();
+  });
+
+  it('unchecking checkbox enables Approve without instance selection', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Initially disabled (no instance selected, checkbox checked)
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Uncheck the checkbox to deny the tool
+    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
+    await user.click(checkbox);
+
+    // Now approve should be enabled (denied tool skips validation)
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('instance selection preserved across checkbox toggle', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-instance-select-builtin-exa-search')).toBeInTheDocument();
+    });
+
+    // Select an instance
+    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('My Exa Instance');
+    await user.click(option);
+
+    // Verify instance is selected
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+
+    // Uncheck checkbox
+    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(checkbox).toHaveAttribute('data-state', 'unchecked');
+    });
+
+    // Re-check checkbox
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(checkbox).toHaveAttribute('data-state', 'checked');
+    });
+
+    // Instance should still be selected -- approve button still enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('no-instances tool: checked by default, blocks Approve, unchecking enables Approve', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftNoInstancesResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Approve disabled (no instances, checkbox checked by default)
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Checkbox should be checked by default
+    const checkbox = screen.getByTestId('review-tool-checkbox-builtin-exa-search');
+    expect(checkbox).toHaveAttribute('data-state', 'checked');
+
+    // Uncheck to deny
+    await user.click(checkbox);
+
+    // Now approve should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('multi-tool partial: approve one tool, deny another via checkbox', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftMultiToolResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, {
+        onBody: (body) => {
+          capturedBody = body;
+        },
+      })
+    );
+    setupWindowClose();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
+      expect(screen.getByTestId('review-tool-builtin-weather')).toBeInTheDocument();
+    });
+
+    // Select instance for exa-search
+    const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(exaSelect);
+    const exaOption = await screen.findByText('My Exa Instance');
+    await user.click(exaOption);
+
+    // Uncheck weather tool to deny it
+    const weatherCheckbox = screen.getByTestId('review-tool-checkbox-builtin-weather');
+    await user.click(weatherCheckbox);
+
+    // Approve should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+
+    // Click approve
+    await user.click(screen.getByTestId('review-approve-button'));
+
+    // Verify the body was captured
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+
+    // Verify body structure
+    const body = capturedBody as {
+      approved: {
+        toolset_types: Array<{ tool_type: string; status: string; instance_id?: string }>;
+      };
+    };
+    expect(body.approved.toolset_types).toHaveLength(2);
+
+    const exaApproval = body.approved.toolset_types.find((t) => t.tool_type === 'builtin-exa-search');
+    expect(exaApproval?.status).toBe('approved');
+    expect(exaApproval?.instance_id).toBe('instance-1');
+
+    const weatherApproval = body.approved.toolset_types.find((t) => t.tool_type === 'builtin-weather');
+    expect(weatherApproval?.status).toBe('denied');
+    expect(weatherApproval?.instance_id).toBeUndefined();
+  });
+
+  it('multi-tool mixed: one with instances, one without -- uncheck no-instances tool to enable Approve', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMultiToolMixedResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
+      expect(screen.getByTestId('review-tool-builtin-calculator')).toBeInTheDocument();
+    });
+
+    // Approve initially disabled (calculator has no instances)
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Uncheck calculator (no instances, must deny)
+    const calcCheckbox = screen.getByTestId('review-tool-checkbox-builtin-calculator');
+    await user.click(calcCheckbox);
+
+    // Still disabled -- exa-search has no instance selected yet
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Select instance for exa-search
+    const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(exaSelect);
+    const exaOption = await screen.findByText('My Exa Instance');
+    await user.click(exaOption);
+
+    // Now approve should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('button shows "Approve All" when all checkboxes checked and instances selected', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Select instance
+    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('My Exa Instance');
+    await user.click(option);
+
+    // Button should say "Approve All"
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve All');
+    });
+  });
+
+  it('button shows "Approve Selected" when some checkboxes unchecked', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMultiToolResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-builtin-weather')).toBeInTheDocument();
+    });
+
+    // Uncheck one tool
+    const weatherCheckbox = screen.getByTestId('review-tool-checkbox-builtin-weather');
+    await user.click(weatherCheckbox);
+
+    // Button should say "Approve Selected"
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve Selected');
+    });
   });
 });
