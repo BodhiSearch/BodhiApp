@@ -54,10 +54,9 @@ impl SqliteDbService {
   async fn seed_toolset_configs(&self) -> Result<(), DbError> {
     sqlx::query(
       "INSERT OR IGNORE INTO app_toolset_configs
-       (scope, toolset_type, enabled, updated_by, created_at, updated_at)
-       VALUES (?, ?, 0, 'system', strftime('%s', 'now'), strftime('%s', 'now'))",
+       (toolset_type, enabled, updated_by, created_at, updated_at)
+       VALUES (?, 0, 'system', strftime('%s', 'now'), strftime('%s', 'now'))",
     )
-    .bind("scope_toolset-builtin-exa-web-search")
     .bind("builtin-exa-search")
     .execute(&self.pool)
     .await?;

@@ -34,8 +34,7 @@ pub const KEY_HEADER_BODHIAPP_USERNAME: &str = bodhi_header!("Username");
 pub const KEY_HEADER_BODHIAPP_ROLE: &str = bodhi_header!("Role");
 pub const KEY_HEADER_BODHIAPP_SCOPE: &str = bodhi_header!("Scope");
 pub const KEY_HEADER_BODHIAPP_USER_ID: &str = bodhi_header!("User-Id");
-// Phase 7.6: External app tool authorization headers
-pub const KEY_HEADER_BODHIAPP_TOOL_SCOPES: &str = bodhi_header!("Tool-Scopes");
+// External app authorization headers
 pub const KEY_HEADER_BODHIAPP_AZP: &str = bodhi_header!("Azp");
 // Phase 4: Access request authorization header
 pub const KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID: &str = bodhi_header!("Access-Request-Id");
@@ -159,21 +158,8 @@ pub async fn auth_middleware(
       resource_scope.to_string().parse().unwrap(),
     );
 
-    // Extract and set toolset scopes and user_id from the exchanged token
-    // These are used by toolset_auth_middleware for external app toolset authorization
+    // Extract and set user_id and access_request_id from the exchanged token
     if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-      // Extract toolset scopes (space-separated, matches JWT scope format)
-      let toolset_scopes: Vec<&str> = scope_claims
-        .scope
-        .split_whitespace()
-        .filter(|s| s.starts_with("scope_toolset-"))
-        .collect();
-      if !toolset_scopes.is_empty() {
-        req.headers_mut().insert(
-          KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-          toolset_scopes.join(" ").parse().unwrap(),
-        );
-      }
       // Set user_id from sub claim (required for toolset execution)
       req.headers_mut().insert(
         KEY_HEADER_BODHIAPP_USER_ID,
@@ -275,20 +261,6 @@ pub async fn inject_optional_auth_info(
           KEY_HEADER_BODHIAPP_SCOPE,
           resource_scope.to_string().parse().unwrap(),
         );
-        // Extract and set toolset scopes from the exchanged token
-        if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-          let toolset_scopes: Vec<&str> = scope_claims
-            .scope
-            .split_whitespace()
-            .filter(|s| s.starts_with("scope_toolset-"))
-            .collect();
-          if !toolset_scopes.is_empty() {
-            req.headers_mut().insert(
-              KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-              toolset_scopes.join(" ").parse().unwrap(),
-            );
-          }
-        }
       }
     }
   } else if is_same_origin(req.headers()) {

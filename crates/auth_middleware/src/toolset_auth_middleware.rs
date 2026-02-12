@@ -224,7 +224,8 @@ mod tests {
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{
-    test_utils::{AppServiceStubBuilder, MockDbService},
+    db::AccessRequestRepository,
+    test_utils::{AppServiceStubBuilder, MockDbService, TestDbService},
     MockToolService,
   };
   use std::sync::Arc;
@@ -381,5 +382,348 @@ mod tests {
       .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+  }
+
+  // OAuth access request validation tests
+  fn test_router_with_db_and_tool_service(
+    db_service: Arc<TestDbService>,
+    mock_tool_service: MockToolService,
+  ) -> Router {
+    let app_service = AppServiceStubBuilder::default()
+      .with_tool_service(Arc::new(mock_tool_service))
+      .db_service(db_service)
+      .build()
+      .unwrap();
+
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+
+    Router::new()
+      .route(
+        "/toolsets/{id}/execute/{method}",
+        post(test_handler).route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware)),
+      )
+      .with_state(state)
+  }
+
+  #[rstest]
+  #[case::oauth_approved_instance_in_list("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, false)]
+  #[case::oauth_denied("denied", None, StatusCode::FORBIDDEN, false)]
+  #[case::oauth_draft("draft", None, StatusCode::FORBIDDEN, false)]
+  #[case::oauth_expired("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, true)]
+  #[case::oauth_not_in_approved_list("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"different-toolset-id"}]}"#.to_string()), StatusCode::FORBIDDEN, false)]
+  #[tokio::test]
+  async fn test_oauth_access_request_validation(
+    test_instance: Toolset,
+    #[case] status: &str,
+    #[case] approved: Option<String>,
+    #[case] expected_status: StatusCode,
+    #[case] is_expired: bool,
+  ) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+    let now = test_db.now();
+
+    // Adjust expires_at for expired case
+    let expires_at = if is_expired {
+      (now - chrono::Duration::hours(1)).timestamp()
+    } else {
+      (now + chrono::Duration::hours(1)).timestamp()
+    };
+
+    // Create access request record
+    let access_request_row = services::db::AppAccessRequestRow {
+      id: "ar-uuid".to_string(),
+      app_client_id: "app1".to_string(),
+      app_name: None,
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: status.to_string(),
+      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      approved,
+      user_id: Some("user123".to_string()),
+      resource_scope: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at,
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+
+    test_db.create(&access_request_row).await.unwrap();
+
+    // Setup mock tool service
+    let instance_id = test_instance.id.clone();
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+    mock_tool_service
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_clone.id)
+      .times(1)
+      .returning(move |_, _| Ok(Some(test_instance.clone())));
+
+    // Only expect is_type_enabled for cases that pass OAuth validation
+    if status == "approved" && expected_status == StatusCode::OK {
+      mock_tool_service
+        .expect_is_type_enabled()
+        .withf(|tool_type| tool_type == "builtin-exa-search")
+        .times(1)
+        .returning(|_| Ok(true));
+    }
+
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri(format!("/toolsets/{}/execute/search", instance_id))
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
+          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), expected_status);
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_oauth_app_client_mismatch(test_instance: Toolset) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+    let now = test_db.now();
+
+    // Create access request with app_client_id = "app1"
+    let access_request_row = services::db::AppAccessRequestRow {
+      id: "ar-uuid".to_string(),
+      app_client_id: "app1".to_string(),
+      app_name: None,
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      approved: Some(
+        r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
+          .to_string(),
+      ),
+      user_id: Some("user123".to_string()),
+      resource_scope: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at: (now + chrono::Duration::hours(1)).timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+
+    test_db.create(&access_request_row).await.unwrap();
+
+    // Setup mock tool service
+    let instance_id = test_instance.id.clone();
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+    mock_tool_service
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_clone.id)
+      .times(1)
+      .returning(move |_, _| Ok(Some(test_instance.clone())));
+
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+
+    // Send request with azp = "app2" (mismatch)
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri(format!("/toolsets/{}/execute/search", instance_id))
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
+          .header(KEY_HEADER_BODHIAPP_AZP, "app2")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_oauth_user_mismatch(test_instance: Toolset) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+    let now = test_db.now();
+
+    // Create access request with user_id = "user1"
+    let access_request_row = services::db::AppAccessRequestRow {
+      id: "ar-uuid".to_string(),
+      app_client_id: "app1".to_string(),
+      app_name: None,
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      approved: Some(
+        r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
+          .to_string(),
+      ),
+      user_id: Some("user1".to_string()),
+      resource_scope: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at: (now + chrono::Duration::hours(1)).timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+
+    test_db.create(&access_request_row).await.unwrap();
+
+    // Setup mock tool service
+    let instance_id = test_instance.id.clone();
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+    mock_tool_service
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user2" && id == &instance_clone.id)
+      .times(1)
+      .returning(move |_, _| Ok(Some(test_instance.clone())));
+
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+
+    // Send request with user_id = "user2" (mismatch)
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri(format!("/toolsets/{}/execute/search", instance_id))
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user2")
+          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
+          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_oauth_auto_approved_no_toolsets(test_instance: Toolset) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+    let now = test_db.now();
+
+    // Create access request with approved = NULL (auto-approved with no tools)
+    let access_request_row = services::db::AppAccessRequestRow {
+      id: "ar-uuid".to_string(),
+      app_client_id: "app1".to_string(),
+      app_name: None,
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: "approved".to_string(),
+      requested: r#"{"toolset_types":[]}"#.to_string(),
+      approved: None,
+      user_id: Some("user123".to_string()),
+      resource_scope: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at: (now + chrono::Duration::hours(1)).timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+
+    test_db.create(&access_request_row).await.unwrap();
+
+    // Setup mock tool service
+    let instance_id = test_instance.id.clone();
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+    mock_tool_service
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_clone.id)
+      .times(1)
+      .returning(move |_, _| Ok(Some(test_instance.clone())));
+
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri(format!("/toolsets/{}/execute/search", instance_id))
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
+          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_oauth_access_request_not_found(test_instance: Toolset) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+
+    // Don't create any access request record
+
+    // Setup mock tool service
+    let instance_id = test_instance.id.clone();
+    let mut mock_tool_service = MockToolService::new();
+    let instance_clone = test_instance.clone();
+    mock_tool_service
+      .expect_get()
+      .withf(move |user_id, id| user_id == "user123" && id == &instance_clone.id)
+      .times(1)
+      .returning(move |_, _| Ok(Some(test_instance.clone())));
+
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri(format!("/toolsets/{}/execute/search", instance_id))
+          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
+          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid-nonexistent")
+          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
   }
 }

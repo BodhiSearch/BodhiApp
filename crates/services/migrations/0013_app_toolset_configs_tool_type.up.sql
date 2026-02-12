@@ -1,14 +1,31 @@
--- Add toolset_type column to app_toolset_configs
-ALTER TABLE app_toolset_configs ADD COLUMN toolset_type TEXT;
+-- SQLite doesn't allow dropping columns with UNIQUE constraints
+-- Rebuild table without scope and scope_uuid columns
 
--- Migrate existing data: scope_toolset-builtin-exa-web-search -> builtin-exa-search
-UPDATE app_toolset_configs
-SET toolset_type = 'builtin-exa-search'
-WHERE scope = 'scope_toolset-builtin-exa-web-search';
+CREATE TABLE app_toolset_configs_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    toolset_type TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    updated_by TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
 
--- Drop old scope_uuid column and its index
-DROP INDEX IF EXISTS idx_app_toolset_configs_scope_uuid;
-ALTER TABLE app_toolset_configs DROP COLUMN scope_uuid;
+-- Copy data, migrating scope to toolset_type
+INSERT INTO app_toolset_configs_new (id, toolset_type, enabled, updated_by, created_at, updated_at)
+SELECT
+    id,
+    CASE
+        WHEN scope = 'scope_toolset-builtin-exa-web-search' THEN 'builtin-exa-search'
+        ELSE REPLACE(scope, 'scope_toolset-', '')
+    END,
+    enabled,
+    updated_by,
+    created_at,
+    updated_at
+FROM app_toolset_configs;
 
--- Create index on toolset_type for lookups
-CREATE INDEX IF NOT EXISTS idx_app_toolset_configs_toolset_type ON app_toolset_configs(toolset_type);
+DROP TABLE app_toolset_configs;
+ALTER TABLE app_toolset_configs_new RENAME TO app_toolset_configs;
+
+-- Create UNIQUE index on toolset_type
+CREATE UNIQUE INDEX idx_app_toolset_configs_toolset_type ON app_toolset_configs(toolset_type);

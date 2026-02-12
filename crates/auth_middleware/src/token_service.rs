@@ -201,17 +201,15 @@ impl DefaultTokenService {
       ))?;
     }
 
-    // Extract user scopes, toolset scopes, and access request scopes from the external token for exchange
+    // Extract user scopes and access request scopes from the external token for exchange
     // scope_user_* are user-level permissions
-    // scope_toolset-* are toolset access permissions from external apps
     // scope_access_request_* are access request-based authorization scopes
     let mut scopes: Vec<&str> = claims
       .scope
       .split_whitespace()
       .filter(|s| {
         s.starts_with("scope_user_")
-          || s.starts_with("scope_toolset-")
-          || s.starts_with("scope_access_request_")
+          || s.starts_with("scope_access_request:")
       })
       .collect();
     // Need at least one user scope for basic access

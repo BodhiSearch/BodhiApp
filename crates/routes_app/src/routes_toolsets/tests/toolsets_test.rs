@@ -1,9 +1,7 @@
 use crate::{routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse};
 use anyhow_trace::anyhow_trace;
 use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
-use auth_middleware::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-};
+use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
@@ -125,9 +123,7 @@ async fn test_list_toolsets(
     request_builder =
       request_builder.header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string());
   } else if is_oauth_filtered {
-    request_builder = request_builder
-      .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
-      .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "");
+    request_builder = request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user");
   }
 
   let response = app.oneshot(request_builder.body(Body::empty())?).await?;
@@ -236,10 +232,6 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
         .uri("/toolsets")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
-        .header(
-          KEY_HEADER_BODHIAPP_TOOL_SCOPES,
-          "scope_toolset-builtin-exa-web-search",
-        )
         .body(Body::empty())?,
     )
     .await?;
@@ -284,7 +276,6 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
         .uri("/toolsets")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
         .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
-        .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "")
         .body(Body::empty())?,
     )
     .await?;
@@ -684,9 +675,8 @@ async fn test_list_toolset_types(
     request_builder =
       request_builder.header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string());
   } else {
-    request_builder = request_builder
-      .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_admin")
-      .header(KEY_HEADER_BODHIAPP_TOOL_SCOPES, "");
+    request_builder =
+      request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_admin");
   }
 
   let response = app.oneshot(request_builder.body(Body::empty())?).await?;
