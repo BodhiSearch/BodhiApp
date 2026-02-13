@@ -1,7 +1,7 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus,
   ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository, TokenStatus,
   ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
@@ -1730,75 +1730,6 @@ impl ToolsetRepository for SqliteDbService {
     ))
   }
 
-  async fn get_app_client_toolset_config(
-    &self,
-    app_client_id: &str,
-  ) -> Result<Option<AppClientToolsetConfigRow>, DbError> {
-    let result = sqlx::query_as::<_, (i64, String, Option<String>, String, String, i64, i64)>(
-      "SELECT id, app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at
-       FROM app_client_toolset_configs WHERE app_client_id = ?",
-    )
-    .bind(app_client_id)
-    .fetch_optional(&self.pool)
-    .await?;
-
-    Ok(result.map(
-      |(
-        id,
-        app_client_id,
-        config_version,
-        toolsets_json,
-        resource_scope,
-        created_at,
-        updated_at,
-      )| {
-        AppClientToolsetConfigRow {
-          id,
-          app_client_id,
-          config_version,
-          toolsets_json,
-          resource_scope,
-          created_at,
-          updated_at,
-        }
-      },
-    ))
-  }
-
-  async fn upsert_app_client_toolset_config(
-    &self,
-    config: &AppClientToolsetConfigRow,
-  ) -> Result<AppClientToolsetConfigRow, DbError> {
-    // SQLite upsert - insert or replace based on unique app_client_id
-    let result = sqlx::query_as::<_, (i64, String, Option<String>, String, String, i64, i64)>(
-      "INSERT INTO app_client_toolset_configs (app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(app_client_id) DO UPDATE SET
-         config_version = excluded.config_version,
-         toolsets_json = excluded.toolsets_json,
-         resource_scope = excluded.resource_scope,
-         updated_at = excluded.updated_at
-       RETURNING id, app_client_id, config_version, toolsets_json, resource_scope, created_at, updated_at",
-    )
-    .bind(&config.app_client_id)
-    .bind(&config.config_version)
-    .bind(&config.toolsets_json)
-    .bind(&config.resource_scope)
-    .bind(config.created_at)
-    .bind(config.updated_at)
-    .fetch_one(&self.pool)
-    .await?;
-
-    Ok(AppClientToolsetConfigRow {
-      id: result.0,
-      app_client_id: result.1,
-      config_version: result.2,
-      toolsets_json: result.3,
-      resource_scope: result.4,
-      created_at: result.5,
-      updated_at: result.6,
-    })
-  }
 }
 
 fn parse_user_alias_row(

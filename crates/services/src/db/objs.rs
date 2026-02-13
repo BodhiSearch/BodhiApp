@@ -200,21 +200,6 @@ pub struct ToolsetRow {
 }
 
 // ============================================================================
-// AppClientToolsetConfigRow - Database row for cached app-client toolset configuration
-// ============================================================================
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct AppClientToolsetConfigRow {
-  pub id: i64,
-  pub app_client_id: String,
-  pub config_version: Option<String>,
-  pub toolsets_json: String,
-  pub resource_scope: String,
-  pub created_at: i64,
-  pub updated_at: i64,
-}
-
-// ============================================================================
 // AppToolsetConfigRow - Database row for app-level toolset type configuration
 // ============================================================================
 

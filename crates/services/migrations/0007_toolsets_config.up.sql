@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS toolsets (
     id TEXT PRIMARY KEY,                   -- UUID as TEXT
     user_id TEXT NOT NULL,                 -- JWT 'sub' claim (no FK)
-    scope_uuid TEXT NOT NULL,              -- Keycloak client scope UUID (environment-specific)
+    toolset_type TEXT,                     -- Toolset type identifier (e.g., 'builtin-exa-search')
     name TEXT NOT NULL,                    -- user-defined instance name
     description TEXT,                      -- optional instance description
     enabled INTEGER NOT NULL DEFAULT 0,    -- boolean as integer
@@ -21,28 +21,21 @@ CREATE TABLE IF NOT EXISTS toolsets (
 -- Create index on user_id for faster lookups by user
 CREATE INDEX IF NOT EXISTS idx_toolsets_user_id ON toolsets(user_id);
 
--- Create index on scope_uuid for faster lookups by type
-CREATE INDEX IF NOT EXISTS idx_toolsets_scope_uuid ON toolsets(scope_uuid);
+-- Create index on toolset_type for faster lookups by type
+CREATE INDEX IF NOT EXISTS idx_toolsets_toolset_type ON toolsets(toolset_type);
 
--- Create composite index on user_id and scope_uuid for efficient filtering
-CREATE INDEX IF NOT EXISTS idx_toolsets_user_scope_uuid ON toolsets(user_id, scope_uuid);
+-- Create composite index on user_id and toolset_type for efficient filtering
+CREATE INDEX IF NOT EXISTS idx_toolsets_user_toolset_type ON toolsets(user_id, toolset_type);
 
 -- Create the app_toolset_configs table for app-level toolset configuration (admin-controlled)
 CREATE TABLE IF NOT EXISTS app_toolset_configs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    scope TEXT NOT NULL UNIQUE,            -- OAuth scope string (e.g., "scope_toolset-builtin-exa-web-search")
-    scope_uuid TEXT NOT NULL,              -- Keycloak client scope UUID (environment-specific)
+    toolset_type TEXT NOT NULL,            -- Toolset type identifier (e.g., 'builtin-exa-search')
     enabled INTEGER NOT NULL DEFAULT 0,    -- boolean as integer
     updated_by TEXT NOT NULL,              -- user_id of admin who last updated
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL
 );
 
--- Create index on scope for faster lookups
-CREATE INDEX IF NOT EXISTS idx_app_toolset_configs_scope ON app_toolset_configs(scope);
-
--- Create index on scope_uuid for Keycloak lookups
-CREATE INDEX IF NOT EXISTS idx_app_toolset_configs_scope_uuid ON app_toolset_configs(scope_uuid);
-
--- Note: Seed data is now inserted programmatically in DbService::seed_toolset_configs()
--- to support environment-specific scope_uuid values (dev vs prod)
+-- Create UNIQUE index on toolset_type
+CREATE UNIQUE INDEX idx_app_toolset_configs_toolset_type ON app_toolset_configs(toolset_type);

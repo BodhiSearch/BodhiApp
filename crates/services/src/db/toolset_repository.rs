@@ -1,6 +1,4 @@
-use crate::db::{
-  ApiKeyUpdate, AppClientToolsetConfigRow, AppToolsetConfigRow, DbError, ToolsetRow,
-};
+use crate::db::{ApiKeyUpdate, AppToolsetConfigRow, DbError, ToolsetRow};
 
 #[async_trait::async_trait]
 pub trait ToolsetRepository: Send + Sync {
@@ -47,15 +45,4 @@ pub trait ToolsetRepository: Send + Sync {
     &self,
     toolset_type: &str,
   ) -> Result<Option<AppToolsetConfigRow>, DbError>;
-
-  // App-Client toolset config
-  async fn get_app_client_toolset_config(
-    &self,
-    app_client_id: &str,
-  ) -> Result<Option<AppClientToolsetConfigRow>, DbError>;
-
-  async fn upsert_app_client_toolset_config(
-    &self,
-    config: &AppClientToolsetConfigRow,
-  ) -> Result<AppClientToolsetConfigRow, DbError>;
 }

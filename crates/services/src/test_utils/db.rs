@@ -1,6 +1,6 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppClientToolsetConfigRow, AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
   ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
   ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
@@ -517,27 +517,6 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("get_app_toolset_config"))
   }
 
-  async fn get_app_client_toolset_config(
-    &self,
-    app_client_id: &str,
-  ) -> Result<Option<AppClientToolsetConfigRow>, DbError> {
-    self
-      .inner
-      .get_app_client_toolset_config(app_client_id)
-      .await
-      .tap(|_| self.notify("get_app_client_toolset_config"))
-  }
-
-  async fn upsert_app_client_toolset_config(
-    &self,
-    config: &AppClientToolsetConfigRow,
-  ) -> Result<AppClientToolsetConfigRow, DbError> {
-    self
-      .inner
-      .upsert_app_client_toolset_config(config)
-      .await
-      .tap(|_| self.notify("upsert_app_client_toolset_config"))
-  }
 }
 
 #[async_trait::async_trait]
@@ -734,8 +713,6 @@ mockall::mock! {
     async fn set_app_toolset_enabled(&self, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigRow, DbError>;
     async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError>;
     async fn get_app_toolset_config(&self, toolset_type: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
-    async fn get_app_client_toolset_config(&self, app_client_id: &str) -> Result<Option<AppClientToolsetConfigRow>, DbError>;
-    async fn upsert_app_client_toolset_config(&self, config: &AppClientToolsetConfigRow) -> Result<AppClientToolsetConfigRow, DbError>;
   }
 
   #[async_trait::async_trait]
