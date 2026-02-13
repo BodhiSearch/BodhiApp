@@ -48,8 +48,11 @@ test.backend: ## Run Rust backend tests
 	cargo test
 	cargo test -p bodhi --features native
 
-test.ui: ## Run frontend and UI integration tests
+test.ui.unit: ## Run frontend unit tests
 	cd crates/bodhi && npm install && npm test
+
+test.ui: ## Run frontend and UI integration tests
+	$(MAKE) test.ui.unit
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
 test.napi: ## Run NAPI bindings tests
