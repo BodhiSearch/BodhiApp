@@ -625,7 +625,14 @@
         },
         "responses": {
           "200": {
-            "description": "Request approved"
+            "description": "Request approved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRequestActionResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request parameters",
@@ -809,7 +816,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Request denied"
+            "description": "Request denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRequestActionResponse"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request parameters",
@@ -6350,6 +6364,30 @@
   },
   "components": {
     "schemas": {
+      "AccessRequestActionResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "flow_type"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Updated status after action"
+          },
+          "flow_type": {
+            "type": "string",
+            "description": "Flow type of the access request"
+          },
+          "redirect_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Redirect URL (present for redirect flow)"
+          }
+        }
+      },
       "AccessRequestReviewResponse": {
         "type": "object",
         "required": [

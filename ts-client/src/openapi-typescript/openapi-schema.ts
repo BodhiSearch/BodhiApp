@@ -1048,6 +1048,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AccessRequestActionResponse: {
+            /** @description Updated status after action */
+            status: string;
+            /** @description Flow type of the access request */
+            flow_type: string;
+            /** @description Redirect URL (present for redirect flow) */
+            redirect_url?: string | null;
+        };
         /** @example {
          *       "app_client_id": "my-app-client",
          *       "app_description": "A sample application",
@@ -3754,7 +3762,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AccessRequestActionResponse"];
+                };
             };
             /** @description Invalid request parameters */
             400: {
@@ -3900,7 +3910,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AccessRequestActionResponse"];
+                };
             };
             /** @description Invalid request parameters */
             400: {

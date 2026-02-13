@@ -240,7 +240,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
-    tool_service.clone(),
     time_service.clone(),
     setting_service.public_server_url(),
   ));

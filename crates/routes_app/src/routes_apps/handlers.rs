@@ -1,7 +1,7 @@
 use crate::routes_apps::{
-  AccessRequestReviewResponse, AccessRequestStatusResponse, AppAccessRequestError,
-  ApproveAccessRequestBody, CreateAccessRequestBody, CreateAccessRequestResponse,
-  RequestedResources, ToolInstanceInfo, ToolTypeReviewInfo,
+  AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
+  AppAccessRequestError, ApproveAccessRequestBody, CreateAccessRequestBody,
+  CreateAccessRequestResponse, RequestedResources, ToolInstanceInfo, ToolTypeReviewInfo,
 };
 use auth_middleware::{ExtractToken, ExtractUserId};
 use axum::{
@@ -284,7 +284,7 @@ pub async fn get_access_request_review_handler(
         description = "Approval details with tool selections"
     ),
     responses(
-        (status = 200, description = "Request approved"),
+        (status = 200, description = "Request approved", body = AccessRequestActionResponse),
         (status = 400, description = "Invalid request", body = OpenAIApiError),
         (status = 404, description = "Not found", body = OpenAIApiError),
         (status = 409, description = "Already processed", body = OpenAIApiError),
@@ -299,7 +299,7 @@ pub async fn approve_access_request_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
   Json(body): Json<ApproveAccessRequestBody>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<AccessRequestActionResponse>, ApiError> {
   info!("User {} approving access request {}", user_id, id);
 
   // Validate tool instances
@@ -359,12 +359,16 @@ pub async fn approve_access_request_handler(
 
   // Call service to approve
   let access_request_service = state.app_service().access_request_service();
-  let _updated = access_request_service
+  let updated = access_request_service
     .approve_request(&id, &user_id, &token, objs_tool_approvals)
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);
-  Ok(StatusCode::OK)
+  Ok(Json(AccessRequestActionResponse {
+    status: updated.status,
+    flow_type: updated.flow_type,
+    redirect_url: updated.redirect_uri,
+  }))
 }
 
 /// Deny access request (POST /access-requests/:id/deny)
@@ -379,7 +383,7 @@ pub async fn approve_access_request_handler(
         ("id" = String, Path, description = "Access request ID")
     ),
     responses(
-        (status = 200, description = "Request denied"),
+        (status = 200, description = "Request denied", body = AccessRequestActionResponse),
         (status = 404, description = "Not found", body = OpenAIApiError),
         (status = 409, description = "Already processed", body = OpenAIApiError),
     ),
@@ -391,12 +395,16 @@ pub async fn deny_access_request_handler(
   ExtractUserId(user_id): ExtractUserId,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<AccessRequestActionResponse>, ApiError> {
   info!("User {} denying access request {}", user_id, id);
 
   let access_request_service = state.app_service().access_request_service();
-  let _updated = access_request_service.deny_request(&id, &user_id).await?;
+  let updated = access_request_service.deny_request(&id, &user_id).await?;
 
   info!("Access request {} denied by user {}", id, user_id);
-  Ok(StatusCode::OK)
+  Ok(Json(AccessRequestActionResponse {
+    status: updated.status,
+    flow_type: updated.flow_type,
+    redirect_url: updated.redirect_uri,
+  }))
 }

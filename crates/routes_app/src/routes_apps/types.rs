@@ -160,6 +160,18 @@ pub struct ToolInstanceInfo {
   pub has_api_key: bool,
 }
 
+// Response for PUT /access-requests/:id/approve and POST /access-requests/:id/deny
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AccessRequestActionResponse {
+  /// Updated status after action
+  pub status: String,
+  /// Flow type of the access request
+  pub flow_type: String,
+  /// Redirect URL (present for redirect flow)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub redirect_url: Option<String>,
+}
+
 // Request body for PUT /access-requests/:id/approve
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({

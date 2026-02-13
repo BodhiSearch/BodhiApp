@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::access_request_service::error::{AccessRequestError, Result};
 use crate::auth_service::AuthService;
 use crate::db::{AppAccessRequestRow, DbService, TimeService};
-use crate::tool_service::ToolService;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -43,7 +42,6 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
 pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
-  tool_service: Arc<dyn ToolService>,
   time_service: Arc<dyn TimeService>,
   frontend_url: String,
 }
@@ -52,14 +50,12 @@ impl DefaultAccessRequestService {
   pub fn new(
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    tool_service: Arc<dyn ToolService>,
     time_service: Arc<dyn TimeService>,
     frontend_url: String,
   ) -> Self {
     Self {
       db_service,
       auth_service,
-      tool_service,
       time_service,
       frontend_url,
     }

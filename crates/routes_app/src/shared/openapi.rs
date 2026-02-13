@@ -1,6 +1,7 @@
 use crate::{
-  AccessRequestReviewResponse, AccessRequestStatusResponse, ApiFormatsResponse, ApiKey,
-  ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody, AuthCallbackRequest,
+  AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
+  ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody,
+  AuthCallbackRequest,
   CreateAccessRequestBody, CreateAccessRequestResponse, CreateApiModelRequest, FetchModelsRequest,
   FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse, PaginationSortParams,
   PingResponse, TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
@@ -276,6 +277,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             AccessRequestStatusResponse,
             AccessRequestReviewResponse,
             ApproveAccessRequestBody,
+            AccessRequestActionResponse,
             // user management
             ListUsersParams,
             UserListResponse,
