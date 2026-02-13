@@ -12,11 +12,11 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
   flow_type: 'popup',
   status: 'draft',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [
@@ -46,11 +46,11 @@ export const mockDraftNoInstancesResponse: AccessRequestReviewResponse = {
   flow_type: 'popup',
   status: 'draft',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [],
@@ -67,11 +67,11 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   flow_type: 'popup',
   status: 'approved',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [
@@ -95,7 +95,7 @@ export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   flow_type: 'redirect',
   status: 'expired',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [],
 };
@@ -109,7 +109,7 @@ export const mockDeniedReviewResponse: AccessRequestReviewResponse = {
   flow_type: 'redirect',
   status: 'denied',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [],
 };
@@ -123,11 +123,11 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
   flow_type: 'redirect',
   status: 'draft',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [
@@ -151,11 +151,11 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
   flow_type: 'popup',
   status: 'draft',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }, { tool_type: 'builtin-weather' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }, { toolset_type: 'builtin-weather' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [
@@ -168,7 +168,7 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
       ],
     },
     {
-      tool_type: 'builtin-weather',
+      toolset_type: 'builtin-weather',
       name: 'Weather Lookup',
       description: 'Get weather information',
       instances: [
@@ -198,11 +198,11 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
   flow_type: 'popup',
   status: 'draft',
   requested: {
-    toolset_types: [{ tool_type: 'builtin-exa-search' }, { tool_type: 'builtin-calculator' }],
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }, { toolset_type: 'builtin-calculator' }],
   },
   tools_info: [
     {
-      tool_type: 'builtin-exa-search',
+      toolset_type: 'builtin-exa-search',
       name: 'Exa Web Search',
       description: 'Search the web using Exa AI',
       instances: [
@@ -215,7 +215,7 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
       ],
     },
     {
-      tool_type: 'builtin-calculator',
+      toolset_type: 'builtin-calculator',
       name: 'Calculator',
       description: 'Perform calculations',
       instances: [],

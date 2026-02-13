@@ -70,8 +70,8 @@ impl DefaultAccessRequestService {
     let mut lines = Vec::new();
     for approval in tool_approvals {
       if approval.status == "approved" {
-        // Use tool_type as the description
-        lines.push(format!("- {}", approval.tool_type));
+        // Use toolset_type as the description
+        lines.push(format!("- {}", approval.toolset_type));
       }
     }
     lines.join("\n")

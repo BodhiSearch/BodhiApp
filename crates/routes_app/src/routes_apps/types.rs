@@ -9,7 +9,7 @@ use utoipa::ToSchema;
     "redirect_url": "https://myapp.com/callback",
     "requested": {
         "toolset_types": [
-            {"tool_type": "builtin-exa-search"}
+            {"toolset_type": "builtin-exa-search"}
         ]
     }
 }))]
@@ -36,7 +36,7 @@ pub struct RequestedResources {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolTypeRequest {
   /// Tool type identifier (e.g., "builtin-exa-search")
-  pub tool_type: String,
+  pub toolset_type: String,
 }
 
 // Response for POST /apps/request-access
@@ -96,12 +96,12 @@ pub struct AccessRequestStatusResponse {
     "status": "draft",
     "requested": {
         "toolset_types": [
-            {"tool_type": "builtin-exa-search"}
+            {"toolset_type": "builtin-exa-search"}
         ]
     },
     "tools_info": [
         {
-            "tool_type": "builtin-exa-search",
+            "toolset_type": "builtin-exa-search",
             "name": "Exa Search",
             "description": "Search the web using Exa AI",
             "instances": [
@@ -138,7 +138,7 @@ pub struct AccessRequestReviewResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolTypeReviewInfo {
   /// Tool type identifier
-  pub tool_type: String,
+  pub toolset_type: String,
   /// Tool type display name
   pub name: String,
   /// Tool type description
@@ -166,7 +166,7 @@ pub struct ToolInstanceInfo {
     "approved": {
         "toolset_types": [
             {
-                "tool_type": "builtin-exa-search",
+                "toolset_type": "builtin-exa-search",
                 "status": "approved",
                 "instance_id": "instance-uuid"
             }
@@ -190,7 +190,7 @@ pub struct ApprovedResources {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ToolApproval {
   /// Tool type identifier
-  pub tool_type: String,
+  pub toolset_type: String,
   /// Approval status: "approved" or "denied"
   pub status: String,
   /// Instance ID (required when status = "approved")

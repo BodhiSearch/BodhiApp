@@ -719,16 +719,16 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Verify body structure
     const body = capturedBody as {
       approved: {
-        toolset_types: Array<{ tool_type: string; status: string; instance_id?: string }>;
+        toolset_types: Array<{ toolset_type: string; status: string; instance_id?: string }>;
       };
     };
     expect(body.approved.toolset_types).toHaveLength(2);
 
-    const exaApproval = body.approved.toolset_types.find((t) => t.tool_type === 'builtin-exa-search');
+    const exaApproval = body.approved.toolset_types.find((t) => t.toolset_type === 'builtin-exa-search');
     expect(exaApproval?.status).toBe('approved');
     expect(exaApproval?.instance_id).toBe('instance-1');
 
-    const weatherApproval = body.approved.toolset_types.find((t) => t.tool_type === 'builtin-weather');
+    const weatherApproval = body.approved.toolset_types.find((t) => t.toolset_type === 'builtin-weather');
     expect(weatherApproval?.status).toBe('denied');
     expect(weatherApproval?.instance_id).toBeUndefined();
   });

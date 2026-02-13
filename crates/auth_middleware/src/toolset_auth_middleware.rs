@@ -410,11 +410,11 @@ mod tests {
   }
 
   #[rstest]
-  #[case::oauth_approved_instance_in_list("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, false)]
+  #[case::oauth_approved_instance_in_list("approved", Some(r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, false)]
   #[case::oauth_denied("denied", None, StatusCode::FORBIDDEN, false)]
   #[case::oauth_draft("draft", None, StatusCode::FORBIDDEN, false)]
-  #[case::oauth_expired("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, true)]
-  #[case::oauth_not_in_approved_list("approved", Some(r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"different-toolset-id"}]}"#.to_string()), StatusCode::FORBIDDEN, false)]
+  #[case::oauth_expired("approved", Some(r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#.to_string()), StatusCode::OK, true)]
+  #[case::oauth_not_in_approved_list("approved", Some(r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"different-toolset-id"}]}"#.to_string()), StatusCode::FORBIDDEN, false)]
   #[tokio::test]
   async fn test_oauth_access_request_validation(
     test_instance: Toolset,
@@ -446,7 +446,7 @@ mod tests {
       flow_type: "redirect".to_string(),
       redirect_uri: Some("http://localhost:3000/callback".to_string()),
       status: status.to_string(),
-      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
       approved,
       user_id: Some("user123".to_string()),
       resource_scope: None,
@@ -516,9 +516,9 @@ mod tests {
       flow_type: "redirect".to_string(),
       redirect_uri: Some("http://localhost:3000/callback".to_string()),
       status: "approved".to_string(),
-      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
       approved: Some(
-        r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
+        r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
           .to_string(),
       ),
       user_id: Some("user123".to_string()),
@@ -581,9 +581,9 @@ mod tests {
       flow_type: "redirect".to_string(),
       redirect_uri: Some("http://localhost:3000/callback".to_string()),
       status: "approved".to_string(),
-      requested: r#"{"toolset_types":[{"tool_type":"builtin-exa-search"}]}"#.to_string(),
+      requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
       approved: Some(
-        r#"{"toolset_types":[{"tool_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
+        r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"550e8400-e29b-41d4-a716-446655440000"}]}"#
           .to_string(),
       ),
       user_id: Some("user1".to_string()),

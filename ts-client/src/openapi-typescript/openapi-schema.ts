@@ -1057,7 +1057,7 @@ export interface components {
          *       "requested": {
          *         "toolset_types": [
          *           {
-         *             "tool_type": "builtin-exa-search"
+         *             "toolset_type": "builtin-exa-search"
          *           }
          *         ]
          *       },
@@ -1074,7 +1074,7 @@ export interface components {
          *             }
          *           ],
          *           "name": "Exa Search",
-         *           "tool_type": "builtin-exa-search"
+         *           "toolset_type": "builtin-exa-search"
          *         }
          *       ]
          *     } */
@@ -1312,7 +1312,7 @@ export interface components {
          *           {
          *             "instance_id": "instance-uuid",
          *             "status": "approved",
-         *             "tool_type": "builtin-exa-search"
+         *             "toolset_type": "builtin-exa-search"
          *           }
          *         ]
          *       }
@@ -1774,7 +1774,7 @@ export interface components {
          *       "requested": {
          *         "toolset_types": [
          *           {
-         *             "tool_type": "builtin-exa-search"
+         *             "toolset_type": "builtin-exa-search"
          *           }
          *         ]
          *       }
@@ -2927,7 +2927,7 @@ export interface components {
         TokenStatus: "active" | "inactive";
         ToolApproval: {
             /** @description Tool type identifier */
-            tool_type: string;
+            toolset_type: string;
             /** @description Approval status: "approved" or "denied" */
             status: string;
             /** @description Instance ID (required when status = "approved") */
@@ -2961,11 +2961,11 @@ export interface components {
         };
         ToolTypeRequest: {
             /** @description Tool type identifier (e.g., "builtin-exa-search") */
-            tool_type: string;
+            toolset_type: string;
         };
         ToolTypeReviewInfo: {
             /** @description Tool type identifier */
-            tool_type: string;
+            toolset_type: string;
             /** @description Tool type display name */
             name: string;
             /** @description Tool type description */

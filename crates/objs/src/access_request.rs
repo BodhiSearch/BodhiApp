@@ -44,12 +44,12 @@ pub enum AccessRequestFlowType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolTypeRequest {
-  pub tool_type: String, // e.g., "builtin-exa-search"
+  pub toolset_type: String, // e.g., "builtin-exa-search"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolApproval {
-  pub tool_type: String,
+  pub toolset_type: String,
   pub status: String, // "approved" | "denied"
   #[serde(skip_serializing_if = "Option::is_none")]
   pub instance_id: Option<String>, // Present if status == "approved"

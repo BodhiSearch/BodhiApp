@@ -2075,7 +2075,7 @@ export type ToolApproval = {
     /**
      * Tool type identifier
      */
-    tool_type: string;
+    toolset_type: string;
     /**
      * Approval status: "approved" or "denied"
      */
@@ -2133,14 +2133,14 @@ export type ToolTypeRequest = {
     /**
      * Tool type identifier (e.g., "builtin-exa-search")
      */
-    tool_type: string;
+    toolset_type: string;
 };
 
 export type ToolTypeReviewInfo = {
     /**
      * Tool type identifier
      */
-    tool_type: string;
+    toolset_type: string;
     /**
      * Tool type display name
      */

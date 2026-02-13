@@ -82,7 +82,7 @@ pub async fn create_access_request_handler(
       r.toolset_types
         .iter()
         .map(|t| ToolTypeRequest {
-          tool_type: t.tool_type.clone(),
+          toolset_type: t.toolset_type.clone(),
         })
         .collect()
     })
@@ -91,14 +91,14 @@ pub async fn create_access_request_handler(
   // Validate tool types exist
   let tool_service = state.app_service().tool_service();
   for tool_type_req in &tool_types {
-    tool_service.validate_type(&tool_type_req.tool_type)?;
+    tool_service.validate_type(&tool_type_req.toolset_type)?;
   }
 
   // Convert to objs::ToolTypeRequest for service call
   let objs_tool_types: Vec<objs::ToolTypeRequest> = tool_types
     .iter()
     .map(|t| objs::ToolTypeRequest {
-      tool_type: t.tool_type.clone(),
+      toolset_type: t.toolset_type.clone(),
     })
     .collect();
 
@@ -232,14 +232,14 @@ pub async fn get_access_request_review_handler(
   for tool_type_req in &requested.toolset_types {
     // Get tool type definition
     let tool_def = tool_service
-      .get_type(&tool_type_req.tool_type)
-      .ok_or_else(|| AppAccessRequestError::InvalidToolType(tool_type_req.tool_type.clone()))?;
+      .get_type(&tool_type_req.toolset_type)
+      .ok_or_else(|| AppAccessRequestError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
 
     // Get user's instances of this tool type
     let user_toolsets = tool_service.list(&user_id).await?;
     let instances: Vec<ToolInstanceInfo> = user_toolsets
       .iter()
-      .filter(|t| t.toolset_type == tool_type_req.tool_type)
+      .filter(|t| t.toolset_type == tool_type_req.toolset_type)
       .map(|t| ToolInstanceInfo {
         id: t.id.clone(),
         name: t.name.clone(),
@@ -249,7 +249,7 @@ pub async fn get_access_request_review_handler(
       .collect();
 
     tools_info.push(ToolTypeReviewInfo {
-      tool_type: tool_type_req.tool_type.clone(),
+      toolset_type: tool_type_req.toolset_type.clone(),
       name: tool_def.name.clone(),
       description: tool_def.description.clone(),
       instances,
@@ -309,8 +309,8 @@ pub async fn approve_access_request_handler(
     if approval.status == "approved" {
       let instance_id = approval.instance_id.as_ref().ok_or_else(|| {
         AppAccessRequestError::ToolInstanceNotConfigured(format!(
-          "instance_id required for approved tool_type: {}",
-          approval.tool_type
+          "instance_id required for approved toolset_type: {}",
+          approval.toolset_type
         ))
       })?;
 
@@ -321,10 +321,10 @@ pub async fn approve_access_request_handler(
         .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance_id.clone()))?;
 
       // Validate tool_type matches
-      if toolset.toolset_type != approval.tool_type {
+      if toolset.toolset_type != approval.toolset_type {
         return Err(AppAccessRequestError::InvalidToolType(format!(
           "Instance {} is not of type {}",
-          instance_id, approval.tool_type
+          instance_id, approval.toolset_type
         )))?;
       }
 
@@ -351,7 +351,7 @@ pub async fn approve_access_request_handler(
     .toolset_types
     .iter()
     .map(|a| ToolApproval {
-      tool_type: a.tool_type.clone(),
+      toolset_type: a.toolset_type.clone(),
       status: a.status.clone(),
       instance_id: a.instance_id.clone(),
     })

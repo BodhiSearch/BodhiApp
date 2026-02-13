@@ -19,14 +19,14 @@ export interface ToolInstanceInfo {
 }
 
 export interface ToolTypeReviewInfo {
-  tool_type: string;
+  toolset_type: string;
   name: string;
   description: string;
   instances: ToolInstanceInfo[];
 }
 
 export interface RequestedResources {
-  toolset_types: { tool_type: string }[];
+  toolset_types: { toolset_type: string }[];
 }
 
 export interface AccessRequestReviewResponse {
@@ -41,7 +41,7 @@ export interface AccessRequestReviewResponse {
 }
 
 export interface ToolApprovalItem {
-  tool_type: string;
+  toolset_type: string;
   status: string;
   instance_id?: string;
 }

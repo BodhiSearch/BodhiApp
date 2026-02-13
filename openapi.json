@@ -6412,7 +6412,7 @@
           "requested": {
             "toolset_types": [
               {
-                "tool_type": "builtin-exa-search"
+                "toolset_type": "builtin-exa-search"
               }
             ]
           },
@@ -6429,7 +6429,7 @@
                 }
               ],
               "name": "Exa Search",
-              "tool_type": "builtin-exa-search"
+              "toolset_type": "builtin-exa-search"
             }
           ]
         }
@@ -7035,7 +7035,7 @@
               {
                 "instance_id": "instance-uuid",
                 "status": "approved",
-                "tool_type": "builtin-exa-search"
+                "toolset_type": "builtin-exa-search"
               }
             ]
           }
@@ -8816,7 +8816,7 @@
           "requested": {
             "toolset_types": [
               {
-                "tool_type": "builtin-exa-search"
+                "toolset_type": "builtin-exa-search"
               }
             ]
           }
@@ -11867,11 +11867,11 @@
       "ToolApproval": {
         "type": "object",
         "required": [
-          "tool_type",
+          "toolset_type",
           "status"
         ],
         "properties": {
-          "tool_type": {
+          "toolset_type": {
             "type": "string",
             "description": "Tool type identifier"
           },
@@ -11968,10 +11968,10 @@
       "ToolTypeRequest": {
         "type": "object",
         "required": [
-          "tool_type"
+          "toolset_type"
         ],
         "properties": {
-          "tool_type": {
+          "toolset_type": {
             "type": "string",
             "description": "Tool type identifier (e.g., \"builtin-exa-search\")"
           }
@@ -11980,13 +11980,13 @@
       "ToolTypeReviewInfo": {
         "type": "object",
         "required": [
-          "tool_type",
+          "toolset_type",
           "name",
           "description",
           "instances"
         ],
         "properties": {
-          "tool_type": {
+          "toolset_type": {
             "type": "string",
             "description": "Tool type identifier"
           },
