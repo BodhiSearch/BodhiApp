@@ -1,7 +1,7 @@
 import { OpenAiApiError } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
-import { BODHI_API_BASE, useMutationQuery, useQuery } from '@/hooks/useQuery';
+import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 // Type alias for compatibility
@@ -52,6 +52,12 @@ export interface ApproveAccessRequestBody {
   };
 }
 
+export interface AccessRequestActionResponse {
+  status: string;
+  flow_type: string;
+  redirect_url?: string;
+}
+
 // ============================================================================
 // Endpoints
 // ============================================================================
@@ -91,15 +97,17 @@ export function useAppAccessRequestReview(
  * Approve an app access request with tool instance selections
  */
 export function useApproveAppAccessRequest(options?: {
-  onSuccess?: () => void;
+  onSuccess?: (data: AccessRequestActionResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string; body: ApproveAccessRequestBody }> {
-  return useMutationQuery<void, { id: string; body: ApproveAccessRequestBody }>(
+}): UseMutationResult<AxiosResponse<AccessRequestActionResponse>, AxiosError<ErrorResponse>, { id: string; body: ApproveAccessRequestBody }> {
+  const queryClient = useQueryClient();
+  return useMutationQuery<AccessRequestActionResponse, { id: string; body: ApproveAccessRequestBody }>(
     ({ id }) => `${BODHI_API_BASE}/access-requests/${id}/approve`,
     'put',
     {
-      onSuccess: () => {
-        options?.onSuccess?.();
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['app-access-request']);
+        options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to approve access request';
@@ -108,6 +116,7 @@ export function useApproveAppAccessRequest(options?: {
     },
     {
       transformBody: ({ body }) => body,
+      skipCacheInvalidation: true,
     }
   );
 }
@@ -116,15 +125,17 @@ export function useApproveAppAccessRequest(options?: {
  * Deny an app access request
  */
 export function useDenyAppAccessRequest(options?: {
-  onSuccess?: () => void;
+  onSuccess?: (data: AccessRequestActionResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string }> {
-  return useMutationQuery<void, { id: string }>(
+}): UseMutationResult<AxiosResponse<AccessRequestActionResponse>, AxiosError<ErrorResponse>, { id: string }> {
+  const queryClient = useQueryClient();
+  return useMutationQuery<AccessRequestActionResponse, { id: string }>(
     ({ id }) => `${BODHI_API_BASE}/access-requests/${id}/deny`,
     'post',
     {
-      onSuccess: () => {
-        options?.onSuccess?.();
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['app-access-request']);
+        options?.onSuccess?.(response.data);
       },
       onError: (error: AxiosError<ErrorResponse>) => {
         const message = error?.response?.data?.error?.message || 'Failed to deny access request';
@@ -133,6 +144,7 @@ export function useDenyAppAccessRequest(options?: {
     },
     {
       transformBody: () => undefined,
+      skipCacheInvalidation: true,
     }
   );
 }

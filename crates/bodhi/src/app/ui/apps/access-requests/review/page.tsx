@@ -20,7 +20,7 @@ import {
   useApproveAppAccessRequest,
   useDenyAppAccessRequest,
 } from '@/hooks/useAppAccessRequests';
-import type { ApproveAccessRequestBody, ToolTypeReviewInfo } from '@/hooks/useAppAccessRequests';
+import type { AccessRequestActionResponse, ApproveAccessRequestBody, ToolTypeReviewInfo } from '@/hooks/useAppAccessRequests';
 
 // ============================================================================
 // Tool Type Card Component
@@ -178,15 +178,21 @@ const ReviewContent = () => {
   const [selectedInstances, setSelectedInstances] = useState<Record<string, string>>({});
   const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
   const { data: reviewData, isLoading, error } = useAppAccessRequestReview(id);
 
+  const handleActionSuccess = (data: AccessRequestActionResponse) => {
+    if (data.flow_type === 'popup') {
+      window.close();
+    } else if (data.flow_type === 'redirect' && data.redirect_url) {
+      window.location.href = data.redirect_url;
+    }
+    setActionResult(data);
+  };
+
   const approveMutation = useApproveAppAccessRequest({
-    onSuccess: () => {
-      if (reviewData?.flow_type === 'popup') {
-        window.close();
-      }
-    },
+    onSuccess: handleActionSuccess,
     onError: (message) => {
       setIsSubmitting(false);
       showError('Approval Failed', message);
@@ -194,11 +200,7 @@ const ReviewContent = () => {
   });
 
   const denyMutation = useDenyAppAccessRequest({
-    onSuccess: () => {
-      if (reviewData?.flow_type === 'popup') {
-        window.close();
-      }
-    },
+    onSuccess: handleActionSuccess,
     onError: (message) => {
       setIsSubmitting(false);
       showError('Denial Failed', message);
@@ -241,6 +243,11 @@ const ReviewContent = () => {
   // No id query param
   if (!id) {
     return <ErrorPage message="Missing access request ID" />;
+  }
+
+  // Action completed: show immediate result without waiting for refetch
+  if (actionResult) {
+    return <NonDraftStatus status={actionResult.status} flowType={actionResult.flow_type} />;
   }
 
   // Loading state

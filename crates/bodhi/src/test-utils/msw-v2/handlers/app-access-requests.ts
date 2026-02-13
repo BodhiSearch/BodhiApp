@@ -70,7 +70,12 @@ export function mockAppAccessRequestReviewError(
  */
 export function mockAppAccessRequestApprove(
   id: string,
-  { stub, onBody }: { stub?: boolean; onBody?: (body: unknown) => void } = {}
+  {
+    stub,
+    onBody,
+    flowType = 'popup',
+    redirectUrl,
+  }: { stub?: boolean; onBody?: (body: unknown) => void; flowType?: string; redirectUrl?: string } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -85,7 +90,11 @@ export function mockAppAccessRequestApprove(
         onBody(body);
       }
 
-      return response(200 as const).empty();
+      return response(200 as const).json({
+        status: 'approved',
+        flow_type: flowType,
+        ...(redirectUrl ? { redirect_url: redirectUrl } : {}),
+      });
     }),
   ];
 }
@@ -125,7 +134,10 @@ export function mockAppAccessRequestApproveError(
 /**
  * Mock handler for POST /access-requests/:id/deny - success case
  */
-export function mockAppAccessRequestDeny(id: string, { stub }: { stub?: boolean } = {}) {
+export function mockAppAccessRequestDeny(
+  id: string,
+  { stub, flowType = 'popup', redirectUrl }: { stub?: boolean; flowType?: string; redirectUrl?: string } = {}
+) {
   let hasBeenCalled = false;
 
   return [
@@ -134,7 +146,11 @@ export function mockAppAccessRequestDeny(id: string, { stub }: { stub?: boolean 
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
-      return response(200 as const).empty();
+      return response(200 as const).json({
+        status: 'denied',
+        flow_type: flowType,
+        ...(redirectUrl ? { redirect_url: redirectUrl } : {}),
+      });
     }),
   ];
 }

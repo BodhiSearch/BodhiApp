@@ -50,6 +50,8 @@ vi.mock('@/hooks/use-toast-messages', () => ({
 }));
 
 const windowCloseMock = vi.fn();
+const MOCK_REDIRECT_URL = 'https://example.com/callback?code=auth_code';
+let originalLocationDescriptor: PropertyDescriptor | undefined;
 
 // ============================================================================
 // Setup
@@ -62,12 +64,41 @@ afterEach(() => {
   pushMock.mockClear();
   windowCloseMock.mockClear();
   mockSearchParams = null;
+  // Restore window.location if it was mocked
+  if (originalLocationDescriptor) {
+    Object.defineProperty(window, 'location', originalLocationDescriptor);
+    originalLocationDescriptor = undefined;
+  }
   // Reset window.close
   vi.restoreAllMocks();
 });
 
 const setupWindowClose = () => {
   window.close = windowCloseMock;
+};
+
+const setupWindowLocation = () => {
+  originalLocationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+  const loc = window.location;
+  Object.defineProperty(window, 'location', {
+    value: {
+      href: loc.href,
+      origin: loc.origin,
+      protocol: loc.protocol,
+      host: loc.host,
+      hostname: loc.hostname,
+      port: loc.port,
+      pathname: loc.pathname,
+      search: loc.search,
+      hash: loc.hash,
+      assign: vi.fn(),
+      replace: vi.fn(),
+      reload: vi.fn(),
+      toString: () => loc.href,
+    },
+    writable: true,
+    configurable: true,
+  });
 };
 
 const setupHandlers = (reviewData?: Parameters<typeof mockAppAccessRequestReview>[0]) => {
@@ -327,6 +358,44 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     });
   });
 
+  it('clicking Approve on redirect flow redirects using window.location', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftRedirectResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, { flowType: 'redirect', redirectUrl: MOCK_REDIRECT_URL })
+    );
+    setupWindowLocation();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    // Select instance
+    const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('My Exa Instance');
+    await user.click(option);
+
+    // Click approve
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => {
+      expect(approveButton).not.toBeDisabled();
+    });
+    await user.click(approveButton);
+
+    // Should redirect using window.location.href
+    await waitFor(() => {
+      expect(window.location.href).toBe(MOCK_REDIRECT_URL);
+    });
+  });
+
   it('on approve error, shows toast error message', async () => {
     const user = userEvent.setup();
     mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
@@ -401,6 +470,34 @@ describe('ReviewAccessRequestPage - Deny Flow', () => {
     // Should call window.close for popup flow
     await waitFor(() => {
       expect(windowCloseMock).toHaveBeenCalled();
+    });
+  });
+
+  it('clicking Deny on redirect flow redirects using window.location', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftRedirectResponse),
+      ...mockAppAccessRequestDeny(MOCK_REQUEST_ID, { flowType: 'redirect', redirectUrl: MOCK_REDIRECT_URL })
+    );
+    setupWindowLocation();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-deny-button')).toBeInTheDocument();
+    });
+
+    const denyButton = screen.getByTestId('review-deny-button');
+    await user.click(denyButton);
+
+    // Should redirect using window.location.href
+    await waitFor(() => {
+      expect(window.location.href).toBe(MOCK_REDIRECT_URL);
     });
   });
 
