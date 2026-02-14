@@ -19,9 +19,6 @@ pub trait ToolService: Debug + Send + Sync {
   /// List tool definitions for user (only configured and enabled toolsets)
   async fn list_tools_for_user(&self, user_id: &str) -> Result<Vec<ToolDefinition>, ToolsetError>;
 
-  /// Get all available tool definitions (for UI listing)
-  fn list_all_tool_definitions(&self) -> Vec<ToolDefinition>;
-
   /// List all available toolsets with their tools (nested structure)
   async fn list_all_toolsets(&self) -> Result<Vec<ToolsetDefinition>, ToolsetError>;
 
@@ -40,7 +37,7 @@ pub trait ToolService: Debug + Send + Sync {
     &self,
     user_id: &str,
     toolset_type: &str,
-    name: &str,
+    slug: &str,
     description: Option<String>,
     enabled: bool,
     api_key: String,
@@ -51,7 +48,7 @@ pub trait ToolService: Debug + Send + Sync {
     &self,
     user_id: &str,
     id: &str,
-    name: &str,
+    slug: &str,
     description: Option<String>,
     enabled: bool,
     api_key_update: ApiKeyUpdate,
@@ -116,7 +113,6 @@ pub struct DefaultToolService {
   db_service: Arc<dyn DbService>,
   exa_service: Arc<dyn ExaService>,
   time_service: Arc<dyn TimeService>,
-  is_production: bool,
 }
 
 impl DefaultToolService {
@@ -124,46 +120,16 @@ impl DefaultToolService {
     db_service: Arc<dyn DbService>,
     exa_service: Arc<dyn ExaService>,
     time_service: Arc<dyn TimeService>,
-    is_production: bool,
   ) -> Self {
     Self {
       db_service,
       exa_service,
       time_service,
-      is_production,
     }
   }
 
-  /// Static registry of built-in tools
-  fn builtin_tool_definitions() -> Vec<ToolDefinition> {
-    vec![ToolDefinition {
-      tool_type: "function".to_string(),
-      function: FunctionDefinition {
-        name: "builtin-exa-web-search".to_string(),
-        description: "Search the web for current information using Exa AI semantic search. Returns relevant web pages with titles, URLs, and content snippets.".to_string(),
-        parameters: json!({
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "The search query to find relevant web pages"
-            },
-            "num_results": {
-              "type": "integer",
-              "description": "Number of results to return (default: 5, max: 10)",
-              "minimum": 1,
-              "maximum": 10,
-              "default": 5
-            }
-          },
-          "required": ["query"]
-        }),
-      },
-    }]
-  }
-
   /// Static registry of built-in toolsets with nested tools
-  fn builtin_toolsets(_is_production: bool) -> Vec<ToolsetDefinition> {
+  fn builtin_toolsets() -> Vec<ToolsetDefinition> {
     vec![ToolsetDefinition {
       toolset_type: "builtin-exa-search".to_string(),
       name: "Exa Web Search".to_string(),
@@ -270,7 +236,7 @@ impl DefaultToolService {
   fn toolset_row_to_model(&self, row: ToolsetRow) -> Toolset {
     Toolset {
       id: row.id,
-      name: row.name,
+      slug: row.slug,
       toolset_type: row.toolset_type,
       description: row.description,
       enabled: row.enabled,
@@ -295,7 +261,7 @@ impl ToolService for DefaultToolService {
 
     // Return tool definitions for enabled types
     let mut tools = Vec::new();
-    for toolset_def in Self::builtin_toolsets(self.is_production) {
+    for toolset_def in Self::builtin_toolsets() {
       if enabled_toolset_types.contains(&toolset_def.toolset_type) {
         tools.extend(toolset_def.tools);
       }
@@ -304,12 +270,8 @@ impl ToolService for DefaultToolService {
     Ok(tools)
   }
 
-  fn list_all_tool_definitions(&self) -> Vec<ToolDefinition> {
-    Self::builtin_tool_definitions()
-  }
-
   async fn list_all_toolsets(&self) -> Result<Vec<ToolsetDefinition>, ToolsetError> {
-    Ok(Self::builtin_toolsets(self.is_production))
+    Ok(Self::builtin_toolsets())
   }
 
   // ============================================================================
@@ -340,18 +302,18 @@ impl ToolService for DefaultToolService {
     &self,
     user_id: &str,
     toolset_type: &str,
-    name: &str,
+    slug: &str,
     description: Option<String>,
     enabled: bool,
     api_key: String,
   ) -> Result<Toolset, ToolsetError> {
-    // Validate name format
-    objs::validate_toolset_name(name).map_err(|reason| ToolsetError::InvalidName(reason))?;
+    // Validate slug format
+    objs::validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
 
     // Validate description if provided
     if let Some(ref desc) = description {
       objs::validate_toolset_description(desc)
-        .map_err(|reason| ToolsetError::InvalidName(reason))?;
+        .map_err(ToolsetError::InvalidDescription)?;
     }
 
     // Validate toolset_type exists
@@ -362,14 +324,14 @@ impl ToolService for DefaultToolService {
       return Err(ToolsetError::ToolsetAppDisabled);
     }
 
-    // Check name uniqueness (case-insensitive)
+    // Check slug uniqueness (case-insensitive)
     if self
       .db_service
-      .get_toolset_by_name(user_id, name)
+      .get_toolset_by_slug(user_id, slug)
       .await?
       .is_some()
     {
-      return Err(ToolsetError::NameExists(name.to_string()));
+      return Err(ToolsetError::SlugExists(slug.to_string()));
     }
 
     // Encrypt API key
@@ -382,7 +344,7 @@ impl ToolService for DefaultToolService {
       id: Uuid::new_v4().to_string(),
       user_id: user_id.to_string(),
       toolset_type: toolset_type.to_string(),
-      name: name.to_string(),
+      slug: slug.to_string(),
       description,
       enabled,
       encrypted_api_key: Some(encrypted),
@@ -400,7 +362,7 @@ impl ToolService for DefaultToolService {
     &self,
     user_id: &str,
     id: &str,
-    name: &str,
+    slug: &str,
     description: Option<String>,
     enabled: bool,
     api_key_update: ApiKeyUpdate,
@@ -417,25 +379,22 @@ impl ToolService for DefaultToolService {
       return Err(ToolsetError::ToolsetNotFound(id.to_string()));
     }
 
-    // Validate name format
-    objs::validate_toolset_name(name).map_err(|reason| ToolsetError::InvalidName(reason))?;
+    // Validate slug format
+    objs::validate_toolset_slug(slug).map_err(ToolsetError::InvalidSlug)?;
 
     // Validate description if provided
     if let Some(ref desc) = description {
       objs::validate_toolset_description(desc)
-        .map_err(|reason| ToolsetError::InvalidName(reason))?;
+        .map_err(ToolsetError::InvalidDescription)?;
     }
 
-    // Check name uniqueness if changed (case-insensitive)
-    if name.to_lowercase() != existing.name.to_lowercase() {
-      if self
+    // Check slug uniqueness if changed (case-insensitive)
+    if slug.to_lowercase() != existing.slug.to_lowercase() && self
         .db_service
-        .get_toolset_by_name(user_id, name)
+        .get_toolset_by_slug(user_id, slug)
         .await?
-        .is_some()
-      {
-        return Err(ToolsetError::NameExists(name.to_string()));
-      }
+        .is_some() {
+      return Err(ToolsetError::SlugExists(slug.to_string()));
     }
 
     // Check app-level enabled if trying to enable
@@ -470,7 +429,7 @@ impl ToolService for DefaultToolService {
       id: id.to_string(),
       user_id: user_id.to_string(),
       toolset_type: existing.toolset_type,
-      name: name.to_string(),
+      slug: slug.to_string(),
       description,
       enabled,
       encrypted_api_key: encrypted,
@@ -563,11 +522,11 @@ impl ToolService for DefaultToolService {
   // ============================================================================
 
   fn list_types(&self) -> Vec<ToolsetDefinition> {
-    Self::builtin_toolsets(self.is_production)
+    Self::builtin_toolsets()
   }
 
   fn get_type(&self, toolset_type: &str) -> Option<ToolsetDefinition> {
-    Self::builtin_toolsets(self.is_production)
+    Self::builtin_toolsets()
       .into_iter()
       .find(|def| def.toolset_type == toolset_type)
   }

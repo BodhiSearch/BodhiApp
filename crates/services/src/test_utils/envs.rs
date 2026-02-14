@@ -69,7 +69,7 @@ impl SettingServiceStub {
   }
 
   pub fn with_defaults_in(temp_dir: Arc<TempDir>) -> Self {
-    let settings = Self::setup(&temp_dir.path());
+    let settings = Self::setup(temp_dir.path());
     let settings = Self::to_settings_value(settings);
     Self {
       settings: Arc::new(RwLock::new(settings)),
@@ -151,7 +151,7 @@ impl SettingServiceStub {
 impl Default for SettingServiceStub {
   fn default() -> Self {
     let temp_dir = temp_dir();
-    let settings = Self::setup(&temp_dir.path());
+    let settings = Self::setup(temp_dir.path());
     Self::new(HashMap::new(), settings, temp_dir)
   }
 }

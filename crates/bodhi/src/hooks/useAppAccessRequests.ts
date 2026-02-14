@@ -1,4 +1,4 @@
-import { OpenAiApiError } from '@bodhiapp/ts-client';
+import { OpenAiApiError, Toolset, ToolTypeReviewInfo } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
@@ -7,23 +7,8 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
-// ============================================================================
-// Local TypeScript interfaces (matching backend response types)
-// ============================================================================
-
-export interface ToolInstanceInfo {
-  id: string;
-  name: string;
-  enabled: boolean;
-  has_api_key: boolean;
-}
-
-export interface ToolTypeReviewInfo {
-  toolset_type: string;
-  name: string;
-  description: string;
-  instances: ToolInstanceInfo[];
-}
+// Re-export types for consumers
+export type { ToolTypeReviewInfo, Toolset };
 
 export interface RequestedResources {
   toolset_types: { toolset_type: string }[];
@@ -99,7 +84,11 @@ export function useAppAccessRequestReview(
 export function useApproveAppAccessRequest(options?: {
   onSuccess?: (data: AccessRequestActionResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AccessRequestActionResponse>, AxiosError<ErrorResponse>, { id: string; body: ApproveAccessRequestBody }> {
+}): UseMutationResult<
+  AxiosResponse<AccessRequestActionResponse>,
+  AxiosError<ErrorResponse>,
+  { id: string; body: ApproveAccessRequestBody }
+> {
   const queryClient = useQueryClient();
   return useMutationQuery<AccessRequestActionResponse, { id: string; body: ApproveAccessRequestBody }>(
     ({ id }) => `${BODHI_API_BASE}/access-requests/${id}/approve`,

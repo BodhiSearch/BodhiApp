@@ -189,7 +189,7 @@ pub struct ToolsetRow {
   pub id: String,
   pub user_id: String,
   pub toolset_type: String,
-  pub name: String,
+  pub slug: String,
   pub description: Option<String>,
   pub enabled: bool,
   pub encrypted_api_key: Option<String>,

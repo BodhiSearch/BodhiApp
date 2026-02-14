@@ -36,7 +36,7 @@ const mockToolsetsResponse: ListToolsetsResponse = {
   toolsets: [
     {
       id: 'uuid-test-toolset',
-      name: 'my-exa-search',
+      slug: 'my-exa-search',
       toolset_type: 'builtin-exa-search',
       description: 'Test toolset',
       enabled: true,
@@ -84,7 +84,7 @@ describe('useToolsets', () => {
 
     expect(result.current.data?.toolsets).toHaveLength(1);
     expect(result.current.data?.toolsets[0].id).toBe('uuid-test-toolset');
-    expect(result.current.data?.toolsets[0].name).toBe('my-exa-search');
+    expect(result.current.data?.toolsets[0].slug).toBe('my-exa-search');
   });
 
   it('handles error response', async () => {
@@ -139,7 +139,7 @@ describe('useToolset', () => {
     });
 
     expect(result.current.data?.id).toBe('uuid-test-toolset');
-    expect(result.current.data?.name).toBe('my-exa-search');
+    expect(result.current.data?.slug).toBe('my-exa-search');
     expect(result.current.data?.enabled).toBe(true);
   });
 
@@ -169,7 +169,7 @@ describe('useCreateToolset', () => {
     const newToolset: ToolsetResponse = {
       ...mockToolsetResponse,
       id: 'uuid-new-toolset',
-      name: 'my-new-toolset',
+      slug: 'my-new-toolset',
     };
 
     server.use(mockCreateToolset(newToolset));
@@ -181,7 +181,7 @@ describe('useCreateToolset', () => {
     await act(async () => {
       await result.current.mutateAsync({
         toolset_type: 'builtin-exa-search',
-        name: 'my-new-toolset',
+        slug: 'my-new-toolset',
         description: 'New toolset',
         enabled: true,
         api_key: 'test-api-key',
@@ -190,7 +190,7 @@ describe('useCreateToolset', () => {
 
     expect(result.current.isSuccess).toBe(true);
     expect(result.current.data?.data.id).toBe('uuid-new-toolset');
-    expect(result.current.data?.data.name).toBe('my-new-toolset');
+    expect(result.current.data?.data.slug).toBe('my-new-toolset');
   });
 
   it('calls onSuccess callback on successful creation', async () => {
@@ -204,7 +204,7 @@ describe('useCreateToolset', () => {
     await act(async () => {
       await result.current.mutateAsync({
         toolset_type: 'builtin-exa-search',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         enabled: true,
         api_key: 'test-api-key',
       });
@@ -230,7 +230,7 @@ describe('useCreateToolset', () => {
       await result.current
         .mutateAsync({
           toolset_type: 'builtin-exa-search',
-          name: 'duplicate-name',
+          slug: 'duplicate-name',
           enabled: true,
           api_key: 'test-api-key',
         })
@@ -258,7 +258,7 @@ describe('useUpdateToolset', () => {
     await act(async () => {
       await result.current.mutateAsync({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         description: 'Updated description',
         enabled: true,
         api_key: { action: 'Keep' },
@@ -280,7 +280,7 @@ describe('useUpdateToolset', () => {
     await act(async () => {
       await result.current.mutateAsync({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         enabled: true,
         api_key: { action: 'Keep' },
       });
@@ -306,7 +306,7 @@ describe('useUpdateToolset', () => {
       await result.current
         .mutateAsync({
           id: 'uuid-test-toolset',
-          name: 'my-exa-search',
+          slug: 'my-exa-search',
           enabled: true,
           api_key: { action: 'Keep' },
         })

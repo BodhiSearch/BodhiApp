@@ -75,7 +75,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Search the web using Exa AI',
             enabled: true,
@@ -126,7 +126,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Search the web using Exa AI',
             enabled: false,
@@ -177,7 +177,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Search the web using Exa AI',
             enabled: true,
@@ -228,7 +228,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Search the web using Exa AI',
             enabled: true,
@@ -279,7 +279,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'First instance',
             enabled: true,
@@ -290,7 +290,7 @@ describe('ToolsetsPage - Instance List Display', () => {
           },
           {
             id: 'uuid-exa-2',
-            name: 'company-exa-search',
+            slug: 'company-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Second instance',
             enabled: true,
@@ -333,7 +333,7 @@ describe('ToolsetsPage - Instance List Display', () => {
         [
           {
             id: 'uuid-exa-1',
-            name: 'my-exa-search',
+            slug: 'my-exa-search',
             toolset_type: 'builtin-exa-search',
             description: 'Search the web using Exa AI',
             enabled: true,

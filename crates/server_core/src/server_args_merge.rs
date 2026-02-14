@@ -446,15 +446,15 @@ mod tests {
 
     // Should handle parsing correctly (last occurrence will win in dedup)
     assert!(result.iter().any(|(k, v)| k == "--logit-bias"
-      && v.as_ref().map_or(false, |val| val.contains("15043+1")
+      && v.as_ref().is_some_and(|val| val.contains("15043+1")
         || val.contains("15044-1"))));
     assert!(result.iter().any(|(k, v)| k == "--override-kv"
-      && v.as_ref().map_or(false, |val| val
+      && v.as_ref().is_some_and(|val| val
         .contains("tokenizer.ggml.add_bos_token=bool:false"))));
     assert!(result.iter().any(|(k, v)| k == "--lora-scaled"
       && v
         .as_ref()
-        .map_or(false, |val| val.contains("/path/to/lora.bin 0.5"))));
+        .is_some_and(|val| val.contains("/path/to/lora.bin 0.5"))));
   }
 
   #[rstest]

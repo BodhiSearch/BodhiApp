@@ -1056,36 +1056,6 @@ export interface components {
             /** @description Redirect URL (present for redirect flow) */
             redirect_url?: string | null;
         };
-        /** @example {
-         *       "app_client_id": "my-app-client",
-         *       "app_description": "A sample application",
-         *       "app_name": "My Application",
-         *       "flow_type": "redirect",
-         *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "requested": {
-         *         "toolset_types": [
-         *           {
-         *             "toolset_type": "builtin-exa-search"
-         *           }
-         *         ]
-         *       },
-         *       "status": "draft",
-         *       "tools_info": [
-         *         {
-         *           "description": "Search the web using Exa AI",
-         *           "instances": [
-         *             {
-         *               "enabled": true,
-         *               "has_api_key": true,
-         *               "id": "instance-uuid",
-         *               "name": "My Exa Instance"
-         *             }
-         *           ],
-         *           "name": "Exa Search",
-         *           "toolset_type": "builtin-exa-search"
-         *         }
-         *       ]
-         *     } */
         AccessRequestReviewResponse: {
             /** @description Access request ID */
             id: string;
@@ -1341,7 +1311,7 @@ export interface components {
         };
         ApprovedResources: {
             /** @description Toolset approvals with instance selections */
-            toolset_types?: components["schemas"]["ToolApproval"][];
+            toolset_types?: components["schemas"]["ToolsetApproval"][];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -2121,8 +2091,8 @@ export interface components {
         CreateToolsetRequest: {
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */
             toolset_type: string;
-            /** @description User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore) */
-            name: string;
+            /** @description User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens) */
+            slug: string;
             /** @description Optional description for this toolset */
             description?: string | null;
             /** @description Whether this toolset is enabled */
@@ -2370,7 +2340,7 @@ export interface components {
         };
         /** @description List of toolset types */
         ListToolsetTypesResponse: {
-            types: components["schemas"]["ToolsetTypeResponse"][];
+            types: components["schemas"]["ToolsetDefinition"][];
         };
         /** @description List of toolsets */
         ListToolsetsResponse: {
@@ -2762,7 +2732,7 @@ export interface components {
         RefreshSource: "all" | "model";
         RequestedResources: {
             /** @description Toolset types being requested */
-            toolset_types?: components["schemas"]["ToolTypeRequest"][];
+            toolset_types?: components["schemas"]["ToolsetTypeRequest"][];
         };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -2933,14 +2903,6 @@ export interface components {
         TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
-        ToolApproval: {
-            /** @description Tool type identifier */
-            toolset_type: string;
-            /** @description Approval status: "approved" or "denied" */
-            status: string;
-            /** @description Instance ID (required when status = "approved") */
-            instance_id?: string | null;
-        };
         ToolCapabilities: {
             function_calling?: boolean | null;
             structured_output?: boolean | null;
@@ -2957,20 +2919,6 @@ export interface components {
             /** @description Function definition details */
             function: components["schemas"]["FunctionDefinition"];
         };
-        ToolInstanceInfo: {
-            /** @description Instance ID */
-            id: string;
-            /** @description Instance name */
-            name: string;
-            /** @description Whether instance is enabled */
-            enabled: boolean;
-            /** @description Whether instance has API key configured */
-            has_api_key: boolean;
-        };
-        ToolTypeRequest: {
-            /** @description Tool type identifier (e.g., "builtin-exa-search") */
-            toolset_type: string;
-        };
         ToolTypeReviewInfo: {
             /** @description Tool type identifier */
             toolset_type: string;
@@ -2979,14 +2927,14 @@ export interface components {
             /** @description Tool type description */
             description: string;
             /** @description User's configured instances of this tool type */
-            instances: components["schemas"]["ToolInstanceInfo"][];
+            instances: components["schemas"]["Toolset"][];
         };
         /** @description User-owned toolset instance with UUID identification */
         Toolset: {
             /** @description Unique instance identifier (UUID) */
             id: string;
-            /** @description User-defined name for this instance */
-            name: string;
+            /** @description User-defined slug for this instance */
+            slug: string;
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */
             toolset_type: string;
             /** @description Optional description for this instance */
@@ -3008,6 +2956,23 @@ export interface components {
              */
             updated_at: string;
         };
+        ToolsetApproval: {
+            toolset_type: string;
+            status: string;
+            instance_id?: string | null;
+        };
+        /** @description A toolset is a connector that provides one or more tools.
+         *     Example: Exa Web Search toolset provides search, find_similar, get_contents, answer tools. */
+        ToolsetDefinition: {
+            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+            toolset_type: string;
+            /** @description Human-readable name (e.g., "Exa Web Search") */
+            name: string;
+            /** @description Description of the toolset */
+            description: string;
+            /** @description Tools provided by this toolset (in OpenAI format) */
+            tools: components["schemas"]["ToolDefinition"][];
+        };
         /** @description Response from toolset tool execution (to send back to LLM) */
         ToolsetExecutionResponse: {
             /** @description Successful result (JSON), if any */
@@ -3019,8 +2984,8 @@ export interface components {
         ToolsetResponse: {
             /** @description Unique instance identifier (UUID) */
             id: string;
-            /** @description User-defined name for this toolset */
-            name: string;
+            /** @description User-defined slug for this toolset */
+            slug: string;
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */
             toolset_type: string;
             /** @description Optional description for this toolset */
@@ -3042,16 +3007,8 @@ export interface components {
              */
             updated_at: string;
         };
-        /** @description Toolset type response (for admin listing) */
-        ToolsetTypeResponse: {
-            /** @description Toolset type identifier (e.g., "builtin-exa-search") */
+        ToolsetTypeRequest: {
             toolset_type: string;
-            /** @description Human-readable name (e.g., "Exa Web Search") */
-            name: string;
-            /** @description Description of the toolset */
-            description: string;
-            /** @description Tools provided by this toolset */
-            tools: components["schemas"]["ToolDefinition"][];
         };
         TopLogprobs: {
             /** @description The token. */
@@ -3128,8 +3085,8 @@ export interface components {
         };
         /** @description Request to update a toolset (full PUT - all fields required except api_key) */
         UpdateToolsetRequest: {
-            /** @description User-defined name for this toolset */
-            name: string;
+            /** @description User-defined slug for this toolset */
+            slug: string;
             /** @description Optional description for this toolset */
             description?: string | null;
             /** @description Whether this toolset is enabled */

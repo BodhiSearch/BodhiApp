@@ -272,7 +272,7 @@ export type ApprovedResources = {
     /**
      * Toolset approvals with instance selections
      */
-    toolset_types?: Array<ToolApproval>;
+    toolset_types?: Array<ToolsetApproval>;
 };
 
 export type AuthCallbackRequest = {
@@ -1216,9 +1216,9 @@ export type CreateToolsetRequest = {
      */
     toolset_type: string;
     /**
-     * User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
+     * User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens)
      */
-    name: string;
+    slug: string;
     /**
      * Optional description for this toolset
      */
@@ -1520,7 +1520,7 @@ export type ListModelResponse = {
  * List of toolset types
  */
 export type ListToolsetTypesResponse = {
-    types: Array<ToolsetTypeResponse>;
+    types: Array<ToolsetDefinition>;
 };
 
 /**
@@ -1912,7 +1912,7 @@ export type RequestedResources = {
     /**
      * Toolset types being requested
      */
-    toolset_types?: Array<ToolTypeRequest>;
+    toolset_types?: Array<ToolsetTypeRequest>;
 };
 
 export type ResourceRole = 'resource_user' | 'resource_power_user' | 'resource_manager' | 'resource_admin';
@@ -2086,21 +2086,6 @@ export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_
 
 export type TokenStatus = 'active' | 'inactive';
 
-export type ToolApproval = {
-    /**
-     * Tool type identifier
-     */
-    toolset_type: string;
-    /**
-     * Approval status: "approved" or "denied"
-     */
-    status: string;
-    /**
-     * Instance ID (required when status = "approved")
-     */
-    instance_id?: string | null;
-};
-
 export type ToolCapabilities = {
     function_calling?: boolean | null;
     structured_output?: boolean | null;
@@ -2125,32 +2110,6 @@ export type ToolDefinition = {
     function: FunctionDefinition;
 };
 
-export type ToolInstanceInfo = {
-    /**
-     * Instance ID
-     */
-    id: string;
-    /**
-     * Instance name
-     */
-    name: string;
-    /**
-     * Whether instance is enabled
-     */
-    enabled: boolean;
-    /**
-     * Whether instance has API key configured
-     */
-    has_api_key: boolean;
-};
-
-export type ToolTypeRequest = {
-    /**
-     * Tool type identifier (e.g., "builtin-exa-search")
-     */
-    toolset_type: string;
-};
-
 export type ToolTypeReviewInfo = {
     /**
      * Tool type identifier
@@ -2167,7 +2126,7 @@ export type ToolTypeReviewInfo = {
     /**
      * User's configured instances of this tool type
      */
-    instances: Array<ToolInstanceInfo>;
+    instances: Array<Toolset>;
 };
 
 /**
@@ -2179,9 +2138,9 @@ export type Toolset = {
      */
     id: string;
     /**
-     * User-defined name for this instance
+     * User-defined slug for this instance
      */
-    name: string;
+    slug: string;
     /**
      * Toolset type identifier (e.g., "builtin-exa-search")
      */
@@ -2208,6 +2167,35 @@ export type Toolset = {
     updated_at: string;
 };
 
+export type ToolsetApproval = {
+    toolset_type: string;
+    status: string;
+    instance_id?: string | null;
+};
+
+/**
+ * A toolset is a connector that provides one or more tools.
+ * Example: Exa Web Search toolset provides search, find_similar, get_contents, answer tools.
+ */
+export type ToolsetDefinition = {
+    /**
+     * Toolset type identifier (e.g., "builtin-exa-search")
+     */
+    toolset_type: string;
+    /**
+     * Human-readable name (e.g., "Exa Web Search")
+     */
+    name: string;
+    /**
+     * Description of the toolset
+     */
+    description: string;
+    /**
+     * Tools provided by this toolset (in OpenAI format)
+     */
+    tools: Array<ToolDefinition>;
+};
+
 /**
  * Response from toolset tool execution (to send back to LLM)
  */
@@ -2231,9 +2219,9 @@ export type ToolsetResponse = {
      */
     id: string;
     /**
-     * User-defined name for this toolset
+     * User-defined slug for this toolset
      */
-    name: string;
+    slug: string;
     /**
      * Toolset type identifier (e.g., "builtin-exa-search")
      */
@@ -2264,26 +2252,8 @@ export type ToolsetResponse = {
     updated_at: string;
 };
 
-/**
- * Toolset type response (for admin listing)
- */
-export type ToolsetTypeResponse = {
-    /**
-     * Toolset type identifier (e.g., "builtin-exa-search")
-     */
+export type ToolsetTypeRequest = {
     toolset_type: string;
-    /**
-     * Human-readable name (e.g., "Exa Web Search")
-     */
-    name: string;
-    /**
-     * Description of the toolset
-     */
-    description: string;
-    /**
-     * Tools provided by this toolset
-     */
-    tools: Array<ToolDefinition>;
 };
 
 export type TopLogprobs = {
@@ -2368,9 +2338,9 @@ export type UpdateSettingRequest = {
  */
 export type UpdateToolsetRequest = {
     /**
-     * User-defined name for this toolset
+     * User-defined slug for this toolset
      */
-    name: string;
+    slug: string;
     /**
      * Optional description for this toolset
      */

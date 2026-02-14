@@ -49,19 +49,19 @@ impl UserAliasBuilder {
       alias: self
         .alias
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("alias"))?,
+        .ok_or(crate::BuilderError::UninitializedField("alias"))?,
       repo: self
         .repo
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("repo"))?,
+        .ok_or(crate::BuilderError::UninitializedField("repo"))?,
       filename: self
         .filename
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("filename"))?,
+        .ok_or(crate::BuilderError::UninitializedField("filename"))?,
       snapshot: self
         .snapshot
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("snapshot"))?,
+        .ok_or(crate::BuilderError::UninitializedField("snapshot"))?,
       request_params: self.request_params.clone().unwrap_or_default(),
       context_params: self.context_params.clone().unwrap_or_default(),
       created_at: now,
@@ -81,19 +81,19 @@ impl UserAliasBuilder {
       alias: self
         .alias
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("alias"))?,
+        .ok_or(crate::BuilderError::UninitializedField("alias"))?,
       repo: self
         .repo
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("repo"))?,
+        .ok_or(crate::BuilderError::UninitializedField("repo"))?,
       filename: self
         .filename
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("filename"))?,
+        .ok_or(crate::BuilderError::UninitializedField("filename"))?,
       snapshot: self
         .snapshot
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("snapshot"))?,
+        .ok_or(crate::BuilderError::UninitializedField("snapshot"))?,
       request_params: self.request_params.clone().unwrap_or_default(),
       context_params: self.context_params.clone().unwrap_or_default(),
       created_at: fixed_time,

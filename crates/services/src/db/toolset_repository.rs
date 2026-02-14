@@ -5,10 +5,10 @@ pub trait ToolsetRepository: Send + Sync {
   // Toolset instances
   async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError>;
 
-  async fn get_toolset_by_name(
+  async fn get_toolset_by_slug(
     &self,
     user_id: &str,
-    name: &str,
+    slug: &str,
   ) -> Result<Option<ToolsetRow>, DbError>;
 
   async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError>;

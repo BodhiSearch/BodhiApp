@@ -22,15 +22,21 @@ export const mockDraftReviewResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-1',
-          name: 'My Exa Instance',
+          slug: 'my-exa-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
         {
           id: 'instance-2',
-          name: 'Test Instance',
+          slug: 'test-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: false,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },
@@ -77,9 +83,12 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-1',
-          name: 'My Exa Instance',
+          slug: 'my-exa-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },
@@ -133,9 +142,12 @@ export const mockDraftRedirectResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-1',
-          name: 'My Exa Instance',
+          slug: 'my-exa-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },
@@ -161,9 +173,12 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-1',
-          name: 'My Exa Instance',
+          slug: 'my-exa-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },
@@ -174,15 +189,21 @@ export const mockDraftMultiToolResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-3',
-          name: 'My Weather Instance',
+          slug: 'my-weather-instance',
+          toolset_type: 'builtin-weather',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
         {
           id: 'instance-4',
-          name: 'Disabled Instance',
+          slug: 'disabled-instance',
+          toolset_type: 'builtin-weather',
           enabled: false,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },
@@ -208,9 +229,12 @@ export const mockDraftMultiToolMixedResponse: AccessRequestReviewResponse = {
       instances: [
         {
           id: 'instance-1',
-          name: 'My Exa Instance',
+          slug: 'my-exa-instance',
+          toolset_type: 'builtin-exa-search',
           enabled: true,
           has_api_key: true,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
         },
       ],
     },

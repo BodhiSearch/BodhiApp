@@ -677,7 +677,7 @@ mod tests {
       .validate_bearer_token(&format!("Bearer {}", token_str))
       .await;
 
-    assert_eq!(true, result.is_ok());
+    assert!(result.is_ok());
     let (access_token, scope, azp) = result.unwrap();
     assert_eq!(token_str, access_token);
     assert_eq!(ResourceScope::Token(TokenScope::User), scope);
@@ -854,7 +854,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(external_token.clone()),
         eq(
-          vec!["scope_user_user", "openid", "email", "profile", "roles"]
+          ["scope_user_user", "openid", "email", "profile", "roles"]
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<String>>(),
@@ -948,7 +948,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(legitimate_token.clone()),
         eq(
-          vec!["scope_user_user", "openid", "email", "profile", "roles"]
+          ["scope_user_user", "openid", "email", "profile", "roles"]
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<String>>(),
@@ -968,7 +968,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(forged_token.clone()),
         eq(
-          vec!["scope_user_admin", "openid", "email", "profile", "roles"]
+          ["scope_user_admin", "openid", "email", "profile", "roles"]
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<String>>(),

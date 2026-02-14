@@ -1,4 +1,4 @@
-use objs::{ToolDefinition, ToolsetExecutionRequest};
+use objs::{ToolDefinition, ToolsetDefinition, ToolsetExecutionRequest};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -9,12 +9,11 @@ use validator::{Validate, ValidationError};
 // Validation Patterns
 // ============================================================================
 
-static TOOLSET_NAME_REGEX: Lazy<Regex> =
-  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{0,22}[a-zA-Z0-9]$").unwrap());
+static TOOLSET_SLUG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9-]+$").unwrap());
 
-fn validate_toolset_name(name: &str) -> Result<(), ValidationError> {
-  if !TOOLSET_NAME_REGEX.is_match(name) {
-    return Err(ValidationError::new("invalid_toolset_name"));
+fn validate_toolset_slug(slug: &str) -> Result<(), ValidationError> {
+  if !TOOLSET_SLUG_REGEX.is_match(slug) {
+    return Err(ValidationError::new("invalid_toolset_slug"));
   }
   Ok(())
 }
@@ -34,9 +33,9 @@ pub struct CreateToolsetRequest {
   #[validate(length(min = 1))]
   pub toolset_type: String,
 
-  /// User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)
-  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
-  pub name: String,
+  /// User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens)
+  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_slug"))]
+  pub slug: String,
 
   /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -54,9 +53,9 @@ pub struct CreateToolsetRequest {
 /// Request to update a toolset (full PUT - all fields required except api_key)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, Validate)]
 pub struct UpdateToolsetRequest {
-  /// User-defined name for this toolset
-  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_name"))]
-  pub name: String,
+  /// User-defined slug for this toolset
+  #[validate(length(min = 1, max = 24), custom(function = "validate_toolset_slug"))]
+  pub slug: String,
 
   /// Optional description for this toolset
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,8 +86,8 @@ pub enum ApiKeyUpdateDto {
 pub struct ToolsetResponse {
   /// Unique instance identifier (UUID)
   pub id: String,
-  /// User-defined name for this toolset
-  pub name: String,
+  /// User-defined slug for this toolset
+  pub slug: String,
   /// Toolset type identifier (e.g., "builtin-exa-search")
   pub toolset_type: String,
   /// Optional description for this toolset
@@ -119,23 +118,10 @@ pub struct ListToolsetsResponse {
 // Toolset type DTOs (admin endpoints)
 // ============================================================================
 
-/// Toolset type response (for admin listing)
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolsetTypeResponse {
-  /// Toolset type identifier (e.g., "builtin-exa-search")
-  pub toolset_type: String,
-  /// Human-readable name (e.g., "Exa Web Search")
-  pub name: String,
-  /// Description of the toolset
-  pub description: String,
-  /// Tools provided by this toolset
-  pub tools: Vec<ToolDefinition>,
-}
-
 /// List of toolset types
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ListToolsetTypesResponse {
-  pub types: Vec<ToolsetTypeResponse>,
+  pub types: Vec<ToolsetDefinition>,
 }
 
 // ============================================================================
@@ -175,7 +161,7 @@ mod tests {
   fn test_create_toolset_request_serialization() {
     let req = CreateToolsetRequest {
       toolset_type: "builtin-exa-search".to_string(),
-      name: "My Exa".to_string(),
+      slug: "my-exa".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,
       api_key: "sk-test123".to_string(),
@@ -183,7 +169,7 @@ mod tests {
 
     let json = serde_json::to_value(&req).unwrap();
     assert_eq!("builtin-exa-search", json["toolset_type"]);
-    assert_eq!("My Exa", json["name"]);
+    assert_eq!("my-exa", json["slug"]);
     assert_eq!(true, json["enabled"]);
     assert_eq!("sk-test123", json["api_key"]);
   }
@@ -191,14 +177,14 @@ mod tests {
   #[rstest]
   fn test_update_toolset_request_with_api_key_keep() {
     let req = UpdateToolsetRequest {
-      name: "Updated Name".to_string(),
+      slug: "updated-name".to_string(),
       description: None,
       enabled: false,
       api_key: ApiKeyUpdateDto::Keep,
     };
 
     let json = serde_json::to_value(&req).unwrap();
-    assert_eq!("Updated Name", json["name"]);
+    assert_eq!("updated-name", json["slug"]);
     assert_eq!(false, json["enabled"]);
     assert_eq!("Keep", json["api_key"]["action"]);
   }
@@ -206,14 +192,14 @@ mod tests {
   #[rstest]
   fn test_update_toolset_request_with_api_key_set() {
     let req = UpdateToolsetRequest {
-      name: "Updated Name".to_string(),
+      slug: "updated-name".to_string(),
       description: Some("Updated desc".to_string()),
       enabled: true,
       api_key: ApiKeyUpdateDto::Set(Some("new-key".to_string())),
     };
 
     let json = serde_json::to_value(&req).unwrap();
-    assert_eq!("Updated Name", json["name"]);
+    assert_eq!("updated-name", json["slug"]);
     assert_eq!("Updated desc", json["description"]);
     assert_eq!(true, json["enabled"]);
     assert_eq!("Set", json["api_key"]["action"]);

@@ -13,7 +13,6 @@ use axum::{
   routing::get,
   Router,
 };
-use dotenv;
 use objs::{ErrorBody, OpenAIApiError};
 use rstest::{fixture, rstest};
 use server_core::{
@@ -161,7 +160,7 @@ async fn test_cross_client_token_exchange_success(
   let state = create_test_state(
     auth_server_config,
     &resource_client_id,
-    &resource_client_secret,
+    resource_client_secret,
   )
   .await?;
   let user_token = auth_client
@@ -199,14 +198,12 @@ async fn test_cross_client_token_exchange_success(
   );
 
   let body: TestTokenResponse = response.json().await?;
-  assert_eq!(
+  assert!(
     body.token.is_some(),
-    true,
     "Expected X-Resource-Token header to be set"
   );
-  assert_eq!(
+  assert!(
     body.scope.is_some(),
-    true,
     "Expected X-Resource-Scope header to be set"
   );
 
@@ -247,7 +244,7 @@ async fn test_cross_client_token_exchange_no_user_scope(
   let state = create_test_state(
     auth_server_config,
     &resource_client_id,
-    &resource_client_secret,
+    resource_client_secret,
   )
   .await?;
   let user_token = auth_client

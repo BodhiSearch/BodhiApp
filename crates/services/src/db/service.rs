@@ -1,9 +1,9 @@
 use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus,
-  ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository, TokenStatus,
-  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus, ModelMetadataRow,
+  ModelRepository, SqlxError, TimeService, TokenRepository, TokenStatus, ToolsetRepository,
+  ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use derive_new::new;
@@ -1372,7 +1372,7 @@ impl TokenRepository for SqliteDbService {
 impl ToolsetRepository for SqliteDbService {
   async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
+      "SELECT id, user_id, toolset_type, slug, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
@@ -1383,7 +1383,7 @@ impl ToolsetRepository for SqliteDbService {
         id,
         user_id,
         toolset_type,
-        name,
+        slug,
         description,
         enabled,
         encrypted_api_key,
@@ -1396,7 +1396,7 @@ impl ToolsetRepository for SqliteDbService {
           id,
           user_id,
           toolset_type,
-          name,
+          slug,
           description,
           enabled: enabled != 0,
           encrypted_api_key,
@@ -1409,16 +1409,16 @@ impl ToolsetRepository for SqliteDbService {
     ))
   }
 
-  async fn get_toolset_by_name(
+  async fn get_toolset_by_slug(
     &self,
     user_id: &str,
-    name: &str,
+    slug: &str,
   ) -> Result<Option<ToolsetRow>, DbError> {
     let result = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND name = ? COLLATE NOCASE",
+      "SELECT id, user_id, toolset_type, slug, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND slug = ? COLLATE NOCASE",
     )
     .bind(user_id)
-    .bind(name)
+    .bind(slug)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -1427,7 +1427,7 @@ impl ToolsetRepository for SqliteDbService {
         id,
         user_id,
         toolset_type,
-        name,
+        slug,
         description,
         enabled,
         encrypted_api_key,
@@ -1440,7 +1440,7 @@ impl ToolsetRepository for SqliteDbService {
           id,
           user_id,
           toolset_type,
-          name,
+          slug,
           description,
           enabled: enabled != 0,
           encrypted_api_key,
@@ -1458,14 +1458,14 @@ impl ToolsetRepository for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO toolsets (id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
+      INSERT INTO toolsets (id, user_id, toolset_type, slug, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&row.id)
     .bind(&row.user_id)
     .bind(&row.toolset_type)
-    .bind(&row.name)
+    .bind(&row.slug)
     .bind(&row.description)
     .bind(enabled)
     .bind(&row.encrypted_api_key)
@@ -1491,11 +1491,11 @@ impl ToolsetRepository for SqliteDbService {
         sqlx::query(
           r#"
           UPDATE toolsets
-          SET name = ?, description = ?, enabled = ?, updated_at = ?
+          SET slug = ?, description = ?, enabled = ?, updated_at = ?
           WHERE id = ?
           "#,
         )
-        .bind(&row.name)
+        .bind(&row.slug)
         .bind(&row.description)
         .bind(enabled)
         .bind(row.updated_at)
@@ -1507,11 +1507,11 @@ impl ToolsetRepository for SqliteDbService {
         sqlx::query(
           r#"
           UPDATE toolsets
-          SET name = ?, description = ?, enabled = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+          SET slug = ?, description = ?, enabled = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
           WHERE id = ?
           "#,
         )
-        .bind(&row.name)
+        .bind(&row.slug)
         .bind(&row.description)
         .bind(enabled)
         .bind(&api_key)
@@ -1529,7 +1529,7 @@ impl ToolsetRepository for SqliteDbService {
 
   async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
+      "SELECT id, user_id, toolset_type, slug, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ?",
     )
     .bind(user_id)
     .fetch_all(&self.pool)
@@ -1543,7 +1543,7 @@ impl ToolsetRepository for SqliteDbService {
             id,
             user_id,
             toolset_type,
-            name,
+            slug,
             description,
             enabled,
             encrypted_api_key,
@@ -1556,7 +1556,7 @@ impl ToolsetRepository for SqliteDbService {
               id,
               user_id,
               toolset_type,
-              name,
+              slug,
               description,
               enabled: enabled != 0,
               encrypted_api_key,
@@ -1577,7 +1577,7 @@ impl ToolsetRepository for SqliteDbService {
     toolset_type: &str,
   ) -> Result<Vec<ToolsetRow>, DbError> {
     let results = sqlx::query_as::<_, (String, String, String, String, Option<String>, i64, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, toolset_type, name, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND toolset_type = ?",
+      "SELECT id, user_id, toolset_type, slug, description, enabled, encrypted_api_key, salt, nonce, created_at, updated_at FROM toolsets WHERE user_id = ? AND toolset_type = ?",
     )
     .bind(user_id)
     .bind(toolset_type)
@@ -1592,7 +1592,7 @@ impl ToolsetRepository for SqliteDbService {
             id,
             user_id,
             toolset_type,
-            name,
+            slug,
             description,
             enabled,
             encrypted_api_key,
@@ -1605,7 +1605,7 @@ impl ToolsetRepository for SqliteDbService {
               id,
               user_id,
               toolset_type,
-              name,
+              slug,
               description,
               enabled: enabled != 0,
               encrypted_api_key,
@@ -1729,7 +1729,6 @@ impl ToolsetRepository for SqliteDbService {
       },
     ))
   }
-
 }
 
 fn parse_user_alias_row(

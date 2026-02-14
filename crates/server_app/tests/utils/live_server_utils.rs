@@ -50,7 +50,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .ok_or_else(|| anyhow::anyhow!("Failed to determine home directory"))?
     .join(".cache")
     .join("huggingface");
-  fs::create_dir_all(&hf_home.join("hub"))?;
+  fs::create_dir_all(hf_home.join("hub"))?;
 
   // Build env wrapper with test environment
   let mut env_vars = HashMap::new();
@@ -235,7 +235,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     db_service.clone(),
     exa_service,
     time_service.clone(),
-    false, // is_production
   ));
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),

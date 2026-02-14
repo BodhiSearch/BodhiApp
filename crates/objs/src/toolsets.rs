@@ -55,8 +55,8 @@ pub struct FunctionDefinition {
 pub struct Toolset {
   /// Unique instance identifier (UUID)
   pub id: String,
-  /// User-defined name for this instance
-  pub name: String,
+  /// User-defined slug for this instance
+  pub slug: String,
   /// Toolset type identifier (e.g., "builtin-exa-search")
   pub toolset_type: String,
   /// Optional description for this instance
@@ -102,25 +102,25 @@ pub struct AppToolsetConfig {
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-static TOOLSET_NAME_REGEX: Lazy<Regex> =
-  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9-]+$").expect("Invalid toolset name regex"));
+static TOOLSET_SLUG_REGEX: Lazy<Regex> =
+  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9-]+$").expect("Invalid toolset slug regex"));
 
-pub const MAX_TOOLSET_NAME_LEN: usize = 24;
+pub const MAX_TOOLSET_SLUG_LEN: usize = 24;
 pub const MAX_TOOLSET_DESCRIPTION_LEN: usize = 255;
 
-/// Validate toolset instance name format and length
-pub fn validate_toolset_name(name: &str) -> Result<(), String> {
-  if name.is_empty() {
-    return Err("Toolset name cannot be empty".to_string());
+/// Validate toolset instance slug format and length
+pub fn validate_toolset_slug(slug: &str) -> Result<(), String> {
+  if slug.is_empty() {
+    return Err("Toolset slug cannot be empty".to_string());
   }
-  if name.len() > MAX_TOOLSET_NAME_LEN {
+  if slug.len() > MAX_TOOLSET_SLUG_LEN {
     return Err(format!(
-      "Toolset name cannot exceed {} characters",
-      MAX_TOOLSET_NAME_LEN
+      "Toolset slug cannot exceed {} characters",
+      MAX_TOOLSET_SLUG_LEN
     ));
   }
-  if !TOOLSET_NAME_REGEX.is_match(name) {
-    return Err("Toolset name can only contain alphanumeric characters and hyphens".to_string());
+  if !TOOLSET_SLUG_REGEX.is_match(slug) {
+    return Err("Toolset slug can only contain alphanumeric characters and hyphens".to_string());
   }
   Ok(())
 }
@@ -161,45 +161,45 @@ pub struct ToolsetExecutionResponse {
 #[cfg(test)]
 mod tests {
   use crate::toolsets::{
-    validate_toolset_description, validate_toolset_name, MAX_TOOLSET_DESCRIPTION_LEN,
-    MAX_TOOLSET_NAME_LEN,
+    validate_toolset_description, validate_toolset_slug, MAX_TOOLSET_DESCRIPTION_LEN,
+    MAX_TOOLSET_SLUG_LEN,
   };
 
   #[test]
-  fn test_validate_toolset_name_accepts_valid_names() {
-    assert!(validate_toolset_name("my-toolset").is_ok());
-    assert!(validate_toolset_name("MyToolset123").is_ok());
-    assert!(validate_toolset_name("a").is_ok());
-    assert!(validate_toolset_name("toolset-1").is_ok());
+  fn test_validate_toolset_slug_accepts_valid_slugs() {
+    assert!(validate_toolset_slug("my-toolset").is_ok());
+    assert!(validate_toolset_slug("MyToolset123").is_ok());
+    assert!(validate_toolset_slug("a").is_ok());
+    assert!(validate_toolset_slug("toolset-1").is_ok());
   }
 
   #[test]
-  fn test_validate_toolset_name_rejects_empty() {
-    let result = validate_toolset_name("");
+  fn test_validate_toolset_slug_rejects_empty() {
+    let result = validate_toolset_slug("");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("cannot be empty"));
   }
 
   #[test]
-  fn test_validate_toolset_name_rejects_too_long() {
-    let long_name = "a".repeat(MAX_TOOLSET_NAME_LEN + 1);
-    let result = validate_toolset_name(&long_name);
+  fn test_validate_toolset_slug_rejects_too_long() {
+    let long_slug = "a".repeat(MAX_TOOLSET_SLUG_LEN + 1);
+    let result = validate_toolset_slug(&long_slug);
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("cannot exceed"));
   }
 
   #[test]
-  fn test_validate_toolset_name_rejects_invalid_characters() {
-    assert!(validate_toolset_name("my_toolset").is_err());
-    assert!(validate_toolset_name("my toolset").is_err());
-    assert!(validate_toolset_name("my.toolset").is_err());
-    assert!(validate_toolset_name("my@toolset").is_err());
+  fn test_validate_toolset_slug_rejects_invalid_characters() {
+    assert!(validate_toolset_slug("my_toolset").is_err());
+    assert!(validate_toolset_slug("my toolset").is_err());
+    assert!(validate_toolset_slug("my.toolset").is_err());
+    assert!(validate_toolset_slug("my@toolset").is_err());
   }
 
   #[test]
-  fn test_validate_toolset_name_accepts_max_length() {
-    let max_name = "a".repeat(MAX_TOOLSET_NAME_LEN);
-    assert!(validate_toolset_name(&max_name).is_ok());
+  fn test_validate_toolset_slug_accepts_max_length() {
+    let max_slug = "a".repeat(MAX_TOOLSET_SLUG_LEN);
+    assert!(validate_toolset_slug(&max_slug).is_ok());
   }
 
   #[test]

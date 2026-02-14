@@ -1,15 +1,15 @@
 /**
  * Tool name encoding/decoding utilities for the multi-instance toolset architecture.
  *
- * Tool names are encoded as: toolset__{toolsetName}__{methodName}
- * where toolsetName is the unique instance name and methodName is the tool method.
+ * Tool names are encoded as: toolset__{toolsetSlug}__{methodName}
+ * where toolsetSlug is the unique instance slug and methodName is the tool method.
  */
 
 /**
- * Encode a tool name with toolset instance name and method.
- * Format: toolset__{toolsetName}__{methodName}
+ * Encode a tool name with toolset instance slug and method.
+ * Format: toolset__{toolsetSlug}__{methodName}
  *
- * @param toolsetName - The unique name of the toolset instance
+ * @param toolsetSlug - The unique slug of the toolset instance
  * @param methodName - The name of the tool method
  * @returns Encoded tool name
  *
@@ -17,24 +17,24 @@
  * encodeToolName('my-exa-search', 'search')
  * // Returns: 'toolset__my-exa-search__search'
  */
-export function encodeToolName(toolsetName: string, methodName: string): string {
-  return `toolset__${toolsetName}__${methodName}`;
+export function encodeToolName(toolsetSlug: string, methodName: string): string {
+  return `toolset__${toolsetSlug}__${methodName}`;
 }
 
 /**
- * Decode a tool name to extract toolset instance name and method.
+ * Decode a tool name to extract toolset instance slug and method.
  *
  * @param toolName - The encoded tool name
- * @returns Object with toolsetName and method, or null if invalid format
+ * @returns Object with toolsetSlug and method, or null if invalid format
  *
  * @example
  * decodeToolName('toolset__my-exa-search__search')
- * // Returns: { toolsetName: 'my-exa-search', method: 'search' }
+ * // Returns: { toolsetSlug: 'my-exa-search', method: 'search' }
  */
-export function decodeToolName(toolName: string): { toolsetName: string; method: string } | null {
+export function decodeToolName(toolName: string): { toolsetSlug: string; method: string } | null {
   const match = toolName.match(/^toolset__(.+?)__(.+)$/);
   if (!match) return null;
-  return { toolsetName: match[1], method: match[2] };
+  return { toolsetSlug: match[1], method: match[2] };
 }
 
 /**

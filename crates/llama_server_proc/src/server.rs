@@ -297,7 +297,7 @@ mod tests {
       .model(PathBuf::from("/path/to/model"))
       .alias("test-alias".to_string())
       .server_args(server_args)
-      .port(12345 as u16)
+      .port(12345_u16)
       .build()
       .unwrap();
 

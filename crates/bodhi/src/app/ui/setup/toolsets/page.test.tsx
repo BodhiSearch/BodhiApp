@@ -117,7 +117,7 @@ describe('ToolsetsSetupPage', () => {
       await waitForFormLoad();
 
       expect(screen.getByTestId('app-enabled-toggle')).toBeInTheDocument();
-      expect(screen.getByTestId('toolset-name-input')).toBeInTheDocument();
+      expect(screen.getByTestId('toolset-slug-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-description-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-api-key-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-enabled-toggle')).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('ToolsetsSetupPage', () => {
       await waitForFormLoad();
 
       expect(screen.getByTestId('app-enabled-toggle')).toBeInTheDocument();
-      expect(screen.getByTestId('toolset-name-input')).toBeInTheDocument();
+      expect(screen.getByTestId('toolset-slug-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-description-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-api-key-input')).toBeInTheDocument();
       expect(screen.getByTestId('toolset-enabled-toggle')).toBeInTheDocument();
@@ -164,13 +164,13 @@ describe('ToolsetsSetupPage', () => {
       await waitForPageLoad();
       await waitForFormLoad();
 
-      const nameInput = screen.getByTestId('toolset-name-input');
+      const slugInput = screen.getByTestId('toolset-slug-input');
       const descInput = screen.getByTestId('toolset-description-input');
       const apiKeyInput = screen.getByTestId('toolset-api-key-input');
       const enabledToggle = screen.getByTestId('toolset-enabled-toggle');
       const createButton = screen.getByTestId('create-toolset-button');
 
-      expect(nameInput).toBeDisabled();
+      expect(slugInput).toBeDisabled();
       expect(descInput).toBeDisabled();
       expect(apiKeyInput).toBeDisabled();
       expect(enabledToggle).toBeDisabled();
@@ -200,13 +200,13 @@ describe('ToolsetsSetupPage', () => {
       await waitForPageLoad();
       await waitForFormLoad();
 
-      const nameInput = screen.getByTestId('toolset-name-input');
+      const slugInput = screen.getByTestId('toolset-slug-input');
       const descInput = screen.getByTestId('toolset-description-input');
       const apiKeyInput = screen.getByTestId('toolset-api-key-input');
       const enabledToggle = screen.getByTestId('toolset-enabled-toggle');
       const createButton = screen.getByTestId('create-toolset-button');
 
-      expect(nameInput).not.toBeDisabled();
+      expect(slugInput).not.toBeDisabled();
       expect(descInput).not.toBeDisabled();
       expect(apiKeyInput).not.toBeDisabled();
       expect(enabledToggle).not.toBeDisabled();
@@ -392,12 +392,12 @@ describe('ToolsetsSetupPage', () => {
       await waitForPageLoad();
       await waitForFormLoad();
 
-      const nameInput = screen.getByTestId('toolset-name-input');
+      const slugInput = screen.getByTestId('toolset-slug-input');
       const apiKeyInput = screen.getByTestId('toolset-api-key-input');
       const createButton = screen.getByTestId('create-toolset-button');
 
-      await user.clear(nameInput);
-      await user.type(nameInput, 'my-exa-search');
+      await user.clear(slugInput);
+      await user.type(slugInput, 'my-exa-search');
       await user.type(apiKeyInput, 'test-api-key');
       await user.click(createButton);
 
@@ -431,12 +431,12 @@ describe('ToolsetsSetupPage', () => {
       await waitForPageLoad();
       await waitForFormLoad();
 
-      const nameInput = screen.getByTestId('toolset-name-input');
+      const slugInput = screen.getByTestId('toolset-slug-input');
       const apiKeyInput = screen.getByTestId('toolset-api-key-input');
       const createButton = screen.getByTestId('create-toolset-button');
 
-      await user.clear(nameInput);
-      await user.type(nameInput, 'my-exa-search');
+      await user.clear(slugInput);
+      await user.type(slugInput, 'my-exa-search');
       await user.type(apiKeyInput, 'test-api-key');
       await user.click(createButton);
 
@@ -445,7 +445,7 @@ describe('ToolsetsSetupPage', () => {
       });
     });
 
-    it('prefills name with type name', async () => {
+    it('prefills slug with toolset_type', async () => {
       server.use(
         mockListTypes([mockType]),
         mockListToolsets(
@@ -468,8 +468,8 @@ describe('ToolsetsSetupPage', () => {
       await waitForPageLoad();
       await waitForFormLoad();
 
-      const nameInput = screen.getByTestId('toolset-name-input') as HTMLInputElement;
-      expect(nameInput.value).toBe('builtin-exa-search');
+      const slugInput = screen.getByTestId('toolset-slug-input') as HTMLInputElement;
+      expect(slugInput.value).toBe('exa-web-search');
     });
   });
 

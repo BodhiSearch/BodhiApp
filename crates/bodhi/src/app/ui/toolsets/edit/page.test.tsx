@@ -115,7 +115,7 @@ describe('EditToolsetPage - Form Display', () => {
     server.use(
       mockGetToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
@@ -148,7 +148,7 @@ describe('EditToolsetPage - Form Display', () => {
       expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('toolset-name-input')).toHaveValue('my-exa-search');
+    expect(screen.getByTestId('toolset-slug-input')).toHaveValue('my-exa-search');
     expect(screen.getByTestId('toolset-description-input')).toHaveValue('Test toolset');
     expect(screen.getByTestId('toolset-enabled-switch')).toBeChecked();
     expect(screen.getByTestId('toolset-api-key-input')).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe('EditToolsetPage - Form Display', () => {
     server.use(
       mockGetToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
@@ -209,7 +209,7 @@ describe('EditToolsetPage - Update Functionality', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockGetToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: false,
@@ -241,7 +241,7 @@ describe('EditToolsetPage - Update Functionality', () => {
     server.use(
       mockUpdateToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Updated description',
         enabled: true,
@@ -285,7 +285,7 @@ describe('EditToolsetPage - Update Functionality', () => {
     server.use(
       mockUpdateToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
@@ -362,7 +362,7 @@ describe('EditToolsetPage - Delete Functionality', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockGetToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
@@ -452,7 +452,7 @@ describe('EditToolsetPage - Form Validation', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockGetToolset({
         id: 'uuid-test-toolset',
-        name: 'my-exa-search',
+        slug: 'my-exa-search',
         toolset_type: 'builtin-exa-search',
         description: 'Test toolset',
         enabled: true,
@@ -478,7 +478,7 @@ describe('EditToolsetPage - Form Validation', () => {
     );
   });
 
-  it('validates name length (max 24 characters)', async () => {
+  it('validates slug length (max 24 characters)', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
@@ -489,19 +489,19 @@ describe('EditToolsetPage - Form Validation', () => {
       expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByTestId('toolset-name-input');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'this-name-is-way-too-long-for-validation');
+    const slugInput = screen.getByTestId('toolset-slug-input');
+    await user.clear(slugInput);
+    await user.type(slugInput, 'this-name-is-way-too-long-for-validation');
 
     const saveButton = screen.getByTestId('toolset-save-button');
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Name must be 24 characters or less')).toBeInTheDocument();
+      expect(screen.getByText('Slug must be 24 characters or less')).toBeInTheDocument();
     });
   });
 
-  it('validates name format (alphanumeric and hyphens only)', async () => {
+  it('validates slug format (alphanumeric and hyphens only)', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
@@ -512,15 +512,15 @@ describe('EditToolsetPage - Form Validation', () => {
       expect(screen.getByTestId('edit-toolset-page')).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByTestId('toolset-name-input');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'invalid name with spaces');
+    const slugInput = screen.getByTestId('toolset-slug-input');
+    await user.clear(slugInput);
+    await user.type(slugInput, 'invalid name with spaces');
 
     const saveButton = screen.getByTestId('toolset-save-button');
     await user.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Name can only contain letters, numbers, and hyphens')).toBeInTheDocument();
+      expect(screen.getByText('Slug can only contain letters, numbers, and hyphens')).toBeInTheDocument();
     });
   });
 });

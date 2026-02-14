@@ -305,7 +305,7 @@ describe('ReviewAccessRequestPage - Draft Review Form', () => {
     await user.click(selectTrigger);
 
     // Select the valid instance
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Now approve button should be enabled
@@ -342,7 +342,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     // Select instance
     const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(selectTrigger);
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Click approve
@@ -380,7 +380,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     // Select instance
     const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(selectTrigger);
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Click approve
@@ -422,7 +422,7 @@ describe('ReviewAccessRequestPage - Approve Flow', () => {
     // Select instance
     const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(selectTrigger);
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Click approve
@@ -706,7 +706,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Select an instance
     const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(selectTrigger);
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Verify instance is selected
@@ -793,7 +793,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Select instance for exa-search
     const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(exaSelect);
-    const exaOption = await screen.findByText('My Exa Instance');
+    const exaOption = await screen.findByText('my-exa-instance');
     await user.click(exaOption);
 
     // Uncheck weather tool to deny it
@@ -857,7 +857,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Select instance for exa-search
     const exaSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(exaSelect);
-    const exaOption = await screen.findByText('My Exa Instance');
+    const exaOption = await screen.findByText('my-exa-instance');
     await user.click(exaOption);
 
     // Now approve should be enabled
@@ -882,7 +882,7 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Select instance
     const selectTrigger = screen.getByTestId('review-instance-select-builtin-exa-search');
     await user.click(selectTrigger);
-    const option = await screen.findByText('My Exa Instance');
+    const option = await screen.findByText('my-exa-instance');
     await user.click(option);
 
     // Button should say "Approve All"

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS toolsets (
     id TEXT PRIMARY KEY,                   -- UUID as TEXT
     user_id TEXT NOT NULL,                 -- JWT 'sub' claim (no FK)
     toolset_type TEXT,                     -- Toolset type identifier (e.g., 'builtin-exa-search')
-    name TEXT NOT NULL,                    -- user-defined instance name
+    slug TEXT NOT NULL,                    -- user-defined instance slug
     description TEXT,                      -- optional instance description
     enabled INTEGER NOT NULL DEFAULT 0,    -- boolean as integer
     -- Encrypted API key storage (same pattern as api_model_aliases)
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS toolsets (
     nonce TEXT,
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL,
-    UNIQUE(user_id, name COLLATE NOCASE)   -- case-insensitive uniqueness per user
+    UNIQUE(user_id, slug COLLATE NOCASE)   -- case-insensitive uniqueness per user
 );
 
 -- Create index on user_id for faster lookups by user

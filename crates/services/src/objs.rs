@@ -44,7 +44,7 @@ pub struct AppAccessRequest {
   pub flow_type: String, // "redirect" | "popup"
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redirect_uri: Option<String>, // Required if flow_type == "redirect"
-  pub tools: Vec<objs::ToolTypeRequest>,
+  pub tools: Vec<objs::ToolsetTypeRequest>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
@@ -63,9 +63,9 @@ pub struct AppAccessRequestDetail {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redirect_uri: Option<String>,
   pub status: String,
-  pub tools_requested: Vec<objs::ToolTypeRequest>,
+  pub tools_requested: Vec<objs::ToolsetTypeRequest>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_approved: Option<Vec<objs::ToolApproval>>,
+  pub tools_approved: Option<Vec<objs::ToolsetApproval>>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub user_id: Option<String>,
   #[serde(skip_serializing_if = "Vec::is_empty", default)]

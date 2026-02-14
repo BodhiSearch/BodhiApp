@@ -23,11 +23,11 @@ import { useCreateToolset, useToolsets, useToolsetTypes } from '@/hooks/useTools
 // Form schema matching the plan specification
 const createToolsetSchema = z.object({
   toolset_type: z.string().min(1, 'Type is required'),
-  name: z
+  slug: z
     .string()
-    .min(1, 'Name is required')
-    .max(24, 'Name must be 24 characters or less')
-    .regex(/^[a-zA-Z0-9-]+$/, 'Name can only contain letters, numbers, and hyphens'),
+    .min(1, 'Slug is required')
+    .max(24, 'Slug must be 24 characters or less')
+    .regex(/^[a-zA-Z0-9-]+$/, 'Slug can only contain letters, numbers, and hyphens'),
   description: z.string().max(255).optional(),
   api_key: z.string().min(1, 'API key is required'),
   enabled: z.boolean().default(true),
@@ -42,7 +42,7 @@ function NewToolsetPageContent() {
 
   const createMutation = useCreateToolset({
     onSuccess: (toolset) => {
-      toast({ title: 'Toolset created successfully', description: `Created ${toolset.name}` });
+      toast({ title: 'Toolset created successfully', description: `Created ${toolset.slug}` });
       router.push('/ui/toolsets');
     },
     onError: (message) => {
@@ -54,7 +54,7 @@ function NewToolsetPageContent() {
     resolver: zodResolver(createToolsetSchema),
     defaultValues: {
       toolset_type: '',
-      name: '',
+      slug: '',
       description: '',
       api_key: '',
       enabled: true,
@@ -83,14 +83,14 @@ function NewToolsetPageContent() {
     if (!hasToolsetsOfType) {
       const selectedType = types.find((t) => t.toolset_type === toolsetType);
       if (selectedType) {
-        form.setValue('name', selectedType.name);
+        form.setValue('slug', selectedType.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
       }
     }
   };
 
   const onSubmit = (data: CreateToolsetFormData) => {
     createMutation.mutate({
-      name: data.name,
+      slug: data.slug,
       toolset_type: data.toolset_type,
       description: data.description || undefined,
       api_key: data.api_key,
@@ -175,20 +175,20 @@ function NewToolsetPageContent() {
 
               <FormField
                 control={form.control}
-                name="name"
+                name="slug"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Slug</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="my-exa-search"
                         disabled={createMutation.isLoading}
-                        data-testid="toolset-name-input"
+                        data-testid="toolset-slug-input"
                       />
                     </FormControl>
                     <FormDescription>
-                      A unique name for this toolset instance (letters, numbers, and hyphens only)
+                      A unique slug for this toolset instance (letters, numbers, and hyphens only)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

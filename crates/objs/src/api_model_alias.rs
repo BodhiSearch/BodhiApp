@@ -114,7 +114,7 @@ impl ApiAlias {
   /// If `forward_all_with_prefix` is false, checks if the model is in matchable_models list.
   pub fn supports_model(&self, model: &str) -> bool {
     if self.forward_all_with_prefix {
-      self.prefix.as_ref().map_or(false, |p| model.starts_with(p))
+      self.prefix.as_ref().is_some_and(|p| model.starts_with(p))
     } else {
       self.matchable_models().contains(&model.to_string())
     }
@@ -146,15 +146,15 @@ impl ApiAliasBuilder {
       id: self
         .id
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("id"))?,
+        .ok_or(crate::BuilderError::UninitializedField("id"))?,
       api_format: self
         .api_format
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("api_format"))?,
+        .ok_or(crate::BuilderError::UninitializedField("api_format"))?,
       base_url: self
         .base_url
         .clone()
-        .ok_or_else(|| crate::BuilderError::UninitializedField("base_url"))?,
+        .ok_or(crate::BuilderError::UninitializedField("base_url"))?,
       models: self.models.clone().unwrap_or_default(),
       prefix: self.prefix.clone().unwrap_or_default(),
       forward_all_with_prefix: self.forward_all_with_prefix.unwrap_or_default(),

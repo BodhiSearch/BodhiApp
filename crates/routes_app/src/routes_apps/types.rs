@@ -1,3 +1,4 @@
+use objs::{Toolset, ToolsetApproval, ToolsetTypeRequest};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -29,14 +30,7 @@ pub struct CreateAccessRequestBody {
 pub struct RequestedResources {
   /// Toolset types being requested
   #[serde(default)]
-  pub toolset_types: Vec<ToolTypeRequest>,
-}
-
-// Tool type request
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolTypeRequest {
-  /// Tool type identifier (e.g., "builtin-exa-search")
-  pub toolset_type: String,
+  pub toolset_types: Vec<ToolsetTypeRequest>,
 }
 
 // Response for POST /apps/request-access
@@ -87,34 +81,6 @@ pub struct AccessRequestStatusResponse {
 
 // Response for GET /access-requests/:id/review (review page data)
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "app_client_id": "my-app-client",
-    "app_name": "My Application",
-    "app_description": "A sample application",
-    "flow_type": "redirect",
-    "status": "draft",
-    "requested": {
-        "toolset_types": [
-            {"toolset_type": "builtin-exa-search"}
-        ]
-    },
-    "tools_info": [
-        {
-            "toolset_type": "builtin-exa-search",
-            "name": "Exa Search",
-            "description": "Search the web using Exa AI",
-            "instances": [
-                {
-                    "id": "instance-uuid",
-                    "name": "My Exa Instance",
-                    "enabled": true,
-                    "has_api_key": true
-                }
-            ]
-        }
-    ]
-}))]
 pub struct AccessRequestReviewResponse {
   /// Access request ID
   pub id: String,
@@ -144,20 +110,7 @@ pub struct ToolTypeReviewInfo {
   /// Tool type description
   pub description: String,
   /// User's configured instances of this tool type
-  pub instances: Vec<ToolInstanceInfo>,
-}
-
-// Tool instance info for review
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolInstanceInfo {
-  /// Instance ID
-  pub id: String,
-  /// Instance name
-  pub name: String,
-  /// Whether instance is enabled
-  pub enabled: bool,
-  /// Whether instance has API key configured
-  pub has_api_key: bool,
+  pub instances: Vec<Toolset>,
 }
 
 // Response for PUT /access-requests/:id/approve and POST /access-requests/:id/deny
@@ -195,16 +148,5 @@ pub struct ApproveAccessRequestBody {
 pub struct ApprovedResources {
   /// Toolset approvals with instance selections
   #[serde(default)]
-  pub toolset_types: Vec<ToolApproval>,
-}
-
-// Tool approval with instance selection
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ToolApproval {
-  /// Tool type identifier
-  pub toolset_type: String,
-  /// Approval status: "approved" or "denied"
-  pub status: String,
-  /// Instance ID (required when status = "approved")
-  pub instance_id: Option<String>,
+  pub toolset_types: Vec<ToolsetApproval>,
 }

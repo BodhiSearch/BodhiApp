@@ -456,7 +456,7 @@ mod tests {
   // Helper to load test GGUF files
   fn load_test_gguf(filename: &str) -> GGUFMetadata {
     let path = Path::new("tests/data/gguf-capabilities").join(filename);
-    GGUFMetadata::new(&path).expect(&format!("Failed to load test file: {}", filename))
+    GGUFMetadata::new(&path).unwrap_or_else(|_| panic!("Failed to load test file: {}", filename))
   }
 
   // ==========================================================================

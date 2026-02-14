@@ -561,7 +561,7 @@ async fn test_sync_models_handler_success(
   // Sync models
   let sync_response = test_router(app_service)
     .oneshot(
-      Request::post(&format!(
+      Request::post(format!(
         "/bodhi/v1/api-models/{}/sync-models",
         create_response.id
       ))
@@ -624,7 +624,7 @@ async fn test_update_api_model_handler_success(
 
   // Make PUT request to update existing API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::put(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).json(update_request)?)
+    .oneshot(Request::put(format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).json(update_request)?)
     .await?;
 
   // Verify response status
@@ -677,7 +677,7 @@ async fn test_update_api_model_handler_not_found(
   // Make PUT request to update non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::put(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).json(update_request)?,
+      Request::put(format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).json(update_request)?,
     )
     .await?;
 
@@ -714,7 +714,7 @@ async fn test_delete_api_model_handler_success(
 
   // Make DELETE request to delete existing API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::delete(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
+    .oneshot(Request::delete(format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
     .await?;
 
   // Verify response status is 204 No Content
@@ -746,7 +746,7 @@ async fn test_delete_api_model_handler_not_found(
   // Make DELETE request to delete non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::delete(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
+      Request::delete(format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
     )
     .await?;
 
@@ -783,7 +783,7 @@ async fn test_get_api_model_handler_success(
 
   // Make GET request to retrieve specific API model
   let response = test_router(Arc::new(app_service))
-    .oneshot(Request::get(&format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
+    .oneshot(Request::get(format!("{}/openai-gpt4", ENDPOINT_API_MODELS)).body(Body::empty())?)
     .await?;
 
   // Verify response status
@@ -827,7 +827,7 @@ async fn test_get_api_model_handler_not_found(
   // Make GET request to retrieve non-existent API model
   let response = test_router(Arc::new(app_service))
     .oneshot(
-      Request::get(&format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
+      Request::get(format!("{}/non-existent-alias", ENDPOINT_API_MODELS)).body(Body::empty())?,
     )
     .await?;
 
@@ -1168,7 +1168,7 @@ async fn test_api_model_prefix_lifecycle(
   // Step 2: Update the API model
   let update_request: UpdateApiModelRequest = serde_json::from_value(update_json)?;
   let update_response = test_router(app_service.clone())
-    .oneshot(Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, model_id)).json(update_request)?)
+    .oneshot(Request::put(format!("{}/{}", ENDPOINT_API_MODELS, model_id)).json(update_request)?)
     .await?;
 
   assert_eq!(update_response.status(), StatusCode::OK);
@@ -1176,7 +1176,7 @@ async fn test_api_model_prefix_lifecycle(
   // Step 3: Get the API model and verify final state
   let get_response = test_router(app_service)
     .oneshot(
-      Request::get(&format!("{}/{}", ENDPOINT_API_MODELS, model_id))
+      Request::get(format!("{}/{}", ENDPOINT_API_MODELS, model_id))
         .body(axum::body::Body::empty())?,
     )
     .await?;
@@ -1360,7 +1360,7 @@ async fn test_update_api_model_duplicate_prefix_error(
 
   let response = test_router(app_service)
     .oneshot(
-      Request::put(&format!("{}/{}", ENDPOINT_API_MODELS, second_model_id)).json(update_request)?,
+      Request::put(format!("{}/{}", ENDPOINT_API_MODELS, second_model_id)).json(update_request)?,
     )
     .await?;
 

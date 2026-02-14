@@ -32,11 +32,11 @@ import { useDeleteToolset, useToolset, useToolsets, useUpdateToolset } from '@/h
 
 // Form schema matching the plan specification
 const updateToolsetSchema = z.object({
-  name: z
+  slug: z
     .string()
-    .min(1, 'Name is required')
-    .max(24, 'Name must be 24 characters or less')
-    .regex(/^[a-zA-Z0-9-]+$/, 'Name can only contain letters, numbers, and hyphens'),
+    .min(1, 'Slug is required')
+    .max(24, 'Slug must be 24 characters or less')
+    .regex(/^[a-zA-Z0-9-]+$/, 'Slug can only contain letters, numbers, and hyphens'),
   description: z.string().max(255).optional().nullable(),
   enabled: z.boolean(),
   api_key: z.union([
@@ -66,7 +66,7 @@ function EditToolsetContent() {
 
   const updateMutation = useUpdateToolset({
     onSuccess: (updated) => {
-      toast({ title: 'Toolset updated successfully', description: `Updated ${updated.name}` });
+      toast({ title: 'Toolset updated successfully', description: `Updated ${updated.slug}` });
     },
     onError: (message) => {
       toast({ title: 'Failed to update toolset', description: message, variant: 'destructive' });
@@ -86,7 +86,7 @@ function EditToolsetContent() {
   const form = useForm<UpdateToolsetFormData>({
     resolver: zodResolver(updateToolsetSchema),
     defaultValues: {
-      name: '',
+      slug: '',
       description: '',
       enabled: true,
       api_key: '',
@@ -97,7 +97,7 @@ function EditToolsetContent() {
   useEffect(() => {
     if (toolset) {
       form.reset({
-        name: toolset.name,
+        slug: toolset.slug,
         description: toolset.description || '',
         enabled: toolset.enabled,
         api_key: '', // Always start empty (keep existing)
@@ -122,7 +122,7 @@ function EditToolsetContent() {
 
     updateMutation.mutate({
       id,
-      name: data.name,
+      slug: data.slug,
       description: data.description || null,
       enabled: data.enabled,
       api_key: data.api_key === '' ? { action: 'Keep' } : { action: 'Set', value: data.api_key },
@@ -159,7 +159,7 @@ function EditToolsetContent() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Edit Toolset</CardTitle>
-              <CardDescription>Update the configuration for {toolset.name}.</CardDescription>
+              <CardDescription>Update the configuration for {toolset.slug}.</CardDescription>
             </div>
             <Button
               variant="destructive"
@@ -186,20 +186,20 @@ function EditToolsetContent() {
 
               <FormField
                 control={form.control}
-                name="name"
+                name="slug"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Slug</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         placeholder="my-exa-search"
                         disabled={updateMutation.isLoading}
-                        data-testid="toolset-name-input"
+                        data-testid="toolset-slug-input"
                       />
                     </FormControl>
                     <FormDescription>
-                      A unique name for this toolset instance (letters, numbers, and hyphens only)
+                      A unique slug for this toolset instance (letters, numbers, and hyphens only)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -300,7 +300,7 @@ function EditToolsetContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Toolset</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{toolset.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{toolset.slug}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

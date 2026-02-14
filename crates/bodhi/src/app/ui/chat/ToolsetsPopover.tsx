@@ -106,7 +106,7 @@ function ToolsetItem({
         !isAvailable && 'opacity-50 cursor-not-allowed'
       )}
       data-testid={`toolset-row-${toolset.id}`}
-      data-test-toolset-name={toolset.name}
+      data-test-toolset-name={toolset.slug}
     >
       {/* Expand/collapse chevron */}
       <Button
@@ -128,7 +128,7 @@ function ToolsetItem({
       <Checkbox
         id={`toolset-${toolset.id}`}
         data-testid={`toolset-checkbox-${toolset.id}`}
-        data-test-toolset-name={`toolset-checkbox-name-${toolset.name}`}
+        data-test-toolset-name={`toolset-checkbox-name-${toolset.slug}`}
         checked={checkboxState === 'checked'}
         data-state={checkboxState}
         disabled={!isAvailable}
@@ -144,9 +144,9 @@ function ToolsetItem({
         <Label
           htmlFor={`toolset-${toolset.id}`}
           className={cn('text-sm font-medium cursor-pointer', !isAvailable && 'cursor-not-allowed')}
-          data-test-toolset-name={toolset.name}
+          data-test-toolset-name={toolset.slug}
         >
-          {toolset.name}
+          {toolset.slug}
         </Label>
         <p className="text-xs text-muted-foreground">
           ({enabledCount}/{toolset.tools.length})
@@ -172,7 +172,7 @@ function ToolsetItem({
     <div
       data-testid={`toolset-item-${toolset.id}`}
       data-testid-scope={toolset.toolset_type}
-      data-test-toolset-name={toolset.name}
+      data-test-toolset-name={toolset.slug}
     >
       {rowWithTooltip}
       {/* Expanded child tools */}

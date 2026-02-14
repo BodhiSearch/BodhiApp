@@ -113,7 +113,7 @@ function ToolsetsPageContent() {
       <TableCell key="name">
         <div className="flex items-center gap-2">
           <Wrench className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{toolset.name}</span>
+          <span className="font-medium">{toolset.slug}</span>
         </div>
       </TableCell>,
       <TableCell key="type" className="hidden md:table-cell" data-testid={`toolset-type-${toolset.id}`}>
@@ -129,7 +129,7 @@ function ToolsetsPageContent() {
             size="sm"
             onClick={() => handleEdit(toolset)}
             disabled={!canEdit}
-            title={canEdit ? `Edit ${toolset.name}` : 'Disabled by administrator'}
+            title={canEdit ? `Edit ${toolset.slug}` : 'Disabled by administrator'}
             className="h-8 w-8 p-0"
             data-testid={`toolset-edit-button-${toolset.id}`}
             data-testid-scope={toolset.toolset_type}
@@ -140,7 +140,7 @@ function ToolsetsPageContent() {
             variant="ghost"
             size="sm"
             onClick={() => handleDeleteClick(toolset)}
-            title={`Delete ${toolset.name}`}
+            title={`Delete ${toolset.slug}`}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
             data-testid={`toolset-delete-button-${toolset.id}`}
           >
@@ -229,7 +229,7 @@ function ToolsetsPageContent() {
             'data-test-uuid': toolset.id,
             'data-testid': `toolset-row-${toolset.id}`,
             'data-test-scope': toolset.toolset_type,
-            'data-test-toolset-name': toolset.name,
+            'data-test-toolset-name': toolset.slug,
           })}
         />
       </div>
@@ -248,7 +248,7 @@ function ToolsetsPageContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Toolset</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{toolsetToDelete?.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{toolsetToDelete?.slug}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

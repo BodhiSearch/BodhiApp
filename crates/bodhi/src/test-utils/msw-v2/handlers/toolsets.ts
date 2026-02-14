@@ -4,7 +4,7 @@
 import { http, HttpResponse } from 'msw';
 
 import { BODHI_API_BASE } from '@/hooks/useQuery';
-import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfig } from '@/hooks/useToolsets';
+import type { ToolsetResponse, ToolsetDefinition, AppToolsetConfig } from '@/hooks/useToolsets';
 
 // ============================================================================
 // Mock Data
@@ -12,7 +12,7 @@ import type { ToolsetResponse, ToolsetTypeResponse, AppToolsetConfig } from '@/h
 
 export const mockToolset: ToolsetResponse = {
   id: 'uuid-test-toolset',
-  name: 'my-exa-search',
+  slug: 'my-exa-search',
   toolset_type: 'builtin-exa-search',
   description: 'Test toolset',
   enabled: true,
@@ -49,7 +49,7 @@ export const mockToolsetTypes: AppToolsetConfig[] = [
   },
 ];
 
-export const mockType: ToolsetTypeResponse = {
+export const mockType: ToolsetDefinition = {
   toolset_type: 'builtin-exa-search',
   name: 'Exa Web Search',
   description: 'Search the web using Exa AI',
@@ -113,7 +113,7 @@ export function mockDeleteToolset() {
 /**
  * Mock GET /bodhi/v1/toolset_types - List toolset types
  */
-export function mockListTypes(types: ToolsetTypeResponse[] = [mockType]) {
+export function mockListTypes(types: ToolsetDefinition[] = [mockType]) {
   return http.get(`${BODHI_API_BASE}/toolset_types`, () => HttpResponse.json({ types }));
 }
 

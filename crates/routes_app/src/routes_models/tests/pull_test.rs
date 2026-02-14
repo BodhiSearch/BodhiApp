@@ -202,7 +202,7 @@ async fn test_get_download_status_success(
 
   let response = router
     .oneshot(
-      Request::get(&format!("/modelfiles/pull/status/{}", test_request.id)).body(Body::empty())?,
+      Request::get(format!("/modelfiles/pull/status/{}", test_request.id)).body(Body::empty())?,
     )
     .await?;
 

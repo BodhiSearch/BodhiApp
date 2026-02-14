@@ -1,7 +1,7 @@
 use crate::routes_apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   AppAccessRequestError, ApproveAccessRequestBody, CreateAccessRequestBody,
-  CreateAccessRequestResponse, RequestedResources, ToolInstanceInfo, ToolTypeReviewInfo,
+  CreateAccessRequestResponse, RequestedResources, ToolTypeReviewInfo,
 };
 use auth_middleware::{ExtractToken, ExtractUserId};
 use axum::{
@@ -9,7 +9,7 @@ use axum::{
   http::StatusCode,
   response::Json,
 };
-use objs::{ApiError, OpenAIApiError, ToolApproval, ToolTypeRequest, API_TAG_AUTH};
+use objs::{ApiError, OpenAIApiError, ToolsetTypeRequest, API_TAG_AUTH};
 use serde::Deserialize;
 use server_core::RouterState;
 use std::sync::Arc;
@@ -75,17 +75,10 @@ pub async fn create_access_request_handler(
   );
 
   // Extract tool types from requested
-  let tool_types: Vec<ToolTypeRequest> = body
+  let tool_types: Vec<ToolsetTypeRequest> = body
     .requested
     .as_ref()
-    .map(|r| {
-      r.toolset_types
-        .iter()
-        .map(|t| ToolTypeRequest {
-          toolset_type: t.toolset_type.clone(),
-        })
-        .collect()
-    })
+    .map(|r| r.toolset_types.clone())
     .unwrap_or_default();
 
   // Validate tool types exist
@@ -94,14 +87,6 @@ pub async fn create_access_request_handler(
     tool_service.validate_type(&tool_type_req.toolset_type)?;
   }
 
-  // Convert to objs::ToolTypeRequest for service call
-  let objs_tool_types: Vec<objs::ToolTypeRequest> = tool_types
-    .iter()
-    .map(|t| objs::ToolTypeRequest {
-      toolset_type: t.toolset_type.clone(),
-    })
-    .collect();
-
   // Create draft or auto-approve
   let access_request_service = state.app_service().access_request_service();
   let created = access_request_service
@@ -109,7 +94,7 @@ pub async fn create_access_request_handler(
       body.app_client_id,
       body.flow_type,
       body.redirect_url,
-      objs_tool_types,
+      tool_types,
     )
     .await?;
 
@@ -237,15 +222,9 @@ pub async fn get_access_request_review_handler(
 
     // Get user's instances of this tool type
     let user_toolsets = tool_service.list(&user_id).await?;
-    let instances: Vec<ToolInstanceInfo> = user_toolsets
-      .iter()
+    let instances = user_toolsets
+      .into_iter()
       .filter(|t| t.toolset_type == tool_type_req.toolset_type)
-      .map(|t| ToolInstanceInfo {
-        id: t.id.clone(),
-        name: t.name.clone(),
-        enabled: t.enabled,
-        has_api_key: t.has_api_key,
-      })
       .collect();
 
     tools_info.push(ToolTypeReviewInfo {
@@ -345,22 +324,10 @@ pub async fn approve_access_request_handler(
     }
   }
 
-  // Convert to objs::ToolApproval for service call
-  let objs_tool_approvals: Vec<ToolApproval> = body
-    .approved
-    .toolset_types
-    .iter()
-    .map(|a| ToolApproval {
-      toolset_type: a.toolset_type.clone(),
-      status: a.status.clone(),
-      instance_id: a.instance_id.clone(),
-    })
-    .collect();
-
-  // Call service to approve
+  // Call service to approve (ApprovedResources already contains objs::ToolsetApproval directly)
   let access_request_service = state.app_service().access_request_service();
   let updated = access_request_service
-    .approve_request(&id, &user_id, &token, objs_tool_approvals)
+    .approve_request(&id, &user_id, &token, body.approved.toolset_types)
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);

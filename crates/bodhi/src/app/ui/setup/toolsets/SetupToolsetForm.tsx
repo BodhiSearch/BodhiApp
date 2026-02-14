@@ -36,10 +36,10 @@ import {
 const TOOLSET_TYPE = 'builtin-exa-search';
 
 const createToolsetSchema = z.object({
-  name: z
+  slug: z
     .string()
-    .min(1, 'Name is required')
-    .max(24, 'Name must be 24 characters or less')
+    .min(1, 'Slug is required')
+    .max(24, 'Slug must be 24 characters or less')
     .regex(/^[a-zA-Z0-9-]+$/, 'Only letters, numbers, and hyphens'),
   description: z.string().max(255).optional(),
   api_key: z.string().min(1, 'API key is required'),
@@ -92,7 +92,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
 
   const createMutation = useCreateToolset({
     onSuccess: (toolset) => {
-      toast({ title: 'Success', description: `Created ${toolset.name}` });
+      toast({ title: 'Success', description: `Created ${toolset.slug}` });
       onSuccess?.();
     },
     onError: (message) => {
@@ -103,7 +103,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   const form = useForm<CreateToolsetFormData>({
     resolver: zodResolver(createToolsetSchema),
     defaultValues: {
-      name: '',
+      slug: '',
       description: '',
       api_key: '',
       enabled: true,
@@ -113,7 +113,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   // Update form name when toolsetType loads
   useEffect(() => {
     if (toolsetType?.toolset_type) {
-      form.setValue('name', toolsetType.toolset_type);
+      form.setValue('slug', toolsetType.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
     }
   }, [toolsetType?.toolset_type, form]);
 
@@ -141,7 +141,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
     if (!toolsetType) return;
     createMutation.mutate({
       toolset_type: toolsetType.toolset_type,
-      name: data.name,
+      slug: data.slug,
       description: data.description || undefined,
       api_key: data.api_key,
       enabled: data.enabled,
@@ -215,19 +215,19 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="slug"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Slug</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder={toolsetType?.name || 'my-toolset'}
+                            placeholder={toolsetType?.toolset_type || 'my-toolset'}
                             disabled={isFormDisabled}
-                            data-testid="toolset-name-input"
+                            data-testid="toolset-slug-input"
                           />
                         </FormControl>
-                        <FormDescription>A unique name for this toolset</FormDescription>
+                        <FormDescription>A unique slug for this toolset</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

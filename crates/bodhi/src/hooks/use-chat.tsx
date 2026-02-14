@@ -25,7 +25,7 @@ async function executeToolCall(
   toolCall: ToolCall,
   signal: AbortSignal,
   headers: Record<string, string>,
-  toolsetNameToId: Map<string, string>
+  toolsetSlugToId: Map<string, string>
 ): Promise<Message> {
   const decoded = decodeToolName(toolCall.function.name);
   if (!decoded) {
@@ -36,12 +36,12 @@ async function executeToolCall(
     };
   }
 
-  const { toolsetName, method } = decoded;
-  const toolsetId = toolsetNameToId.get(toolsetName);
+  const { toolsetSlug, method } = decoded;
+  const toolsetId = toolsetSlugToId.get(toolsetSlug);
   if (!toolsetId) {
     return {
       role: 'tool' as const,
-      content: JSON.stringify({ error: `Unknown toolset: ${toolsetName}` }),
+      content: JSON.stringify({ error: `Unknown toolset: ${toolsetSlug}` }),
       tool_call_id: toolCall.id,
     };
   }
@@ -94,10 +94,10 @@ async function executeToolCalls(
   toolCalls: ToolCall[],
   signal: AbortSignal,
   headers: Record<string, string>,
-  toolsetNameToId: Map<string, string>
+  toolsetSlugToId: Map<string, string>
 ): Promise<Message[]> {
   const results = await Promise.allSettled(
-    toolCalls.map((tc) => executeToolCall(tc, signal, headers, toolsetNameToId))
+    toolCalls.map((tc) => executeToolCall(tc, signal, headers, toolsetSlugToId))
   );
 
   return results.map((result, index) => {
@@ -141,7 +141,7 @@ function buildToolsArray(
           type: 'function',
           function: {
             ...tool.function,
-            name: encodeToolName(toolset.name, tool.function.name),
+            name: encodeToolName(toolset.slug, tool.function.name),
           },
         });
       }
@@ -160,9 +160,9 @@ export function useChat(options?: UseChatOptions) {
   const { enabledTools = {}, toolsets = [], toolsetTypes = [] } = options || {};
 
   // Build name→UUID mapping for tool execution
-  const toolsetNameToId = useMemo(() => {
+  const toolsetSlugToId = useMemo(() => {
     const map = new Map<string, string>();
-    toolsets.forEach((t) => map.set(t.name, t.id));
+    toolsets.forEach((t) => map.set(t.slug, t.id));
     return map;
   }, [toolsets]);
 
@@ -318,7 +318,7 @@ export function useChat(options?: UseChatOptions) {
             iteration++;
 
             // Execute tool calls in parallel
-            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers, toolsetNameToId);
+            const toolResults = await executeToolCalls(toolCalls, controller.signal, headers, toolsetSlugToId);
 
             if (abortedRef.current) break;
 
@@ -384,7 +384,7 @@ export function useChat(options?: UseChatOptions) {
       resetToPreSubmissionState,
       enabledTools,
       toolsets,
-      toolsetNameToId,
+      toolsetSlugToId,
       scopeEnabledMap,
     ]
   );

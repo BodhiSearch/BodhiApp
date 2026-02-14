@@ -286,7 +286,7 @@ mod tests {
     );
 
     let record = Record {
-      id: session_id.clone(),
+      id: session_id,
       data,
       expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
     };
@@ -320,7 +320,7 @@ mod tests {
     );
 
     let record = Record {
-      id: session_id.clone(),
+      id: session_id,
       data,
       expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
     };

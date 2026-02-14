@@ -76,7 +76,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
     .header("Cookie", session_cookie.to_string())
     .json(&json!({
       "toolset_type": "builtin-exa-search",
-      "name": "exa-web-search",
+      "slug": "exa-web-search",
       "description": "Exa web search toolset",
       "enabled": true,
       "api_key": exa_api_key

@@ -34,7 +34,7 @@ async fn test_live_llama_server_load_exec_with_server(
     .join(DEFAULT_VARIANT)
     .join(EXEC_NAME);
   let server = LlamaServer::new(
-    &exec_path,
+    exec_path,
     LlamaServerArgsBuilder::default()
       .alias("testalias")
       .model(llama_68m)

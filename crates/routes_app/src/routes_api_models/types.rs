@@ -150,7 +150,7 @@ impl CreateApiModelRequest {
   pub fn validate_forward_all(&self) -> Result<(), ValidationError> {
     if self.forward_all_with_prefix {
       // forward_all_with_prefix is true - require prefix
-      if self.prefix.is_none() || self.prefix.as_ref().map_or(true, |p| p.trim().is_empty()) {
+      if self.prefix.is_none() || self.prefix.as_ref().is_none_or(|p| p.trim().is_empty()) {
         let mut err = ValidationError::new("prefix_required");
         err.message = Some("Prefix is required when forwarding all requests with prefix".into());
         return Err(err);
@@ -219,7 +219,7 @@ impl UpdateApiModelRequest {
   pub fn validate_forward_all(&self) -> Result<(), ValidationError> {
     if self.forward_all_with_prefix {
       // forward_all_with_prefix is true - require prefix
-      if self.prefix.is_none() || self.prefix.as_ref().map_or(true, |p| p.trim().is_empty()) {
+      if self.prefix.is_none() || self.prefix.as_ref().is_none_or(|p| p.trim().is_empty()) {
         let mut err = ValidationError::new("prefix_required");
         err.message = Some("Prefix is required when forwarding all requests with prefix".into());
         return Err(err);

@@ -34,8 +34,7 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   let mut builder = AppServiceStubBuilder::default();
   builder.with_db_service().await.with_session_service().await;
   let db_service = builder.get_db_service().await;
-  let time_service: Arc<dyn services::db::TimeService> =
-    Arc::new(FrozenTimeService::default());
+  let time_service: Arc<dyn services::db::TimeService> = Arc::new(FrozenTimeService::default());
   let auth_service: Arc<dyn services::AuthService> = Arc::new(mock_auth);
 
   // Real ToolService backed by same DB
@@ -44,7 +43,6 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
     db_service.clone(),
     Arc::new(exa),
     time_service.clone(),
-    false,
   ));
 
   // Real AccessRequestService backed by same DB + mock auth
@@ -114,7 +112,7 @@ async fn seed_toolset_instance(
     id: instance_id.to_string(),
     user_id: user_id.to_string(),
     toolset_type: "builtin-exa-search".to_string(),
-    name: "My Exa Instance".to_string(),
+    slug: "my-exa-instance".to_string(),
     description: None,
     enabled,
     encrypted_api_key: if has_api_key {
@@ -170,11 +168,27 @@ async fn test_approve_access_request_success(
     });
 
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, flow_type, redirect_url).await?;
-  seed_toolset_instance(harness.db_service.as_ref(), instance_id, user_id, true, true).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    flow_type,
+    redirect_url,
+  )
+  .await?;
+  seed_toolset_instance(
+    harness.db_service.as_ref(),
+    instance_id,
+    user_id,
+    true,
+    true,
+  )
+  .await?;
 
   let router = Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_APPROVE, put(approve_access_request_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
     .with_state(harness.state);
 
   let body = json!({
@@ -189,7 +203,7 @@ async fn test_approve_access_request_success(
 
   let request = axum::http::Request::builder()
     .method("PUT")
-    .uri(&format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
     .header("X-BodhiApp-User-Id", user_id)
     .header("X-BodhiApp-Token", "dummy-token")
@@ -202,9 +216,15 @@ async fn test_approve_access_request_success(
   assert_eq!("approved", result.status);
   assert_eq!(flow_type, result.flow_type);
   if expect_redirect {
-    assert!(result.redirect_url.is_some(), "redirect_url should be present for redirect flow");
+    assert!(
+      result.redirect_url.is_some(),
+      "redirect_url should be present for redirect flow"
+    );
   } else {
-    assert!(result.redirect_url.is_none(), "redirect_url should be absent for popup flow");
+    assert!(
+      result.redirect_url.is_none(),
+      "redirect_url should be absent for popup flow"
+    );
   }
 
   Ok(())
@@ -227,7 +247,10 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
   // No toolset instance seeded for this user -> "not owned"
 
   let router = Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_APPROVE, put(approve_access_request_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
     .with_state(harness.state);
 
   let body = json!({
@@ -242,7 +265,7 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
 
   let request = axum::http::Request::builder()
     .method("PUT")
-    .uri(&format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
     .header("X-BodhiApp-User-Id", user_id)
     .header("X-BodhiApp-Token", "dummy-token")
@@ -285,7 +308,10 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
   .await?;
 
   let router = Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_APPROVE, put(approve_access_request_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
     .with_state(harness.state);
 
   let body = json!({
@@ -300,7 +326,7 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
 
   let request = axum::http::Request::builder()
     .method("PUT")
-    .uri(&format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
     .header("X-BodhiApp-User-Id", user_id)
     .header("X-BodhiApp-Token", "dummy-token")
@@ -343,7 +369,10 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
   .await?;
 
   let router = Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_APPROVE, put(approve_access_request_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
     .with_state(harness.state);
 
   let body = json!({
@@ -358,7 +387,7 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
 
   let request = axum::http::Request::builder()
     .method("PUT")
-    .uri(&format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
     .header("X-BodhiApp-User-Id", user_id)
     .header("X-BodhiApp-Token", "dummy-token")
@@ -395,15 +424,24 @@ async fn test_deny_access_request_success(
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, flow_type, redirect_url).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    flow_type,
+    redirect_url,
+  )
+  .await?;
 
   let router = Router::new()
-    .route(ENDPOINT_ACCESS_REQUESTS_DENY, post(deny_access_request_handler))
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_DENY,
+      post(deny_access_request_handler),
+    )
     .with_state(harness.state);
 
   let request = axum::http::Request::builder()
     .method("POST")
-    .uri(&format!("/bodhi/v1/access-requests/{}/deny", request_id))
+    .uri(format!("/bodhi/v1/access-requests/{}/deny", request_id))
     .header("X-BodhiApp-User-Id", user_id)
     .body(Body::empty())?;
 
@@ -414,9 +452,15 @@ async fn test_deny_access_request_success(
   assert_eq!("denied", result.status);
   assert_eq!(flow_type, result.flow_type);
   if expect_redirect {
-    assert!(result.redirect_url.is_some(), "redirect_url should be present for redirect flow");
+    assert!(
+      result.redirect_url.is_some(),
+      "redirect_url should be present for redirect flow"
+    );
   } else {
-    assert!(result.redirect_url.is_none(), "redirect_url should be absent for popup flow");
+    assert!(
+      result.redirect_url.is_none(),
+      "redirect_url should be absent for popup flow"
+    );
   }
 
   Ok(())

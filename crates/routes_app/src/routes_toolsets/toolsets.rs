@@ -1,7 +1,7 @@
 use crate::{
   ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
-  ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse, ToolsetValidationError,
-  UpdateToolsetRequest, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
+  ListToolsetsResponse, ToolsetResponse, ToolsetValidationError, UpdateToolsetRequest,
+  ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
 };
 use auth_middleware::ExtractUserId;
 use axum::{
@@ -114,7 +114,7 @@ pub async fn create_toolset_handler(
     .create(
       &user_id,
       &request.toolset_type,
-      &request.name,
+      &request.slug,
       request.description,
       request.enabled,
       request.api_key,
@@ -194,7 +194,7 @@ pub async fn update_toolset_handler(
     .update(
       &user_id,
       &id,
-      &request.name,
+      &request.slug,
       request.description,
       request.enabled,
       api_key_update,
@@ -288,19 +288,7 @@ pub async fn list_toolset_types_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ListToolsetTypesResponse>, ApiError> {
   let tool_service = state.app_service().tool_service();
-
-  let toolsets = tool_service.list_types();
-
-  let types: Vec<ToolsetTypeResponse> = toolsets
-    .into_iter()
-    .map(|t| ToolsetTypeResponse {
-      toolset_type: t.toolset_type,
-      name: t.name,
-      description: t.description,
-      tools: t.tools,
-    })
-    .collect();
-
+  let types = tool_service.list_types();
   Ok(Json(ListToolsetTypesResponse { types }))
 }
 
@@ -377,7 +365,7 @@ async fn toolset_to_response(
 
   Ok(ToolsetResponse {
     id: toolset.id,
-    name: toolset.name,
+    slug: toolset.slug,
     toolset_type: toolset.toolset_type,
     description: toolset.description,
     enabled: toolset.enabled,

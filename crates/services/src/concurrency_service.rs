@@ -294,7 +294,7 @@ mod tests {
         Box::new(|| {
           Box::pin(async {
             Err(
-              Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error"))
+              Box::new(std::io::Error::other("test error"))
                 as Box<dyn StdError + Send + Sync>,
             )
           })

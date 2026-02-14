@@ -6440,36 +6440,6 @@
             },
             "description": "Tool type information with user instances"
           }
-        },
-        "example": {
-          "app_client_id": "my-app-client",
-          "app_description": "A sample application",
-          "app_name": "My Application",
-          "flow_type": "redirect",
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "requested": {
-            "toolset_types": [
-              {
-                "toolset_type": "builtin-exa-search"
-              }
-            ]
-          },
-          "status": "draft",
-          "tools_info": [
-            {
-              "description": "Search the web using Exa AI",
-              "instances": [
-                {
-                  "enabled": true,
-                  "has_api_key": true,
-                  "id": "instance-uuid",
-                  "name": "My Exa Instance"
-                }
-              ],
-              "name": "Exa Search",
-              "toolset_type": "builtin-exa-search"
-            }
-          ]
         }
       },
       "AccessRequestStatusResponse": {
@@ -7101,7 +7071,7 @@
           "toolset_types": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ToolApproval"
+              "$ref": "#/components/schemas/ToolsetApproval"
             },
             "description": "Toolset approvals with instance selections"
           }
@@ -9589,7 +9559,7 @@
         "description": "Request to create a toolset",
         "required": [
           "toolset_type",
-          "name",
+          "slug",
           "api_key"
         ],
         "properties": {
@@ -9597,9 +9567,9 @@
             "type": "string",
             "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
           },
-          "name": {
+          "slug": {
             "type": "string",
-            "description": "User-defined name for this toolset (2-24 chars, alphanumeric + spaces/dash/underscore)"
+            "description": "User-defined slug for this toolset (1-24 chars, alphanumeric + hyphens)"
           },
           "description": {
             "type": [
@@ -10240,7 +10210,7 @@
           "types": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ToolsetTypeResponse"
+              "$ref": "#/components/schemas/ToolsetDefinition"
             }
           }
         }
@@ -11411,7 +11381,7 @@
           "toolset_types": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ToolTypeRequest"
+              "$ref": "#/components/schemas/ToolsetTypeRequest"
             },
             "description": "Toolset types being requested"
           }
@@ -11902,30 +11872,6 @@
           "inactive"
         ]
       },
-      "ToolApproval": {
-        "type": "object",
-        "required": [
-          "toolset_type",
-          "status"
-        ],
-        "properties": {
-          "toolset_type": {
-            "type": "string",
-            "description": "Tool type identifier"
-          },
-          "status": {
-            "type": "string",
-            "description": "Approval status: \"approved\" or \"denied\""
-          },
-          "instance_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Instance ID (required when status = \"approved\")"
-          }
-        }
-      },
       "ToolCapabilities": {
         "type": "object",
         "properties": {
@@ -11976,45 +11922,6 @@
           }
         }
       },
-      "ToolInstanceInfo": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "enabled",
-          "has_api_key"
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Instance ID"
-          },
-          "name": {
-            "type": "string",
-            "description": "Instance name"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether instance is enabled"
-          },
-          "has_api_key": {
-            "type": "boolean",
-            "description": "Whether instance has API key configured"
-          }
-        }
-      },
-      "ToolTypeRequest": {
-        "type": "object",
-        "required": [
-          "toolset_type"
-        ],
-        "properties": {
-          "toolset_type": {
-            "type": "string",
-            "description": "Tool type identifier (e.g., \"builtin-exa-search\")"
-          }
-        }
-      },
       "ToolTypeReviewInfo": {
         "type": "object",
         "required": [
@@ -12039,7 +11946,7 @@
           "instances": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ToolInstanceInfo"
+              "$ref": "#/components/schemas/Toolset"
             },
             "description": "User's configured instances of this tool type"
           }
@@ -12050,7 +11957,7 @@
         "description": "User-owned toolset instance with UUID identification",
         "required": [
           "id",
-          "name",
+          "slug",
           "toolset_type",
           "enabled",
           "has_api_key",
@@ -12062,9 +11969,9 @@
             "type": "string",
             "description": "Unique instance identifier (UUID)"
           },
-          "name": {
+          "slug": {
             "type": "string",
-            "description": "User-defined name for this instance"
+            "description": "User-defined slug for this instance"
           },
           "toolset_type": {
             "type": "string",
@@ -12099,6 +12006,58 @@
           }
         }
       },
+      "ToolsetApproval": {
+        "type": "object",
+        "required": [
+          "toolset_type",
+          "status"
+        ],
+        "properties": {
+          "toolset_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "instance_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ToolsetDefinition": {
+        "type": "object",
+        "description": "A toolset is a connector that provides one or more tools.\nExample: Exa Web Search toolset provides search, find_similar, get_contents, answer tools.",
+        "required": [
+          "toolset_type",
+          "name",
+          "description",
+          "tools"
+        ],
+        "properties": {
+          "toolset_type": {
+            "type": "string",
+            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name (e.g., \"Exa Web Search\")"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the toolset"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolDefinition"
+            },
+            "description": "Tools provided by this toolset (in OpenAI format)"
+          }
+        }
+      },
       "ToolsetExecutionResponse": {
         "type": "object",
         "description": "Response from toolset tool execution (to send back to LLM)",
@@ -12120,7 +12079,7 @@
         "description": "Toolset response",
         "required": [
           "id",
-          "name",
+          "slug",
           "toolset_type",
           "enabled",
           "has_api_key",
@@ -12133,9 +12092,9 @@
             "type": "string",
             "description": "Unique instance identifier (UUID)"
           },
-          "name": {
+          "slug": {
             "type": "string",
-            "description": "User-defined name for this toolset"
+            "description": "User-defined slug for this toolset"
           },
           "toolset_type": {
             "type": "string",
@@ -12175,34 +12134,14 @@
           }
         }
       },
-      "ToolsetTypeResponse": {
+      "ToolsetTypeRequest": {
         "type": "object",
-        "description": "Toolset type response (for admin listing)",
         "required": [
-          "toolset_type",
-          "name",
-          "description",
-          "tools"
+          "toolset_type"
         ],
         "properties": {
           "toolset_type": {
-            "type": "string",
-            "description": "Toolset type identifier (e.g., \"builtin-exa-search\")"
-          },
-          "name": {
-            "type": "string",
-            "description": "Human-readable name (e.g., \"Exa Web Search\")"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the toolset"
-          },
-          "tools": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ToolDefinition"
-            },
-            "description": "Tools provided by this toolset"
+            "type": "string"
           }
         }
       },
@@ -12373,13 +12312,13 @@
         "type": "object",
         "description": "Request to update a toolset (full PUT - all fields required except api_key)",
         "required": [
-          "name",
+          "slug",
           "enabled"
         ],
         "properties": {
-          "name": {
+          "slug": {
             "type": "string",
-            "description": "User-defined name for this toolset"
+            "description": "User-defined slug for this toolset"
           },
           "description": {
             "type": [

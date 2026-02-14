@@ -135,7 +135,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     );
 
     let record = Record {
-      id: id.clone(),
+      id: id,
       data,
       expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
     };
@@ -187,7 +187,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     .with_state(state.clone());
 
   // 10. Make HTTP request with required headers (simulating authenticated admin)
-  let request = Request::post(&format!(
+  let request = Request::post(format!(
     "{}/{}/approve",
     ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
   ))
@@ -476,7 +476,7 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
 
   let response = router
     .oneshot(
-      Request::get(&format!(
+      Request::get(format!(
         "{}?page=1&page_size=10",
         ENDPOINT_ACCESS_REQUESTS_PENDING
       ))
@@ -519,7 +519,7 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
 
   let response = router
     .oneshot(
-      Request::get(&format!(
+      Request::get(format!(
         "{}?page=1&page_size=10",
         ENDPOINT_ACCESS_REQUESTS_ALL
       ))
@@ -570,7 +570,7 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
 
   let response = router
     .oneshot(
-      Request::post(&format!(
+      Request::post(format!(
         "{}/{}/reject",
         ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
       ))
@@ -626,7 +626,7 @@ async fn test_approve_request_insufficient_privileges(
   // A user role trying to approve admin role should fail
   let response = router
     .oneshot(
-      Request::post(&format!(
+      Request::post(format!(
         "{}/{}/approve",
         ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
       ))
@@ -676,7 +676,7 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
 
   let response = router
     .oneshot(
-      Request::post(&format!("{}/99999/approve", ENDPOINT_ACCESS_REQUESTS_ALL))
+      Request::post(format!("{}/99999/approve", ENDPOINT_ACCESS_REQUESTS_ALL))
         .with_user_auth("dummy-token", "resource_admin")
         .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
         .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")

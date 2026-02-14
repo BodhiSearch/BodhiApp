@@ -80,7 +80,7 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
 
   const decoded = decodeToolName(toolCall.function.name);
   const toolName = decoded?.method || toolCall.function.name;
-  const toolsetName = decoded?.toolsetName || 'unknown';
+  const toolsetSlug = decoded?.toolsetSlug || 'unknown';
   const statusConfig = getStatusConfig(status);
 
   // Parse result content for display
@@ -100,7 +100,7 @@ export function ToolCallMessage({ toolCall, toolResult, status, forceOpen = fals
             </div>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium">{toolName}</span>
-              <span className="text-xs text-muted-foreground">{toolsetName}</span>
+              <span className="text-xs text-muted-foreground">{toolsetSlug}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

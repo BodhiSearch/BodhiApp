@@ -20,7 +20,11 @@ import {
   useApproveAppAccessRequest,
   useDenyAppAccessRequest,
 } from '@/hooks/useAppAccessRequests';
-import type { AccessRequestActionResponse, ApproveAccessRequestBody, ToolTypeReviewInfo } from '@/hooks/useAppAccessRequests';
+import type {
+  AccessRequestActionResponse,
+  ApproveAccessRequestBody,
+  ToolTypeReviewInfo,
+} from '@/hooks/useAppAccessRequests';
 
 // ============================================================================
 // Tool Type Card Component
@@ -86,7 +90,7 @@ const ToolTypeCard = ({
                         data-testid={`review-instance-option-${instance.id}`}
                       >
                         <span className="flex items-center gap-2">
-                          {instance.name}
+                          {instance.slug}
                           {statusLabel && <span className="text-muted-foreground text-xs">{statusLabel}</span>}
                         </span>
                       </SelectItem>

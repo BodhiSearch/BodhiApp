@@ -5,7 +5,7 @@ import {
   UpdateToolsetRequest,
   ApiKeyUpdateDto,
   ListToolsetsResponse,
-  ToolsetTypeResponse,
+  ToolsetDefinition,
   ListToolsetTypesResponse,
   ToolDefinition,
   OpenAiApiError,
@@ -24,7 +24,7 @@ export type {
   CreateToolsetRequest,
   UpdateToolsetRequest,
   ApiKeyUpdateDto,
-  ToolsetTypeResponse,
+  ToolsetDefinition,
   ToolDefinition,
   AppToolsetConfig,
 };

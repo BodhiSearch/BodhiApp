@@ -23,7 +23,7 @@ fn test_instance() -> Toolset {
   let now = Utc::now();
   Toolset {
     id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
-    name: "My Exa Search".to_string(),
+    slug: "my-exa-search".to_string(),
     toolset_type: "builtin-exa-search".to_string(),
     description: Some("Test instance".to_string()),
     enabled: true,
@@ -294,20 +294,20 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
 // ============================================================================
 
 #[rstest]
-#[case::success("My Exa Search", StatusCode::CREATED, None)]
-#[case::missing_name("", StatusCode::BAD_REQUEST, Some("validation_error"))]
-#[case::invalid_chars("My@Exa", StatusCode::BAD_REQUEST, Some("validation_error"))]
-#[case::name_too_long(
-  "This name is way too long for validation",
+#[case::success("my-exa-search", StatusCode::CREATED, None)]
+#[case::missing_slug("", StatusCode::BAD_REQUEST, Some("validation_error"))]
+#[case::invalid_chars("my@exa", StatusCode::BAD_REQUEST, Some("validation_error"))]
+#[case::slug_too_long(
+  "this-slug-is-way-too-long-for-val",
   StatusCode::BAD_REQUEST,
   Some("validation_error")
 )]
-#[case::name_conflict("Existing Name", StatusCode::CONFLICT, Some("entity_error"))]
+#[case::slug_conflict("existing-slug", StatusCode::CONFLICT, Some("entity_error"))]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_toolset(
   test_instance: Toolset,
-  #[case] name: &str,
+  #[case] slug: &str,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
 ) -> anyhow::Result<()> {
@@ -324,14 +324,14 @@ async fn test_create_toolset(
     mock_tool_service
       .expect_create()
       .times(1)
-      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::NameExists("name".to_string())));
+      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
 
   let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
     "toolset_type": "builtin-exa-search",
-    "name": name,
+    "slug": slug,
     "description": "Test instance",
     "enabled": true,
     "api_key": "test-key"
@@ -408,17 +408,17 @@ async fn test_get_toolset(
 // ============================================================================
 
 #[rstest]
-#[case::success("Updated Name", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
-#[case::api_key_set("Updated Name", ApiKeyUpdateDto::Set(Some("new-key".to_string())), StatusCode::OK, None)]
-#[case::api_key_keep("Updated Name", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
+#[case::success("updated-slug", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
+#[case::api_key_set("updated-slug", ApiKeyUpdateDto::Set(Some("new-key".to_string())), StatusCode::OK, None)]
+#[case::api_key_keep("updated-slug", ApiKeyUpdateDto::Keep, StatusCode::OK, None)]
 #[case::validation_error(
   "",
   ApiKeyUpdateDto::Keep,
   StatusCode::BAD_REQUEST,
   Some("validation_error")
 )]
-#[case::name_conflict(
-  "Conflict Name",
+#[case::slug_conflict(
+  "conflict-slug",
   ApiKeyUpdateDto::Keep,
   StatusCode::CONFLICT,
   Some("entity_error")
@@ -427,7 +427,7 @@ async fn test_get_toolset(
 #[anyhow_trace]
 async fn test_update_toolset(
   test_instance: Toolset,
-  #[case] name: &str,
+  #[case] slug: &str,
   #[case] api_key: ApiKeyUpdateDto,
   #[case] expected_status: StatusCode,
   #[case] _error_code: Option<&str>,
@@ -445,13 +445,13 @@ async fn test_update_toolset(
     mock_tool_service
       .expect_update()
       .times(1)
-      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::NameExists("name".to_string())));
+      .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
 
   let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
-    "name": name,
+    "slug": slug,
     "description": "Updated description",
     "enabled": true,
     "api_key": api_key
@@ -497,7 +497,7 @@ async fn test_update_toolset_not_found(
   let app = test_router(mock_tool_service)?;
 
   let request_body = serde_json::json!({
-    "name": "Updated Name",
+    "slug": "updated-slug",
     "description": "Updated description",
     "enabled": true,
     "api_key": {"action": "Keep"}
@@ -703,7 +703,7 @@ async fn test_enable_type(
     mock_tool_service
       .expect_set_app_toolset_enabled()
       .withf(|toolset_type, enabled, _user_id| {
-        toolset_type == "builtin-exa-search" && *enabled == true
+        toolset_type == "builtin-exa-search" && *enabled
       })
       .times(1)
       .returning(|toolset_type, _, updated_by| {
@@ -761,7 +761,7 @@ async fn test_disable_type(
     mock_tool_service
       .expect_set_app_toolset_enabled()
       .withf(|toolset_type, enabled, _user_id| {
-        toolset_type == "builtin-exa-search" && *enabled == false
+        toolset_type == "builtin-exa-search" && !(*enabled)
       })
       .times(1)
       .returning(|toolset_type, _, updated_by| {

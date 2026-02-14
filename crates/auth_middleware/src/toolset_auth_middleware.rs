@@ -269,7 +269,7 @@ mod tests {
     let now = Utc::now();
     Toolset {
       id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
-      name: "My Exa Search".to_string(),
+      slug: "my-exa-search".to_string(),
       toolset_type: "builtin-exa-search".to_string(),
       description: Some("Test instance".to_string()),
       enabled: true,

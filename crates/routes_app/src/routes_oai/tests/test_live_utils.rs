@@ -46,19 +46,16 @@ pub fn parse_streaming_tool_calls(response_text: &str) -> (Vec<Value>, String) {
               for tc in delta_tool_calls {
                 let index = tc["index"].as_i64().unwrap_or(0);
 
-                if !tool_call_map.contains_key(&index) {
+                if let std::collections::hash_map::Entry::Vacant(e) = tool_call_map.entry(index) {
                   // Initialize new tool call
-                  tool_call_map.insert(
-                    index,
-                    json!({
+                  e.insert(json!({
                       "id": tc["id"].as_str().unwrap_or(""),
                       "type": "function",
                       "function": {
                         "name": tc["function"]["name"].as_str().unwrap_or(""),
                         "arguments": tc["function"]["arguments"].as_str().unwrap_or("")
                       }
-                    }),
-                  );
+                    }));
                 } else {
                   // Accumulate arguments
                   let existing = tool_call_map.get_mut(&index).unwrap();

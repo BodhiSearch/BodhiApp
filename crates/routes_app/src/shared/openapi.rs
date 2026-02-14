@@ -1,11 +1,10 @@
 use crate::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   ApiFormatsResponse, ApiKey, ApiKeyUpdateAction, ApiModelResponse, ApproveAccessRequestBody,
-  AuthCallbackRequest,
-  CreateAccessRequestBody, CreateAccessRequestResponse, CreateApiModelRequest, FetchModelsRequest,
-  FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse, PaginationSortParams,
-  PingResponse, TestCreds, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
-  UpdateApiTokenRequest,
+  AuthCallbackRequest, CreateAccessRequestBody, CreateAccessRequestResponse, CreateApiModelRequest,
+  FetchModelsRequest, FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse,
+  PaginationSortParams, PingResponse, TestCreds, TestPromptRequest, TestPromptResponse,
+  UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
   ApiTokenResponse, AppInfo, ApproveUserAccessRequest, ChangeRoleRequest, CopyAliasRequest,
@@ -43,10 +42,10 @@ use crate::routes_ollama::{
 };
 use crate::{
   ApiKeyUpdateDto, CreateToolsetRequest, ExecuteToolsetRequest, ListToolsetTypesResponse,
-  ListToolsetsResponse, ToolsetResponse, ToolsetTypeResponse, UpdateToolsetRequest,
-  __path_create_toolset_handler, __path_delete_toolset_handler, __path_disable_type_handler,
-  __path_enable_type_handler, __path_execute_toolset_handler, __path_get_toolset_handler,
-  __path_list_toolset_types_handler, __path_list_toolsets_handler, __path_update_toolset_handler,
+  ListToolsetsResponse, ToolsetResponse, UpdateToolsetRequest, __path_create_toolset_handler,
+  __path_delete_toolset_handler, __path_disable_type_handler, __path_enable_type_handler,
+  __path_execute_toolset_handler, __path_get_toolset_handler, __path_list_toolset_types_handler,
+  __path_list_toolsets_handler, __path_update_toolset_handler,
 };
 use async_openai::types::{
   chat::{
@@ -61,10 +60,10 @@ use async_openai::types::{
 };
 use objs::{
   Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
-  SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset, ToolsetExecutionResponse,
-  UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS,
-  API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
-  API_TAG_TOOLSETS,
+  SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset, ToolsetDefinition,
+  ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
+  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
+  API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -351,8 +350,8 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ApiKeyUpdateDto,
             ToolsetResponse,
             ListToolsetsResponse,
-            ToolsetTypeResponse,
             ListToolsetTypesResponse,
+            ToolsetDefinition,
             ExecuteToolsetRequest,
             ToolDefinition,
             Toolset,

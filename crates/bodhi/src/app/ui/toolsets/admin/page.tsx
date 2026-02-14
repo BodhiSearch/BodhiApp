@@ -28,7 +28,7 @@ import {
   useEnableToolsetType,
   useToolsets,
   useToolsetTypes,
-  type ToolsetTypeResponse,
+  type ToolsetDefinition,
 } from '@/hooks/useToolsets';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +46,7 @@ function AdminToolsetsPageContent() {
 
   const [enableDialogOpen, setEnableDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<ToolsetTypeResponse | null>(null);
+  const [selectedType, setSelectedType] = useState<ToolsetDefinition | null>(null);
 
   // Create scope enabled map from toolset_types
   const scopeEnabledMap = useMemo(() => {
@@ -78,7 +78,7 @@ function AdminToolsetsPageContent() {
     },
   });
 
-  const handleToggle = (type: ToolsetTypeResponse, enabled: boolean) => {
+  const handleToggle = (type: ToolsetDefinition, enabled: boolean) => {
     setSelectedType(type);
     if (enabled) {
       setEnableDialogOpen(true);
@@ -99,7 +99,7 @@ function AdminToolsetsPageContent() {
     }
   };
 
-  const renderRow = (type: ToolsetTypeResponse) => {
+  const renderRow = (type: ToolsetDefinition) => {
     const isToggling =
       selectedType?.toolset_type === type.toolset_type && (enableMutation.isLoading || disableMutation.isLoading);
     const isEnabled = scopeEnabledMap.get(type.toolset_type) ?? false;

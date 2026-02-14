@@ -16,7 +16,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     app_client_id: String,
     flow_type: String,
     redirect_uri: Option<String>,
-    tools_requested: Vec<objs::ToolTypeRequest>,
+    tools_requested: Vec<objs::ToolsetTypeRequest>,
   ) -> Result<AppAccessRequestRow>;
 
   /// Get access request by ID
@@ -28,7 +28,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     id: &str,
     user_id: &str,
     user_token: &str,
-    tool_approvals: Vec<objs::ToolApproval>,
+    tool_approvals: Vec<objs::ToolsetApproval>,
   ) -> Result<AppAccessRequestRow>;
 
   /// Deny access request
@@ -62,7 +62,7 @@ impl DefaultAccessRequestService {
   }
 
   /// Generate description for KC consent screen from tool approvals
-  fn generate_description(&self, tool_approvals: &[objs::ToolApproval]) -> String {
+  fn generate_description(&self, tool_approvals: &[objs::ToolsetApproval]) -> String {
     let mut lines = Vec::new();
     for approval in tool_approvals {
       if approval.status == "approved" {
@@ -81,7 +81,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     app_client_id: String,
     flow_type: String,
     redirect_uri: Option<String>,
-    tools_requested: Vec<objs::ToolTypeRequest>,
+    tools_requested: Vec<objs::ToolsetTypeRequest>,
   ) -> Result<AppAccessRequestRow> {
     // Validate flow type
     if flow_type != "redirect" && flow_type != "popup" {
@@ -193,7 +193,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     id: &str,
     user_id: &str,
     user_token: &str,
-    tool_approvals: Vec<objs::ToolApproval>,
+    tool_approvals: Vec<objs::ToolsetApproval>,
   ) -> Result<AppAccessRequestRow> {
     // Get current request
     let row = self

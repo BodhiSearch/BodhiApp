@@ -1244,7 +1244,10 @@ async fn test_create_draft_request(
     result.redirect_uri,
     Some("https://example.com/callback".to_string())
   );
-  assert_eq!(result.requested, r#"[{"toolset_type":"builtin-exa-search"}]"#);
+  assert_eq!(
+    result.requested,
+    r#"[{"toolset_type":"builtin-exa-search"}]"#
+  );
   assert_eq!(result.approved, None);
   assert_eq!(result.user_id, None);
 

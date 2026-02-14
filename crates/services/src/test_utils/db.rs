@@ -1,8 +1,8 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest,
-  ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
-  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, ModelMetadataRow, ModelRepository,
+  SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
+  UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -417,16 +417,16 @@ impl ToolsetRepository for TestDbService {
       .tap(|_| self.notify("get_toolset"))
   }
 
-  async fn get_toolset_by_name(
+  async fn get_toolset_by_slug(
     &self,
     user_id: &str,
-    name: &str,
+    slug: &str,
   ) -> Result<Option<ToolsetRow>, DbError> {
     self
       .inner
-      .get_toolset_by_name(user_id, name)
+      .get_toolset_by_slug(user_id, slug)
       .await
-      .tap(|_| self.notify("get_toolset_by_name"))
+      .tap(|_| self.notify("get_toolset_by_slug"))
   }
 
   async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError> {
@@ -516,7 +516,6 @@ impl ToolsetRepository for TestDbService {
       .await
       .tap(|_| self.notify("get_app_toolset_config"))
   }
-
 }
 
 #[async_trait::async_trait]
@@ -703,7 +702,7 @@ mockall::mock! {
   #[async_trait::async_trait]
   impl ToolsetRepository for DbService {
     async fn get_toolset(&self, id: &str) -> Result<Option<ToolsetRow>, DbError>;
-    async fn get_toolset_by_name(&self, user_id: &str, name: &str) -> Result<Option<ToolsetRow>, DbError>;
+    async fn get_toolset_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<ToolsetRow>, DbError>;
     async fn create_toolset(&self, row: &ToolsetRow) -> Result<ToolsetRow, DbError>;
     async fn update_toolset(&self, row: &ToolsetRow, api_key_update: ApiKeyUpdate) -> Result<ToolsetRow, DbError>;
     async fn list_toolsets(&self, user_id: &str) -> Result<Vec<ToolsetRow>, DbError>;

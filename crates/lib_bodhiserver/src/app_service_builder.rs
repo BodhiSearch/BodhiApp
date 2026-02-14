@@ -204,7 +204,6 @@ impl AppServiceBuilder {
     let access_request_service = self.get_or_build_access_request_service(
       db_service.clone(),
       auth_service.clone(),
-      tool_service.clone(),
       time_service.clone(),
     );
     let network_service = self.get_or_build_network_service();
@@ -343,7 +342,7 @@ impl AppServiceBuilder {
 
   fn get_or_build_encryption_key(&mut self) -> Result<Vec<u8>, ApiError> {
     match self.encryption_key.as_ref() {
-      Some(encryption_key) => return Ok(encryption_key.clone()),
+      Some(encryption_key) => Ok(encryption_key.clone()),
       None => {
         let app_name = self.get_app_name();
         let encryption_key = self.setting_service.encryption_key();
@@ -415,12 +414,10 @@ impl AppServiceBuilder {
     let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
 
     // Create tool service with dependencies
-    let is_production = self.setting_service.is_production();
     Arc::new(DefaultToolService::new(
       db_service,
       exa_service,
       time_service,
-      is_production,
     ))
   }
 
@@ -429,7 +426,6 @@ impl AppServiceBuilder {
     &mut self,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    tool_service: Arc<dyn ToolService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn AccessRequestService> {
     if let Some(service) = self.access_request_service.take() {
@@ -442,7 +438,6 @@ impl AppServiceBuilder {
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
-      tool_service,
       time_service,
       frontend_url,
     ))
@@ -454,7 +449,7 @@ impl AppServiceBuilder {
       return service;
     }
 
-    Arc::new(DefaultNetworkService::default())
+    Arc::new(DefaultNetworkService)
   }
 }
 

@@ -837,7 +837,7 @@ async fn setup_app_service_resource_admin(
     data: maplit::hashmap! {
       "oauth_state".to_string() => Value::String(state.to_string()),
       "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),
-      "callback_url".to_string() => Value::String(format!("http://frontend.localhost:3000/ui/auth/callback")),
+      "callback_url".to_string() => Value::String("http://frontend.localhost:3000/ui/auth/callback".to_string()),
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };

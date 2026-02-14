@@ -29,13 +29,17 @@ pub enum ToolsetError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ToolsetAppDisabled,
 
-  #[error("Toolset name '{0}' already exists.")]
+  #[error("Toolset slug '{0}' already exists.")]
   #[error_meta(error_type = ErrorType::Conflict)]
-  NameExists(String),
+  SlugExists(String),
 
-  #[error("Invalid toolset name: {0}.")]
+  #[error("Invalid toolset slug: {0}.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidName(String),
+  InvalidSlug(String),
+
+  #[error("Invalid toolset description: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidDescription(String),
 
   #[error("Invalid toolset type: {0}.")]
   #[error_meta(error_type = ErrorType::NotFound)]
