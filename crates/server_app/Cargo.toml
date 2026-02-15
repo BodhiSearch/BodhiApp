@@ -38,6 +38,7 @@ llama_server_proc = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+chrono = { workspace = true }
 cookie = { workspace = true }
 dirs = { workspace = true }
 dotenv = { workspace = true }
@@ -47,11 +48,15 @@ mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rstest = { workspace = true }
+serde = { workspace = true }
 serial_test = { workspace = true }
+sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }
 tempfile = { workspace = true }
 time = { workspace = true }
+tower = { workspace = true }
 tower-sessions = { workspace = true }
+uuid = { workspace = true }
 
 [features]
 test-utils = ["rstest", "mockall", "routes_app/test-utils"]
