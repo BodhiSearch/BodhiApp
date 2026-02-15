@@ -89,6 +89,7 @@ async fn create_test_state(
     &AppRegInfoBuilder::default()
       .client_id(resource_client_id.to_string())
       .client_secret(resource_client_secret.to_string())
+      .scope(format!("scope_{}", resource_client_id))
       .build()
       .unwrap(),
   );

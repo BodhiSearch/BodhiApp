@@ -163,6 +163,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   let secret_service = SecretServiceStub::default().with_app_reg_info(&AppRegInfo {
     client_id: "test_client_id".to_string(),
     client_secret: "test_secret".to_string(),
+    scope: "scope_test_client_id".to_string(),
   });
 
   // 8. Build complete app service

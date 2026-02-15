@@ -204,6 +204,7 @@ impl AppServiceBuilder {
     let access_request_service = self.get_or_build_access_request_service(
       db_service.clone(),
       auth_service.clone(),
+      secret_service.clone(),
       time_service.clone(),
     );
     let network_service = self.get_or_build_network_service();
@@ -426,6 +427,7 @@ impl AppServiceBuilder {
     &mut self,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
+    secret_service: Arc<dyn SecretService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn AccessRequestService> {
     if let Some(service) = self.access_request_service.take() {
@@ -438,6 +440,7 @@ impl AppServiceBuilder {
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
+      secret_service,
       time_service,
       frontend_url,
     ))

@@ -844,6 +844,7 @@ mod tests {
       &AppRegInfoBuilder::test_default()
         .client_id("test_client_id".to_string())
         .client_secret("test_client_secret".to_string())
+        .scope("scope_test_client_id".to_string())
         .build()?,
     );
 

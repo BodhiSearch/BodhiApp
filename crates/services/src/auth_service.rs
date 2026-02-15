@@ -102,11 +102,12 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   /// Register resource access for auto-approve flow (no user token needed)
   /// KC endpoint: POST /resources/apps/request-access
-  /// Uses resource service token, NOT user token
+  /// Uses resource service account token, NOT user token
   async fn register_resource_access(
     &self,
+    client_id: &str,
+    client_secret: &str,
     app_client_id: &str,
-    access_request_id: &str,
   ) -> Result<RegisterResourceAccessResponse>;
 
   /// Get app client info (name, description) from Keycloak
@@ -785,28 +786,26 @@ impl AuthService for KeycloakAuthService {
 
   async fn register_resource_access(
     &self,
+    client_id: &str,
+    client_secret: &str,
     app_client_id: &str,
-    access_request_id: &str,
   ) -> Result<RegisterResourceAccessResponse> {
-    // TODO: Need to get resource service token - requires storing resource credentials
-    // For now, this is a placeholder implementation
+    let access_token = self
+      .get_client_access_token(client_id, client_secret)
+      .await?;
     let endpoint = format!("{}/resources/apps/request-access", self.auth_api_url());
 
     log::log_http_request("POST", &endpoint, "auth_service", None);
 
     let request_body = serde_json::json!({
       "app_client_id": app_client_id,
-      "access_request_id": access_request_id,
     });
-
-    // TODO: Replace with actual resource service token
-    let _placeholder_token = "resource_service_token";
 
     let response = self
       .client
       .post(&endpoint)
       .json(&request_body)
-      .header("Authorization", format!("Bearer {}", _placeholder_token))
+      .bearer_auth(access_token.secret())
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
@@ -882,7 +881,8 @@ mod tests {
       .with_body(
         json!({
             "client_id": "test-client",
-            "client_secret": "test-secret"
+            "client_secret": "test-secret",
+            "scope": "scope_test-client"
         })
         .to_string(),
       )
@@ -900,6 +900,7 @@ mod tests {
       AppRegInfo {
         client_id: "test-client".to_string(),
         client_secret: "test-secret".to_string(),
+        scope: "scope_test-client".to_string(),
       },
       app_reg_info
     );

@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::access_request_service::error::{AccessRequestError, Result};
 use crate::auth_service::AuthService;
 use crate::db::{AppAccessRequestRow, DbService, TimeService};
+use crate::{SecretService, SecretServiceExt};
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -42,6 +43,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
 pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
+  secret_service: Arc<dyn SecretService>,
   time_service: Arc<dyn TimeService>,
   frontend_url: String,
 }
@@ -50,12 +52,14 @@ impl DefaultAccessRequestService {
   pub fn new(
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
+    secret_service: Arc<dyn SecretService>,
     time_service: Arc<dyn TimeService>,
     frontend_url: String,
   ) -> Self {
     Self {
       db_service,
       auth_service,
+      secret_service,
       time_service,
       frontend_url,
     }
@@ -81,7 +85,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     app_client_id: String,
     flow_type: String,
     redirect_uri: Option<String>,
-    tools_requested: Vec<objs::ToolsetTypeRequest>,
+    toolsets_requested: Vec<objs::ToolsetTypeRequest>,
   ) -> Result<AppAccessRequestRow> {
     // Validate flow type
     if flow_type != "redirect" && flow_type != "popup" {
@@ -101,7 +105,7 @@ impl AccessRequestService for DefaultAccessRequestService {
 
     // Serialize tools_requested to JSON with wrapper object
     let requested_json = serde_json::to_string(&serde_json::json!({
-      "toolset_types": tools_requested
+      "toolset_types": toolsets_requested
     }))
     .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
@@ -115,14 +119,25 @@ impl AccessRequestService for DefaultAccessRequestService {
     });
 
     // Check for auto-approve (no tools requested)
-    let is_auto_approve = tools_requested.is_empty();
+    let is_auto_approve = toolsets_requested.is_empty();
 
     if is_auto_approve {
-      // Auto-approve flow: register resource access immediately
+      // Auto-approve flow: call auth server to register resource access
+      // This adds the resource's scope as an optional scope to the app client
+      let app_reg_info = self
+        .secret_service
+        .app_reg_info()
+        .map_err(|e| AccessRequestError::InvalidStatus(format!("Failed to get app reg info: {}", e)))?
+        .ok_or_else(|| AccessRequestError::InvalidStatus("App registration info not found".to_string()))?;
       let register_response = self
         .auth_service
-        .register_resource_access(&app_client_id, &access_request_id)
+        .register_resource_access(
+          &app_reg_info.client_id,
+          &app_reg_info.client_secret,
+          &app_client_id,
+        )
         .await?;
+      let resource_scope = register_response.scope;
 
       let row = AppAccessRequestRow {
         id: access_request_id,
@@ -135,7 +150,7 @@ impl AccessRequestService for DefaultAccessRequestService {
         requested: requested_json,
         approved: None,
         user_id: None,
-        resource_scope: Some(register_response.scope),
+        resource_scope: Some(resource_scope),
         access_request_scope: None, // NULL for auto-approve
         error_message: None,
         expires_at: expires_at.timestamp(),

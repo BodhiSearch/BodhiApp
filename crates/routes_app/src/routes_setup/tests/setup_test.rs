@@ -145,6 +145,7 @@ async fn test_setup_handler_success(
       Ok(AppRegInfo {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
+        scope: "scope_client_id".to_string(),
       })
     });
   let app_service = Arc::new(
@@ -195,6 +196,7 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
       Ok(AppRegInfo {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
+        scope: "scope_client_id".to_string(),
       })
     });
 
@@ -264,6 +266,7 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
       Ok(AppRegInfo {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
+        scope: "scope_client_id".to_string(),
       })
     });
 
@@ -330,6 +333,7 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
       Ok(AppRegInfo {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
+        scope: "scope_client_id".to_string(),
       })
     });
 

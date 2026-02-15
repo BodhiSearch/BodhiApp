@@ -5,6 +5,8 @@ use utoipa::ToSchema;
 pub struct AppRegInfo {
   pub client_id: String,
   pub client_secret: String,
+  #[serde(default)]
+  pub scope: String,
 }
 
 #[derive(

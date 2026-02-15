@@ -8,6 +8,7 @@ pub fn app_reg_info() -> AppRegInfo {
   AppRegInfo {
     client_id: "test-client".to_string(),
     client_secret: "test-secret".to_string(),
+    scope: "scope_test-client".to_string(),
   }
 }
 

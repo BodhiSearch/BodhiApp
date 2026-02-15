@@ -169,9 +169,11 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let encryption_key = setting_service.encryption_key().unwrap();
   let encryption_key = hash_key(&encryption_key);
   let secret_service = DefaultSecretService::new(&encryption_key, &setting_service.secrets_path())?;
+  let client_id = resource_client.client_id;
   let app_reg_info = AppRegInfoBuilder::default()
-    .client_id(resource_client.client_id)
+    .client_id(client_id.clone())
     .client_secret(resource_client.client_secret.unwrap())
+    .scope(format!("scope_{}", client_id))
     .build()?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::Ready)?;
@@ -236,9 +238,11 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     exa_service,
     time_service.clone(),
   ));
+  let secret_service = Arc::new(secret_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
+    secret_service.clone(),
     time_service.clone(),
     setting_service.public_server_url(),
   ));
@@ -256,7 +260,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     auth_service,
     db_service,
     session_service,
-    Arc::new(secret_service),
+    secret_service,
     cache_service,
     time_service,
     ai_api_service,

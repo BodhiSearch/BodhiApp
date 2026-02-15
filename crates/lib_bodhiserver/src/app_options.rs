@@ -140,6 +140,7 @@ impl AppOptionsBuilder {
     self.app_reg_info = Some(AppRegInfo {
       client_id: client_id.to_string(),
       client_secret: client_secret.to_string(),
+      scope: format!("scope_{}", client_id),
     });
     self
   }

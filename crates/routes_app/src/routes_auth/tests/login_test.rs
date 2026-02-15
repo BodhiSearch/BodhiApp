@@ -48,6 +48,7 @@ use uuid::Uuid;
       SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
               client_id: "test_client_id".to_string(),
               client_secret: "test_client_secret".to_string(),
+              scope: "scope_test_client_id".to_string(),
           }),
   )]
 #[tokio::test]
@@ -135,6 +136,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
   let secret_service = SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
     client_id: "test_client_id".to_string(),
     client_secret: "test_client_secret".to_string(),
+    scope: "scope_test_client_id".to_string(),
   });
 
   // Configure with default 0.0.0.0 host (loopback)
@@ -200,6 +202,7 @@ async fn test_auth_initiate_handler_network_host_usage(
   let secret_service = SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
     client_id: "test_client_id".to_string(),
     client_secret: "test_client_secret".to_string(),
+    scope: "scope_test_client_id".to_string(),
   });
 
   // Configure with default settings (no explicit public host)
@@ -407,6 +410,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .with_app_reg_info(&AppRegInfo {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
     })
     .with_app_status(&AppStatus::Ready);
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -559,6 +563,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .with_app_reg_info(&AppRegInfo {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
     })
     .with_app_status(&AppStatus::Ready);
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -638,6 +643,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
     .with_app_reg_info(&AppRegInfo {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
     })
     .with_app_status(&AppStatus::Ready);
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -696,6 +702,7 @@ async fn test_auth_callback_handler_auth_service_error(
     .with_app_reg_info(&AppRegInfo {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
     })
     .with_app_status(&AppStatus::Ready);
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -847,6 +854,7 @@ async fn setup_app_service_resource_admin(
     .with_app_reg_info(&AppRegInfo {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
     })
     .with_app_status(&AppStatus::ResourceAdmin);
   let secret_service = Arc::new(secret_service);
@@ -985,7 +993,7 @@ async fn assert_login_callback_result_resource_admin(
   let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
   assert_eq!(
-    "http://frontend.localhost:3000/ui/setup/download-models",
+    "http://frontend.localhost:3000/ui/chat",
     body.location
   );
   let secret_service = app_service.secret_service();

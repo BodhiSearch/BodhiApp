@@ -15,7 +15,7 @@ use server_core::{
 use services::{
   db::{AppAccessRequestRow, DbService, ToolsetRow},
   test_utils::{AppServiceStubBuilder, FrozenTimeService},
-  DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
+  DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService, MockSecretService,
   RegisterAccessRequestConsentResponse,
 };
 use std::sync::Arc;
@@ -46,10 +46,12 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   ));
 
   // Real AccessRequestService backed by same DB + mock auth
+  let secret_service: Arc<dyn services::SecretService> = Arc::new(MockSecretService::new());
   let access_request_service: Arc<dyn services::AccessRequestService> =
     Arc::new(DefaultAccessRequestService::new(
       db_service.clone(),
       auth_service.clone(),
+      secret_service,
       time_service.clone(),
       "http://localhost:1135".to_string(),
     ));
