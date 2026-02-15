@@ -1,6 +1,5 @@
 import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { TokensPage } from '@/pages/TokensPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
 import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
 import { randomPort } from '@/test-helpers.mjs';
@@ -26,21 +25,22 @@ import { expect, test } from '@playwright/test';
  * | 4 | WITHOUT toolsets      | WITHOUT extra scope          | Token lacks scope -> List returns empty      |
  *
  * Additional tests:
- * - API tokens (bodhiapp_*) are blocked from ALL toolset endpoints (401)
+ * - Session auth returns toolset_types field
  * - OAuth tokens are blocked from config endpoints (session-only)
+ *
+ * Note: API token blocking tests (bodhiapp_* -> 401) moved to routes_app unit tests
+ * (test_toolset_endpoints_reject_api_token in routes_toolsets/tests/toolsets_test.rs)
  */
 
 const TOOLSET_TYPE = 'builtin-exa-search';
 
-test.describe('API Token Blocking - Toolset Endpoints', () => {
+test.describe('Session Auth - Toolset Endpoints', () => {
   let authServerConfig;
   let testCredentials;
   let serverManager;
   let baseUrl;
   let authClient;
   let resourceClient;
-  let apiToken;
-  let toolsetUuid;
 
   test.beforeAll(async ({ browser }) => {
     authServerConfig = getAuthServerConfig();
@@ -69,29 +69,17 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
 
     baseUrl = await serverManager.startServer();
 
-    // Create an API token via session auth for testing
+    // Configure Exa toolset via session auth
     const context = await browser.newContext();
     const page = await context.newPage();
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    const tokensPage = new TokensPage(page, baseUrl);
-
     await loginPage.performOAuthLogin();
-    await tokensPage.navigateToTokens();
-    await tokensPage.createToken('toolset-test-token');
-    await tokensPage.expectTokenDialog();
-    apiToken = await tokensPage.copyTokenFromDialog();
-    await tokensPage.closeTokenDialog();
 
-    // Create a toolset to get its UUID for testing
     const toolsetsPage = new ToolsetsPage(page, baseUrl);
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
     await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
-
-    // Get the UUID from the data-test-uuid attribute
-    await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
 
     await context.close();
   });
@@ -100,73 +88,6 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     if (serverManager) {
       await serverManager.stopServer();
     }
-  });
-
-  test('GET /toolsets with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets`, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // API tokens are blocked at route level - returns 401 (missing auth for this route type)
-    expect(response.status).toBe(401);
-  });
-
-  test('GET /toolsets/{id} with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    expect(response.status).toBe(401);
-  });
-
-  test('PUT /toolsets/{id} with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        enabled: true,
-        api_key: 'test-key',
-      }),
-    });
-
-    expect(response.status).toBe(401);
-  });
-
-  test('DELETE /toolsets/{id} with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    expect(response.status).toBe(401);
-  });
-
-  test('POST /toolsets/{id}/execute/{method} with API token returns 401 Unauthorized', async () => {
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}/execute/search`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tool_call_id: 'call_test',
-        params: { query: 'test' },
-      }),
-    });
-
-    expect(response.status).toBe(401);
   });
 
   test('GET /toolsets with session auth returns toolset_types field', async ({ browser }) => {

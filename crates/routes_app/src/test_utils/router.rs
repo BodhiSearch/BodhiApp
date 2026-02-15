@@ -1,12 +1,15 @@
 use crate::build_routes;
 use axum::{body::Body, http::Request, Router};
+use chrono::Utc;
 use server_core::{DefaultSharedContext, MockSharedContext, SharedContext};
 use services::{
+  db::{ApiToken, DbService, TokenStatus},
   test_utils::{
     access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID,
   },
   AppService, SessionService, StubNetworkService,
 };
+use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tempfile::TempDir;
 use time::OffsetDateTime;
@@ -14,6 +17,7 @@ use tower_sessions::{
   session::{Id, Record},
   SessionStore,
 };
+use uuid::Uuid;
 
 /// Builds a fully-composed test router with all services wired using real
 /// in-memory implementations (SQLite, file-based data service, etc.).
@@ -217,4 +221,57 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     Arc::new(DefaultSharedContext::new(hub_service, setting_service));
   let router = build_routes(ctx.clone(), app_service.clone(), None);
   Ok((router, app_service, ctx, temp_home))
+}
+
+/// Creates a test API token in the database and returns the raw token string.
+///
+/// The token follows the production format:
+/// - Prefix: `bodhiapp_` + 8 random chars (used for DB lookup)
+/// - Full token: `bodhiapp_` + deterministic test string
+/// - Hash: SHA-256 of the full token stored in the database
+///
+/// # Arguments
+/// * `db_service` - The database service to insert the token into
+///
+/// # Returns
+/// The raw token string (e.g., `bodhiapp_testtoken_for_testing_purposes_only`) that can be
+/// used as a `Bearer` token in request headers.
+pub async fn create_test_api_token(db_service: &dyn DbService) -> anyhow::Result<String> {
+  let token_str = format!("bodhiapp_testtoken_{}", Uuid::new_v4());
+  let token_prefix = &token_str[.."bodhiapp_".len() + 8];
+
+  let mut hasher = Sha256::new();
+  hasher.update(token_str.as_bytes());
+  let token_hash = format!("{:x}", hasher.finalize());
+
+  let now = Utc::now();
+  let mut api_token = ApiToken {
+    id: Uuid::new_v4().to_string(),
+    user_id: "test-user".to_string(),
+    name: "Test API Token".to_string(),
+    token_prefix: token_prefix.to_string(),
+    token_hash,
+    scopes: "scope_token_user".to_string(),
+    status: TokenStatus::Active,
+    created_at: now,
+    updated_at: now,
+  };
+  db_service.create_api_token(&mut api_token).await?;
+
+  Ok(token_str)
+}
+
+/// Builds an HTTP request with an API token in the `Authorization: Bearer` header.
+///
+/// Sets:
+/// - `Authorization: Bearer {token}` header
+/// - `Host: localhost:1135` header (required for routing)
+pub fn api_token_request(method: &str, path: &str, token: &str) -> Request<Body> {
+  Request::builder()
+    .method(method)
+    .uri(path)
+    .header("Authorization", format!("Bearer {}", token))
+    .header("Host", "localhost:1135")
+    .body(Body::empty())
+    .unwrap()
 }

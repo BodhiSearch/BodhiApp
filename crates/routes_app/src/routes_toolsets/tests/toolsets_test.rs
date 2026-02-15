@@ -867,3 +867,31 @@ async fn test_toolset_type_endpoints_reject_insufficient_role(
 // which panics without expectations. Cannot migrate to build_test_router() without refactoring
 // the handlers to use real services or injecting mock expectations via AppServiceStubBuilder.
 // The 401 test proves the auth layer works correctly.
+
+// Test that API tokens (bodhiapp_*) are rejected on session-only toolset endpoints.
+// These endpoints only accept session auth (and some accept OAuth), but never API tokens.
+#[anyhow_trace]
+#[rstest]
+#[case::list("GET", "/bodhi/v1/toolsets")]
+#[case::get("GET", "/bodhi/v1/toolsets/some-id")]
+#[case::update("PUT", "/bodhi/v1/toolsets/some-id")]
+#[case::delete("DELETE", "/bodhi/v1/toolsets/some-id")]
+#[case::execute("POST", "/bodhi/v1/toolsets/some-id/execute/some-method")]
+#[tokio::test]
+async fn test_toolset_endpoints_reject_api_token(
+  #[case] method: &str,
+  #[case] path: &str,
+) -> anyhow::Result<()> {
+  use crate::test_utils::{api_token_request, build_test_router, create_test_api_token};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let token = create_test_api_token(app_service.db_service().as_ref()).await?;
+  let response = router
+    .oneshot(api_token_request(method, path, &token))
+    .await?;
+  assert_eq!(
+    StatusCode::UNAUTHORIZED,
+    response.status(),
+    "API token should be rejected on session-only endpoint {method} {path}"
+  );
+  Ok(())
+}
