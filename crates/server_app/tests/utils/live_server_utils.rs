@@ -1,12 +1,8 @@
 #![allow(dead_code)]
 
-use auth_middleware::{
-  test_utils::{AuthServerConfigBuilder, AuthServerTestClient},
-  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN,
-};
+use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use cookie::Cookie;
 use objs::{EnvType, Setting, SettingMetadata, SettingSource};
-use rand::Rng;
 use rstest::fixture;
 use serde_json::Value;
 use serde_yaml::Value as YamlValue;
@@ -20,7 +16,8 @@ use services::{
   DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService,
   LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
   StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
+  SETTINGS_YAML,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
@@ -79,11 +76,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_AUTH_URL not set - required for live tests"))?;
   let realm = std::env::var("INTEG_TEST_AUTH_REALM")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_AUTH_REALM not set - required for live tests"))?;
-  let test_user_id = std::env::var("INTEG_TEST_USERNAME_ID")
-    .map_err(|_| anyhow::anyhow!("INTEG_TEST_USERNAME_ID not set - required for live tests"))?;
-
   env_vars.insert(BODHI_AUTH_URL.to_string(), auth_server_url.clone());
   env_vars.insert(BODHI_AUTH_REALM.to_string(), realm.clone());
+  env_vars.insert(BODHI_HOST.to_string(), "127.0.0.1".to_string());
+  env_vars.insert(BODHI_PORT.to_string(), "51135".to_string());
 
   let mut env_wrapper_impl = DefaultEnvWrapper::default();
   for (key, value) in &env_vars {
@@ -141,39 +137,22 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let session_db_path = setting_service.session_db_path();
   fs::File::create_new(&session_db_path)?;
 
-  // Setup OAuth resource client
-  let config = AuthServerConfigBuilder::default()
-    .auth_server_url(&auth_server_url)
-    .realm(&realm)
-    .dev_console_client_id(
-      std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_ID")
-        .map_err(|_| anyhow::anyhow!("INTEG_TEST_DEV_CONSOLE_CLIENT_ID not set"))?,
-    )
-    .dev_console_client_secret(
-      std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET")
-        .map_err(|_| anyhow::anyhow!("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET not set"))?,
-    )
-    .build()?;
-  let auth_client = AuthServerTestClient::new(config);
-  let resource_client = auth_client
-    .create_resource_client("integration_test")
-    .await?;
-  let resource_token = auth_client
-    .get_resource_service_token(&resource_client)
-    .await?;
-  auth_client
-    .make_first_resource_admin(&resource_token, &test_user_id)
-    .await?;
+  // Setup OAuth resource client from pre-configured env vars
+  let resource_client_id = std::env::var("INTEG_TEST_RESOURCE_CLIENT_ID")
+    .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_ID not set"))?;
+  let resource_client_secret = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
+    .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SECRET not set"))?;
+  let resource_client_scope = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SCOPE")
+    .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SCOPE not set"))?;
 
   // Create secret service with app registration
   let encryption_key = setting_service.encryption_key().unwrap();
   let encryption_key = hash_key(&encryption_key);
   let secret_service = DefaultSecretService::new(&encryption_key, &setting_service.secrets_path())?;
-  let client_id = resource_client.client_id;
   let app_reg_info = AppRegInfoBuilder::default()
-    .client_id(client_id.clone())
-    .client_secret(resource_client.client_secret.unwrap())
-    .scope(format!("scope_{}", client_id))
+    .client_id(resource_client_id)
+    .client_secret(resource_client_secret)
+    .scope(resource_client_scope)
     .build()?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::Ready)?;
@@ -287,7 +266,7 @@ pub async fn live_server(
   #[future] app_service_setup: anyhow::Result<(TempDir, Arc<dyn AppService>)>,
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
-  let port = rand::rng().random_range(2000..60000);
+  let port: u16 = 51135;
   let (temp_cache_dir, app_service) = app_service_setup?;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),
