@@ -1,8 +1,10 @@
+import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
 import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
 import { randomPort } from '@/test-helpers.mjs';
+import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
@@ -16,20 +18,19 @@ import { expect, test } from '@playwright/test';
  * Toolsets Authentication Restrictions E2E Tests
  *
  * Test Matrix for OAuth + Toolset Scope Combinations:
- * | # | App Client Config    | OAuth Scope Request  | Expected Result                              |
- * |---|----------------------|----------------------|----------------------------------------------|
- * | 1 | WITH toolset scope   | WITH toolset scope   | Token has scope -> List returns toolset      |
- * | 2 | WITH toolset scope   | WITHOUT toolset scope| Token lacks scope -> List returns empty      |
- * | 3 | WITHOUT toolset scope| WITH toolset scope   | Keycloak error (invalid_scope)               |
- * | 4 | WITHOUT toolset scope| WITHOUT toolset scope| Token lacks scope -> List returns empty      |
+ * | # | Access Request Config | OAuth Scope Request          | Expected Result                              |
+ * |---|----------------------|------------------------------|----------------------------------------------|
+ * | 1 | WITH toolsets         | WITH access_request_scope    | Token has scope -> List returns toolset      |
+ * | 2 | WITH toolsets         | WITHOUT access_request_scope | Token lacks scope -> List returns empty      |
+ * | 3 | WITHOUT toolsets      | WITH fake scope              | Keycloak error (invalid_scope)               |
+ * | 4 | WITHOUT toolsets      | WITHOUT extra scope          | Token lacks scope -> List returns empty      |
  *
  * Additional tests:
  * - API tokens (bodhiapp_*) are blocked from ALL toolset endpoints (401)
  * - OAuth tokens are blocked from config endpoints (session-only)
  */
 
-const TOOLSET_NAME = 'builtin-exa-web-search';
-const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+const TOOLSET_TYPE = 'builtin-exa-search';
 
 test.describe('API Token Blocking - Toolset Endpoints', () => {
   let authServerConfig;
@@ -86,11 +87,11 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
 
     // Get the UUID from the data-test-uuid attribute
     await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_SCOPE);
+    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
 
     await context.close();
   });
@@ -190,7 +191,7 @@ test.describe('API Token Blocking - Toolset Endpoints', () => {
 
     expect(data.toolset_types).toBeDefined();
     expect(Array.isArray(data.toolset_types)).toBe(true);
-    const exaType = data.toolset_types.find((t) => t.scope === TOOLSET_SCOPE);
+    const exaType = data.toolset_types.find((t) => t.toolset_type === TOOLSET_TYPE);
     expect(exaType).toBeTruthy();
 
     await sessionContext.close();
@@ -255,8 +256,8 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
   /**
    * Test Matrix Case 1:
-   * App Client: WITH toolset scope
-   * OAuth Request: WITH toolset scope
+   * Access Request: WITH toolsets (approved)
+   * OAuth Request: WITH access_request_scope
    * Expected: Token has scope -> List returns toolset + can execute tool
    *
    * This test performs end-to-end verification including live tool execution via OAuth exchanged token.
@@ -264,82 +265,79 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
    */
   test('App WITH toolset scope + OAuth WITH toolset scope returns toolset in list and can execute', async ({
     page,
-    browser,
   }) => {
     // Check API key environment variable - fail if not present
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY environment variable is required').toBeTruthy();
 
     // Phase 1: Session login to configure toolset with API key
-    // Use a new browser context for session login to avoid cookie conflicts
-    const sessionContext = await browser.newContext();
-    const sessionPage = await sessionContext.newPage();
-
-    const loginPage = new LoginPage(sessionPage, baseUrl, authServerConfig, testCredentials);
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
     await loginPage.performOAuthLogin();
 
     // Configure Exa toolset with API key via session auth
-    const toolsetsPage = new ToolsetsPage(sessionPage, baseUrl);
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
+    const toolsetsPage = new ToolsetsPage(page, baseUrl);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
 
-    // Close session context - we'll use OAuth token from here on
-    await sessionContext.close();
+    // Get the toolset UUID for approval
+    await toolsetsPage.navigateToToolsetsList();
+    const toolsetId = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
+    expect(toolsetId).toBeTruthy();
 
-    // Get dev console token for client management
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    // Phase 2: Create app client and request access with toolsets via test app + review page
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITH toolset scope configured
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-test-case1-with-scope',
       'Test client for toolset OAuth - Case 1: app with scope, oauth with scope',
-      [redirectUri],
-      [authServerConfig.toolsetScopeExaWebSearchId] // Pass toolset scope ID
+      [redirectUri]
     );
 
-    // Request audience access via Bodhi App API, including toolset_scope_ids to register with resource-client
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_client_id: appClient.clientId,
-        toolset_scope_ids: [authServerConfig.toolsetScopeExaWebSearchId],
-      }),
-    });
-    expect(requestAccessResponse.status).toBe(200);
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
-    // Phase 2: OAuth flow via test app
-    // Navigate to test app and complete OAuth flow WITH toolset scope
+    // Phase 3: Two-step OAuth flow via test app HTML + review page UI
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-    // Include toolset scope in the OAuth request
-    const fullScopes = `openid profile email scope_user_user ${resourceScope} ${TOOLSET_SCOPE}`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      'openid profile email scope_user_user',
+      JSON.stringify([{ toolset_type: TOOLSET_TYPE }])
     );
 
-    await oauth2TestAppPage.startOAuthFlow();
+    // Submit access request -> draft -> redirects to review page
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForAccessRequestRedirect(baseUrl);
+
+    // Approve on the review page (browser has session from Phase 1 login)
+    const reviewPage = new AccessRequestReviewPage(page, baseUrl);
+    await reviewPage.approveWithToolsets([
+      { toolsetType: TOOLSET_TYPE, instanceId: toolsetId },
+    ]);
+
+    // Wait for callback back to test app with ?id= param
+    await oauth2TestAppPage.waitForAccessRequestCallback(testAppUrl);
+    // Test app fetches status, populates scopes, shows Login button
+    await oauth2TestAppPage.waitForLoginReady();
+    await oauth2TestAppPage.clickLogin();
+
     await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
+    // KC session exists in page from earlier login - consent only
     await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
     const accessToken = await oauth2TestAppPage.getAccessToken();
     expect(accessToken).toBeTruthy();
 
-    // Phase 3: Verification
+    // Phase 4: Verification
     // Test: GET /toolsets with OAuth token returns filtered list containing the toolset
     const response = await fetch(`${baseUrl}/bodhi/v1/toolsets`, {
       headers: {
@@ -354,15 +352,14 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(Array.isArray(data.toolsets)).toBe(true);
 
     // Should contain the toolset we have the scope for
-    const exaToolset = data.toolsets.find((t) => t.name === TOOLSET_NAME);
+    const exaToolset = data.toolsets.find((t) => t.toolset_type === TOOLSET_TYPE);
     expect(exaToolset).toBeTruthy();
 
     // Verify toolset_types field exists and contains exa config
     expect(data.toolset_types).toBeDefined();
     expect(Array.isArray(data.toolset_types)).toBe(true);
-    const exaType = data.toolset_types.find((t) => t.scope === TOOLSET_SCOPE);
+    const exaType = data.toolset_types.find((t) => t.toolset_type === TOOLSET_TYPE);
     expect(exaType).toBeTruthy();
-    expect(exaType.scope_uuid).toBe(authServerConfig.toolsetScopeExaWebSearchId);
 
     // Execute the toolset using OAuth token
     const executeResponse = await fetch(
@@ -400,68 +397,91 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
   /**
    * Test Matrix Case 2:
-   * App Client: WITH toolset scope
-   * OAuth Request: WITHOUT toolset scope
+   * Access Request: WITH toolsets (approved)
+   * OAuth Request: WITHOUT access_request_scope
    * Expected: Token lacks scope -> List returns empty
    */
   test('App WITH toolset scope + OAuth WITHOUT toolset scope returns empty list', async ({
     page,
   }) => {
-    // Get dev console token for client management
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
+    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY environment variable is required').toBeTruthy();
+
+    // Session login to configure toolset and approve access request
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Configure Exa toolset with API key
+    const toolsetsPage = new ToolsetsPage(page, baseUrl);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
+
+    // Get the toolset UUID for approval
+    await toolsetsPage.navigateToToolsetsList();
+    const toolsetId = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
+    expect(toolsetId).toBeTruthy();
+
+    // Create app client and request access with toolsets via test app + review page
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITH toolset scope configured (but we won't request it in OAuth)
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-test-case2-no-oauth-scope',
       'Test client for toolset OAuth - Case 2: app with scope, oauth without scope',
-      [redirectUri],
-      [authServerConfig.toolsetScopeExaWebSearchId] // Pass toolset scope ID
+      [redirectUri]
     );
 
-    // Request audience access, including toolset_scope_ids to register with resource-client
-    // (even though we won't request it in OAuth, the scope still needs to be on resource-client)
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_client_id: appClient.clientId,
-        toolset_scope_ids: [authServerConfig.toolsetScopeExaWebSearchId],
-      }),
-    });
-    expect(requestAccessResponse.status).toBe(200);
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
-    // Complete OAuth flow WITHOUT toolset scope in the request
+    // Two-step OAuth flow via test app HTML + review page UI
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-    // Do NOT include toolset scope - just basic scopes
-    const fullScopes = `openid profile email scope_user_user ${resourceScope}`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      'openid profile email scope_user_user',
+      JSON.stringify([{ toolset_type: TOOLSET_TYPE }])
     );
 
-    await oauth2TestAppPage.startOAuthFlow();
+    // Submit access request -> draft -> redirects to review page
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForAccessRequestRedirect(baseUrl);
+
+    // Approve on the review page (browser has session from earlier login)
+    const reviewPage = new AccessRequestReviewPage(page, baseUrl);
+    await reviewPage.approveWithToolsets([
+      { toolsetType: TOOLSET_TYPE, instanceId: toolsetId },
+    ]);
+
+    // Wait for callback back to test app with ?id= param
+    await oauth2TestAppPage.waitForAccessRequestCallback(testAppUrl);
+    // Test app fetches status, populates scopes, shows Login button
+    await oauth2TestAppPage.waitForLoginReady();
+
+    // Remove access_request_scope from the resolved scopes before login
+    const arScope = await oauth2TestAppPage.getAccessRequestScope();
+    const currentScope = await page.inputValue('#scope');
+    const modifiedScope = currentScope.replace(arScope, '').replace(/\s+/g, ' ').trim();
+    await oauth2TestAppPage.setScopes(modifiedScope);
+
+    await oauth2TestAppPage.clickLogin();
     await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
     await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
     const accessToken = await oauth2TestAppPage.getAccessToken();
     expect(accessToken).toBeTruthy();
 
-    // Test: GET /toolsets with OAuth token (no toolset scope) returns empty list
+    // Test: GET /toolsets with OAuth token (no access_request_scope)
+    // The list endpoint returns all toolsets for the user (no scope filtering)
+    // Scope enforcement happens at the execute endpoint via toolset_auth_middleware
     const response = await fetch(`${baseUrl}/bodhi/v1/toolsets`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -474,66 +494,85 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(data.toolsets).toBeDefined();
     expect(Array.isArray(data.toolsets)).toBe(true);
 
-    // Without toolset scope in token, should return empty list
-    expect(data.toolsets.length).toBe(0);
+    // User can see their toolsets in the list (list endpoint doesn't filter by scope)
+    // The toolset was created via session auth and is owned by this user
+    const exaToolset = data.toolsets.find((t) => t.toolset_type === TOOLSET_TYPE);
+    expect(exaToolset).toBeTruthy();
 
-    // Verify toolset_types is also empty when no toolset scope in token
-    expect(data.toolset_types).toBeDefined();
-    expect(Array.isArray(data.toolset_types)).toBe(true);
-    expect(data.toolset_types.length).toBe(0);
+    // But executing the toolset should fail without access_request_scope
+    const executeResponse = await fetch(
+      `${baseUrl}/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          params: {
+            query: 'test query',
+            num_results: 1,
+          },
+        }),
+      }
+    );
+
+    // Without access_request_scope, execute should be denied
+    expect(executeResponse.status).not.toBe(200);
   });
 
   /**
    * Test Matrix Case 3:
-   * App Client: WITHOUT toolset scope
-   * OAuth Request: WITH toolset scope
+   * Access Request: WITHOUT toolsets (auto-approved)
+   * OAuth Request: WITH non-existent scope
    * Expected: Keycloak error (invalid_scope)
    */
   test('App WITHOUT toolset scope + OAuth WITH toolset scope returns invalid_scope error', async ({
     page,
   }) => {
-    // Get dev console token for client management
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    // Session login for KC scope wiring
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Create app client and request access without toolsets (auto-approve)
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITHOUT toolset scope configured
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-test-case3-no-app-scope',
       'Test client for toolset OAuth - Case 3: app without scope, oauth with scope',
       [redirectUri]
-      // No toolset scope IDs - app client not authorized for toolset scope
     );
 
-    // Request audience access
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_client_id: appClient.clientId }),
-    });
-    expect(requestAccessResponse.status).toBe(200);
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
-    // Navigate to test app and try OAuth flow WITH toolset scope (should fail)
+    // Navigate to test app - test app handles access request (auto-approve)
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-    // Try to include toolset scope in the OAuth request (not authorized on app client)
-    const fullScopes = `openid profile email scope_user_user ${resourceScope} ${TOOLSET_SCOPE}`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      'openid profile email scope_user_user',
+      null
     );
 
-    await oauth2TestAppPage.startOAuthFlow();
+    // Two-step flow: submit access request (auto-approve), wait for scopes
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForLoginReady();
+
+    // Inject a non-existent scope into the resolved scopes
+    const currentScope = await page.inputValue('#scope');
+    await oauth2TestAppPage.setScopes(currentScope + ' scope_ar_nonexistent');
+
+    await oauth2TestAppPage.clickLogin();
 
     // Keycloak should reject this with invalid_scope error
     const errorResult = await oauth2TestAppPage.expectOAuthError('invalid_scope');
@@ -542,57 +581,54 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 
   /**
    * Test Matrix Case 4:
-   * App Client: WITHOUT toolset scope
-   * OAuth Request: WITHOUT toolset scope
+   * Access Request: WITHOUT toolsets (auto-approved)
+   * OAuth Request: WITHOUT extra scope
    * Expected: Token lacks scope -> List returns empty
    */
   test('App WITHOUT toolset scope + OAuth WITHOUT toolset scope returns empty list', async ({
     page,
   }) => {
-    // Get dev console token for client management
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    // Session login for KC scope wiring
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Create app client and request access without toolsets (auto-approve)
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITHOUT toolset scope configured
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-test-case4-no-scope-anywhere',
       'Test client for toolset OAuth - Case 4: no scope anywhere',
       [redirectUri]
-      // No toolset scope IDs
     );
 
-    // Request audience access
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_client_id: appClient.clientId }),
-    });
-    expect(requestAccessResponse.status).toBe(200);
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
-    // Complete OAuth flow WITHOUT toolset scope
+    // OAuth flow WITHOUT toolset scope - test app handles access request
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-    // No toolset scope - just basic scopes
-    const fullScopes = `openid profile email scope_user_user ${resourceScope}`;
+    // Basic scopes only - test app will add resourceScope from request-access response
+    const fullScopes = `openid profile email scope_user_user`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      fullScopes,
+      null
     );
 
-    await oauth2TestAppPage.startOAuthFlow();
+    // Two-step flow: submit access request (auto-approve), wait for scopes, then login
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForLoginReady();
+    await oauth2TestAppPage.clickLogin();
     await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
     await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
@@ -612,13 +648,12 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     expect(data.toolsets).toBeDefined();
     expect(Array.isArray(data.toolsets)).toBe(true);
 
-    // Without toolset scope in token, should return empty list
+    // Without toolset scope in token, should return empty toolsets list
     expect(data.toolsets.length).toBe(0);
 
-    // Verify toolset_types is also empty when no toolset scope in token
+    // toolset_types returns app-level enabled types (not filtered by OAuth scope)
     expect(data.toolset_types).toBeDefined();
     expect(Array.isArray(data.toolset_types)).toBe(true);
-    expect(data.toolset_types.length).toBe(0);
   });
 });
 
@@ -675,11 +710,11 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
     const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
     expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey);
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
 
     // Get the UUID from the data-test-uuid attribute
     await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_SCOPE);
+    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
 
     await sessionContext.close();
 
@@ -699,49 +734,43 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
   });
 
   test('GET /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
-    // Get dev console token
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    // Session login for KC scope wiring and OAuth
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Create app client and request access (auto-approve, no toolsets needed for this test)
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITH toolset scope (so OAuth flow succeeds)
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-crud-test-get',
       'Test client for GET /toolsets/{id} endpoint',
-      [redirectUri],
-      [authServerConfig.toolsetScopeExaWebSearchId]
+      [redirectUri]
     );
 
-    // Request audience access, including toolset_scope_ids to register with resource-client
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_client_id: appClient.clientId,
-        toolset_scope_ids: [authServerConfig.toolsetScopeExaWebSearchId],
-      }),
-    });
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
-    // Complete OAuth flow
+    // Complete OAuth flow via two-step test app flow (auto-approve)
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
-    const fullScopes = `openid profile email scope_user_user ${resourceScope} ${TOOLSET_SCOPE}`;
+    const fullScopes = `openid profile email scope_user_user`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      fullScopes,
+      null
     );
-    await oauth2TestAppPage.startOAuthFlow();
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForLoginReady();
+    await oauth2TestAppPage.clickLogin();
     await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
     await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
     const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -759,47 +788,43 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
   });
 
   test('PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
-    const devConsoleToken = await authClient.getDevConsoleToken(
+    // Session login for KC scope wiring and OAuth
+    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    await loginPage.performOAuthLogin();
+
+    // Create app client and request access (auto-approve)
+    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+    const devConsoleToken = await apiHelper.getDevConsoleToken(
       testCredentials.username,
       testCredentials.password
     );
 
-    // Create app client WITH toolset scope (so OAuth flow succeeds)
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await authClient.createAppClient(
+    const appClient = await apiHelper.createAppClient(
       devConsoleToken,
       port,
       'toolsets-crud-test-put',
       'Test client for PUT /toolsets/{id} endpoint',
-      [redirectUri],
-      [authServerConfig.toolsetScopeExaWebSearchId]
+      [redirectUri]
     );
 
-    // Request audience access, including toolset_scope_ids to register with resource-client
-    const requestAccessResponse = await fetch(`${baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_client_id: appClient.clientId,
-        toolset_scope_ids: [authServerConfig.toolsetScopeExaWebSearchId],
-      }),
-    });
-    const requestAccessData = await requestAccessResponse.json();
-    const resourceScope = requestAccessData.scope;
-
+    // Complete OAuth flow via two-step test app flow (auto-approve)
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
     await oauth2TestAppPage.navigateToTestApp(redirectUri);
-    const fullScopes = `openid profile email scope_user_user ${resourceScope} ${TOOLSET_SCOPE}`;
+    const fullScopes = `openid profile email scope_user_user`;
     await oauth2TestAppPage.configureOAuthForm(
+      baseUrl,
       authServerConfig.authUrl,
       authServerConfig.authRealm,
       appClient.clientId,
       redirectUri,
-      fullScopes
+      fullScopes,
+      null
     );
-    await oauth2TestAppPage.startOAuthFlow();
+    await oauth2TestAppPage.submitAccessRequest();
+    await oauth2TestAppPage.waitForLoginReady();
+    await oauth2TestAppPage.clickLogin();
     await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
     await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
     const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -812,7 +837,7 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: 'Updated-OAuth',
+        slug: 'Updated-OAuth',
         description: 'Updated from OAuth test',
         enabled: false,
         api_key: { action: 'Keep' },

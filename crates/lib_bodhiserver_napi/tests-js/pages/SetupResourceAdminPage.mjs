@@ -1,5 +1,4 @@
 import { SetupBasePage } from '@/pages/SetupBasePage.mjs';
-import { expect } from '@playwright/test';
 
 export class SetupResourceAdminPage extends SetupBasePage {
   constructor(page, baseUrl, authServerConfig, testCredentials) {
@@ -64,8 +63,6 @@ export class SetupResourceAdminPage extends SetupBasePage {
     await this.expectAuthServerLogin();
     await this.fillAuthCredentials();
     await this.submitLogin();
-    await this.page.waitForURL((url) => !url.pathname.includes('/ui/auth/callback/'), {
-      timeout: 60000,
-    });
+    await this.page.waitForURL((url) => !url.pathname.includes('/ui/setup/download-models/'));
   }
 }

@@ -18,6 +18,7 @@ Cargo.lock
 # node e2e test tools and outputs
 node_modules/
 test-results/
+test-results*/
 playwright-report/
 coverage/
 

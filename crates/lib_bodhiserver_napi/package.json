@@ -30,6 +30,7 @@
     "test:playwright:ui": "playwright test --config=playwright.config.mjs --ui",
     "test:playwright:headed": "playwright test --config=playwright.config.mjs --headed",
     "test:playwright:scheduled": "playwright test --config=playwright.config.mjs --reporter=list --grep @scheduled",
+    "test:static-server": "node tests-js/scripts/serve-test-pages.mjs",
     "test:all": "npm run test:run && npm run test:playwright",
     "format": "biome format --write .",
     "format:check": "biome format .",

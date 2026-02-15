@@ -18,7 +18,7 @@ export class ToolsetsPage extends BasePage {
     newPageContainer: '[data-testid="new-toolset-page"]',
     toolsetTypeSelect: '[data-testid="toolset-type-select"]',
     toolsetTypeSelectTrigger: 'button[role="combobox"]',
-    toolsetNameInput: '[data-testid="toolset-name-input"]',
+    toolsetSlugInput: '[data-testid="toolset-slug-input"]',
     toolsetDescriptionInput: '[data-testid="toolset-description-input"]',
     createButton: '[data-testid="toolset-create-button"]',
     // Edit page selectors
@@ -71,11 +71,11 @@ export class ToolsetsPage extends BasePage {
     // Click the combobox by role within the new page
     await this.page.locator('button[role="combobox"]').click();
     // Map toolset name to display name for selection
-    const displayName = toolsetName === 'builtin-exa-web-search' ? 'Exa Web Search' : toolsetName;
+    const displayName = toolsetName === 'builtin-exa-search' ? 'Exa Web Search' : toolsetName;
     // Select by role="option" with the display text
     await this.page.getByRole('option', { name: displayName }).click();
 
-    await this.page.fill(this.selectors.toolsetNameInput, name);
+    await this.page.fill(this.selectors.toolsetSlugInput, name);
     await this.page.fill(this.selectors.apiKeyInput, apiKey);
     await this.page.click(this.selectors.createButton);
     // Wait for redirect to list page
@@ -217,12 +217,12 @@ export class ToolsetsPage extends BasePage {
 
     // Click the combobox by role
     await this.page.locator('button[role="combobox"]').click();
-    // Click the option from the dropdown using scope
-    await this.page.click(`[data-test-scope="${scope}"]`);
+    // Click the option from the dropdown using type
+    await this.page.click(`[data-testid="type-option-${scope}"]`);
 
-    // Only fill name if explicitly provided (otherwise use auto-populated value)
+    // Only fill slug if explicitly provided (otherwise use auto-populated value)
     if (toolsetName) {
-      await this.page.fill(this.selectors.toolsetNameInput, toolsetName);
+      await this.page.fill(this.selectors.toolsetSlugInput, toolsetName);
     }
 
     await this.page.fill(this.selectors.apiKeyInput, apiKey);

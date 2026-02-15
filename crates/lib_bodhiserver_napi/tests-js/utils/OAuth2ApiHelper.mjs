@@ -8,36 +8,14 @@ export class OAuth2ApiHelper {
     return await this.authClient.getDevConsoleToken(username, password);
   }
 
-  async createAppClient(
-    devConsoleToken,
-    port,
-    clientName,
-    description,
-    redirectUris,
-    toolsetScopeIds = []
-  ) {
+  async createAppClient(devConsoleToken, port, clientName, description, redirectUris) {
     return await this.authClient.createAppClient(
       devConsoleToken,
       port,
       clientName,
       description,
-      redirectUris,
-      toolsetScopeIds
+      redirectUris
     );
-  }
-
-  async requestAudienceAccess(appClientId) {
-    const response = await fetch(`${this.baseUrl}/bodhi/v1/apps/request-access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_client_id: appClientId }),
-    });
-
-    if (response.status !== 200) {
-      throw new Error(`Failed to request access: ${response.status}, ${await response.text()}`);
-    }
-
-    return await response.json();
   }
 
   async testApiWithToken(accessToken) {

@@ -91,26 +91,26 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
         [redirectUri]
       );
 
-      // Step 5: Request audience access via Bodhi App API
-      const requestAccessData = await apiHelper.requestAudienceAccess(appClient.clientId);
-      const resourceScope = requestAccessData.scope;
-
-      // Step 6: Navigate to test app and complete OAuth flow
+      // Step 5: Navigate to test app and complete OAuth flow
       const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
       await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-      // Configure OAuth form
-      const fullScopes = `${testData.scopes} ${resourceScope}`;
+      // Configure OAuth form (test app will add resourceScope from request-access response)
       await oauth2TestAppPage.configureOAuthForm(
+        baseUrl,
         authServerConfig.authUrl,
         authServerConfig.authRealm,
         appClient.clientId,
         redirectUri,
-        fullScopes
+        testData.scopes,
+        null
       );
 
-      // Start OAuth flow and handle auth server interaction
-      await oauth2TestAppPage.startOAuthFlow();
+      // Two-step flow: submit access request, wait for scopes, then login
+      await oauth2TestAppPage.submitAccessRequest();
+      await oauth2TestAppPage.waitForLoginReady();
+      // Wait for KC scope registration to propagate before redirecting
+      await oauth2TestAppPage.clickLogin();
       await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
       await oauth2TestAppPage.handleConsent();
       await oauth2TestAppPage.waitForTokenExchange(testAppUrl);

@@ -18,8 +18,7 @@ import { expect, test } from '@playwright/test';
  * configure the Exa Web Search toolset with a real API key and verify it's enabled.
  */
 
-const TOOLSET_NAME = 'builtin-exa-web-search';
-const TOOLSET_SCOPE = 'scope_toolset-builtin-exa-web-search';
+const TOOLSET_TYPE = 'builtin-exa-search';
 
 test.describe('Toolsets Configuration', () => {
   let authServerConfig;
@@ -85,18 +84,18 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Enable the toolset type first
-    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_SCOPE);
+    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_TYPE);
 
     // Create a toolset via the new page
     await toolsetsPage.navigateToNewToolset();
     await toolsetsPage.expectNewToolsetPage();
-    await toolsetsPage.createToolset(TOOLSET_NAME, 'test-exa', 'test-api-key');
+    await toolsetsPage.createToolset(TOOLSET_TYPE, 'test-exa', 'test-api-key');
 
     // Should redirect to list
     await toolsetsPage.expectToolsetsListPage();
 
     // Click edit button using type selector
-    await toolsetsPage.clickEditByScope(TOOLSET_SCOPE);
+    await toolsetsPage.clickEditByScope(TOOLSET_TYPE);
 
     // Should be on edit page
     await toolsetsPage.expectToolsetEditPage();
@@ -107,14 +106,14 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Enable the toolset type first
-    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_SCOPE);
+    await toolsetsPage.enableToolsetTypeOnAdmin(TOOLSET_TYPE);
 
     // Create a toolset
     await toolsetsPage.navigateToNewToolset();
-    await toolsetsPage.createToolset(TOOLSET_NAME, 'test-exa-2', 'test-api-key-2');
+    await toolsetsPage.createToolset(TOOLSET_TYPE, 'test-exa-2', 'test-api-key-2');
 
     // Navigate to edit page using type selector
-    await toolsetsPage.clickEditByScope(TOOLSET_SCOPE);
+    await toolsetsPage.clickEditByScope(TOOLSET_TYPE);
     await toolsetsPage.expectToolsetEditPage();
     await toolsetsPage.expectFormLoaded();
   });
@@ -128,7 +127,7 @@ test.describe('Toolsets Configuration', () => {
     await toolsetsPage.expectAdminPage();
 
     // Admin should see the type toggle
-    await toolsetsPage.expectTypeToggle(TOOLSET_SCOPE);
+    await toolsetsPage.expectTypeToggle(TOOLSET_TYPE);
   });
 
   test('shows confirmation dialog when toggling app enable', async ({ page }) => {
@@ -140,7 +139,7 @@ test.describe('Toolsets Configuration', () => {
     await toolsetsPage.expectAdminPage();
 
     // Toggle the type (regardless of current state)
-    await toolsetsPage.toggleTypeEnabled(TOOLSET_SCOPE);
+    await toolsetsPage.toggleTypeEnabled(TOOLSET_TYPE);
 
     // Should show either enable or disable confirmation dialog
     const enableDialog = page.getByRole('heading', { name: 'Enable Toolset Type' });
@@ -157,7 +156,7 @@ test.describe('Toolsets Configuration', () => {
     await confirmButton.click();
 
     // Toggle again to verify the opposite dialog appears
-    await toolsetsPage.toggleTypeEnabled(TOOLSET_SCOPE);
+    await toolsetsPage.toggleTypeEnabled(TOOLSET_TYPE);
     await expect(enableDialog.or(disableDialog)).toBeVisible();
   });
 
@@ -170,7 +169,7 @@ test.describe('Toolsets Configuration', () => {
     await loginPage.performOAuthLogin('/ui/chat/');
 
     // Configure the toolset with the real API key (creates new toolset)
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_SCOPE, exaApiKey, 'test-toolset-new');
+    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey, 'test-toolset-new');
 
     // Should be redirected to list page
     await toolsetsPage.expectToolsetsListPage();
