@@ -19,7 +19,7 @@ use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, Redire
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
 use services::{
-  extract_claims, AppStatus, Claims, SecretServiceExt, CHAT_PATH, DOWNLOAD_MODELS_PATH,
+  extract_claims, AppStatus, Claims, SecretServiceExt, CHAT_PATH,
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -292,32 +292,13 @@ pub async fn auth_callback_handler(
     .map_err(LoginError::from)?;
 
   // Determine redirect URL using callback URL host
-  let ui_setup_resume = if status_resource_admin {
-    // Extract host from callback URL to construct download-models URL
-    if let Ok(parsed_url) = Url::parse(&callback_url) {
-      let mut new_url = parsed_url.clone();
-      new_url.set_path(DOWNLOAD_MODELS_PATH);
-      new_url.set_query(None);
-      new_url.to_string()
-    } else {
-      // Fallback to configured URL if parsing fails
-      format!(
-        "{}{}",
-        setting_service.public_server_url(),
-        DOWNLOAD_MODELS_PATH
-      )
-    }
+  let ui_setup_resume = if let Ok(parsed_url) = Url::parse(&callback_url) {
+    let mut new_url = parsed_url.clone();
+    new_url.set_path(CHAT_PATH);
+    new_url.set_query(None);
+    new_url.to_string()
   } else {
-    // Extract host from callback URL to construct frontend URL
-    if let Ok(parsed_url) = Url::parse(&callback_url) {
-      let mut new_url = parsed_url.clone();
-      new_url.set_path(CHAT_PATH);
-      new_url.set_query(None);
-      new_url.to_string()
-    } else {
-      // Fallback to configured URL if parsing fails
-      setting_service.frontend_default_url()
-    }
+    setting_service.frontend_default_url()
   };
 
   // Clean up callback URL from session

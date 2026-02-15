@@ -37,7 +37,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
+import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -257,7 +257,7 @@ describe('ModelDownloadPage Navigation', () => {
     );
   });
 
-  it('continue button navigates and sets localStorage flag', async () => {
+  it('continue button navigates to api models page', async () => {
     const user = userEvent.setup();
 
     renderWithSetupProvider(<ModelDownloadContent />);
@@ -271,7 +271,6 @@ describe('ModelDownloadPage Navigation', () => {
 
     await user.click(continueButton);
 
-    expect(localStorage.getItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED)).toBe('true');
     expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_API_MODELS);
   });
 });

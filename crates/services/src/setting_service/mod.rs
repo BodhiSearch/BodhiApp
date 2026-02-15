@@ -56,7 +56,6 @@ pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
 pub const LOGIN_CALLBACK_PATH: &str = "/ui/auth/callback";
-pub const DOWNLOAD_MODELS_PATH: &str = "/ui/setup/download-models";
 pub const CHAT_PATH: &str = "/ui/chat";
 
 const PROD_DB: &str = "bodhi.sqlite";

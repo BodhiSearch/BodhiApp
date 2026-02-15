@@ -10,6 +10,7 @@ import { itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { useOAuthInitiate } from '@/hooks/useAuth';
+import { ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { handleSmartRedirect } from '@/lib/utils';
 
 function ResourceAdminContent() {
@@ -42,6 +43,7 @@ function ResourceAdminContent() {
 
   const handleOAuthInitiate = () => {
     setError(null); // Clear any previous errors
+    sessionStorage.setItem('bodhi-return-url', ROUTE_SETUP_DOWNLOAD_MODELS);
     initiateOAuth();
   };
 

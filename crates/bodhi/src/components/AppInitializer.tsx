@@ -8,14 +8,11 @@ import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
 import { useAppInfo } from '@/hooks/useInfo';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useUser } from '@/hooks/useUsers';
 import {
-  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_DEFAULT,
   ROUTE_RESOURCE_ADMIN,
   ROUTE_SETUP,
-  ROUTE_SETUP_DOWNLOAD_MODELS,
   ROUTE_REQUEST_ACCESS,
   ROUTE_LOGIN,
 } from '@/lib/constants';
@@ -38,7 +35,6 @@ export default function AppInitializer({
   minRole,
 }: AppInitializerProps) {
   const router = useRouter();
-  const [hasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, false);
 
   const { data: appInfo, error: appError, isLoading: appLoading } = useAppInfo();
   const {
@@ -58,11 +54,7 @@ export default function AppInitializer({
             router.push(ROUTE_SETUP);
             break;
           case 'ready':
-            if (!hasShownModelsPage) {
-              router.push(ROUTE_SETUP_DOWNLOAD_MODELS);
-            } else {
-              router.push(ROUTE_DEFAULT);
-            }
+            router.push(ROUTE_DEFAULT);
             break;
           case 'resource-admin':
             router.push(ROUTE_RESOURCE_ADMIN);
@@ -70,7 +62,7 @@ export default function AppInitializer({
         }
       }
     }
-  }, [appInfo, appLoading, allowedStatus, router, hasShownModelsPage]);
+  }, [appInfo, appLoading, allowedStatus, router]);
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;

@@ -9,10 +9,9 @@ import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
 import { ModelInfo, ModelCatalog } from '@/app/ui/setup/download-models/types';
 import AppInitializer from '@/components/AppInitializer';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatModelsCatalog, useEmbeddingModelsCatalog } from '@/hooks/useModelCatalog';
 import { useDownloads, usePullModel } from '@/hooks/useModels';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_API_MODELS } from '@/lib/constants';
+import { ROUTE_SETUP_API_MODELS } from '@/lib/constants';
 
 export function ModelDownloadContent() {
   const router = useRouter();
@@ -30,12 +29,6 @@ export function ModelDownloadContent() {
       showError('Error', message);
     },
   });
-  const [, setHasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, true);
-
-  useEffect(() => {
-    setHasShownModelsPage(true);
-  }, [setHasShownModelsPage]);
-
   useEffect(() => {
     const hasPendingDownloads = downloads?.data.some((download) => download.status === 'pending') ?? false;
     setEnablePolling(hasPendingDownloads);

@@ -1,7 +1,7 @@
 'use client';
 
 import AppInitializer from '@/components/AppInitializer';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
 import { createMockUserInfo } from '@/test-fixtures/access-requests';
 import { createMockLoggedOutUser } from '@/test-utils/mock-user';
@@ -27,21 +27,6 @@ setupMswV2();
 beforeEach(() => {
   pushMock.mockClear();
 });
-
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value;
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-})();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 const renderWithSetup = async (ui: React.ReactElement) => {
   const wrapper = createWrapper();
@@ -100,48 +85,20 @@ describe('AppInitializer loading and error handling', () => {
 });
 
 describe('AppInitializer routing based on currentStatus and allowedStatus', () => {
-  beforeEach(() => {
-    localStorageMock.clear();
-  });
-
-  // Update this test to use the constant
-  it('redirects to download models page when status is ready and models page not shown', async () => {
-    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'false');
-
-    server.use(...mockAppInfo({ status: 'ready' }));
-
-    await renderWithSetup(<AppInitializer />);
-    expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_DOWNLOAD_MODELS);
-  });
-
-  // Update this test to use the constant
-  it(`redirects to ${ROUTE_DEFAULT} when status is ready and models page was shown`, async () => {
-    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
-
+  it(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
     server.use(...mockAppInfo({ status: 'ready' }));
 
     await renderWithSetup(<AppInitializer />);
     expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
   });
 
-  // Update the test cases to use the constant
   it.each([
-    { status: 'setup', expectedPath: '/ui/setup', localStorage: {} },
-    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
-    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin', localStorage: {} },
-    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
-    {
-      status: 'ready',
-      expectedPath: ROUTE_SETUP_DOWNLOAD_MODELS,
-      localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'false' },
-    },
+    { status: 'setup', expectedPath: '/ui/setup' },
+    { status: 'ready', expectedPath: ROUTE_DEFAULT },
+    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
   ])(
-    'redirects to $expectedPath when status is $status and localStorage is $localStorage',
-    async ({ status, expectedPath, localStorage }) => {
-      Object.entries(localStorage).forEach(([key, value]) => {
-        localStorageMock.setItem(key, value);
-      });
-
+    'redirects to $expectedPath when status is $status',
+    async ({ status, expectedPath }) => {
       server.use(...mockAppInfo({ status: status as any }));
 
       await renderWithSetup(<AppInitializer />);
@@ -151,52 +108,42 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
 
   // Update the status mismatch test cases
   it.each([
-    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup', localStorage: {} },
-    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup', localStorage: {} },
-    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup', localStorage: {} },
+    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup' },
+    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup' },
+    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup' },
     {
       currentStatus: 'resource-admin',
       allowedStatus: 'setup',
       expectedPath: '/ui/setup/resource-admin',
-      localStorage: {},
     },
     {
       currentStatus: 'resource-admin',
       allowedStatus: 'ready',
       expectedPath: '/ui/setup/resource-admin',
-      localStorage: {},
     },
     {
       currentStatus: 'resource-admin',
       allowedStatus: undefined,
       expectedPath: '/ui/setup/resource-admin',
-      localStorage: {},
     },
     {
       currentStatus: 'ready',
       allowedStatus: 'setup',
       expectedPath: ROUTE_DEFAULT,
-      localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' },
     },
     {
       currentStatus: 'ready',
       allowedStatus: 'resource-admin',
       expectedPath: ROUTE_DEFAULT,
-      localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' },
     },
     {
       currentStatus: 'ready',
       allowedStatus: undefined,
       expectedPath: ROUTE_DEFAULT,
-      localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' },
     },
   ])(
     'redirects to $expectedPath when currentStatus=$currentStatus does not match allowedStatus=$allowedStatus',
-    async ({ currentStatus, allowedStatus, expectedPath, localStorage }) => {
-      Object.entries(localStorage).forEach(([key, value]) => {
-        localStorageMock.setItem(key, value as string);
-      });
-
+    async ({ currentStatus, allowedStatus, expectedPath }) => {
       server.use(...mockAppInfo({ status: currentStatus as any }));
 
       await renderWithSetup(<AppInitializer allowedStatus={allowedStatus as AppStatus} />);
@@ -221,11 +168,6 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
 });
 
 describe('AppInitializer role-based access control', () => {
-  beforeEach(() => {
-    localStorageMock.clear();
-    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
-  });
-
   it.each([
     { userRole: 'admin', minRole: 'manager', shouldAllow: true },
     { userRole: 'manager', minRole: 'manager', shouldAllow: true },

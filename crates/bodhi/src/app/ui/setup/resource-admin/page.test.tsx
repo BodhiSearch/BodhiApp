@@ -1,5 +1,5 @@
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
-import { ROUTE_DEFAULT } from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import {
   mockAuthInitiate,
   mockAuthInitiateError,
@@ -77,33 +77,7 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it('redirects to download models when status is ready and models page not shown', async () => {
-    server.use(...mockAppInfoReady());
-
-    renderWithSetupProvider(<ResourceAdminPage />);
-
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup/download-models');
-    });
-  });
-
-  it.skip(`redirects to ${ROUTE_DEFAULT} when status is ready and models page already shown`, async () => {
-    // Skipped due to localStorage mocking complexity in test environment
-    // Mock localStorage to simulate models page has been shown
-    const mockLocalStorage = {
-      getItem: vi.fn((key) => {
-        if (key === 'models-download-page-displayed') return 'true';
-        return null;
-      }),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-    };
-    Object.defineProperty(window, 'localStorage', {
-      value: mockLocalStorage,
-      writable: true,
-    });
-
+  it(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
     server.use(...mockAppInfoReady());
 
     renderWithSetupProvider(<ResourceAdminPage />);
@@ -111,6 +85,22 @@ describe('ResourceAdminPage', () => {
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
     });
+  });
+
+  it('sets sessionStorage return URL before OAuth initiation', async () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    server.use(
+      ...mockAppInfoResourceAdmin(),
+      ...mockAuthInitiate({ location: 'https://oauth.example.com/auth?client_id=test' })
+    );
+
+    renderWithSetupProvider(<ResourceAdminPage />);
+
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    await userEvent.click(loginButton);
+
+    expect(setItemSpy).toHaveBeenCalledWith('bodhi-return-url', ROUTE_SETUP_DOWNLOAD_MODELS);
+    setItemSpy.mockRestore();
   });
 
   it('handles OAuth initiation with external OAuth provider URL', async () => {

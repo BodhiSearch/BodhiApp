@@ -21,4 +21,3 @@ export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/users/access-requests';
 export const ROUTE_USERS = '/ui/users';
 export const ROUTE_UNAUTHORIZED = '/ui/unauthorized';
 
-export const FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED = 'shown-download-models-page';
