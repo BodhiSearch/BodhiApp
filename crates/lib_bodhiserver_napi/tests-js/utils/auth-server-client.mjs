@@ -560,6 +560,36 @@ export class AuthServerTestClient {
 }
 
 /**
+ * Get pre-configured resource client credentials from environment variables.
+ * These credentials are for a resource client with Direct Access Grants enabled,
+ * pre-configured in .env.test with the test user already set as resource admin.
+ * @returns {Object} Resource client with clientId, clientSecret, scope
+ */
+export function getPreConfiguredResourceClient() {
+  const client = {
+    clientId: process.env.INTEG_TEST_RESOURCE_CLIENT_ID,
+    clientSecret: process.env.INTEG_TEST_RESOURCE_CLIENT_SECRET,
+    scope: process.env.INTEG_TEST_RESOURCE_CLIENT_SCOPE,
+  };
+  for (const [key, value] of Object.entries(client)) {
+    if (!value) throw new Error(`Required env var missing: ${key}`);
+  }
+  return client;
+}
+
+/**
+ * Get pre-configured app client ID from environment variables.
+ * This is a public OAuth app client pre-configured in Keycloak with
+ * redirect URIs for localhost testing.
+ * @returns {Object} App client with clientId
+ */
+export function getPreConfiguredAppClient() {
+  const clientId = process.env.INTEG_TEST_APP_CLIENT_ID;
+  if (!clientId) throw new Error('INTEG_TEST_APP_CLIENT_ID not set');
+  return { clientId };
+}
+
+/**
  * Create an auth server test client
  * @param {Object} config - Configuration object with authUrl, authRealm, devConsoleClientSecret
  * @returns {AuthServerTestClient} New auth server test client instance

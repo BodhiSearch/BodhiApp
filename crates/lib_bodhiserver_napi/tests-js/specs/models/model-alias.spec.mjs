@@ -3,10 +3,9 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -25,16 +24,8 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     // Server setup
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    const authClient = createAuthServerTestClient(authServerConfig);
-    const resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     serverManager = createServerManager({
       appStatus: 'ready',

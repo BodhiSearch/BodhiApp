@@ -2,11 +2,10 @@ import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
 import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredAppClient,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -39,22 +38,12 @@ test.describe('Session Auth - Toolset Endpoints', () => {
   let testCredentials;
   let serverManager;
   let baseUrl;
-  let authClient;
-  let resourceClient;
 
   test.beforeAll(async ({ browser }) => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    authClient = createAuthServerTestClient(authServerConfig);
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     serverManager = createServerManager({
       appStatus: 'ready',
@@ -122,31 +111,20 @@ test.describe('Session Auth - Toolset Endpoints', () => {
 test.describe('OAuth Token + Toolset Scope Combinations', () => {
   let authServerConfig;
   let testCredentials;
-  let authClient;
   let serverManager;
   let staticServer;
-  let resourceClient;
   let baseUrl;
   let testAppUrl;
-  let port;
+  const port = 51135;
+  const appPort = 55173;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    authClient = createAuthServerTestClient(authServerConfig);
   });
 
   test.beforeEach(async () => {
-    port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    // Create resource client directly (no UI setup needed)
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
 
     // Start server in ready state with resource client credentials
     serverManager = createServerManager({
@@ -161,7 +139,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     baseUrl = await serverManager.startServer();
 
     // Setup static server for OAuth test app
-    const appPort = randomPort();
     staticServer = createStaticServer(appPort);
     testAppUrl = await staticServer.startServer();
   });
@@ -204,21 +181,9 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const toolsetId = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
     expect(toolsetId).toBeTruthy();
 
-    // Phase 2: Create app client and request access with toolsets via test app + review page
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
+    // Phase 2: Use pre-configured app client for OAuth flow
+    const appClient = getPreConfiguredAppClient();
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-test-case1-with-scope',
-      'Test client for toolset OAuth - Case 1: app with scope, oauth with scope',
-      [redirectUri]
-    );
 
     // Phase 3: Two-step OAuth flow via test app HTML + review page UI
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
@@ -249,10 +214,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     // Test app fetches status, populates scopes, shows Login button
     await oauth2TestAppPage.waitForLoginReady();
     await oauth2TestAppPage.clickLogin();
-
-    await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    // KC session exists in page from earlier login - consent only
-    await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
     const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -341,21 +302,9 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const toolsetId = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
     expect(toolsetId).toBeTruthy();
 
-    // Create app client and request access with toolsets via test app + review page
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
+    // Use pre-configured app client for OAuth flow
+    const appClient = getPreConfiguredAppClient();
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-test-case2-no-oauth-scope',
-      'Test client for toolset OAuth - Case 2: app with scope, oauth without scope',
-      [redirectUri]
-    );
 
     // Two-step OAuth flow via test app HTML + review page UI
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
@@ -393,8 +342,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     await oauth2TestAppPage.setScopes(modifiedScope);
 
     await oauth2TestAppPage.clickLogin();
-    await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
     const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -455,21 +402,9 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
     await loginPage.performOAuthLogin();
 
-    // Create app client and request access without toolsets (auto-approve)
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
+    // Use pre-configured app client
+    const appClient = getPreConfiguredAppClient();
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-test-case3-no-app-scope',
-      'Test client for toolset OAuth - Case 3: app without scope, oauth with scope',
-      [redirectUri]
-    );
 
     // Navigate to test app - test app handles access request (auto-approve)
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
@@ -513,21 +448,9 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
     await loginPage.performOAuthLogin();
 
-    // Create app client and request access without toolsets (auto-approve)
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
+    // Use pre-configured app client
+    const appClient = getPreConfiguredAppClient();
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-test-case4-no-scope-anywhere',
-      'Test client for toolset OAuth - Case 4: no scope anywhere',
-      [redirectUri]
-    );
 
     // OAuth flow WITHOUT toolset scope - test app handles access request
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
@@ -549,8 +472,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
     await oauth2TestAppPage.submitAccessRequest();
     await oauth2TestAppPage.waitForLoginReady();
     await oauth2TestAppPage.clickLogin();
-    await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
     const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -581,32 +502,21 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
 test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
   let authServerConfig;
   let testCredentials;
-  let authClient;
   let serverManager;
   let staticServer;
-  let resourceClient;
   let baseUrl;
   let testAppUrl;
-  let port;
   let toolsetUuid;
+  const port = 51135;
+  const appPort = 55173;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    authClient = createAuthServerTestClient(authServerConfig);
   });
 
   test.beforeEach(async ({ browser }) => {
-    port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    // Create resource client directly (no UI setup needed)
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
 
     // Start server in ready state with resource client credentials
     serverManager = createServerManager({
@@ -640,7 +550,6 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
     await sessionContext.close();
 
     // Setup static server for OAuth test app
-    const appPort = randomPort();
     staticServer = createStaticServer(appPort);
     testAppUrl = await staticServer.startServer();
   });
@@ -654,26 +563,14 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
     }
   });
 
-  test('GET /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
+  test('GET and PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
     // Session login for KC scope wiring and OAuth
     const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
     await loginPage.performOAuthLogin();
 
-    // Create app client and request access (auto-approve, no toolsets needed for this test)
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
+    // Use pre-configured app client
+    const appClient = getPreConfiguredAppClient();
     const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-crud-test-get',
-      'Test client for GET /toolsets/{id} endpoint',
-      [redirectUri]
-    );
 
     // Complete OAuth flow via two-step test app flow (auto-approve)
     const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
@@ -691,67 +588,20 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
     await oauth2TestAppPage.submitAccessRequest();
     await oauth2TestAppPage.waitForLoginReady();
     await oauth2TestAppPage.clickLogin();
-    await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleConsent();
     await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
     const accessToken = await oauth2TestAppPage.getAccessToken();
 
-    // Test: OAuth tokens are blocked for /toolsets/{id} endpoint (session-only)
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
+    // Test: OAuth tokens are blocked for GET /toolsets/{id} endpoint (session-only)
+    const getResponse = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
+    expect(getResponse.status).toBe(401);
 
-    // OAuth tokens should be rejected
-    expect(response.status).toBe(401);
-  });
-
-  test('PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
-    // Session login for KC scope wiring and OAuth
-    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    await loginPage.performOAuthLogin();
-
-    // Create app client and request access (auto-approve)
-    const apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
-    const devConsoleToken = await apiHelper.getDevConsoleToken(
-      testCredentials.username,
-      testCredentials.password
-    );
-
-    const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-    const appClient = await apiHelper.createAppClient(
-      devConsoleToken,
-      port,
-      'toolsets-crud-test-put',
-      'Test client for PUT /toolsets/{id} endpoint',
-      [redirectUri]
-    );
-
-    // Complete OAuth flow via two-step test app flow (auto-approve)
-    const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
-    await oauth2TestAppPage.navigateToTestApp(redirectUri);
-    const fullScopes = `openid profile email scope_user_user`;
-    await oauth2TestAppPage.configureOAuthForm(
-      baseUrl,
-      authServerConfig.authUrl,
-      authServerConfig.authRealm,
-      appClient.clientId,
-      redirectUri,
-      fullScopes,
-      null
-    );
-    await oauth2TestAppPage.submitAccessRequest();
-    await oauth2TestAppPage.waitForLoginReady();
-    await oauth2TestAppPage.clickLogin();
-    await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-    await oauth2TestAppPage.handleConsent();
-    await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
-    const accessToken = await oauth2TestAppPage.getAccessToken();
-
-    // Test: OAuth tokens are blocked for /toolsets/{id} endpoint (session-only)
-    const response = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
+    // Test: OAuth tokens are blocked for PUT /toolsets/{id} endpoint (session-only)
+    const putResponse = await fetch(`${baseUrl}/bodhi/v1/toolsets/${toolsetUuid}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -764,8 +614,6 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
         api_key: { action: 'Keep' },
       }),
     });
-
-    // OAuth tokens should be rejected
-    expect(response.status).toBe(401);
+    expect(putResponse.status).toBe(401);
   });
 });

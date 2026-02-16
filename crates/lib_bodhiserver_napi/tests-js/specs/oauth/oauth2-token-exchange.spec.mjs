@@ -1,16 +1,14 @@
 import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
 import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
-import { SetupResourceAdminPage } from '@/pages/SetupResourceAdminPage.mjs';
-import { SetupWelcomePage } from '@/pages/SetupWelcomePage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
-import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredAppClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { createStaticServer } from '@/utils/static-server.mjs';
+import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import { expect, test } from '@playwright/test';
 
 test.describe('OAuth2 Token Exchange Integration Tests', () => {
@@ -31,17 +29,14 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
     let testAppUrl;
     let apiHelper;
     let testData;
-    let port;
 
     test.beforeEach(async () => {
-      port = randomPort();
-      const serverConfig = OAuth2Fixtures.getOAuth2ServerConfig(authServerConfig, port);
+      const serverConfig = OAuth2Fixtures.getOAuth2ServerConfig(authServerConfig, 51135);
       serverManager = createServerManager(serverConfig);
       baseUrl = await serverManager.startServer();
 
       // Setup static server for OAuth test app
-      const appPort = randomPort();
-      staticServer = createStaticServer(appPort);
+      staticServer = createStaticServer(55173);
       testAppUrl = await staticServer.startServer();
 
       // Initialize helpers and test data
@@ -59,43 +54,15 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
     });
 
     test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({ page }) => {
-      // Step 1: Complete initial server setup
-      const setupWelcomePage = new SetupWelcomePage(page, baseUrl);
-      await setupWelcomePage.navigateToSetup();
-      await setupWelcomePage.expectWelcomePage();
-      await setupWelcomePage.completeInitialSetup(testData.serverName);
-
-      // Step 2: Complete resource admin setup
-      const setupResourceAdminPage = new SetupResourceAdminPage(
-        page,
-        baseUrl,
-        authServerConfig,
-        testCredentials
-      );
-      await setupResourceAdminPage.expectResourceAdminPage();
-      await setupResourceAdminPage.performCompleteLogin();
-
-      // Step 3: Get dev console token for client management
-      const devConsoleToken = await apiHelper.getDevConsoleToken(
-        testCredentials.username,
-        testCredentials.password
-      );
-
-      // Step 4: Create app client with test app redirect URI
+      // Get pre-configured app client
+      const appClient = getPreConfiguredAppClient();
       const redirectUri = `${testAppUrl}/oauth-test-app.html`;
-      const appClient = await apiHelper.createAppClient(
-        devConsoleToken,
-        port,
-        'BodhiApp/crates/lib_bodhiserver_napi/tests-js/specs/oauth/oauth2-token-exchange.spec.mjs',
-        testData.clientDescription,
-        [redirectUri]
-      );
 
-      // Step 5: Navigate to test app and complete OAuth flow
+      // Navigate to test app and complete OAuth flow
       const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
       await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
-      // Configure OAuth form (test app will add resourceScope from request-access response)
+      // Configure OAuth form
       await oauth2TestAppPage.configureOAuthForm(
         baseUrl,
         authServerConfig.authUrl,
@@ -112,15 +79,16 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
       // Wait for KC scope registration to propagate before redirecting
       await oauth2TestAppPage.clickLogin();
       await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-      await oauth2TestAppPage.handleConsent();
+      // Login to Keycloak (no active KC session in browser)
+      await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
       await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 
-      // Step 7: Extract and validate access token
+      // Extract and validate access token
       const accessToken = await oauth2TestAppPage.getAccessToken();
       expect(accessToken).toBeTruthy();
       expect(accessToken.length).toBeGreaterThan(100);
 
-      // Step 8: Test API access with OAuth token
+      // Test API access with OAuth token
       const userResponse = await apiHelper.testApiWithToken(accessToken);
       expect(userResponse.status).toBe(200);
 
@@ -138,7 +106,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
     let apiHelper;
 
     test.beforeEach(async () => {
-      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, randomPort());
+      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 51135);
       serverManager = createServerManager(errorConfig);
       baseUrl = await serverManager.startServer();
       apiHelper = new OAuth2ApiHelper(baseUrl, authClient);

@@ -1,3 +1,5 @@
+import { getPreConfiguredResourceClient } from '@/utils/auth-server-client.mjs';
+
 export class PublicHostFixtures {
   static getPublicHostConfig(port, overrides = {}) {
     return {
@@ -13,7 +15,8 @@ export class PublicHostFixtures {
     };
   }
 
-  static getServerManagerConfig(authServerConfig, resourceClient, port) {
+  static getServerManagerConfig(authServerConfig, port) {
+    const resourceClient = getPreConfiguredResourceClient();
     return {
       appStatus: 'ready',
       authUrl: authServerConfig.authUrl,

@@ -1,7 +1,6 @@
-import { randomPort } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -34,8 +33,6 @@ test.describe('Chat Interface - Agentic Flow', () => {
   let testCredentials;
   let serverManager;
   let baseUrl;
-  let authClient;
-  let resourceClient;
   let loginPage;
   let chatPage;
   let chatSettingsPage;
@@ -47,16 +44,8 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    authClient = createAuthServerTestClient(authServerConfig);
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     serverManager = createServerManager({
       appStatus: 'ready',

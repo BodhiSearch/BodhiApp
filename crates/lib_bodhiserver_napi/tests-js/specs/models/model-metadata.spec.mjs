@@ -2,10 +2,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -107,19 +106,11 @@ test.describe('Model Metadata Refresh and Preview', () => {
     // Server setup with custom HF_HOME
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     // Set custom HF_HOME to point to test GGUF fixtures
     const testHfHome = path.resolve(__dirname, '../../data/test-gguf');
-
-    const authClient = createAuthServerTestClient(authServerConfig);
-    const resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
 
     serverManager = createServerManager({
       appStatus: 'ready',

@@ -1,8 +1,7 @@
 import { PublicHostFixtures } from '@/fixtures/publicHostFixtures.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
-import { getCurrentPath, randomPort } from '@/test-helpers.mjs';
+import { getCurrentPath } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
@@ -15,27 +14,15 @@ test.describe('Public Host Configuration Authentication Tests', () => {
   let port;
   let serverManager;
   let baseUrl;
-  let authClient;
-  let resourceClient;
   let loginPage;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    authClient = createAuthServerTestClient(authServerConfig);
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    port = 51135;
 
     const serverConfig = PublicHostFixtures.getServerManagerConfig(
       authServerConfig,
-      resourceClient,
       port
     );
 

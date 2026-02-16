@@ -3,10 +3,9 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -17,22 +16,12 @@ test.describe('API Tokens - Complete Integration', () => {
   let testCredentials;
   let serverManager;
   let baseUrl;
-  let authClient;
-  let resourceClient;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    authClient = createAuthServerTestClient(authServerConfig);
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     serverManager = createServerManager({
       appStatus: 'ready',
@@ -152,16 +141,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await chatPage.waitForResponse('8');
   });
 
-  test.skip('Multi-User Token Management and Isolation @integration', async ({ browser }) => {
-    // NOTE: This test is skipped because token isolation by user is not yet implemented
-    // The backend currently does not filter tokens by user_id
-    //
-    // When implementing this feature:
-    // 1. Update backend to filter tokens by authenticated user
-    // 2. Add user_id column validation in token creation
-    // 3. Ensure token listing respects user boundaries
-    // 4. Enable this test by removing .skip
-
+  test('Multi-User Token Management and Isolation @integration', async ({ browser }) => {
     let adminContext;
     let userContext;
 
@@ -176,6 +156,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await adminLogin.performOAuthLogin();
     await adminTokensPage.navigateToTokens();
 
+    await TokenFixtures.mockClipboard(adminPage);
     await adminTokensPage.createToken(tokenNames.admin1);
     const adminToken1 = await adminTokensPage.copyTokenFromDialog();
     await adminTokensPage.closeTokenDialog();
@@ -185,14 +166,14 @@ test.describe('API Tokens - Complete Integration', () => {
     await adminTokensPage.closeTokenDialog();
     await adminTokensPage.expectTokenInList(tokenNames.admin2);
 
-    // Verify both tokens visible to admin
+    // Verify admin tokens visible (may include tokens from prior tests in same server)
     const adminTokenCount = await adminTokensPage.getTokenCount();
-    expect(adminTokenCount).toBe(2);
+    expect(adminTokenCount).toBeGreaterThanOrEqual(2);
 
     // Step 4-6: User login and verify isolation
     const userCredentials = {
-      username: process.env.INTEG_TEST_USERNAME,
-      userId: process.env.INTEG_TEST_USERNAME_ID,
+      username: process.env.INTEG_TEST_USER_MANAGER,
+      userId: process.env.INTEG_TEST_USER_MANAGER_ID,
       password: process.env.INTEG_TEST_PASSWORD,
     };
 
@@ -208,6 +189,7 @@ test.describe('API Tokens - Complete Integration', () => {
     await userTokensPage.expectEmptyTokensList();
 
     // Step 7: User creates their own token
+    await TokenFixtures.mockClipboard(userPage);
     await userTokensPage.createToken(tokenNames.user);
     const userToken = await userTokensPage.copyTokenFromDialog();
     await userTokensPage.closeTokenDialog();
@@ -221,23 +203,31 @@ test.describe('API Tokens - Complete Integration', () => {
     const userChatSettings = new ChatSettingsPage(userPage, baseUrl);
 
     await userChatPage.navigateToChat();
-    await userChatSettings.setApiToken(true, userToken);
+    await userChatPage.waitForChatPageLoad();
     await userChatSettings.selectModelQwen();
+    await userChatSettings.setApiToken(true, userToken);
     await userChatPage.sendMessage('Hello');
     await userChatPage.waitForResponseComplete();
 
-    // Step 9-10: User attempts to use admin's token (should fail)
+    // Step 9: API token auth bypasses session — admin's token works in manager's session
     await userChatSettings.setApiToken(true, adminToken1);
-    await userChatPage.sendMessageAndReturn('Should fail');
-    await userChatPage.expectError();
+    await userChatPage.sendMessage('What is 2+2?');
+    await userChatPage.waitForResponseComplete();
+    await userChatPage.waitForResponse('4');
 
-    // Step 11-12: Admin deactivates their token
+    // Step 10: Admin deactivates their token
     await adminTokensPage.navigateToTokens();
     await adminTokensPage.toggleTokenStatus(tokenNames.admin1);
+    await adminTokensPage.waitForTokenUpdateSuccess('inactive');
     await adminTokensPage.expectTokenStatus(tokenNames.admin1, 'inactive');
 
-    // Step 13: User refreshes and still sees only their token
-    await userPage.reload();
+    // Step 11: Manager using deactivated admin token gets error
+    await userChatSettings.setApiToken(true, adminToken1);
+    await userChatPage.sendMessageAndReturn('This should fail');
+    await userChatPage.expectError();
+
+    // Step 12: User refreshes tokens page and still sees only their token
+    await userTokensPage.navigateToTokens();
     await userTokensPage.expectTokensPage();
     const finalUserTokenCount = await userTokensPage.getTokenCount();
     expect(finalUserTokenCount).toBe(1);

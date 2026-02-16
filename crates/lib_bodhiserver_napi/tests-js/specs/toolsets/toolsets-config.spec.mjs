@@ -1,9 +1,8 @@
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
-import { randomPort } from '@/test-helpers.mjs';
 import {
-  createAuthServerTestClient,
   getAuthServerConfig,
+  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -25,25 +24,14 @@ test.describe('Toolsets Configuration', () => {
   let testCredentials;
   let serverManager;
   let baseUrl;
-  let authClient;
-  let resourceClient;
   let toolsetsPage;
   let loginPage;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    // Set up authentication - same pattern as api-tokens tests
-    authClient = createAuthServerTestClient(authServerConfig);
-    resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId,
-      resourceClient.clientSecret,
-      testCredentials.userId
-    );
+    const resourceClient = getPreConfiguredResourceClient();
+    const port = 51135;
 
     serverManager = createServerManager({
       appStatus: 'ready',

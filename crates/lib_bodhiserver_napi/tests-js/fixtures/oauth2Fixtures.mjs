@@ -1,9 +1,14 @@
+import { getPreConfiguredResourceClient } from '@/utils/auth-server-client.mjs';
+
 export class OAuth2Fixtures {
-  static getOAuth2ServerConfig(authServerConfig, port, appStatus = 'setup') {
+  static getOAuth2ServerConfig(authServerConfig, port, appStatus = 'ready') {
+    const resourceClient = getPreConfiguredResourceClient();
     return {
       appStatus,
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
+      clientId: resourceClient.clientId,
+      clientSecret: resourceClient.clientSecret,
       port,
       logLevel: 'debug',
     };
