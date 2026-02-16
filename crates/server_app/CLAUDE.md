@@ -201,6 +201,22 @@ This mirrors the production auth flow except it uses the password grant for auto
 ### Serial Execution Constraint
 All live tests use `#[serial_test::serial(live)]` because they share the same llama.cpp server binary and model file. Running them in parallel would cause port conflicts and race conditions on the LLM process. The `live` group name ensures only tests within this crate are serialized -- other crate tests can still run in parallel.
 
+### OAuth Test Infrastructure (No Keycloak)
+
+server_app OAuth tests use `ExternalTokenSimulator` to bypass Keycloak by seeding
+the MokaCacheService cache directly. These tests validate OUR code's behavior
+given auth state — they do NOT test Keycloak behavior.
+
+Key utilities:
+- `start_test_live_server()` — live TCP server with real services, no Keycloak env vars
+- `ExternalTokenSimulator::create_token_with_scope_and_user()` — configurable OAuth tokens
+- `create_test_session_for_live_server()` — creates authenticated session for HTTP client use
+
+Testing boundary:
+- server_app: Tests OUR code given auth state (ExternalTokenSimulator)
+- E2E: Tests external auth service behavior (Keycloak errors, consent, redirect flows)
+- Don't test mock auth service responses in server_app — that validates our mock, not real behavior
+
 ### Test Coverage Categories
 The live tests cover distinct LLM inference scenarios:
 - **Basic chat completion**: Non-streamed and streamed responses validating OpenAI-compatible response format

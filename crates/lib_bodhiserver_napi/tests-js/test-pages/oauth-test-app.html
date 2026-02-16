@@ -132,7 +132,7 @@
 
         <div class="form-group">
           <label for="auth-server-url">Authorization Server URL:</label>
-          <input type="url" id="auth-server-url" placeholder="http://localhost:8080" required />
+          <input type="url" id="auth-server-url" placeholder="https://main-id.getbodhi.app" required />
         </div>
 
         <div class="form-group">
@@ -164,7 +164,7 @@
 
         <div class="form-group">
           <label for="scope">Scope:</label>
-          <input type="text" id="scope" placeholder="openid profile email" />
+          <input type="text" id="scope" placeholder="openid profile email roles" />
         </div>
 
         <div class="form-group">
@@ -233,12 +233,12 @@
     window.addEventListener('load', function () {
       // Pre-fill form with default values
       document.getElementById('bodhi-server-url').value = 'http://localhost:1135';
-      document.getElementById('auth-server-url').value = 'http://localhost:8080';
+      document.getElementById('auth-server-url').value = 'https://main-id.getbodhi.app';
       document.getElementById('realm').value = 'bodhi';
       document.getElementById('client-id').value = 'client-bodhi-dev-console';
       document.getElementById('client-secret').value = 'change-me';
       document.getElementById('redirect-uri').value = window.location.origin + window.location.pathname;
-      document.getElementById('scope').value = 'openid profile email';
+      document.getElementById('scope').value = 'openid profile email roles';
 
       // Handle confidential client checkbox
       document.getElementById('confidential-client').addEventListener('change', function () {
@@ -598,12 +598,12 @@
 
       // Reset form values
       document.getElementById('bodhi-server-url').value = 'http://localhost:1135';
-      document.getElementById('auth-server-url').value = 'http://localhost:8080';
+      document.getElementById('auth-server-url').value = 'https://main-id.getbodhi.app';
       document.getElementById('realm').value = 'bodhi';
       document.getElementById('client-id').value = 'client-bodhi-dev-console';
       document.getElementById('client-secret').value = 'change-me';
       document.getElementById('redirect-uri').value = window.location.origin + window.location.pathname;
-      document.getElementById('scope').value = 'openid profile email';
+      document.getElementById('scope').value = 'openid profile email roles';
       document.getElementById('requested-toolsets').value = '';
       document.getElementById('confidential-client').checked = false;
       document.getElementById('client-secret').disabled = true;

@@ -142,6 +142,8 @@ pub fn build_routes(
 
   // Toolset instance CRUD APIs (session-only, no OAuth or API tokens)
   let user_session_apis = Router::new()
+    // Toolset types listing
+    .route(ENDPOINT_TOOLSET_TYPES, get(list_toolset_types_handler))
     .route(ENDPOINT_TOOLSETS, post(create_toolset_handler))
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
@@ -294,8 +296,6 @@ pub fn build_routes(
       &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
-    // Toolset types listing
-    .route(ENDPOINT_TOOLSET_TYPES, get(list_toolset_types_handler))
     // Toolset type enable/disable (admin only)
     .route(
       "/bodhi/v1/toolset_types/{toolset_type}/app-config",

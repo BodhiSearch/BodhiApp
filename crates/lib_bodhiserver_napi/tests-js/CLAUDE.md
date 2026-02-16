@@ -70,3 +70,16 @@ await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
 await oauth2TestAppPage.handleLogin(username, password);
 await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
 ```
+
+### E2E vs server_app Testing Boundary
+
+E2E tests validate:
+- External auth service (Keycloak) behavior (error responses, consent, scope validation)
+- UI wiring — that the UI is plugged in properly for user journeys
+- Browser-dependent flows (background tab token refresh, multi-user contexts)
+
+Tests that only validate our code's behavior given auth state should be migrated to
+server_app using ExternalTokenSimulator. The server_app OAuth test infrastructure
+(Phase 1 of the migration plan) is in place but the toolset auth and user info test
+migration (Phases 3-4) was reverted — stubbed tokens hide token exchange complexity
+that needs real Keycloak behavior for 3rd-party app OAuth flows.
