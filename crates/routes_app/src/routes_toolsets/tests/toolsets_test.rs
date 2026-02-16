@@ -57,10 +57,11 @@ fn setup_type_mocks(mock: &mut MockToolService) {
     .returning(move |_| Some(type_def.clone()));
 }
 
-fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Router> {
+async fn test_router(mock_tool_service: MockToolService) -> anyhow::Result<Router> {
   let app_service = AppServiceStubBuilder::default()
     .with_tool_service(Arc::new(mock_tool_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::new()),
@@ -112,7 +113,7 @@ async fn test_list_toolsets(
     .times(1)
     .returning(|| Ok(vec![]));
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let mut request_builder = Request::builder()
     .method("GET")
@@ -164,7 +165,7 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
     .times(1)
     .returning(move || Ok(vec![config.clone()]));
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -223,7 +224,7 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
     .times(1)
     .returning(move || Ok(vec![config.clone()]));
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -267,7 +268,7 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
     .times(1)
     .returning(|| Ok(vec![]));
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -327,7 +328,7 @@ async fn test_create_toolset(
       .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let request_body = serde_json::json!({
     "toolset_type": "builtin-exa-search",
@@ -386,7 +387,7 @@ async fn test_get_toolset(
       }
     });
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -448,7 +449,7 @@ async fn test_update_toolset(
       .returning(|_, _, _, _, _, _| Err(services::ToolsetError::SlugExists("slug".to_string())));
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let request_body = serde_json::json!({
     "slug": slug,
@@ -494,7 +495,7 @@ async fn test_update_toolset_not_found(
       ))
     });
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let request_body = serde_json::json!({
     "slug": "updated-slug",
@@ -552,7 +553,7 @@ async fn test_delete_toolset(
       });
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -602,7 +603,7 @@ async fn test_execute_toolset(
       .returning(|_, _, _, _| Err(services::ToolsetError::MethodNotFound("search".to_string())));
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let request_body = serde_json::json!({
     "params": {"query": "test"}
@@ -664,7 +665,7 @@ async fn test_list_toolset_types(
     .times(1)
     .returning(move || types_to_return.clone());
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let mut request_builder = Request::builder()
     .method("GET")
@@ -702,9 +703,7 @@ async fn test_enable_type(
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
-      .withf(|toolset_type, enabled, _user_id| {
-        toolset_type == "builtin-exa-search" && *enabled
-      })
+      .withf(|toolset_type, enabled, _user_id| toolset_type == "builtin-exa-search" && *enabled)
       .times(1)
       .returning(|toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
@@ -729,7 +728,7 @@ async fn test_enable_type(
       });
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -760,9 +759,7 @@ async fn test_disable_type(
   if succeeds {
     mock_tool_service
       .expect_set_app_toolset_enabled()
-      .withf(|toolset_type, enabled, _user_id| {
-        toolset_type == "builtin-exa-search" && !(*enabled)
-      })
+      .withf(|toolset_type, enabled, _user_id| toolset_type == "builtin-exa-search" && !(*enabled))
       .times(1)
       .returning(|toolset_type, _, updated_by| {
         Ok(AppToolsetConfig {
@@ -787,7 +784,7 @@ async fn test_disable_type(
       });
   }
 
-  let app = test_router(mock_tool_service)?;
+  let app = test_router(mock_tool_service).await?;
 
   let response = app
     .oneshot(
@@ -837,7 +834,6 @@ async fn test_toolset_endpoints_reject_unauthenticated(
 async fn test_toolset_type_endpoints_reject_insufficient_role(
   #[values("resource_user", "resource_power_user", "resource_manager")] role: &str,
   #[values(
-    ("GET", "/bodhi/v1/toolset_types"),
     ("PUT", "/bodhi/v1/toolset_types/some_type/app-config"),
     ("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")
   )]
@@ -855,6 +851,39 @@ async fn test_toolset_type_endpoints_reject_insufficient_role(
     StatusCode::FORBIDDEN,
     response.status(),
     "{role} should be forbidden from {method} {path}"
+  );
+  Ok(())
+}
+
+// Test that any resource_* role can access read-only toolset_type endpoints
+#[anyhow_trace]
+#[rstest]
+#[tokio::test]
+async fn test_toolset_type_read_endpoints_allow_any_resource_role(
+  #[values(
+    "resource_user",
+    "resource_power_user",
+    "resource_manager",
+    "resource_admin"
+  )]
+  role: &str,
+  #[values(
+    ("GET", "/bodhi/v1/toolset_types")
+  )]
+  endpoint: (&str, &str),
+) -> anyhow::Result<()> {
+  use crate::test_utils::{build_test_router, create_authenticated_session, session_request};
+  let (router, app_service, _temp) = build_test_router().await?;
+  let cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &[role]).await?;
+  let (method, path) = endpoint;
+  let response = router
+    .oneshot(session_request(method, path, &cookie))
+    .await?;
+  assert_eq!(
+    StatusCode::OK,
+    response.status(),
+    "{role} should be allowed to access {method} {path}"
   );
   Ok(())
 }

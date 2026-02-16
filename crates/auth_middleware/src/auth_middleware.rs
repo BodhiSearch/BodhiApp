@@ -512,7 +512,8 @@ mod tests {
         BODHI_HOST => "bodhi.app",
         BODHI_PORT => "443",
       })
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -580,7 +581,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -668,7 +670,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -763,7 +766,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -854,7 +858,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -931,7 +936,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -965,7 +971,8 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
       Arc::new(app_service),
@@ -1015,7 +1022,8 @@ mod tests {
       .session_service(session_service.clone())
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
       Arc::new(app_service),
@@ -1046,7 +1054,8 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let db_service = app_service.db_service.as_ref().unwrap();
 
     // Generate test token
@@ -1117,7 +1126,8 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let db_service = app_service.db_service.as_ref().unwrap();
 
     // Generate test token
@@ -1188,7 +1198,8 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let db_service = app_service.db_service.as_ref().unwrap();
 
     // Generate test token
@@ -1257,7 +1268,8 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .build()?;
+      .build()
+      .await?;
     let db_service = app_service.db_service.as_ref().unwrap();
 
     // Generate test token

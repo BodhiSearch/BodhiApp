@@ -44,7 +44,8 @@ async fn test_refresh_metadata_no_params_returns_202_accepted(
 
   let app_service = app_service_stub_builder
     .queue_producer(Arc::new(mock_queue))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -82,7 +83,8 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
 
   let app_service = app_service_stub_builder
     .queue_producer(Arc::new(mock_queue))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -113,9 +115,9 @@ async fn test_refresh_metadata_enqueue_failure_returns_400(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_refresh_metadata_model_invalid_repo_format(
-  #[future] app_service_stub_builder: AppServiceStubBuilder,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  let app_service = app_service_stub_builder.build()?;
+  let app_service = app_service_stub_builder.build().await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -148,7 +150,11 @@ async fn test_refresh_metadata_model_invalid_repo_format(
 async fn test_refresh_metadata_model_alias_not_found(
   #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> anyhow::Result<()> {
-  let app_service = app_service_stub_builder.with_data_service().await.build()?;
+  let app_service = app_service_stub_builder
+    .with_data_service()
+    .await
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -195,7 +201,8 @@ async fn test_queue_status_handler_returns_idle(
 
   let app_service = app_service_stub_builder
     .queue_producer(Arc::new(mock_queue))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

@@ -67,7 +67,8 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
   // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   // Create router with handler
   let state = Arc::new(DefaultRouterState::new(
@@ -122,7 +123,8 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
   // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   // Create router with handler
   let state = Arc::new(DefaultRouterState::new(
@@ -162,7 +164,7 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
 #[anyhow_trace]
 async fn test_list_users_handler_missing_token(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   // Build app service (auth service won't be called)
-  let app_service = AppServiceStubBuilder::default().build()?;
+  let app_service = AppServiceStubBuilder::default().build().await?;
 
   // Create router with handler
   let state = Arc::new(DefaultRouterState::new(
@@ -221,7 +223,8 @@ async fn test_list_users_handler_pagination_parameters(
   // Build app service with mock auth service
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   // Create router with handler
   let state = Arc::new(DefaultRouterState::new(
@@ -285,7 +288,8 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
-    .build()?;
+    .build()
+    .await?;
 
   // Create router with handler
   let state = Arc::new(DefaultRouterState::new(
@@ -336,7 +340,8 @@ async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::
 
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -373,7 +378,8 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
 
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -422,7 +428,8 @@ async fn test_change_user_role_handler_auth_error(_temp_bodhi_home: TempDir) -> 
 
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
-    .build()?;
+    .build()
+    .await?;
 
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -483,7 +490,8 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
   let app_service = AppServiceStubBuilder::default()
     .auth_service(Arc::new(mock_auth))
     .session_service(Arc::new(mock_session))
-    .build()?;
+    .build()
+    .await?;
 
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

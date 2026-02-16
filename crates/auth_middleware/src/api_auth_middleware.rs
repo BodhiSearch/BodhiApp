@@ -153,10 +153,14 @@ mod tests {
       .unwrap()
   }
 
-  fn test_router(required_role: ResourceRole, required_token_scope: Option<TokenScope>) -> Router {
+  async fn test_router(
+    required_role: ResourceRole,
+    required_token_scope: Option<TokenScope>,
+  ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .build()
+      .await
       .unwrap();
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -174,13 +178,14 @@ mod tests {
       .with_state(state)
   }
 
-  fn test_router_user_scope(
+  async fn test_router_user_scope(
     required_role: ResourceRole,
     required_user_scope: Option<UserScope>,
   ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .build()
+      .await
       .unwrap();
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -214,7 +219,7 @@ mod tests {
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, None);
+    let router = test_router(required_role, None).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -237,7 +242,7 @@ mod tests {
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, None);
+    let router = test_router(required_role, None).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -258,7 +263,7 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, Some(required_scope));
+    let router = test_router(ResourceRole::User, Some(required_scope)).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -278,7 +283,7 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, Some(required_scope));
+    let router = test_router(ResourceRole::User, Some(required_scope)).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -296,7 +301,7 @@ mod tests {
   #[case::scope_not_allowed_admin(TokenScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_scope_not_allowed(#[case] scope: TokenScope) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None);
+    let router = test_router(ResourceRole::User, None).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, scope.to_string())
@@ -321,7 +326,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope);
+    let router = test_router(required_role, required_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -347,7 +352,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope);
+    let router = test_router(required_role, required_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -373,7 +378,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_scope: Option<TokenScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope);
+    let router = test_router(required_role, required_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -388,7 +393,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None);
+    let router = test_router(ResourceRole::User, None).await;
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -409,7 +414,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_invalid_role() -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None);
+    let router = test_router(ResourceRole::User, None).await;
     let req = Request::builder()
       .uri("/test")
       .header(
@@ -457,7 +462,7 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope));
+    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope)).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -480,7 +485,7 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope));
+    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope)).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -500,7 +505,7 @@ mod tests {
   async fn test_api_auth_user_scope_not_allowed(
     #[case] user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, None);
+    let router = test_router_user_scope(ResourceRole::User, None).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
@@ -525,7 +530,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope);
+    let router = test_router_user_scope(required_role, required_user_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -551,7 +556,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope);
+    let router = test_router_user_scope(required_role, required_user_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -577,7 +582,7 @@ mod tests {
     #[case] required_role: ResourceRole,
     #[case] required_user_scope: Option<UserScope>,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope);
+    let router = test_router_user_scope(required_role, required_user_scope).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
@@ -592,7 +597,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -613,7 +618,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_invalid_user_scope() -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
     let req = Request::builder()
       .uri("/test")
       .header(
@@ -645,7 +650,7 @@ mod tests {
   #[tokio::test]
   async fn test_api_auth_middleware_token_scope_in_user_scope_context() -> anyhow::Result<()> {
     // Test sending a TokenScope value when UserScope is expected
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User));
+    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
     let req = Request::builder()
       .uri("/test")
       .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::Admin.to_string())

@@ -144,7 +144,8 @@ async fn test_list_api_models_handler(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Make request to list API models
   let response = test_router(Arc::new(app_service))
@@ -228,7 +229,8 @@ async fn test_create_api_model_handler_success(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -284,7 +286,8 @@ async fn test_create_api_model_handler_generates_uuid(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -323,7 +326,8 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Test with raw JSON to trigger deserialization error for empty API key
   let json_request = json!({
@@ -361,7 +365,8 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -400,7 +405,8 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -439,7 +445,8 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -479,7 +486,8 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let create_request = CreateApiModelRequest {
     api_format: OpenAI,
@@ -539,7 +547,8 @@ async fn test_sync_models_handler_success(
       .db_service(Arc::new(db_service))
       .ai_api_service(Arc::new(mock_ai))
       .with_secret_service()
-      .build()?,
+      .build()
+      .await?,
   );
 
   // First create an API model
@@ -611,7 +620,8 @@ async fn test_update_api_model_handler_success(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
@@ -663,7 +673,8 @@ async fn test_update_api_model_handler_not_found(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   let update_request = UpdateApiModelRequest {
     api_format: OpenAI,
@@ -710,7 +721,8 @@ async fn test_delete_api_model_handler_success(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Make DELETE request to delete existing API model
   let response = test_router(Arc::new(app_service))
@@ -741,7 +753,8 @@ async fn test_delete_api_model_handler_not_found(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Make DELETE request to delete non-existent API model
   let response = test_router(Arc::new(app_service))
@@ -779,7 +792,8 @@ async fn test_get_api_model_handler_success(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Make GET request to retrieve specific API model
   let response = test_router(Arc::new(app_service))
@@ -822,7 +836,8 @@ async fn test_get_api_model_handler_not_found(
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
     .with_secret_service()
-    .build()?;
+    .build()
+    .await?;
 
   // Make GET request to retrieve non-existent API model
   let response = test_router(Arc::new(app_service))
@@ -1151,7 +1166,8 @@ async fn test_api_model_prefix_lifecycle(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .with_secret_service()
-      .build()?,
+      .build()
+      .await?,
   );
 
   // Step 1: Create the API model
@@ -1211,7 +1227,8 @@ async fn test_create_api_model_forward_all_requires_prefix(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .with_secret_service()
-      .build()?,
+      .build()
+      .await?,
   );
 
   // Try to create API model with forward_all=true but no prefix
@@ -1255,7 +1272,8 @@ async fn test_create_api_model_duplicate_prefix_error(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .with_secret_service()
-      .build()?,
+      .build()
+      .await?,
   );
 
   // Create first API model with prefix
@@ -1311,7 +1329,8 @@ async fn test_update_api_model_duplicate_prefix_error(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .with_secret_service()
-      .build()?,
+      .build()
+      .await?,
   );
 
   // Create first API model with prefix "azure/"

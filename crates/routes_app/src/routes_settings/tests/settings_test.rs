@@ -71,7 +71,8 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
 
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN requesting settings without auth
@@ -131,7 +132,8 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN updating the setting
@@ -165,7 +167,8 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN updating an invalid setting
@@ -198,7 +201,8 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN updating with invalid value type
@@ -231,7 +235,8 @@ async fn test_routes_setting_update_invalid_value_out_of_range(
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN updating with invalid value type
@@ -268,7 +273,8 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
   )?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN deleting the setting
@@ -304,7 +310,8 @@ async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN deleting an invalid setting
@@ -344,7 +351,8 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
   )?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN deleting the setting
@@ -380,7 +388,8 @@ async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()
   let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(Arc::new(app_service)).await;
 
   // WHEN deleting a setting that's already at default

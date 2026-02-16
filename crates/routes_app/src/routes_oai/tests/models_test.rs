@@ -31,6 +31,7 @@ async fn app() -> Router {
     .with_db_service()
     .await
     .build()
+    .await
     .expect("failed to build app service");
   create_router(Arc::new(service))
 }
@@ -120,7 +121,8 @@ async fn test_oai_models_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     .await
     .with_db_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let db_service = service.db_service();
 
   let api_alias = ApiAlias::new(
@@ -167,7 +169,8 @@ async fn test_oai_models_handler_api_alias_without_prefix() -> anyhow::Result<()
     .await
     .with_db_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let db_service = service.db_service();
 
   let api_alias = ApiAlias::new(
@@ -213,7 +216,8 @@ async fn test_oai_model_handler_api_alias_with_prefix() -> anyhow::Result<()> {
     .await
     .with_db_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let db_service = service.db_service();
 
   let api_alias = ApiAlias::new(
@@ -263,7 +267,8 @@ async fn test_oai_model_handler_api_alias_without_prefix() -> anyhow::Result<()>
     .await
     .with_db_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let db_service = service.db_service();
 
   let api_alias = ApiAlias::new(

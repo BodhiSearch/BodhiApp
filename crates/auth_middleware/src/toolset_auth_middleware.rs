@@ -240,7 +240,7 @@ mod tests {
       .unwrap()
   }
 
-  fn test_router_with_tool_service(mock_tool_service: MockToolService) -> Router {
+  async fn test_router_with_tool_service(mock_tool_service: MockToolService) -> Router {
     // For session auth tests, we don't need DbService, but the middleware requires it
     // So we provide a mock that will never be called in session auth flows
     let mock_db_service = MockDbService::new();
@@ -249,6 +249,7 @@ mod tests {
       .with_tool_service(Arc::new(mock_tool_service))
       .db_service(Arc::new(mock_db_service))
       .build()
+      .await
       .unwrap();
 
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -323,7 +324,7 @@ mod tests {
         .returning(move |_| Ok(type_enabled));
     }
 
-    let app = test_router_with_tool_service(mock_tool_service);
+    let app = test_router_with_tool_service(mock_tool_service).await;
 
     let response = app
       .oneshot(
@@ -346,7 +347,7 @@ mod tests {
   #[tokio::test]
   async fn test_missing_user_id(test_instance: Toolset) {
     let mock_tool_service = MockToolService::new();
-    let app = test_router_with_tool_service(mock_tool_service);
+    let app = test_router_with_tool_service(mock_tool_service).await;
 
     let response = app
       .oneshot(
@@ -368,7 +369,7 @@ mod tests {
   #[tokio::test]
   async fn test_missing_auth(test_instance: Toolset) {
     let mock_tool_service = MockToolService::new();
-    let app = test_router_with_tool_service(mock_tool_service);
+    let app = test_router_with_tool_service(mock_tool_service).await;
 
     let response = app
       .oneshot(
@@ -386,7 +387,7 @@ mod tests {
   }
 
   // OAuth access request validation tests
-  fn test_router_with_db_and_tool_service(
+  async fn test_router_with_db_and_tool_service(
     db_service: Arc<TestDbService>,
     mock_tool_service: MockToolService,
   ) -> Router {
@@ -394,6 +395,7 @@ mod tests {
       .with_tool_service(Arc::new(mock_tool_service))
       .db_service(db_service)
       .build()
+      .await
       .unwrap();
 
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -478,7 +480,7 @@ mod tests {
         .returning(|_| Ok(true));
     }
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
 
     let response = app
       .oneshot(
@@ -542,7 +544,7 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
 
     // Send request with azp = "app2" (mismatch)
     let response = app
@@ -607,7 +609,7 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
 
     // Send request with user_id = "user2" (mismatch)
     let response = app
@@ -669,7 +671,7 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
 
     let response = app
       .oneshot(
@@ -709,7 +711,7 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service);
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
 
     let response = app
       .oneshot(

@@ -105,7 +105,7 @@ async fn create_test_state(
     .build_session_service(session_db_path)
     .await;
 
-  let app_service = app_service_builder.build()?;
+  let app_service = app_service_builder.build().await?;
   let state = DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     Arc::new(app_service),

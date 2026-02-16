@@ -57,7 +57,8 @@ async fn test_list_tokens_pagination(
   let db_service = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   // Create multiple tokens
   for i in 1..=15 {
@@ -130,7 +131,8 @@ async fn test_list_tokens_empty(
   let db_service = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let router = app(app_service).await;
 
@@ -191,7 +193,8 @@ async fn test_create_token_handler_role_scope_mapping(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -245,7 +248,8 @@ async fn test_create_token_handler_success(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -315,7 +319,8 @@ async fn test_create_token_handler_without_name(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -359,7 +364,8 @@ async fn test_create_token_handler_missing_auth(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -394,7 +400,8 @@ async fn test_create_token_handler_invalid_role(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -430,7 +437,8 @@ async fn test_create_token_handler_missing_role(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -468,7 +476,8 @@ async fn test_update_token_handler_success(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
   let now = app_service.time_service().utc_now();
 
   // Create initial token
@@ -531,7 +540,8 @@ async fn test_update_token_handler_not_found(
   // Setup app with router
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(test_db_service))
-    .build()?;
+    .build()
+    .await?;
   let app = app(app_service).await;
 
   // Make update request with non-existent ID
@@ -570,7 +580,8 @@ async fn test_create_token_privilege_escalation_user(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 
@@ -612,7 +623,8 @@ async fn test_create_token_privilege_escalation_invalid_scopes(
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(test_db_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app = app(app_service).await;
 

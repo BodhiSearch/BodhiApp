@@ -312,8 +312,7 @@ impl ToolService for DefaultToolService {
 
     // Validate description if provided
     if let Some(ref desc) = description {
-      objs::validate_toolset_description(desc)
-        .map_err(ToolsetError::InvalidDescription)?;
+      objs::validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
     }
 
     // Validate toolset_type exists
@@ -384,16 +383,17 @@ impl ToolService for DefaultToolService {
 
     // Validate description if provided
     if let Some(ref desc) = description {
-      objs::validate_toolset_description(desc)
-        .map_err(ToolsetError::InvalidDescription)?;
+      objs::validate_toolset_description(desc).map_err(ToolsetError::InvalidDescription)?;
     }
 
     // Check slug uniqueness if changed (case-insensitive)
-    if slug.to_lowercase() != existing.slug.to_lowercase() && self
+    if slug.to_lowercase() != existing.slug.to_lowercase()
+      && self
         .db_service
         .get_toolset_by_slug(user_id, slug)
         .await?
-        .is_some() {
+        .is_some()
+    {
       return Err(ToolsetError::SlugExists(slug.to_string()));
     }
 

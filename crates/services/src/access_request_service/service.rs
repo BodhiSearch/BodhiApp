@@ -127,8 +127,12 @@ impl AccessRequestService for DefaultAccessRequestService {
       let app_reg_info = self
         .secret_service
         .app_reg_info()
-        .map_err(|e| AccessRequestError::InvalidStatus(format!("Failed to get app reg info: {}", e)))?
-        .ok_or_else(|| AccessRequestError::InvalidStatus("App registration info not found".to_string()))?;
+        .map_err(|e| {
+          AccessRequestError::InvalidStatus(format!("Failed to get app reg info: {}", e))
+        })?
+        .ok_or_else(|| {
+          AccessRequestError::InvalidStatus("App registration info not found".to_string())
+        })?;
       let register_response = self
         .auth_service
         .register_resource_access(

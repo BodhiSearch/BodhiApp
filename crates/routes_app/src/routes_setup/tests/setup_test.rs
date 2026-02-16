@@ -49,7 +49,8 @@ async fn test_app_info_handler(
 ) -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .secret_service(Arc::new(secret_service))
-    .build()?;
+    .build()
+    .await?;
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     Arc::new(app_service),
@@ -84,7 +85,8 @@ async fn test_setup_handler_error(
     AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(MockAuthService::new()))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -152,7 +154,8 @@ async fn test_setup_handler_success(
     AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -212,7 +215,8 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -282,7 +286,8 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -355,7 +360,8 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -405,7 +411,8 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
     AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -433,7 +440,7 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
 #[case(r#"{"invalid": true,}"#)]
 #[tokio::test]
 async fn test_setup_handler_bad_request(#[case] body: &str) -> anyhow::Result<()> {
-  let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service = Arc::new(AppServiceStubBuilder::default().build().await?);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     app_service.clone(),
@@ -465,7 +472,8 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
     AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::new()))
       .auth_service(Arc::new(mock_auth_service))
-      .build()?,
+      .build()
+      .await?,
   );
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

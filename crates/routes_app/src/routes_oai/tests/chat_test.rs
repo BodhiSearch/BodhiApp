@@ -59,7 +59,8 @@ async fn test_chat_completions_handler_non_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let request = CreateChatCompletionRequestArgs::default()
     .model("testalias-exists:instruct")
     .messages(vec![ChatCompletionRequestMessage::User(
@@ -154,7 +155,8 @@ async fn test_chat_completions_handler_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let request = CreateChatCompletionRequestArgs::default()
     .model("testalias-exists:instruct")
     .stream(true)
@@ -230,7 +232,8 @@ async fn test_embeddings_handler_non_stream() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let request = CreateEmbeddingRequest {
     model: "testalias-exists:instruct".to_string(),
     input: EmbeddingInput::String("The quick brown fox jumps over the lazy dog".to_string()),
@@ -282,7 +285,8 @@ async fn test_chat_completions_missing_model_field() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let ctx = MockSharedContext::default();
   let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
   let app = Router::new()
@@ -312,7 +316,8 @@ async fn test_chat_completions_missing_messages_field() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let ctx = MockSharedContext::default();
   let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
   let app = Router::new()
@@ -342,7 +347,8 @@ async fn test_chat_completions_invalid_stream_field() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
     .with_data_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let ctx = MockSharedContext::default();
   let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service));
   let app = Router::new()

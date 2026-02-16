@@ -6,10 +6,10 @@ use crate::{
     TestDbService,
   },
   AccessRequestService, AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService,
-  ConcurrencyService, DataService, HfHubService, HubService, LocalConcurrencyService,
-  LocalDataService, MockAccessRequestService, MockAuthService, MockHubService, MockToolService,
-  MokaCacheService, NetworkService, SecretService, SessionService, SettingService,
-  SqliteSessionService, ToolService, BODHI_EXEC_LOOKUP_PATH,
+  ConcurrencyService, DataService, DefaultToolService, HfHubService, HubService,
+  LocalConcurrencyService, LocalDataService, MockAccessRequestService, MockAuthService,
+  MockExaService, MockHubService, MokaCacheService, NetworkService, SecretService, SessionService,
+  SettingService, SqliteSessionService, ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
 
 use crate::network_service::StubNetworkService;
@@ -24,9 +24,9 @@ use super::{FrozenTimeService, OfflineHubService};
 #[fixture]
 #[awt]
 pub async fn app_service_stub(
-  #[future] app_service_stub_builder: AppServiceStubBuilder,
+  #[future] mut app_service_stub_builder: AppServiceStubBuilder,
 ) -> AppServiceStub {
-  app_service_stub_builder.build().unwrap()
+  app_service_stub_builder.build().await.unwrap()
 }
 
 #[fixture]
@@ -47,40 +47,68 @@ pub async fn app_service_stub_builder(
 }
 
 #[derive(Debug, Default, Builder)]
-#[builder(default, setter(strip_option))]
+#[builder(
+  default,
+  setter(strip_option),
+  build_fn(private, name = "fallback_build")
+)]
 pub struct AppServiceStub {
+  // Foundation - no dependencies
   pub temp_home: Option<Arc<TempDir>>,
+  #[builder(default = "self.default_time_service()")]
+  pub time_service: Option<Arc<dyn TimeService>>,
+
+  // Core infrastructure - depends on temp_home
   #[builder(default = "self.default_setting_service()")]
   pub setting_service: Option<Arc<dyn SettingService>>,
-  #[builder(default = "self.default_hub_service()")]
-  pub hub_service: Option<Arc<dyn HubService>>,
-  pub data_service: Option<Arc<dyn DataService>>,
-  #[builder(default = "self.default_auth_service()")]
-  pub auth_service: Option<Arc<dyn AuthService>>,
   pub db_service: Option<Arc<dyn DbService>>,
   pub session_service: Option<Arc<dyn SessionService>>,
   #[builder(default = "self.default_secret_service()")]
   pub secret_service: Option<Arc<dyn SecretService>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
-  #[builder(default = "self.default_time_service()")]
-  pub time_service: Option<Arc<dyn TimeService>>,
+
+  // External services
+  #[builder(default = "self.default_auth_service()")]
+  pub auth_service: Option<Arc<dyn AuthService>>,
+  #[builder(default = "self.default_hub_service()")]
+  pub hub_service: Option<Arc<dyn HubService>>,
+  #[builder(default = "self.default_network_service()")]
+  pub network_service: Option<Arc<dyn NetworkService>>,
+
+  // Business logic - depends on core infrastructure
+  pub data_service: Option<Arc<dyn DataService>>,
+  #[builder(default = "self.default_tool_service()")]
+  pub tool_service: Option<Arc<dyn ToolService>>,
   pub ai_api_service: Option<Arc<dyn AiApiService>>,
   #[builder(default = "self.default_concurrency_service()")]
   pub concurrency_service: Option<Arc<dyn ConcurrencyService>>,
   #[builder(default = "self.default_queue_producer()")]
   pub queue_producer: Option<Arc<dyn QueueProducer>>,
-  #[builder(default = "self.default_tool_service()")]
-  pub tool_service: Option<Arc<dyn ToolService>>,
-  #[builder(default = "self.default_network_service()")]
-  pub network_service: Option<Arc<dyn NetworkService>>,
   #[builder(default = "self.default_access_request_service()")]
   pub access_request_service: Option<Arc<dyn AccessRequestService>>,
 }
 
 impl AppServiceStubBuilder {
+  /// Async build that auto-initializes db_service and session_service if not explicitly set.
+  pub async fn build(&mut self) -> Result<AppServiceStub, AppServiceStubBuilderError> {
+    if !matches!(&self.db_service, Some(Some(_))) {
+      self.with_db_service().await;
+    }
+    if !matches!(&self.session_service, Some(Some(_))) {
+      self.with_session_service().await;
+    }
+    self.fallback_build()
+  }
+
   fn default_setting_service(&self) -> Option<Arc<dyn SettingService>> {
-    Some(Arc::new(SettingServiceStub::default()))
+    if let Some(Some(temp_home)) = &self.temp_home {
+      Some(Arc::new(SettingServiceStub::with_defaults_in(
+        temp_home.clone(),
+      )))
+    } else {
+      Some(Arc::new(SettingServiceStub::default()))
+    }
   }
 
   fn default_cache_service(&self) -> Option<Arc<dyn CacheService>> {
@@ -112,7 +140,24 @@ impl AppServiceStubBuilder {
   }
 
   fn default_tool_service(&self) -> Option<Arc<dyn ToolService>> {
-    Some(Arc::new(MockToolService::default()))
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building tool_service");
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    let exa_service: Arc<dyn crate::ExaService> = Arc::new(MockExaService::new());
+    Some(Arc::new(DefaultToolService::new(
+      db_service,
+      exa_service,
+      time_service,
+    )))
   }
 
   fn default_network_service(&self) -> Option<Arc<dyn NetworkService>> {
@@ -131,8 +176,11 @@ impl AppServiceStubBuilder {
   pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
     let temp_home = Arc::new(temp_dir);
     self.temp_home = Some(Some(temp_home.clone()));
-    let setting_service = SettingServiceStub::with_defaults_in(temp_home.clone());
-    self.setting_service = Some(Some(Arc::new(setting_service)));
+    // Only set default setting_service if not already explicitly configured
+    if !matches!(&self.setting_service, Some(Some(_))) {
+      let setting_service = SettingServiceStub::with_defaults_in(temp_home.clone());
+      self.setting_service = Some(Some(Arc::new(setting_service)));
+    }
     self
   }
 
@@ -152,7 +200,11 @@ impl AppServiceStubBuilder {
         setting_service.set_setting(key, value);
       }
     } else {
-      let setting_service = SettingServiceStub::default();
+      let setting_service = if let Some(Some(temp_home)) = &self.temp_home {
+        SettingServiceStub::with_defaults_in(temp_home.clone())
+      } else {
+        SettingServiceStub::default()
+      };
       for (key, value) in settings {
         setting_service.set_setting(key, value);
       }
@@ -250,8 +302,6 @@ impl AppServiceStubBuilder {
   }
 
   pub fn with_live_services(&mut self) -> &mut Self {
-    // setup_temp_home() creates SettingServiceStub with all defaults
-    // (BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME from compile-time constants)
     let _temp_home = self.setup_temp_home();
 
     // Override exec lookup to real binary at crates/llama_server_proc/bin/
@@ -295,16 +345,8 @@ impl AppService for AppServiceStub {
     self.setting_service.clone().unwrap()
   }
 
-  fn data_service(&self) -> Arc<dyn DataService> {
-    self.data_service.clone().unwrap()
-  }
-
-  fn hub_service(&self) -> Arc<dyn HubService> {
-    self.hub_service.clone().unwrap()
-  }
-
-  fn auth_service(&self) -> Arc<dyn AuthService> {
-    self.auth_service.clone().unwrap()
+  fn time_service(&self) -> Arc<dyn TimeService> {
+    self.time_service.clone().unwrap()
   }
 
   fn db_service(&self) -> Arc<dyn DbService> {
@@ -323,8 +365,24 @@ impl AppService for AppServiceStub {
     self.cache_service.clone().unwrap()
   }
 
-  fn time_service(&self) -> Arc<dyn TimeService> {
-    self.time_service.clone().unwrap()
+  fn auth_service(&self) -> Arc<dyn AuthService> {
+    self.auth_service.clone().unwrap()
+  }
+
+  fn hub_service(&self) -> Arc<dyn HubService> {
+    self.hub_service.clone().unwrap()
+  }
+
+  fn network_service(&self) -> Arc<dyn NetworkService> {
+    self.network_service.clone().unwrap()
+  }
+
+  fn data_service(&self) -> Arc<dyn DataService> {
+    self.data_service.clone().unwrap()
+  }
+
+  fn tool_service(&self) -> Arc<dyn ToolService> {
+    self.tool_service.clone().unwrap()
   }
 
   fn ai_api_service(&self) -> Arc<dyn AiApiService> {
@@ -340,14 +398,6 @@ impl AppService for AppServiceStub {
 
   fn queue_producer(&self) -> Arc<dyn QueueProducer> {
     self.queue_producer.clone().unwrap()
-  }
-
-  fn tool_service(&self) -> Arc<dyn ToolService> {
-    self.tool_service.clone().unwrap()
-  }
-
-  fn network_service(&self) -> Arc<dyn NetworkService> {
-    self.network_service.clone().unwrap()
   }
 
   fn access_request_service(&self) -> Arc<dyn AccessRequestService> {

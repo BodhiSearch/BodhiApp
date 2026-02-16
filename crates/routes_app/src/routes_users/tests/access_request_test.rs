@@ -172,7 +172,8 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     .with_sqlite_session_service(session_service.clone())
     .auth_service(Arc::new(mock_auth))
     .secret_service(Arc::new(secret_service))
-    .build()?;
+    .build()
+    .await?;
 
   // 9. Create router with approve endpoint
   let state = Arc::new(DefaultRouterState::new(
@@ -246,7 +247,8 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -280,7 +282,8 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -332,7 +335,8 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -382,7 +386,8 @@ async fn test_request_status_found(temp_bodhi_home: TempDir) -> anyhow::Result<(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -415,7 +420,8 @@ async fn test_request_status_not_found(temp_bodhi_home: TempDir) -> anyhow::Resu
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -461,7 +467,8 @@ async fn test_list_pending_requests_success(temp_bodhi_home: TempDir) -> anyhow:
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -507,7 +514,8 @@ async fn test_list_all_requests_success(temp_bodhi_home: TempDir) -> anyhow::Res
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -555,7 +563,8 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -610,7 +619,8 @@ async fn test_approve_request_insufficient_privileges(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -661,7 +671,8 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

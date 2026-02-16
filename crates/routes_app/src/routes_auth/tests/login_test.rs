@@ -76,7 +76,8 @@ async fn test_auth_initiate_handler(
     .setting_service(Arc::new(setting_service))
     .build_session_service(dbfile)
     .await
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -157,7 +158,8 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .setting_service(Arc::new(setting_service))
     .build_session_service(dbfile)
     .await
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -223,7 +225,8 @@ async fn test_auth_initiate_handler_network_host_usage(
     .setting_service(Arc::new(setting_service))
     .build_session_service(dbfile)
     .await
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -315,7 +318,8 @@ async fn auth_initiate_handler_with_token_response(
     .with_secret_service()
     .with_db_service()
     .await
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -419,7 +423,8 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .setting_service(Arc::new(setting_service))
     .secret_service(Arc::new(secret_service))
     .with_sqlite_session_service(session_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
@@ -488,7 +493,8 @@ async fn test_auth_callback_handler_state_not_in_session(
     .secret_service(secret_service)
     .build_session_service(temp_bodhi_home.path().join("test.db"))
     .await
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -572,7 +578,8 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .setting_service(Arc::new(setting_service))
     .secret_service(Arc::new(secret_service))
     .with_sqlite_session_service(session_service.clone())
-    .build()?;
+    .build()
+    .await?;
 
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
@@ -650,7 +657,8 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let app_service: AppServiceStub = AppServiceStubBuilder::default()
     .secret_service(Arc::new(secret_service))
     .with_sqlite_session_service(session_service.clone())
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -720,7 +728,8 @@ async fn test_auth_callback_handler_auth_service_error(
     .auth_service(Arc::new(mock_auth_service))
     .secret_service(Arc::new(secret_service))
     .with_sqlite_session_service(session_service.clone())
-    .build()?;
+    .build()
+    .await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -777,7 +786,8 @@ async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let app_service: Arc<dyn AppService> = Arc::new(
     AppServiceStubBuilder::default()
       .with_sqlite_session_service(session_service.clone())
-      .build()?,
+      .build()
+      .await?,
   );
 
   let state = Arc::new(DefaultRouterState::new(
@@ -872,7 +882,8 @@ async fn setup_app_service_resource_admin(
     .auth_service(auth_service)
     .setting_service(setting_service)
     .with_sqlite_session_service(session_service)
-    .build()?;
+    .build()
+    .await?;
   Ok(Arc::new(app_service))
 }
 
@@ -992,10 +1003,7 @@ async fn assert_login_callback_result_resource_admin(
 ) -> anyhow::Result<()> {
   let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
-  assert_eq!(
-    "http://frontend.localhost:3000/ui/chat",
-    body.location
-  );
+  assert_eq!("http://frontend.localhost:3000/ui/chat", body.location);
   let secret_service = app_service.secret_service();
   let updated_status = secret_service.app_status()?;
   assert_eq!(AppStatus::Ready, updated_status);

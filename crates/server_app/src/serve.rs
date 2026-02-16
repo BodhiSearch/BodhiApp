@@ -183,11 +183,8 @@ mod tests {
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
         .with_temp_home_as(temp_dir)
-        .with_session_service()
-        .await
-        .with_db_service()
-        .await
         .build()
+        .await
         .unwrap(),
     );
     let serve_command = ServeCommand::ByParams {

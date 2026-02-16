@@ -15,8 +15,8 @@ use server_core::{
 use services::{
   db::{AppAccessRequestRow, DbService, ToolsetRow},
   test_utils::{AppServiceStubBuilder, FrozenTimeService},
-  DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService, MockSecretService,
-  RegisterAccessRequestConsentResponse,
+  DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
+  MockSecretService, RegisterAccessRequestConsentResponse,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -60,7 +60,8 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
     .auth_service(auth_service)
     .with_tool_service(tool_service)
     .access_request_service(access_request_service)
-    .build()?;
+    .build()
+    .await?;
 
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

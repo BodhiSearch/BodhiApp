@@ -43,7 +43,7 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .with_secret_service()
     .queue_producer(stub_queue)
     .network_service(stub_network);
-  let app_service_stub = builder.build()?;
+  let app_service_stub = builder.build().await?;
   let temp_home = app_service_stub
     .temp_home
     .clone()
@@ -206,7 +206,7 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     .with_secret_service()
     .queue_producer(stub_queue)
     .network_service(stub_network);
-  let app_service_stub = builder.build()?;
+  let app_service_stub = builder.build().await?;
   let temp_home = app_service_stub
     .temp_home
     .clone()

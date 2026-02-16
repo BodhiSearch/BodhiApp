@@ -36,7 +36,7 @@ fn test_router(app_service: Arc<dyn AppService>) -> Router {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_user_info_handler_no_token_header() -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -53,7 +53,7 @@ async fn test_user_info_handler_no_token_header() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -77,7 +77,7 @@ async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -109,7 +109,7 @@ async fn test_user_info_handler_session_token_with_role(
   #[case] role: ResourceRole,
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -149,7 +149,7 @@ async fn test_user_info_handler_session_token_with_role(
 async fn test_user_info_handler_api_token_with_token_scope(
   #[case] token_scope: TokenScope,
 ) -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   // API tokens are random strings, not JWT - simulate what middleware injects
@@ -186,7 +186,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
   #[case] user_scope: UserScope,
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let resource_scope = ResourceScope::User(user_scope);
@@ -224,7 +224,7 @@ async fn test_user_info_handler_role_takes_precedence_over_scope(
   token: (String, String),
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   // Both role and scope headers present - role should take precedence
@@ -266,7 +266,7 @@ async fn test_user_info_handler_missing_role_and_scope_headers(
   token: (String, String),
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -303,7 +303,7 @@ async fn test_user_info_handler_malformed_role_header(
   token: (String, String),
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
@@ -330,7 +330,7 @@ async fn test_user_info_handler_malformed_scope_header(
   token: (String, String),
 ) -> anyhow::Result<()> {
   let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router

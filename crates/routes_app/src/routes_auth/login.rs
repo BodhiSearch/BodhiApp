@@ -18,9 +18,7 @@ use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
-use services::{
-  extract_claims, AppStatus, Claims, SecretServiceExt, CHAT_PATH,
-};
+use services::{extract_claims, AppStatus, Claims, SecretServiceExt, CHAT_PATH};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;

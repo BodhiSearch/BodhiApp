@@ -415,7 +415,7 @@ mod test {
           bin_path.path().display().to_string().as_str(),
         ),
       ]))
-      .build()
+      .build().await
       .unwrap();
     let hf_cache = app_service_stub.hf_cache();
     let model_file = HubFileBuilder::testalias()
@@ -489,7 +489,7 @@ mod test {
         ),
         (BODHI_LLAMACPP_ARGS, "--verbose"),
       ]))
-      .build()
+      .build().await
       .unwrap();
     let expected_input: Value = serde_json::from_str(
       r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct"}"#,
@@ -546,7 +546,7 @@ mod test {
         ),
         (BODHI_LLAMACPP_ARGS, "--verbose"),
       ]))
-      .build()
+      .build().await
       .unwrap();
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let loaded_model = HubFileBuilder::testalias()

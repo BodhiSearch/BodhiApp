@@ -68,7 +68,8 @@ async fn test_pull_by_repo_file_success(
   let app_service = app_service_stub_builder
     .db_service(db_service.clone())
     .hub_service(Arc::new(test_hf_service))
-    .build()?;
+    .build()
+    .await?;
   let router = test_router(Arc::new(app_service));
   let payload = serde_json::json!({
       "repo": "MyFactory/testalias-gguf",
@@ -116,7 +117,8 @@ async fn test_pull_by_repo_file_already_downloaded(
   let app_service = app_service_stub_builder
     .db_service(db_service.clone())
     .hub_service(Arc::new(test_hf_service))
-    .build()?;
+    .build()
+    .await?;
   let router = test_router(Arc::new(app_service));
   let payload = serde_json::json!({
       "repo": Repo::testalias().to_string(),
@@ -157,7 +159,8 @@ async fn test_pull_by_repo_file_existing_pending_download(
   let app_service = app_service_stub_builder
     .db_service(db_service.clone())
     .hub_service(Arc::new(test_hf_service))
-    .build()?;
+    .build()
+    .await?;
 
   let router = test_router(Arc::new(app_service));
 
@@ -195,7 +198,8 @@ async fn test_get_download_status_success(
   let app_service = app_service_stub_builder
     .db_service(db_service.clone())
     .hub_service(Arc::new(test_hf_service))
-    .build()?;
+    .build()
+    .await?;
   let router = test_router(Arc::new(app_service));
   let test_request = DownloadRequest::new_pending("test/repo", "test.gguf", db_service.now());
   db_service.create_download_request(&test_request).await?;
@@ -228,7 +232,8 @@ async fn test_get_download_status_not_found(
   let app_service = app_service_stub_builder
     .db_service(Arc::new(db_service))
     .hub_service(Arc::new(test_hf_service))
-    .build()?;
+    .build()
+    .await?;
 
   let router = test_router(Arc::new(app_service));
   let response = router
@@ -271,7 +276,10 @@ async fn test_list_downloads(
   db_service.update_download_request(&download2).await?;
   db_service.update_download_request(&download3).await?;
 
-  let app_service = app_service_stub_builder.db_service(db_service).build()?;
+  let app_service = app_service_stub_builder
+    .db_service(db_service)
+    .build()
+    .await?;
 
   let router = test_router(Arc::new(app_service));
 

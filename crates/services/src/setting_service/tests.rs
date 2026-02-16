@@ -976,9 +976,15 @@ fn test_runpod_with_explicit_overrides(
   );
 
   // Set explicit public settings if provided
-  if let Some(scheme) = public_scheme { service.set_setting(BODHI_PUBLIC_SCHEME, scheme) }
-  if let Some(host) = public_host { service.set_setting(BODHI_PUBLIC_HOST, host) }
-  if let Some(port) = public_port { service.set_setting(BODHI_PUBLIC_PORT, port) }
+  if let Some(scheme) = public_scheme {
+    service.set_setting(BODHI_PUBLIC_SCHEME, scheme)
+  }
+  if let Some(host) = public_host {
+    service.set_setting(BODHI_PUBLIC_HOST, host)
+  }
+  if let Some(port) = public_port {
+    service.set_setting(BODHI_PUBLIC_PORT, port)
+  }
 
   assert_eq!(service.public_server_url(), expected_url);
   Ok(())
