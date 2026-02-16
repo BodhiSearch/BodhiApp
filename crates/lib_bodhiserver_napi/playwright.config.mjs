@@ -109,9 +109,18 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://127.0.0.1:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  webServer: [
+    {
+      command: 'node tests-js/scripts/start-shared-server.mjs',
+      url: 'http://localhost:51135/ping',
+      reuseExistingServer: false,  // Always start fresh
+      timeout: 60000,
+    },
+    {
+      command: 'node tests-js/scripts/serve-test-pages.mjs',
+      url: 'http://localhost:55173/ping.txt',
+      reuseExistingServer: false,  // Always start fresh
+      timeout: 10000,
+    },
+  ],
 });

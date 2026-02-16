@@ -1,9 +1,7 @@
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
 import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
@@ -17,7 +15,6 @@ import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 test.describe('Chat Interface - Core Functionality', () => {
   let authServerConfig;
   let testCredentials;
-  let serverManager;
   let baseUrl;
   let loginPage;
   let modelsPage;
@@ -28,24 +25,14 @@ test.describe('Chat Interface - Core Functionality', () => {
   let testApiKey;
 
   test.beforeAll(async () => {
-    // Environment and server setup
+    // Environment setup
     testApiKey = ChatFixtures.getEnvironmentData().getApiKey();
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
+    // Use shared server
+    baseUrl = 'http://localhost:51135';
+    // Note: DB reset will be addressed in PR3 when we solve the dev routes availability issue
   });
 
   test.beforeEach(async ({ page }) => {
@@ -55,12 +42,6 @@ test.describe('Chat Interface - Core Functionality', () => {
     chatPage = new ChatPage(page, baseUrl);
     chatHistoryPage = new ChatHistoryPage(page, baseUrl);
     chatSettingsPage = new ChatSettingsPage(page, baseUrl);
-  });
-
-  test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
   });
 
   test('basic chat functionality with simple Q&A @smoke @integration', async ({ page }) => {

@@ -219,6 +219,19 @@ function getLocalNetworkIP() {
   return null;
 }
 
+/**
+ * Reset database and sessions to clean state
+ * @param {string} baseUrl - Base URL of the BodhiApp server
+ * @returns {Promise<Object>} Response JSON from db-reset endpoint
+ */
+async function resetDatabase(baseUrl) {
+  const response = await fetch(`${baseUrl}/dev/db-reset`, { method: 'POST' });
+  if (!response.ok) {
+    throw new Error(`db-reset failed: ${response.status}`);
+  }
+  return response.json();
+}
+
 export {
   createFullTestConfig,
   createTempDir,
@@ -228,6 +241,7 @@ export {
   getLocalNetworkIP,
   loadBindings,
   randomPort,
+  resetDatabase,
   sleep,
   waitForRedirect,
   waitForServer,

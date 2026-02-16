@@ -7,7 +7,6 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { createStaticServer } from '@/utils/static-server.mjs';
 import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import { expect, test } from '@playwright/test';
 
@@ -23,34 +22,19 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
   });
 
   test.describe('Complete OAuth2 Flow', () => {
-    let serverManager;
-    let staticServer;
     let baseUrl;
     let testAppUrl;
     let apiHelper;
     let testData;
 
     test.beforeEach(async () => {
-      const serverConfig = OAuth2Fixtures.getOAuth2ServerConfig(authServerConfig, 51135);
-      serverManager = createServerManager(serverConfig);
-      baseUrl = await serverManager.startServer();
-
-      // Setup static server for OAuth test app
-      staticServer = createStaticServer(55173);
-      testAppUrl = await staticServer.startServer();
+      // Use shared servers started by Playwright webServer
+      baseUrl = 'http://localhost:51135';
+      testAppUrl = 'http://localhost:55173';
 
       // Initialize helpers and test data
       apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
       testData = OAuth2Fixtures.getOAuth2TestData();
-    });
-
-    test.afterEach(async () => {
-      if (staticServer) {
-        await staticServer.stopServer();
-      }
-      if (serverManager) {
-        await serverManager.stopServer();
-      }
     });
 
     test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({ page }) => {
