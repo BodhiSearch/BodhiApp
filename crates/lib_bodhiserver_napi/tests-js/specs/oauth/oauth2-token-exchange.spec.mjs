@@ -1,5 +1,5 @@
 import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
-import { OAuth2TestAppPage } from '@/pages/OAuth2TestAppPage.mjs';
+import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import {
   createAuthServerTestClient,
   getAuthServerConfig,
@@ -33,49 +33,56 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
     });
 
     test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({ page }) => {
-      // Get pre-configured app client
       const appClient = getPreConfiguredAppClient();
-      const redirectUri = `${SHARED_STATIC_SERVER_URL}/oauth-test-app.html`;
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
-      // Navigate to test app and complete OAuth flow
-      const oauth2TestAppPage = new OAuth2TestAppPage(page, SHARED_STATIC_SERVER_URL);
-      await oauth2TestAppPage.navigateToTestApp(redirectUri);
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-      // Configure OAuth form
-      await oauth2TestAppPage.configureOAuthForm(
-        SHARED_SERVER_URL,
-        authServerConfig.authUrl,
-        authServerConfig.authRealm,
-        appClient.clientId,
-        redirectUri,
-        testData.scopes,
-        null
-      );
+      await test.step('Navigate to test app', async () => {
+        await app.navigate();
+      });
 
-      // Two-step flow: submit access request, wait for scopes, then login
-      await oauth2TestAppPage.submitAccessRequest();
-      await oauth2TestAppPage.waitForLoginReady();
-      // Wait for KC scope registration to propagate before redirecting
-      await oauth2TestAppPage.clickLogin();
-      await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-      // Login to Keycloak (no active KC session in browser)
-      await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
-      await oauth2TestAppPage.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      await test.step('Configure OAuth form', async () => {
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: SHARED_SERVER_URL,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: testData.scopes,
+          requestedToolsets: null,
+        });
+      });
 
-      // Extract and validate access token
-      const accessToken = await oauth2TestAppPage.getAccessToken();
-      expect(accessToken).toBeTruthy();
-      expect(accessToken.length).toBeGreaterThan(100);
+      await test.step('Submit access request and wait for login ready', async () => {
+        await app.config.submitAccessRequest();
+        await app.config.waitForLoginReady();
+      });
 
-      // Test API access with OAuth token
-      const userResponse = await apiHelper.testApiWithToken(accessToken);
-      expect(userResponse.status).toBe(200);
+      await test.step('Login via Keycloak', async () => {
+        await app.config.clickLogin();
+        await app.oauth.waitForAuthServerRedirect(authServerConfig.authUrl);
+        await app.oauth.handleLogin(testCredentials.username, testCredentials.password);
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
 
-      const userInfo = userResponse.data;
-      expect(userInfo).toBeDefined();
-      expect(userInfo.auth_status).toBe('logged_in');
-      expect(userInfo.username).toBe('user@email.com');
-      expect(userInfo.role).toBe('scope_user_user');
+      await test.step('Verify logged in and extract access token', async () => {
+        await app.expectLoggedIn();
+        await app.dashboard.navigateTo();
+        const accessToken = await app.dashboard.getAccessToken();
+        expect(accessToken).toBeTruthy();
+        expect(accessToken.length).toBeGreaterThan(100);
+
+        // Test API access with OAuth token
+        const userResponse = await apiHelper.testApiWithToken(accessToken);
+        expect(userResponse.status).toBe(200);
+
+        const userInfo = userResponse.data;
+        expect(userInfo).toBeDefined();
+        expect(userInfo.auth_status).toBe('logged_in');
+        expect(userInfo.username).toBe('user@email.com');
+        expect(userInfo.role).toBe('scope_user_user');
+      });
     });
   });
 

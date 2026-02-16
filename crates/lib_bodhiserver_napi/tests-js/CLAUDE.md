@@ -17,7 +17,9 @@ This allows tests to start the Bodhi server in `ready` mode without needing to c
 
 The pre-configured app client (`INTEG_TEST_APP_CLIENT_ID`) is a public OAuth client in Keycloak with redirect URIs configured for:
 - `http://localhost:51135/ui/auth/callback` (Bodhi server)
-- `http://localhost:55173/oauth-test-app.html` (static OAuth test app)
+- `http://localhost:55173/callback` (React OAuth test app)
+
+The redirect URI for the test app is also registered dynamically in `test.beforeAll` via `authClient.addRedirectUri()`.
 
 Since the app client is reused across tests with the same user, Keycloak remembers prior consent — so `handleConsent()` is NOT needed. Tests that have an active KC session (from prior `performOAuthLogin()`) also skip `waitForAuthServerRedirect()` since Keycloak auto-redirects instantly.
 
@@ -35,7 +37,7 @@ Multi-user tests (e.g., token isolation, user management) require both users to 
 | Service | Port |
 |---|---|
 | Bodhi server | `51135` |
-| Static OAuth test app | `55173` |
+| React OAuth test app | `55173` |
 
 Tests run sequentially (`workers: 1`) to avoid port conflicts.
 
@@ -55,20 +57,27 @@ await chatSettings.setApiToken(true, token);
 await chatSettings.selectModelQwen();
 ```
 
-### OAuth Flow Patterns
+### OAuth Flow Patterns (TestAppPage composite)
 
 Tests with an active KC session (from `loginPage.performOAuthLogin()`):
 ```js
-await oauth2TestAppPage.clickLogin();
-await oauth2TestAppPage.waitForTokenExchange(testAppUrl);  // KC auto-redirects
+await testAppPage.config.clickLogin();
+await testAppPage.oauth.waitForTokenExchange(testAppUrl);  // KC auto-redirects
 ```
 
 Tests WITHOUT a prior KC session (e.g., `oauth2-token-exchange`):
 ```js
-await oauth2TestAppPage.clickLogin();
-await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
-await oauth2TestAppPage.handleLogin(username, password);
-await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
+await testAppPage.config.clickLogin();
+await testAppPage.oauth.waitForAuthServerRedirect(authServerConfig.authUrl);
+await testAppPage.oauth.handleLogin(username, password);
+await testAppPage.oauth.waitForTokenExchange(testAppUrl);
+```
+
+For draft/review flows (access-callback page):
+```js
+await testAppPage.oauth.waitForAccessRequestCallback(testAppUrl);
+await testAppPage.accessCallback.waitForLoaded();
+await testAppPage.accessCallback.clickLogin();
 ```
 
 ### E2E vs server_app Testing Boundary

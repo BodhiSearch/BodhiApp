@@ -117,10 +117,10 @@ export default defineConfig({
       timeout: 60000,
     },
     {
-      command: 'node tests-js/scripts/serve-test-pages.mjs',
-      url: 'http://localhost:55173/ping.txt',
-      reuseExistingServer: false,  // Always start fresh
-      timeout: 10000,
+      command: 'cd test-oauth-app && npm run build && npx serve dist -s -l 55173',
+      url: 'http://localhost:55173/',
+      reuseExistingServer: false,
+      timeout: 30000,
     },
   ],
 });

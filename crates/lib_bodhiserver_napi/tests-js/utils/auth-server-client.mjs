@@ -495,6 +495,63 @@ export class AuthServerTestClient {
   }
 
   /**
+   * Add a redirect URI to an existing client
+   * @param {string} adminToken - Admin access token
+   * @param {string} clientId - Client ID (not UUID)
+   * @param {string} redirectUri - Redirect URI to add
+   * @returns {Promise<void>}
+   */
+  async addRedirectUri(adminToken, clientId, redirectUri) {
+    const getClientUrl = `${this.authUrl}/admin/realms/${this.authRealm}/clients?clientId=${clientId}`;
+
+    const getResponse = await fetch(getClientUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!getResponse.ok) {
+      throw new Error(`Failed to get client: ${getResponse.status} ${getResponse.statusText}`);
+    }
+
+    const clients = await getResponse.json();
+    if (!clients || clients.length === 0) {
+      throw new Error(`Client with clientId '${clientId}' not found`);
+    }
+
+    const client = clients[0];
+    const existingUris = client.redirectUris || [];
+
+    // Only add if not already present
+    if (existingUris.includes(redirectUri)) {
+      return;
+    }
+
+    const updatedClient = {
+      ...client,
+      redirectUris: [...existingUris, redirectUri],
+    };
+
+    const updateResponse = await fetch(
+      `${this.authUrl}/admin/realms/${this.authRealm}/clients/${client.id}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedClient),
+      }
+    );
+
+    if (!updateResponse.ok) {
+      throw new Error(`Failed to update client: ${updateResponse.status} ${updateResponse.statusText}`);
+    }
+  }
+
+  /**
    * Configure client access token lifespan using Keycloak Admin API
    * @param {string} adminToken - Admin access token for authorization
    * @param {string} clientId - Client ID (not UUID)
