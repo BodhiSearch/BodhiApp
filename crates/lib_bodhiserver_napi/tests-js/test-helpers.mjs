@@ -8,6 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
+ * Shared server URLs for Playwright webServer
+ */
+export const SHARED_SERVER_URL = 'http://localhost:51135';
+export const SHARED_STATIC_SERVER_URL = 'http://localhost:55173';
+
+/**
  * Load the NAPI bindings using dynamic import
  * @returns {Object} The NAPI bindings object
  */

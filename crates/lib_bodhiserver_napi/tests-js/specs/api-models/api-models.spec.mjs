@@ -5,15 +5,12 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Models Integration', () => {
-  let serverManager;
-  let baseUrl;
   let loginPage;
   let modelsPage;
   let formPage;
@@ -27,34 +24,16 @@ test.describe('API Models Integration', () => {
     // Server setup
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
+    // Use shared server started by Playwright webServer
     testData = { apiKey, authServerConfig, testCredentials };
   });
 
   test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, baseUrl, testData.authServerConfig, testData.testCredentials);
-    modelsPage = new ModelsListPage(page, baseUrl);
-    formPage = new ApiModelFormPage(page, baseUrl);
-    chatPage = new ChatPage(page, baseUrl);
-  });
-
-  test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    loginPage = new LoginPage(page, SHARED_SERVER_URL, testData.authServerConfig, testData.testCredentials);
+    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
+    formPage = new ApiModelFormPage(page, SHARED_SERVER_URL);
+    chatPage = new ChatPage(page, SHARED_SERVER_URL);
   });
 
   test('complete API model lifecycle with OpenAI integration and chat testing', async ({

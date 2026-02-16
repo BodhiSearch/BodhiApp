@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import {
+  createAuthServerTestClient,
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
@@ -106,8 +106,24 @@ test.describe('Model Metadata Refresh and Preview', () => {
     // Server setup with custom HF_HOME
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
+    const port = 41135;
+    const serverUrl = `http://localhost:${port}`;
+
+    // Create dynamic resource client for port 41135
+    const authClient = createAuthServerTestClient(authServerConfig);
+    const resourceClient = await authClient.createResourceClient(
+      serverUrl,
+      'Model Metadata Test Client',
+      'Resource client for model-metadata E2E tests',
+      true
+    );
+
+    // Make test user resource admin on the dynamic client
+    await authClient.makeResourceAdmin(
+      resourceClient.clientId,
+      resourceClient.clientSecret,
+      testCredentials.userId
+    );
 
     // Set custom HF_HOME to point to test GGUF fixtures
     const testHfHome = path.resolve(__dirname, '../../data/test-gguf');

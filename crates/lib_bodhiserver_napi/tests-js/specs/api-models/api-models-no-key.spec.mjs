@@ -4,16 +4,13 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { createMockOpenAIServer } from '@/utils/mock-openai-server.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Models - Optional Key (Mock Server)', () => {
-  let serverManager;
-  let baseUrl;
   let loginPage;
   let modelsPage;
   let formPage;
@@ -25,38 +22,23 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
+    // Use shared server started by Playwright webServer
 
     mockOpenAIServer = createMockOpenAIServer({ requiresAuth: false });
     await mockOpenAIServer.start();
   });
 
   test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, baseUrl);
-    formPage = new ApiModelFormPage(page, baseUrl);
-    chatPage = new ChatPage(page, baseUrl);
+    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
+    formPage = new ApiModelFormPage(page, SHARED_SERVER_URL);
+    chatPage = new ChatPage(page, SHARED_SERVER_URL);
   });
 
   test.afterAll(async () => {
     if (mockOpenAIServer) {
       await mockOpenAIServer.stop();
-    }
-    if (serverManager) {
-      await serverManager.stopServer();
     }
   });
 

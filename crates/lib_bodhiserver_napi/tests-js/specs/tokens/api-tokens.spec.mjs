@@ -5,49 +5,28 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Tokens - Complete Integration', () => {
   let authServerConfig;
   let testCredentials;
-  let serverManager;
-  let baseUrl;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
-  });
-
-  test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    // Use shared server started by Playwright webServer
   });
 
   test('Complete Token Lifecycle and Chat Integration @integration', async ({ page }) => {
     // Initialize page objects
-    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    const tokensPage = new TokensPage(page, baseUrl);
-    const chatPage = new ChatPage(page, baseUrl);
-    const chatSettings = new ChatSettingsPage(page, baseUrl);
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const tokensPage = new TokensPage(page, SHARED_SERVER_URL);
+    const chatPage = new ChatPage(page, SHARED_SERVER_URL);
+    const chatSettings = new ChatSettingsPage(page, SHARED_SERVER_URL);
 
     const tokenNames = TokenFixtures.getTestTokenNames();
 
@@ -147,8 +126,8 @@ test.describe('API Tokens - Complete Integration', () => {
 
     adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    const adminLogin = new LoginPage(adminPage, baseUrl, authServerConfig, testCredentials);
-    const adminTokensPage = new TokensPage(adminPage, baseUrl);
+    const adminLogin = new LoginPage(adminPage, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const adminTokensPage = new TokensPage(adminPage, SHARED_SERVER_URL);
 
     const tokenNames = TokenFixtures.getTestTokenNames();
 
@@ -179,8 +158,8 @@ test.describe('API Tokens - Complete Integration', () => {
 
     userContext = await browser.newContext();
     const userPage = await userContext.newPage();
-    const userLogin = new LoginPage(userPage, baseUrl, authServerConfig, userCredentials);
-    const userTokensPage = new TokensPage(userPage, baseUrl);
+    const userLogin = new LoginPage(userPage, SHARED_SERVER_URL, authServerConfig, userCredentials);
+    const userTokensPage = new TokensPage(userPage, SHARED_SERVER_URL);
 
     await userLogin.performOAuthLogin();
     await userTokensPage.navigateToTokens();
@@ -199,8 +178,8 @@ test.describe('API Tokens - Complete Integration', () => {
     expect(userTokenCount).toBe(1);
 
     // Step 8: User uses their token in chat successfully
-    const userChatPage = new ChatPage(userPage, baseUrl);
-    const userChatSettings = new ChatSettingsPage(userPage, baseUrl);
+    const userChatPage = new ChatPage(userPage, SHARED_SERVER_URL);
+    const userChatSettings = new ChatSettingsPage(userPage, SHARED_SERVER_URL);
 
     await userChatPage.navigateToChat();
     await userChatPage.waitForChatPageLoad();
@@ -245,8 +224,8 @@ test.describe('API Tokens - Complete Integration', () => {
   });
 
   test('Token Scope Selection and Display @integration', async ({ page }) => {
-    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    const tokensPage = new TokensPage(page, baseUrl);
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const tokensPage = new TokensPage(page, SHARED_SERVER_URL);
 
     const tokenNames = TokenFixtures.getTestTokenNames();
 
@@ -289,10 +268,10 @@ test.describe('API Tokens - Complete Integration', () => {
   });
 
   test('Error Handling and Recovery @integration', async ({ page }) => {
-    const loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    const tokensPage = new TokensPage(page, baseUrl);
-    const chatPage = new ChatPage(page, baseUrl);
-    const chatSettings = new ChatSettingsPage(page, baseUrl);
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const tokensPage = new TokensPage(page, SHARED_SERVER_URL);
+    const chatPage = new ChatPage(page, SHARED_SERVER_URL);
+    const chatSettings = new ChatSettingsPage(page, SHARED_SERVER_URL);
 
     const tokenNames = TokenFixtures.getTestTokenNames();
     const invalidTokens = TokenFixtures.getInvalidTokens();

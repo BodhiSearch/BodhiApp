@@ -8,7 +8,8 @@ import {
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('OAuth2 Token Exchange Integration Tests', () => {
   let authServerConfig;
@@ -22,33 +23,27 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
   });
 
   test.describe('Complete OAuth2 Flow', () => {
-    let baseUrl;
-    let testAppUrl;
     let apiHelper;
     let testData;
 
     test.beforeEach(async () => {
       // Use shared servers started by Playwright webServer
-      baseUrl = 'http://localhost:51135';
-      testAppUrl = 'http://localhost:55173';
-
-      // Initialize helpers and test data
-      apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
+      apiHelper = new OAuth2ApiHelper(SHARED_SERVER_URL, authClient);
       testData = OAuth2Fixtures.getOAuth2TestData();
     });
 
     test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({ page }) => {
       // Get pre-configured app client
       const appClient = getPreConfiguredAppClient();
-      const redirectUri = `${testAppUrl}/oauth-test-app.html`;
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/oauth-test-app.html`;
 
       // Navigate to test app and complete OAuth flow
-      const oauth2TestAppPage = new OAuth2TestAppPage(page, testAppUrl);
+      const oauth2TestAppPage = new OAuth2TestAppPage(page, SHARED_STATIC_SERVER_URL);
       await oauth2TestAppPage.navigateToTestApp(redirectUri);
 
       // Configure OAuth form
       await oauth2TestAppPage.configureOAuthForm(
-        baseUrl,
+        SHARED_SERVER_URL,
         authServerConfig.authUrl,
         authServerConfig.authRealm,
         appClient.clientId,
@@ -65,7 +60,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
       await oauth2TestAppPage.waitForAuthServerRedirect(authServerConfig.authUrl);
       // Login to Keycloak (no active KC session in browser)
       await oauth2TestAppPage.handleLogin(testCredentials.username, testCredentials.password);
-      await oauth2TestAppPage.waitForTokenExchange(testAppUrl);
+      await oauth2TestAppPage.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
 
       // Extract and validate access token
       const accessToken = await oauth2TestAppPage.getAccessToken();
@@ -90,7 +85,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
     let apiHelper;
 
     test.beforeEach(async () => {
-      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 51135);
+      const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 41135);
       serverManager = createServerManager(errorConfig);
       baseUrl = await serverManager.startServer();
       apiHelper = new OAuth2ApiHelper(baseUrl, authClient);

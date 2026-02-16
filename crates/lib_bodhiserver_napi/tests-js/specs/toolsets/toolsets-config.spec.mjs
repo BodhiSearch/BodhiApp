@@ -2,11 +2,10 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 /**
  * Toolsets Configuration E2E Tests
@@ -22,39 +21,19 @@ const TOOLSET_TYPE = 'builtin-exa-search';
 test.describe('Toolsets Configuration', () => {
   let authServerConfig;
   let testCredentials;
-  let serverManager;
-  let baseUrl;
   let toolsetsPage;
   let loginPage;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
-  });
-
-  test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    // Use shared server started by Playwright webServer
   });
 
   test.beforeEach(async ({ page }) => {
-    toolsetsPage = new ToolsetsPage(page, baseUrl);
-    loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
+    toolsetsPage = new ToolsetsPage(page, SHARED_SERVER_URL);
+    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
   });
 
   test('displays toolsets list page', async ({ page }) => {

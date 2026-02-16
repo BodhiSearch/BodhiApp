@@ -1,10 +1,9 @@
 import {
   getAuthServerConfig,
-  getPreConfiguredResourceClient,
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
-import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@/fixtures.mjs';
+import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
@@ -31,8 +30,6 @@ const TOOLSET_SLUG = 'exa-web-search';
 test.describe('Chat Interface - Agentic Flow', () => {
   let authServerConfig;
   let testCredentials;
-  let serverManager;
-  let baseUrl;
   let loginPage;
   let chatPage;
   let chatSettingsPage;
@@ -44,33 +41,15 @@ test.describe('Chat Interface - Agentic Flow', () => {
 
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
-    const resourceClient = getPreConfiguredResourceClient();
-    const port = 51135;
 
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-
-    baseUrl = await serverManager.startServer();
+    // Use shared server started by Playwright webServer
   });
 
   test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, baseUrl, authServerConfig, testCredentials);
-    chatPage = new ChatPage(page, baseUrl);
-    chatSettingsPage = new ChatSettingsPage(page, baseUrl);
-    toolsetsPage = new ToolsetsPage(page, baseUrl);
-  });
-
-  test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    chatPage = new ChatPage(page, SHARED_SERVER_URL);
+    chatSettingsPage = new ChatSettingsPage(page, SHARED_SERVER_URL);
+    toolsetsPage = new ToolsetsPage(page, SHARED_SERVER_URL);
   });
 
   test('agentic chat with Exa web search executes tool and generates response @integration', async ({
