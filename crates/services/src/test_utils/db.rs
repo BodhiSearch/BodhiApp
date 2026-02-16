@@ -109,6 +109,14 @@ impl DbCore for TestDbService {
   fn encryption_key(&self) -> &[u8] {
     &self.encryption_key
   }
+
+  async fn reset_all_tables(&self) -> Result<(), DbError> {
+    self
+      .inner
+      .reset_all_tables()
+      .await
+      .tap(|_| self.notify("reset_all_tables"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -647,6 +655,7 @@ mockall::mock! {
     async fn migrate(&self) -> Result<(), DbError>;
     fn now(&self) -> DateTime<Utc>;
     fn encryption_key(&self) -> &[u8];
+    async fn reset_all_tables(&self) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]

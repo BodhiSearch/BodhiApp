@@ -117,6 +117,7 @@ make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 pub const ENDPOINT_DEV_ENVS: &str = "/dev/envs";
+pub const ENDPOINT_DEV_DB_RESET: &str = "/dev/db-reset";
 
 /// API documentation configuration
 #[derive(OpenApi)]

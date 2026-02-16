@@ -39,6 +39,7 @@ type Result<T> = std::result::Result<T, SessionServiceError>;
 pub trait SessionService: Send + Sync + std::fmt::Debug {
   fn session_layer(&self) -> SessionManagerLayer<AppSessionStore>;
   async fn clear_sessions_for_user(&self, user_id: &str) -> Result<usize>;
+  async fn clear_all_sessions(&self) -> Result<usize>;
   fn get_session_store(&self) -> &AppSessionStore;
 }
 
@@ -99,6 +100,14 @@ impl AppSessionStore {
   pub async fn clear_sessions_for_user(&self, user_id: &str) -> Result<usize> {
     let result = sqlx::query("DELETE FROM tower_sessions WHERE user_id = ?")
       .bind(user_id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(result.rows_affected() as usize)
+  }
+
+  pub async fn clear_all_sessions(&self) -> Result<usize> {
+    let result = sqlx::query("DELETE FROM tower_sessions")
       .execute(&self.pool)
       .await?;
 
@@ -198,6 +207,10 @@ impl SessionService for SqliteSessionService {
 
   async fn clear_sessions_for_user(&self, user_id: &str) -> Result<usize> {
     self.session_store.clear_sessions_for_user(user_id).await
+  }
+
+  async fn clear_all_sessions(&self) -> Result<usize> {
+    self.session_store.clear_all_sessions().await
   }
 
   fn get_session_store(&self) -> &AppSessionStore {

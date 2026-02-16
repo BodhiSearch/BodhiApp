@@ -5,8 +5,9 @@ use crate::{
   create_access_request_handler, create_alias_handler, create_api_model_handler,
   create_pull_request_handler, create_token_handler, create_toolset_handler, delete_alias_handler,
   delete_api_model_handler, delete_setting_handler, delete_toolset_handler,
-  deny_access_request_handler, dev_secrets_handler, disable_type_handler, enable_type_handler,
-  envs_handler, execute_toolset_handler, fetch_models_handler, get_access_request_review_handler,
+  deny_access_request_handler, dev_db_reset_handler, dev_secrets_handler, disable_type_handler,
+  enable_type_handler, envs_handler, execute_toolset_handler, fetch_models_handler,
+  get_access_request_review_handler,
   get_access_request_status_handler, get_api_formats_handler, get_api_model_handler,
   get_download_status_handler, get_toolset_handler, get_user_alias_handler, health_handler,
   list_aliases_handler, list_all_requests_handler, list_api_models_handler, list_downloads_handler,
@@ -21,8 +22,9 @@ use crate::{
   ENDPOINT_ACCESS_REQUESTS_PENDING, ENDPOINT_ACCESS_REQUESTS_REVIEW, ENDPOINT_API_MODELS,
   ENDPOINT_API_MODELS_API_FORMATS, ENDPOINT_API_MODELS_FETCH_MODELS, ENDPOINT_API_MODELS_TEST,
   ENDPOINT_APPS_ACCESS_REQUESTS_ID, ENDPOINT_APPS_REQUEST_ACCESS, ENDPOINT_APP_INFO,
-  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS,
-  ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODELS_REFRESH,
+  ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_DB_RESET,
+  ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+  ENDPOINT_MODELS_REFRESH,
   ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_QUEUE, ENDPOINT_SETTINGS,
   ENDPOINT_TOKENS, ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES, ENDPOINT_USERS, ENDPOINT_USER_INFO,
   ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
@@ -95,7 +97,8 @@ pub fn build_routes(
   if !app_service.setting_service().is_production() {
     let dev_apis = Router::new()
       .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
-      .route(ENDPOINT_DEV_ENVS, get(envs_handler));
+      .route(ENDPOINT_DEV_ENVS, get(envs_handler))
+      .route(ENDPOINT_DEV_DB_RESET, post(dev_db_reset_handler));
     optional_auth = optional_auth.merge(dev_apis);
   }
 

@@ -8,4 +8,6 @@ pub trait DbCore: Send + Sync {
   fn now(&self) -> DateTime<Utc>;
 
   fn encryption_key(&self) -> &[u8];
+
+  async fn reset_all_tables(&self) -> Result<(), DbError>;
 }

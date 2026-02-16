@@ -138,6 +138,27 @@ impl DbCore for SqliteDbService {
   fn encryption_key(&self) -> &[u8] {
     &self.encryption_key
   }
+
+  async fn reset_all_tables(&self) -> Result<(), DbError> {
+    // Delete in order to respect any future FK constraints
+    sqlx::query(
+      "DELETE FROM app_access_requests;
+       DELETE FROM toolsets;
+       DELETE FROM app_toolset_configs;
+       DELETE FROM user_aliases;
+       DELETE FROM model_metadata;
+       DELETE FROM api_model_aliases;
+       DELETE FROM api_tokens;
+       DELETE FROM access_requests;
+       DELETE FROM download_requests;",
+    )
+    .execute(&self.pool)
+    .await?;
+
+    // Re-seed default config
+    self.seed_toolset_configs().await?;
+    Ok(())
+  }
 }
 
 #[async_trait::async_trait]
