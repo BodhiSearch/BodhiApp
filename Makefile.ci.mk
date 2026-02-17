@@ -15,6 +15,7 @@ ci.coverage: ## Run coverage in CI environment
 	$(MAKE) test.coverage
 
 ci.build-only: ## Build without running tests for faster CI
+	cd crates/bodhi && npm install && npm run build; \
 	cargo build -p async-openai; \
 	cargo build -p llama_server_proc; \
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai" and .name != "bodhi") | .name' | sed 's/^/-p /'); \
