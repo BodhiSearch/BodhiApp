@@ -57,13 +57,13 @@ pub async fn user_info_handler(
         role: role.map(AppRole::Session),
       })))
     }
-    AuthContext::ApiToken { ref scope, .. } => {
+    AuthContext::ApiToken { ref role, .. } => {
       debug!("api token auth");
-      Ok(Json(UserResponse::Token(TokenInfo { role: *scope })))
+      Ok(Json(UserResponse::Token(TokenInfo { role: *role })))
     }
     AuthContext::ExternalApp {
       ref token,
-      ref scope,
+      ref role,
       ..
     } => {
       debug!("external app auth");
@@ -73,7 +73,7 @@ pub async fn user_info_handler(
         username: claims.preferred_username,
         first_name: claims.given_name,
         last_name: claims.family_name,
-        role: Some(AppRole::ExchangedToken(*scope)),
+        role: Some(AppRole::ExchangedToken(*role)),
       })))
     }
   }

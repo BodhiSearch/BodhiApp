@@ -80,18 +80,18 @@ async fn authorize_request(
     AuthContext::Session { role: None, .. } => {
       return Err(ApiAuthError::MissingAuth);
     }
-    AuthContext::ApiToken { scope, .. } => {
+    AuthContext::ApiToken { role, .. } => {
       if let Some(required_token_scope) = required_token_scope {
-        if !scope.has_access_to(&required_token_scope) {
+        if !role.has_access_to(&required_token_scope) {
           return Err(ApiAuthError::Forbidden);
         }
       } else {
         return Err(ApiAuthError::MissingAuth);
       }
     }
-    AuthContext::ExternalApp { scope, .. } => {
+    AuthContext::ExternalApp { role, .. } => {
       if let Some(required_user_scope) = required_user_scope {
-        if !scope.has_access_to(&required_user_scope) {
+        if !role.has_access_to(&required_user_scope) {
           return Err(ApiAuthError::Forbidden);
         }
       } else {

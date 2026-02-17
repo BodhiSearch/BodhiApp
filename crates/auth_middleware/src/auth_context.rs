@@ -1,6 +1,8 @@
 use objs::{AppRole, ResourceRole, TokenScope, UserScope};
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum AuthContext {
   Anonymous,
   Session {
@@ -11,14 +13,15 @@ pub enum AuthContext {
   },
   ApiToken {
     user_id: String,
-    scope: TokenScope,
+    role: TokenScope,
     token: String,
   },
   ExternalApp {
     user_id: String,
-    scope: UserScope,
+    role: UserScope,
     token: String,
-    azp: String,
+    external_app_token: String,
+    app_client_id: String,
     access_request_id: Option<String>,
   },
 }
@@ -38,7 +41,16 @@ impl AuthContext {
       AuthContext::Anonymous => None,
       AuthContext::Session { token, .. } => Some(token),
       AuthContext::ApiToken { token, .. } => Some(token),
-      AuthContext::ExternalApp { token, .. } => Some(token),
+      AuthContext::ExternalApp { token, .. } => Some(token), // Returns exchanged token
+    }
+  }
+
+  pub fn external_app_token(&self) -> Option<&str> {
+    match self {
+      AuthContext::ExternalApp {
+        external_app_token, ..
+      } => Some(external_app_token),
+      _ => None,
     }
   }
 
@@ -49,8 +61,8 @@ impl AuthContext {
         role: Some(role), ..
       } => Some(AppRole::Session(*role)),
       AuthContext::Session { role: None, .. } => None,
-      AuthContext::ApiToken { scope, .. } => Some(AppRole::ApiToken(*scope)),
-      AuthContext::ExternalApp { scope, .. } => Some(AppRole::ExchangedToken(*scope)),
+      AuthContext::ApiToken { role, .. } => Some(AppRole::ApiToken(*role)),
+      AuthContext::ExternalApp { role, .. } => Some(AppRole::ExchangedToken(*role)),
     }
   }
 
@@ -98,25 +110,26 @@ mod test_factory {
       }
     }
 
-    pub fn test_api_token(user_id: &str, scope: TokenScope) -> Self {
+    pub fn test_api_token(user_id: &str, role: TokenScope) -> Self {
       AuthContext::ApiToken {
         user_id: user_id.to_string(),
-        scope,
+        role,
         token: "test-api-token".to_string(),
       }
     }
 
     pub fn test_external_app(
       user_id: &str,
-      scope: UserScope,
-      azp: &str,
+      role: UserScope,
+      app_client_id: &str,
       access_request_id: Option<&str>,
     ) -> Self {
       AuthContext::ExternalApp {
         user_id: user_id.to_string(),
-        scope,
+        role,
         token: "test-external-token".to_string(),
-        azp: azp.to_string(),
+        external_app_token: "test-external-app-token".to_string(),
+        app_client_id: app_client_id.to_string(),
         access_request_id: access_request_id.map(|s| s.to_string()),
       }
     }

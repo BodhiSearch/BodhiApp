@@ -31,7 +31,7 @@ use tower::ServiceExt;
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct TestTokenResponse {
   token: Option<String>,
-  scope: Option<String>,
+  role: Option<String>,
 }
 
 // Test endpoint that returns info about injected auth context
@@ -44,12 +44,12 @@ async fn test_token_info_handler(
     .as_ref()
     .and_then(|ctx| ctx.token())
     .map(|s| s.to_string());
-  let scope = auth_context.as_ref().and_then(|ctx| match ctx {
-    AuthContext::ApiToken { scope, .. } => Some(format!("{}", scope)),
-    AuthContext::ExternalApp { scope, .. } => Some(format!("{}", scope)),
+  let role = auth_context.as_ref().and_then(|ctx| match ctx {
+    AuthContext::ApiToken { role, .. } => Some(format!("{}", role)),
+    AuthContext::ExternalApp { role, .. } => Some(format!("{}", role)),
     _ => None,
   });
-  Json(TestTokenResponse { token, scope })
+  Json(TestTokenResponse { token, role })
 }
 
 fn create_test_router(state: Arc<dyn RouterState>) -> Router {
@@ -206,7 +206,7 @@ async fn test_cross_client_token_exchange_success(
     "Expected X-Resource-Token header to be set"
   );
   assert!(
-    body.scope.is_some(),
+    body.role.is_some(),
     "Expected X-Resource-Scope header to be set"
   );
 

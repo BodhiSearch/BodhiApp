@@ -1,16 +1,9 @@
+use auth_middleware::CachedExchangeResult;
 use chrono::{Duration, Utc};
-use serde::{Deserialize, Serialize};
 use services::{test_utils::build_token, AppService, CacheService};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use uuid::Uuid;
-
-/// Serialization-compatible with `CachedExchangeResult` in auth_middleware/token_service.rs
-#[derive(Debug, Serialize, Deserialize)]
-struct CachedExchangeResult {
-  token: String,
-  azp: String,
-}
 
 /// Simulates external (3rd-party OAuth) token authentication by seeding the
 /// token validation cache directly, bypassing Keycloak token exchange.
@@ -70,7 +63,7 @@ impl ExternalTokenSimulator {
     // 4. Seed the cache with the exchange result
     let cached = CachedExchangeResult {
       token: exchange_jwt,
-      azp: azp.to_string(),
+      app_client_id: azp.to_string(),
     };
     let cached_json = serde_json::to_string(&cached)?;
     self

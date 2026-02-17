@@ -17,6 +17,6 @@ pub use auth_context::AuthContext;
 pub use auth_context::RequestAuthContextExt;
 pub use auth_middleware::*;
 pub use canonical_url_middleware::canonical_url_middleware;
-pub use token_service::*;
+pub use token_service::{CachedExchangeResult, DefaultTokenService};
 pub use toolset_auth_middleware::toolset_auth_middleware;
 pub use utils::*;

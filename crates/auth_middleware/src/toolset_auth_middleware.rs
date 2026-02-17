@@ -12,8 +12,14 @@ use std::sync::Arc;
 
 /// Represents the authentication flow type for toolset access.
 enum ToolsetAuthFlow {
-  Session { user_id: String },
-  OAuth { user_id: String, azp: String, access_request_id: String },
+  Session {
+    user_id: String,
+  },
+  OAuth {
+    user_id: String,
+    app_client_id: String,
+    access_request_id: String,
+  },
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -81,16 +87,17 @@ fn extract_toolset_id_from_path(path: &str) -> Result<String, ToolsetAuthError> 
 async fn validate_access_request(
   db_service: &Arc<dyn DbService>,
   access_request_id: &str,
-  azp: &str,
+  app_client_id: &str,
   user_id: &str,
 ) -> Result<Option<String>, ToolsetAuthError> {
   // Fetch access request
-  let access_request = db_service
-    .get(access_request_id)
-    .await?
-    .ok_or(ToolsetAuthError::AccessRequestNotFound {
-      access_request_id: access_request_id.to_string(),
-    })?;
+  let access_request =
+    db_service
+      .get(access_request_id)
+      .await?
+      .ok_or(ToolsetAuthError::AccessRequestNotFound {
+        access_request_id: access_request_id.to_string(),
+      })?;
 
   // Validate status
   if access_request.status != "approved" {
@@ -101,21 +108,22 @@ async fn validate_access_request(
   }
 
   // Validate app_client_id matches token azp
-  if access_request.app_client_id != azp {
+  if access_request.app_client_id != app_client_id {
     return Err(ToolsetAuthError::AppClientMismatch {
       expected: access_request.app_client_id,
-      found: azp.to_string(),
+      found: app_client_id.to_string(),
     });
   }
 
   // Validate user_id matches
-  let ar_user_id = access_request
-    .user_id
-    .as_ref()
-    .ok_or(ToolsetAuthError::AccessRequestInvalid {
-      access_request_id: access_request_id.to_string(),
-      reason: "Missing user_id in approved access request".to_string(),
-    })?;
+  let ar_user_id =
+    access_request
+      .user_id
+      .as_ref()
+      .ok_or(ToolsetAuthError::AccessRequestInvalid {
+        access_request_id: access_request_id.to_string(),
+        reason: "Missing user_id in approved access request".to_string(),
+      })?;
 
   if ar_user_id != user_id {
     return Err(ToolsetAuthError::UserMismatch {
@@ -213,12 +221,12 @@ pub async fn toolset_auth_middleware(
     },
     AuthContext::ExternalApp {
       user_id,
-      azp,
+      app_client_id,
       access_request_id: Some(ar_id),
       ..
     } => ToolsetAuthFlow::OAuth {
       user_id: user_id.clone(),
-      azp: azp.clone(),
+      app_client_id: app_client_id.clone(),
       access_request_id: ar_id.clone(),
     },
     _ => return Err(ToolsetAuthError::MissingAuth.into()),
@@ -243,12 +251,12 @@ pub async fn toolset_auth_middleware(
 
   // OAuth flow: validate access request and approved list
   if let ToolsetAuthFlow::OAuth {
-    azp,
+    app_client_id,
     access_request_id,
     ..
   } = &auth_flow
   {
-    let approved = validate_access_request(&db_service, access_request_id, azp, user_id).await?;
+    let approved = validate_access_request(&db_service, access_request_id, app_client_id, user_id).await?;
     validate_toolset_approved_list(&approved, &toolset_id)?;
   }
 

@@ -146,9 +146,10 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
 
   let auth_context = AuthContext::ExternalApp {
     user_id: claims.sub.clone(),
-    scope: user_scope,
+    role: user_scope,
     token: token.clone(),
-    azp: "test-azp".to_string(),
+    external_app_token: token.clone(),
+    app_client_id: "test-azp".to_string(),
     access_request_id: None,
   };
   let response = router

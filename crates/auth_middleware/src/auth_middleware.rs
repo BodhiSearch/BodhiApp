@@ -28,23 +28,25 @@ pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
 /// Builds AuthContext from a bearer token and its scope.
+/// For ExternalApp, pass both the exchanged token and the original external app token.
 fn build_auth_context_from_bearer(
   access_token: String,
   resource_scope: ResourceScope,
-  azp: Option<String>,
+  app_client_id: Option<String>,
+  external_app_token: Option<String>,
 ) -> AuthContext {
   match resource_scope {
-    ResourceScope::Token(scope) => {
+    ResourceScope::Token(role) => {
       let user_id = extract_claims::<ScopeClaims>(&access_token)
         .map(|c| c.sub)
         .unwrap_or_default();
       AuthContext::ApiToken {
         user_id,
-        scope,
+        role,
         token: access_token,
       }
     }
-    ResourceScope::User(scope) => {
+    ResourceScope::User(role) => {
       let (user_id, access_request_id) =
         if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
           (scope_claims.sub, scope_claims.access_request_id)
@@ -53,9 +55,10 @@ fn build_auth_context_from_bearer(
         };
       AuthContext::ExternalApp {
         user_id,
-        scope,
+        role,
         token: access_token,
-        azp: azp.unwrap_or_default(),
+        external_app_token: external_app_token.unwrap_or_default(),
+        app_client_id: app_client_id.unwrap_or_default(),
         access_request_id,
       }
     }
@@ -185,10 +188,19 @@ pub async fn auth_middleware(
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let (access_token, resource_scope, azp) = token_service.validate_bearer_token(header).await?;
+    let bearer_token = header
+      .strip_prefix("Bearer ")
+      .ok_or_else(|| AuthError::InvalidToken("authorization header is malformed".to_string()))?
+      .trim()
+      .to_string();
+    let (access_token, resource_scope, app_client_id) = token_service.validate_bearer_token(header).await?;
     tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
 
-    let auth_context = build_auth_context_from_bearer(access_token, resource_scope, azp);
+    // For ExternalApp, pass the original bearer token
+    let external_app_token =
+      matches!(resource_scope, ResourceScope::User(_)).then(|| bearer_token.clone());
+    let auth_context =
+      build_auth_context_from_bearer(access_token, resource_scope, app_client_id, external_app_token);
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(req.headers()) {
@@ -252,55 +264,77 @@ pub async fn optional_auth_middleware(
     req.extensions_mut().insert(AuthContext::Anonymous);
     return Ok(next.run(req).await);
   }
+
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     // Bearer token
+    debug!("optional_auth_middleware: validating bearer token");
     if let Ok(header) = header.to_str() {
-      if let Ok((access_token, resource_scope, azp)) =
-        token_service.validate_bearer_token(header).await
-      {
-        let auth_context = build_auth_context_from_bearer(access_token, resource_scope, azp);
-        req.extensions_mut().insert(auth_context);
-      } else {
-        req.extensions_mut().insert(AuthContext::Anonymous);
-      }
-    } else {
-      req.extensions_mut().insert(AuthContext::Anonymous);
-    }
-  } else if is_same_origin(req.headers()) {
-    // session token
-    if let Ok(Some(access_token)) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-      match token_service
-        .get_valid_session_token(session.clone(), access_token.clone())
-        .await
-      {
-        Ok((validated_token, role)) => {
-          debug!("inject_session_auth_info: session token injected successfully");
-          let claims = extract_claims::<UserIdClaims>(&validated_token)?;
-          let auth_context = AuthContext::Session {
-            user_id: claims.sub,
-            username: claims.preferred_username,
-            role,
-            token: validated_token,
+      let bearer_token = header.strip_prefix("Bearer ").map(|t| t.trim().to_string());
+      match token_service.validate_bearer_token(header).await {
+        Ok((access_token, resource_scope, app_client_id)) => {
+          debug!("optional_auth_middleware: bearer token validated successfully");
+          // For ExternalApp, pass the original bearer token
+          let external_app_token = if matches!(resource_scope, ResourceScope::User(_)) {
+            bearer_token
+          } else {
+            None
           };
+          let auth_context =
+            build_auth_context_from_bearer(access_token, resource_scope, app_client_id, external_app_token);
           req.extensions_mut().insert(auth_context);
         }
         Err(err) => {
           debug!(
             ?err,
-            "optional_auth_middleware: token validation/refresh failed"
+            "optional_auth_middleware: bearer token validation failed"
           );
-          if should_clear_session(&err) {
-            clear_session_auth_data(&session).await;
-          }
           req.extensions_mut().insert(AuthContext::Anonymous);
         }
       }
     } else {
-      debug!("inject_session_auth_info: no access token in session");
+      debug!("optional_auth_middleware: Authorization header is not valid UTF-8");
       req.extensions_mut().insert(AuthContext::Anonymous);
     }
+  } else if is_same_origin(req.headers()) {
+    // session token
+    match session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
+      Ok(Some(access_token)) => {
+        match token_service
+          .get_valid_session_token(session.clone(), access_token.clone())
+          .await
+        {
+          Ok((validated_token, role)) => {
+            debug!("optional_auth_middleware: session token validated successfully");
+            let claims = extract_claims::<UserIdClaims>(&validated_token)?;
+            let auth_context = AuthContext::Session {
+              user_id: claims.sub.clone(),
+              username: claims.preferred_username,
+              role,
+              token: validated_token,
+            };
+            req.extensions_mut().insert(auth_context);
+          }
+          Err(err) => {
+            debug!(
+              ?err,
+              "optional_auth_middleware: token validation/refresh failed"
+            );
+            if should_clear_session(&err) {
+              clear_session_auth_data(&session).await;
+            }
+            req.extensions_mut().insert(AuthContext::Anonymous);
+          }
+        }
+      }
+      Ok(None) => {
+        req.extensions_mut().insert(AuthContext::Anonymous);
+      }
+      Err(err) => {
+        debug!(?err, "optional_auth_middleware: error reading session");
+        req.extensions_mut().insert(AuthContext::Anonymous);
+      }
+    }
   } else {
-    debug!("inject_session_auth_info: is_same_origin is false");
     req.extensions_mut().insert(AuthContext::Anonymous);
   }
   // Continue with the request
@@ -399,7 +433,7 @@ mod tests {
           _ => None,
         };
         let scope = match ctx {
-          AuthContext::ApiToken { scope, .. } => Some(scope.to_string()),
+          AuthContext::ApiToken { role, .. } => Some(role.to_string()),
           _ => None,
         };
         let user_id = ctx.user_id().map(|s| s.to_string());

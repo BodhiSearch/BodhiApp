@@ -14,10 +14,12 @@ use tower_sessions::Session;
 const BEARER_PREFIX: &str = "Bearer ";
 const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
 
-#[derive(Debug, Serialize, Deserialize)]
-struct CachedExchangeResult {
-  token: String,
-  azp: String,
+/// Cached result from external token exchange.
+/// Used to avoid repeated token exchange calls to the identity provider.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CachedExchangeResult {
+  pub token: String,
+  pub app_client_id: String,
 }
 
 pub struct DefaultTokenService {
@@ -141,7 +143,7 @@ impl DefaultTokenService {
           Some((
             cached_result.token,
             ResourceScope::User(user_scope),
-            cached_result.azp,
+            cached_result.app_client_id,
           ))
         }
       } else {
@@ -151,23 +153,23 @@ impl DefaultTokenService {
       None
     };
 
-    if let Some((access_token, resource_scope, azp)) = cached_token {
-      return Ok((access_token, resource_scope, Some(azp)));
+    if let Some((access_token, resource_scope, app_client_id)) = cached_token {
+      return Ok((access_token, resource_scope, Some(app_client_id)));
     }
 
     // Exchange external client token
-    let (access_token, resource_scope, azp) =
+    let (access_token, resource_scope, app_client_id) =
       self.handle_external_client_token(bearer_token).await?;
     let cached_result = CachedExchangeResult {
       token: access_token.clone(),
-      azp: azp.clone(),
+      app_client_id: app_client_id.clone(),
     };
     if let Ok(cached_json) = serde_json::to_string(&cached_result) {
       self
         .cache_service
         .set(&format!("exchanged_token:{}", &token_digest), &cached_json);
     }
-    Ok((access_token, resource_scope, Some(azp)))
+    Ok((access_token, resource_scope, Some(app_client_id)))
   }
 
   /// Handle external client token validation and exchange
@@ -622,13 +624,13 @@ mod tests {
     );
 
     // Validate token
-    let (access_token, scope, azp) = token_service
+    let (access_token, scope, app_client_id) = token_service
       .validate_bearer_token(&format!("Bearer {}", token_str))
       .await?;
 
     assert_eq!(token_str, access_token);
     assert_eq!(ResourceScope::Token(expected_scope), scope);
-    assert_eq!(None, azp);
+    assert_eq!(None, app_client_id);
     Ok(())
   }
 
@@ -678,10 +680,10 @@ mod tests {
       .await;
 
     assert!(result.is_ok());
-    let (access_token, scope, azp) = result.unwrap();
+    let (access_token, scope, app_client_id) = result.unwrap();
     assert_eq!(token_str, access_token);
     assert_eq!(ResourceScope::Token(TokenScope::User), scope);
-    assert_eq!(None, azp);
+    assert_eq!(None, app_client_id);
     Ok(())
   }
 
@@ -877,14 +879,14 @@ mod tests {
     ));
 
     // When - Try to validate the external token
-    let (access_token, scope, azp) = token_service
+    let (access_token, scope, app_client_id) = token_service
       .validate_bearer_token(&format!("Bearer {}", external_token))
       .await?;
 
     // Then - Should succeed with exchanged token
     assert_eq!(exchanged_token, access_token);
     assert_eq!(ResourceScope::User(UserScope::User), scope);
-    assert_eq!(Some(external_client_id.to_string()), azp);
+    assert_eq!(Some(external_client_id.to_string()), app_client_id);
     Ok(())
   }
 
@@ -1665,10 +1667,10 @@ mod tests {
       .await;
 
     assert!(result.is_ok());
-    let (access_token, scope, azp) = result.unwrap();
+    let (access_token, scope, app_client_id) = result.unwrap();
     assert_eq!(exchanged_token, access_token);
     assert_eq!(ResourceScope::User(UserScope::User), scope);
-    assert_eq!(Some("external-client".to_string()), azp);
+    assert_eq!(Some("external-client".to_string()), app_client_id);
     Ok(())
   }
 
@@ -1732,10 +1734,10 @@ mod tests {
       .await;
 
     assert!(result.is_ok());
-    let (access_token, scope, azp) = result.unwrap();
+    let (access_token, scope, app_client_id) = result.unwrap();
     assert_eq!(exchanged_token, access_token);
     assert_eq!(ResourceScope::User(UserScope::User), scope);
-    assert_eq!(Some("external-client".to_string()), azp);
+    assert_eq!(Some("external-client".to_string()), app_client_id);
     Ok(())
   }
 }
