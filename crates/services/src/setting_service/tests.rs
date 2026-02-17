@@ -11,7 +11,6 @@ use mockall::predicate::eq;
 use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
 use std::{
   collections::HashMap,
@@ -19,12 +18,6 @@ use std::{
   sync::Arc,
 };
 use tempfile::TempDir;
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct TestConfig {
-  name: String,
-  value: i32,
-}
-
 #[rstest]
 #[case::system_settings_cannot_be_overridden(
   "TEST_SYSTEM_KEY",

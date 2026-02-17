@@ -34,6 +34,7 @@ enum TestArgsDelegate {
   TestErrorDelegateFalse(#[from] InnerErrorDup),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 enum TestArgsDelegateFalse {
   #[error(transparent)]

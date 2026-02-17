@@ -20,7 +20,7 @@ resolver = "2"
 exclude = []
 
 [workspace.package]
-rust-version = "1.87.0"
+rust-version = "1.93.0"
 
 [workspace.dependencies]
 async-openai = { path = "async-openai/async-openai", features = [

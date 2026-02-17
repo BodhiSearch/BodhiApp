@@ -29,8 +29,8 @@ runs:
           libssl-dev \
           pkg-config
     - uses: Swatinem/rust-cache@v2
-    - name: install Rust 1.87.0
-      uses: dtolnay/rust-toolchain@1.87.0
+    - name: install Rust 1.93.0
+      uses: dtolnay/rust-toolchain@1.93.0
       with:
         targets: ${{ inputs.target }}
         components: rustfmt,clippy,llvm-tools

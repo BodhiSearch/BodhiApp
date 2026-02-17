@@ -367,7 +367,7 @@ pub async fn create_authenticated_session(
 }
 
 /// Create a session cookie for the given session ID
-pub fn create_session_cookie(session_id: &str) -> Cookie {
+pub fn create_session_cookie(session_id: &str) -> Cookie<'_> {
   Cookie::build(("bodhiapp_session_id", session_id))
     .path("/")
     .http_only(true)

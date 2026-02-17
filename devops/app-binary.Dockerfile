@@ -3,7 +3,7 @@
 # Multi-platform base image containing pre-built bodhi binary
 # Used by all GPU variant Dockerfiles to avoid redundant compilation
 
-FROM rust:1.87.0-bookworm AS builder
+FROM rust:1.93.0-bookworm AS builder
 
 # Build arguments for platform info and build variant
 ARG BUILD_VARIANT=production
@@ -45,11 +45,9 @@ COPY crates/ci_optims/ crates/ci_optims/
 COPY async-openai/ async-openai/
 
 # Create filtered Cargo.toml for dependency-only build and generate new lock file
-# Downgrade time crate to 0.3.41 for Rust 1.87.0 compatibility
 RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml && \
     mv Cargo.filtered.toml Cargo.toml && \
-    cargo generate-lockfile && \
-    cargo update -p time --precise 0.3.41
+    cargo generate-lockfile
 
 # Pre-compile all heavy dependencies with consistent optimization level
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
@@ -73,8 +71,7 @@ COPY xtask/ xtask/
 
 # Restore original Cargo.toml and regenerate lock file for full workspace
 COPY Cargo.toml ./
-# Downgrade time crate to 0.3.41 for Rust 1.87.0 compatibility
-RUN cargo generate-lockfile && cargo update -p time --precise 0.3.41
+RUN cargo generate-lockfile
 
 # Build bodhi binary with consistent optimization level
 # Note: CI_BUILD_TARGET is automatically set based on TARGETARCH for each platform
