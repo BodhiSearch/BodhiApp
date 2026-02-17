@@ -27,6 +27,65 @@ pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
+/// Builds AuthContext from a bearer token and its scope.
+fn build_auth_context_from_bearer(
+  access_token: String,
+  resource_scope: ResourceScope,
+  azp: Option<String>,
+) -> AuthContext {
+  match resource_scope {
+    ResourceScope::Token(scope) => {
+      let user_id = extract_claims::<ScopeClaims>(&access_token)
+        .map(|c| c.sub)
+        .unwrap_or_default();
+      AuthContext::ApiToken {
+        user_id,
+        scope,
+        token: access_token,
+      }
+    }
+    ResourceScope::User(scope) => {
+      let (user_id, access_request_id) =
+        if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+          (scope_claims.sub, scope_claims.access_request_id)
+        } else {
+          (String::new(), None)
+        };
+      AuthContext::ExternalApp {
+        user_id,
+        scope,
+        token: access_token,
+        azp: azp.unwrap_or_default(),
+        access_request_id,
+      }
+    }
+  }
+}
+
+/// Clears authentication data from the session.
+async fn clear_session_auth_data(session: &Session) {
+  if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
+    debug!(?e, "Failed to clear access token from session");
+  }
+  if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
+    debug!(?e, "Failed to clear refresh token from session");
+  }
+  if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
+    debug!(?e, "Failed to clear user_id from session");
+  }
+}
+
+/// Determines whether session data should be cleared for the given error.
+fn should_clear_session(err: &AuthError) -> bool {
+  matches!(
+    err,
+    AuthError::RefreshTokenNotFound
+      | AuthError::Token(_)
+      | AuthError::AuthService(_)
+      | AuthError::InvalidToken(_)
+  )
+}
+
 /// Returns true if the request originates from the same site ("same-origin").
 fn is_same_origin(headers: &HeaderMap) -> bool {
   let host = headers.get(HOST).and_then(|v| v.to_str().ok());
@@ -90,15 +149,9 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
-  #[error("Invalid signature key: {0}.")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  SignatureKey(String),
   #[error("Invalid token: {0}.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidToken(String),
-  #[error("Signature mismatch: {0}.")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  SignatureMismatch(String),
   #[error("Application is not ready. Current status: {0}.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppStatusInvalid(AppStatus),
@@ -107,7 +160,6 @@ pub enum AuthError {
 pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-  _headers: HeaderMap,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
@@ -136,37 +188,10 @@ pub async fn auth_middleware(
     let (access_token, resource_scope, azp) = token_service.validate_bearer_token(header).await?;
     tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
 
-    let auth_context = match resource_scope {
-      ResourceScope::Token(scope) => {
-        let user_id = extract_claims::<ScopeClaims>(&access_token)
-          .map(|c| c.sub)
-          .unwrap_or_default();
-        AuthContext::ApiToken {
-          user_id,
-          scope,
-          token: access_token,
-        }
-      }
-      ResourceScope::User(scope) => {
-        let (user_id, access_request_id) =
-          if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-            (scope_claims.sub, scope_claims.access_request_id)
-          } else {
-            (String::new(), None)
-          };
-        AuthContext::ExternalApp {
-          user_id,
-          scope,
-          token: access_token,
-          azp: azp.unwrap_or_default(),
-          access_request_id,
-        }
-      }
-    };
-
+    let auth_context = build_auth_context_from_bearer(access_token, resource_scope, azp);
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
-  } else if is_same_origin(&_headers) {
+  } else if is_same_origin(req.headers()) {
     // Check for token in session
     if let Some(access_token) = session
       .get::<String>(SESSION_KEY_ACCESS_TOKEN)
@@ -204,7 +229,7 @@ pub async fn auth_middleware(
   }
 }
 
-pub async fn inject_optional_auth_info(
+pub async fn optional_auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
@@ -230,36 +255,10 @@ pub async fn inject_optional_auth_info(
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     // Bearer token
     if let Ok(header) = header.to_str() {
-      if let Ok((access_token, resource_scope, _azp)) =
+      if let Ok((access_token, resource_scope, azp)) =
         token_service.validate_bearer_token(header).await
       {
-        let auth_context = match resource_scope {
-          ResourceScope::Token(scope) => {
-            let user_id = extract_claims::<ScopeClaims>(&access_token)
-              .map(|c| c.sub)
-              .unwrap_or_default();
-            AuthContext::ApiToken {
-              user_id,
-              scope,
-              token: access_token,
-            }
-          }
-          ResourceScope::User(scope) => {
-            let (user_id, access_request_id) =
-              if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-                (scope_claims.sub, scope_claims.access_request_id)
-              } else {
-                (String::new(), None)
-              };
-            AuthContext::ExternalApp {
-              user_id,
-              scope,
-              token: access_token,
-              azp: _azp.unwrap_or_default(),
-              access_request_id,
-            }
-          }
-        };
+        let auth_context = build_auth_context_from_bearer(access_token, resource_scope, azp);
         req.extensions_mut().insert(auth_context);
       } else {
         req.extensions_mut().insert(AuthContext::Anonymous);
@@ -285,38 +284,13 @@ pub async fn inject_optional_auth_info(
           };
           req.extensions_mut().insert(auth_context);
         }
-        Err(AuthError::RefreshTokenNotFound) => {
-          debug!("inject_session_auth_info: session has no refresh token - clearing session data");
-          if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-            debug!(?e, "Failed to clear access token from session");
-          }
-          if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
-            debug!(?e, "Failed to clear refresh token from session");
-          }
-          if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
-            debug!(?e, "Failed to clear user_id from session");
-          }
-          req.extensions_mut().insert(AuthContext::Anonymous);
-        }
         Err(err) => {
           debug!(
             ?err,
-            "inject_session_auth_info: token validation/refresh failed"
+            "optional_auth_middleware: token validation/refresh failed"
           );
-          if matches!(
-            err,
-            AuthError::Token(_) | AuthError::AuthService(_) | AuthError::InvalidToken(_)
-          ) {
-            debug!("inject_session_auth_info: clearing invalid session due to auth error");
-            if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-              debug!(?e, "Failed to clear access token from session");
-            }
-            if let Err(e) = session.remove::<String>(SESSION_KEY_REFRESH_TOKEN).await {
-              debug!(?e, "Failed to clear refresh token from session");
-            }
-            if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
-              debug!(?e, "Failed to clear user_id from session");
-            }
+          if should_clear_session(&err) {
+            clear_session_auth_data(&session).await;
           }
           req.extensions_mut().insert(AuthContext::Anonymous);
         }
@@ -353,7 +327,7 @@ fn remove_app_headers(req: &mut axum::http::Request<axum::body::Body>) {
 
 #[cfg(test)]
 mod tests {
-  use crate::{auth_middleware, inject_optional_auth_info, AuthContext};
+  use crate::{auth_middleware, optional_auth_middleware, AuthContext};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -476,7 +450,7 @@ mod tests {
       .merge(router_with_auth().route_layer(from_fn_with_state(state.clone(), auth_middleware)))
       .merge(
         router_with_optional_auth()
-          .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info)),
+          .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware)),
       )
       .layer(state.app_service().session_service().session_layer())
       .with_state(state)

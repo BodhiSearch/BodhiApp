@@ -41,16 +41,15 @@ pub async fn api_auth_middleware(
   required_role: ResourceRole,
   required_token_scope: Option<TokenScope>,
   required_user_scope: Option<UserScope>,
-  State(state): State<Arc<dyn RouterState>>,
+  State(_state): State<Arc<dyn RouterState>>,
   req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
   Ok(
-    _impl(
+    authorize_request(
       required_role,
       required_token_scope,
       required_user_scope,
-      State(state),
       req,
       next,
     )
@@ -58,11 +57,10 @@ pub async fn api_auth_middleware(
   )
 }
 
-pub async fn _impl(
+async fn authorize_request(
   required_role: ResourceRole,
   required_token_scope: Option<TokenScope>,
   required_user_scope: Option<UserScope>,
-  State(_state): State<Arc<dyn RouterState>>,
   req: Request,
   next: Next,
 ) -> Result<Response, ApiAuthError> {

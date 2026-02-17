@@ -3,7 +3,7 @@ use crate::{
 };
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{
-  generate_random_string, inject_optional_auth_info, AuthContext, RequestAuthContextExt,
+  generate_random_string, optional_auth_middleware, AuthContext, RequestAuthContextExt,
 };
 use axum::body::to_bytes;
 use axum::{
@@ -335,7 +335,7 @@ async fn auth_initiate_handler_with_token_response(
   ));
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
     .layer(app_service.session_service().session_layer());
   let resp = router
@@ -443,7 +443,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
     .layer(app_service.session_service().session_layer());
 
@@ -599,7 +599,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
     .layer(app_service.session_service().session_layer());
 
@@ -677,7 +677,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
     .layer(app_service.session_service().session_layer());
 
@@ -749,7 +749,7 @@ async fn test_auth_callback_handler_auth_service_error(
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
     .with_state(state)
     .layer(app_service.session_service().session_layer());
 

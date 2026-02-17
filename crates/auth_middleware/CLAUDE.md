@@ -15,7 +15,7 @@ The `auth_middleware` crate serves as BodhiApp's HTTP authentication and authori
 The central type for authentication state propagation. Auth middleware validates credentials and injects `Extension<AuthContext>` into request extensions. Route handlers consume it via `Extension<AuthContext>` with pattern matching.
 
 **Variants:**
-- `Anonymous` -- No authentication present (used by `inject_optional_auth_info` when no valid credentials found)
+- `Anonymous` -- No authentication present (used by `optional_auth_middleware` when no valid credentials found)
 - `Session { user_id, username, role: Option<ResourceRole>, token }` -- Browser session with JWT token from HTTP session storage
 - `ApiToken { user_id, scope: TokenScope, token }` -- Database-backed API token (`bodhiapp_*` prefix) with scope-based access
 - `ExternalApp { user_id, scope: UserScope, token, azp, access_request_id: Option<String> }` -- External OAuth client token after RFC 8693 token exchange
@@ -43,7 +43,7 @@ The central type for authentication state propagation. Auth middleware validates
 4. Returns `AuthError::InvalidAccess` if no valid authentication found
 5. Inserts `AuthContext` into request extensions via `req.extensions_mut().insert(auth_context)`
 
-**`inject_optional_auth_info`** -- Permissive authentication, allows unauthenticated requests:
+**`optional_auth_middleware`** -- Permissive authentication, allows unauthenticated requests:
 1. Same validation logic as `auth_middleware`
 2. On any failure, inserts `AuthContext::Anonymous` instead of returning an error
 3. Cleans up invalid session data when token validation fails
@@ -152,7 +152,7 @@ Behind the `test-utils` feature flag in `auth_context.rs`:
 ## Module Structure
 
 - `auth_context.rs` -- `AuthContext` enum definition, convenience methods, test factories
-- `auth_middleware.rs` -- `auth_middleware`, `inject_optional_auth_info`, `remove_app_headers`, `AuthError`, session key constants
+- `auth_middleware.rs` -- `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError`, session key constants
 - `api_auth_middleware.rs` -- `api_auth_middleware`, `ApiAuthError`, role/scope authorization logic
 - `toolset_auth_middleware.rs` -- `toolset_auth_middleware`, `ToolsetAuthError`, toolset access validation
 - `token_service.rs` -- `DefaultTokenService`, token validation/refresh/exchange orchestration

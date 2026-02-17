@@ -109,7 +109,7 @@ pub async fn auth_middleware(
 ) -> Result<Response, ApiError>;
 
 // Optional authentication - continues on auth failure
-pub async fn inject_optional_auth_info(
+pub async fn optional_auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,

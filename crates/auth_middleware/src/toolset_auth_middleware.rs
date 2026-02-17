@@ -7,8 +7,14 @@ use axum::{
 };
 use objs::{ApiError, AppError, ErrorType};
 use server_core::RouterState;
-use services::ToolsetError;
+use services::{db::DbService, ToolService, ToolsetError};
 use std::sync::Arc;
+
+/// Represents the authentication flow type for toolset access.
+enum ToolsetAuthFlow {
+  Session { user_id: String },
+  OAuth { user_id: String, azp: String, access_request_id: String },
+}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -56,7 +62,129 @@ pub enum ToolsetAuthError {
   InvalidApprovedJson { error: String },
 
   #[error(transparent)]
+  DbError(#[from] services::db::DbError),
+
+  #[error(transparent)]
   ToolsetError(#[from] ToolsetError),
+}
+
+/// Extracts the toolset ID from the request path.
+fn extract_toolset_id_from_path(path: &str) -> Result<String, ToolsetAuthError> {
+  path
+    .split('/')
+    .find(|seg| seg.len() == 36 && seg.contains('-'))
+    .map(|s| s.to_string())
+    .ok_or(ToolsetAuthError::ToolsetNotFound)
+}
+
+/// Validates the access request for OAuth flow.
+async fn validate_access_request(
+  db_service: &Arc<dyn DbService>,
+  access_request_id: &str,
+  azp: &str,
+  user_id: &str,
+) -> Result<Option<String>, ToolsetAuthError> {
+  // Fetch access request
+  let access_request = db_service
+    .get(access_request_id)
+    .await?
+    .ok_or(ToolsetAuthError::AccessRequestNotFound {
+      access_request_id: access_request_id.to_string(),
+    })?;
+
+  // Validate status
+  if access_request.status != "approved" {
+    return Err(ToolsetAuthError::AccessRequestNotApproved {
+      access_request_id: access_request_id.to_string(),
+      status: access_request.status,
+    });
+  }
+
+  // Validate app_client_id matches token azp
+  if access_request.app_client_id != azp {
+    return Err(ToolsetAuthError::AppClientMismatch {
+      expected: access_request.app_client_id,
+      found: azp.to_string(),
+    });
+  }
+
+  // Validate user_id matches
+  let ar_user_id = access_request
+    .user_id
+    .as_ref()
+    .ok_or(ToolsetAuthError::AccessRequestInvalid {
+      access_request_id: access_request_id.to_string(),
+      reason: "Missing user_id in approved access request".to_string(),
+    })?;
+
+  if ar_user_id != user_id {
+    return Err(ToolsetAuthError::UserMismatch {
+      expected: ar_user_id.clone(),
+      found: user_id.to_string(),
+    });
+  }
+
+  Ok(access_request.approved)
+}
+
+/// Validates that the toolset instance is in the approved list.
+fn validate_toolset_approved_list(
+  approved: &Option<String>,
+  toolset_id: &str,
+) -> Result<(), ToolsetAuthError> {
+  let Some(approved_json) = approved else {
+    // approved is NULL - auto-approved request with no toolsets
+    return Err(ToolsetAuthError::ToolsetNotApproved {
+      toolset_id: toolset_id.to_string(),
+    });
+  };
+
+  let approvals: serde_json::Value =
+    serde_json::from_str(approved_json).map_err(|e| ToolsetAuthError::InvalidApprovedJson {
+      error: e.to_string(),
+    })?;
+
+  let toolset_types = approvals
+    .get("toolset_types")
+    .and_then(|v| v.as_array())
+    .ok_or(ToolsetAuthError::InvalidApprovedJson {
+      error: "Missing toolset_types array".to_string(),
+    })?;
+
+  let instance_approved = toolset_types.iter().any(|approval| {
+    approval.get("status").and_then(|s| s.as_str()) == Some("approved")
+      && approval.get("instance_id").and_then(|i| i.as_str()) == Some(toolset_id)
+  });
+
+  if !instance_approved {
+    return Err(ToolsetAuthError::ToolsetNotApproved {
+      toolset_id: toolset_id.to_string(),
+    });
+  }
+
+  Ok(())
+}
+
+/// Validates that the toolset is properly configured.
+async fn validate_toolset_configuration(
+  tool_service: &Arc<dyn ToolService>,
+  toolset: &objs::Toolset,
+) -> Result<(), ToolsetAuthError> {
+  // Verify app-level type enabled
+  if !tool_service.is_type_enabled(&toolset.toolset_type).await? {
+    return Err(ToolsetError::ToolsetAppDisabled.into());
+  }
+
+  // Verify instance configured
+  if !toolset.enabled {
+    return Err(ToolsetError::ToolsetNotConfigured.into());
+  }
+
+  if !toolset.has_api_key {
+    return Err(ToolsetError::ToolsetNotConfigured.into());
+  }
+
+  Ok(())
 }
 
 /// Middleware for toolset execution endpoints
@@ -78,142 +206,54 @@ pub async fn toolset_auth_middleware(
     .ok_or(ToolsetAuthError::MissingAuth)?
     .clone();
 
-  // Extract user_id - required for all flows
-  let user_id = auth_context
-    .user_id()
-    .ok_or(ToolsetAuthError::MissingAuth)?
-    .to_string();
+  // Determine auth flow and extract user_id
+  let auth_flow = match &auth_context {
+    AuthContext::Session { user_id, .. } => ToolsetAuthFlow::Session {
+      user_id: user_id.clone(),
+    },
+    AuthContext::ExternalApp {
+      user_id,
+      azp,
+      access_request_id: Some(ar_id),
+      ..
+    } => ToolsetAuthFlow::OAuth {
+      user_id: user_id.clone(),
+      azp: azp.clone(),
+      access_request_id: ar_id.clone(),
+    },
+    _ => return Err(ToolsetAuthError::MissingAuth.into()),
+  };
+
+  let user_id = match &auth_flow {
+    ToolsetAuthFlow::Session { user_id } => user_id,
+    ToolsetAuthFlow::OAuth { user_id, .. } => user_id,
+  };
 
   // Extract toolset ID from path
-  let id = req
-    .uri()
-    .path()
-    .split('/')
-    .find(|seg| seg.len() == 36 && seg.contains('-'))
-    .ok_or(ToolsetAuthError::ToolsetNotFound)?
-    .to_string();
+  let toolset_id = extract_toolset_id_from_path(req.uri().path())?;
 
   let tool_service = state.app_service().tool_service();
   let db_service = state.app_service().db_service();
 
-  // Determine auth flow type from AuthContext variant
-  let (is_session, is_oauth) = match &auth_context {
-    AuthContext::Session { .. } => (true, false),
-    AuthContext::ExternalApp {
-      access_request_id, ..
-    } => (false, access_request_id.is_some()),
-    _ => (false, false),
-  };
-
-  if !is_session && !is_oauth {
-    return Err(ToolsetAuthError::MissingAuth.into());
-  }
-
-  // BOTH FLOWS: Verify toolset exists and get type
+  // Verify toolset exists
   let toolset = tool_service
-    .get(&user_id, &id)
+    .get(user_id, &toolset_id)
     .await?
     .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
-  // OAUTH FLOW: Access request validation
-  if let AuthContext::ExternalApp {
-    access_request_id: Some(ref ar_id),
-    ref azp,
+  // OAuth flow: validate access request and approved list
+  if let ToolsetAuthFlow::OAuth {
+    azp,
+    access_request_id,
     ..
-  } = auth_context
+  } = &auth_flow
   {
-    // Fetch access request
-    let access_request =
-      db_service
-        .get(ar_id)
-        .await?
-        .ok_or(ToolsetAuthError::AccessRequestNotFound {
-          access_request_id: ar_id.clone(),
-        })?;
-
-    // Validate status
-    if access_request.status != "approved" {
-      return Err(
-        ToolsetAuthError::AccessRequestNotApproved {
-          access_request_id: ar_id.clone(),
-          status: access_request.status,
-        }
-        .into(),
-      );
-    }
-
-    // Validate app_client_id matches token azp
-    if access_request.app_client_id != azp.as_str() {
-      return Err(
-        ToolsetAuthError::AppClientMismatch {
-          expected: access_request.app_client_id,
-          found: azp.clone(),
-        }
-        .into(),
-      );
-    }
-
-    // Validate user_id matches (must be present for approved requests)
-    let ar_user_id =
-      access_request
-        .user_id
-        .as_ref()
-        .ok_or(ToolsetAuthError::AccessRequestInvalid {
-          access_request_id: ar_id.clone(),
-          reason: "Missing user_id in approved access request".to_string(),
-        })?;
-
-    if ar_user_id != &user_id {
-      return Err(
-        ToolsetAuthError::UserMismatch {
-          expected: ar_user_id.clone(),
-          found: user_id.clone(),
-        }
-        .into(),
-      );
-    }
-
-    // Validate toolset instance in approved list
-    if let Some(approved_json) = &access_request.approved {
-      let approvals: serde_json::Value =
-        serde_json::from_str(approved_json).map_err(|e| ToolsetAuthError::InvalidApprovedJson {
-          error: e.to_string(),
-        })?;
-
-      let toolset_types = approvals
-        .get("toolset_types")
-        .and_then(|v| v.as_array())
-        .ok_or(ToolsetAuthError::InvalidApprovedJson {
-          error: "Missing toolset_types array".to_string(),
-        })?;
-
-      let instance_approved = toolset_types.iter().any(|approval| {
-        approval.get("status").and_then(|s| s.as_str()) == Some("approved")
-          && approval.get("instance_id").and_then(|i| i.as_str()) == Some(&id)
-      });
-
-      if !instance_approved {
-        return Err(ToolsetAuthError::ToolsetNotApproved { toolset_id: id }.into());
-      }
-    } else {
-      // approved is NULL - auto-approved request with no toolsets
-      return Err(ToolsetAuthError::ToolsetNotApproved { toolset_id: id }.into());
-    }
+    let approved = validate_access_request(&db_service, access_request_id, azp, user_id).await?;
+    validate_toolset_approved_list(&approved, &toolset_id)?;
   }
 
-  // BOTH FLOWS: Verify app-level type enabled
-  if !tool_service.is_type_enabled(&toolset.toolset_type).await? {
-    return Err(ToolsetError::ToolsetAppDisabled.into());
-  }
-
-  // BOTH FLOWS: Verify instance configured
-  if !toolset.enabled {
-    return Err(ToolsetError::ToolsetNotConfigured.into());
-  }
-
-  if !toolset.has_api_key {
-    return Err(ToolsetError::ToolsetNotConfigured.into());
-  }
+  // Both flows: validate toolset configuration
+  validate_toolset_configuration(&tool_service, &toolset).await?;
 
   Ok(next.run(req).await)
 }

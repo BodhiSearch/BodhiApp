@@ -37,7 +37,7 @@ All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmet
 Route handlers receive user identity through `Extension<AuthContext>` from Axum, where `AuthContext` is an enum defined in `auth_middleware`. The auth middleware populates this extension before handlers run. This replaces the previous approach of individual typed extractors (`ExtractUserId`, `ExtractToken`, `ExtractRole`, etc.) and manual `HeaderMap` parsing.
 
 **AuthContext variants:**
-- `AuthContext::Anonymous` -- Unauthenticated user (used behind `inject_optional_auth_info` middleware)
+- `AuthContext::Anonymous` -- Unauthenticated user (used behind `optional_auth_middleware` middleware)
 - `AuthContext::Session { user_id, username, role: Option<ResourceRole>, token }` -- Browser session auth
 - `AuthContext::ApiToken { user_id, scope: TokenScope, token }` -- API token auth
 - `AuthContext::ExternalApp { user_id, scope: UserScope, token, azp, access_request_id: Option<String> }` -- External app OAuth
@@ -59,7 +59,7 @@ async fn handler(
 The `.expect()` calls are safe on required-auth endpoints because the auth middleware guarantees `AuthContext` is set (non-Anonymous) before the handler runs.
 
 **Optional auth endpoints:**
-Handlers behind `inject_optional_auth_info` receive `AuthContext::Anonymous` for unauthenticated users. These handlers must handle `None` from `user_id()`/`token()` gracefully and must not use `.expect()`.
+Handlers behind `optional_auth_middleware` receive `AuthContext::Anonymous` for unauthenticated users. These handlers must handle `None` from `user_id()`/`token()` gracefully and must not use `.expect()`.
 
 **Testing pattern:**
 Tests use `RequestAuthContextExt::with_auth_context()` from `auth_middleware` test-utils to inject auth context into test requests:

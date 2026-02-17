@@ -37,7 +37,7 @@ use crate::{
 };
 use auth_middleware::canonical_url_middleware;
 use auth_middleware::{
-  api_auth_middleware, auth_middleware, inject_optional_auth_info, toolset_auth_middleware,
+  api_auth_middleware, auth_middleware, optional_auth_middleware, toolset_auth_middleware,
 };
 use axum::{
   middleware::from_fn_with_state,
@@ -101,7 +101,7 @@ pub fn build_routes(
   }
 
   let optional_auth =
-    optional_auth.route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info));
+    optional_auth.route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));
 
   // User level APIs (role=user & scope=scope_token_user)
   let user_apis = Router::new()
