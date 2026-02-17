@@ -1,20 +1,16 @@
 use crate::{user_info_handler, TokenInfo, UserResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN};
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::{
   body::Body,
   http::{status::StatusCode, Request},
   routing::get,
   Router,
 };
-use objs::{AppRole, ResourceRole, ResourceScope, TokenScope, UserInfo, UserScope};
+use objs::{AppRole, ResourceRole, TokenScope, UserInfo, UserScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use serde_json::Value;
-use server_core::{
-  test_utils::{RequestAuthExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext,
-};
+use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
 use services::{
   test_utils::{token, AppServiceStubBuilder},
   AppService,
@@ -35,65 +31,21 @@ fn test_router(app_service: Arc<dyn AppService>) -> Router {
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_user_info_handler_no_token_header() -> anyhow::Result<()> {
+async fn test_user_info_handler_anonymous() -> anyhow::Result<()> {
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
   let response = router
-    .oneshot(Request::get("/app/user").body(Body::empty())?)
+    .oneshot(
+      Request::get("/app/user")
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::Anonymous),
+    )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserResponse>().await?;
   assert_eq!(UserResponse::LoggedOut, response_json);
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let router = test_router(app_service);
-
-  let response = router
-    .oneshot(
-      Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, "")
-        .body(Body::empty())?,
-    )
-    .await?;
-
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-  let response_json = response.json::<Value>().await?;
-  assert_eq!(
-    "user_route_error-empty_token",
-    response_json["error"]["code"].as_str().unwrap()
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let router = test_router(app_service);
-
-  let response = router
-    .oneshot(
-      Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid_token")
-        .body(Body::empty())?,
-    )
-    .await?;
-
-  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-  let response_json = response.json::<Value>().await?;
-  assert_eq!(
-    "token_error-invalid_token",
-    response_json["error"]["code"].as_str().unwrap()
-  );
   Ok(())
 }
 
@@ -112,19 +64,21 @@ async fn test_user_info_handler_session_token_with_role(
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
+  // Extract claims before moving token into AuthContext
+  let claims = services::extract_claims::<services::Claims>(&token)?;
+
+  let auth_context =
+    AuthContext::test_session_with_token(&claims.sub, "testuser@email.com", role, &token);
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .with_user_auth(&token, &role.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserResponse>().await?;
-
-  // Extract user_id from the token to verify correct response
-  let claims = services::extract_claims::<services::Claims>(&token)?;
 
   assert_eq!(
     UserResponse::LoggedIn(UserInfo {
@@ -152,14 +106,12 @@ async fn test_user_info_handler_api_token_with_token_scope(
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
-  // API tokens are random strings, not JWT - simulate what middleware injects
-  let api_token = "bodhiapp_test_random_token_string";
-  let resource_scope = ResourceScope::Token(token_scope);
+  let auth_context = AuthContext::test_api_token("test-user-id", token_scope);
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .with_api_token(api_token, &resource_scope.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
     )
     .await?;
 
@@ -189,20 +141,26 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
-  let resource_scope = ResourceScope::User(user_scope);
+  // Extract claims before moving token into AuthContext
+  let claims = services::extract_claims::<services::Claims>(&token)?;
+
+  let auth_context = AuthContext::ExternalApp {
+    user_id: claims.sub.clone(),
+    scope: user_scope,
+    token: token.clone(),
+    azp: "test-azp".to_string(),
+    access_request_id: None,
+  };
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .with_api_token(&token, &resource_scope.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserResponse>().await?;
-
-  // Extract user_id from the token to verify correct response
-  let claims = services::extract_claims::<services::Claims>(&token)?;
 
   assert_eq!(
     UserResponse::LoggedIn(UserInfo {
@@ -220,68 +178,32 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_user_info_handler_role_takes_precedence_over_scope(
+async fn test_user_info_handler_session_without_role(
   token: (String, String),
 ) -> anyhow::Result<()> {
   let (token, _) = token;
   let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
   let router = test_router(app_service);
 
-  // Both role and scope headers present - role should take precedence
+  // Extract claims before moving token into AuthContext
+  let claims = services::extract_claims::<services::Claims>(&token)?;
+
+  let auth_context = AuthContext::Session {
+    user_id: claims.sub.clone(),
+    username: "testuser@email.com".to_string(),
+    role: None,
+    token: token.clone(),
+  };
   let response = router
     .oneshot(
       Request::get("/app/user")
-        .with_user_auth(&token, &ResourceRole::Manager.to_string())
-        .header(
-          KEY_HEADER_BODHIAPP_SCOPE,
-          ResourceScope::Token(TokenScope::User).to_string(),
-        )
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
     )
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
   let response_json = response.json::<UserResponse>().await?;
-
-  // Extract user_id from the token to verify correct response
-  let claims = services::extract_claims::<services::Claims>(&token)?;
-
-  assert_eq!(
-    UserResponse::LoggedIn(UserInfo {
-      user_id: claims.sub,
-      username: "testuser@email.com".to_string(),
-      first_name: Some("Test".to_string()),
-      last_name: Some("User".to_string()),
-      role: Some(AppRole::Session(ResourceRole::Manager)),
-    }),
-    response_json
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_user_info_handler_missing_role_and_scope_headers(
-  token: (String, String),
-) -> anyhow::Result<()> {
-  let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let router = test_router(app_service);
-
-  let response = router
-    .oneshot(
-      Request::get("/app/user")
-        .header(KEY_HEADER_BODHIAPP_TOKEN, &token)
-        .body(Body::empty())?,
-    )
-    .await?;
-
-  assert_eq!(StatusCode::OK, response.status());
-  let response_json = response.json::<UserResponse>().await?;
-
-  // Extract user_id from the token to verify correct response
-  let claims = services::extract_claims::<services::Claims>(&token)?;
 
   assert_eq!(
     UserResponse::LoggedIn(UserInfo {
@@ -292,60 +214,6 @@ async fn test_user_info_handler_missing_role_and_scope_headers(
       role: None,
     }),
     response_json
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_user_info_handler_malformed_role_header(
-  token: (String, String),
-) -> anyhow::Result<()> {
-  let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let router = test_router(app_service);
-
-  let response = router
-    .oneshot(
-      Request::get("/app/user")
-        .with_user_auth(&token, "invalid_role")
-        .body(Body::empty())?,
-    )
-    .await?;
-
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-  let response_json = response.json::<Value>().await?;
-  assert_eq!(
-    "role_error-invalid_role_name",
-    response_json["error"]["code"].as_str().unwrap()
-  );
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_user_info_handler_malformed_scope_header(
-  token: (String, String),
-) -> anyhow::Result<()> {
-  let (token, _) = token;
-  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
-  let router = test_router(app_service);
-
-  let response = router
-    .oneshot(
-      Request::get("/app/user")
-        .with_api_token(&token, "invalid_scope")
-        .body(Body::empty())?,
-    )
-    .await?;
-
-  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-  let response_json = response.json::<Value>().await?;
-  assert_eq!(
-    "resource_scope_error-invalid_scope",
-    response_json["error"]["code"].as_str().unwrap()
   );
   Ok(())
 }

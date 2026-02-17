@@ -2,8 +2,8 @@ use crate::shared::utils::extract_request_host;
 use crate::{AuthCallbackRequest, LoginError, RedirectResponse, ENDPOINT_LOGOUT};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
 use auth_middleware::{
-  app_status_or_default, generate_random_string, KEY_HEADER_BODHIAPP_TOKEN,
-  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID,
+  app_status_or_default, generate_random_string, AuthContext, SESSION_KEY_ACCESS_TOKEN,
+  SESSION_KEY_REFRESH_TOKEN, SESSION_KEY_USER_ID,
 };
 use axum::{
   extract::State,
@@ -11,7 +11,7 @@ use axum::{
     header::{HeaderMap, CACHE_CONTROL},
     StatusCode,
   },
-  Json,
+  Extension, Json,
 };
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::url::Url;
@@ -50,6 +50,7 @@ use tower_sessions::Session;
     )
 )]
 pub async fn auth_initiate_handler(
+  Extension(auth_context): Extension<AuthContext>,
   headers: HeaderMap,
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -58,7 +59,7 @@ pub async fn auth_initiate_handler(
   let setting_service = app_service.setting_service();
 
   // Early return if user is already authenticated
-  if headers.get(KEY_HEADER_BODHIAPP_TOKEN).is_some() {
+  if auth_context.is_authenticated() {
     return Ok((
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],

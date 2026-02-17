@@ -6,10 +6,7 @@ use crate::{
   ENDPOINT_USER_REQUEST_STATUS,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME,
-  KEY_HEADER_BODHIAPP_USER_ID,
-};
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -22,8 +19,7 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{
-  test_utils::{RequestAuthExt, ResponseTestExt},
-  DefaultRouterState, MockSharedContext, RouterState,
+  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
 };
 use services::{
   db::{AccessRepository, UserAccessRequest, UserAccessRequestStatus},
@@ -188,18 +184,21 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     )
     .with_state(state.clone());
 
-  // 10. Make HTTP request with required headers (simulating authenticated admin)
+  // 10. Make HTTP request with required auth context (simulating authenticated admin)
   let request = Request::post(format!(
     "{}/{}/approve",
     ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
   ))
-  .with_user_auth("dummy-admin-token", "resource_manager")
-  .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
-  .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
   .header("content-type", "application/json")
   .body(Body::from(serde_json::to_string(
     &json!({ "role": "resource_user" }),
-  )?))?;
+  )?))?
+  .with_auth_context(AuthContext::test_session_with_token(
+    "admin-user-id",
+    "admin@example.com",
+    ResourceRole::Manager,
+    "dummy-admin-token",
+  ));
 
   // Send request through the router
   let response = router.oneshot(request).await?;
@@ -265,9 +264,11 @@ async fn test_user_request_access_success(temp_bodhi_home: TempDir) -> anyhow::R
   let response = router
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
-        .header(KEY_HEADER_BODHIAPP_USERNAME, "newuser@example.com")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "new-user-id-123")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_no_role(
+          "new-user-id-123",
+          "newuser@example.com",
+        )),
     )
     .await?;
 
@@ -300,10 +301,12 @@ async fn test_user_request_access_already_has_role(temp_bodhi_home: TempDir) -> 
   let response = router
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
-        .header(KEY_HEADER_BODHIAPP_USERNAME, "existing@example.com")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "existing-user-id")
-        .header(KEY_HEADER_BODHIAPP_ROLE, "resource_user")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "existing-user-id",
+          "existing@example.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -353,9 +356,11 @@ async fn test_user_request_access_already_pending(temp_bodhi_home: TempDir) -> a
   let response = router
     .oneshot(
       Request::post(ENDPOINT_USER_REQUEST_ACCESS)
-        .header(KEY_HEADER_BODHIAPP_USERNAME, "duplicate@example.com")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "dup-user-id")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_no_role(
+          "dup-user-id",
+          "duplicate@example.com",
+        )),
     )
     .await?;
 
@@ -401,8 +406,12 @@ async fn test_request_status_found(temp_bodhi_home: TempDir) -> anyhow::Result<(
   let response = router
     .oneshot(
       Request::get(ENDPOINT_USER_REQUEST_STATUS)
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "status-user-id")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "status-user-id",
+          "status@example.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -435,8 +444,12 @@ async fn test_request_status_not_found(temp_bodhi_home: TempDir) -> anyhow::Resu
   let response = router
     .oneshot(
       Request::get(ENDPOINT_USER_REQUEST_STATUS)
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "no-such-user")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "no-such-user",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -584,8 +597,13 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
         "{}/{}/reject",
         ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
       ))
-      .header(KEY_HEADER_BODHIAPP_TOKEN, &test_token)
-      .body(Body::empty())?,
+      .body(Body::empty())?
+      .with_auth_context(AuthContext::test_session_with_token(
+        "test-user-id",
+        "user@test.com",
+        ResourceRole::Manager,
+        &test_token,
+      )),
     )
     .await?;
 
@@ -641,13 +659,16 @@ async fn test_approve_request_insufficient_privileges(
         "{}/{}/approve",
         ENDPOINT_ACCESS_REQUESTS_ALL, access_request.id
       ))
-      .with_user_auth("dummy-token", "resource_user")
-      .header(KEY_HEADER_BODHIAPP_USERNAME, "lowpriv@example.com")
-      .header(KEY_HEADER_BODHIAPP_USER_ID, "lowpriv-user-id")
       .header("content-type", "application/json")
       .body(Body::from(serde_json::to_string(
         &json!({ "role": "resource_admin" }),
-      )?))?,
+      )?))?
+      .with_auth_context(AuthContext::test_session_with_token(
+        "lowpriv-user-id",
+        "lowpriv@example.com",
+        ResourceRole::User,
+        "dummy-token",
+      )),
     )
     .await?;
 
@@ -689,13 +710,16 @@ async fn test_approve_request_not_found(temp_bodhi_home: TempDir) -> anyhow::Res
   let response = router
     .oneshot(
       Request::post(format!("{}/99999/approve", ENDPOINT_ACCESS_REQUESTS_ALL))
-        .with_user_auth("dummy-token", "resource_admin")
-        .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_string(
           &json!({ "role": "resource_user" }),
-        )?))?,
+        )?))?
+        .with_auth_context(AuthContext::test_session_with_token(
+          "admin-user-id",
+          "admin@example.com",
+          ResourceRole::Admin,
+          "dummy-token",
+        )),
     )
     .await?;
 

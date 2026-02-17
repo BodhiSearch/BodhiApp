@@ -1,4 +1,4 @@
-use crate::{app_status_or_default, DefaultTokenService};
+use crate::{app_status_or_default, AuthContext, DefaultTokenService};
 use axum::{
   extract::{Request, State},
   http::{header::HOST, HeaderMap},
@@ -7,7 +7,8 @@ use axum::{
 };
 
 use objs::{
-  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError, UserScopeError,
+  ApiError, AppError, AppRegInfoMissingError, ErrorType, ResourceScope, RoleError, TokenScopeError,
+  UserScopeError,
 };
 use server_core::RouterState;
 use services::{
@@ -22,22 +23,7 @@ pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
 pub const SESSION_KEY_USER_ID: &str = "user_id";
 
-macro_rules! bodhi_header {
-  ($name:literal) => {
-    concat!("X-BodhiApp-", $name)
-  };
-}
-
 pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
-pub const KEY_HEADER_BODHIAPP_TOKEN: &str = bodhi_header!("Token");
-pub const KEY_HEADER_BODHIAPP_USERNAME: &str = bodhi_header!("Username");
-pub const KEY_HEADER_BODHIAPP_ROLE: &str = bodhi_header!("Role");
-pub const KEY_HEADER_BODHIAPP_SCOPE: &str = bodhi_header!("Scope");
-pub const KEY_HEADER_BODHIAPP_USER_ID: &str = bodhi_header!("User-Id");
-// External app authorization headers
-pub const KEY_HEADER_BODHIAPP_AZP: &str = bodhi_header!("Azp");
-// Phase 4: Access request authorization header
-pub const KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID: &str = bodhi_header!("Access-Request-Id");
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
@@ -149,38 +135,36 @@ pub async fn auth_middleware(
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
     let (access_token, resource_scope, azp) = token_service.validate_bearer_token(header).await?;
     tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
-    req
-      .headers_mut()
-      .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
 
-    req.headers_mut().insert(
-      KEY_HEADER_BODHIAPP_SCOPE,
-      resource_scope.to_string().parse().unwrap(),
-    );
-
-    // Extract and set user_id and access_request_id from the exchanged token
-    if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-      // Set user_id from sub claim (required for toolset execution)
-      req.headers_mut().insert(
-        KEY_HEADER_BODHIAPP_USER_ID,
-        scope_claims.sub.parse().unwrap(),
-      );
-      // Set access_request_id if present in token claims (Phase 4: access request authorization)
-      if let Some(access_request_id) = scope_claims.access_request_id {
-        req.headers_mut().insert(
-          KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID,
-          access_request_id.parse().unwrap(),
-        );
+    let auth_context = match resource_scope {
+      ResourceScope::Token(scope) => {
+        let user_id = extract_claims::<ScopeClaims>(&access_token)
+          .map(|c| c.sub)
+          .unwrap_or_default();
+        AuthContext::ApiToken {
+          user_id,
+          scope,
+          token: access_token,
+        }
       }
-    }
+      ResourceScope::User(scope) => {
+        let (user_id, access_request_id) =
+          if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+            (scope_claims.sub, scope_claims.access_request_id)
+          } else {
+            (String::new(), None)
+          };
+        AuthContext::ExternalApp {
+          user_id,
+          scope,
+          token: access_token,
+          azp: azp.unwrap_or_default(),
+          access_request_id,
+        }
+      }
+    };
 
-    // Set azp (authorized party / app-client ID) from validate_bearer_token result
-    if let Some(azp) = azp {
-      req
-        .headers_mut()
-        .insert(KEY_HEADER_BODHIAPP_AZP, azp.parse().unwrap());
-    }
-
+    req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(&_headers) {
     // Check for token in session
@@ -193,28 +177,22 @@ pub async fn auth_middleware(
       let (access_token, role) = token_service
         .get_valid_session_token(session, access_token)
         .await?;
-      req
-        .headers_mut()
-        .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
-      if let Some(role) = role {
-        req
-          .headers_mut()
-          .insert(KEY_HEADER_BODHIAPP_ROLE, role.to_string().parse().unwrap());
-      }
-      // username only for session tokens for now, will implement for bearer once we implement access token story
+      let role = role.ok_or(AuthError::MissingRoles)?;
       let claims = extract_claims::<UserIdClaims>(&access_token)?;
       let user_id = claims.sub.clone();
-      req.headers_mut().insert(
-        KEY_HEADER_BODHIAPP_USERNAME,
-        claims.preferred_username.parse().unwrap(),
-      );
-      req
-        .headers_mut()
-        .insert(KEY_HEADER_BODHIAPP_USER_ID, user_id.parse().unwrap());
       debug!(
         "auth_middleware: session token validated successfully for user: {}",
         user_id
       );
+
+      let auth_context = AuthContext::Session {
+        user_id,
+        username: claims.preferred_username,
+        role: Some(role),
+        token: access_token,
+      };
+
+      req.extensions_mut().insert(auth_context);
       Ok(next.run(req).await)
     } else {
       debug!("auth_middleware: no access token in session, returning InvalidAccess");
@@ -246,6 +224,7 @@ pub async fn inject_optional_auth_info(
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
+    req.extensions_mut().insert(AuthContext::Anonymous);
     return Ok(next.run(req).await);
   }
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
@@ -254,14 +233,39 @@ pub async fn inject_optional_auth_info(
       if let Ok((access_token, resource_scope, _azp)) =
         token_service.validate_bearer_token(header).await
       {
-        req
-          .headers_mut()
-          .insert(KEY_HEADER_BODHIAPP_TOKEN, access_token.parse().unwrap());
-        req.headers_mut().insert(
-          KEY_HEADER_BODHIAPP_SCOPE,
-          resource_scope.to_string().parse().unwrap(),
-        );
+        let auth_context = match resource_scope {
+          ResourceScope::Token(scope) => {
+            let user_id = extract_claims::<ScopeClaims>(&access_token)
+              .map(|c| c.sub)
+              .unwrap_or_default();
+            AuthContext::ApiToken {
+              user_id,
+              scope,
+              token: access_token,
+            }
+          }
+          ResourceScope::User(scope) => {
+            let (user_id, access_request_id) =
+              if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
+                (scope_claims.sub, scope_claims.access_request_id)
+              } else {
+                (String::new(), None)
+              };
+            AuthContext::ExternalApp {
+              user_id,
+              scope,
+              token: access_token,
+              azp: _azp.unwrap_or_default(),
+              access_request_id,
+            }
+          }
+        };
+        req.extensions_mut().insert(auth_context);
+      } else {
+        req.extensions_mut().insert(AuthContext::Anonymous);
       }
+    } else {
+      req.extensions_mut().insert(AuthContext::Anonymous);
     }
   } else if is_same_origin(req.headers()) {
     // session token
@@ -272,26 +276,16 @@ pub async fn inject_optional_auth_info(
       {
         Ok((validated_token, role)) => {
           debug!("inject_session_auth_info: session token injected successfully");
-          req
-            .headers_mut()
-            .insert(KEY_HEADER_BODHIAPP_TOKEN, validated_token.parse().unwrap());
-          if let Some(role) = role {
-            req
-              .headers_mut()
-              .insert(KEY_HEADER_BODHIAPP_ROLE, role.to_string().parse().unwrap());
-          }
           let claims = extract_claims::<UserIdClaims>(&validated_token)?;
-          req.headers_mut().insert(
-            KEY_HEADER_BODHIAPP_USERNAME,
-            claims.preferred_username.parse().unwrap(),
-          );
-          req
-            .headers_mut()
-            .insert(KEY_HEADER_BODHIAPP_USER_ID, claims.sub.parse().unwrap());
+          let auth_context = AuthContext::Session {
+            user_id: claims.sub,
+            username: claims.preferred_username,
+            role,
+            token: validated_token,
+          };
+          req.extensions_mut().insert(auth_context);
         }
         Err(AuthError::RefreshTokenNotFound) => {
-          // Log this specific case - user needs to re-login
-          // Clear the invalid session data to prevent repeated failed refresh attempts
           debug!("inject_session_auth_info: session has no refresh token - clearing session data");
           if let Err(e) = session.remove::<String>(SESSION_KEY_ACCESS_TOKEN).await {
             debug!(?e, "Failed to clear access token from session");
@@ -302,15 +296,13 @@ pub async fn inject_optional_auth_info(
           if let Err(e) = session.remove::<String>(SESSION_KEY_USER_ID).await {
             debug!(?e, "Failed to clear user_id from session");
           }
+          req.extensions_mut().insert(AuthContext::Anonymous);
         }
         Err(err) => {
-          // Log other errors and clear session on unrecoverable errors
           debug!(
             ?err,
             "inject_session_auth_info: token validation/refresh failed"
           );
-
-          // Check if this is an auth error that indicates session should be cleared
           if matches!(
             err,
             AuthError::Token(_) | AuthError::AuthService(_) | AuthError::InvalidToken(_)
@@ -326,13 +318,16 @@ pub async fn inject_optional_auth_info(
               debug!(?e, "Failed to clear user_id from session");
             }
           }
+          req.extensions_mut().insert(AuthContext::Anonymous);
         }
       }
     } else {
       debug!("inject_session_auth_info: no access token in session");
+      req.extensions_mut().insert(AuthContext::Anonymous);
     }
   } else {
     debug!("inject_session_auth_info: is_same_origin is false");
+    req.extensions_mut().insert(AuthContext::Anonymous);
   }
   // Continue with the request
   Ok(next.run(req).await)
@@ -358,14 +353,11 @@ fn remove_app_headers(req: &mut axum::http::Request<axum::body::Body>) {
 
 #[cfg(test)]
 mod tests {
-  use super::{
-    KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
-    KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
-  };
-  use crate::{auth_middleware, inject_optional_auth_info};
+  use crate::{auth_middleware, inject_optional_auth_info, AuthContext};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
+    extract::Extension,
     http::{HeaderMap, Request, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Response},
@@ -374,7 +366,7 @@ mod tests {
   };
   use base64::{engine::general_purpose, Engine};
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_bodhi_home, ReqwestError};
+  use objs::{test_utils::temp_bodhi_home, ReqwestError, TokenScope};
   use pretty_assertions::assert_eq;
   use rand::RngCore;
   use rstest::rstest;
@@ -406,32 +398,50 @@ mod tests {
 
   #[derive(Debug, Serialize, Deserialize, PartialEq)]
   struct TestResponse {
-    x_resource_token: Option<String>,
-    x_resource_role: Option<String>,
-    x_resource_scope: Option<String>,
+    token: Option<String>,
+    role: Option<String>,
+    scope: Option<String>,
+    user_id: Option<String>,
+    is_authenticated: bool,
     authorization_header: Option<String>,
     path: String,
   }
 
-  async fn test_handler_teapot(headers: HeaderMap, path: &str) -> Response {
+  async fn test_handler_teapot(
+    auth_context: Option<Extension<AuthContext>>,
+    headers: HeaderMap,
+    path: &str,
+  ) -> Response {
     let authorization_header = headers
       .get("Authorization")
       .map(|v| v.to_str().unwrap().to_string());
-    let x_resource_token = headers
-      .get(KEY_HEADER_BODHIAPP_TOKEN)
-      .map(|v| v.to_str().unwrap().to_string());
-    let x_resource_role = headers
-      .get(KEY_HEADER_BODHIAPP_ROLE)
-      .map(|v| v.to_str().unwrap().to_string());
-    let x_resource_scope = headers
-      .get(KEY_HEADER_BODHIAPP_SCOPE)
-      .map(|v| v.to_str().unwrap().to_string());
+    let (token, role, scope, user_id, is_authenticated) =
+      if let Some(Extension(ctx)) = &auth_context {
+        let token = ctx.token().map(|s| s.to_string());
+        let role = match ctx {
+          AuthContext::Session {
+            role: Some(role), ..
+          } => Some(role.to_string()),
+          _ => None,
+        };
+        let scope = match ctx {
+          AuthContext::ApiToken { scope, .. } => Some(scope.to_string()),
+          _ => None,
+        };
+        let user_id = ctx.user_id().map(|s| s.to_string());
+        let is_authenticated = ctx.is_authenticated();
+        (token, role, scope, user_id, is_authenticated)
+      } else {
+        (None, None, None, None, false)
+      };
     (
       StatusCode::IM_A_TEAPOT,
       Json(TestResponse {
-        x_resource_token,
-        x_resource_role,
-        x_resource_scope,
+        token,
+        role,
+        scope,
+        user_id,
+        is_authenticated,
         authorization_header,
         path: path.to_string(),
       }),
@@ -442,14 +452,22 @@ mod tests {
   fn router_with_auth() -> Router<Arc<dyn RouterState>> {
     Router::new().route(
       "/with_auth",
-      get(|headers: HeaderMap| async move { test_handler_teapot(headers, "/with_auth").await }),
+      get(
+        |auth_context: Option<Extension<AuthContext>>, headers: HeaderMap| async move {
+          test_handler_teapot(auth_context, headers, "/with_auth").await
+        },
+      ),
     )
   }
 
   fn router_with_optional_auth() -> Router<Arc<dyn RouterState>> {
     Router::new().route(
       "/with_optional_auth",
-      get(|headers: HeaderMap| async move { test_handler_teapot(headers, "/with_optional_auth").await }),
+      get(
+        |auth_context: Option<Extension<AuthContext>>, headers: HeaderMap| async move {
+          test_handler_teapot(auth_context, headers, "/with_optional_auth").await
+        },
+      ),
     )
   }
 
@@ -465,31 +483,14 @@ mod tests {
   }
 
   async fn assert_optional_auth_passthrough(router: &Router) -> anyhow::Result<()> {
-    assert_optional_auth(router, None, None).await?;
-    Ok(())
-  }
-
-  async fn assert_optional_auth(
-    router: &Router,
-    authorization_header: Option<String>,
-    x_resource_token: Option<String>,
-  ) -> anyhow::Result<()> {
     let response = router
       .clone()
       .oneshot(Request::get("/with_optional_auth").body(Body::empty())?)
       .await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
     let response_json = response.json::<TestResponse>().await?;
-    assert_eq!(
-      TestResponse {
-        x_resource_token,
-        x_resource_role: None,
-        x_resource_scope: None,
-        authorization_header,
-        path: "/with_optional_auth".to_string(),
-      },
-      response_json
-    );
+    assert_eq!(false, response_json.is_authenticated);
+    assert_eq!(None, response_json.token);
     Ok(())
   }
 
@@ -596,19 +597,13 @@ mod tests {
     let router = test_router(state);
 
     let response = router.oneshot(req).await?;
-    // assert_eq!("", response.text().await?);
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
     let body = response.json::<TestResponse>().await?;
-    assert_eq!(
-      TestResponse {
-        path: path.to_string(),
-        authorization_header: None,
-        x_resource_token: Some(token),
-        x_resource_role: Some(expected_role.to_string()),
-        x_resource_scope: None,
-      },
-      body
-    );
+    assert_eq!(path, body.path);
+    assert_eq!(Some(token), body.token);
+    assert_eq!(Some(expected_role.to_string()), body.role);
+    assert_eq!(None, body.scope);
+    assert_eq!(true, body.is_authenticated);
     Ok(())
   }
 
@@ -687,16 +682,10 @@ mod tests {
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
     let body = response.json::<TestResponse>().await?;
-    assert_eq!(
-      TestResponse {
-        path: path.to_string(),
-        authorization_header: None,
-        x_resource_token: Some(exchanged_token.clone()),
-        x_resource_role: Some(expected_role.to_string()),
-        x_resource_scope: None,
-      },
-      body
-    );
+    assert_eq!(path, body.path);
+    assert_eq!(Some(exchanged_token.clone()), body.token);
+    assert_eq!(Some(expected_role.to_string()), body.role);
+    assert_eq!(true, body.is_authenticated);
 
     // Verify that the session was updated with the new tokens
     let updated_record = session_service.session_store.load(&id).await?.unwrap();
@@ -979,25 +968,20 @@ mod tests {
     ));
     let router = test_router(state);
     let req = Request::get("/with_optional_auth")
-      .header(KEY_HEADER_BODHIAPP_TOKEN, "user-sent-token")
-      .header(KEY_HEADER_BODHIAPP_ROLE, "user-sent-role")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, "user-sent-scope")
-      .header(KEY_HEADER_BODHIAPP_USERNAME, "user-sent-username")
-      .header(KEY_HEADER_BODHIAPP_USER_ID, "user-sent-userid")
+      .header("X-BodhiApp-Token", "user-sent-token")
+      .header("X-BodhiApp-Role", "user-sent-role")
+      .header("X-BodhiApp-Scope", "user-sent-scope")
+      .header("X-BodhiApp-Username", "user-sent-username")
+      .header("X-BodhiApp-User-Id", "user-sent-userid")
       .json(json! {{}})?;
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
     let actual: TestResponse = response.json().await?;
-    assert_eq!(
-      TestResponse {
-        path: "/with_optional_auth".to_string(),
-        x_resource_token: None,
-        authorization_header: None,
-        x_resource_role: None,
-        x_resource_scope: None,
-      },
-      actual
-    );
+    assert_eq!("/with_optional_auth", actual.path);
+    assert_eq!(false, actual.is_authenticated);
+    assert_eq!(None, actual.token);
+    assert_eq!(None, actual.role);
+    assert_eq!(None, actual.scope);
     Ok(())
   }
 
@@ -1102,18 +1086,14 @@ mod tests {
     // Assert response is successful
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
 
-    // Assert headers are set correctly
+    // Assert AuthContext is set correctly
     let actual: TestResponse = response.json().await?;
-    assert_eq!(
-      TestResponse {
-        path: "/with_auth".to_string(),
-        x_resource_token: Some(token_str.clone()),
-        x_resource_role: None,
-        x_resource_scope: Some(scope_str.to_string()),
-        authorization_header: Some(format!("Bearer {}", token_str)),
-      },
-      actual
-    );
+    assert_eq!("/with_auth", actual.path);
+    assert_eq!(Some(token_str.clone()), actual.token);
+    assert_eq!(None, actual.role);
+    let expected_scope: TokenScope = scope_str.parse().unwrap();
+    assert_eq!(Some(expected_scope.to_string()), actual.scope);
+    assert_eq!(true, actual.is_authenticated);
     Ok(())
   }
 
@@ -1174,18 +1154,13 @@ mod tests {
     // Assert response is successful
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
 
-    // Assert headers are set correctly
+    // Assert AuthContext is set correctly
     let actual: TestResponse = response.json().await?;
-    assert_eq!(
-      TestResponse {
-        path: "/with_auth".to_string(),
-        x_resource_token: Some(token_str),
-        x_resource_role: None,
-        x_resource_scope: Some("scope_token_user".to_string()),
-        authorization_header: Some(format!("Bearer bodhiapp_{}", random_string)),
-      },
-      actual
-    );
+    assert_eq!("/with_auth", actual.path);
+    assert_eq!(Some(token_str), actual.token);
+    assert_eq!(None, actual.role);
+    assert_eq!(Some("scope_token_user".to_string()), actual.scope);
+    assert_eq!(true, actual.is_authenticated);
     Ok(())
   }
 

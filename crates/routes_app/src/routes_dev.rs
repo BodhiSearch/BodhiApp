@@ -96,18 +96,14 @@ pub async fn dev_db_reset_handler(
 mod tests {
   use super::*;
   use anyhow_trace::anyhow_trace;
-  use axum::{
-    body::Body,
-    extract::State,
-    http::StatusCode,
-  };
+  use axum::{body::Body, extract::State, http::StatusCode};
   use objs::{AliasSource, ApiFormat, UserAlias};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::Value;
   use server_core::{DefaultRouterState, MockSharedContext, RouterState};
   use services::{
-    db::{ApiToken, DownloadRequest, DownloadStatus, ModelMetadataRow, ToolsetRow, TokenStatus},
+    db::{ApiToken, DownloadRequest, DownloadStatus, ModelMetadataRow, TokenStatus, ToolsetRow},
     test_utils::app_service_stub,
     AppService,
   };
@@ -225,9 +221,7 @@ mod tests {
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
-    db_service
-      .create_api_model_alias(&api_alias, None)
-      .await?;
+    db_service.create_api_model_alias(&api_alias, None).await?;
 
     // Create metadata
     let metadata = ModelMetadataRow {

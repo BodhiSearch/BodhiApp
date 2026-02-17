@@ -1,9 +1,9 @@
 use crate::{ChangeRoleRequest, ListUsersParams, UserRouteError};
-use auth_middleware::ExtractToken;
+use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
-  Json,
+  Extension, Json,
 };
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
@@ -31,14 +31,15 @@ use tracing::{error, info, warn};
     )
 )]
 pub async fn list_users_handler(
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<ListUsersParams>,
 ) -> Result<Json<UserListResponse>, ApiError> {
+  let token = auth_context.token().expect("requires auth middleware");
   // Call auth service to list users
   let auth_service = state.app_service().auth_service();
   let users = auth_service
-    .list_users(&token, params.page, params.page_size)
+    .list_users(token, params.page, params.page_size)
     .await
     .map_err(|e| {
       error!("Failed to list users from auth service: {}", e);
@@ -70,12 +71,13 @@ pub async fn list_users_handler(
     )
 )]
 pub async fn change_user_role_handler(
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(user_id): Path<String>,
   Json(request): Json<ChangeRoleRequest>,
 ) -> Result<StatusCode, ApiError> {
-  let claims: Claims = extract_claims::<Claims>(&token)?;
+  let token = auth_context.token().expect("requires auth middleware");
+  let claims: Claims = extract_claims::<Claims>(token)?;
 
   info!(
     "User {} changing role for user {} to role {}",
@@ -84,7 +86,7 @@ pub async fn change_user_role_handler(
 
   let auth_service = state.app_service().auth_service();
   auth_service
-    .assign_user_role(&token, &user_id, &request.role)
+    .assign_user_role(token, &user_id, &request.role)
     .await
     .map_err(|e| {
       error!("Failed to change user role: {}", e);
@@ -132,11 +134,12 @@ pub async fn change_user_role_handler(
     )
 )]
 pub async fn remove_user_handler(
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(user_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-  let claims: Claims = extract_claims::<Claims>(&token)?;
+  let token = auth_context.token().expect("requires auth middleware");
+  let claims: Claims = extract_claims::<Claims>(token)?;
 
   info!(
     "User {} removing user {}",
@@ -145,7 +148,7 @@ pub async fn remove_user_handler(
 
   let auth_service = state.app_service().auth_service();
   auth_service
-    .remove_user(&token, &user_id)
+    .remove_user(token, &user_id)
     .await
     .map_err(|e| {
       error!("Failed to remove user: {}", e);

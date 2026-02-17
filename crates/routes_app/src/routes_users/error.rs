@@ -3,12 +3,6 @@ use objs::{AppError, ErrorType};
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum UserRouteError {
-  #[error("Invalid header value: {0}.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidHeader(String),
-  #[error("Injected token is empty.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  EmptyToken,
   #[error("Failed to list users: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ListFailed(String),

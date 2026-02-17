@@ -1,12 +1,12 @@
-use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
+use crate::AuthContext;
 use axum::{
   extract::{Request, State},
   middleware::Next,
   response::Response,
 };
 use objs::{
-  ApiError, AppError, ErrorType, ResourceRole, ResourceScope, ResourceScopeError, RoleError,
-  TokenScope, TokenScopeError, UserScope, UserScopeError,
+  ApiError, AppError, ErrorType, ResourceRole, ResourceScopeError, RoleError, TokenScope,
+  TokenScopeError, UserScope, UserScopeError,
 };
 use server_core::RouterState;
 use services::SecretServiceError;
@@ -23,12 +23,6 @@ pub enum ApiAuthError {
   #[error("Authentication required. Provide an API key or log in.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingAuth,
-  #[error("malformed_role")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  MalformedRole(String),
-  #[error("malformed_scope")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  MalformedScope(String),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidRole(#[from] RoleError),
@@ -72,55 +66,43 @@ pub async fn _impl(
   req: Request,
   next: Next,
 ) -> Result<Response, ApiAuthError> {
-  // Get headers
-  let role_header = req.headers().get(KEY_HEADER_BODHIAPP_ROLE);
-  let scope_header = req.headers().get(KEY_HEADER_BODHIAPP_SCOPE);
+  let auth_context = req
+    .extensions()
+    .get::<AuthContext>()
+    .ok_or(ApiAuthError::MissingAuth)?;
 
-  match (role_header, scope_header) {
-    // Role header present - validate against required role (takes precedence)
-    (Some(role_header), _) => {
-      let user_role = role_header
-        .to_str()
-        .map_err(|e| ApiAuthError::MalformedRole(e.to_string()))?
-        .parse::<ResourceRole>()?;
-
-      if !user_role.has_access_to(&required_role) {
+  match auth_context {
+    AuthContext::Session {
+      role: Some(role), ..
+    } => {
+      if !role.has_access_to(&required_role) {
         return Err(ApiAuthError::Forbidden);
       }
     }
-
-    // No role header but scope header present
-    (None, Some(scope_header)) => {
-      let scope_str = scope_header
-        .to_str()
-        .map_err(|e| ApiAuthError::MalformedScope(e.to_string()))?;
-
-      let resource_scope = ResourceScope::try_parse(scope_str)?;
-
-      match resource_scope {
-        ResourceScope::Token(token_scope) => {
-          if let Some(required_token_scope) = required_token_scope {
-            if !token_scope.has_access_to(&required_token_scope) {
-              return Err(ApiAuthError::Forbidden);
-            }
-          } else {
-            return Err(ApiAuthError::MissingAuth);
-          }
+    AuthContext::Session { role: None, .. } => {
+      return Err(ApiAuthError::MissingAuth);
+    }
+    AuthContext::ApiToken { scope, .. } => {
+      if let Some(required_token_scope) = required_token_scope {
+        if !scope.has_access_to(&required_token_scope) {
+          return Err(ApiAuthError::Forbidden);
         }
-        ResourceScope::User(user_scope) => {
-          if let Some(required_user_scope) = required_user_scope {
-            if !user_scope.has_access_to(&required_user_scope) {
-              return Err(ApiAuthError::Forbidden);
-            }
-          } else {
-            return Err(ApiAuthError::MissingAuth);
-          }
-        }
+      } else {
+        return Err(ApiAuthError::MissingAuth);
       }
     }
-
-    // No valid auth headers found
-    _ => return Err(ApiAuthError::MissingAuth),
+    AuthContext::ExternalApp { scope, .. } => {
+      if let Some(required_user_scope) = required_user_scope {
+        if !scope.has_access_to(&required_user_scope) {
+          return Err(ApiAuthError::Forbidden);
+        }
+      } else {
+        return Err(ApiAuthError::MissingAuth);
+      }
+    }
+    AuthContext::Anonymous => {
+      return Err(ApiAuthError::MissingAuth);
+    }
   }
 
   Ok(next.run(req).await)
@@ -128,10 +110,10 @@ pub async fn _impl(
 
 #[cfg(test)]
 mod tests {
-  use crate::{api_auth_middleware, KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
+  use crate::{api_auth_middleware, AuthContext};
   use axum::{
     body::Body,
-    http::{HeaderValue, Request, Response, StatusCode},
+    http::{Request, Response, StatusCode},
     middleware::from_fn_with_state,
     routing::get,
     Router,
@@ -153,9 +135,20 @@ mod tests {
       .unwrap()
   }
 
-  async fn test_router(
+  /// Helper middleware that injects AuthContext into request extensions
+  async fn inject_auth_context(
+    auth_context: AuthContext,
+    mut req: axum::extract::Request,
+    next: axum::middleware::Next,
+  ) -> axum::response::Response {
+    req.extensions_mut().insert(auth_context);
+    next.run(req).await
+  }
+
+  async fn test_router_with_auth_context(
     required_role: ResourceRole,
     required_token_scope: Option<TokenScope>,
+    auth_context: AuthContext,
   ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
@@ -167,6 +160,7 @@ mod tests {
       Arc::new(app_service),
     ));
 
+    let ctx = auth_context.clone();
     Router::new()
       .route("/test", get(test_handler))
       .route_layer(from_fn_with_state(
@@ -175,12 +169,17 @@ mod tests {
           api_auth_middleware(required_role, required_token_scope, None, state, req, next)
         },
       ))
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
       .with_state(state)
   }
 
-  async fn test_router_user_scope(
+  async fn test_router_user_scope_with_auth_context(
     required_role: ResourceRole,
     required_user_scope: Option<UserScope>,
+    auth_context: AuthContext,
   ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
@@ -192,6 +191,7 @@ mod tests {
       Arc::new(app_service),
     ));
 
+    let ctx = auth_context.clone();
     Router::new()
       .route("/test", get(test_handler))
       .route_layer(from_fn_with_state(
@@ -200,6 +200,10 @@ mod tests {
           api_auth_middleware(required_role, None, required_user_scope, state, req, next)
         },
       ))
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
       .with_state(state)
   }
 
@@ -219,11 +223,9 @@ mod tests {
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, None).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_session("user1", "user@test.com", user_role);
+    let router = test_router_with_auth_context(required_role, None, ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::OK, response.status());
@@ -242,11 +244,9 @@ mod tests {
     #[case] user_role: ResourceRole,
     #[case] required_role: ResourceRole,
   ) -> anyhow::Result<()> {
-    let router = test_router(required_role, None).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_session("user1", "user@test.com", user_role);
+    let router = test_router_with_auth_context(required_role, None, ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::FORBIDDEN, response.status());
@@ -263,11 +263,9 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, Some(required_scope)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_api_token("user1", user_scope);
+    let router = test_router_with_auth_context(ResourceRole::User, Some(required_scope), ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::OK, response.status());
@@ -283,11 +281,9 @@ mod tests {
     #[case] user_scope: TokenScope,
     #[case] required_scope: TokenScope,
   ) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, Some(required_scope)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_api_token("user1", user_scope);
+    let router = test_router_with_auth_context(ResourceRole::User, Some(required_scope), ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::FORBIDDEN, response.status());
@@ -301,11 +297,9 @@ mod tests {
   #[case::scope_not_allowed_admin(TokenScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_scope_not_allowed(#[case] scope: TokenScope) -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_api_token("user1", scope);
+    let router = test_router_with_auth_context(ResourceRole::User, None, ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -313,87 +307,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case::role_success_scope_insufficient(
-    ResourceRole::Admin,  // user_role
-    TokenScope::User,  // user_scope
-    ResourceRole::User,  // required_role
-    Some(TokenScope::Admin)  // required_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_success(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: TokenScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_scope: Option<TokenScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::OK, response.status());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::role_insufficient_scope_insufficient(
-    ResourceRole::User,  // user_role
-    TokenScope::User,  // user_scope
-    ResourceRole::Admin,  // required_role
-    Some(TokenScope::Admin)  // required_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_failure(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: TokenScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_scope: Option<TokenScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::FORBIDDEN, response.status());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::role_success_no_scope(
-    ResourceRole::Admin,  // user_role
-    TokenScope::User,  // user_scope
-    ResourceRole::User,  // required_role
-    None  // required_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_no_scope_required(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: TokenScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_scope: Option<TokenScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router(required_role, required_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::OK, response.status());
-    Ok(())
-  }
-
-  #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_missing_role() -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None).await;
+    let ctx = AuthContext::Anonymous;
+    let router = test_router_with_auth_context(ResourceRole::User, None, ctx).await;
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -406,37 +323,6 @@ mod tests {
           "code": "api_auth_error-missing_auth"
         }
       }),
-      error
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_api_auth_middleware_invalid_role() -> anyhow::Result<()> {
-    let router = test_router(ResourceRole::User, None).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(
-        KEY_HEADER_BODHIAPP_ROLE,
-        HeaderValue::from_bytes(b"some_invalid_role")?,
-      )
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    let error = response.json::<Value>().await?;
-    assert_eq!(
-      serde_json::json! {{
-        "error": {
-          "message": "invalid_role_name",
-          "type": "authentication_error",
-          "code": "role_error-invalid_role_name",
-          "param": {
-            "var_0": "some_invalid_role"
-          }
-        }
-      }},
       error
     );
     Ok(())
@@ -462,11 +348,11 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_external_app("user1", user_scope, "app1", None);
+    let router =
+      test_router_user_scope_with_auth_context(ResourceRole::User, Some(required_user_scope), ctx)
+        .await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::OK, response.status());
@@ -485,11 +371,11 @@ mod tests {
     #[case] user_scope: UserScope,
     #[case] required_user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(required_user_scope)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_external_app("user1", user_scope, "app1", None);
+    let router =
+      test_router_user_scope_with_auth_context(ResourceRole::User, Some(required_user_scope), ctx)
+        .await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::FORBIDDEN, response.status());
@@ -505,11 +391,9 @@ mod tests {
   async fn test_api_auth_user_scope_not_allowed(
     #[case] user_scope: UserScope,
   ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, None).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
+    let ctx = AuthContext::test_external_app("user1", user_scope, "app1", None);
+    let router = test_router_user_scope_with_auth_context(ResourceRole::User, None, ctx).await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -517,87 +401,12 @@ mod tests {
   }
 
   #[rstest]
-  #[case::role_success_user_scope_insufficient(
-    ResourceRole::Admin,  // user_role
-    UserScope::User,  // user_scope
-    ResourceRole::User,  // required_role
-    Some(UserScope::Admin)  // required_user_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_over_user_scope_success(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: UserScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_user_scope: Option<UserScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::OK, response.status());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::role_insufficient_user_scope_insufficient(
-    ResourceRole::User,  // user_role
-    UserScope::User,  // user_scope
-    ResourceRole::Admin,  // required_role
-    Some(UserScope::Admin)  // required_user_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_over_user_scope_failure(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: UserScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_user_scope: Option<UserScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::FORBIDDEN, response.status());
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::role_success_no_user_scope(
-    ResourceRole::Admin,  // user_role
-    UserScope::User,  // user_scope
-    ResourceRole::User,  // required_role
-    None  // required_user_scope
-  )]
-  #[tokio::test]
-  async fn test_api_auth_role_precedence_no_user_scope_required(
-    #[case] user_role: ResourceRole,
-    #[case] user_scope: UserScope,
-    #[case] required_role: ResourceRole,
-    #[case] required_user_scope: Option<UserScope>,
-  ) -> anyhow::Result<()> {
-    let router = test_router_user_scope(required_role, required_user_scope).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_ROLE, user_role.to_string())
-      .header(KEY_HEADER_BODHIAPP_SCOPE, user_scope.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::OK, response.status());
-    Ok(())
-  }
-
-  #[rstest]
   #[tokio::test]
   async fn test_api_auth_middleware_user_scope_missing_auth() -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
+    let ctx = AuthContext::Anonymous;
+    let router =
+      test_router_user_scope_with_auth_context(ResourceRole::User, Some(UserScope::User), ctx)
+        .await;
     let req = Request::builder().uri("/test").body(Body::empty())?;
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
@@ -612,52 +421,6 @@ mod tests {
       }),
       error
     );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_api_auth_middleware_invalid_user_scope() -> anyhow::Result<()> {
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(
-        KEY_HEADER_BODHIAPP_SCOPE,
-        HeaderValue::from_bytes(b"invalid_user_scope")?,
-      )
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    let error = response.json::<Value>().await?;
-    assert_eq!(
-      serde_json::json!({
-        "error": {
-          "message": "invalid resource scope: invalid_user_scope",
-          "type": "authentication_error",
-          "code": "resource_scope_error-invalid_scope",
-          "param": {
-            "var_0": "invalid_user_scope"
-          }
-        }
-      }),
-      error
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_api_auth_middleware_token_scope_in_user_scope_context() -> anyhow::Result<()> {
-    // Test sending a TokenScope value when UserScope is expected
-    let router = test_router_user_scope(ResourceRole::User, Some(UserScope::User)).await;
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_HEADER_BODHIAPP_SCOPE, TokenScope::Admin.to_string())
-      .body(Body::empty())?;
-
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
     Ok(())
   }
 }

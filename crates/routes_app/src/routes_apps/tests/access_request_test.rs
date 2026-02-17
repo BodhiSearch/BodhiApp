@@ -4,8 +4,10 @@ use crate::{
   ENDPOINT_ACCESS_REQUESTS_DENY,
 };
 use anyhow_trace::anyhow_trace;
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{routing::post, Router};
+use objs::ResourceRole;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
@@ -208,9 +210,13 @@ async fn test_approve_access_request_success(
     .method("PUT")
     .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
-    .header("X-BodhiApp-User-Id", user_id)
-    .header("X-BodhiApp-Token", "dummy-token")
-    .body(Body::from(serde_json::to_string(&body)?))?;
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
 
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::OK, response.status());
@@ -270,9 +276,13 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
     .method("PUT")
     .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
-    .header("X-BodhiApp-User-Id", user_id)
-    .header("X-BodhiApp-Token", "dummy-token")
-    .body(Body::from(serde_json::to_string(&body)?))?;
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
 
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::FORBIDDEN, response.status());
@@ -331,9 +341,13 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
     .method("PUT")
     .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
-    .header("X-BodhiApp-User-Id", user_id)
-    .header("X-BodhiApp-Token", "dummy-token")
-    .body(Body::from(serde_json::to_string(&body)?))?;
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
 
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -392,9 +406,13 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
     .method("PUT")
     .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
     .header("Content-Type", "application/json")
-    .header("X-BodhiApp-User-Id", user_id)
-    .header("X-BodhiApp-Token", "dummy-token")
-    .body(Body::from(serde_json::to_string(&body)?))?;
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
 
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -445,8 +463,12 @@ async fn test_deny_access_request_success(
   let request = axum::http::Request::builder()
     .method("POST")
     .uri(format!("/bodhi/v1/access-requests/{}/deny", request_id))
-    .header("X-BodhiApp-User-Id", user_id)
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+    ));
 
   let response = router.oneshot(request).await?;
   assert_eq!(StatusCode::OK, response.status());

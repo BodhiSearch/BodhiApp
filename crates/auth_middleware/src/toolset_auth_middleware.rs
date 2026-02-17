@@ -1,7 +1,4 @@
-use crate::{
-  extractors::{ExtractUserId, MaybeAccessRequestId, MaybeRole},
-  KEY_HEADER_BODHIAPP_AZP,
-};
+use crate::AuthContext;
 use axum::{
   body::Body,
   extract::{Request, State},
@@ -65,19 +62,28 @@ pub enum ToolsetAuthError {
 /// Middleware for toolset execution endpoints
 ///
 /// Authorization rules:
-/// - Session (has ROLE header): Check toolset ownership + app-level type enabled + toolset available
-/// - OAuth (has access_request_id): Validate access request + instance authorization + toolset configuration
+/// - Session (has role): Check toolset ownership + app-level type enabled + toolset available
+/// - OAuth (ExternalApp with access_request_id): Validate access request + instance authorization + toolset configuration
 ///
 /// Note:
 /// - API tokens (bodhiapp_*) are blocked at route level and won't reach this middleware.
 pub async fn toolset_auth_middleware(
-  ExtractUserId(user_id): ExtractUserId,
-  MaybeRole(role): MaybeRole,
-  MaybeAccessRequestId(access_request_id): MaybeAccessRequestId,
   State(state): State<Arc<dyn RouterState>>,
   req: Request<Body>,
   next: Next,
 ) -> Result<Response, ApiError> {
+  let auth_context = req
+    .extensions()
+    .get::<AuthContext>()
+    .ok_or(ToolsetAuthError::MissingAuth)?
+    .clone();
+
+  // Extract user_id - required for all flows
+  let user_id = auth_context
+    .user_id()
+    .ok_or(ToolsetAuthError::MissingAuth)?
+    .to_string();
+
   // Extract toolset ID from path
   let id = req
     .uri()
@@ -90,9 +96,14 @@ pub async fn toolset_auth_middleware(
   let tool_service = state.app_service().tool_service();
   let db_service = state.app_service().db_service();
 
-  // Determine auth flow type
-  let is_session = role.is_some();
-  let is_oauth = access_request_id.is_some();
+  // Determine auth flow type from AuthContext variant
+  let (is_session, is_oauth) = match &auth_context {
+    AuthContext::Session { .. } => (true, false),
+    AuthContext::ExternalApp {
+      access_request_id, ..
+    } => (false, access_request_id.is_some()),
+    _ => (false, false),
+  };
 
   if !is_session && !is_oauth {
     return Err(ToolsetAuthError::MissingAuth.into());
@@ -105,13 +116,16 @@ pub async fn toolset_auth_middleware(
     .ok_or(ToolsetAuthError::ToolsetNotFound)?;
 
   // OAUTH FLOW: Access request validation
-  if is_oauth {
-    let ar_id = access_request_id.unwrap();
-
+  if let AuthContext::ExternalApp {
+    access_request_id: Some(ref ar_id),
+    ref azp,
+    ..
+  } = auth_context
+  {
     // Fetch access request
     let access_request =
       db_service
-        .get(&ar_id)
+        .get(ar_id)
         .await?
         .ok_or(ToolsetAuthError::AccessRequestNotFound {
           access_request_id: ar_id.clone(),
@@ -121,7 +135,7 @@ pub async fn toolset_auth_middleware(
     if access_request.status != "approved" {
       return Err(
         ToolsetAuthError::AccessRequestNotApproved {
-          access_request_id: ar_id,
+          access_request_id: ar_id.clone(),
           status: access_request.status,
         }
         .into(),
@@ -129,17 +143,11 @@ pub async fn toolset_auth_middleware(
     }
 
     // Validate app_client_id matches token azp
-    let azp = req
-      .headers()
-      .get(KEY_HEADER_BODHIAPP_AZP)
-      .and_then(|h| h.to_str().ok())
-      .ok_or(ToolsetAuthError::MissingAuth)?;
-
-    if access_request.app_client_id != azp {
+    if access_request.app_client_id != azp.as_str() {
       return Err(
         ToolsetAuthError::AppClientMismatch {
           expected: access_request.app_client_id,
-          found: azp.to_string(),
+          found: azp.clone(),
         }
         .into(),
       );
@@ -213,7 +221,7 @@ pub async fn toolset_auth_middleware(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_USER_ID};
+  use crate::AuthContext;
   use axum::{
     body::Body,
     http::{Request, Response, StatusCode},
@@ -222,7 +230,7 @@ mod tests {
     Router,
   };
   use chrono::Utc;
-  use objs::{ResourceRole, Toolset};
+  use objs::{ResourceRole, Toolset, UserScope};
   use rstest::{fixture, rstest};
   use server_core::{DefaultRouterState, MockSharedContext};
   use services::{
@@ -240,9 +248,20 @@ mod tests {
       .unwrap()
   }
 
-  async fn test_router_with_tool_service(mock_tool_service: MockToolService) -> Router {
-    // For session auth tests, we don't need DbService, but the middleware requires it
-    // So we provide a mock that will never be called in session auth flows
+  /// Helper middleware that injects AuthContext into request extensions
+  async fn inject_auth_context(
+    auth_context: AuthContext,
+    mut req: axum::extract::Request,
+    next: axum::middleware::Next,
+  ) -> axum::response::Response {
+    req.extensions_mut().insert(auth_context);
+    next.run(req).await
+  }
+
+  async fn test_router_with_tool_service(
+    mock_tool_service: MockToolService,
+    auth_context: AuthContext,
+  ) -> Router {
     let mock_db_service = MockDbService::new();
 
     let app_service = AppServiceStubBuilder::default()
@@ -257,11 +276,16 @@ mod tests {
       Arc::new(app_service),
     ));
 
+    let ctx = auth_context.clone();
     Router::new()
       .route(
         "/toolsets/{id}/execute/{method}",
         post(test_handler).route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware)),
       )
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
       .with_state(state)
   }
 
@@ -303,7 +327,6 @@ mod tests {
     instance_clone.enabled = instance_enabled;
     instance_clone.has_api_key = instance_has_api_key;
 
-    // Setup expectations
     mock_tool_service
       .expect_get()
       .withf(move |user_id, id| user_id == "user123" && id == &instance_id)
@@ -324,15 +347,14 @@ mod tests {
         .returning(move |_| Ok(type_enabled));
     }
 
-    let app = test_router_with_tool_service(mock_tool_service).await;
+    let ctx = AuthContext::test_session("user123", "user@test.com", ResourceRole::User);
+    let app = test_router_with_tool_service(mock_tool_service, ctx).await;
 
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id_for_uri))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
           .body(Body::empty())
           .unwrap(),
       )
@@ -342,41 +364,18 @@ mod tests {
     assert_eq!(response.status(), expected_status);
   }
 
-  // Error condition tests
-  #[rstest]
-  #[tokio::test]
-  async fn test_missing_user_id(test_instance: Toolset) {
-    let mock_tool_service = MockToolService::new();
-    let app = test_router_with_tool_service(mock_tool_service).await;
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method("POST")
-          .uri(format!("/toolsets/{}/execute/search", test_instance.id))
-          .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    // With extractors, missing user_id header returns 400 Bad Request
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-  }
-
   #[rstest]
   #[tokio::test]
   async fn test_missing_auth(test_instance: Toolset) {
     let mock_tool_service = MockToolService::new();
-    let app = test_router_with_tool_service(mock_tool_service).await;
+    let ctx = AuthContext::Anonymous;
+    let app = test_router_with_tool_service(mock_tool_service, ctx).await;
 
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", test_instance.id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
           .body(Body::empty())
           .unwrap(),
       )
@@ -390,6 +389,7 @@ mod tests {
   async fn test_router_with_db_and_tool_service(
     db_service: Arc<TestDbService>,
     mock_tool_service: MockToolService,
+    auth_context: AuthContext,
   ) -> Router {
     let app_service = AppServiceStubBuilder::default()
       .with_tool_service(Arc::new(mock_tool_service))
@@ -403,11 +403,16 @@ mod tests {
       Arc::new(app_service),
     ));
 
+    let ctx = auth_context.clone();
     Router::new()
       .route(
         "/toolsets/{id}/execute/{method}",
         post(test_handler).route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware)),
       )
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
       .with_state(state)
   }
 
@@ -480,16 +485,14 @@ mod tests {
         .returning(|_| Ok(true));
     }
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
+    let ctx = AuthContext::test_external_app("user123", UserScope::User, "app1", Some("ar-uuid"));
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service, ctx).await;
 
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
-          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
           .body(Body::empty())
           .unwrap(),
       )
@@ -544,17 +547,15 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
-
     // Send request with azp = "app2" (mismatch)
+    let ctx = AuthContext::test_external_app("user123", UserScope::User, "app2", Some("ar-uuid"));
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service, ctx).await;
+
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
-          .header(KEY_HEADER_BODHIAPP_AZP, "app2")
           .body(Body::empty())
           .unwrap(),
       )
@@ -609,17 +610,15 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
-
     // Send request with user_id = "user2" (mismatch)
+    let ctx = AuthContext::test_external_app("user2", UserScope::User, "app1", Some("ar-uuid"));
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service, ctx).await;
+
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user2")
-          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
-          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
           .body(Body::empty())
           .unwrap(),
       )
@@ -671,16 +670,14 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
+    let ctx = AuthContext::test_external_app("user123", UserScope::User, "app1", Some("ar-uuid"));
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service, ctx).await;
 
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID, "ar-uuid")
-          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
           .body(Body::empty())
           .unwrap(),
       )
@@ -711,19 +708,19 @@ mod tests {
       .times(1)
       .returning(move |_, _| Ok(Some(test_instance.clone())));
 
-    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service).await;
+    let ctx = AuthContext::test_external_app(
+      "user123",
+      UserScope::User,
+      "app1",
+      Some("ar-uuid-nonexistent"),
+    );
+    let app = test_router_with_db_and_tool_service(Arc::new(test_db), mock_tool_service, ctx).await;
 
     let response = app
       .oneshot(
         Request::builder()
           .method("POST")
           .uri(format!("/toolsets/{}/execute/search", instance_id))
-          .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-          .header(
-            crate::KEY_HEADER_BODHIAPP_ACCESS_REQUEST_ID,
-            "ar-uuid-nonexistent",
-          )
-          .header(KEY_HEADER_BODHIAPP_AZP, "app1")
           .body(Body::empty())
           .unwrap(),
       )

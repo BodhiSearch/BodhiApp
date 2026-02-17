@@ -2,16 +2,16 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{
   auth_middleware,
   test_utils::{AuthServerConfig, AuthServerTestClient, TestUser},
-  KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
+  AuthContext,
 };
 use axum::{
   body::Body,
   extract::State,
-  http::{HeaderMap, Request, StatusCode},
+  http::{Request, StatusCode},
   middleware::from_fn_with_state,
   response::Json,
   routing::get,
-  Router,
+  Extension, Router,
 };
 use objs::{ErrorBody, OpenAIApiError};
 use rstest::{fixture, rstest};
@@ -34,19 +34,21 @@ struct TestTokenResponse {
   scope: Option<String>,
 }
 
-// Test endpoint that returns info about injected auth headers
+// Test endpoint that returns info about injected auth context
 async fn test_token_info_handler(
-  headers: HeaderMap,
+  auth_context: Option<Extension<AuthContext>>,
   State(_state): State<Arc<dyn RouterState>>,
 ) -> Json<TestTokenResponse> {
-  let token = headers
-    .get(KEY_HEADER_BODHIAPP_TOKEN)
-    .and_then(|t| t.to_str().ok())
+  let auth_context = auth_context.map(|Extension(ctx)| ctx);
+  let token = auth_context
+    .as_ref()
+    .and_then(|ctx| ctx.token())
     .map(|s| s.to_string());
-  let scope = headers
-    .get(KEY_HEADER_BODHIAPP_SCOPE)
-    .and_then(|s| s.to_str().ok())
-    .map(|s| s.to_string());
+  let scope = auth_context.as_ref().and_then(|ctx| match ctx {
+    AuthContext::ApiToken { scope, .. } => Some(format!("{}", scope)),
+    AuthContext::ExternalApp { scope, .. } => Some(format!("{}", scope)),
+    _ => None,
+  });
   Json(TestTokenResponse { token, scope })
 }
 

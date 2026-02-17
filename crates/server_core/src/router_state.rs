@@ -174,7 +174,8 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .await
-      .build().await?;
+      .build()
+      .await?;
     let state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
@@ -227,7 +228,8 @@ mod test {
       .with_hub_service()
       .with_data_service()
       .await
-      .build().await?;
+      .build()
+      .await?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     state
       .forward_request(LlmEndpoint::ChatCompletions, request_value)
@@ -267,7 +269,8 @@ mod test {
       .with_hub_service()
       .with_data_service()
       .await
-      .build().await?;
+      .build()
+      .await?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let result = state
       .forward_request(LlmEndpoint::ChatCompletions, request_value)

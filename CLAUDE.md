@@ -79,8 +79,7 @@ The project uses a Cargo workspace with these main crates:
 - `auth_middleware` - Authentication and authorization
 
 **API Crates:**
-- `routes_app` - Application, OpenAI-compatible, and Ollama API endpoints (domain modules: `routes_oai/`, `routes_ollama/`)
-- `routes_all` - Unified route composition
+- `routes_app` - Unified route composition
 
 **Application Crates:**
 - `server_app` - Standalone HTTP server

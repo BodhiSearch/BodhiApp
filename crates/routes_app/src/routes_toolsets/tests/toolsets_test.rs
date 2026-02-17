@@ -1,18 +1,16 @@
 use crate::{routes_toolsets, ApiKeyUpdateDto, ListToolsetsResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::KEY_HEADER_BODHIAPP_USER_ID;
-use auth_middleware::{KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE};
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use chrono::Utc;
 use objs::{
   AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetDefinition,
-  ToolsetExecutionResponse,
+  ToolsetExecutionResponse, UserScope,
 };
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
-use server_core::test_utils::RequestAuthExt;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{test_utils::AppServiceStubBuilder, MockToolService};
 use std::sync::Arc;
@@ -115,19 +113,33 @@ async fn test_list_toolsets(
 
   let app = test_router(mock_tool_service).await?;
 
-  let mut request_builder = Request::builder()
+  let request = Request::builder()
     .method("GET")
     .uri("/toolsets")
-    .header(KEY_HEADER_BODHIAPP_USER_ID, "user123");
+    .body(Body::empty())?;
 
-  if is_session {
-    request_builder =
-      request_builder.header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string());
+  let request = if is_session {
+    request.with_auth_context(AuthContext::test_session(
+      "user123",
+      "user@test.com",
+      ResourceRole::User,
+    ))
   } else if is_oauth_filtered {
-    request_builder = request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user");
-  }
+    request.with_auth_context(AuthContext::test_external_app(
+      "user123",
+      UserScope::User,
+      "test-app",
+      None,
+    ))
+  } else {
+    request.with_auth_context(AuthContext::test_session(
+      "user123",
+      "user@test.com",
+      ResourceRole::User,
+    ))
+  };
 
-  let response = app.oneshot(request_builder.body(Body::empty())?).await?;
+  let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
@@ -172,9 +184,12 @@ async fn test_list_toolsets_session_returns_all_toolset_types(
       Request::builder()
         .method("GET")
         .uri("/toolsets")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -231,9 +246,13 @@ async fn test_list_toolsets_oauth_returns_scoped_toolset_types(
       Request::builder()
         .method("GET")
         .uri("/toolsets")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_external_app(
+          "user123",
+          UserScope::User,
+          "test-app",
+          None,
+        )),
     )
     .await?;
 
@@ -275,9 +294,13 @@ async fn test_list_toolsets_oauth_empty_scopes_returns_empty_toolset_types() -> 
       Request::builder()
         .method("GET")
         .uri("/toolsets")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_user")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_external_app(
+          "user123",
+          UserScope::User,
+          "test-app",
+          None,
+        )),
     )
     .await?;
 
@@ -343,10 +366,13 @@ async fn test_create_toolset(
       Request::builder()
         .method("POST")
         .uri("/toolsets")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body)?))?,
+        .body(Body::from(serde_json::to_string(&request_body)?))?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -394,9 +420,12 @@ async fn test_get_toolset(
       Request::builder()
         .method("GET")
         .uri(format!("/toolsets/{}", test_instance.id))
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -463,10 +492,13 @@ async fn test_update_toolset(
       Request::builder()
         .method("PUT")
         .uri(format!("/toolsets/{}", test_instance.id))
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body)?))?,
+        .body(Body::from(serde_json::to_string(&request_body)?))?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -509,10 +541,13 @@ async fn test_update_toolset_not_found(
       Request::builder()
         .method("PUT")
         .uri(format!("/toolsets/{}", test_instance.id))
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body)?))?,
+        .body(Body::from(serde_json::to_string(&request_body)?))?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -560,9 +595,12 @@ async fn test_delete_toolset(
       Request::builder()
         .method("DELETE")
         .uri(format!("/toolsets/{}", test_instance.id))
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -614,10 +652,13 @@ async fn test_execute_toolset(
       Request::builder()
         .method("POST")
         .uri(format!("/toolsets/{}/execute/search", test_instance.id))
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "user123")
-        .header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::User.to_string())
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&request_body)?))?,
+        .body(Body::from(serde_json::to_string(&request_body)?))?
+        .with_auth_context(AuthContext::test_session(
+          "user123",
+          "user@test.com",
+          ResourceRole::User,
+        )),
     )
     .await?;
 
@@ -667,19 +708,27 @@ async fn test_list_toolset_types(
 
   let app = test_router(mock_tool_service).await?;
 
-  let mut request_builder = Request::builder()
+  let request = Request::builder()
     .method("GET")
     .uri("/toolset_types")
-    .header(KEY_HEADER_BODHIAPP_USER_ID, "user123");
+    .body(Body::empty())?;
 
-  if is_session {
-    request_builder =
-      request_builder.header(KEY_HEADER_BODHIAPP_ROLE, ResourceRole::Admin.to_string());
+  let request = if is_session {
+    request.with_auth_context(AuthContext::test_session(
+      "user123",
+      "user@test.com",
+      ResourceRole::Admin,
+    ))
   } else {
-    request_builder = request_builder.header(KEY_HEADER_BODHIAPP_SCOPE, "scope_user_admin");
-  }
+    request.with_auth_context(AuthContext::test_external_app(
+      "user123",
+      UserScope::Admin,
+      "test-app",
+      None,
+    ))
+  };
 
-  let response = app.oneshot(request_builder.body(Body::empty())?).await?;
+  let response = app.oneshot(request).await?;
 
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
@@ -735,9 +784,13 @@ async fn test_enable_type(
       Request::builder()
         .method("PUT")
         .uri("/toolset_types/builtin-exa-search/app-config")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
-        .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_with_token(
+          "admin123",
+          "admin@test.com",
+          ResourceRole::Admin,
+          "admin-token",
+        )),
     )
     .await?;
 
@@ -791,9 +844,13 @@ async fn test_disable_type(
       Request::builder()
         .method("DELETE")
         .uri("/toolset_types/builtin-exa-search/app-config")
-        .header(KEY_HEADER_BODHIAPP_USER_ID, "admin123")
-        .with_user_auth("admin-token", &ResourceRole::Admin.to_string())
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_with_token(
+          "admin123",
+          "admin@test.com",
+          ResourceRole::Admin,
+          "admin-token",
+        )),
     )
     .await?;
 

@@ -109,27 +109,3 @@ impl RequestTestExt for Builder {
     Ok(result)
   }
 }
-
-/// Extension trait for adding authentication headers to test requests.
-///
-/// Uses the same header names as `auth_middleware` (`X-BodhiApp-Token`,
-/// `X-BodhiApp-Role`, `X-BodhiApp-Scope`) without introducing a circular
-/// dependency on the `auth_middleware` crate.
-pub trait RequestAuthExt {
-  fn with_user_auth(self, token: &str, role: &str) -> Builder;
-  fn with_api_token(self, token: &str, scope: &str) -> Builder;
-}
-
-impl RequestAuthExt for Builder {
-  fn with_user_auth(self, token: &str, role: &str) -> Builder {
-    self
-      .header("X-BodhiApp-Token", token)
-      .header("X-BodhiApp-Role", role)
-  }
-
-  fn with_api_token(self, token: &str, scope: &str) -> Builder {
-    self
-      .header("X-BodhiApp-Token", token)
-      .header("X-BodhiApp-Scope", scope)
-  }
-}

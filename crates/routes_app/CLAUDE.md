@@ -22,7 +22,7 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `LoginError` -- OAuth flow failures (AppRegInfoNotFound, SessionInfoNotFound, OAuthError, StateDigestMismatch, MissingState, MissingCode)
 - `LogoutError` -- Session destruction failures
 - `AccessRequestError` -- Access request workflow (AlreadyPending, AlreadyHasAccess, PendingRequestNotFound, InsufficientPrivileges)
-- `UserManagementError` -- Admin user operations (ListFailed, RoleChangeFailed, RemoveFailed)
+- `UserRouteError` -- Admin user operations (ListFailed, RoleChangeFailed, RemoveFailed)
 - `ApiTokenError` -- Token lifecycle (AppRegMissing, AccessTokenMissing, PrivilegeEscalation, InvalidScope, InvalidRole)
 - `AppServiceError` -- Setup flow (AlreadySetup, ServerNameTooShort)
 - `MetadataError` -- Model metadata operations (InvalidRepoFormat, ListAliasesFailed, AliasNotFound, ExtractionFailed, EnqueueFailed)
@@ -30,28 +30,53 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `ToolsetValidationError` -- Toolset CRUD validation
 - `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
 - `CreateAliasError` -- Model alias creation
-- `UserInfoError` -- User info endpoint (InvalidHeader, EmptyToken)
 
 All enums use the `#[error_meta(trait_to_impl = AppError)]` pattern from `errmeta_derive`, mapping each variant to an `ErrorType` that determines the HTTP status code via the `ApiError` conversion in `objs`.
 
-### Typed Axum Extractors from auth_middleware
-The crate uses **typed Axum extractors** from `auth_middleware` instead of manual `HeaderMap` parsing for user identity. This eliminates a class of bugs where handlers could forget to check for missing headers or parse them incorrectly.
+### AuthContext Extension Pattern
+Route handlers receive user identity through `Extension<AuthContext>` from Axum, where `AuthContext` is an enum defined in `auth_middleware`. The auth middleware populates this extension before handlers run. This replaces the previous approach of individual typed extractors (`ExtractUserId`, `ExtractToken`, `ExtractRole`, etc.) and manual `HeaderMap` parsing.
 
-**Extractors used throughout the crate:**
-- `ExtractUserId(user_id)` -- Extracts user ID from `X-BodhiApp-User-Id` header; returns `ApiError` if missing
-- `ExtractToken(token)` -- Extracts auth token from `X-BodhiApp-Token` header; returns `ApiError` if missing
-- `ExtractUsername(username)` -- Extracts username from `X-BodhiApp-Username` header
-- `ExtractRole(role)` -- Extracts parsed `ResourceRole` from `X-BodhiApp-Role` header
-- `MaybeRole(role)` -- Extracts `Option<ResourceRole>`, allowing handlers to check if user has any role
+**AuthContext variants:**
+- `AuthContext::Anonymous` -- Unauthenticated user (used behind `inject_optional_auth_info` middleware)
+- `AuthContext::Session { user_id, username, role: Option<ResourceRole>, token }` -- Browser session auth
+- `AuthContext::ApiToken { user_id, scope: TokenScope, token }` -- API token auth
+- `AuthContext::ExternalApp { user_id, scope: UserScope, token, azp, access_request_id: Option<String> }` -- External app OAuth
 
-**Important nuance**: Some handlers that use typed extractors also accept `HeaderMap` as a parameter. This is intentional -- the `HeaderMap` is used for auxiliary functions like `is_oauth_auth()` that inspect scope and role headers for filtering logic, not for extracting user identity. The pattern is: extractors for identity, HeaderMap for auxiliary inspection.
+**Handler pattern -- required auth endpoints:**
+```rust
+async fn handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+) -> Result<..., ApiError> {
+  // Pattern match when you need multiple fields:
+  let AuthContext::Session { ref user_id, ref token, .. } = auth_context else {
+    return Err(/* appropriate error */);
+  };
+  // Or use convenience methods when you need just one field:
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let token = auth_context.token().expect("requires auth middleware");
+```
+The `.expect()` calls are safe on required-auth endpoints because the auth middleware guarantees `AuthContext` is set (non-Anonymous) before the handler runs.
 
-**Migration note**: The helper functions `extract_user_id_from_headers` and `extract_token_from_headers` that previously existed in `routes_toolsets.rs` have been removed in favor of the typed extractors.
+**Optional auth endpoints:**
+Handlers behind `inject_optional_auth_info` receive `AuthContext::Anonymous` for unauthenticated users. These handlers must handle `None` from `user_id()`/`token()` gracefully and must not use `.expect()`.
+
+**Testing pattern:**
+Tests use `RequestAuthContextExt::with_auth_context()` from `auth_middleware` test-utils to inject auth context into test requests:
+```rust
+use auth_middleware::RequestAuthContextExt;
+let request = Request::builder()
+  .uri("/some/endpoint")
+  .body(Body::empty())
+  .unwrap()
+  .with_auth_context(AuthContext::test_session("test-user", "testname", ResourceRole::Admin));
+```
+Factory methods: `AuthContext::test_session()`, `AuthContext::test_session_with_token()`, `AuthContext::test_session_no_role()`, `AuthContext::test_api_token()`, `AuthContext::test_external_app()`.
 
 ## Architecture Position
 
 The `routes_app` crate sits in the **API layer** of BodhiApp's architecture:
-- **Depends on**: `objs` (domain types, errors), `services` (business logic), `commands` (CLI orchestration), `auth_middleware` (extractors, session helpers), `server_core` (RouterState)
+- **Depends on**: `objs` (domain types, errors), `services` (business logic), `commands` (CLI orchestration), `auth_middleware` (AuthContext extension, session helpers), `server_core` (RouterState)
 - **Consumed by**: `server_app` (standalone server), `bodhi` (Tauri app)
 - **Parallel to**: `routes_oai` (OpenAI-compatible endpoints)
 
@@ -98,10 +123,10 @@ Token creation enforces a strict privilege matrix:
 4. Rejection via `reject_request_handler` updates status
 
 ### Toolset Management
-Toolset routes use a dual-auth model:
-- Session auth (role headers) grants full access to all toolset types
-- OAuth auth (scope headers) restricts access to toolset types matching `scope_toolset-*` scopes in the token
-- The `is_oauth_auth()` helper distinguishes these two auth modes by checking header presence
+Toolset routes use a dual-auth model based on `AuthContext` variant:
+- `AuthContext::Session` grants full access to all toolset types
+- `AuthContext::ExternalApp` restricts access to toolset types matching `scope_toolset-*` scopes in the token
+- The handler matches on the `AuthContext` variant to distinguish these two auth modes
 
 ### Model Metadata Refresh
 Supports two modes via discriminated union request body:
@@ -158,7 +183,7 @@ This distinction keeps `routes_app` tests fast (no TCP listener overhead), focus
 
 ### Adding New Application Endpoints
 1. Define a domain-specific error enum with `#[error_meta(trait_to_impl = AppError)]` variants for every distinct failure mode
-2. Use typed extractors (`ExtractUserId`, `ExtractToken`, etc.) for user identity -- only add `HeaderMap` if auxiliary header inspection is needed
+2. Accept `Extension(auth_context): Extension<AuthContext>` for user identity -- pattern match the variant or use convenience methods (`user_id()`, `token()`) as appropriate
 3. Add `#[utoipa::path(...)]` annotations with comprehensive request/response examples and security requirements
 4. Coordinate through `RouterState` for service access
 5. For complex multi-service operations, consider delegating to the `commands` crate

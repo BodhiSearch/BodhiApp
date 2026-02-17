@@ -1,8 +1,6 @@
 use crate::{change_user_role_handler, list_users_handler, remove_user_handler};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{
-  KEY_HEADER_BODHIAPP_TOKEN, KEY_HEADER_BODHIAPP_USERNAME, KEY_HEADER_BODHIAPP_USER_ID,
-};
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::{
   body::Body,
   http::{Request, StatusCode},
@@ -80,12 +78,15 @@ async fn test_list_users_handler_success(_temp_bodhi_home: TempDir) -> anyhow::R
     .route("/bodhi/v1/users", get(list_users_handler))
     .with_state(state);
 
-  // Make request with required headers
+  // Make request with auth context
   let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, "test-token")
-    .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
-    .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "admin-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      "test-token",
+    ));
 
   // Send request through router
   let response = router.oneshot(request).await?;
@@ -136,12 +137,15 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
     .route("/bodhi/v1/users", get(list_users_handler))
     .with_state(state);
 
-  // Make request with required headers
+  // Make request with auth context
   let request = Request::get("/bodhi/v1/users?page=1&page_size=10")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, "invalid-token")
-    .header(KEY_HEADER_BODHIAPP_USERNAME, "user@example.com")
-    .header(KEY_HEADER_BODHIAPP_USER_ID, "user-id")
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "user-id",
+      "user@example.com",
+      ResourceRole::Admin,
+      "invalid-token",
+    ));
 
   // Send request through router
   let response = router.oneshot(request).await?;
@@ -153,42 +157,6 @@ async fn test_list_users_handler_auth_error(_temp_bodhi_home: TempDir) -> anyhow
   let response_json = response.json::<Value>().await?;
   assert_eq!(
     "user_route_error-list_failed",
-    response_json["error"]["code"].as_str().unwrap()
-  );
-
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_list_users_handler_missing_token(_temp_bodhi_home: TempDir) -> anyhow::Result<()> {
-  // Build app service (auth service won't be called)
-  let app_service = AppServiceStubBuilder::default().build().await?;
-
-  // Create router with handler
-  let state = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  ));
-
-  let router = Router::new()
-    .route("/bodhi/v1/users", get(list_users_handler))
-    .with_state(state);
-
-  // Make request without token header
-  let request = Request::get("/bodhi/v1/users?page=1&page_size=10").body(Body::empty())?;
-
-  // Send request through router
-  let response = router.oneshot(request).await?;
-
-  // Verify bad request response
-  assert_eq!(StatusCode::BAD_REQUEST, response.status());
-
-  // Verify error code
-  let response_json = response.json::<Value>().await?;
-  assert_eq!(
-    "header_extraction_error-missing",
     response_json["error"]["code"].as_str().unwrap()
   );
 
@@ -238,10 +206,13 @@ async fn test_list_users_handler_pagination_parameters(
 
   // Make request with custom pagination
   let request = Request::get("/bodhi/v1/users?page=2&page_size=5")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, "test-token")
-    .header(KEY_HEADER_BODHIAPP_USERNAME, "admin@example.com")
-    .header(KEY_HEADER_BODHIAPP_USER_ID, "admin-user-id")
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "admin-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      "test-token",
+    ));
 
   // Send request through router
   let response = router.oneshot(request).await?;
@@ -306,9 +277,14 @@ async fn test_change_user_role_clears_sessions(_temp_bodhi_home: TempDir) -> any
 
   // Make request
   let request = Request::put("/bodhi/v1/users/user-123/role")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
     .header("Content-Type", "application/json")
-    .body(Body::from(r#"{"role": "resource_power_user"}"#))?;
+    .body(Body::from(r#"{"role": "resource_power_user"}"#))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "test-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
 
   // Send request
   let response = router.oneshot(request).await?;
@@ -353,8 +329,13 @@ async fn test_remove_user_handler_success(_temp_bodhi_home: TempDir) -> anyhow::
     .with_state(state);
 
   let request = Request::delete("/bodhi/v1/users/user-to-remove")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "test-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
 
   let response = router.oneshot(request).await?;
 
@@ -391,8 +372,13 @@ async fn test_remove_user_handler_auth_error(_temp_bodhi_home: TempDir) -> anyho
     .with_state(state);
 
   let request = Request::delete("/bodhi/v1/users/nonexistent-user")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
-    .body(Body::empty())?;
+    .body(Body::empty())?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "test-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
 
   let response = router.oneshot(request).await?;
 
@@ -444,9 +430,14 @@ async fn test_change_user_role_handler_auth_error(_temp_bodhi_home: TempDir) -> 
     .with_state(state);
 
   let request = Request::put("/bodhi/v1/users/user-123/role")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
     .header("Content-Type", "application/json")
-    .body(Body::from(r#"{"role": "resource_admin"}"#))?;
+    .body(Body::from(r#"{"role": "resource_admin"}"#))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "test-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
 
   let response = router.oneshot(request).await?;
 
@@ -506,9 +497,14 @@ async fn test_change_user_role_session_clear_failure_still_succeeds(
     .with_state(state);
 
   let request = Request::put("/bodhi/v1/users/user-123/role")
-    .header(KEY_HEADER_BODHIAPP_TOKEN, test_token)
     .header("Content-Type", "application/json")
-    .body(Body::from(r#"{"role": "resource_user"}"#))?;
+    .body(Body::from(r#"{"role": "resource_user"}"#))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      "test-user-id",
+      "admin@example.com",
+      ResourceRole::Admin,
+      &test_token,
+    ));
 
   let response = router.oneshot(request).await?;
 

@@ -3,6 +3,7 @@ use crate::{
   CreateApiTokenRequest, PaginatedApiTokenResponse, UpdateApiTokenRequest,
 };
 use anyhow_trace::anyhow_trace;
+use auth_middleware::{AuthContext, RequestAuthContextExt};
 use axum::{
   body::Body,
   http::{Method, Request},
@@ -10,11 +11,11 @@ use axum::{
   Router,
 };
 use hyper::StatusCode;
-use objs::TokenScope;
+use objs::{ResourceRole, TokenScope};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use server_core::{
-  test_utils::{RequestAuthExt, RequestTestExt, ResponseTestExt},
+  test_utils::{RequestTestExt, ResponseTestExt},
   DefaultRouterState, MockSharedContext,
 };
 use services::{
@@ -84,9 +85,14 @@ async fn test_list_tokens_pagination(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens?page=1&page_size=10")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::Admin,
+          &token,
+        )),
     )
     .await?;
 
@@ -102,9 +108,14 @@ async fn test_list_tokens_pagination(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens?page=2&page_size=10")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::Admin,
+          &token,
+        )),
     )
     .await?;
 
@@ -127,7 +138,9 @@ async fn test_list_tokens_empty(
   #[from(test_db_service)]
   db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let (token, _) = build_token(access_token_claims())?;
+  let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
+  let (token, _) = build_token(claims)?;
   let db_service = Arc::new(db_service);
   let app_service = AppServiceStubBuilder::default()
     .db_service(db_service.clone())
@@ -141,9 +154,14 @@ async fn test_list_tokens_empty(
     .oneshot(
       Request::builder()
         .method(Method::GET)
-        .header("X-BodhiApp-Token", &token)
         .uri("/api/tokens")
-        .body(Body::empty())?,
+        .body(Body::empty())?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::Admin,
+          &token,
+        )),
     )
     .await?;
 
@@ -158,22 +176,22 @@ async fn test_list_tokens_empty(
 }
 
 #[rstest]
-#[case::user_role_user_scope("resource_user", TokenScope::User, "scope_token_user")]
-#[case::admin_role_user_scope("resource_admin", TokenScope::User, "scope_token_user")]
+#[case::user_role_user_scope(ResourceRole::User, TokenScope::User, "scope_token_user")]
+#[case::admin_role_user_scope(ResourceRole::Admin, TokenScope::User, "scope_token_user")]
 #[case::admin_role_power_user_scope(
-  "resource_admin",
+  ResourceRole::Admin,
   TokenScope::PowerUser,
   "scope_token_power_user"
 )]
-#[case::manager_role_user_scope("resource_manager", TokenScope::User, "scope_token_user")]
+#[case::manager_role_user_scope(ResourceRole::Manager, TokenScope::User, "scope_token_user")]
 #[case::manager_role_power_user_scope(
-  "resource_manager",
+  ResourceRole::Manager,
   TokenScope::PowerUser,
   "scope_token_power_user"
 )]
-#[case::power_user_role_user_scope("resource_power_user", TokenScope::User, "scope_token_user")]
+#[case::power_user_role_user_scope(ResourceRole::PowerUser, TokenScope::User, "scope_token_user")]
 #[case::power_user_role_power_user_scope(
-  "resource_power_user",
+  ResourceRole::PowerUser,
   TokenScope::PowerUser,
   "scope_token_power_user"
 )]
@@ -181,7 +199,7 @@ async fn test_list_tokens_empty(
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_handler_role_scope_mapping(
-  #[case] role: &str,
+  #[case] role: ResourceRole,
   #[case] requested_scope: TokenScope,
   #[case] expected_scope: &str,
   #[future] test_db_service: TestDbService,
@@ -204,11 +222,16 @@ async fn test_create_token_handler_role_scope_mapping(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
-          name: Some(format!("Test Token for {}", role)),
+          name: Some(format!("Test Token for {:?}", role)),
           scope: requested_scope,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          role,
+          &access_token,
+        )),
     )
     .await?;
 
@@ -260,11 +283,16 @@ async fn test_create_token_handler_success(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, "resource_user")
         .json(&CreateApiTokenRequest {
           name: Some(token_name.to_string()),
           scope: TokenScope::User,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::User,
+          &access_token,
+        )),
     )
     .await?;
 
@@ -314,6 +342,7 @@ async fn test_create_token_handler_without_name(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
   let (access_token, _) = build_token(claims)?;
 
   let test_db_service = Arc::new(test_db_service);
@@ -330,11 +359,16 @@ async fn test_create_token_handler_without_name(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, "resource_user")
         .json(&CreateApiTokenRequest {
           name: None,
           scope: TokenScope::User,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::User,
+          &access_token,
+        )),
     )
     .await?;
 
@@ -369,7 +403,7 @@ async fn test_create_token_handler_missing_auth(
 
   let app = app(app_service).await;
 
-  // Make create request WITHOUT authentication header
+  // Make create request WITHOUT authentication (anonymous context)
   let response = app
     .oneshot(
       Request::builder()
@@ -378,7 +412,8 @@ async fn test_create_token_handler_missing_auth(
         .json(&CreateApiTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
-        })?,
+        })?
+        .with_auth_context(AuthContext::Anonymous),
     )
     .await?;
 
@@ -394,8 +429,7 @@ async fn test_create_token_handler_missing_auth(
 async fn test_create_token_handler_invalid_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let claims = access_token_claims();
-  let (access_token, _) = build_token(claims)?;
+  let user_id = Uuid::new_v4().to_string();
 
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
@@ -405,17 +439,17 @@ async fn test_create_token_handler_invalid_role(
 
   let app = app(app_service).await;
 
-  // Make create request with INVALID role header
+  // Make create request with session that has no role (equivalent to invalid role)
   let response = app
     .oneshot(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, "invalid_role_value")
         .json(&CreateApiTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_no_role(&user_id, "user@test.com")),
     )
     .await?;
 
@@ -431,8 +465,7 @@ async fn test_create_token_handler_invalid_role(
 async fn test_create_token_handler_missing_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let claims = access_token_claims();
-  let (access_token, _) = build_token(claims)?;
+  let user_id = Uuid::new_v4().to_string();
 
   let test_db_service = Arc::new(test_db_service);
   let app_service = AppServiceStubBuilder::default()
@@ -442,18 +475,17 @@ async fn test_create_token_handler_missing_role(
 
   let app = app(app_service).await;
 
-  // Make create request WITHOUT role header (should fail)
+  // Make create request with session that has NO role (should fail)
   let response = app
     .oneshot(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .header("X-BodhiApp-Token", &access_token)
-        // NO role header - should return error
         .json(&CreateApiTokenRequest {
           name: Some("Test Token".to_string()),
           scope: TokenScope::User,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_no_role(&user_id, "user@test.com")),
     )
     .await?;
 
@@ -503,11 +535,16 @@ async fn test_update_token_handler_success(
       Request::builder()
         .method(Method::PUT)
         .uri(format!("/api/tokens/{}", token.id))
-        .header("X-BodhiApp-Token", &access_token)
         .json(&UpdateApiTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::Admin,
+          &access_token,
+        )),
     )
     .await?;
 
@@ -536,7 +573,9 @@ async fn test_update_token_handler_success(
 async fn test_update_token_handler_not_found(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  let (token, _) = build_token(access_token_claims())?;
+  let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
+  let (token, _) = build_token(claims)?;
   // Setup app with router
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(test_db_service))
@@ -550,11 +589,16 @@ async fn test_update_token_handler_not_found(
       Request::builder()
         .method(Method::PUT)
         .uri("/api/tokens/non-existent-id")
-        .header("X-BodhiApp-Token", &token)
         .json(&UpdateApiTokenRequest {
           name: "Updated Name".to_string(),
           status: TokenStatus::Inactive,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          ResourceRole::Admin,
+          &token,
+        )),
     )
     .await?;
 
@@ -563,18 +607,19 @@ async fn test_update_token_handler_not_found(
 }
 
 #[rstest]
-#[case::user_to_power_user("resource_user", TokenScope::PowerUser)]
-#[case::user_to_manager("resource_user", TokenScope::Manager)]
-#[case::user_to_admin("resource_user", TokenScope::Admin)]
+#[case::user_to_power_user(ResourceRole::User, TokenScope::PowerUser)]
+#[case::user_to_manager(ResourceRole::User, TokenScope::Manager)]
+#[case::user_to_admin(ResourceRole::User, TokenScope::Admin)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_privilege_escalation_user(
-  #[case] role: &str,
+  #[case] role: ResourceRole,
   #[case] requested_scope: TokenScope,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
   let (access_token, _) = build_token(claims)?;
 
   let test_db_service = Arc::new(test_db_service);
@@ -591,11 +636,16 @@ async fn test_create_token_privilege_escalation_user(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
           name: Some("Escalation Attempt".to_string()),
           scope: requested_scope,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          role,
+          &access_token,
+        )),
     )
     .await?;
 
@@ -605,19 +655,20 @@ async fn test_create_token_privilege_escalation_user(
 }
 
 #[rstest]
-#[case::power_user_to_manager("resource_power_user", TokenScope::Manager)]
-#[case::power_user_to_admin("resource_power_user", TokenScope::Admin)]
-#[case::manager_to_admin("resource_manager", TokenScope::Admin)]
-#[case::admin_to_manager("resource_admin", TokenScope::Manager)]
+#[case::power_user_to_manager(ResourceRole::PowerUser, TokenScope::Manager)]
+#[case::power_user_to_admin(ResourceRole::PowerUser, TokenScope::Admin)]
+#[case::manager_to_admin(ResourceRole::Manager, TokenScope::Admin)]
+#[case::admin_to_manager(ResourceRole::Admin, TokenScope::Manager)]
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_create_token_privilege_escalation_invalid_scopes(
-  #[case] role: &str,
+  #[case] role: ResourceRole,
   #[case] requested_scope: TokenScope,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
   let claims = access_token_claims();
+  let user_id = claims["sub"].as_str().unwrap().to_string();
   let (access_token, _) = build_token(claims)?;
 
   let test_db_service = Arc::new(test_db_service);
@@ -634,11 +685,16 @@ async fn test_create_token_privilege_escalation_invalid_scopes(
       Request::builder()
         .method(Method::POST)
         .uri("/api/tokens")
-        .with_user_auth(&access_token, role)
         .json(&CreateApiTokenRequest {
           name: Some("Invalid Scope Attempt".to_string()),
           scope: requested_scope,
-        })?,
+        })?
+        .with_auth_context(AuthContext::test_session_with_token(
+          &user_id,
+          "user@test.com",
+          role,
+          &access_token,
+        )),
     )
     .await?;
 

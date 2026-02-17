@@ -3,12 +3,12 @@ use crate::{
   ListToolsetsResponse, ToolsetResponse, ToolsetValidationError, UpdateToolsetRequest,
   ENDPOINT_TOOLSETS, ENDPOINT_TOOLSET_TYPES,
 };
-use auth_middleware::ExtractUserId;
+use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, State},
   http::StatusCode,
   routing::{delete, get, post, put},
-  Json, Router,
+  Extension, Json, Router,
 };
 use objs::API_TAG_TOOLSETS;
 use objs::{ApiError, Toolset, ToolsetExecutionResponse};
@@ -64,12 +64,13 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
   security(("bearer" = []))
 )]
 pub async fn list_toolsets_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ListToolsetsResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
-  let toolsets = tool_service.list(&user_id).await?;
+  let toolsets = tool_service.list(user_id).await?;
 
   // Enrich each toolset with type information
   let mut responses = Vec::new();
@@ -101,10 +102,11 @@ pub async fn list_toolsets_handler(
   security(("bearer" = []))
 )]
 pub async fn create_toolset_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Json(request): Json<CreateToolsetRequest>,
 ) -> Result<(StatusCode, Json<ToolsetResponse>), ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   request
     .validate()
     .map_err(|e| ToolsetValidationError::Validation(e.to_string()))?;
@@ -112,7 +114,7 @@ pub async fn create_toolset_handler(
 
   let toolset = tool_service
     .create(
-      &user_id,
+      user_id,
       &request.toolset_type,
       &request.slug,
       request.description,
@@ -141,14 +143,15 @@ pub async fn create_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn get_toolset_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
   let toolset = tool_service
-    .get(&user_id, &id)
+    .get(user_id, &id)
     .await?
     .ok_or_else(|| objs::EntityError::NotFound("Toolset".to_string()))?;
 
@@ -175,11 +178,12 @@ pub async fn get_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn update_toolset_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
   Json(request): Json<UpdateToolsetRequest>,
 ) -> Result<Json<ToolsetResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   request
     .validate()
     .map_err(|e| ToolsetValidationError::Validation(e.to_string()))?;
@@ -192,7 +196,7 @@ pub async fn update_toolset_handler(
 
   let toolset = tool_service
     .update(
-      &user_id,
+      user_id,
       &id,
       &request.slug,
       request.description,
@@ -221,13 +225,14 @@ pub async fn update_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn delete_toolset_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
-  tool_service.delete(&user_id, &id).await?;
+  tool_service.delete(user_id, &id).await?;
 
   Ok(StatusCode::NO_CONTENT)
 }
@@ -255,15 +260,16 @@ pub async fn delete_toolset_handler(
   security(("bearer" = []))
 )]
 pub async fn execute_toolset_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path((id, method)): Path<(String, String)>,
   Json(request): Json<ExecuteToolsetRequest>,
 ) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
   let response = tool_service
-    .execute(&user_id, &id, &method, request.into())
+    .execute(user_id, &id, &method, request.into())
     .await?;
 
   Ok(Json(response))
@@ -308,14 +314,15 @@ pub async fn list_toolset_types_handler(
   security(("bearer" = []))
 )]
 pub async fn enable_type_handler(
-  ExtractUserId(updated_by): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(toolset_type): Path<String>,
 ) -> Result<Json<objs::AppToolsetConfig>, ApiError> {
+  let updated_by = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
   let config = tool_service
-    .set_app_toolset_enabled(&toolset_type, true, &updated_by)
+    .set_app_toolset_enabled(&toolset_type, true, updated_by)
     .await?;
 
   Ok(Json(config))
@@ -337,14 +344,15 @@ pub async fn enable_type_handler(
   security(("bearer" = []))
 )]
 pub async fn disable_type_handler(
-  ExtractUserId(updated_by): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(toolset_type): Path<String>,
 ) -> Result<Json<objs::AppToolsetConfig>, ApiError> {
+  let updated_by = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
   let config = tool_service
-    .set_app_toolset_enabled(&toolset_type, false, &updated_by)
+    .set_app_toolset_enabled(&toolset_type, false, updated_by)
     .await?;
 
   Ok(Json(config))

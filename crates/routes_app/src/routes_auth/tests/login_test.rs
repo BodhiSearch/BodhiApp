@@ -2,7 +2,9 @@ use crate::{
   auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler, RedirectResponse,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{generate_random_string, inject_optional_auth_info};
+use auth_middleware::{
+  generate_random_string, inject_optional_auth_info, AuthContext, RequestAuthContextExt,
+};
 use axum::body::to_bytes;
 use axum::{
   http::{status::StatusCode, Request},
@@ -89,7 +91,11 @@ async fn test_auth_initiate_handler(
     .with_state(state);
 
   let resp = router
-    .oneshot(Request::post("/auth/initiate").json(json! {{}})?)
+    .oneshot(
+      Request::post("/auth/initiate")
+        .json(json! {{}})?
+        .with_auth_context(AuthContext::Anonymous),
+    )
     .await?;
 
   let status = resp.status();
@@ -175,7 +181,8 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .oneshot(
       Request::post("/auth/initiate")
         .header("Host", "localhost:1135")
-        .json(json! {{}})?,
+        .json(json! {{}})?
+        .with_auth_context(AuthContext::Anonymous),
     )
     .await?;
 
@@ -242,7 +249,8 @@ async fn test_auth_initiate_handler_network_host_usage(
     .oneshot(
       Request::post("/auth/initiate")
         .header("Host", "192.168.1.100:1135")
-        .json(json! {{}})?,
+        .json(json! {{}})?
+        .with_auth_context(AuthContext::Anonymous),
     )
     .await?;
 
@@ -427,7 +435,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .await?;
 
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     app_service.clone(),
   ));
@@ -435,8 +443,9 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .layer(app_service.session_service().session_layer())
-    .with_state(state);
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .with_state(state)
+    .layer(app_service.session_service().session_layer());
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -582,7 +591,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .await?;
 
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     app_service.clone(),
   ));
@@ -590,8 +599,9 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .layer(app_service.session_service().session_layer())
-    .with_state(state);
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .with_state(state)
+    .layer(app_service.session_service().session_layer());
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -660,15 +670,16 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
     .build()
     .await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     app_service.clone(),
   ));
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .layer(app_service.session_service().session_layer())
-    .with_state(state);
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .with_state(state)
+    .layer(app_service.session_service().session_layer());
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();
@@ -731,15 +742,16 @@ async fn test_auth_callback_handler_auth_service_error(
     .build()
     .await?;
   let app_service = Arc::new(app_service);
-  let state = Arc::new(DefaultRouterState::new(
+  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
     app_service.clone(),
   ));
   let router = Router::new()
     .route("/auth/initiate", post(auth_initiate_handler))
     .route("/auth/callback", post(auth_callback_handler))
-    .layer(app_service.session_service().session_layer())
-    .with_state(state);
+    .route_layer(from_fn_with_state(state.clone(), inject_optional_auth_info))
+    .with_state(state)
+    .layer(app_service.session_service().session_layer());
 
   let mut client = TestServer::new(router)?;
   client.save_cookies();

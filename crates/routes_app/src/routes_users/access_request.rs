@@ -3,11 +3,12 @@ use crate::{
   UserAccessStatusResponse, ENDPOINT_ACCESS_REQUESTS_ALL, ENDPOINT_ACCESS_REQUESTS_PENDING,
   ENDPOINT_USER_REQUEST_ACCESS, ENDPOINT_USER_REQUEST_STATUS,
 };
-use auth_middleware::{ExtractRole, ExtractToken, ExtractUserId, ExtractUsername, MaybeRole};
+use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   response::Json,
+  Extension,
 };
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
@@ -38,11 +39,20 @@ use tracing::{debug, error, info};
     )
 )]
 pub async fn user_request_access_handler(
-  ExtractUsername(username): ExtractUsername,
-  ExtractUserId(user_id): ExtractUserId,
-  MaybeRole(role): MaybeRole,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<StatusCode, ApiError> {
+  // Session auth: extract username, user_id, and role
+  let AuthContext::Session {
+    ref user_id,
+    ref username,
+    ref role,
+    ..
+  } = auth_context
+  else {
+    return Err(AccessRequestError::AlreadyHasAccess)?;
+  };
+
   // Check if user already has a role
   if let Some(role) = role {
     debug!("User {} already has role: {}", username, role);
@@ -63,7 +73,7 @@ pub async fn user_request_access_handler(
 
   // Create new access request
   let _ = db_service
-    .insert_pending_request(username.to_string(), user_id)
+    .insert_pending_request(username.to_string(), user_id.clone())
     .await?;
 
   debug!("Access request created for user {}", username);
@@ -90,12 +100,15 @@ pub async fn user_request_access_handler(
     )
 )]
 pub async fn request_status_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<UserAccessStatusResponse>, ApiError> {
+  let Some(user_id) = auth_context.user_id() else {
+    return Err(AccessRequestError::PendingRequestNotFound)?;
+  };
   debug!("Checking access request status for user {}", user_id);
   let db_service = state.app_service().db_service();
-  if let Some(request) = db_service.get_pending_request(user_id).await? {
+  if let Some(request) = db_service.get_pending_request(user_id.to_string()).await? {
     Ok(Json(UserAccessStatusResponse::from(request)))
   } else {
     Err(AccessRequestError::PendingRequestNotFound)?
@@ -206,13 +219,22 @@ pub async fn list_all_requests_handler(
     )
 )]
 pub async fn approve_request_handler(
-  ExtractRole(approver_role): ExtractRole,
-  ExtractUsername(approver_username): ExtractUsername,
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<i64>,
   Json(request): Json<ApproveUserAccessRequest>,
 ) -> Result<StatusCode, ApiError> {
+  let AuthContext::Session {
+    ref username,
+    role: Some(ref approver_role),
+    ref token,
+    ..
+  } = auth_context
+  else {
+    return Err(AccessRequestError::InsufficientPrivileges)?;
+  };
+  let approver_username = username;
+
   info!(
     "User {} with role {:?} approving request {} with role {:?}",
     approver_username, approver_role, id, request.role
@@ -249,7 +271,7 @@ pub async fn approve_request_handler(
   let role_name = request.role.to_string();
 
   auth_service
-    .assign_user_role(&token, &access_request.user_id, &role_name)
+    .assign_user_role(token, &access_request.user_id, &role_name)
     .await?;
 
   // Clear existing sessions for the user to ensure new role is applied
@@ -286,11 +308,12 @@ pub async fn approve_request_handler(
     )
 )]
 pub async fn reject_request_handler(
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<i64>,
 ) -> Result<StatusCode, ApiError> {
-  let claims: Claims = extract_claims::<Claims>(&token)?;
+  let token = auth_context.token().expect("requires auth middleware");
+  let claims: Claims = extract_claims::<Claims>(token)?;
 
   info!(
     "User {} rejecting access request {}",

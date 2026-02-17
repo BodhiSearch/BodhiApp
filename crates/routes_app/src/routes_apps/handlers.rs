@@ -3,11 +3,12 @@ use crate::routes_apps::{
   AppAccessRequestError, ApproveAccessRequestBody, CreateAccessRequestBody,
   CreateAccessRequestResponse, RequestedResources, ToolTypeReviewInfo,
 };
-use auth_middleware::{ExtractToken, ExtractUserId};
+use auth_middleware::AuthContext;
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   response::Json,
+  Extension,
 };
 use objs::{ApiError, OpenAIApiError, ToolsetTypeRequest, API_TAG_AUTH};
 use serde::Deserialize;
@@ -192,10 +193,11 @@ pub async fn get_access_request_status_handler(
     )
 )]
 pub async fn get_access_request_review_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<AccessRequestReviewResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   debug!("Getting review data for access request: {}", id);
 
   let access_request_service = state.app_service().access_request_service();
@@ -221,7 +223,7 @@ pub async fn get_access_request_review_handler(
       .ok_or_else(|| AppAccessRequestError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
 
     // Get user's instances of this tool type
-    let user_toolsets = tool_service.list(&user_id).await?;
+    let user_toolsets = tool_service.list(user_id).await?;
     let instances = user_toolsets
       .into_iter()
       .filter(|t| t.toolset_type == tool_type_req.toolset_type)
@@ -273,12 +275,13 @@ pub async fn get_access_request_review_handler(
     )
 )]
 pub async fn approve_access_request_handler(
-  ExtractUserId(user_id): ExtractUserId,
-  ExtractToken(token): ExtractToken,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
   Json(body): Json<ApproveAccessRequestBody>,
 ) -> Result<Json<AccessRequestActionResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let token = auth_context.token().expect("requires auth middleware");
   info!("User {} approving access request {}", user_id, id);
 
   // Validate tool instances
@@ -295,7 +298,7 @@ pub async fn approve_access_request_handler(
 
       // Get instance and validate
       let toolset = tool_service
-        .get(&user_id, instance_id)
+        .get(user_id, instance_id)
         .await?
         .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance_id.clone()))?;
 
@@ -327,7 +330,7 @@ pub async fn approve_access_request_handler(
   // Call service to approve (ApprovedResources already contains objs::ToolsetApproval directly)
   let access_request_service = state.app_service().access_request_service();
   let updated = access_request_service
-    .approve_request(&id, &user_id, &token, body.approved.toolset_types)
+    .approve_request(&id, user_id, token, body.approved.toolset_types)
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);
@@ -359,14 +362,15 @@ pub async fn approve_access_request_handler(
     )
 )]
 pub async fn deny_access_request_handler(
-  ExtractUserId(user_id): ExtractUserId,
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<AccessRequestActionResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   info!("User {} denying access request {}", user_id, id);
 
   let access_request_service = state.app_service().access_request_service();
-  let updated = access_request_service.deny_request(&id, &user_id).await?;
+  let updated = access_request_service.deny_request(&id, user_id).await?;
 
   info!("Access request {} denied by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {

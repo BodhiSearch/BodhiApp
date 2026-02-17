@@ -1,9 +1,7 @@
-use crate::{TokenInfo, UserResponse, UserRouteError, ENDPOINT_USER_INFO};
-use auth_middleware::{
-  KEY_HEADER_BODHIAPP_ROLE, KEY_HEADER_BODHIAPP_SCOPE, KEY_HEADER_BODHIAPP_TOKEN,
-};
-use axum::{http::header::HeaderMap, Json};
-use objs::{ApiError, AppRole, ResourceRole, ResourceScope, API_TAG_AUTH};
+use crate::{TokenInfo, UserResponse, ENDPOINT_USER_INFO};
+use auth_middleware::AuthContext;
+use axum::{Extension, Json};
+use objs::{ApiError, AppRole, API_TAG_AUTH};
 use services::{extract_claims, Claims};
 use tracing::debug;
 
@@ -36,70 +34,46 @@ use tracing::debug;
         ("session_auth" = [])
     )
 )]
-pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserResponse>, ApiError> {
-  let not_loggedin = UserResponse::LoggedOut;
-  let Some(token) = headers.get(KEY_HEADER_BODHIAPP_TOKEN) else {
-    debug!("no token header");
-    return Ok(Json(not_loggedin));
-  };
-  let token = token
-    .to_str()
-    .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
-  if token.is_empty() {
-    debug!("injected token is empty");
-    return Err(UserRouteError::EmptyToken)?;
-  }
-  let role_header = headers.get(KEY_HEADER_BODHIAPP_ROLE);
-  let scope_header = headers.get(KEY_HEADER_BODHIAPP_SCOPE);
-  match (role_header, scope_header) {
-    (Some(role_header), _) => {
-      debug!("role header present");
-      let role = role_header
-        .to_str()
-        .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
-      let role = role.parse::<ResourceRole>()?;
+pub async fn user_info_handler(
+  Extension(auth_context): Extension<AuthContext>,
+) -> Result<Json<UserResponse>, ApiError> {
+  match auth_context {
+    AuthContext::Anonymous => {
+      debug!("anonymous request");
+      Ok(Json(UserResponse::LoggedOut))
+    }
+    AuthContext::Session {
+      ref token,
+      ref role,
+      ..
+    } => {
+      debug!("session auth");
       let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(objs::UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
         first_name: claims.given_name,
         last_name: claims.family_name,
-        role: Some(AppRole::Session(role)),
+        role: role.map(AppRole::Session),
       })))
     }
-    (None, Some(scope_header)) => {
-      debug!("scope header present");
-      let scope = scope_header
-        .to_str()
-        .map_err(|err| UserRouteError::InvalidHeader(err.to_string()))?;
-      let resource_scope = ResourceScope::try_parse(scope)?;
-      match resource_scope {
-        ResourceScope::Token(token_scope) => {
-          debug!("token scope present, returning api token info");
-          Ok(Json(UserResponse::Token(TokenInfo { role: token_scope })))
-        }
-        ResourceScope::User(user_scope) => {
-          debug!("user scope present, extracting claims");
-          let claims: Claims = extract_claims::<Claims>(token)?;
-          Ok(Json(UserResponse::LoggedIn(objs::UserInfo {
-            user_id: claims.sub,
-            username: claims.preferred_username,
-            first_name: claims.given_name,
-            last_name: claims.family_name,
-            role: Some(AppRole::ExchangedToken(user_scope)),
-          })))
-        }
-      }
+    AuthContext::ApiToken { ref scope, .. } => {
+      debug!("api token auth");
+      Ok(Json(UserResponse::Token(TokenInfo { role: *scope })))
     }
-    (None, None) => {
-      debug!("no role or scope header, returning logged in user without role");
+    AuthContext::ExternalApp {
+      ref token,
+      ref scope,
+      ..
+    } => {
+      debug!("external app auth");
       let claims: Claims = extract_claims::<Claims>(token)?;
       Ok(Json(UserResponse::LoggedIn(objs::UserInfo {
         user_id: claims.sub,
         username: claims.preferred_username,
         first_name: claims.given_name,
         last_name: claims.family_name,
-        role: None,
+        role: Some(AppRole::ExchangedToken(*scope)),
       })))
     }
   }
