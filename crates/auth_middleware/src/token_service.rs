@@ -1,6 +1,6 @@
-use crate::{AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
+use crate::{AuthError, ResourceScope, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::Utc;
-use objs::{AppRegInfoMissingError, ResourceRole, ResourceScope, TokenScope, UserScope};
+use objs::{AppRegInfoMissingError, ResourceRole, TokenScope, UserScope};
 use serde::{Deserialize, Serialize};
 use services::{
   db::{DbService, TokenStatus},
@@ -139,7 +139,7 @@ impl DefaultTokenService {
         if scope_claims.exp < Utc::now().timestamp() as u64 {
           None
         } else {
-          let user_scope = UserScope::from_scope(&scope_claims.scope)?;
+          let user_scope = UserScope::from_scope(&scope_claims.scope).ok();
           Some((
             cached_result.token,
             ResourceScope::User(user_scope),
@@ -211,11 +211,6 @@ impl DefaultTokenService {
       .split_whitespace()
       .filter(|s| s.starts_with("scope_user_") || s.starts_with("scope_access_request:"))
       .collect();
-    // Need at least one user scope for basic access
-    let has_user_scope = scopes.iter().any(|s| s.starts_with("scope_user_"));
-    if !has_user_scope {
-      return Err(TokenError::ScopeEmpty)?;
-    }
 
     // Pre-token-exchange validation: verify scope_access_request:* exists and is approved
     // Only validate if scope_access_request:* is present in external token
@@ -345,7 +340,7 @@ impl DefaultTokenService {
       }
     }
 
-    let user_scope = UserScope::from_scope(&scope_claims.scope)?;
+    let user_scope = UserScope::from_scope(&scope_claims.scope).ok();
 
     Ok((access_token, ResourceScope::User(user_scope), original_azp))
   }
@@ -551,11 +546,11 @@ impl DefaultTokenService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{AuthError, DefaultTokenService};
+  use crate::{AuthError, DefaultTokenService, ResourceScope};
   use anyhow_trace::anyhow_trace;
   use chrono::{Duration, Utc};
   use mockall::predicate::*;
-  use objs::{ResourceScope, TokenScope, UserScope};
+  use objs::{TokenScope, UserScope};
   use rstest::rstest;
   use serde_json::json;
   use services::{
@@ -885,7 +880,7 @@ mod tests {
 
     // Then - Should succeed with exchanged token
     assert_eq!(exchanged_token, access_token);
-    assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(ResourceScope::User(Some(UserScope::User)), scope);
     assert_eq!(Some(external_client_id.to_string()), app_client_id);
     Ok(())
   }
@@ -1007,7 +1002,7 @@ mod tests {
 
     // Then - Verify legitimate token works as expected
     assert_eq!(legitimate_exchanged_token, legitimate_access_token);
-    assert_eq!(ResourceScope::User(UserScope::User), legitimate_scope);
+    assert_eq!(ResourceScope::User(Some(UserScope::User)), legitimate_scope);
     assert_eq!(Some(external_client_id.to_string()), legitimate_azp);
 
     // When - Try to validate the forged token with same JTI
@@ -1669,7 +1664,7 @@ mod tests {
     assert!(result.is_ok());
     let (access_token, scope, app_client_id) = result.unwrap();
     assert_eq!(exchanged_token, access_token);
-    assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(ResourceScope::User(Some(UserScope::User)), scope);
     assert_eq!(Some("external-client".to_string()), app_client_id);
     Ok(())
   }
@@ -1736,7 +1731,7 @@ mod tests {
     assert!(result.is_ok());
     let (access_token, scope, app_client_id) = result.unwrap();
     assert_eq!(exchanged_token, access_token);
-    assert_eq!(ResourceScope::User(UserScope::User), scope);
+    assert_eq!(ResourceScope::User(Some(UserScope::User)), scope);
     assert_eq!(Some("external-client".to_string()), app_client_id);
     Ok(())
   }

@@ -4,7 +4,7 @@ use crate::{
   ENDPOINT_ACCESS_REQUESTS_DENY,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{AuthContext, RequestAuthContextExt};
+use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{routing::post, Router};
 use objs::ResourceRole;

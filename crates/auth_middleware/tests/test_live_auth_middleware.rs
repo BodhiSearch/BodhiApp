@@ -13,7 +13,6 @@ use axum::{
   routing::get,
   Extension, Router,
 };
-use objs::{ErrorBody, OpenAIApiError};
 use rstest::{fixture, rstest};
 use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
@@ -46,7 +45,7 @@ async fn test_token_info_handler(
     .map(|s| s.to_string());
   let role = auth_context.as_ref().and_then(|ctx| match ctx {
     AuthContext::ApiToken { role, .. } => Some(format!("{}", role)),
-    AuthContext::ExternalApp { role, .. } => Some(format!("{}", role)),
+    AuthContext::ExternalApp { role, .. } => role.as_ref().map(|r| format!("{}", r)),
     _ => None,
   });
   Json(TestTokenResponse { token, role })
@@ -265,7 +264,7 @@ async fn test_cross_client_token_exchange_no_user_scope(
     )
     .await?;
 
-  // Step 4: Test token exchange - should return unauthorized
+  // Step 4: Test token exchange - should succeed with role: None
   let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
@@ -274,21 +273,11 @@ async fn test_cross_client_token_exchange_no_user_scope(
     .body(Body::empty())?;
   let response = router.oneshot(request).await?;
 
-  // Step 5: Verify unauthorized response
-  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-  let err: OpenAIApiError = response.json().await?;
-  assert_eq!(
-    OpenAIApiError::new(
-      ErrorBody::new(
-        "User does not have any access permissions.".to_string(),
-        "authentication_error".to_string(),
-        Some("token_error-scope_empty".to_string()),
-        None,
-      ),
-      0,
-    ),
-    err
-  );
+  // Step 5: Verify success response with role: None
+  assert_eq!(StatusCode::OK, response.status());
+  let body: TestTokenResponse = response.json().await?;
+  assert!(body.token.is_some());
+  assert_eq!(None, body.role);
   Ok(())
 }
 

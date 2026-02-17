@@ -1,4 +1,4 @@
-use crate::{app_status_or_default, AuthContext, DefaultTokenService};
+use crate::{app_status_or_default, AuthContext, DefaultTokenService, ResourceScope};
 use axum::{
   extract::{Request, State},
   http::{header::HOST, HeaderMap},
@@ -7,7 +7,7 @@ use axum::{
 };
 
 use objs::{
-  ApiError, AppError, AppRegInfoMissingError, ErrorType, ResourceScope, RoleError, TokenScopeError,
+  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError,
   UserScopeError,
 };
 use server_core::RouterState;

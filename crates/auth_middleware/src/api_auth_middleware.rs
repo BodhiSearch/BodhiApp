@@ -1,12 +1,12 @@
-use crate::AuthContext;
+use crate::{AuthContext, ResourceScopeError};
 use axum::{
   extract::{Request, State},
   middleware::Next,
   response::Response,
 };
 use objs::{
-  ApiError, AppError, ErrorType, ResourceRole, ResourceScopeError, RoleError, TokenScope,
-  TokenScopeError, UserScope, UserScopeError,
+  ApiError, AppError, ErrorType, ResourceRole, RoleError, TokenScope, TokenScopeError, UserScope,
+  UserScopeError,
 };
 use server_core::RouterState;
 use services::SecretServiceError;
@@ -89,7 +89,9 @@ async fn authorize_request(
         return Err(ApiAuthError::MissingAuth);
       }
     }
-    AuthContext::ExternalApp { role, .. } => {
+    AuthContext::ExternalApp {
+      role: Some(role), ..
+    } => {
       if let Some(required_user_scope) = required_user_scope {
         if !role.has_access_to(&required_user_scope) {
           return Err(ApiAuthError::Forbidden);
@@ -97,6 +99,9 @@ async fn authorize_request(
       } else {
         return Err(ApiAuthError::MissingAuth);
       }
+    }
+    AuthContext::ExternalApp { role: None, .. } => {
+      return Err(ApiAuthError::MissingAuth);
     }
     AuthContext::Anonymous => {
       return Err(ApiAuthError::MissingAuth);
@@ -419,6 +424,19 @@ mod tests {
       }),
       error
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_api_auth_external_app_no_role() -> anyhow::Result<()> {
+    let ctx = AuthContext::test_external_app_no_role("user1", "app1", None);
+    let router =
+      test_router_user_scope_with_auth_context(ResourceRole::User, Some(UserScope::User), ctx)
+        .await;
+    let req = Request::builder().uri("/test").body(Body::empty())?;
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
     Ok(())
   }
 }

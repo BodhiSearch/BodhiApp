@@ -23,7 +23,6 @@ mod oai;
 // -- Authentication & access control
 mod access_request;
 mod resource_role;
-mod resource_scope;
 mod token_scope;
 mod user;
 mod user_scope;
@@ -59,7 +58,6 @@ pub use oai::*;
 // -- Re-exports: authentication & access control
 pub use access_request::*;
 pub use resource_role::*;
-pub use resource_scope::*;
 pub use token_scope::*;
 pub use user::*;
 pub use user_scope::*;

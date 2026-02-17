@@ -73,7 +73,7 @@ pub async fn user_info_handler(
         username: claims.preferred_username,
         first_name: claims.given_name,
         last_name: claims.family_name,
-        role: Some(AppRole::ExchangedToken(*role)),
+        role: role.as_ref().map(|&r| AppRole::ExchangedToken(r)),
       })))
     }
   }

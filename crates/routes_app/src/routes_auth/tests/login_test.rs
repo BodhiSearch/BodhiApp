@@ -3,7 +3,7 @@ use crate::{
 };
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{
-  generate_random_string, optional_auth_middleware, AuthContext, RequestAuthContextExt,
+  generate_random_string, optional_auth_middleware, test_utils::RequestAuthContextExt, AuthContext,
 };
 use axum::body::to_bytes;
 use axum::{

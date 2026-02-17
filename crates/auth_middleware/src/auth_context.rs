@@ -18,7 +18,7 @@ pub enum AuthContext {
   },
   ExternalApp {
     user_id: String,
-    role: UserScope,
+    role: Option<UserScope>,
     token: String,
     external_app_token: String,
     app_client_id: String,
@@ -62,7 +62,10 @@ impl AuthContext {
       } => Some(AppRole::Session(*role)),
       AuthContext::Session { role: None, .. } => None,
       AuthContext::ApiToken { role, .. } => Some(AppRole::ApiToken(*role)),
-      AuthContext::ExternalApp { role, .. } => Some(AppRole::ExchangedToken(*role)),
+      AuthContext::ExternalApp {
+        role: Some(role), ..
+      } => Some(AppRole::ExchangedToken(*role)),
+      AuthContext::ExternalApp { role: None, .. } => None,
     }
   }
 
@@ -71,81 +74,15 @@ impl AuthContext {
   }
 }
 
-#[cfg(feature = "test-utils")]
-mod test_factory {
+#[cfg(test)]
+mod tests {
   use super::*;
-  use axum::body::Body;
-  use axum::http::Request;
 
-  impl AuthContext {
-    pub fn test_session(user_id: &str, username: &str, role: ResourceRole) -> Self {
-      AuthContext::Session {
-        user_id: user_id.to_string(),
-        username: username.to_string(),
-        role: Some(role),
-        token: "test-token".to_string(),
-      }
-    }
-
-    pub fn test_session_no_role(user_id: &str, username: &str) -> Self {
-      AuthContext::Session {
-        user_id: user_id.to_string(),
-        username: username.to_string(),
-        role: None,
-        token: "test-token".to_string(),
-      }
-    }
-
-    pub fn test_session_with_token(
-      user_id: &str,
-      username: &str,
-      role: ResourceRole,
-      token: &str,
-    ) -> Self {
-      AuthContext::Session {
-        user_id: user_id.to_string(),
-        username: username.to_string(),
-        role: Some(role),
-        token: token.to_string(),
-      }
-    }
-
-    pub fn test_api_token(user_id: &str, role: TokenScope) -> Self {
-      AuthContext::ApiToken {
-        user_id: user_id.to_string(),
-        role,
-        token: "test-api-token".to_string(),
-      }
-    }
-
-    pub fn test_external_app(
-      user_id: &str,
-      role: UserScope,
-      app_client_id: &str,
-      access_request_id: Option<&str>,
-    ) -> Self {
-      AuthContext::ExternalApp {
-        user_id: user_id.to_string(),
-        role,
-        token: "test-external-token".to_string(),
-        external_app_token: "test-external-app-token".to_string(),
-        app_client_id: app_client_id.to_string(),
-        access_request_id: access_request_id.map(|s| s.to_string()),
-      }
-    }
-  }
-
-  pub trait RequestAuthContextExt {
-    fn with_auth_context(self, ctx: AuthContext) -> Self;
-  }
-
-  impl RequestAuthContextExt for Request<Body> {
-    fn with_auth_context(mut self, ctx: AuthContext) -> Self {
-      self.extensions_mut().insert(ctx);
-      self
-    }
+  #[test]
+  fn test_external_app_no_role_is_authenticated() {
+    let ctx = AuthContext::test_external_app_no_role("user1", "app1", None);
+    assert_eq!(true, ctx.is_authenticated());
+    assert_eq!(None, ctx.app_role());
+    assert_eq!(Some("user1"), ctx.user_id());
   }
 }
-
-#[cfg(feature = "test-utils")]
-pub use test_factory::RequestAuthContextExt;

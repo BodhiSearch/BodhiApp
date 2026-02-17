@@ -1,6 +1,6 @@
 use crate::{change_user_role_handler, list_users_handler, remove_user_handler};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{AuthContext, RequestAuthContextExt};
+use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{Request, StatusCode},

@@ -6,7 +6,7 @@ use crate::{
   ENDPOINT_USER_REQUEST_STATUS,
 };
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{AuthContext, RequestAuthContextExt};
+use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{Request, StatusCode},

@@ -1,6 +1,6 @@
 use crate::{user_info_handler, TokenInfo, UserResponse};
 use anyhow_trace::anyhow_trace;
-use auth_middleware::{AuthContext, RequestAuthContextExt};
+use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
   http::{status::StatusCode, Request},
@@ -146,7 +146,7 @@ async fn test_user_info_handler_bearer_token_with_user_scope(
 
   let auth_context = AuthContext::ExternalApp {
     user_id: claims.sub.clone(),
-    role: user_scope,
+    role: Some(user_scope),
     token: token.clone(),
     external_app_token: token.clone(),
     app_client_id: "test-azp".to_string(),
@@ -262,5 +262,51 @@ async fn test_user_info_allows_authenticated(
     .oneshot(session_request("GET", "/bodhi/v1/user", &cookie))
     .await?;
   assert_eq!(StatusCode::OK, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_user_info_handler_external_app_without_scope(
+  token: (String, String),
+) -> anyhow::Result<()> {
+  let (token, _) = token;
+  let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build().await?);
+  let router = test_router(app_service);
+
+  // Extract claims before moving token into AuthContext
+  let claims = services::extract_claims::<services::Claims>(&token)?;
+
+  let auth_context = AuthContext::ExternalApp {
+    user_id: claims.sub.clone(),
+    role: None,
+    token: token.clone(),
+    external_app_token: token.clone(),
+    app_client_id: "test-azp".to_string(),
+    access_request_id: None,
+  };
+
+  let response = router
+    .oneshot(
+      Request::get("/app/user")
+        .body(Body::empty())?
+        .with_auth_context(auth_context),
+    )
+    .await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let response_json = response.json::<UserResponse>().await?;
+
+  assert_eq!(
+    UserResponse::LoggedIn(UserInfo {
+      user_id: claims.sub,
+      username: "testuser@email.com".to_string(),
+      first_name: Some("Test".to_string()),
+      last_name: Some("User".to_string()),
+      role: None,
+    }),
+    response_json
+  );
   Ok(())
 }
