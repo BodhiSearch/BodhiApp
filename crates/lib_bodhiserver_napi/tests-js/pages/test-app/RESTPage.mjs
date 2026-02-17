@@ -3,11 +3,13 @@ export class RESTPage {
     page: '[data-testid="page-rest"]',
     pageLoaded: '[data-testid="page-rest"][data-test-state="loaded"]',
     section: '[data-testid="section-rest-client"]',
+    serverUrl: '[data-testid="rest-server-url"]',
     methodSelect: '[data-testid="select-rest-method"]',
     urlInput: '[data-testid="input-rest-url"]',
     headersInput: '[data-testid="input-rest-headers"]',
     bodyInput: '[data-testid="input-rest-body"]',
     authToggle: '[data-testid="toggle-rest-auth"]',
+    jsonToggle: '[data-testid="toggle-rest-json"]',
     sendButton: '[data-testid="btn-rest-send"]',
     responseStatus: '[data-testid="rest-response-status"]',
     response: '[data-testid="rest-response"]',
@@ -30,7 +32,11 @@ export class RESTPage {
     await this.page.locator(this.selectors.pageLoaded).waitFor();
   }
 
-  async sendRequest({ method, url, headers, body, useAuth = true }) {
+  async getServerUrl() {
+    return await this.page.locator(this.selectors.serverUrl).textContent();
+  }
+
+  async sendRequest({ method, url, headers, body, useAuth = true, json = true }) {
     if (method) {
       await this.page.selectOption(this.selectors.methodSelect, method);
     }
@@ -45,9 +51,14 @@ export class RESTPage {
       );
     }
     const authCheckbox = this.page.locator(this.selectors.authToggle);
-    const isChecked = await authCheckbox.isChecked();
-    if (useAuth !== isChecked) {
+    const authChecked = await authCheckbox.isChecked();
+    if (useAuth !== authChecked) {
       await authCheckbox.click();
+    }
+    const jsonCheckbox = this.page.locator(this.selectors.jsonToggle);
+    const jsonChecked = await jsonCheckbox.isChecked();
+    if (json !== jsonChecked) {
+      await jsonCheckbox.click();
     }
     await this.page.click(this.selectors.sendButton);
     await this.page.locator(this.selectors.terminal).waitFor();

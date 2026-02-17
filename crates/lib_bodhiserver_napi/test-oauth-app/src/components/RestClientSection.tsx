@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Textarea, Select, Checkbox } from '@/components/ui';
-import { loadToken } from '@/lib/storage';
+import { loadToken, loadConfig } from '@/lib/storage';
+import { useAuth } from '@/context/AuthContext';
 
 interface RestResponse {
   status: number;
@@ -10,11 +11,17 @@ interface RestResponse {
 }
 
 export function RestClientSection() {
+  // Get bodhiServerUrl from context, with localStorage fallback via lazy useState
+  const { config: contextConfig } = useAuth();
+  const [fallbackConfig] = useState(() => loadConfig());
+  const bodhiServerUrl = contextConfig?.bodhiServerUrl || fallbackConfig?.bodhiServerUrl || '';
+
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('');
   const [headers, setHeaders] = useState('');
   const [body, setBody] = useState('');
-  const [useAuth, setUseAuth] = useState(true);
+  const [includeAuth, setIncludeAuth] = useState(true);
+  const [useJson, setUseJson] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<RestResponse | null>(null);
@@ -44,9 +51,22 @@ export function RestClientSection() {
     try {
       if (!url) throw new Error('URL is required');
 
+      // Validate path-only URL
+      if (url.startsWith('http')) {
+        throw new Error('URL must be a path starting with / (e.g., /bodhi/v1/user)');
+      }
+      if (!url.startsWith('/')) {
+        throw new Error('URL must start with / (e.g., /bodhi/v1/user)');
+      }
+
       const fetchHeaders: Record<string, string> = parseHeaders(headers);
 
-      if (useAuth) {
+      // Add Content-Type if useJson is checked
+      if (useJson) {
+        fetchHeaders['Content-Type'] = 'application/json';
+      }
+
+      if (includeAuth) {
         const token = loadToken();
         if (token) {
           fetchHeaders['Authorization'] = `Bearer ${token}`;
@@ -62,7 +82,9 @@ export function RestClientSection() {
         fetchOptions.body = body;
       }
 
-      const res = await fetch(url, fetchOptions);
+      // Construct full URL with server prefix
+      const fullUrl = `${bodhiServerUrl}${url}`;
+      const res = await fetch(fullUrl, fetchOptions);
       const raw = await res.text();
       let parsedBody: unknown;
       try {
@@ -92,27 +114,58 @@ export function RestClientSection() {
         <CardTitle>REST Client</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-3">
-          <div className="w-32">
-            <Select
-              data-testid="select-rest-method"
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-            >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-            </Select>
+        <div className="space-y-1">
+          <Label>Server URL</Label>
+          <p data-testid="rest-server-url" className="text-sm font-mono bg-muted px-2 py-1 rounded">
+            {bodhiServerUrl || '(not configured)'}
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <Label>Request</Label>
+          <div className="flex gap-2 items-center">
+            <div className="w-24">
+              <Select
+                data-testid="select-rest-method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </Select>
+            </div>
+            <span className="text-sm text-muted-foreground font-mono">{bodhiServerUrl}</span>
+            <div className="flex-1">
+              <Input
+                data-testid="input-rest-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="/bodhi/v1/user"
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <Input
-              data-testid="input-rest-url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://localhost:51135/bodhi/v1/user"
-            />
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="rest-auth"
+            data-testid="toggle-rest-auth"
+            checked={includeAuth}
+            onChange={(e) => setIncludeAuth(e.target.checked)}
+          />
+          <Label htmlFor="rest-auth">Use OAuth Token</Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="rest-json"
+            data-testid="toggle-rest-json"
+            checked={useJson}
+            onChange={(e) => setUseJson(e.target.checked)}
+          />
+          <Label htmlFor="rest-json">Content-Type: application/json</Label>
         </div>
 
         <div className="space-y-1">
@@ -122,7 +175,7 @@ export function RestClientSection() {
             data-testid="input-rest-headers"
             value={headers}
             onChange={(e) => setHeaders(e.target.value)}
-            placeholder="Content-Type: application/json"
+            placeholder="Custom-Header: value"
             rows={2}
           />
         </div>
@@ -137,16 +190,6 @@ export function RestClientSection() {
             placeholder='{"key": "value"}'
             rows={3}
           />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="rest-auth"
-            data-testid="toggle-rest-auth"
-            checked={useAuth}
-            onChange={(e) => setUseAuth(e.target.checked)}
-          />
-          <Label htmlFor="rest-auth">Auto-attach OAuth Bearer token</Label>
         </div>
 
         <Button data-testid="btn-rest-send" onClick={sendRequest} disabled={loading} size="sm">

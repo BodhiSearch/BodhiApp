@@ -31,7 +31,7 @@ import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs'
 
 const TOOLSET_TYPE = 'builtin-exa-search';
 
-test.describe('Session Auth - Toolset Endpoints', () => {
+test.describe('Session Auth - Toolset Endpoints', { tag: ['@oauth', '@toolsets'] }, () => {
   let authServerConfig;
   let testCredentials;
 
@@ -85,7 +85,7 @@ test.describe('Session Auth - Toolset Endpoints', () => {
   });
 });
 
-test.describe('OAuth Token + Toolset Scope Combinations', () => {
+test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@toolsets'] }, () => {
   let authServerConfig;
   let testCredentials;
 
@@ -164,21 +164,19 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
-    await app.dashboard.navigateTo();
-    const accessToken = await app.dashboard.getAccessToken();
-    expect(accessToken).toBeTruthy();
-
     await test.step('Phase 4: Verify toolset access via API', async () => {
+      await app.rest.navigateTo();
+
       // Test: GET /toolsets with OAuth token returns filtered list containing the toolset
-      const response = await fetch(`${SHARED_SERVER_URL}/bodhi/v1/toolsets`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+      await app.rest.sendRequest({
+        method: 'GET',
+        url: '/bodhi/v1/toolsets',
+        
+        
       });
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const data = await app.rest.getResponse();
       expect(data.toolsets).toBeDefined();
       expect(Array.isArray(data.toolsets)).toBe(true);
 
@@ -193,25 +191,21 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
       expect(exaType).toBeTruthy();
 
       // Execute the toolset using OAuth token
-      const executeResponse = await fetch(
-        `${SHARED_SERVER_URL}/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+      await app.rest.sendRequest({
+        method: 'POST',
+        url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+        
+        body: JSON.stringify({
+          params: {
+            query: 'latest news about AI from San Francisco',
+            num_results: 3,
           },
-          body: JSON.stringify({
-            params: {
-              query: 'latest news about AI from San Francisco',
-              num_results: 3,
-            },
-          }),
-        }
-      );
+        }),
+        
+      });
 
-      const executeData = await executeResponse.json();
-      expect(executeResponse.status).toBe(200);
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const executeData = await app.rest.getResponse();
 
       // Verify response structure matches ToolsetExecutionResponse
       expect(executeData.result).toBeDefined();
@@ -301,23 +295,21 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
-    await app.dashboard.navigateTo();
-    const accessToken = await app.dashboard.getAccessToken();
-    expect(accessToken).toBeTruthy();
-
     await test.step('Verify toolset list and execute denial', async () => {
+      await app.rest.navigateTo();
+
       // Test: GET /toolsets with OAuth token (no access_request_scope)
       // The list endpoint returns all toolsets for the user (no scope filtering)
       // Scope enforcement happens at the execute endpoint via toolset_auth_middleware
-      const response = await fetch(`${SHARED_SERVER_URL}/bodhi/v1/toolsets`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+      await app.rest.sendRequest({
+        method: 'GET',
+        url: '/bodhi/v1/toolsets',
+        
+        
       });
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const data = await app.rest.getResponse();
       expect(data.toolsets).toBeDefined();
       expect(Array.isArray(data.toolsets)).toBe(true);
 
@@ -327,25 +319,21 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
       expect(exaToolset).toBeTruthy();
 
       // But executing the toolset should fail without access_request_scope
-      const executeResponse = await fetch(
-        `${SHARED_SERVER_URL}/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+      await app.rest.sendRequest({
+        method: 'POST',
+        url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+        
+        body: JSON.stringify({
+          params: {
+            query: 'test query',
+            num_results: 1,
           },
-          body: JSON.stringify({
-            params: {
-              query: 'test query',
-              num_results: 1,
-            },
-          }),
-        }
-      );
+        }),
+        
+      });
 
       // Without access_request_scope, execute should be denied
-      expect(executeResponse.status).not.toBe(200);
+      expect(await app.rest.getResponseStatus()).not.toBe(200);
     });
   });
 
@@ -443,21 +431,19 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
-    await app.dashboard.navigateTo();
-    const accessToken = await app.dashboard.getAccessToken();
-    expect(accessToken).toBeTruthy();
-
     await test.step('Verify empty toolsets list', async () => {
+      await app.rest.navigateTo();
+
       // Test: GET /toolsets with OAuth token (no toolset scope) returns empty list
-      const response = await fetch(`${SHARED_SERVER_URL}/bodhi/v1/toolsets`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+      await app.rest.sendRequest({
+        method: 'GET',
+        url: '/bodhi/v1/toolsets',
+        
+        
       });
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
+      expect(await app.rest.getResponseStatus()).toBe(200);
+      const data = await app.rest.getResponse();
       expect(data.toolsets).toBeDefined();
       expect(Array.isArray(data.toolsets)).toBe(true);
 
@@ -471,7 +457,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', () => {
   });
 });
 
-test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
+test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', { tag: ['@oauth', '@toolsets'] }, () => {
   let authServerConfig;
   let testCredentials;
   let toolsetUuid;
@@ -532,34 +518,32 @@ test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', () => {
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
-    await app.dashboard.navigateTo();
-    const accessToken = await app.dashboard.getAccessToken();
-
     await test.step('Verify OAuth token is blocked for GET /toolsets/{id}', async () => {
-      const getResponse = await fetch(`${SHARED_SERVER_URL}/bodhi/v1/toolsets/${toolsetUuid}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+      await app.rest.navigateTo();
+
+      await app.rest.sendRequest({
+        method: 'GET',
+        url: `/bodhi/v1/toolsets/${toolsetUuid}`,
+        
+        
       });
-      expect(getResponse.status).toBe(401);
+      expect(await app.rest.getResponseStatus()).toBe(401);
     });
 
     await test.step('Verify OAuth token is blocked for PUT /toolsets/{id}', async () => {
-      const putResponse = await fetch(`${SHARED_SERVER_URL}/bodhi/v1/toolsets/${toolsetUuid}`, {
+      await app.rest.sendRequest({
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        url: `/bodhi/v1/toolsets/${toolsetUuid}`,
+        
         body: JSON.stringify({
           slug: 'Updated-OAuth',
           description: 'Updated from OAuth test',
           enabled: false,
           api_key: { action: 'Keep' },
         }),
+        
       });
-      expect(putResponse.status).toBe(401);
+      expect(await app.rest.getResponseStatus()).toBe(401);
     });
   });
 });

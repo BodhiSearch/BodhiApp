@@ -7,11 +7,10 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
-import { OAuth2ApiHelper } from '@/utils/OAuth2ApiHelper.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
-test.describe('OAuth2 Token Exchange Integration Tests', () => {
+test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () => {
   let authServerConfig;
   let testCredentials;
   let authClient;
@@ -23,12 +22,9 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
   });
 
   test.describe('Complete OAuth2 Flow', () => {
-    let apiHelper;
     let testData;
 
     test.beforeEach(async () => {
-      // Use shared servers started by Playwright webServer
-      apiHelper = new OAuth2ApiHelper(SHARED_SERVER_URL, authClient);
       testData = OAuth2Fixtures.getOAuth2TestData();
     });
 
@@ -66,18 +62,19 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 
-      await test.step('Verify logged in and extract access token', async () => {
+      await test.step('Verify logged in and API access with OAuth token', async () => {
         await app.expectLoggedIn();
-        await app.dashboard.navigateTo();
-        const accessToken = await app.dashboard.getAccessToken();
-        expect(accessToken).toBeTruthy();
-        expect(accessToken.length).toBeGreaterThan(100);
+        await app.rest.navigateTo();
 
         // Test API access with OAuth token
-        const userResponse = await apiHelper.testApiWithToken(accessToken);
-        expect(userResponse.status).toBe(200);
+        await app.rest.sendRequest({
+          method: 'GET',
+          url: '/bodhi/v1/user',
+        });
 
-        const userInfo = userResponse.data;
+        expect(await app.rest.getResponseStatus()).toBe(200);
+        const userInfo = await app.rest.getResponse();
+
         expect(userInfo).toBeDefined();
         expect(userInfo.auth_status).toBe('logged_in');
         expect(userInfo.username).toBe('user@email.com');
@@ -89,13 +86,11 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
   test.describe('Error Handling', () => {
     let serverManager;
     let baseUrl;
-    let apiHelper;
 
     test.beforeEach(async () => {
       const errorConfig = OAuth2Fixtures.getErrorTestConfig(authServerConfig, 41135);
       serverManager = createServerManager(errorConfig);
       baseUrl = await serverManager.startServer();
-      apiHelper = new OAuth2ApiHelper(baseUrl, authClient);
     });
 
     test.afterEach(async () => {
@@ -106,11 +101,14 @@ test.describe('OAuth2 Token Exchange Integration Tests', () => {
 
     test('should handle token exchange errors gracefully', async () => {
       // Try to access API without any token - should return logged_out status
-      const userInfoResponse = await apiHelper.testUnauthenticatedApi();
+      const response = await fetch(`${baseUrl}/bodhi/v1/user`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       // Should get 200 response with auth_status: 'logged_out' for unauthenticated users
-      expect(userInfoResponse.status).toBe(200);
-      expect(userInfoResponse.data.auth_status).toBe('logged_out');
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.auth_status).toBe('logged_out');
     });
   });
 });
