@@ -225,8 +225,8 @@ pub struct AppAccessRequestRow {
   pub flow_type: String, // "redirect" | "popup"
   pub redirect_uri: Option<String>,
   pub status: String,           // "draft" | "approved" | "denied" | "failed"
-  pub requested: String,        // JSON: {"toolset_types": [{"tool_type":"..."}]}
-  pub approved: Option<String>, // JSON: {"toolset_types": [{"tool_type":"...", "status":"approved", "instance_id":"..."}]}
+  pub requested: String,        // JSON: {"toolset_types": [{"toolset_type":"..."}]}
+  pub approved: Option<String>, // JSON: {"toolsets": [{"toolset_type":"...", "status":"approved", "instance":{"id":"..."}}]}
   pub user_id: Option<String>,
   pub resource_scope: Option<String>,       // KC-returned scope
   pub access_request_scope: Option<String>, // KC-returned scope (NULL for auto-approve)

@@ -287,50 +287,46 @@ pub async fn approve_access_request_handler(
   // Validate tool instances
   let tool_service = state.app_service().tool_service();
 
-  for approval in &body.approved.toolset_types {
+  for approval in &body.approved.toolsets {
     if approval.status == "approved" {
-      let instance_id = approval.instance_id.as_ref().ok_or_else(|| {
+      let instance = approval.instance.as_ref().ok_or_else(|| {
         AppAccessRequestError::ToolInstanceNotConfigured(format!(
-          "instance_id required for approved toolset_type: {}",
+          "instance required for approved toolset_type: {}",
           approval.toolset_type
         ))
       })?;
 
-      // Get instance and validate
       let toolset = tool_service
-        .get(user_id, instance_id)
+        .get(user_id, &instance.id)
         .await?
-        .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance_id.clone()))?;
+        .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance.id.clone()))?;
 
-      // Validate tool_type matches
       if toolset.toolset_type != approval.toolset_type {
         return Err(AppAccessRequestError::InvalidToolType(format!(
           "Instance {} is not of type {}",
-          instance_id, approval.toolset_type
+          instance.id, approval.toolset_type
         )))?;
       }
 
-      // Validate instance is enabled and has API key
       if !toolset.enabled {
         return Err(AppAccessRequestError::ToolInstanceNotConfigured(format!(
           "Instance {} is not enabled",
-          instance_id
+          instance.id
         )))?;
       }
 
       if !toolset.has_api_key {
         return Err(AppAccessRequestError::ToolInstanceNotConfigured(format!(
           "Instance {} does not have API key configured",
-          instance_id
+          instance.id
         )))?;
       }
     }
   }
 
-  // Call service to approve (ApprovedResources already contains objs::ToolsetApproval directly)
   let access_request_service = state.app_service().access_request_service();
   let updated = access_request_service
-    .approve_request(&id, user_id, token, body.approved.toolset_types)
+    .approve_request(&id, user_id, token, body.approved.toolsets)
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);

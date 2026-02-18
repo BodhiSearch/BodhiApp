@@ -129,11 +129,11 @@ pub struct AccessRequestActionResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
     "approved": {
-        "toolset_types": [
+        "toolsets": [
             {
                 "toolset_type": "builtin-exa-search",
                 "status": "approved",
-                "instance_id": "instance-uuid"
+                "instance": {"id": "instance-uuid"}
             }
         ]
     }
@@ -148,5 +148,5 @@ pub struct ApproveAccessRequestBody {
 pub struct ApprovedResources {
   /// Toolset approvals with instance selections
   #[serde(default)]
-  pub toolset_types: Vec<ToolsetApproval>,
+  pub toolsets: Vec<ToolsetApproval>,
 }

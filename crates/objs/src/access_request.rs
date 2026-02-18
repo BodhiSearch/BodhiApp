@@ -50,7 +50,12 @@ pub struct ToolsetTypeRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetApproval {
   pub toolset_type: String,
-  pub status: String, // "approved" | "denied"
+  pub status: String,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub instance_id: Option<String>, // Present if status == "approved"
+  pub instance: Option<ToolsetInstance>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct ToolsetInstance {
+  pub id: String,
 }

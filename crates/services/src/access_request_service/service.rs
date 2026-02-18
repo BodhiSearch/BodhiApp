@@ -253,7 +253,7 @@ impl AccessRequestService for DefaultAccessRequestService {
 
     // Serialize tool_approvals to JSON with wrapper object
     let approved_json = serde_json::to_string(&serde_json::json!({
-      "toolset_types": tool_approvals
+      "toolsets": tool_approvals
     }))
     .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 

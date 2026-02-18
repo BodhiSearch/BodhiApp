@@ -1482,7 +1482,7 @@ async fn test_get_by_access_request_scope_found(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
@@ -1551,7 +1551,7 @@ async fn test_get_by_access_request_scope_null(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
@@ -1600,7 +1600,7 @@ async fn test_access_request_scope_unique_constraint(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
@@ -1624,7 +1624,7 @@ async fn test_access_request_scope_unique_constraint(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
@@ -1669,7 +1669,7 @@ async fn test_access_request_scope_multiple_nulls_allowed(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
@@ -1693,7 +1693,7 @@ async fn test_access_request_scope_multiple_nulls_allowed(
     status: "approved".to_string(),
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolset_types":[{"toolset_type":"builtin-exa-search","status":"approved","instance_id":"exa-001"}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"exa-001"}}]}"#
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),

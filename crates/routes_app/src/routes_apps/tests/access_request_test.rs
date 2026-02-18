@@ -198,10 +198,10 @@ async fn test_approve_access_request_success(
 
   let body = json!({
     "approved": {
-      "toolset_types": [{
+      "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
-        "instance_id": instance_id
+        "instance": {"id": instance_id}
       }]
     }
   });
@@ -264,10 +264,10 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
 
   let body = json!({
     "approved": {
-      "toolset_types": [{
+      "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
-        "instance_id": "nonexistent-instance"
+        "instance": {"id": "nonexistent-instance"}
       }]
     }
   });
@@ -329,10 +329,10 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
 
   let body = json!({
     "approved": {
-      "toolset_types": [{
+      "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
-        "instance_id": instance_id
+        "instance": {"id": instance_id}
       }]
     }
   });
@@ -394,10 +394,10 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
 
   let body = json!({
     "approved": {
-      "toolset_types": [{
+      "toolsets": [{
         "toolset_type": "builtin-exa-search",
         "status": "approved",
-        "instance_id": instance_id
+        "instance": {"id": instance_id}
       }]
     }
   });

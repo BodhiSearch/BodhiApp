@@ -43,7 +43,8 @@ use crate::{
 };
 use auth_middleware::canonical_url_middleware;
 use auth_middleware::{
-  api_auth_middleware, auth_middleware, optional_auth_middleware, toolset_auth_middleware,
+  access_request_auth_middleware, api_auth_middleware, auth_middleware, optional_auth_middleware,
+  ToolsetAccessRequestValidator,
 };
 use axum::{
   middleware::from_fn_with_state,
@@ -227,13 +228,21 @@ pub fn build_routes(
       },
     ));
 
-  // Toolset execute API with custom middleware - session and OAuth tokens, NOT API tokens
+  // Toolset execute API with access request middleware - session and OAuth tokens, NOT API tokens
+  let toolset_validator: Arc<dyn auth_middleware::AccessRequestValidator> =
+    Arc::new(ToolsetAccessRequestValidator);
   let toolset_exec_apis = Router::new()
     .route(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}/execute/{{method}}"),
       post(execute_toolset_handler),
     )
-    .route_layer(from_fn_with_state(state.clone(), toolset_auth_middleware))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        let v = toolset_validator.clone();
+        access_request_auth_middleware(v, state, req, next)
+      },
+    ))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
