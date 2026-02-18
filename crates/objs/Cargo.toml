@@ -35,6 +35,7 @@ tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "r
 thiserror = { workspace = true }
 utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
+url.workspace = true
 
 [dev-dependencies]
 anyhow = { workspace = true }

@@ -2,6 +2,53 @@ use crate::db::DbError;
 use mcp_client::McpClientError;
 use objs::{AppError, ErrorType};
 
+// ============================================================================
+// McpServerError - Admin MCP server management operations
+// ============================================================================
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum McpServerError {
+  #[error("MCP server '{0}' not found.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  McpServerNotFound(String),
+
+  #[error("MCP server URL '{0}' already exists.")]
+  #[error_meta(error_type = ErrorType::Conflict)]
+  UrlAlreadyExists(String),
+
+  #[error("MCP server name is required.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  NameRequired,
+
+  #[error("MCP server URL is required.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  UrlRequired,
+
+  #[error("MCP server URL is not valid: {0}.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  UrlInvalid(String),
+
+  #[error("MCP server URL cannot exceed 2048 characters.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  UrlTooLong,
+
+  #[error("MCP server name cannot exceed 100 characters.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  NameTooLong,
+
+  #[error("MCP server description cannot exceed 255 characters.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  DescriptionTooLong,
+
+  #[error(transparent)]
+  DbError(#[from] DbError),
+}
+
+// ============================================================================
+// McpError - User MCP instance operations
+// ============================================================================
+
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum McpError {
@@ -9,9 +56,9 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::NotFound)]
   McpNotFound(String),
 
-  #[error("MCP server URL is not in the allowlist.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  McpUrlNotAllowed,
+  #[error("MCP server '{0}' not found.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  McpServerNotFound(String),
 
   #[error("MCP server is disabled.")]
   #[error_meta(error_type = ErrorType::BadRequest)]

@@ -2,11 +2,33 @@ import { BasePage } from '@/pages/BasePage.mjs';
 import { expect } from '@playwright/test';
 
 /**
- * Page object for MCP server management on /ui/mcps pages
+ * Page object for MCP management on /ui/mcps and /ui/mcp-servers pages
  */
 export class McpsPage extends BasePage {
   selectors = {
-    // List page
+    // Management tabs
+    managementTabs: '[data-testid="mcp-management-tabs"]',
+    tabMcps: '[data-testid="mcp-tab-mcps"]',
+    tabServers: '[data-testid="mcp-tab-mcp-servers"]',
+
+    // MCP Servers list page
+    serversPage: '[data-testid="mcp-servers-page"]',
+    serverNewButton: '[data-testid="mcp-server-new-button"]',
+    serverRow: (id) => `[data-testid="server-row-${id}"]`,
+    serverRowByName: (name) => `[data-test-server-name="${name}"]`,
+    serverToggle: (id) => `[data-testid="server-toggle-${id}"]`,
+    serverEditButton: (id) => `[data-testid="server-edit-button-${id}"]`,
+
+    // MCP Server new/edit page
+    newServerPage: '[data-testid="new-mcp-server-page"]',
+    editServerPage: '[data-testid="edit-mcp-server-page"]',
+    serverUrlInput: '[data-testid="mcp-server-url-input"]',
+    serverNameInput: '[data-testid="mcp-server-name-input"]',
+    serverDescriptionInput: '[data-testid="mcp-server-description-input"]',
+    serverEnabledSwitch: '[data-testid="mcp-server-enabled-switch"]',
+    serverSaveButton: '[data-testid="mcp-server-save-button"]',
+
+    // MCPs list page
     pageContainer: '[data-testid="mcps-page"]',
     pageLoading: '[data-testid="mcps-page-loading"]',
     tableContainer: '[data-testid="mcps-table-container"]',
@@ -16,16 +38,13 @@ export class McpsPage extends BasePage {
     mcpStatus: (id) => `[data-testid="mcp-status-${id}"]`,
     mcpEditButton: (id) => `[data-testid="mcp-edit-button-${id}"]`,
     mcpDeleteButton: (id) => `[data-testid="mcp-delete-button-${id}"]`,
-    emptyState: 'text=No MCP servers configured',
 
-    // New/Edit page
+    // New/Edit MCP instance page
     newPageContainer: '[data-testid="new-mcp-page"]',
-    urlInput: '[data-testid="mcp-url-input"]',
-    checkUrlButton: '[data-testid="mcp-check-url-button"]',
-    urlEnabled: '[data-testid="mcp-url-enabled"]',
-    urlNotEnabled: '[data-testid="mcp-url-not-enabled"]',
-    enableServerButton: '[data-testid="mcp-enable-server-button"]',
-    confirmEnableButton: '[data-testid="mcp-confirm-enable-button"]',
+    serverCombobox: '[data-testid="mcp-server-combobox"]',
+    serverSearch: '[data-testid="mcp-server-search"]',
+    serverOption: (id) => `[data-testid="mcp-server-option-${id}"]`,
+    serverAddNew: '[data-testid="mcp-server-add-new"]',
     nameInput: '[data-testid="mcp-name-input"]',
     slugInput: '[data-testid="mcp-slug-input"]',
     descriptionInput: '[data-testid="mcp-description-input"]',
@@ -72,7 +91,62 @@ export class McpsPage extends BasePage {
     playgroundBackButton: '[data-testid="mcp-playground-back-button"]',
   };
 
-  // ========== List Page Methods ==========
+  // ========== MCP Servers Page Methods ==========
+
+  async navigateToServersList() {
+    await this.navigate('/ui/mcp-servers/');
+    await this.waitForSPAReady();
+  }
+
+  async expectServersListPage() {
+    await expect(this.page.locator(this.selectors.serversPage)).toBeVisible({
+      timeout: 15000,
+    });
+  }
+
+  async clickNewServer() {
+    await this.page.click(this.selectors.serverNewButton);
+    await this.page.waitForURL(/\/ui\/mcp-servers\/new/);
+    await this.waitForSPAReady();
+  }
+
+  async expectNewServerPage() {
+    await expect(this.page.locator(this.selectors.newServerPage)).toBeVisible();
+  }
+
+  async fillServerUrl(url) {
+    await this.page.fill(this.selectors.serverUrlInput, url);
+  }
+
+  async fillServerName(name) {
+    await this.page.fill(this.selectors.serverNameInput, name);
+  }
+
+  async fillServerDescription(description) {
+    await this.page.fill(this.selectors.serverDescriptionInput, description);
+  }
+
+  async clickServerSave() {
+    await this.page.click(this.selectors.serverSaveButton);
+    await this.page.waitForURL(/\/ui\/mcp-servers(?!\/new)/);
+    await this.waitForSPAReady();
+  }
+
+  async createMcpServer(url, name, description = '') {
+    await this.navigateToServersList();
+    await this.expectServersListPage();
+    await this.clickNewServer();
+    await this.expectNewServerPage();
+    await this.fillServerUrl(url);
+    await this.fillServerName(name);
+    if (description) {
+      await this.fillServerDescription(description);
+    }
+    await this.clickServerSave();
+    await this.expectServersListPage();
+  }
+
+  // ========== MCPs List Page Methods ==========
 
   async navigateToMcpsList() {
     await this.navigate('/ui/mcps/');
@@ -83,10 +157,6 @@ export class McpsPage extends BasePage {
     await expect(this.page.locator(this.selectors.pageContainer)).toBeVisible({
       timeout: 15000,
     });
-  }
-
-  async expectEmptyState() {
-    await expect(this.page.locator(this.selectors.emptyState)).toBeVisible();
   }
 
   async clickNewMcp() {
@@ -118,48 +188,20 @@ export class McpsPage extends BasePage {
     await this.page.click('button:has-text("Delete")');
   }
 
-  async expectMcpStatus(id, statusText) {
-    const statusCell = this.page.locator(this.selectors.mcpStatus(id));
-    await expect(statusCell).toContainText(statusText);
-  }
-
-  // ========== New/Edit Page Methods ==========
-
-  async navigateToNewMcp() {
-    await this.navigate('/ui/mcps/new');
-    await this.waitForSPAReady();
-  }
+  // ========== New/Edit MCP Instance Methods ==========
 
   async expectNewMcpPage() {
     await expect(this.page.locator(this.selectors.newPageContainer)).toBeVisible();
   }
 
-  async fillUrl(url) {
-    await this.page.fill(this.selectors.urlInput, url);
-  }
-
-  async checkUrl() {
-    await this.page.click(this.selectors.checkUrlButton);
-  }
-
-  async expectUrlEnabled() {
-    await expect(this.page.locator(this.selectors.urlEnabled)).toBeVisible({
-      timeout: 15000,
-    });
-  }
-
-  async expectUrlNotEnabled() {
-    await expect(this.page.locator(this.selectors.urlNotEnabled)).toBeVisible({
-      timeout: 15000,
-    });
-  }
-
-  async clickEnableServer() {
-    await this.page.click(this.selectors.enableServerButton);
-  }
-
-  async confirmEnableServer() {
-    await this.page.click(this.selectors.confirmEnableButton);
+  async selectServerFromCombobox(serverName) {
+    await this.page.click(this.selectors.serverCombobox);
+    const searchInput = this.page.locator(this.selectors.serverSearch);
+    await expect(searchInput).toBeVisible();
+    await searchInput.fill(serverName);
+    const option = this.page.locator(`[cmdk-item]`).filter({ hasText: serverName }).first();
+    await expect(option).toBeVisible();
+    await option.click();
   }
 
   async fillName(name) {
@@ -192,6 +234,25 @@ export class McpsPage extends BasePage {
     await this.page.click(this.selectors.backButton);
   }
 
+  /**
+   * Full flow: select server from combobox, fill details, create MCP instance
+   */
+  async createMcpInstance(serverName, name, slug, description = '') {
+    await this.navigateToMcpsList();
+    await this.expectMcpsListPage();
+    await this.clickNewMcp();
+    await this.expectNewMcpPage();
+
+    await this.selectServerFromCombobox(serverName);
+
+    if (name) await this.fillName(name);
+    await this.fillSlug(slug);
+    if (description) await this.fillDescription(description);
+
+    await this.clickCreate();
+    await this.expectToolsSection();
+  }
+
   // ========== Tools Section Methods ==========
 
   async expectToolsSection() {
@@ -200,10 +261,6 @@ export class McpsPage extends BasePage {
 
   async clickFetchTools() {
     await this.page.click(this.selectors.fetchToolsButton);
-  }
-
-  async expectToolsLoading() {
-    await expect(this.page.locator(this.selectors.toolsLoading)).toBeVisible();
   }
 
   async expectToolsList() {
@@ -218,53 +275,6 @@ export class McpsPage extends BasePage {
 
   async toggleTool(toolName) {
     await this.page.click(this.selectors.toolCheckbox(toolName));
-  }
-
-  async clickSelectAll() {
-    await this.page.click(this.selectors.selectAllButton);
-  }
-
-  async clickDeselectAll() {
-    await this.page.click(this.selectors.deselectAllButton);
-  }
-
-  // ========== Complete Workflow Methods ==========
-
-  /**
-   * Create a new MCP server with admin enable flow
-   */
-  async createMcpWithAdminEnable(url, name, slug, description = '') {
-    await this.navigateToNewMcp();
-    await this.expectNewMcpPage();
-
-    // Enter URL and check
-    await this.fillUrl(url);
-    await this.checkUrl();
-
-    // If not enabled, enable it (admin only)
-    const notEnabled = this.page.locator(this.selectors.urlNotEnabled);
-    const enabled = this.page.locator(this.selectors.urlEnabled);
-
-    await expect(notEnabled.or(enabled)).toBeVisible({ timeout: 15000 });
-
-    if (await notEnabled.isVisible()) {
-      await this.clickEnableServer();
-      await this.confirmEnableServer();
-      await this.expectUrlEnabled();
-    }
-
-    // Fill form
-    await this.fillName(name);
-    await this.fillSlug(slug);
-    if (description) {
-      await this.fillDescription(description);
-    }
-
-    // Create
-    await this.clickCreate();
-
-    // Wait for tools section to appear (MCP created)
-    await this.expectToolsSection();
   }
 
   // ========== Playground Page Methods ==========
@@ -353,10 +363,6 @@ export class McpsPage extends BasePage {
 
   async getPlaygroundResultContent() {
     return await this.page.locator(this.selectors.playgroundResultContent).textContent();
-  }
-
-  async clickPlaygroundCopy() {
-    await this.page.click(this.selectors.playgroundCopyButton);
   }
 
   async clickPlaygroundBack() {

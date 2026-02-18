@@ -32,10 +32,10 @@ use crate::{
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
 };
 use crate::{
-  create_mcp_handler, delete_mcp_handler, disable_mcp_server_handler, enable_mcp_server_handler,
-  execute_mcp_tool_handler, get_mcp_handler, list_mcp_servers_handler, list_mcp_tools_handler,
-  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, ENDPOINT_MCPS,
-  ENDPOINT_MCP_SERVERS,
+  create_mcp_handler, create_mcp_server_handler, delete_mcp_handler, execute_mcp_tool_handler,
+  get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler, list_mcp_tools_handler,
+  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler,
+  ENDPOINT_MCPS, ENDPOINT_MCP_SERVERS,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -187,6 +187,10 @@ pub fn build_routes(
     )
     // MCP servers (read for all users)
     .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))
+    .route(
+      &format!("{ENDPOINT_MCP_SERVERS}/{{id}}"),
+      get(get_mcp_server_handler),
+    )
     // App access request review/approve/deny (session-only)
     .route(
       ENDPOINT_ACCESS_REQUESTS_REVIEW,
@@ -336,9 +340,12 @@ pub fn build_routes(
       "/bodhi/v1/toolset_types/{toolset_type}/app-config",
       delete(disable_type_handler),
     )
-    // MCP server enable/disable (admin only)
-    .route(ENDPOINT_MCP_SERVERS, put(enable_mcp_server_handler))
-    .route(ENDPOINT_MCP_SERVERS, delete(disable_mcp_server_handler))
+    // MCP server create/update (admin only)
+    .route(ENDPOINT_MCP_SERVERS, post(create_mcp_server_handler))
+    .route(
+      &format!("{ENDPOINT_MCP_SERVERS}/{{id}}"),
+      put(update_mcp_server_handler),
+    )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {

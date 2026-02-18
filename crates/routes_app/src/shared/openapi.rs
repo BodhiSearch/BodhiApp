@@ -49,12 +49,13 @@ use crate::{
 };
 // MCP DTOs and handlers
 use crate::{
-  CreateMcpRequest, EnableMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpToolsResponse, UpdateMcpRequest,
-  __path_create_mcp_handler, __path_delete_mcp_handler, __path_disable_mcp_server_handler,
-  __path_enable_mcp_server_handler, __path_execute_mcp_tool_handler, __path_get_mcp_handler,
-  __path_list_mcp_servers_handler, __path_list_mcp_tools_handler, __path_list_mcps_handler,
-  __path_refresh_mcp_tools_handler, __path_update_mcp_handler,
+  CreateMcpRequest, CreateMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
+  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
+  UpdateMcpRequest, UpdateMcpServerRequest, __path_create_mcp_handler,
+  __path_create_mcp_server_handler, __path_delete_mcp_handler, __path_execute_mcp_tool_handler,
+  __path_get_mcp_handler, __path_get_mcp_server_handler, __path_list_mcp_servers_handler,
+  __path_list_mcp_tools_handler, __path_list_mcps_handler, __path_refresh_mcp_tools_handler,
+  __path_update_mcp_handler, __path_update_mcp_server_handler,
 };
 use async_openai::types::{
   chat::{
@@ -68,8 +69,8 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, McpServer, McpTool, OAIRequestParams, OpenAIApiError, ResourceRole,
-  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
+  Alias, ApiFormat, AppRole, McpServer, McpServerInfo, McpTool, OAIRequestParams, OpenAIApiError,
+  ResourceRole, SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
   ToolsetDefinition, ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS,
   API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
   API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
@@ -372,11 +373,14 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             // mcps
             CreateMcpRequest,
             UpdateMcpRequest,
-            EnableMcpServerRequest,
+            CreateMcpServerRequest,
+            UpdateMcpServerRequest,
             McpResponse,
+            McpServerResponse,
             ListMcpsResponse,
             ListMcpServersResponse,
             McpServer,
+            McpServerInfo,
             McpTool,
             McpToolsResponse,
             McpExecuteRequest,
@@ -485,9 +489,11 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         list_mcp_tools_handler,
         refresh_mcp_tools_handler,
         execute_mcp_tool_handler,
+        // MCP server admin endpoints
         list_mcp_servers_handler,
-        enable_mcp_server_handler,
-        disable_mcp_server_handler
+        get_mcp_server_handler,
+        create_mcp_server_handler,
+        update_mcp_server_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

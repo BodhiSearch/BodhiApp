@@ -3,7 +3,7 @@
  */
 import { http, HttpResponse } from 'msw';
 
-import type { McpExecuteResponse, McpResponse, McpServer, McpTool } from '@/hooks/useMcps';
+import type { McpExecuteResponse, McpResponse, McpServerInfo, McpServerResponse, McpTool } from '@/hooks/useMcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 
 // ============================================================================
@@ -22,19 +22,30 @@ export const mockMcpTool: McpTool = {
   },
 };
 
-export const mockMcpServer: McpServer = {
+export const mockMcpServerInfo: McpServerInfo = {
   id: 'server-uuid-1',
   url: 'https://mcp.example.com/mcp',
+  name: 'Example Server',
   enabled: true,
+};
+
+export const mockMcpServerResponse: McpServerResponse = {
+  id: 'server-uuid-1',
+  url: 'https://mcp.example.com/mcp',
+  name: 'Example Server',
+  description: 'An example MCP server',
+  enabled: true,
+  created_by: 'admin',
   updated_by: 'admin',
+  enabled_mcp_count: 1,
+  disabled_mcp_count: 0,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
 
 export const mockMcp: McpResponse = {
   id: 'mcp-uuid-1',
-  mcp_server_id: 'server-uuid-1',
-  url: 'https://mcp.example.com/mcp',
+  mcp_server: mockMcpServerInfo,
   slug: 'example-mcp',
   name: 'Example MCP',
   description: 'An example MCP server',
@@ -69,12 +80,20 @@ export function mockDeleteMcp() {
   return http.delete(`${BODHI_API_BASE}/mcps/:id`, () => new HttpResponse(null, { status: 204 }));
 }
 
-export function mockListMcpServers(servers: McpServer[] = [mockMcpServer]) {
+export function mockListMcpServers(servers: McpServerResponse[] = [mockMcpServerResponse]) {
   return http.get(`${BODHI_API_BASE}/mcp_servers`, () => HttpResponse.json({ mcp_servers: servers }));
 }
 
-export function mockEnableMcpServer(response: McpServer = mockMcpServer) {
-  return http.put(`${BODHI_API_BASE}/mcp_servers`, () => HttpResponse.json(response));
+export function mockGetMcpServer(server: McpServerResponse = mockMcpServerResponse) {
+  return http.get(`${BODHI_API_BASE}/mcp_servers/:id`, () => HttpResponse.json(server));
+}
+
+export function mockCreateMcpServer(response: McpServerResponse = mockMcpServerResponse) {
+  return http.post(`${BODHI_API_BASE}/mcp_servers`, () => HttpResponse.json(response, { status: 201 }));
+}
+
+export function mockUpdateMcpServer(response: McpServerResponse = mockMcpServerResponse) {
+  return http.put(`${BODHI_API_BASE}/mcp_servers/:id`, () => HttpResponse.json(response));
 }
 
 export function mockRefreshMcpTools(tools: McpTool[] = [mockMcpTool]) {
@@ -129,7 +148,9 @@ export const mcpsHandlers = [
   mockUpdateMcp(),
   mockDeleteMcp(),
   mockListMcpServers(),
-  mockEnableMcpServer(),
+  mockGetMcpServer(),
+  mockCreateMcpServer(),
+  mockUpdateMcpServer(),
   mockRefreshMcpTools(),
   mockExecuteMcpTool(),
 ];

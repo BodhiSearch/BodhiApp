@@ -11,13 +11,15 @@ const MCP_TEST_URL: &str = "https://mcp.deepwiki.com/mcp";
 /// Full CRUD flow for MCP servers and instances through the live HTTP server.
 ///
 /// Test steps:
-///   1. Admin enables an MCP server URL via PUT /mcp_servers
-///   2. User creates an MCP instance via POST /mcps
-///   3. User lists MCPs via GET /mcps -> asserts instance present
-///   4. User gets MCP by ID via GET /mcps/{id} -> asserts fields
-///   5. User updates MCP via PUT /mcps/{id} -> asserts updated fields
-///   6. User lists MCP servers via GET /mcp_servers -> asserts enabled URL
-///   7. User deletes MCP via DELETE /mcps/{id} -> asserts gone
+///   1. Admin creates an MCP server via POST /mcp_servers
+///   2. Admin gets MCP server by ID via GET /mcp_servers/{id}
+///   3. Admin updates MCP server via PUT /mcp_servers/{id}
+///   4. User creates an MCP instance via POST /mcps (with mcp_server_id)
+///   5. User lists MCPs via GET /mcps -> asserts instance present with nested mcp_server
+///   6. User gets MCP by ID via GET /mcps/{id} -> asserts nested mcp_server
+///   7. User updates MCP via PUT /mcps/{id} -> asserts updated fields
+///   8. User lists MCP servers via GET /mcp_servers -> asserts server with counts
+///   9. User deletes MCP via DELETE /mcps/{id} -> asserts gone
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -25,38 +27,75 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   let server = start_test_live_server().await?;
   let client = reqwest::Client::new();
 
-  // Create admin session (resource_admin role needed for PUT/DELETE /mcp_servers)
   let (admin_cookie, _admin_user_id) =
     create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
 
-  // Step 1: Enable MCP server URL (admin)
+  // Step 1: Create MCP server (admin)
   let resp = client
-    .put(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
     .header("Cookie", &admin_cookie)
-    .json(&json!({ "url": MCP_TEST_URL, "enabled": true }))
+    .json(&json!({
+      "url": MCP_TEST_URL,
+      "name": "DeepWiki",
+      "description": "DeepWiki MCP server",
+      "enabled": true
+    }))
     .send()
     .await?;
   assert_eq!(
-    StatusCode::OK,
+    StatusCode::CREATED,
     resp.status(),
-    "Admin should be able to enable an MCP server URL"
+    "Admin should be able to create an MCP server"
   );
   let server_resp: Value = resp.json().await?;
+  let mcp_server_id = server_resp["id"].as_str().unwrap().to_string();
   assert_eq!(MCP_TEST_URL, server_resp["url"].as_str().unwrap());
+  assert_eq!("DeepWiki", server_resp["name"].as_str().unwrap());
   assert_eq!(true, server_resp["enabled"].as_bool().unwrap());
-  assert!(
-    server_resp["id"].as_str().is_some(),
-    "mcp_server should have an id"
-  );
+  assert_eq!(0, server_resp["enabled_mcp_count"].as_i64().unwrap());
+  assert_eq!(0, server_resp["disabled_mcp_count"].as_i64().unwrap());
 
-  // Step 2: Create MCP instance (uses same admin session which also has user access)
+  // Step 2: Get MCP server by ID
+  let resp = client
+    .get(format!(
+      "{}/bodhi/v1/mcp_servers/{}",
+      server.base_url, mcp_server_id
+    ))
+    .header("Cookie", &admin_cookie)
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let fetched_server: Value = resp.json().await?;
+  assert_eq!(mcp_server_id, fetched_server["id"].as_str().unwrap());
+  assert_eq!("DeepWiki", fetched_server["name"].as_str().unwrap());
+
+  // Step 3: Update MCP server name/description
+  let resp = client
+    .put(format!(
+      "{}/bodhi/v1/mcp_servers/{}",
+      server.base_url, mcp_server_id
+    ))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "url": MCP_TEST_URL,
+      "name": "DeepWiki Updated",
+      "description": "Updated MCP server",
+      "enabled": true
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let updated_server: Value = resp.json().await?;
+  assert_eq!("DeepWiki Updated", updated_server["name"].as_str().unwrap());
+
+  // Step 4: Create MCP instance (uses mcp_server_id)
   let resp = client
     .post(format!("{}/bodhi/v1/mcps", server.base_url))
     .header("Cookie", &admin_cookie)
     .json(&json!({
       "name": "DeepWiki MCP",
       "slug": "deepwiki",
-      "url": MCP_TEST_URL,
+      "mcp_server_id": mcp_server_id,
       "description": "DeepWiki documentation tool",
       "enabled": true
     }))
@@ -71,14 +110,10 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   let mcp_id = mcp["id"].as_str().unwrap().to_string();
   assert_eq!("DeepWiki MCP", mcp["name"].as_str().unwrap());
   assert_eq!("deepwiki", mcp["slug"].as_str().unwrap());
-  assert_eq!(MCP_TEST_URL, mcp["url"].as_str().unwrap());
-  assert_eq!(
-    "DeepWiki documentation tool",
-    mcp["description"].as_str().unwrap()
-  );
-  assert_eq!(true, mcp["enabled"].as_bool().unwrap());
+  assert_eq!(MCP_TEST_URL, mcp["mcp_server"]["url"].as_str().unwrap());
+  assert_eq!(mcp_server_id, mcp["mcp_server"]["id"].as_str().unwrap());
 
-  // Step 3: List MCPs
+  // Step 5: List MCPs -> nested mcp_server
   let resp = client
     .get(format!("{}/bodhi/v1/mcps", server.base_url))
     .header("Cookie", &admin_cookie)
@@ -87,10 +122,14 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let list: Value = resp.json().await?;
   let items = list["mcps"].as_array().unwrap();
-  assert_eq!(1, items.len(), "Should have exactly 1 MCP instance");
+  assert_eq!(1, items.len());
   assert_eq!(mcp_id, items[0]["id"].as_str().unwrap());
+  assert_eq!(
+    MCP_TEST_URL,
+    items[0]["mcp_server"]["url"].as_str().unwrap()
+  );
 
-  // Step 4: Get MCP by ID
+  // Step 6: Get MCP by ID -> nested mcp_server
   let resp = client
     .get(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
@@ -99,10 +138,9 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let fetched: Value = resp.json().await?;
   assert_eq!(mcp_id, fetched["id"].as_str().unwrap());
-  assert_eq!("DeepWiki MCP", fetched["name"].as_str().unwrap());
-  assert_eq!("deepwiki", fetched["slug"].as_str().unwrap());
+  assert_eq!(mcp_server_id, fetched["mcp_server"]["id"].as_str().unwrap());
 
-  // Step 5: Update MCP
+  // Step 7: Update MCP
   let resp = client
     .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
@@ -114,21 +152,13 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
     }))
     .send()
     .await?;
-  assert_eq!(
-    StatusCode::OK,
-    resp.status(),
-    "Should be able to update an MCP instance"
-  );
+  assert_eq!(StatusCode::OK, resp.status());
   let updated: Value = resp.json().await?;
   assert_eq!("DeepWiki Updated", updated["name"].as_str().unwrap());
   assert_eq!("deepwiki-v2", updated["slug"].as_str().unwrap());
-  assert_eq!(
-    "Updated description",
-    updated["description"].as_str().unwrap()
-  );
   assert_eq!(false, updated["enabled"].as_bool().unwrap());
 
-  // Step 6: List MCP servers (all users can read)
+  // Step 8: List MCP servers with counts
   let resp = client
     .get(format!("{}/bodhi/v1/mcp_servers", server.base_url))
     .header("Cookie", &admin_cookie)
@@ -137,24 +167,18 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let servers: Value = resp.json().await?;
   let server_items = servers["mcp_servers"].as_array().unwrap();
-  assert_eq!(
-    1,
-    server_items.len(),
-    "Should have exactly 1 MCP server in allowlist"
-  );
+  assert_eq!(1, server_items.len());
   assert_eq!(MCP_TEST_URL, server_items[0]["url"].as_str().unwrap());
+  assert_eq!(0, server_items[0]["enabled_mcp_count"].as_i64().unwrap());
+  assert_eq!(1, server_items[0]["disabled_mcp_count"].as_i64().unwrap());
 
-  // Step 7: Delete MCP
+  // Step 9: Delete MCP
   let resp = client
     .delete(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
     .send()
     .await?;
-  assert_eq!(
-    StatusCode::NO_CONTENT,
-    resp.status(),
-    "Should be able to delete an MCP instance"
-  );
+  assert_eq!(StatusCode::NO_CONTENT, resp.status());
 
   // Verify deletion
   let resp = client
@@ -162,17 +186,13 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
     .header("Cookie", &admin_cookie)
     .send()
     .await?;
-  assert_eq!(
-    StatusCode::NOT_FOUND,
-    resp.status(),
-    "Deleted MCP should return 404"
-  );
+  assert_eq!(StatusCode::NOT_FOUND, resp.status());
 
   server.handle.shutdown().await?;
   Ok(())
 }
 
-/// Full flow: enable URL -> create MCP -> fetch tools -> execute tool via real deepwiki MCP.
+/// Full flow: create server -> create MCP -> fetch tools -> execute tool via real deepwiki MCP.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -183,14 +203,21 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
   let (admin_cookie, _admin_user_id) =
     create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
 
-  // Step 1: Enable MCP server URL
+  // Step 1: Create MCP server
   let resp = client
-    .put(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
     .header("Cookie", &admin_cookie)
-    .json(&json!({ "url": MCP_TEST_URL, "enabled": true }))
+    .json(&json!({
+      "url": MCP_TEST_URL,
+      "name": "DeepWiki",
+      "description": "DeepWiki MCP server",
+      "enabled": true
+    }))
     .send()
     .await?;
-  assert_eq!(StatusCode::OK, resp.status());
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let server_resp: Value = resp.json().await?;
+  let mcp_server_id = server_resp["id"].as_str().unwrap().to_string();
 
   // Step 2: Create MCP instance
   let resp = client
@@ -199,7 +226,7 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
     .json(&json!({
       "name": "DeepWiki MCP",
       "slug": "deepwiki",
-      "url": MCP_TEST_URL,
+      "mcp_server_id": mcp_server_id,
       "enabled": true
     }))
     .send()
@@ -225,7 +252,6 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
     "deepwiki MCP should return at least one tool"
   );
 
-  // Verify known tools are present
   let tool_names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
   assert!(
     tool_names.contains(&"read_wiki_structure"),
@@ -245,11 +271,7 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let cached_tools: Value = resp.json().await?;
   let cached = cached_tools["tools"].as_array().unwrap();
-  assert_eq!(
-    tools.len(),
-    cached.len(),
-    "Cached tools should match refreshed tools"
-  );
+  assert_eq!(tools.len(), cached.len());
 
   // Step 5: Execute read_wiki_structure tool
   let resp = client
@@ -279,29 +301,32 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Non-admin user cannot enable/disable MCP servers.
+/// Non-admin user cannot create MCP servers.
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
-async fn test_non_admin_cannot_enable_mcp_server() -> anyhow::Result<()> {
+async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
   let server = start_test_live_server().await?;
   let client = reqwest::Client::new();
 
-  // Create a regular user session (no admin role)
   let (user_cookie, _user_id) =
     create_test_session_for_live_server(&server.app_service, &["resource_user"]).await?;
 
   let resp = client
-    .put(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
     .header("Cookie", &user_cookie)
-    .json(&json!({ "url": MCP_TEST_URL, "enabled": true }))
+    .json(&json!({
+      "url": MCP_TEST_URL,
+      "name": "DeepWiki",
+      "enabled": true
+    }))
     .send()
     .await?;
 
   assert_eq!(
     StatusCode::FORBIDDEN,
     resp.status(),
-    "Non-admin should not be able to enable MCP servers"
+    "Non-admin should not be able to create MCP servers"
   );
 
   server.handle.shutdown().await?;

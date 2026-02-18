@@ -118,15 +118,36 @@ export const defaultNavigationItems: NavigationItem[] = [
         ],
       },
       {
-        title: 'MCP Servers',
+        title: 'MCP',
         href: '/ui/mcps/',
-        description: 'Manage MCP server connections',
+        description: 'Manage MCP servers and instances',
         icon: Plug,
         items: [
           {
+            title: 'MCP Servers',
+            href: '/ui/mcp-servers/',
+            description: 'Browse MCP server registry',
+            icon: Plug,
+            skip: true,
+          },
+          {
             title: 'New MCP',
             href: '/ui/mcps/new/',
-            description: 'Add an MCP server',
+            description: 'Add an MCP instance',
+            icon: Plug,
+            skip: true,
+          },
+          {
+            title: 'New MCP Server',
+            href: '/ui/mcp-servers/new/',
+            description: 'Register a new MCP server',
+            icon: Plug,
+            skip: true,
+          },
+          {
+            title: 'Edit MCP Server',
+            href: '/ui/mcp-servers/edit/',
+            description: 'Edit an MCP server',
             icon: Plug,
             skip: true,
           },
@@ -205,6 +226,11 @@ export function NavigationProvider({ children, items = defaultNavigationItems }:
       const settingsItem = items.find((item) => item.title === 'Settings');
       const usersSubItem = settingsItem?.items?.find((item) => item.href === '/ui/users/');
       return { item: usersSubItem!, parent: settingsItem! };
+    }
+    if (pathname?.startsWith('/ui/mcp-servers/') || pathname?.startsWith('/ui/mcps/')) {
+      const settingsItem = items.find((item) => item.title === 'Settings');
+      const mcpSubItem = settingsItem?.items?.find((item) => item.href === '/ui/mcps/');
+      return { item: mcpSubItem!, parent: settingsItem! };
     }
     const topLevelItem = items.find((item) => item.href === pathname);
     if (topLevelItem) {

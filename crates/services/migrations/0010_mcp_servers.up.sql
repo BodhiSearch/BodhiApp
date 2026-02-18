@@ -1,18 +1,21 @@
 -- Migration 0010: MCP server URL allowlist and user MCP instances
 -- Creates tables for admin-managed MCP server URLs and user-owned MCP instances
 
--- Create the mcp_servers table for admin URL allowlist
+-- Create the mcp_servers table for admin-managed MCP server registry
 CREATE TABLE IF NOT EXISTS mcp_servers (
     id TEXT PRIMARY KEY,                   -- UUID as TEXT (consistent with other tables)
-    url TEXT NOT NULL,                     -- exact match, no normalization
+    url TEXT NOT NULL,                     -- MCP server endpoint URL, trimmed whitespace
+    name TEXT NOT NULL DEFAULT '',         -- human-readable display name
+    description TEXT,                      -- optional description
     enabled INTEGER NOT NULL DEFAULT 0,    -- boolean as integer
+    created_by TEXT NOT NULL,              -- user_id of admin who created
     updated_by TEXT NOT NULL,              -- user_id of admin who last updated
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL            -- Unix timestamp
 );
 
--- Unique index on url for exact match lookups
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_url ON mcp_servers(url);
+-- Case-insensitive unique index on url (URLs are case-insensitive per RFC)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_servers_url ON mcp_servers(url COLLATE NOCASE);
 
 -- Create the mcps table for user-owned MCP instances
 CREATE TABLE IF NOT EXISTS mcps (

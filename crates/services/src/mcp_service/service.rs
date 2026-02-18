@@ -1,8 +1,8 @@
-use super::McpError;
-use crate::db::{DbService, McpRow, TimeService};
+use super::{McpError, McpServerError};
+use crate::db::{DbService, McpRow, McpServerRow, McpWithServerRow, TimeService};
 use chrono::DateTime;
 use mcp_client::McpClient;
-use objs::{Mcp, McpExecutionRequest, McpExecutionResponse, McpServer, McpTool};
+use objs::{Mcp, McpExecutionRequest, McpExecutionResponse, McpServer, McpServerInfo, McpTool};
 use std::fmt::Debug;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -10,24 +10,50 @@ use uuid::Uuid;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait McpService: Debug + Send + Sync {
-  /// List all MCP instances for a user
+  // ---- MCP Server admin operations ----
+
+  async fn create_mcp_server(
+    &self,
+    name: &str,
+    url: &str,
+    description: Option<String>,
+    enabled: bool,
+    created_by: &str,
+  ) -> Result<McpServer, McpServerError>;
+
+  async fn update_mcp_server(
+    &self,
+    id: &str,
+    name: &str,
+    url: &str,
+    description: Option<String>,
+    enabled: bool,
+    updated_by: &str,
+  ) -> Result<McpServer, McpServerError>;
+
+  async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServer>, McpServerError>;
+
+  async fn list_mcp_servers(&self, enabled: Option<bool>)
+    -> Result<Vec<McpServer>, McpServerError>;
+
+  async fn count_mcps_for_server(&self, server_id: &str) -> Result<(i64, i64), McpServerError>;
+
+  // ---- MCP user instance operations ----
+
   async fn list(&self, user_id: &str) -> Result<Vec<Mcp>, McpError>;
 
-  /// Get a specific MCP instance by ID
   async fn get(&self, user_id: &str, id: &str) -> Result<Option<Mcp>, McpError>;
 
-  /// Create a new MCP instance (resolves url to mcp_server_id internally)
   async fn create(
     &self,
     user_id: &str,
     name: &str,
     slug: &str,
-    url: &str,
+    mcp_server_id: &str,
     description: Option<String>,
     enabled: bool,
   ) -> Result<Mcp, McpError>;
 
-  /// Update an existing MCP instance
   async fn update(
     &self,
     user_id: &str,
@@ -39,30 +65,10 @@ pub trait McpService: Debug + Send + Sync {
     tools_filter: Option<Vec<String>>,
   ) -> Result<Mcp, McpError>;
 
-  /// Delete an MCP instance
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), McpError>;
 
-  /// Check if a URL is in the allowlist and enabled
-  async fn is_url_enabled(&self, url: &str) -> Result<bool, McpError>;
-
-  /// Enable/disable an MCP server URL in the admin allowlist
-  async fn set_mcp_server_enabled(
-    &self,
-    url: &str,
-    enabled: bool,
-    updated_by: &str,
-  ) -> Result<McpServer, McpError>;
-
-  /// List all MCP server URLs in the allowlist
-  async fn list_mcp_servers(&self) -> Result<Vec<McpServer>, McpError>;
-
-  /// Get MCP server by URL
-  async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServer>, McpError>;
-
-  /// Fetch tools from MCP server, cache them, seed the filter
   async fn fetch_tools(&self, user_id: &str, id: &str) -> Result<Vec<McpTool>, McpError>;
 
-  /// Execute a tool on an MCP instance
   async fn execute(
     &self,
     user_id: &str,
@@ -92,18 +98,21 @@ impl DefaultMcpService {
     }
   }
 
-  fn mcp_server_row_to_model(&self, row: crate::db::McpServerRow) -> McpServer {
+  fn mcp_server_row_to_model(&self, row: McpServerRow) -> McpServer {
     McpServer {
       id: row.id,
       url: row.url,
+      name: row.name,
+      description: row.description,
       enabled: row.enabled,
+      created_by: row.created_by,
       updated_by: row.updated_by,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
   }
 
-  fn mcp_row_to_model(&self, row: McpRow, url: String) -> Mcp {
+  fn mcp_with_server_to_model(&self, row: McpWithServerRow) -> Mcp {
     let tools_cache: Option<Vec<McpTool>> = row
       .tools_cache
       .as_ref()
@@ -115,8 +124,12 @@ impl DefaultMcpService {
 
     Mcp {
       id: row.id,
-      mcp_server_id: row.mcp_server_id,
-      url,
+      mcp_server: McpServerInfo {
+        id: row.mcp_server_id,
+        url: row.server_url,
+        name: row.server_name,
+        enabled: row.server_enabled,
+      },
       slug: row.slug,
       name: row.name,
       description: row.description,
@@ -128,11 +141,40 @@ impl DefaultMcpService {
     }
   }
 
-  async fn get_mcp_with_url(
+  fn mcp_row_to_model(&self, row: McpRow, server: &McpServerRow) -> Mcp {
+    let tools_cache: Option<Vec<McpTool>> = row
+      .tools_cache
+      .as_ref()
+      .and_then(|tc| serde_json::from_str(tc).ok());
+    let tools_filter: Option<Vec<String>> = row
+      .tools_filter
+      .as_ref()
+      .and_then(|tf| serde_json::from_str(tf).ok());
+
+    Mcp {
+      id: row.id,
+      mcp_server: McpServerInfo {
+        id: server.id.clone(),
+        url: server.url.clone(),
+        name: server.name.clone(),
+        enabled: server.enabled,
+      },
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      enabled: row.enabled,
+      tools_cache,
+      tools_filter,
+      created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+      updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+    }
+  }
+
+  async fn get_mcp_with_server(
     &self,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<(McpRow, String)>, McpError> {
+  ) -> Result<Option<(McpRow, McpServerRow)>, McpError> {
     let row = self.db_service.get_mcp(user_id, id).await?;
     match row {
       Some(mcp_row) => {
@@ -141,7 +183,7 @@ impl DefaultMcpService {
           .get_mcp_server(&mcp_row.mcp_server_id)
           .await?;
         match server {
-          Some(s) => Ok(Some((mcp_row, s.url))),
+          Some(s) => Ok(Some((mcp_row, s))),
           None => Ok(None),
         }
       }
@@ -152,20 +194,169 @@ impl DefaultMcpService {
 
 #[async_trait::async_trait]
 impl McpService for DefaultMcpService {
-  async fn list(&self, user_id: &str) -> Result<Vec<Mcp>, McpError> {
-    let rows = self.db_service.list_mcps(user_id).await?;
-    let mut mcps = Vec::with_capacity(rows.len());
-    for row in rows {
-      let server = self.db_service.get_mcp_server(&row.mcp_server_id).await?;
-      let url = server.map(|s| s.url).unwrap_or_default();
-      mcps.push(self.mcp_row_to_model(row, url));
+  // ---- MCP Server admin operations ----
+
+  async fn create_mcp_server(
+    &self,
+    name: &str,
+    url: &str,
+    description: Option<String>,
+    enabled: bool,
+    created_by: &str,
+  ) -> Result<McpServer, McpServerError> {
+    let trimmed_url = url.trim();
+
+    objs::validate_mcp_server_name(name).map_err(|_| {
+      if name.is_empty() {
+        McpServerError::NameRequired
+      } else {
+        McpServerError::NameTooLong
+      }
+    })?;
+
+    objs::validate_mcp_server_url(trimmed_url).map_err(|e| {
+      if trimmed_url.is_empty() {
+        McpServerError::UrlRequired
+      } else if trimmed_url.len() > objs::MAX_MCP_SERVER_URL_LEN {
+        McpServerError::UrlTooLong
+      } else {
+        McpServerError::UrlInvalid(e)
+      }
+    })?;
+
+    if let Some(ref desc) = description {
+      objs::validate_mcp_server_description(desc)
+        .map_err(|_| McpServerError::DescriptionTooLong)?;
     }
-    Ok(mcps)
+
+    if let Some(existing) = self.db_service.get_mcp_server_by_url(trimmed_url).await? {
+      return Err(McpServerError::UrlAlreadyExists(existing.url));
+    }
+
+    let now = self.time_service.utc_now().timestamp();
+    let row = McpServerRow {
+      id: Uuid::new_v4().to_string(),
+      url: trimmed_url.to_string(),
+      name: name.to_string(),
+      description,
+      enabled,
+      created_by: created_by.to_string(),
+      updated_by: created_by.to_string(),
+      created_at: now,
+      updated_at: now,
+    };
+
+    let result = self.db_service.create_mcp_server(&row).await?;
+    Ok(self.mcp_server_row_to_model(result))
+  }
+
+  async fn update_mcp_server(
+    &self,
+    id: &str,
+    name: &str,
+    url: &str,
+    description: Option<String>,
+    enabled: bool,
+    updated_by: &str,
+  ) -> Result<McpServer, McpServerError> {
+    let trimmed_url = url.trim();
+
+    objs::validate_mcp_server_name(name).map_err(|_| {
+      if name.is_empty() {
+        McpServerError::NameRequired
+      } else {
+        McpServerError::NameTooLong
+      }
+    })?;
+
+    objs::validate_mcp_server_url(trimmed_url).map_err(|e| {
+      if trimmed_url.is_empty() {
+        McpServerError::UrlRequired
+      } else if trimmed_url.len() > objs::MAX_MCP_SERVER_URL_LEN {
+        McpServerError::UrlTooLong
+      } else {
+        McpServerError::UrlInvalid(e)
+      }
+    })?;
+
+    if let Some(ref desc) = description {
+      objs::validate_mcp_server_description(desc)
+        .map_err(|_| McpServerError::DescriptionTooLong)?;
+    }
+
+    let existing = self
+      .db_service
+      .get_mcp_server(id)
+      .await?
+      .ok_or_else(|| McpServerError::McpServerNotFound(id.to_string()))?;
+
+    // Check URL uniqueness excluding current server (case-insensitive)
+    if let Some(dup) = self.db_service.get_mcp_server_by_url(trimmed_url).await? {
+      if dup.id != existing.id {
+        return Err(McpServerError::UrlAlreadyExists(dup.url));
+      }
+    }
+
+    // If URL changed, cascade: clear tools_cache and tools_filter on linked MCPs
+    let url_changed = existing.url.to_lowercase() != trimmed_url.to_lowercase();
+    if url_changed {
+      self.db_service.clear_mcp_tools_by_server_id(id).await?;
+    }
+
+    let now = self.time_service.utc_now().timestamp();
+    let row = McpServerRow {
+      id: existing.id,
+      url: trimmed_url.to_string(),
+      name: name.to_string(),
+      description,
+      enabled,
+      created_by: existing.created_by,
+      updated_by: updated_by.to_string(),
+      created_at: existing.created_at,
+      updated_at: now,
+    };
+
+    let result = self.db_service.update_mcp_server(&row).await?;
+    Ok(self.mcp_server_row_to_model(result))
+  }
+
+  async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServer>, McpServerError> {
+    let row = self.db_service.get_mcp_server(id).await?;
+    Ok(row.map(|r| self.mcp_server_row_to_model(r)))
+  }
+
+  async fn list_mcp_servers(
+    &self,
+    enabled: Option<bool>,
+  ) -> Result<Vec<McpServer>, McpServerError> {
+    let rows = self.db_service.list_mcp_servers(enabled).await?;
+    Ok(
+      rows
+        .into_iter()
+        .map(|r| self.mcp_server_row_to_model(r))
+        .collect(),
+    )
+  }
+
+  async fn count_mcps_for_server(&self, server_id: &str) -> Result<(i64, i64), McpServerError> {
+    Ok(self.db_service.count_mcps_by_server_id(server_id).await?)
+  }
+
+  // ---- MCP user instance operations ----
+
+  async fn list(&self, user_id: &str) -> Result<Vec<Mcp>, McpError> {
+    let rows = self.db_service.list_mcps_with_server(user_id).await?;
+    Ok(
+      rows
+        .into_iter()
+        .map(|r| self.mcp_with_server_to_model(r))
+        .collect(),
+    )
   }
 
   async fn get(&self, user_id: &str, id: &str) -> Result<Option<Mcp>, McpError> {
-    match self.get_mcp_with_url(user_id, id).await? {
-      Some((row, url)) => Ok(Some(self.mcp_row_to_model(row, url))),
+    match self.get_mcp_with_server(user_id, id).await? {
+      Some((row, server)) => Ok(Some(self.mcp_row_to_model(row, &server))),
       None => Ok(None),
     }
   }
@@ -175,7 +366,7 @@ impl McpService for DefaultMcpService {
     user_id: &str,
     name: &str,
     slug: &str,
-    url: &str,
+    mcp_server_id: &str,
     description: Option<String>,
     enabled: bool,
   ) -> Result<Mcp, McpError> {
@@ -189,18 +380,16 @@ impl McpService for DefaultMcpService {
       objs::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
     }
 
-    // Look up mcp_server by exact URL match
     let mcp_server = self
       .db_service
-      .get_mcp_server_by_url(url)
+      .get_mcp_server(mcp_server_id)
       .await?
-      .ok_or(McpError::McpUrlNotAllowed)?;
+      .ok_or_else(|| McpError::McpServerNotFound(mcp_server_id.to_string()))?;
 
     if !mcp_server.enabled {
       return Err(McpError::McpDisabled);
     }
 
-    // Check slug uniqueness (case-insensitive)
     if self
       .db_service
       .get_mcp_by_slug(user_id, slug)
@@ -226,7 +415,7 @@ impl McpService for DefaultMcpService {
     };
 
     let result = self.db_service.create_mcp(&row).await?;
-    Ok(self.mcp_row_to_model(result, mcp_server.url))
+    Ok(self.mcp_row_to_model(result, &mcp_server))
   }
 
   async fn update(
@@ -249,12 +438,11 @@ impl McpService for DefaultMcpService {
       objs::validate_mcp_description(desc).map_err(McpError::InvalidDescription)?;
     }
 
-    let (existing, url) = self
-      .get_mcp_with_url(user_id, id)
+    let (existing, server) = self
+      .get_mcp_with_server(user_id, id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
 
-    // Check slug uniqueness if changed
     if slug.to_lowercase() != existing.slug.to_lowercase()
       && self
         .db_service
@@ -287,12 +475,12 @@ impl McpService for DefaultMcpService {
     };
 
     let result = self.db_service.update_mcp(&row).await?;
-    Ok(self.mcp_row_to_model(result, url))
+    Ok(self.mcp_row_to_model(result, &server))
   }
 
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), McpError> {
     let _ = self
-      .get_mcp_with_url(user_id, id)
+      .get_mcp_with_server(user_id, id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
 
@@ -300,51 +488,9 @@ impl McpService for DefaultMcpService {
     Ok(())
   }
 
-  async fn is_url_enabled(&self, url: &str) -> Result<bool, McpError> {
-    match self.db_service.get_mcp_server_by_url(url).await? {
-      Some(server) => Ok(server.enabled),
-      None => Ok(false),
-    }
-  }
-
-  async fn set_mcp_server_enabled(
-    &self,
-    url: &str,
-    enabled: bool,
-    updated_by: &str,
-  ) -> Result<McpServer, McpError> {
-    let row = self
-      .db_service
-      .set_mcp_server_enabled(url, enabled, updated_by)
-      .await?;
-    Ok(self.mcp_server_row_to_model(row))
-  }
-
-  async fn list_mcp_servers(&self) -> Result<Vec<McpServer>, McpError> {
-    let rows = self.db_service.list_mcp_servers().await?;
-    Ok(
-      rows
-        .into_iter()
-        .map(|r| self.mcp_server_row_to_model(r))
-        .collect(),
-    )
-  }
-
-  async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServer>, McpError> {
-    let row = self.db_service.get_mcp_server_by_url(url).await?;
-    Ok(row.map(|r| self.mcp_server_row_to_model(r)))
-  }
-
   async fn fetch_tools(&self, user_id: &str, id: &str) -> Result<Vec<McpTool>, McpError> {
-    let (existing, url) = self
-      .get_mcp_with_url(user_id, id)
-      .await?
-      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
-
-    // Verify the MCP server is still enabled
-    let server = self
-      .db_service
-      .get_mcp_server(&existing.mcp_server_id)
+    let (existing, server) = self
+      .get_mcp_with_server(user_id, id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
 
@@ -352,14 +498,11 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    // Fetch tools from the MCP server
-    let tools = self.mcp_client.fetch_tools(&url).await?;
+    let tools = self.mcp_client.fetch_tools(&server.url).await?;
 
-    // Cache tools and seed filter with all tool names
     let tools_cache_json = serde_json::to_string(&tools).unwrap_or_default();
     let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone()).collect();
 
-    // Only seed filter if currently empty/null
     let tools_filter_json = if existing.tools_filter.is_none() {
       Some(serde_json::to_string(&tool_names).unwrap_or_default())
     } else {
@@ -385,15 +528,8 @@ impl McpService for DefaultMcpService {
     tool_name: &str,
     request: McpExecutionRequest,
   ) -> Result<McpExecutionResponse, McpError> {
-    let (existing, url) = self
-      .get_mcp_with_url(user_id, id)
-      .await?
-      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
-
-    // Verify the MCP server is still enabled
-    let server = self
-      .db_service
-      .get_mcp_server(&existing.mcp_server_id)
+    let (existing, server) = self
+      .get_mcp_with_server(user_id, id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
 
@@ -405,7 +541,6 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    // Check tool is in filter whitelist
     let tools_filter: Vec<String> = existing
       .tools_filter
       .as_ref()
@@ -416,10 +551,9 @@ impl McpService for DefaultMcpService {
       return Err(McpError::ToolNotAllowed(tool_name.to_string()));
     }
 
-    // Execute via mcp_client
     match self
       .mcp_client
-      .call_tool(&url, tool_name, request.params)
+      .call_tool(&server.url, tool_name, request.params)
       .await
     {
       Ok(result) => Ok(McpExecutionResponse {

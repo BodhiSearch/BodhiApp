@@ -1,39 +1,61 @@
-use objs::{McpServer, McpTool};
+use objs::{McpServerInfo, McpTool};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 // ============================================================================
-// MCP Server (admin allowlist) DTOs
+// MCP Server (mcp_servers table) DTOs
 // ============================================================================
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct EnableMcpServerRequest {
+pub struct CreateMcpServerRequest {
   pub url: String,
-  #[serde(default = "default_true")]
+  pub name: String,
+  #[serde(default)]
+  pub description: Option<String>,
   pub enabled: bool,
 }
 
-fn default_true() -> bool {
-  true
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct UpdateMcpServerRequest {
+  pub url: String,
+  pub name: String,
+  #[serde(default)]
+  pub description: Option<String>,
+  pub enabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct McpServerResponse {
+  pub id: String,
+  pub url: String,
+  pub name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+  pub enabled: bool,
+  pub created_by: String,
+  pub updated_by: String,
+  pub enabled_mcp_count: i64,
+  pub disabled_mcp_count: i64,
+  pub created_at: String,
+  pub updated_at: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct McpServerUrlQuery {
-  pub url: Option<String>,
+pub struct McpServerQuery {
+  pub enabled: Option<bool>,
 }
 
 // ============================================================================
-// MCP Instance CRUD DTOs
+// MCP Instance (mcps table) DTOs
 // ============================================================================
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct CreateMcpRequest {
   pub name: String,
   pub slug: String,
-  pub url: String,
+  pub mcp_server_id: String,
   #[serde(default)]
   pub description: Option<String>,
-  #[serde(default = "default_true")]
   pub enabled: bool,
 }
 
@@ -43,7 +65,6 @@ pub struct UpdateMcpRequest {
   pub slug: String,
   #[serde(default)]
   pub description: Option<String>,
-  #[serde(default = "default_true")]
   pub enabled: bool,
   #[serde(default)]
   pub tools_filter: Option<Vec<String>>,
@@ -56,8 +77,7 @@ pub struct UpdateMcpRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct McpResponse {
   pub id: String,
-  pub mcp_server_id: String,
-  pub url: String,
+  pub mcp_server: McpServerInfo,
   pub slug: String,
   pub name: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -78,7 +98,7 @@ pub struct ListMcpsResponse {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ListMcpServersResponse {
-  pub mcp_servers: Vec<McpServer>,
+  pub mcp_servers: Vec<McpServerResponse>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -103,8 +123,7 @@ impl From<objs::Mcp> for McpResponse {
   fn from(mcp: objs::Mcp) -> Self {
     McpResponse {
       id: mcp.id,
-      mcp_server_id: mcp.mcp_server_id,
-      url: mcp.url,
+      mcp_server: mcp.mcp_server,
       slug: mcp.slug,
       name: mcp.name,
       description: mcp.description,

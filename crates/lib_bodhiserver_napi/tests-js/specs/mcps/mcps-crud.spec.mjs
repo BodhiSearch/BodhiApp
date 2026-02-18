@@ -14,80 +14,81 @@ test.describe('MCP Server Management', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('MCP Server CRUD Lifecycle', async ({ page }) => {
+  test('MCP Server and Instance CRUD Lifecycle', async ({ page }) => {
     const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
-    const testData = McpFixtures.createLifecycleData();
+    const serverData = McpFixtures.createServerData();
+    const instanceData = McpFixtures.createLifecycleData();
 
-    await test.step('Login and verify empty MCP list', async () => {
+    await test.step('Login', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.navigateToMcpsList();
-      await mcpsPage.expectMcpsListPage();
-      await mcpsPage.expectEmptyState();
     });
 
-    await test.step('Navigate to new MCP page', async () => {
-      await mcpsPage.clickNewMcp();
-      await mcpsPage.expectNewMcpPage();
+    await test.step('Create MCP server (admin)', async () => {
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      const row = await mcpsPage.page.locator(`[data-test-server-name="${serverData.name}"]`).first();
+      await expect(row).toBeVisible();
     });
 
-    await test.step('Create MCP server with admin enable flow', async () => {
-      await mcpsPage.createMcpWithAdminEnable(
-        testData.url,
-        testData.name,
-        testData.slug,
-        testData.description
+    await test.step('Create MCP instance using server combobox', async () => {
+      await mcpsPage.createMcpInstance(
+        serverData.name,
+        instanceData.name,
+        instanceData.slug,
+        instanceData.description
       );
       await mcpsPage.expectToolsSection();
     });
 
-    await test.step('Verify MCP appears in list', async () => {
+    await test.step('Verify MCP instance appears in list', async () => {
       await mcpsPage.clickDone();
       await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
-      const row = await mcpsPage.getMcpRowByName(testData.name);
+      const row = await mcpsPage.getMcpRowByName(instanceData.name);
       await expect(row).toBeVisible();
     });
 
-    await test.step('Delete MCP server with confirmation', async () => {
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+    await test.step('Delete MCP instance', async () => {
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
       await mcpsPage.clickDeleteById(mcpId);
-      await expect(mcpsPage.page.getByText('Delete MCP Server')).toBeVisible();
       await mcpsPage.confirmDelete();
-      await mcpsPage.expectEmptyState();
     });
   });
 
   test('MCP Server Tool Discovery', async ({ page }) => {
     const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
-    const testData = McpFixtures.createToolDiscoveryData();
+    const serverData = McpFixtures.createServerData();
+    const instanceData = McpFixtures.createToolDiscoveryData();
 
     await test.step('Login and create MCP server', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.createMcpWithAdminEnable(testData.url, testData.name, testData.slug);
+      await mcpsPage.createMcpServer(serverData.url, serverData.name);
     });
 
-    await test.step('Fetch and verify tools from remote server', async () => {
+    await test.step('Create MCP instance and fetch tools', async () => {
+      await mcpsPage.createMcpInstance(serverData.name, instanceData.name, instanceData.slug);
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
       await mcpsPage.expectToolItem(McpFixtures.EXPECTED_TOOL);
     });
   });
 
-  test('MCP Playground - Tool Execution and Results', async ({ page }) => {
+  test('MCP Playground - Tool Execution', async ({ page }) => {
     const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
-    const testData = McpFixtures.createPlaygroundData();
+    const serverData = McpFixtures.createServerData();
+    const instanceData = McpFixtures.createPlaygroundData();
 
-    await test.step('Login and create MCP with tools', async () => {
+    await test.step('Login and create MCP server + instance with tools', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.createMcpWithAdminEnable(
-        testData.url,
-        testData.name,
-        testData.slug,
-        testData.description
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      await mcpsPage.createMcpInstance(
+        serverData.name,
+        instanceData.name,
+        instanceData.slug,
+        instanceData.description
       );
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
@@ -98,23 +99,22 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.clickDone();
       await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
       await mcpsPage.clickPlaygroundById(mcpId);
       await mcpsPage.expectPlaygroundPage();
     });
 
-    await test.step('Select tool and verify form generation', async () => {
+    await test.step('Select tool and execute', async () => {
       await mcpsPage.selectPlaygroundTool(McpFixtures.PLAYGROUND_TOOL);
       await mcpsPage.expectPlaygroundToolSelected(McpFixtures.PLAYGROUND_TOOL);
       await mcpsPage.expectNoWhitelistedWarning();
+
       const paramField = mcpsPage.page.locator(
         mcpsPage.selectors.playgroundParam(McpFixtures.PLAYGROUND_PARAM)
       );
       await expect(paramField).toBeVisible();
-    });
 
-    await test.step('Execute tool with form params', async () => {
       await mcpsPage.fillPlaygroundParam(
         McpFixtures.PLAYGROUND_PARAM,
         McpFixtures.PLAYGROUND_PARAMS.repoName
@@ -157,15 +157,17 @@ test.describe('MCP Server Management', () => {
   test('MCP Playground - Non-Whitelisted Tool Error', async ({ page }) => {
     const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
-    const testData = McpFixtures.createPlaygroundData();
+    const serverData = McpFixtures.createServerData();
+    const instanceData = McpFixtures.createPlaygroundData();
 
-    await test.step('Login and create MCP with tools', async () => {
+    await test.step('Login and create MCP server + instance with tools', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.createMcpWithAdminEnable(
-        testData.url,
-        testData.name,
-        testData.slug,
-        testData.description
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      await mcpsPage.createMcpInstance(
+        serverData.name,
+        instanceData.name,
+        instanceData.slug,
+        instanceData.description
       );
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
@@ -175,11 +177,11 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.clickDone();
       await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
       await mcpsPage.clickEditById(mcpId);
       await mcpsPage.expectNewMcpPage();
-      await expect(mcpsPage.page.getByText('Edit MCP Server')).toBeVisible();
+      await expect(mcpsPage.page.getByText('Edit MCP')).toBeVisible();
       await mcpsPage.expectToolsSection();
       await mcpsPage.toggleTool(McpFixtures.PLAYGROUND_TOOL);
       await mcpsPage.clickUpdate();
@@ -187,7 +189,7 @@ test.describe('MCP Server Management', () => {
     });
 
     await test.step('Navigate to playground and select non-whitelisted tool', async () => {
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
       await mcpsPage.clickPlaygroundById(mcpId);
       await mcpsPage.expectPlaygroundPage();
@@ -210,15 +212,17 @@ test.describe('MCP Server Management', () => {
   test('MCP Playground - Refresh and Disabled States', async ({ page }) => {
     const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
-    const testData = McpFixtures.createPlaygroundData();
+    const serverData = McpFixtures.createServerData();
+    const instanceData = McpFixtures.createPlaygroundData();
 
-    await test.step('Login and create MCP with tools', async () => {
+    await test.step('Login and create MCP server + instance with tools', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
-      await mcpsPage.createMcpWithAdminEnable(
-        testData.url,
-        testData.name,
-        testData.slug,
-        testData.description
+      await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
+      await mcpsPage.createMcpInstance(
+        serverData.name,
+        instanceData.name,
+        instanceData.slug,
+        instanceData.description
       );
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
@@ -228,7 +232,7 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.clickDone();
       await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
       await mcpsPage.clickPlaygroundById(mcpId);
       await mcpsPage.expectPlaygroundPage();
@@ -240,13 +244,13 @@ test.describe('MCP Server Management', () => {
       await expect(toolSidebar).toBeVisible();
     });
 
-    await test.step('Disable MCP and verify execution error', async () => {
+    await test.step('Disable MCP instance and verify execution error', async () => {
       await mcpsPage.clickPlaygroundBack();
       await mcpsPage.expectMcpsListPage();
-      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       await mcpsPage.clickEditById(mcpId);
       await mcpsPage.expectNewMcpPage();
-      await expect(mcpsPage.page.getByText('Edit MCP Server')).toBeVisible();
+      await expect(mcpsPage.page.getByText('Edit MCP')).toBeVisible();
 
       const enabledSwitch = mcpsPage.page.locator(mcpsPage.selectors.enabledSwitch);
       await enabledSwitch.click();

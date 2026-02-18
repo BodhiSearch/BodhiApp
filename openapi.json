@@ -2491,16 +2491,16 @@
         "tags": [
           "mcps"
         ],
-        "summary": "List MCP server allowlist entries, optionally filtered by URL",
+        "summary": "List MCP servers, optionally filtered by enabled status",
         "operationId": "listMcpServers",
         "parameters": [
           {
-            "name": "url",
+            "name": "enabled",
             "in": "query",
-            "description": "Filter by exact URL match",
+            "description": "Filter by enabled status",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "boolean"
             }
           }
         ],
@@ -2562,29 +2562,29 @@
           }
         ]
       },
-      "put": {
+      "post": {
         "tags": [
           "mcps"
         ],
-        "summary": "Enable an MCP server URL in the allowlist",
-        "operationId": "enableMcpServer",
+        "summary": "Create a new MCP server entry (admin/manager only)",
+        "operationId": "createMcpServer",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EnableMcpServerRequest"
+                "$ref": "#/components/schemas/CreateMcpServerRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "MCP server enabled",
+          "201": {
+            "description": "MCP server created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/McpServer"
+                  "$ref": "#/components/schemas/McpServerResponse"
                 }
               }
             }
@@ -2618,6 +2618,89 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "URL already exists"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcp_servers/{id}": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Get a specific MCP server by ID",
+        "operationId": "getMcpServer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "MCP server UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MCP server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
           },
           "500": {
             "description": "Internal server error",
@@ -2636,17 +2719,28 @@
           }
         ]
       },
-      "delete": {
+      "put": {
         "tags": [
           "mcps"
         ],
-        "summary": "Disable an MCP server URL in the allowlist",
-        "operationId": "disableMcpServer",
+        "summary": "Update an existing MCP server entry (admin/manager only)",
+        "operationId": "updateMcpServer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "MCP server UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EnableMcpServerRequest"
+                "$ref": "#/components/schemas/UpdateMcpServerRequest"
               }
             }
           },
@@ -2654,11 +2748,11 @@
         },
         "responses": {
           "200": {
-            "description": "MCP server disabled",
+            "description": "MCP server updated",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/McpServer"
+                  "$ref": "#/components/schemas/McpServerResponse"
                 }
               }
             }
@@ -2692,6 +2786,12 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "URL already exists"
           },
           "500": {
             "description": "Internal server error",
@@ -10422,7 +10522,8 @@
         "required": [
           "name",
           "slug",
-          "url"
+          "mcp_server_id",
+          "enabled"
         ],
         "properties": {
           "name": {
@@ -10431,7 +10532,32 @@
           "slug": {
             "type": "string"
           },
+          "mcp_server_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CreateMcpServerRequest": {
+        "type": "object",
+        "required": [
+          "url",
+          "name",
+          "enabled"
+        ],
+        "properties": {
           "url": {
+            "type": "string"
+          },
+          "name": {
             "type": "string"
           },
           "description": {
@@ -10748,20 +10874,6 @@
             "format": "int32",
             "description": "The total number of tokens used by the request.",
             "minimum": 0
-          }
-        }
-      },
-      "EnableMcpServerRequest": {
-        "type": "object",
-        "required": [
-          "url"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
           }
         }
       },
@@ -11096,7 +11208,7 @@
           "mcp_servers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/McpServer"
+              "$ref": "#/components/schemas/McpServerResponse"
             }
           }
         }
@@ -11265,8 +11377,7 @@
         "type": "object",
         "required": [
           "id",
-          "mcp_server_id",
-          "url",
+          "mcp_server",
           "slug",
           "name",
           "enabled",
@@ -11277,11 +11388,8 @@
           "id": {
             "type": "string"
           },
-          "mcp_server_id": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
+          "mcp_server": {
+            "$ref": "#/components/schemas/McpServerInfo"
           },
           "slug": {
             "type": "string"
@@ -11326,11 +11434,13 @@
       },
       "McpServer": {
         "type": "object",
-        "description": "Admin-managed MCP server URL allowlist entry.\nAdmins/managers register MCP server URLs that users can then create instances of.",
+        "description": "Admin-managed MCP server registry entry.\nAdmins/managers register MCP server URLs that users can then create instances of.",
         "required": [
           "id",
           "url",
+          "name",
           "enabled",
+          "created_by",
           "updated_by",
           "created_at",
           "updated_at"
@@ -11342,11 +11452,26 @@
           },
           "url": {
             "type": "string",
-            "description": "MCP server URL (exact match, no normalization)"
+            "description": "MCP server endpoint URL (trimmed, case-insensitive unique)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable display name"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional description"
           },
           "enabled": {
             "type": "boolean",
-            "description": "Whether this MCP server URL is enabled"
+            "description": "Whether this MCP server is enabled"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "User who created this entry"
           },
           "updated_by": {
             "type": "string",
@@ -11363,6 +11488,85 @@
             "format": "date-time",
             "description": "When this entry was last updated",
             "example": "2024-11-10T04:52:06.786Z"
+          }
+        }
+      },
+      "McpServerInfo": {
+        "type": "object",
+        "description": "Minimal MCP server info embedded in MCP instance responses.",
+        "required": [
+          "id",
+          "url",
+          "name",
+          "enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "McpServerResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "name",
+          "enabled",
+          "created_by",
+          "updated_by",
+          "enabled_mcp_count",
+          "disabled_mcp_count",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "enabled_mcp_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "disabled_mcp_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
           }
         }
       },
@@ -13393,7 +13597,8 @@
         "type": "object",
         "required": [
           "name",
-          "slug"
+          "slug",
+          "enabled"
         ],
         "properties": {
           "name": {
@@ -13419,6 +13624,31 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "UpdateMcpServerRequest": {
+        "type": "object",
+        "required": [
+          "url",
+          "name",
+          "enabled"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
           }
         }
       },

@@ -11,20 +11,27 @@ export class McpFixtures {
   static PLAYGROUND_PARAM = 'repoName';
   static PLAYGROUND_PARAMS = { repoName: 'facebook/react' };
 
-  static createLifecycleData() {
+  static createServerData() {
     const ts = Date.now();
     return {
       url: McpFixtures.MCP_URL,
+      name: `DeepWiki-Server-${ts}`,
+      description: 'DeepWiki MCP Server',
+    };
+  }
+
+  static createLifecycleData() {
+    const ts = Date.now();
+    return {
       name: `DeepWiki-${ts}`,
       slug: `deepwiki-${ts}`,
-      description: 'DeepWiki MCP Server',
+      description: 'DeepWiki MCP instance',
     };
   }
 
   static createToolDiscoveryData() {
     const ts = Date.now();
     return {
-      url: McpFixtures.MCP_URL,
       name: `DeepWiki-Tools-${ts}`,
       slug: `dw-tools-${ts}`,
     };
@@ -33,7 +40,6 @@ export class McpFixtures {
   static createPlaygroundData() {
     const ts = Date.now();
     return {
-      url: McpFixtures.MCP_URL,
       name: `Playground-${ts}`,
       slug: `pg-${ts}`,
       description: 'Playground test MCP',

@@ -2,9 +2,9 @@ use crate::db::{
   encryption::{decrypt_api_key, encrypt_api_key},
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
   AppToolsetConfigRow, DbCore, DbError, DownloadRequest, DownloadStatus, McpRepository, McpRow,
-  McpServerRow, ModelMetadataRow, ModelRepository, SqlxError, TimeService, TokenRepository,
-  TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
-  UserAliasRepository,
+  McpServerRow, McpWithServerRow, ModelMetadataRow, ModelRepository, SqlxError, TimeService,
+  TokenRepository, TokenStatus, ToolsetRepository, ToolsetRow, UserAccessRequest,
+  UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use derive_new::new;
@@ -2231,101 +2231,173 @@ impl AccessRequestRepository for SqliteDbService {
 
 #[async_trait::async_trait]
 impl McpRepository for SqliteDbService {
-  async fn set_mcp_server_enabled(
-    &self,
-    url: &str,
-    enabled: bool,
-    updated_by: &str,
-  ) -> Result<McpServerRow, DbError> {
-    let now = self.time_service.utc_now().timestamp();
-    let enabled_int = if enabled { 1 } else { 0 };
-    let id = uuid::Uuid::new_v4().to_string();
+  async fn create_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError> {
+    let enabled_int = if row.enabled { 1 } else { 0 };
 
-    let result = sqlx::query_as::<_, (String, String, i64, String, i64, i64)>(
+    sqlx::query(
       r#"
-      INSERT INTO mcp_servers (id, url, enabled, updated_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT (url) DO UPDATE SET
-        enabled = excluded.enabled,
-        updated_by = excluded.updated_by,
-        updated_at = excluded.updated_at
-      RETURNING id, url, enabled, updated_by, created_at, updated_at
+      INSERT INTO mcp_servers (id, url, name, description, enabled, created_by, updated_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
-    .bind(&id)
-    .bind(url)
+    .bind(&row.id)
+    .bind(&row.url)
+    .bind(&row.name)
+    .bind(&row.description)
     .bind(enabled_int)
-    .bind(updated_by)
-    .bind(now)
-    .bind(now)
-    .fetch_one(&self.pool)
+    .bind(&row.created_by)
+    .bind(&row.updated_by)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .execute(&self.pool)
     .await?;
 
-    Ok(McpServerRow {
-      id: result.0,
-      url: result.1,
-      enabled: result.2 != 0,
-      updated_by: result.3,
-      created_at: result.4,
-      updated_at: result.5,
-    })
+    Ok(row.clone())
+  }
+
+  async fn update_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError> {
+    let enabled_int = if row.enabled { 1 } else { 0 };
+
+    sqlx::query(
+      r#"
+      UPDATE mcp_servers
+      SET url = ?, name = ?, description = ?, enabled = ?, updated_by = ?, updated_at = ?
+      WHERE id = ?
+      "#,
+    )
+    .bind(&row.url)
+    .bind(&row.name)
+    .bind(&row.description)
+    .bind(enabled_int)
+    .bind(&row.updated_by)
+    .bind(row.updated_at)
+    .bind(&row.id)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
   }
 
   async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, i64, String, i64, i64)>(
-      "SELECT id, url, enabled, updated_by, created_at, updated_at FROM mcp_servers WHERE id = ?",
+    let result = sqlx::query_as::<_, (String, String, String, Option<String>, i64, String, String, i64, i64)>(
+      "SELECT id, url, name, description, enabled, created_by, updated_by, created_at, updated_at FROM mcp_servers WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     Ok(result.map(
-      |(id, url, enabled, updated_by, created_at, updated_at)| McpServerRow {
-        id,
-        url,
-        enabled: enabled != 0,
-        updated_by,
-        created_at,
-        updated_at,
+      |(id, url, name, description, enabled, created_by, updated_by, created_at, updated_at)| {
+        McpServerRow {
+          id,
+          url,
+          name,
+          description,
+          enabled: enabled != 0,
+          created_by,
+          updated_by,
+          created_at,
+          updated_at,
+        }
       },
     ))
   }
 
   async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServerRow>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, i64, String, i64, i64)>(
-      "SELECT id, url, enabled, updated_by, created_at, updated_at FROM mcp_servers WHERE url = ?",
+    let result = sqlx::query_as::<_, (String, String, String, Option<String>, i64, String, String, i64, i64)>(
+      "SELECT id, url, name, description, enabled, created_by, updated_by, created_at, updated_at FROM mcp_servers WHERE url = ? COLLATE NOCASE",
     )
     .bind(url)
     .fetch_optional(&self.pool)
     .await?;
 
     Ok(result.map(
-      |(id, url, enabled, updated_by, created_at, updated_at)| McpServerRow {
-        id,
-        url,
-        enabled: enabled != 0,
-        updated_by,
-        created_at,
-        updated_at,
+      |(id, url, name, description, enabled, created_by, updated_by, created_at, updated_at)| {
+        McpServerRow {
+          id,
+          url,
+          name,
+          description,
+          enabled: enabled != 0,
+          created_by,
+          updated_by,
+          created_at,
+          updated_at,
+        }
       },
     ))
   }
 
-  async fn list_mcp_servers(&self) -> Result<Vec<McpServerRow>, DbError> {
-    let results = sqlx::query_as::<_, (String, String, i64, String, i64, i64)>(
-      "SELECT id, url, enabled, updated_by, created_at, updated_at FROM mcp_servers",
-    )
-    .fetch_all(&self.pool)
-    .await?;
+  async fn list_mcp_servers(&self, enabled: Option<bool>) -> Result<Vec<McpServerRow>, DbError> {
+    let (sql, bind_enabled) = match enabled {
+      Some(e) => (
+        "SELECT id, url, name, description, enabled, created_by, updated_by, created_at, updated_at FROM mcp_servers WHERE enabled = ?",
+        Some(if e { 1i64 } else { 0i64 }),
+      ),
+      None => (
+        "SELECT id, url, name, description, enabled, created_by, updated_by, created_at, updated_at FROM mcp_servers",
+        None,
+      ),
+    };
+
+    let results = if let Some(en) = bind_enabled {
+      sqlx::query_as::<
+        _,
+        (
+          String,
+          String,
+          String,
+          Option<String>,
+          i64,
+          String,
+          String,
+          i64,
+          i64,
+        ),
+      >(sql)
+      .bind(en)
+      .fetch_all(&self.pool)
+      .await?
+    } else {
+      sqlx::query_as::<
+        _,
+        (
+          String,
+          String,
+          String,
+          Option<String>,
+          i64,
+          String,
+          String,
+          i64,
+          i64,
+        ),
+      >(sql)
+      .fetch_all(&self.pool)
+      .await?
+    };
 
     Ok(
       results
         .into_iter()
         .map(
-          |(id, url, enabled, updated_by, created_at, updated_at)| McpServerRow {
+          |(
             id,
             url,
+            name,
+            description,
+            enabled,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at,
+          )| McpServerRow {
+            id,
+            url,
+            name,
+            description,
             enabled: enabled != 0,
+            created_by,
             updated_by,
             created_at,
             updated_at,
@@ -2333,6 +2405,35 @@ impl McpRepository for SqliteDbService {
         )
         .collect(),
     )
+  }
+
+  async fn count_mcps_by_server_id(&self, server_id: &str) -> Result<(i64, i64), DbError> {
+    let result = sqlx::query_as::<_, (i64, i64)>(
+      r#"
+      SELECT
+        COALESCE(SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN enabled = 0 THEN 1 ELSE 0 END), 0)
+      FROM mcps WHERE mcp_server_id = ?
+      "#,
+    )
+    .bind(server_id)
+    .fetch_one(&self.pool)
+    .await?;
+
+    Ok(result)
+  }
+
+  async fn clear_mcp_tools_by_server_id(&self, server_id: &str) -> Result<u64, DbError> {
+    let now = self.time_service.utc_now().timestamp();
+    let result = sqlx::query(
+      "UPDATE mcps SET tools_cache = NULL, tools_filter = NULL, updated_at = ? WHERE mcp_server_id = ?",
+    )
+    .bind(now)
+    .bind(server_id)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(result.rows_affected())
   }
 
   async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
@@ -2441,9 +2542,34 @@ impl McpRepository for SqliteDbService {
     ))
   }
 
-  async fn list_mcps(&self, user_id: &str) -> Result<Vec<McpRow>, DbError> {
-    let results = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, i64, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter, created_at, updated_at FROM mcps WHERE user_id = ?",
+  async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError> {
+    let results = sqlx::query_as::<
+      _,
+      (
+        String,
+        String,
+        String,
+        String,
+        String,
+        Option<String>,
+        i64,
+        Option<String>,
+        Option<String>,
+        i64,
+        i64,
+        String,
+        String,
+        i64,
+      ),
+    >(
+      r#"
+      SELECT m.id, m.user_id, m.mcp_server_id, m.name, m.slug, m.description, m.enabled,
+             m.tools_cache, m.tools_filter, m.created_at, m.updated_at,
+             s.url, s.name, s.enabled
+      FROM mcps m
+      INNER JOIN mcp_servers s ON m.mcp_server_id = s.id
+      WHERE m.user_id = ?
+      "#,
     )
     .bind(user_id)
     .fetch_all(&self.pool)
@@ -2465,8 +2591,11 @@ impl McpRepository for SqliteDbService {
             tools_filter,
             created_at,
             updated_at,
+            server_url,
+            server_name,
+            server_enabled,
           )| {
-            McpRow {
+            McpWithServerRow {
               id,
               user_id,
               mcp_server_id,
@@ -2478,6 +2607,9 @@ impl McpRepository for SqliteDbService {
               tools_filter,
               created_at,
               updated_at,
+              server_url,
+              server_name,
+              server_enabled: server_enabled != 0,
             }
           },
         )

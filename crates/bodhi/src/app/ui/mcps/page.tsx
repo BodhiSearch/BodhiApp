@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
 import { DataTable } from '@/components/DataTable';
+import { McpManagementTabs } from '@/components/McpManagementTabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,6 +77,7 @@ function McpsPageContent() {
 
   const renderRow = (mcp: McpResponse) => {
     const toolCount = mcp.tools_filter?.length ?? 0;
+    const serverDisabled = !mcp.mcp_server.enabled;
 
     return [
       <TableCell key="name">
@@ -90,7 +92,9 @@ function McpsPageContent() {
         </div>
       </TableCell>,
       <TableCell key="url" className="hidden md:table-cell" data-testid={`mcp-url-${mcp.id}`}>
-        <span className="text-muted-foreground text-sm font-mono truncate max-w-[300px] inline-block">{mcp.url}</span>
+        <span className="text-muted-foreground text-sm font-mono truncate max-w-[300px] inline-block">
+          {mcp.mcp_server.url}
+        </span>
       </TableCell>,
       <TableCell key="tools" className="hidden lg:table-cell" data-testid={`mcp-tools-${mcp.id}`}>
         <span className="text-muted-foreground">
@@ -106,8 +110,9 @@ function McpsPageContent() {
             variant="ghost"
             size="sm"
             onClick={() => router.push(`/ui/mcps/playground?id=${mcp.id}`)}
-            title={`Playground ${mcp.name}`}
+            title={serverDisabled ? 'MCP server is disabled' : `Playground ${mcp.name}`}
             className="h-8 w-8 p-0"
+            disabled={serverDisabled}
             data-testid={`mcp-playground-button-${mcp.id}`}
           >
             <Play className="h-4 w-4" />
@@ -116,8 +121,9 @@ function McpsPageContent() {
             variant="ghost"
             size="sm"
             onClick={() => router.push(`/ui/mcps/new?id=${mcp.id}`)}
-            title={`Edit ${mcp.name}`}
+            title={serverDisabled ? 'MCP server is disabled' : `Edit ${mcp.name}`}
             className="h-8 w-8 p-0"
+            disabled={serverDisabled}
             data-testid={`mcp-edit-button-${mcp.id}`}
           >
             <Pencil className="h-4 w-4" />
@@ -157,17 +163,19 @@ function McpsPageContent() {
 
   return (
     <div className="container mx-auto p-4" data-testid="mcps-page">
+      <McpManagementTabs />
+
       <UserOnboarding storageKey="mcps-banner-dismissed">
-        Connect MCP (Model Context Protocol) servers to extend your AI with external tools. MCP servers provide
-        capabilities like web search, code analysis, and more.
+        Your MCP instances connect to registered MCP servers. Create instances to use external tools in your AI
+        workflows.
       </UserOnboarding>
 
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">MCP Servers</h1>
+        <h1 className="text-2xl font-bold">My MCPs</h1>
         <Button asChild data-testid="mcp-new-button">
           <Link href="/ui/mcps/new">
             <Plus className="h-4 w-4 mr-2" />
-            Add MCP Server
+            New MCP
           </Link>
         </Button>
       </div>

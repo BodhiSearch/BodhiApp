@@ -244,10 +244,33 @@ pub struct AppAccessRequestRow {
 pub struct McpServerRow {
   pub id: String,
   pub url: String,
+  pub name: String,
+  pub description: Option<String>,
   pub enabled: bool,
+  pub created_by: String,
   pub updated_by: String,
   pub created_at: i64,
   pub updated_at: i64,
+}
+
+/// Joined MCP instance + server info from SQL JOIN query
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpWithServerRow {
+  pub id: String,
+  pub user_id: String,
+  pub mcp_server_id: String,
+  pub name: String,
+  pub slug: String,
+  pub description: Option<String>,
+  pub enabled: bool,
+  pub tools_cache: Option<String>,
+  pub tools_filter: Option<String>,
+  pub created_at: i64,
+  pub updated_at: i64,
+  // Server info from JOIN
+  pub server_url: String,
+  pub server_name: String,
+  pub server_enabled: bool,
 }
 
 // ============================================================================

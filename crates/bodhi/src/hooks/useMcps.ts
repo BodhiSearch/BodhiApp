@@ -1,39 +1,113 @@
-import {
-  CreateMcpRequest,
-  EnableMcpServerRequest,
-  ListMcpServersResponse,
-  ListMcpsResponse,
-  McpExecuteRequest,
-  McpExecuteResponse,
-  McpResponse,
-  McpServer,
-  McpTool,
-  McpToolsResponse,
-  OpenAiApiError,
-  UpdateMcpRequest,
-} from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
-// Type alias for compatibility
-type ErrorResponse = OpenAiApiError;
+// ============================================================================
+// Types - MCP Server (admin registry)
+// ============================================================================
 
-// Re-export types for consumers
-export type {
-  CreateMcpRequest,
-  EnableMcpServerRequest,
-  ListMcpServersResponse,
-  ListMcpsResponse,
-  McpExecuteRequest,
-  McpExecuteResponse,
-  McpResponse,
-  McpServer,
-  McpTool,
-  McpToolsResponse,
-  UpdateMcpRequest,
-};
+export interface McpServerInfo {
+  id: string;
+  url: string;
+  name: string;
+  enabled: boolean;
+}
+
+export interface McpServerResponse {
+  id: string;
+  url: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  created_by: string;
+  updated_by: string;
+  enabled_mcp_count: number;
+  disabled_mcp_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMcpServerRequest {
+  url: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+}
+
+export interface UpdateMcpServerRequest {
+  url: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+}
+
+export interface ListMcpServersResponse {
+  mcp_servers: McpServerResponse[];
+}
+
+// ============================================================================
+// Types - MCP Instance (user-owned)
+// ============================================================================
+
+export interface McpTool {
+  name: string;
+  description?: string;
+  input_schema?: unknown;
+}
+
+export interface McpResponse {
+  id: string;
+  mcp_server: McpServerInfo;
+  slug: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  tools_cache?: McpTool[];
+  tools_filter?: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMcpRequest {
+  name: string;
+  slug: string;
+  mcp_server_id: string;
+  description?: string;
+  enabled: boolean;
+}
+
+export interface UpdateMcpRequest {
+  name: string;
+  slug: string;
+  description?: string;
+  enabled: boolean;
+  tools_filter?: string[];
+}
+
+export interface ListMcpsResponse {
+  mcps: McpResponse[];
+}
+
+export interface McpToolsResponse {
+  tools: McpTool[];
+}
+
+export interface McpExecuteRequest {
+  params: unknown;
+}
+
+export interface McpExecuteResponse {
+  result?: unknown;
+  error?: string;
+}
+
+// Error type alias
+interface ErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
 
 // ============================================================================
 // Endpoints
@@ -58,25 +132,25 @@ export function useMcp(
 }
 
 // ============================================================================
-// Query Hooks - MCP Servers (admin allowlist)
+// Query Hooks - MCP Servers
 // ============================================================================
 
-export function useMcpServers(options?: {
-  enabled?: boolean;
-}): UseQueryResult<ListMcpServersResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ListMcpServersResponse>(['mcp_servers'], MCP_SERVERS_ENDPOINT, undefined, options);
-}
-
-export function useMcpServerCheck(
-  url: string,
+export function useMcpServers(
+  params?: {
+    enabled?: boolean;
+  },
   options?: { enabled?: boolean }
 ): UseQueryResult<ListMcpServersResponse, AxiosError<ErrorResponse>> {
-  return useQuery<ListMcpServersResponse>(
-    ['mcp_servers', 'check', url],
-    MCP_SERVERS_ENDPOINT,
-    { url },
-    { ...options, enabled: !!url && options?.enabled !== false }
-  );
+  const queryParams = params?.enabled !== undefined ? { enabled: String(params.enabled) } : undefined;
+  const key = params?.enabled !== undefined ? ['mcp_servers', String(params.enabled)] : ['mcp_servers'];
+  return useQuery<ListMcpServersResponse>(key, MCP_SERVERS_ENDPOINT, queryParams, options);
+}
+
+export function useMcpServer(
+  id: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<McpServerResponse, AxiosError<ErrorResponse>> {
+  return useQuery<McpServerResponse>(['mcp_servers', id], `${MCP_SERVERS_ENDPOINT}/${id}`, undefined, options);
 }
 
 // ============================================================================
@@ -151,22 +225,49 @@ export function useDeleteMcp(options?: {
 // Mutation Hooks - MCP Server admin
 // ============================================================================
 
-export function useEnableMcpServer(options?: {
-  onSuccess?: (server: McpServer) => void;
+export function useCreateMcpServer(options?: {
+  onSuccess?: (server: McpServerResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<McpServer>, AxiosError<ErrorResponse>, EnableMcpServerRequest> {
+}): UseMutationResult<AxiosResponse<McpServerResponse>, AxiosError<ErrorResponse>, CreateMcpServerRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<McpServer, EnableMcpServerRequest>(() => MCP_SERVERS_ENDPOINT, 'put', {
+  return useMutationQuery<McpServerResponse, CreateMcpServerRequest>(() => MCP_SERVERS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['mcp_servers']);
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to enable MCP server';
+      const message = error?.response?.data?.error?.message || 'Failed to create MCP server';
       options?.onError?.(message);
     },
   });
+}
+
+export function useUpdateMcpServer(options?: {
+  onSuccess?: (server: McpServerResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<McpServerResponse>,
+  AxiosError<ErrorResponse>,
+  UpdateMcpServerRequest & { id: string }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<McpServerResponse, UpdateMcpServerRequest & { id: string }>(
+    ({ id }) => `${MCP_SERVERS_ENDPOINT}/${id}`,
+    'put',
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['mcp_servers']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to update MCP server';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ id: _id, ...body }) => body }
+  );
 }
 
 // ============================================================================

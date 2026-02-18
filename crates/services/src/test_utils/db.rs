@@ -1,8 +1,9 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
   AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpRepository, McpRow, McpServerRow,
-  ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
-  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
+  McpWithServerRow, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
+  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
+  UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -528,17 +529,20 @@ impl ToolsetRepository for TestDbService {
 
 #[async_trait::async_trait]
 impl McpRepository for TestDbService {
-  async fn set_mcp_server_enabled(
-    &self,
-    url: &str,
-    enabled: bool,
-    updated_by: &str,
-  ) -> Result<McpServerRow, DbError> {
+  async fn create_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError> {
     self
       .inner
-      .set_mcp_server_enabled(url, enabled, updated_by)
+      .create_mcp_server(row)
       .await
-      .tap(|_| self.notify("set_mcp_server_enabled"))
+      .tap(|_| self.notify("create_mcp_server"))
+  }
+
+  async fn update_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError> {
+    self
+      .inner
+      .update_mcp_server(row)
+      .await
+      .tap(|_| self.notify("update_mcp_server"))
   }
 
   async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError> {
@@ -557,12 +561,28 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("get_mcp_server_by_url"))
   }
 
-  async fn list_mcp_servers(&self) -> Result<Vec<McpServerRow>, DbError> {
+  async fn list_mcp_servers(&self, enabled: Option<bool>) -> Result<Vec<McpServerRow>, DbError> {
     self
       .inner
-      .list_mcp_servers()
+      .list_mcp_servers(enabled)
       .await
       .tap(|_| self.notify("list_mcp_servers"))
+  }
+
+  async fn count_mcps_by_server_id(&self, server_id: &str) -> Result<(i64, i64), DbError> {
+    self
+      .inner
+      .count_mcps_by_server_id(server_id)
+      .await
+      .tap(|_| self.notify("count_mcps_by_server_id"))
+  }
+
+  async fn clear_mcp_tools_by_server_id(&self, server_id: &str) -> Result<u64, DbError> {
+    self
+      .inner
+      .clear_mcp_tools_by_server_id(server_id)
+      .await
+      .tap(|_| self.notify("clear_mcp_tools_by_server_id"))
   }
 
   async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
@@ -589,12 +609,12 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("get_mcp_by_slug"))
   }
 
-  async fn list_mcps(&self, user_id: &str) -> Result<Vec<McpRow>, DbError> {
+  async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError> {
     self
       .inner
-      .list_mcps(user_id)
+      .list_mcps_with_server(user_id)
       .await
-      .tap(|_| self.notify("list_mcps"))
+      .tap(|_| self.notify("list_mcps_with_server"))
   }
 
   async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
@@ -813,14 +833,17 @@ mockall::mock! {
 
   #[async_trait::async_trait]
   impl McpRepository for DbService {
-    async fn set_mcp_server_enabled(&self, url: &str, enabled: bool, updated_by: &str) -> Result<McpServerRow, DbError>;
+    async fn create_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError>;
+    async fn update_mcp_server(&self, row: &McpServerRow) -> Result<McpServerRow, DbError>;
     async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError>;
     async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServerRow>, DbError>;
-    async fn list_mcp_servers(&self) -> Result<Vec<McpServerRow>, DbError>;
+    async fn list_mcp_servers(&self, enabled: Option<bool>) -> Result<Vec<McpServerRow>, DbError>;
+    async fn count_mcps_by_server_id(&self, server_id: &str) -> Result<(i64, i64), DbError>;
+    async fn clear_mcp_tools_by_server_id(&self, server_id: &str) -> Result<u64, DbError>;
     async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn get_mcp(&self, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError>;
     async fn get_mcp_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError>;
-    async fn list_mcps(&self, user_id: &str) -> Result<Vec<McpRow>, DbError>;
+    async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError>;
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
   }

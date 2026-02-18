@@ -3,19 +3,26 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 // ============================================================================
-// McpServer - Admin URL allowlist entry (public API model)
+// McpServer - Admin-managed MCP server registry (public API model)
 // ============================================================================
 
-/// Admin-managed MCP server URL allowlist entry.
+/// Admin-managed MCP server registry entry.
 /// Admins/managers register MCP server URLs that users can then create instances of.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpServer {
   /// Unique identifier (UUID)
   pub id: String,
-  /// MCP server URL (exact match, no normalization)
+  /// MCP server endpoint URL (trimmed, case-insensitive unique)
   pub url: String,
-  /// Whether this MCP server URL is enabled
+  /// Human-readable display name
+  pub name: String,
+  /// Optional description
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
+  /// Whether this MCP server is enabled
   pub enabled: bool,
+  /// User who created this entry
+  pub created_by: String,
   /// User who last updated this entry
   pub updated_by: String,
   /// When this entry was created
@@ -27,6 +34,19 @@ pub struct McpServer {
 }
 
 // ============================================================================
+// McpServerInfo - Nested server context in MCP instance responses
+// ============================================================================
+
+/// Minimal MCP server info embedded in MCP instance responses.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpServerInfo {
+  pub id: String,
+  pub url: String,
+  pub name: String,
+  pub enabled: bool,
+}
+
+// ============================================================================
 // Mcp - User-owned MCP instance (public API model)
 // ============================================================================
 
@@ -35,10 +55,8 @@ pub struct McpServer {
 pub struct Mcp {
   /// Unique instance identifier (UUID)
   pub id: String,
-  /// Reference to the admin-allowed MCP server
-  pub mcp_server_id: String,
-  /// MCP server URL (resolved from mcp_servers via join)
-  pub url: String,
+  /// Server info resolved via JOIN
+  pub mcp_server: McpServerInfo,
   /// User-defined slug for this instance
   pub slug: String,
   /// Human-readable name
@@ -113,6 +131,8 @@ static MCP_SLUG_REGEX: Lazy<Regex> =
 
 pub const MAX_MCP_SLUG_LEN: usize = 24;
 pub const MAX_MCP_DESCRIPTION_LEN: usize = 255;
+pub const MAX_MCP_SERVER_NAME_LEN: usize = 100;
+pub const MAX_MCP_SERVER_URL_LEN: usize = 2048;
 
 /// Validate MCP instance slug format and length
 pub fn validate_mcp_slug(slug: &str) -> Result<(), String> {
@@ -142,10 +162,52 @@ pub fn validate_mcp_description(description: &str) -> Result<(), String> {
   Ok(())
 }
 
+/// Validate MCP server name (required, max 100 chars)
+pub fn validate_mcp_server_name(name: &str) -> Result<(), String> {
+  if name.is_empty() {
+    return Err("MCP server name cannot be empty".to_string());
+  }
+  if name.len() > MAX_MCP_SERVER_NAME_LEN {
+    return Err(format!(
+      "MCP server name cannot exceed {} characters",
+      MAX_MCP_SERVER_NAME_LEN
+    ));
+  }
+  Ok(())
+}
+
+/// Validate MCP server URL (required, valid URL format, max 2048 chars)
+pub fn validate_mcp_server_url(url: &str) -> Result<(), String> {
+  if url.is_empty() {
+    return Err("MCP server URL cannot be empty".to_string());
+  }
+  if url.len() > MAX_MCP_SERVER_URL_LEN {
+    return Err(format!(
+      "MCP server URL cannot exceed {} characters",
+      MAX_MCP_SERVER_URL_LEN
+    ));
+  }
+  url::Url::parse(url).map_err(|_| "MCP server URL is not a valid URL".to_string())?;
+  Ok(())
+}
+
+/// Validate MCP server description length (reuses same limit as MCP instance)
+pub fn validate_mcp_server_description(description: &str) -> Result<(), String> {
+  if description.len() > MAX_MCP_DESCRIPTION_LEN {
+    return Err(format!(
+      "MCP server description cannot exceed {} characters",
+      MAX_MCP_DESCRIPTION_LEN
+    ));
+  }
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use crate::mcp::{
-    validate_mcp_description, validate_mcp_slug, MAX_MCP_DESCRIPTION_LEN, MAX_MCP_SLUG_LEN,
+    validate_mcp_description, validate_mcp_server_description, validate_mcp_server_name,
+    validate_mcp_server_url, validate_mcp_slug, MAX_MCP_DESCRIPTION_LEN, MAX_MCP_SERVER_NAME_LEN,
+    MAX_MCP_SERVER_URL_LEN, MAX_MCP_SLUG_LEN,
   };
 
   #[test]
@@ -204,5 +266,57 @@ mod tests {
   fn test_validate_mcp_description_accepts_max_length() {
     let max_desc = "a".repeat(MAX_MCP_DESCRIPTION_LEN);
     assert!(validate_mcp_description(&max_desc).is_ok());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_name_accepts_valid() {
+    assert!(validate_mcp_server_name("DeepWiki MCP").is_ok());
+    assert!(validate_mcp_server_name("a").is_ok());
+    assert!(validate_mcp_server_name(&"a".repeat(MAX_MCP_SERVER_NAME_LEN)).is_ok());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_name_rejects_empty() {
+    assert!(validate_mcp_server_name("").is_err());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_name_rejects_too_long() {
+    assert!(validate_mcp_server_name(&"a".repeat(MAX_MCP_SERVER_NAME_LEN + 1)).is_err());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_url_accepts_valid() {
+    assert!(validate_mcp_server_url("https://mcp.deepwiki.com/mcp").is_ok());
+    assert!(validate_mcp_server_url("http://localhost:8080/mcp").is_ok());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_url_rejects_empty() {
+    assert!(validate_mcp_server_url("").is_err());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_url_rejects_invalid() {
+    assert!(validate_mcp_server_url("not-a-url").is_err());
+    assert!(validate_mcp_server_url("ftp missing colon").is_err());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_url_rejects_too_long() {
+    let long_url = format!("https://example.com/{}", "a".repeat(MAX_MCP_SERVER_URL_LEN));
+    assert!(validate_mcp_server_url(&long_url).is_err());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_description_accepts_valid() {
+    assert!(validate_mcp_server_description("").is_ok());
+    assert!(validate_mcp_server_description("A test server").is_ok());
+    assert!(validate_mcp_server_description(&"a".repeat(MAX_MCP_DESCRIPTION_LEN)).is_ok());
+  }
+
+  #[test]
+  fn test_validate_mcp_server_description_rejects_too_long() {
+    assert!(validate_mcp_server_description(&"a".repeat(MAX_MCP_DESCRIPTION_LEN + 1)).is_err());
   }
 }

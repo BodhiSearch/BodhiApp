@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -13,34 +14,37 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
   useCreateMcp,
-  useEnableMcpServer,
   useMcp,
-  useMcpServerCheck,
+  useMcpServers,
   useRefreshMcpTools,
   useUpdateMcp,
+  type McpServerResponse,
   type McpTool,
 } from '@/hooks/useMcps';
 import { useUser } from '@/hooks/useUsers';
 import { isAdminRole } from '@/lib/roles';
+import { cn } from '@/lib/utils';
 
 const createMcpSchema = z.object({
-  url: z.string().url('Must be a valid URL').min(1, 'URL is required'),
+  mcp_server_id: z.string().min(1, 'Please select an MCP server'),
   name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
   slug: z
     .string()
@@ -53,7 +57,18 @@ const createMcpSchema = z.object({
 
 type CreateMcpFormData = z.infer<typeof createMcpSchema>;
 
-type ServerStatus = 'idle' | 'checking' | 'enabled' | 'not_enabled' | 'error';
+const extractSlugFromUrl = (url: string): string => {
+  try {
+    const hostname = new URL(url).hostname;
+    const parts = hostname.split('.');
+    if (parts.length >= 2) {
+      return parts[parts.length - 2];
+    }
+    return parts[0];
+  } catch {
+    return '';
+  }
+};
 
 function NewMcpPageContent() {
   const router = useRouter();
@@ -66,32 +81,18 @@ function NewMcpPageContent() {
     data: existingMcp,
     isLoading: loadingExisting,
     error: existingError,
-  } = useMcp(editId || '', {
-    enabled: !!editId,
-  });
+  } = useMcp(editId || '', { enabled: !!editId });
 
-  const [serverStatus, setServerStatus] = useState<ServerStatus>('idle');
-  const [enableDialogOpen, setEnableDialogOpen] = useState(false);
-  const [urlToCheck, setUrlToCheck] = useState('');
+  const { data: serversData, isLoading: loadingServers } = useMcpServers({ enabled: true }, { enabled: !editId });
+
+  const enabledServers = useMemo(() => serversData?.mcp_servers || [], [serversData]);
+
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [selectedServer, setSelectedServer] = useState<McpServerResponse | null>(null);
   const [fetchedTools, setFetchedTools] = useState<McpTool[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [toolsFetched, setToolsFetched] = useState(false);
   const [createdMcpId, setCreatedMcpId] = useState<string | null>(null);
-
-  const { data: serverCheckData, isFetching: isCheckingServer } = useMcpServerCheck(urlToCheck, {
-    enabled: !!urlToCheck,
-  });
-
-  const enableServerMutation = useEnableMcpServer({
-    onSuccess: () => {
-      setEnableDialogOpen(false);
-      setServerStatus('enabled');
-      toast({ title: 'MCP server URL enabled' });
-    },
-    onError: (message) => {
-      toast({ title: 'Failed to enable MCP server', description: message, variant: 'destructive' });
-    },
-  });
 
   const createMutation = useCreateMcp({
     onSuccess: (mcp) => {
@@ -129,7 +130,7 @@ function NewMcpPageContent() {
   const form = useForm<CreateMcpFormData>({
     resolver: zodResolver(createMcpSchema),
     defaultValues: {
-      url: '',
+      mcp_server_id: '',
       name: '',
       slug: '',
       description: '',
@@ -140,13 +141,18 @@ function NewMcpPageContent() {
   useEffect(() => {
     if (existingMcp && editId) {
       form.reset({
-        url: existingMcp.url,
+        mcp_server_id: existingMcp.mcp_server.id,
         name: existingMcp.name,
         slug: existingMcp.slug,
         description: existingMcp.description || '',
         enabled: existingMcp.enabled,
       });
-      setServerStatus('enabled');
+      setSelectedServer({
+        id: existingMcp.mcp_server.id,
+        url: existingMcp.mcp_server.url,
+        name: existingMcp.mcp_server.name,
+        enabled: existingMcp.mcp_server.enabled,
+      } as McpServerResponse);
       if (existingMcp.tools_cache) {
         setFetchedTools(existingMcp.tools_cache);
         setSelectedTools(new Set(existingMcp.tools_filter || []));
@@ -155,37 +161,27 @@ function NewMcpPageContent() {
     }
   }, [existingMcp, editId, form]);
 
-  useEffect(() => {
-    if (!urlToCheck || isCheckingServer) return;
+  const handleServerSelect = useCallback(
+    (server: McpServerResponse) => {
+      setSelectedServer(server);
+      form.setValue('mcp_server_id', server.id);
+      form.clearErrors('mcp_server_id');
 
-    if (serverCheckData) {
-      const servers = serverCheckData.mcp_servers || [];
-      const found = servers.find((s) => s.url === urlToCheck);
-      if (found && found.enabled) {
-        setServerStatus('enabled');
-      } else {
-        setServerStatus('not_enabled');
+      if (!form.getValues('name')) {
+        form.setValue('name', server.name);
       }
-    }
-  }, [serverCheckData, isCheckingServer, urlToCheck]);
+      if (!form.getValues('description') && server.description) {
+        form.setValue('description', server.description);
+      }
+      const slug = extractSlugFromUrl(server.url);
+      if (!form.getValues('slug') && slug) {
+        form.setValue('slug', slug);
+      }
 
-  const handleCheckUrl = useCallback(() => {
-    const url = form.getValues('url');
-    if (!url) return;
-    try {
-      new URL(url);
-    } catch {
-      form.setError('url', { message: 'Must be a valid URL' });
-      return;
-    }
-    setServerStatus('checking');
-    setUrlToCheck(url);
-  }, [form]);
-
-  const handleEnableServer = () => {
-    const url = form.getValues('url');
-    enableServerMutation.mutate({ url, enabled: true });
-  };
+      setComboboxOpen(false);
+    },
+    [form]
+  );
 
   const handleToolToggle = (toolName: string) => {
     setSelectedTools((prev) => {
@@ -229,7 +225,7 @@ function NewMcpPageContent() {
     }
 
     createMutation.mutate({
-      url: data.url,
+      mcp_server_id: data.mcp_server_id,
       name: data.name,
       slug: data.slug,
       description: data.description || undefined,
@@ -264,11 +260,11 @@ function NewMcpPageContent() {
     <div className="container mx-auto p-4 max-w-2xl" data-testid="new-mcp-page">
       <Card>
         <CardHeader>
-          <CardTitle>{editId ? 'Edit MCP Server' : 'Add MCP Server'}</CardTitle>
+          <CardTitle>{editId ? 'Edit MCP' : 'New MCP'}</CardTitle>
           <CardDescription>
             {editId
-              ? 'Update your MCP server configuration.'
-              : 'Connect to an MCP server to add external tools to your AI assistant.'}
+              ? 'Update your MCP instance configuration.'
+              : 'Create a new MCP instance by selecting a registered server.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -276,70 +272,109 @@ function NewMcpPageContent() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="url"
+                name="mcp_server_id"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Server URL</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="https://mcp.example.com/mcp"
-                          disabled={isSubmitting || !!editId || !!createdMcpId}
-                          data-testid="mcp-url-input"
-                        />
-                      </FormControl>
-                      {!editId && !createdMcpId && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleCheckUrl}
-                          disabled={isCheckingServer || serverStatus === 'checking'}
-                          data-testid="mcp-check-url-button"
-                        >
-                          {isCheckingServer || serverStatus === 'checking' ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            'Check'
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    <FormDescription>The MCP server endpoint URL (exact match required)</FormDescription>
-                    <FormMessage />
-                    {serverStatus === 'enabled' && (
-                      <div className="flex items-center gap-2 text-sm text-green-600" data-testid="mcp-url-enabled">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Server URL is enabled
-                      </div>
-                    )}
-                    {serverStatus === 'not_enabled' && (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>MCP Server</FormLabel>
+                    {editId ? (
                       <div className="space-y-2">
-                        <div
-                          className="flex items-center gap-2 text-sm text-amber-600"
-                          data-testid="mcp-url-not-enabled"
-                        >
-                          <AlertCircle className="h-4 w-4" />
-                          This server URL is not in the allowlist
-                        </div>
-                        {isAdmin && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEnableDialogOpen(true)}
-                            data-testid="mcp-enable-server-button"
-                          >
-                            Enable this server
-                          </Button>
-                        )}
-                        {!isAdmin && (
-                          <p className="text-sm text-muted-foreground">
-                            Contact your administrator to enable this server URL.
-                          </p>
-                        )}
+                        <Input value={selectedServer?.url || ''} disabled data-testid="mcp-server-url-readonly" />
+                        <p className="text-xs text-muted-foreground">Server: {selectedServer?.name}</p>
                       </div>
+                    ) : (
+                      <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={comboboxOpen}
+                              className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}
+                              disabled={isSubmitting || !!createdMcpId}
+                              data-testid="mcp-server-combobox"
+                            >
+                              {selectedServer
+                                ? `${selectedServer.name} — ${selectedServer.url}`
+                                : 'Select an MCP server...'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search by name, URL, or description..."
+                              data-testid="mcp-server-search"
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {loadingServers ? (
+                                  <div className="flex items-center gap-2 py-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading servers...
+                                  </div>
+                                ) : (
+                                  <div className="text-center py-4">
+                                    <p className="text-sm text-muted-foreground mb-2">No servers found</p>
+                                    {isAdmin && (
+                                      <Button asChild variant="link" size="sm">
+                                        <Link href="/ui/mcp-servers/new">Register a new server</Link>
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {enabledServers.map((server) => (
+                                  <CommandItem
+                                    key={server.id}
+                                    value={`${server.name} ${server.url} ${server.description || ''}`}
+                                    onSelect={() => handleServerSelect(server)}
+                                    data-testid={`mcp-server-option-${server.id}`}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        selectedServer?.id === server.id ? 'opacity-100' : 'opacity-0'
+                                      )}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium">{server.name}</div>
+                                      <div className="text-xs text-muted-foreground font-mono truncate">
+                                        {server.url}
+                                      </div>
+                                      {server.description && (
+                                        <div className="text-xs text-muted-foreground truncate">
+                                          {server.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                              {isAdmin && (
+                                <>
+                                  <CommandSeparator />
+                                  <CommandGroup>
+                                    <CommandItem
+                                      onSelect={() => router.push('/ui/mcp-servers/new')}
+                                      data-testid="mcp-server-add-new"
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Add New MCP Server
+                                    </CommandItem>
+                                  </CommandGroup>
+                                </>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     )}
+                    {selectedServer && !editId && (
+                      <p className="text-xs text-muted-foreground font-mono">{selectedServer.url}</p>
+                    )}
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -353,12 +388,12 @@ function NewMcpPageContent() {
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="My MCP Server"
+                        placeholder="My MCP Instance"
                         disabled={isSubmitting}
                         data-testid="mcp-name-input"
                       />
                     </FormControl>
-                    <FormDescription>A friendly name for this MCP connection</FormDescription>
+                    <FormDescription>A friendly name for this MCP instance</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -371,12 +406,7 @@ function NewMcpPageContent() {
                   <FormItem>
                     <FormLabel>Slug</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="my-mcp-server"
-                        disabled={isSubmitting}
-                        data-testid="mcp-slug-input"
-                      />
+                      <Input {...field} placeholder="my-mcp" disabled={isSubmitting} data-testid="mcp-slug-input" />
                     </FormControl>
                     <FormDescription>A unique identifier (letters, numbers, and hyphens only)</FormDescription>
                     <FormMessage />
@@ -393,7 +423,7 @@ function NewMcpPageContent() {
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Describe what this MCP server provides"
+                        placeholder="Describe what this MCP instance is for"
                         disabled={isSubmitting}
                         data-testid="mcp-description-input"
                       />
@@ -410,7 +440,7 @@ function NewMcpPageContent() {
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Enable MCP</FormLabel>
-                      <FormDescription>Make this MCP server available for use</FormDescription>
+                      <FormDescription>Make this MCP instance available for use</FormDescription>
                     </div>
                     <FormControl>
                       <Switch
@@ -426,11 +456,7 @@ function NewMcpPageContent() {
 
               {!isCreatedOrEditing && (
                 <div className="flex gap-4">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || serverStatus !== 'enabled'}
-                    data-testid="mcp-create-button"
-                  >
+                  <Button type="submit" disabled={isSubmitting || !selectedServer} data-testid="mcp-create-button">
                     {isSubmitting ? 'Creating...' : 'Create MCP'}
                   </Button>
                   <Button
@@ -569,32 +595,6 @@ function NewMcpPageContent() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={enableDialogOpen} onOpenChange={setEnableDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enable MCP Server URL</DialogTitle>
-            <DialogDescription>
-              This will add the URL to the allowlist, making it available for all users to create MCP connections.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm font-mono bg-muted p-2 rounded break-all">{form.getValues('url')}</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEnableDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleEnableServer}
-              disabled={enableServerMutation.isLoading}
-              data-testid="mcp-confirm-enable-button"
-            >
-              {enableServerMutation.isLoading ? 'Enabling...' : 'Enable Server'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
