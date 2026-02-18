@@ -3,10 +3,7 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { TokensPage } from '@/pages/TokensPage.mjs';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
@@ -126,7 +123,12 @@ test.describe('API Tokens - Complete Integration', () => {
 
     adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    const adminLogin = new LoginPage(adminPage, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const adminLogin = new LoginPage(
+      adminPage,
+      SHARED_SERVER_URL,
+      authServerConfig,
+      testCredentials
+    );
     const adminTokensPage = new TokensPage(adminPage, SHARED_SERVER_URL);
 
     const tokenNames = TokenFixtures.getTestTokenNames();

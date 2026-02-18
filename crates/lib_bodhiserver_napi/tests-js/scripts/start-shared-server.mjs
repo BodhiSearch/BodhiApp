@@ -1,10 +1,7 @@
 import { config } from 'dotenv';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  createTestServer,
-  waitForServer,
-} from '../test-helpers.mjs';
+import { createTestServer, waitForServer } from '../test-helpers.mjs';
 import {
   getAuthServerConfig,
   getPreConfiguredResourceClient,

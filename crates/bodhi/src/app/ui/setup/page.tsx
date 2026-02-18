@@ -17,10 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useSetupApp } from '@/hooks/useInfo';
-import {
-  ROUTE_SETUP_DOWNLOAD_MODELS,
-  ROUTE_SETUP_RESOURCE_ADMIN,
-} from '@/lib/constants';
+import { ROUTE_SETUP_DOWNLOAD_MODELS, ROUTE_SETUP_RESOURCE_ADMIN } from '@/lib/constants';
 import { setupFormSchema, SetupFormData } from '@/schemas/objs';
 
 const benefits = [

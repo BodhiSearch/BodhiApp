@@ -113,7 +113,13 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
   // Update form name when toolsetType loads
   useEffect(() => {
     if (toolsetType?.toolset_type) {
-      form.setValue('slug', toolsetType.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+      form.setValue(
+        'slug',
+        toolsetType.name
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+      );
     }
   }, [toolsetType?.toolset_type, form]);
 

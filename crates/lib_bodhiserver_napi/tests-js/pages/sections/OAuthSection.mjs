@@ -22,7 +22,11 @@ export class OAuthSection {
   async waitForAccessRequestCallback(testAppUrl) {
     await this.page.waitForURL((url) => {
       const parsed = new URL(url);
-      return parsed.origin === new URL(testAppUrl).origin && parsed.pathname === '/access-callback' && parsed.searchParams.has('id');
+      return (
+        parsed.origin === new URL(testAppUrl).origin &&
+        parsed.pathname === '/access-callback' &&
+        parsed.searchParams.has('id')
+      );
     });
   }
 

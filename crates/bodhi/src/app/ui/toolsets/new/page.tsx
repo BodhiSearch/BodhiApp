@@ -83,7 +83,13 @@ function NewToolsetPageContent() {
     if (!hasToolsetsOfType) {
       const selectedType = types.find((t) => t.toolset_type === toolsetType);
       if (selectedType) {
-        form.setValue('slug', selectedType.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+        form.setValue(
+          'slug',
+          selectedType.name
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+        );
       }
     }
   };

@@ -7,8 +7,7 @@ use axum::{
 };
 
 use objs::{
-  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError,
-  UserScopeError,
+  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError, UserScopeError,
 };
 use server_core::RouterState;
 use services::{
@@ -193,14 +192,19 @@ pub async fn auth_middleware(
       .ok_or_else(|| AuthError::InvalidToken("authorization header is malformed".to_string()))?
       .trim()
       .to_string();
-    let (access_token, resource_scope, app_client_id) = token_service.validate_bearer_token(header).await?;
+    let (access_token, resource_scope, app_client_id) =
+      token_service.validate_bearer_token(header).await?;
     tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
 
     // For ExternalApp, pass the original bearer token
     let external_app_token =
       matches!(resource_scope, ResourceScope::User(_)).then(|| bearer_token.clone());
-    let auth_context =
-      build_auth_context_from_bearer(access_token, resource_scope, app_client_id, external_app_token);
+    let auth_context = build_auth_context_from_bearer(
+      access_token,
+      resource_scope,
+      app_client_id,
+      external_app_token,
+    );
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(req.headers()) {
@@ -279,8 +283,12 @@ pub async fn optional_auth_middleware(
           } else {
             None
           };
-          let auth_context =
-            build_auth_context_from_bearer(access_token, resource_scope, app_client_id, external_app_token);
+          let auth_context = build_auth_context_from_bearer(
+            access_token,
+            resource_scope,
+            app_client_id,
+            external_app_token,
+          );
           req.extensions_mut().insert(auth_context);
         }
         Err(err) => {

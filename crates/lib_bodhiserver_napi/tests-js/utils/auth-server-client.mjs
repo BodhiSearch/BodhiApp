@@ -9,11 +9,7 @@ export function getAuthServerConfig() {
   };
 
   // Validate required environment variables
-  const requiredVars = [
-    'authUrl',
-    'authRealm',
-    'devConsoleClientSecret',
-  ];
+  const requiredVars = ['authUrl', 'authRealm', 'devConsoleClientSecret'];
   for (const varName of requiredVars) {
     if (!config[varName]) {
       throw new Error(`Required environment variable missing: ${varName.toUpperCase()}`);
@@ -547,7 +543,9 @@ export class AuthServerTestClient {
     );
 
     if (!updateResponse.ok) {
-      throw new Error(`Failed to update client: ${updateResponse.status} ${updateResponse.statusText}`);
+      throw new Error(
+        `Failed to update client: ${updateResponse.status} ${updateResponse.statusText}`
+      );
     }
   }
 

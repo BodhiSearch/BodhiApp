@@ -62,8 +62,6 @@ export class ChatPage {
   }
 
   async getStatus() {
-    return await this.page
-      .locator(this.selectors.section)
-      .getAttribute('data-test-state');
+    return await this.page.locator(this.selectors.section).getAttribute('data-test-state');
   }
 }

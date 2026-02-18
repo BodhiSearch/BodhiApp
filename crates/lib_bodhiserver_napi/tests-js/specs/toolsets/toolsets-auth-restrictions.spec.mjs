@@ -59,7 +59,12 @@ test.describe('Session Auth - Toolset Endpoints', { tag: ['@oauth', '@toolsets']
   test('GET /toolsets with session auth returns toolset_types field', async ({ browser }) => {
     const sessionContext = await browser.newContext();
     const sessionPage = await sessionContext.newPage();
-    const loginPage = new LoginPage(sessionPage, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const loginPage = new LoginPage(
+      sessionPage,
+      SHARED_SERVER_URL,
+      authServerConfig,
+      testCredentials
+    );
     await loginPage.performOAuthLogin();
 
     await sessionPage.goto(SHARED_SERVER_URL);
@@ -152,9 +157,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
 
       // Approve on the review page (browser has session from Phase 1 login)
       const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
-      await reviewPage.approveWithToolsets([
-        { toolsetType: TOOLSET_TYPE, instanceId: toolsetId },
-      ]);
+      await reviewPage.approveWithToolsets([{ toolsetType: TOOLSET_TYPE, instanceId: toolsetId }]);
 
       // Wait for callback back to test app with ?id= param
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
@@ -171,8 +174,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.rest.sendRequest({
         method: 'GET',
         url: '/bodhi/v1/toolsets',
-        
-        
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -194,14 +195,13 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.rest.sendRequest({
         method: 'POST',
         url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
-        
+
         body: JSON.stringify({
           params: {
             query: 'latest news about AI from San Francisco',
             num_results: 3,
           },
         }),
-        
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -274,9 +274,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
 
       // Approve on the review page (browser has session from earlier login)
       const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
-      await reviewPage.approveWithToolsets([
-        { toolsetType: TOOLSET_TYPE, instanceId: toolsetId },
-      ]);
+      await reviewPage.approveWithToolsets([{ toolsetType: TOOLSET_TYPE, instanceId: toolsetId }]);
 
       // Wait for callback back to test app with ?id= param
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
@@ -304,8 +302,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.rest.sendRequest({
         method: 'GET',
         url: '/bodhi/v1/toolsets',
-        
-        
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -322,14 +318,13 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.rest.sendRequest({
         method: 'POST',
         url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
-        
+
         body: JSON.stringify({
           params: {
             query: 'test query',
             num_results: 1,
           },
         }),
-        
       });
 
       // Without access_request_scope, execute should be denied
@@ -438,8 +433,6 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.rest.sendRequest({
         method: 'GET',
         url: '/bodhi/v1/toolsets',
-        
-        
       });
 
       expect(await app.rest.getResponseStatus()).toBe(200);
@@ -457,93 +450,101 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
   });
 });
 
-test.describe('OAuth Token - Toolset CRUD Endpoints (Session-Only)', { tag: ['@oauth', '@toolsets'] }, () => {
-  let authServerConfig;
-  let testCredentials;
-  let toolsetUuid;
+test.describe(
+  'OAuth Token - Toolset CRUD Endpoints (Session-Only)',
+  { tag: ['@oauth', '@toolsets'] },
+  () => {
+    let authServerConfig;
+    let testCredentials;
+    let toolsetUuid;
 
-  test.beforeAll(async ({ browser }) => {
-    authServerConfig = getAuthServerConfig();
-    testCredentials = getTestCredentials();
+    test.beforeAll(async ({ browser }) => {
+      authServerConfig = getAuthServerConfig();
+      testCredentials = getTestCredentials();
 
-    // Create a real toolset via session auth to get its UUID
-    const sessionContext = await browser.newContext();
-    const sessionPage = await sessionContext.newPage();
-    const loginPage = new LoginPage(sessionPage, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    await loginPage.performOAuthLogin();
-
-    // Configure Exa toolset to create an instance
-    const toolsetsPage = new ToolsetsPage(sessionPage, SHARED_SERVER_URL);
-    const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
-    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
-    expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
-    await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
-
-    // Get the UUID from the data-test-uuid attribute
-    await toolsetsPage.navigateToToolsetsList();
-    toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
-
-    await sessionContext.close();
-  });
-
-  test('GET and PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({ page }) => {
-    await test.step('Session login and complete OAuth flow', async () => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+      // Create a real toolset via session auth to get its UUID
+      const sessionContext = await browser.newContext();
+      const sessionPage = await sessionContext.newPage();
+      const loginPage = new LoginPage(
+        sessionPage,
+        SHARED_SERVER_URL,
+        authServerConfig,
+        testCredentials
+      );
       await loginPage.performOAuthLogin();
+
+      // Configure Exa toolset to create an instance
+      const toolsetsPage = new ToolsetsPage(sessionPage, SHARED_SERVER_URL);
+      const exaApiKey = process.env.INTEG_TEST_EXA_API_KEY;
+      expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').toBeDefined();
+      expect(exaApiKey, 'INTEG_TEST_EXA_API_KEY not found in env').not.toBeNull();
+      await toolsetsPage.configureToolsetWithApiKey(TOOLSET_TYPE, exaApiKey);
+
+      // Get the UUID from the data-test-uuid attribute
+      await toolsetsPage.navigateToToolsetsList();
+      toolsetUuid = await toolsetsPage.getToolsetUuidByScope(TOOLSET_TYPE);
+
+      await sessionContext.close();
     });
 
-    const appClient = getPreConfiguredAppClient();
-    const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+    test('GET and PUT /toolsets/{id} with OAuth token returns 401 (session-only)', async ({
+      page,
+    }) => {
+      await test.step('Session login and complete OAuth flow', async () => {
+        const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
 
-    const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+      const appClient = getPreConfiguredAppClient();
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
-    await test.step('Navigate and configure OAuth form', async () => {
-      await app.navigate();
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-      await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
-        authServerUrl: authServerConfig.authUrl,
-        realm: authServerConfig.authRealm,
-        clientId: appClient.clientId,
-        redirectUri,
-        scope: 'openid profile email scope_user_user',
-        requestedToolsets: null,
+      await test.step('Navigate and configure OAuth form', async () => {
+        await app.navigate();
+
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: SHARED_SERVER_URL,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: 'openid profile email scope_user_user',
+          requestedToolsets: null,
+        });
+      });
+
+      await test.step('Submit access request (auto-approve) and complete login', async () => {
+        await app.config.submitAccessRequest();
+        await app.config.waitForLoginReady();
+        await app.config.clickLogin();
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
+
+      await test.step('Verify OAuth token is blocked for GET /toolsets/{id}', async () => {
+        await app.rest.navigateTo();
+
+        await app.rest.sendRequest({
+          method: 'GET',
+          url: `/bodhi/v1/toolsets/${toolsetUuid}`,
+        });
+        expect(await app.rest.getResponseStatus()).toBe(401);
+      });
+
+      await test.step('Verify OAuth token is blocked for PUT /toolsets/{id}', async () => {
+        await app.rest.sendRequest({
+          method: 'PUT',
+          url: `/bodhi/v1/toolsets/${toolsetUuid}`,
+
+          body: JSON.stringify({
+            slug: 'Updated-OAuth',
+            description: 'Updated from OAuth test',
+            enabled: false,
+            api_key: { action: 'Keep' },
+          }),
+        });
+        expect(await app.rest.getResponseStatus()).toBe(401);
       });
     });
-
-    await test.step('Submit access request (auto-approve) and complete login', async () => {
-      await app.config.submitAccessRequest();
-      await app.config.waitForLoginReady();
-      await app.config.clickLogin();
-      await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
-    });
-
-    await test.step('Verify OAuth token is blocked for GET /toolsets/{id}', async () => {
-      await app.rest.navigateTo();
-
-      await app.rest.sendRequest({
-        method: 'GET',
-        url: `/bodhi/v1/toolsets/${toolsetUuid}`,
-        
-        
-      });
-      expect(await app.rest.getResponseStatus()).toBe(401);
-    });
-
-    await test.step('Verify OAuth token is blocked for PUT /toolsets/{id}', async () => {
-      await app.rest.sendRequest({
-        method: 'PUT',
-        url: `/bodhi/v1/toolsets/${toolsetUuid}`,
-        
-        body: JSON.stringify({
-          slug: 'Updated-OAuth',
-          description: 'Updated from OAuth test',
-          enabled: false,
-          api_key: { action: 'Keep' },
-        }),
-        
-      });
-      expect(await app.rest.getResponseStatus()).toBe(401);
-    });
-  });
-});
+  }
+);

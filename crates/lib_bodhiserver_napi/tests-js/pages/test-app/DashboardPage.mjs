@@ -40,21 +40,15 @@ export class DashboardPage {
       .locator(this.selectors.userInfoSection)
       .getAttribute('data-test-state');
     if (state === 'error') {
-      const errorText = await this.page
-        .locator(this.selectors.userInfoError)
-        .textContent();
+      const errorText = await this.page.locator(this.selectors.userInfoError).textContent();
       throw new Error(`User info fetch failed: ${errorText}`);
     }
-    const text = await this.page
-      .locator(this.selectors.userInfoResponse)
-      .textContent();
+    const text = await this.page.locator(this.selectors.userInfoResponse).textContent();
     return JSON.parse(text);
   }
 
   async getUserInfoResponse() {
-    const text = await this.page
-      .locator(this.selectors.userInfoResponse)
-      .textContent();
+    const text = await this.page.locator(this.selectors.userInfoResponse).textContent();
     return JSON.parse(text);
   }
 }

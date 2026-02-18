@@ -3,10 +3,7 @@ import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LocalModelFormPage } from '@/pages/LocalModelFormPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
@@ -26,7 +23,12 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
   });
 
   test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, SHARED_SERVER_URL, testData.authServerConfig, testData.testCredentials);
+    loginPage = new LoginPage(
+      page,
+      SHARED_SERVER_URL,
+      testData.authServerConfig,
+      testData.testCredentials
+    );
     modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
     formPage = new LocalModelFormPage(page, SHARED_SERVER_URL);
     chatPage = new ChatPage(page, SHARED_SERVER_URL);

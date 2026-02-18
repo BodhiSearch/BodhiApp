@@ -7,12 +7,11 @@ use rstest::fixture;
 use serde_json::Value;
 use serde_yaml::Value as YamlValue;
 use server_app::{ServeCommand, ServerShutdownHandle};
+use services::test_utils::TEST_CLIENT_ID;
 use services::{
   db::{DbCore, DefaultTimeService, SqliteDbService},
   hash_key,
-  test_utils::{
-    access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue,
-  },
+  test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
   AppRegInfoBuilder, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
   DefaultAppService, DefaultEnvWrapper, DefaultExaService, DefaultSecretService,
   DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService,
@@ -21,7 +20,6 @@ use services::{
   BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
   SETTINGS_YAML,
 };
-use services::test_utils::TEST_CLIENT_ID;
 use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use tempfile::TempDir;

@@ -51,7 +51,10 @@ mod tests {
   #[case(ResourceScope::Token(TokenScope::Manager), "scope_token_manager")]
   #[case(ResourceScope::Token(TokenScope::Admin), "scope_token_admin")]
   #[case(ResourceScope::User(Some(UserScope::User)), "scope_user_user")]
-  #[case(ResourceScope::User(Some(UserScope::PowerUser)), "scope_user_power_user")]
+  #[case(
+    ResourceScope::User(Some(UserScope::PowerUser)),
+    "scope_user_power_user"
+  )]
   #[case(ResourceScope::User(Some(UserScope::Manager)), "scope_user_manager")]
   #[case(ResourceScope::User(Some(UserScope::Admin)), "scope_user_admin")]
   fn test_resource_scope_display(#[case] resource_scope: ResourceScope, #[case] expected: &str) {

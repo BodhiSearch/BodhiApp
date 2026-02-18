@@ -8,9 +8,7 @@ export default defineConfig({
   envDir: path.resolve(__dirname, '../tests-js'),
   envPrefix: 'INTEG_TEST_',
   resolve: {
-    alias: [
-      { find: '@', replacement: path.resolve(__dirname, './src') },
-    ],
+    alias: [{ find: '@', replacement: path.resolve(__dirname, './src') }],
   },
   build: {
     outDir: 'dist',

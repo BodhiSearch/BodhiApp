@@ -28,7 +28,9 @@ export function generateState(): string {
 }
 
 export function buildAuthUrl(config: OAuthConfig, codeChallenge: string, state: string): string {
-  const authUrl = new URL(`${config.authServerUrl}/realms/${config.realm}/protocol/openid-connect/auth`);
+  const authUrl = new URL(
+    `${config.authServerUrl}/realms/${config.realm}/protocol/openid-connect/auth`
+  );
   authUrl.searchParams.append('client_id', config.clientId);
   authUrl.searchParams.append('redirect_uri', config.redirectUri);
   authUrl.searchParams.append('response_type', 'code');

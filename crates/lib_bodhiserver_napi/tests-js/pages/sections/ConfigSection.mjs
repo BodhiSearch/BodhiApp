@@ -17,7 +17,8 @@ export class ConfigSection {
     formLogin: '[data-testid="div-config-form"][data-test-state="login"]',
     formError: '[data-testid="div-config-form"][data-test-state="error"]',
     // Terminal state after submitting access request: login (approved) or error
-    terminal: '[data-testid="div-config-form"][data-test-state="login"], [data-testid="div-config-form"][data-test-state="error"]',
+    terminal:
+      '[data-testid="div-config-form"][data-test-state="login"], [data-testid="div-config-form"][data-test-state="error"]',
     buttonLogin: '[data-testid="btn-request-access"][data-test-state="login"]',
   };
 
@@ -25,7 +26,15 @@ export class ConfigSection {
     this.page = page;
   }
 
-  async configureOAuthForm({ bodhiServerUrl, authServerUrl, realm, clientId, redirectUri, scope, requestedToolsets }) {
+  async configureOAuthForm({
+    bodhiServerUrl,
+    authServerUrl,
+    realm,
+    clientId,
+    redirectUri,
+    scope,
+    requestedToolsets,
+  }) {
     await this.page.fill(this.selectors.bodhiServerUrl, bodhiServerUrl);
     await this.page.fill(this.selectors.authServerUrl, authServerUrl);
     await this.page.fill(this.selectors.realm, realm);
@@ -58,11 +67,15 @@ export class ConfigSection {
   }
 
   async getResourceScope() {
-    return await this.page.locator('[data-test-resource-scope]').getAttribute('data-test-resource-scope');
+    return await this.page
+      .locator('[data-test-resource-scope]')
+      .getAttribute('data-test-resource-scope');
   }
 
   async getAccessRequestScope() {
-    return await this.page.locator('[data-test-access-request-scope]').getAttribute('data-test-access-request-scope');
+    return await this.page
+      .locator('[data-test-access-request-scope]')
+      .getAttribute('data-test-access-request-scope');
   }
 
   async getFormState() {

@@ -65,9 +65,7 @@ export class RESTPage {
   }
 
   async getResponseStatus() {
-    const text = await this.page
-      .locator(this.selectors.responseStatus)
-      .textContent();
+    const text = await this.page.locator(this.selectors.responseStatus).textContent();
     const match = text.match(/Status:\s*(\d+)/);
     return match ? parseInt(match[1]) : null;
   }
@@ -82,8 +80,6 @@ export class RESTPage {
   }
 
   async getState() {
-    return await this.page
-      .locator(this.selectors.section)
-      .getAttribute('data-test-state');
+    return await this.page.locator(this.selectors.section).getAttribute('data-test-state');
   }
 }

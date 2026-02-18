@@ -20,4 +20,3 @@ export const ROUTE_ACCESS_REQUESTS_PENDING = '/ui/users/pending';
 export const ROUTE_ACCESS_REQUESTS_ALL = '/ui/users/access-requests';
 export const ROUTE_USERS = '/ui/users';
 export const ROUTE_UNAUTHORIZED = '/ui/unauthorized';
-

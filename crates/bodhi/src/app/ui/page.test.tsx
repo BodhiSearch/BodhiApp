@@ -1,10 +1,7 @@
 'use client';
 
 import UiPage from '@/app/ui/page';
-import {
-  ROUTE_DEFAULT,
-  ROUTE_RESOURCE_ADMIN,
-} from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 import { mockAppInfoReady, mockAppInfoResourceAdmin, mockAppInfoSetup } from '@/test-utils/msw-v2/handlers/info';
 import { server } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';

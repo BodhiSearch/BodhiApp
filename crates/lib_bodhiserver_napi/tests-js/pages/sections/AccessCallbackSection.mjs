@@ -5,7 +5,8 @@ export class AccessCallbackSection {
     loginButton: '[data-testid="btn-login"]',
     errorSection: '[data-testid="error-section"]',
     // Terminal state: ready (approved, can login) OR error
-    terminal: '[data-testid="div-access-callback"][data-test-state="ready"], [data-testid="div-access-callback"][data-test-state="error"]',
+    terminal:
+      '[data-testid="div-access-callback"][data-test-state="ready"], [data-testid="div-access-callback"][data-test-state="error"]',
   };
 
   constructor(page) {
@@ -18,11 +19,15 @@ export class AccessCallbackSection {
   }
 
   async getResourceScope() {
-    return await this.page.locator('[data-test-resource-scope]').getAttribute('data-test-resource-scope');
+    return await this.page
+      .locator('[data-test-resource-scope]')
+      .getAttribute('data-test-resource-scope');
   }
 
   async getAccessRequestScope() {
-    return await this.page.locator('[data-test-access-request-scope]').getAttribute('data-test-access-request-scope');
+    return await this.page
+      .locator('[data-test-access-request-scope]')
+      .getAttribute('data-test-access-request-scope');
   }
 
   async setScopes(value) {

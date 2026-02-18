@@ -256,7 +256,8 @@ pub async fn toolset_auth_middleware(
     ..
   } = &auth_flow
   {
-    let approved = validate_access_request(&db_service, access_request_id, app_client_id, user_id).await?;
+    let approved =
+      validate_access_request(&db_service, access_request_id, app_client_id, user_id).await?;
     validate_toolset_approved_list(&approved, &toolset_id)?;
   }
 

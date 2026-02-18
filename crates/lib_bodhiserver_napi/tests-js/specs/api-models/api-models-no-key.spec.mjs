@@ -2,10 +2,7 @@ import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { createMockOpenAIServer } from '@/utils/mock-openai-server.mjs';
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';

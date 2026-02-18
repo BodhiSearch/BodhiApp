@@ -9,13 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';
 import { useAppInfo } from '@/hooks/useInfo';
 import { useUser } from '@/hooks/useUsers';
-import {
-  ROUTE_DEFAULT,
-  ROUTE_RESOURCE_ADMIN,
-  ROUTE_SETUP,
-  ROUTE_REQUEST_ACCESS,
-  ROUTE_LOGIN,
-} from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP, ROUTE_REQUEST_ACCESS, ROUTE_LOGIN } from '@/lib/constants';
 import { Role, meetsMinRole } from '@/lib/roles';
 
 // For backward compatibility, allow passing clean role names (admin, manager, etc.)

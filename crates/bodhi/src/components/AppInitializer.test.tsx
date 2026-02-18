@@ -96,15 +96,12 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     { status: 'setup', expectedPath: '/ui/setup' },
     { status: 'ready', expectedPath: ROUTE_DEFAULT },
     { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
-  ])(
-    'redirects to $expectedPath when status is $status',
-    async ({ status, expectedPath }) => {
-      server.use(...mockAppInfo({ status: status as any }));
+  ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
+    server.use(...mockAppInfo({ status: status as any }));
 
-      await renderWithSetup(<AppInitializer />);
-      expect(pushMock).toHaveBeenCalledWith(expectedPath);
-    }
-  );
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith(expectedPath);
+  });
 
   // Update the status mismatch test cases
   it.each([

@@ -1,10 +1,7 @@
 import { PublicHostFixtures } from '@/fixtures/publicHostFixtures.mjs';
 import { LoginPage } from '@/pages/LoginPage.mjs';
 import { getCurrentPath } from '@/test-helpers.mjs';
-import {
-  getAuthServerConfig,
-  getTestCredentials,
-} from '@/utils/auth-server-client.mjs';
+import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@playwright/test';
 
@@ -21,10 +18,7 @@ test.describe('Public Host Configuration Authentication Tests', () => {
     testCredentials = getTestCredentials();
     port = 51135;
 
-    const serverConfig = PublicHostFixtures.getServerManagerConfig(
-      authServerConfig,
-      port
-    );
+    const serverConfig = PublicHostFixtures.getServerManagerConfig(authServerConfig, port);
 
     serverManager = createServerManager(serverConfig);
     baseUrl = await serverManager.startServer();
