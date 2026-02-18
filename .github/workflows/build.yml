@@ -149,7 +149,9 @@ jobs:
       - name: Install dependencies
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
-        run: npm ci
+        run: |
+          npm ci
+          cd test-oauth-app && npm ci
 
       - name: Verify NAPI bindings exist
         shell: bash
