@@ -13410,6 +13410,15 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tools_filter": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

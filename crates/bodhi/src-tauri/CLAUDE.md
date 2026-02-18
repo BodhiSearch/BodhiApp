@@ -62,6 +62,7 @@ Sophisticated environment-specific configuration coordination across deployment 
 The `crates/bodhi/src-tauri` crate is a **leaf crate** in the dependency chain -- it consumes all foundation crates and is not consumed by any other Rust crate.
 
 **Upstream dependencies** (crates this depends on):
+
 - [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- `build_app_service()`, `setup_app_dirs()`, `ServeCommand`, embedded UI assets
 - [`objs`](../objs/CLAUDE.md) -- domain types, error handling, `AppOptions`, `AppType`, `EnvType`
 - [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- `#[derive(ErrorMeta)]` for error types

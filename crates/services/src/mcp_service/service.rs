@@ -36,6 +36,7 @@ pub trait McpService: Debug + Send + Sync {
     slug: &str,
     description: Option<String>,
     enabled: bool,
+    tools_filter: Option<Vec<String>>,
   ) -> Result<Mcp, McpError>;
 
   /// Delete an MCP instance
@@ -236,6 +237,7 @@ impl McpService for DefaultMcpService {
     slug: &str,
     description: Option<String>,
     enabled: bool,
+    tools_filter: Option<Vec<String>>,
   ) -> Result<Mcp, McpError> {
     if name.is_empty() {
       return Err(McpError::NameRequired);
@@ -263,6 +265,12 @@ impl McpService for DefaultMcpService {
       return Err(McpError::SlugExists(slug.to_string()));
     }
 
+    let resolved_filter = if let Some(filter) = tools_filter {
+      Some(serde_json::to_string(&filter).expect("Vec<String> serialization cannot fail"))
+    } else {
+      existing.tools_filter
+    };
+
     let now = self.time_service.utc_now().timestamp();
     let row = McpRow {
       id: id.to_string(),
@@ -273,7 +281,7 @@ impl McpService for DefaultMcpService {
       description,
       enabled,
       tools_cache: existing.tools_cache,
-      tools_filter: existing.tools_filter,
+      tools_filter: resolved_filter,
       created_at: existing.created_at,
       updated_at: now,
     };

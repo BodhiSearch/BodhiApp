@@ -46,6 +46,30 @@ export class McpsPage extends BasePage {
     selectAllButton: '[data-testid="mcp-select-all-tools"]',
     deselectAllButton: '[data-testid="mcp-deselect-all-tools"]',
     noTools: '[data-testid="mcp-no-tools"]',
+
+    // Playground page
+    mcpPlaygroundButton: (id) => `[data-testid="mcp-playground-button-${id}"]`,
+    playgroundPage: '[data-testid="mcp-playground-page"]',
+    playgroundLoading: '[data-testid="mcp-playground-loading"]',
+    playgroundToolSidebar: '[data-testid="mcp-playground-tool-sidebar"]',
+    playgroundToolList: '[data-testid="mcp-playground-tool-list"]',
+    playgroundTool: (name) => `[data-testid="mcp-playground-tool-${name}"]`,
+    playgroundRefreshButton: '[data-testid="mcp-playground-refresh-button"]',
+    playgroundToolName: '[data-testid="mcp-playground-tool-name"]',
+    playgroundNotWhitelistedWarning: '[data-testid="mcp-playground-not-whitelisted-warning"]',
+    playgroundInputModeForm: '[data-testid="mcp-playground-input-mode-form"]',
+    playgroundInputModeJson: '[data-testid="mcp-playground-input-mode-json"]',
+    playgroundParam: (name) => `[data-testid="mcp-playground-param-${name}"]`,
+    playgroundJsonEditor: '[data-testid="mcp-playground-json-editor"]',
+    playgroundExecuteButton: '[data-testid="mcp-playground-execute-button"]',
+    playgroundResultSection: '[data-testid="mcp-playground-result-section"]',
+    playgroundResultStatus: '[data-testid="mcp-playground-result-status"]',
+    playgroundResultTabResponse: '[data-testid="mcp-playground-result-tab-response"]',
+    playgroundResultTabRaw: '[data-testid="mcp-playground-result-tab-raw"]',
+    playgroundResultTabRequest: '[data-testid="mcp-playground-result-tab-request"]',
+    playgroundResultContent: '[data-testid="mcp-playground-result-content"]',
+    playgroundCopyButton: '[data-testid="mcp-playground-copy-button"]',
+    playgroundBackButton: '[data-testid="mcp-playground-back-button"]',
   };
 
   // ========== List Page Methods ==========
@@ -82,7 +106,7 @@ export class McpsPage extends BasePage {
 
   async clickEditById(id) {
     await this.page.click(this.selectors.mcpEditButton(id));
-    await this.page.waitForURL(/\/ui\/mcps\/new\?id=/);
+    await this.page.waitForURL(/\/ui\/mcps\/new\/?\?id=/);
     await this.waitForSPAReady();
   }
 
@@ -152,6 +176,12 @@ export class McpsPage extends BasePage {
 
   async clickCreate() {
     await this.page.click(this.selectors.createButton);
+  }
+
+  async clickUpdate() {
+    await this.page.click(this.selectors.updateButton);
+    await this.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+    await this.waitForSPAReady();
   }
 
   async clickDone() {
@@ -235,5 +265,103 @@ export class McpsPage extends BasePage {
 
     // Wait for tools section to appear (MCP created)
     await this.expectToolsSection();
+  }
+
+  // ========== Playground Page Methods ==========
+
+  async clickPlaygroundById(id) {
+    await this.page.click(this.selectors.mcpPlaygroundButton(id));
+    await this.page.waitForURL(/\/ui\/mcps\/playground\/?\?id=/);
+    await this.waitForSPAReady();
+  }
+
+  async expectPlaygroundPage() {
+    await expect(this.page.locator(this.selectors.playgroundPage)).toBeVisible({
+      timeout: 15000,
+    });
+  }
+
+  async selectPlaygroundTool(name) {
+    await this.page.click(this.selectors.playgroundTool(name));
+  }
+
+  async expectPlaygroundToolSelected(name) {
+    const toolName = this.page.locator(this.selectors.playgroundToolName);
+    await expect(toolName).toContainText(name);
+  }
+
+  async expectNotWhitelistedWarning() {
+    await expect(this.page.locator(this.selectors.playgroundNotWhitelistedWarning)).toBeVisible();
+  }
+
+  async expectNoWhitelistedWarning() {
+    await expect(
+      this.page.locator(this.selectors.playgroundNotWhitelistedWarning)
+    ).not.toBeVisible();
+  }
+
+  async clickPlaygroundRefresh() {
+    await this.page.click(this.selectors.playgroundRefreshButton);
+  }
+
+  async fillPlaygroundParam(name, value) {
+    const paramContainer = this.page.locator(this.selectors.playgroundParam(name));
+    const input = paramContainer.locator('input, textarea').first();
+    await input.fill(value);
+  }
+
+  async switchToJsonMode() {
+    await this.page.click(this.selectors.playgroundInputModeJson);
+  }
+
+  async switchToFormMode() {
+    await this.page.click(this.selectors.playgroundInputModeForm);
+  }
+
+  async fillPlaygroundJson(json) {
+    await this.page.fill(this.selectors.playgroundJsonEditor, json);
+  }
+
+  async getPlaygroundJsonContent() {
+    return await this.page.locator(this.selectors.playgroundJsonEditor).inputValue();
+  }
+
+  async clickPlaygroundExecute() {
+    await this.page.click(this.selectors.playgroundExecuteButton);
+  }
+
+  async expectPlaygroundResultSuccess() {
+    const status = this.page.locator(this.selectors.playgroundResultStatus);
+    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toHaveAttribute('data-test-state', 'success');
+  }
+
+  async expectPlaygroundResultError() {
+    const status = this.page.locator(this.selectors.playgroundResultStatus);
+    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toHaveAttribute('data-test-state', 'error');
+  }
+
+  async clickPlaygroundResultTab(tab) {
+    const selector = {
+      response: this.selectors.playgroundResultTabResponse,
+      raw: this.selectors.playgroundResultTabRaw,
+      request: this.selectors.playgroundResultTabRequest,
+    }[tab];
+    await this.page.click(selector);
+  }
+
+  async getPlaygroundResultContent() {
+    return await this.page.locator(this.selectors.playgroundResultContent).textContent();
+  }
+
+  async clickPlaygroundCopy() {
+    await this.page.click(this.selectors.playgroundCopyButton);
+  }
+
+  async clickPlaygroundBack() {
+    await this.page.click(this.selectors.playgroundBackButton);
+    await this.page.waitForURL(/\/ui\/mcps(?!\/playground)/);
+    await this.waitForSPAReady();
   }
 }

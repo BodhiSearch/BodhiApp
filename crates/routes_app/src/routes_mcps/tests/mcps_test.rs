@@ -13,7 +13,7 @@ use axum::routing::{delete, get, post, put};
 use axum::Router;
 use chrono::Utc;
 use objs::{Mcp, McpServer};
-use objs::{McpExecutionRequest, McpExecutionResponse, McpTool, ResourceRole};
+use objs::{McpExecutionResponse, McpTool, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
 use server_core::{
@@ -293,11 +293,11 @@ async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 
   mock
     .expect_update()
-    .withf(|user_id, id, name, slug, _, _| {
+    .withf(|user_id, id, name, slug, _, _, _| {
       user_id == "user123" && id == "mcp-uuid-1" && name == "Updated Name" && slug == "deepwiki"
     })
     .times(1)
-    .returning(move |_, _, _, _, _, _| Ok(updated.clone()));
+    .returning(move |_, _, _, _, _, _, _| Ok(updated.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
@@ -306,6 +306,7 @@ async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
     slug: "deepwiki".to_string(),
     description: Some("Deep wiki search".to_string()),
     enabled: true,
+    tools_filter: None,
   })?;
 
   let request = Request::builder()

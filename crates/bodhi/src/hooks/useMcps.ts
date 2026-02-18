@@ -195,3 +195,25 @@ export function useRefreshMcpTools(options?: {
     { noBody: true }
   );
 }
+
+export function useExecuteMcpTool(options?: {
+  onSuccess?: (response: McpExecuteResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<McpExecuteResponse>,
+  AxiosError<ErrorResponse>,
+  { id: string; toolName: string; params: unknown }
+> {
+  return useMutationQuery<McpExecuteResponse, { id: string; toolName: string; params: unknown }>(
+    ({ id, toolName }) => `${MCPS_ENDPOINT}/${id}/tools/${toolName}/execute`,
+    'post',
+    {
+      onSuccess: (response) => options?.onSuccess?.(response.data),
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to execute tool';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ id: _id, toolName: _tn, ...body }) => body }
+  );
+}

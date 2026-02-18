@@ -223,6 +223,7 @@ function NewMcpPageContent() {
         slug: data.slug,
         description: data.description || undefined,
         enabled: data.enabled,
+        tools_filter: Array.from(selectedTools),
       });
       return;
     }

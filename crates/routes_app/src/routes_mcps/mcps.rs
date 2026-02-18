@@ -160,6 +160,7 @@ pub async fn update_mcp_handler(
       &request.slug,
       request.description,
       request.enabled,
+      request.tools_filter,
     )
     .await?;
 

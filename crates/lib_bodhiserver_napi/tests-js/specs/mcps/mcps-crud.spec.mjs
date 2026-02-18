@@ -33,7 +33,10 @@ test.describe('MCP Server Management', () => {
 
     await test.step('Create MCP server with admin enable flow', async () => {
       await mcpsPage.createMcpWithAdminEnable(
-        testData.url, testData.name, testData.slug, testData.description
+        testData.url,
+        testData.name,
+        testData.slug,
+        testData.description
       );
       await mcpsPage.expectToolsSection();
     });
@@ -70,6 +73,196 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
       await mcpsPage.expectToolItem(McpFixtures.EXPECTED_TOOL);
+    });
+  });
+
+  test('MCP Playground - Tool Execution and Results', async ({ page }) => {
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const testData = McpFixtures.createPlaygroundData();
+
+    await test.step('Login and create MCP with tools', async () => {
+      await loginPage.performOAuthLogin('/ui/chat/');
+      await mcpsPage.createMcpWithAdminEnable(
+        testData.url,
+        testData.name,
+        testData.slug,
+        testData.description
+      );
+      await mcpsPage.clickFetchTools();
+      await mcpsPage.expectToolsList();
+      await mcpsPage.expectToolItem(McpFixtures.PLAYGROUND_TOOL);
+    });
+
+    await test.step('Navigate to playground from list', async () => {
+      await mcpsPage.clickDone();
+      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+      await mcpsPage.expectMcpsListPage();
+      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      expect(mcpId).toBeTruthy();
+      await mcpsPage.clickPlaygroundById(mcpId);
+      await mcpsPage.expectPlaygroundPage();
+    });
+
+    await test.step('Select tool and verify form generation', async () => {
+      await mcpsPage.selectPlaygroundTool(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.expectPlaygroundToolSelected(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.expectNoWhitelistedWarning();
+      const paramField = mcpsPage.page.locator(
+        mcpsPage.selectors.playgroundParam(McpFixtures.PLAYGROUND_PARAM)
+      );
+      await expect(paramField).toBeVisible();
+    });
+
+    await test.step('Execute tool with form params', async () => {
+      await mcpsPage.fillPlaygroundParam(
+        McpFixtures.PLAYGROUND_PARAM,
+        McpFixtures.PLAYGROUND_PARAMS.repoName
+      );
+      await mcpsPage.clickPlaygroundExecute();
+      await mcpsPage.expectPlaygroundResultSuccess();
+    });
+
+    await test.step('Verify result tabs', async () => {
+      await mcpsPage.clickPlaygroundResultTab('raw');
+      const rawContent = await mcpsPage.getPlaygroundResultContent();
+      expect(rawContent).toBeTruthy();
+
+      await mcpsPage.clickPlaygroundResultTab('request');
+      const requestContent = await mcpsPage.getPlaygroundResultContent();
+      expect(requestContent).toContain(McpFixtures.PLAYGROUND_TOOL);
+
+      const copyButton = mcpsPage.page.locator(mcpsPage.selectors.playgroundCopyButton);
+      await expect(copyButton).toBeVisible();
+    });
+
+    await test.step('Test form/JSON toggle sync', async () => {
+      await mcpsPage.switchToJsonMode();
+      const jsonContent = await mcpsPage.getPlaygroundJsonContent();
+      expect(jsonContent).toContain(McpFixtures.PLAYGROUND_PARAMS.repoName);
+
+      const newValue = 'BodhiSearch/BodhiApp';
+      const newJson = JSON.stringify({ repoName: newValue }, null, 2);
+      await mcpsPage.fillPlaygroundJson(newJson);
+
+      await mcpsPage.switchToFormMode();
+      const paramContainer = mcpsPage.page.locator(
+        mcpsPage.selectors.playgroundParam(McpFixtures.PLAYGROUND_PARAM)
+      );
+      const input = paramContainer.locator('input, textarea').first();
+      await expect(input).toHaveValue(newValue);
+    });
+  });
+
+  test('MCP Playground - Non-Whitelisted Tool Error', async ({ page }) => {
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const testData = McpFixtures.createPlaygroundData();
+
+    await test.step('Login and create MCP with tools', async () => {
+      await loginPage.performOAuthLogin('/ui/chat/');
+      await mcpsPage.createMcpWithAdminEnable(
+        testData.url,
+        testData.name,
+        testData.slug,
+        testData.description
+      );
+      await mcpsPage.clickFetchTools();
+      await mcpsPage.expectToolsList();
+    });
+
+    await test.step('Deselect tool via edit page', async () => {
+      await mcpsPage.clickDone();
+      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+      await mcpsPage.expectMcpsListPage();
+      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      expect(mcpId).toBeTruthy();
+      await mcpsPage.clickEditById(mcpId);
+      await mcpsPage.expectNewMcpPage();
+      await expect(mcpsPage.page.getByText('Edit MCP Server')).toBeVisible();
+      await mcpsPage.expectToolsSection();
+      await mcpsPage.toggleTool(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.clickUpdate();
+      await mcpsPage.expectMcpsListPage();
+    });
+
+    await test.step('Navigate to playground and select non-whitelisted tool', async () => {
+      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      expect(mcpId).toBeTruthy();
+      await mcpsPage.clickPlaygroundById(mcpId);
+      await mcpsPage.expectPlaygroundPage();
+
+      await mcpsPage.selectPlaygroundTool(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.expectPlaygroundToolSelected(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.expectNotWhitelistedWarning();
+    });
+
+    await test.step('Execute and verify error response', async () => {
+      await mcpsPage.fillPlaygroundParam(
+        McpFixtures.PLAYGROUND_PARAM,
+        McpFixtures.PLAYGROUND_PARAMS.repoName
+      );
+      await mcpsPage.clickPlaygroundExecute();
+      await mcpsPage.expectPlaygroundResultError();
+    });
+  });
+
+  test('MCP Playground - Refresh and Disabled States', async ({ page }) => {
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const testData = McpFixtures.createPlaygroundData();
+
+    await test.step('Login and create MCP with tools', async () => {
+      await loginPage.performOAuthLogin('/ui/chat/');
+      await mcpsPage.createMcpWithAdminEnable(
+        testData.url,
+        testData.name,
+        testData.slug,
+        testData.description
+      );
+      await mcpsPage.clickFetchTools();
+      await mcpsPage.expectToolsList();
+    });
+
+    await test.step('Navigate to playground and refresh tools', async () => {
+      await mcpsPage.clickDone();
+      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+      await mcpsPage.expectMcpsListPage();
+      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      expect(mcpId).toBeTruthy();
+      await mcpsPage.clickPlaygroundById(mcpId);
+      await mcpsPage.expectPlaygroundPage();
+
+      const toolSidebar = mcpsPage.page.locator(mcpsPage.selectors.playgroundToolList);
+      await expect(toolSidebar).toBeVisible();
+
+      await mcpsPage.clickPlaygroundRefresh();
+      await expect(toolSidebar).toBeVisible();
+    });
+
+    await test.step('Disable MCP and verify execution error', async () => {
+      await mcpsPage.clickPlaygroundBack();
+      await mcpsPage.expectMcpsListPage();
+      const mcpId = await mcpsPage.getMcpUuidByName(testData.name);
+      await mcpsPage.clickEditById(mcpId);
+      await mcpsPage.expectNewMcpPage();
+      await expect(mcpsPage.page.getByText('Edit MCP Server')).toBeVisible();
+
+      const enabledSwitch = mcpsPage.page.locator(mcpsPage.selectors.enabledSwitch);
+      await enabledSwitch.click();
+      await mcpsPage.clickUpdate();
+      await mcpsPage.expectMcpsListPage();
+
+      await mcpsPage.clickPlaygroundById(mcpId);
+      await mcpsPage.expectPlaygroundPage();
+
+      await mcpsPage.selectPlaygroundTool(McpFixtures.PLAYGROUND_TOOL);
+      await mcpsPage.fillPlaygroundParam(
+        McpFixtures.PLAYGROUND_PARAM,
+        McpFixtures.PLAYGROUND_PARAMS.repoName
+      );
+      await mcpsPage.clickPlaygroundExecute();
+      await mcpsPage.expectPlaygroundResultError();
     });
   });
 });

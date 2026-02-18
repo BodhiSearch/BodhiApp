@@ -45,6 +45,8 @@ pub struct UpdateMcpRequest {
   pub description: Option<String>,
   #[serde(default = "default_true")]
   pub enabled: bool,
+  #[serde(default)]
+  pub tools_filter: Option<Vec<String>>,
 }
 
 // ============================================================================

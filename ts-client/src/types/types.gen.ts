@@ -2425,6 +2425,7 @@ export type UpdateMcpRequest = {
     slug: string;
     description?: string | null;
     enabled?: boolean;
+    tools_filter?: Array<string> | null;
 };
 
 /**

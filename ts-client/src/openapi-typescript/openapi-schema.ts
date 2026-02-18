@@ -3258,6 +3258,7 @@ export interface components {
             slug: string;
             description?: string | null;
             enabled?: boolean;
+            tools_filter?: string[] | null;
         };
         /**
          * @description Request to update a setting value

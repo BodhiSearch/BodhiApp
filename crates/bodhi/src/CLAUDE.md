@@ -118,10 +118,12 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 The frontend application sits at the user interface layer, consuming the Rust backend API.
 
 **Upstream dependencies** (backend APIs this consumes):
+
 - [`routes_app`](../../routes_app/CLAUDE.md) -- all HTTP API endpoints (models, auth, toolsets, MCPs, access requests, settings, etc.)
 - [`@bodhiapp/ts-client`](../../../../ts-client/) -- generated TypeScript types from OpenAPI spec
 
 **Downstream consumers** (crates that embed this UI):
+
 - [`bodhi/src-tauri`](../src-tauri/CLAUDE.md) -- Tauri desktop app embeds the static export via `lib_bodhiserver::EMBEDDED_UI_ASSETS`
 - [`lib_bodhiserver`](../../lib_bodhiserver/CLAUDE.md) -- embeddable library serves the static export
 

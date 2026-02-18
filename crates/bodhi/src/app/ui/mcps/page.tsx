@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Pencil, Plug, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plug, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -102,6 +102,16 @@ function McpsPageContent() {
       </TableCell>,
       <TableCell key="actions" data-testid={`mcp-actions-${mcp.id}`}>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/ui/mcps/playground?id=${mcp.id}`)}
+            title={`Playground ${mcp.name}`}
+            className="h-8 w-8 p-0"
+            data-testid={`mcp-playground-button-${mcp.id}`}
+          >
+            <Play className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"

@@ -3,7 +3,7 @@
  */
 import { http, HttpResponse } from 'msw';
 
-import type { McpResponse, McpServer, McpTool } from '@/hooks/useMcps';
+import type { McpExecuteResponse, McpResponse, McpServer, McpTool } from '@/hooks/useMcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 
 // ============================================================================
@@ -81,6 +81,10 @@ export function mockRefreshMcpTools(tools: McpTool[] = [mockMcpTool]) {
   return http.post(`${BODHI_API_BASE}/mcps/:id/tools/refresh`, () => HttpResponse.json({ tools }));
 }
 
+export function mockExecuteMcpTool(response: McpExecuteResponse = { result: { data: 'test' } }) {
+  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/:tool_name/execute`, () => HttpResponse.json(response));
+}
+
 // ============================================================================
 // Error Handlers
 // ============================================================================
@@ -103,6 +107,17 @@ export function mockCreateMcpError({
   return http.post(`${BODHI_API_BASE}/mcps`, () => HttpResponse.json({ error: { message, code, type } }, { status }));
 }
 
+export function mockExecuteMcpToolError({
+  message = 'Tool not allowed',
+  code = 'bad_request',
+  type = 'bad_request',
+  status = 400,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/:id/tools/:tool_name/execute`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
 // ============================================================================
 // Default Handlers
 // ============================================================================
@@ -116,4 +131,5 @@ export const mcpsHandlers = [
   mockListMcpServers(),
   mockEnableMcpServer(),
   mockRefreshMcpTools(),
+  mockExecuteMcpTool(),
 ];

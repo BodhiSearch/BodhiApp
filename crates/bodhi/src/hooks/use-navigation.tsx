@@ -17,6 +17,7 @@ import {
   Users,
   BookOpen,
   BookText,
+  Play,
   Wrench,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
@@ -127,6 +128,13 @@ export const defaultNavigationItems: NavigationItem[] = [
             href: '/ui/mcps/new/',
             description: 'Add an MCP server',
             icon: Plug,
+            skip: true,
+          },
+          {
+            title: 'Playground',
+            href: '/ui/mcps/playground/',
+            description: 'Test MCP tools',
+            icon: Play,
             skip: true,
           },
         ],
