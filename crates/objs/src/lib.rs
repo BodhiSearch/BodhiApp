@@ -30,6 +30,9 @@ mod user_scope;
 // -- Toolsets
 mod toolsets;
 
+// -- MCP
+mod mcp;
+
 // -- Configuration & environment
 mod envs;
 pub mod log;
@@ -64,6 +67,9 @@ pub use user_scope::*;
 
 // -- Re-exports: toolsets
 pub use toolsets::*;
+
+// -- Re-exports: MCP
+pub use mcp::*;
 
 // -- Re-exports: configuration & environment
 pub use envs::*;

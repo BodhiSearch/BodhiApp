@@ -11,6 +11,7 @@ path = "bin/setup_client.rs"
 objs = { workspace = true }
 errmeta_derive = { workspace = true }
 llama_server_proc = { workspace = true }
+mcp_client = { workspace = true }
 
 aes-gcm = { workspace = true }
 async-openai = { workspace = true }
@@ -103,5 +104,6 @@ test-utils = [
   "tempfile",
   "anyhow",
   "objs/test-utils",
+  "mcp_client/test-utils",
   "tokio",
 ]

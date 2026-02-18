@@ -13,7 +13,7 @@ use services::{
   hash_key,
   test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
   AppRegInfoBuilder, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
-  DefaultAppService, DefaultEnvWrapper, DefaultExaService, DefaultSecretService,
+  DefaultAppService, DefaultEnvWrapper, DefaultExaService, DefaultMcpService, DefaultSecretService,
   DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService,
   LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
   StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
@@ -232,6 +232,14 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     ip: Some("127.0.0.1".to_string()),
   });
 
+  // Build MCP service
+  let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
+  let mcp_service = Arc::new(DefaultMcpService::new(
+    db_service.clone(),
+    mcp_client,
+    time_service.clone(),
+  ));
+
   // Build DefaultAppService with all services in correct order
   let app_service = DefaultAppService::new(
     setting_service,
@@ -249,6 +257,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     tool_service,
     network_service,
     access_request_service,
+    mcp_service,
   );
 
   Ok(Arc::new(app_service))
@@ -551,6 +560,14 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     ip: Some("127.0.0.1".to_string()),
   });
 
+  // Build MCP service
+  let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
+  let mcp_service = Arc::new(DefaultMcpService::new(
+    db_service.clone(),
+    mcp_client,
+    time_service.clone(),
+  ));
+
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -567,6 +584,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     tool_service,
     network_service,
     access_request_service,
+    mcp_service,
   );
 
   Ok(Arc::new(app_service))
@@ -621,6 +639,17 @@ pub async fn create_test_session_for_live_server(
   // Build JWT claims with specified roles
   let mut claims = access_token_claims();
   claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(roles);
+
+  // Also set roles under the actual client_id used by setup_test_app_service,
+  // since the token service resolves client_id from secret_service.app_reg_info()
+  let actual_client_id = app_service
+    .secret_service()
+    .app_reg_info()?
+    .map(|info| info.client_id)
+    .unwrap_or_else(|| TEST_CLIENT_ID.to_string());
+  if actual_client_id != TEST_CLIENT_ID {
+    claims["resource_access"][&actual_client_id]["roles"] = serde_json::json!(roles);
+  }
 
   // Extract the user_id (sub) before building the token — needed for coordination
   let user_id = claims["sub"]

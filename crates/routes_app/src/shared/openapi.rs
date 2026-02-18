@@ -47,6 +47,15 @@ use crate::{
   __path_execute_toolset_handler, __path_get_toolset_handler, __path_list_toolset_types_handler,
   __path_list_toolsets_handler, __path_update_toolset_handler,
 };
+// MCP DTOs and handlers
+use crate::{
+  CreateMcpRequest, EnableMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
+  McpExecuteRequest, McpExecuteResponse, McpResponse, McpToolsResponse, UpdateMcpRequest,
+  __path_create_mcp_handler, __path_delete_mcp_handler, __path_disable_mcp_server_handler,
+  __path_enable_mcp_server_handler, __path_execute_mcp_tool_handler, __path_get_mcp_handler,
+  __path_list_mcp_servers_handler, __path_list_mcp_tools_handler, __path_list_mcps_handler,
+  __path_refresh_mcp_tools_handler, __path_update_mcp_handler,
+};
 use async_openai::types::{
   chat::{
     ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionResponseMessage,
@@ -59,11 +68,11 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
-  SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset, ToolsetDefinition,
-  ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
-  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
-  API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  Alias, ApiFormat, AppRole, McpServer, McpTool, OAIRequestParams, OpenAIApiError, ResourceRole,
+  SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
+  ToolsetDefinition, ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS,
+  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
+  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -113,6 +122,8 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
+make_ui_endpoint!(ENDPOINT_MCPS, "mcps");
+make_ui_endpoint!(ENDPOINT_MCP_SERVERS, "mcp_servers");
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
@@ -245,6 +256,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         (name = API_TAG_MODELS, description = "Model files and aliases"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
         (name = API_TAG_TOOLSETS, description = "AI toolsets configuration and execution"),
+        (name = API_TAG_MCPS, description = "MCP server management and tool execution"),
         (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
     ),
@@ -357,6 +369,18 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             ToolDefinition,
             Toolset,
             ToolsetExecutionResponse,
+            // mcps
+            CreateMcpRequest,
+            UpdateMcpRequest,
+            EnableMcpServerRequest,
+            McpResponse,
+            ListMcpsResponse,
+            ListMcpServersResponse,
+            McpServer,
+            McpTool,
+            McpToolsResponse,
+            McpExecuteRequest,
+            McpExecuteResponse,
         ),
         responses( ),
     ),
@@ -450,7 +474,20 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         execute_toolset_handler,
         list_toolset_types_handler,
         enable_type_handler,
-        disable_type_handler
+        disable_type_handler,
+
+        // MCP endpoints
+        list_mcps_handler,
+        create_mcp_handler,
+        get_mcp_handler,
+        update_mcp_handler,
+        delete_mcp_handler,
+        list_mcp_tools_handler,
+        refresh_mcp_tools_handler,
+        execute_mcp_tool_handler,
+        list_mcp_servers_handler,
+        enable_mcp_server_handler,
+        disable_mcp_server_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

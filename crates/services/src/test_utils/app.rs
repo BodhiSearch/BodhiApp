@@ -6,8 +6,8 @@ use crate::{
     TestDbService,
   },
   AccessRequestService, AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService,
-  ConcurrencyService, DataService, DefaultToolService, HfHubService, HubService,
-  LocalConcurrencyService, LocalDataService, MockAccessRequestService, MockAuthService,
+  ConcurrencyService, DataService, DefaultMcpService, DefaultToolService, HfHubService, HubService,
+  LocalConcurrencyService, LocalDataService, McpService, MockAccessRequestService, MockAuthService,
   MockExaService, MockHubService, MokaCacheService, NetworkService, SecretService, SessionService,
   SettingService, SqliteSessionService, ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
@@ -87,6 +87,8 @@ pub struct AppServiceStub {
   pub queue_producer: Option<Arc<dyn QueueProducer>>,
   #[builder(default = "self.default_access_request_service()")]
   pub access_request_service: Option<Arc<dyn AccessRequestService>>,
+  #[builder(default = "self.default_mcp_service()")]
+  pub mcp_service: Option<Arc<dyn McpService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -166,6 +168,27 @@ impl AppServiceStubBuilder {
 
   fn default_access_request_service(&self) -> Option<Arc<dyn AccessRequestService>> {
     Some(Arc::new(MockAccessRequestService::new()))
+  }
+
+  fn default_mcp_service(&self) -> Option<Arc<dyn McpService>> {
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building mcp_service");
+    let time_service: Arc<dyn TimeService> = self
+      .time_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .unwrap_or_else(|| Arc::new(FrozenTimeService::default()));
+    let mcp_client: Arc<dyn mcp_client::McpClient> = Arc::new(mcp_client::MockMcpClient::new());
+    Some(Arc::new(DefaultMcpService::new(
+      db_service,
+      mcp_client,
+      time_service,
+    )))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -402,5 +425,9 @@ impl AppService for AppServiceStub {
 
   fn access_request_service(&self) -> Arc<dyn AccessRequestService> {
     self.access_request_service.clone().unwrap()
+  }
+
+  fn mcp_service(&self) -> Arc<dyn McpService> {
+    self.mcp_service.clone().unwrap()
   }
 }

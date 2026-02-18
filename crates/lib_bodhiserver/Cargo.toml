@@ -25,6 +25,7 @@ strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+mcp_client = { version = "0.1.0", path = "../mcp_client" }
 
 [build-dependencies]
 anyhow = { workspace = true }

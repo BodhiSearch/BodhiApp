@@ -1207,6 +1207,14 @@ export type CreateEmbeddingResponse = {
     usage: EmbeddingUsage;
 };
 
+export type CreateMcpRequest = {
+    name: string;
+    slug: string;
+    url: string;
+    description?: string | null;
+    enabled?: boolean;
+};
+
 /**
  * Request to create a toolset
  */
@@ -1335,6 +1343,11 @@ export type EmbeddingUsage = {
      * The total number of tokens used by the request.
      */
     total_tokens: number;
+};
+
+export type EnableMcpServerRequest = {
+    url: string;
+    enabled?: boolean;
 };
 
 export type EncodingFormat = 'float' | 'base64';
@@ -1511,6 +1524,14 @@ export type InputAudio = {
 
 export type InputAudioFormat = 'wav' | 'mp3';
 
+export type ListMcpServersResponse = {
+    mcp_servers: Array<McpServer>;
+};
+
+export type ListMcpsResponse = {
+    mcps: Array<McpResponse>;
+};
+
 export type ListModelResponse = {
     object: string;
     data: Array<Model>;
@@ -1546,6 +1567,82 @@ export type LocalModelResponse = {
     size?: number | null;
     model_params: {};
     metadata?: null | ModelMetadata;
+};
+
+export type McpExecuteRequest = {
+    params: unknown;
+};
+
+export type McpExecuteResponse = {
+    result?: unknown;
+    error?: string | null;
+};
+
+export type McpResponse = {
+    id: string;
+    mcp_server_id: string;
+    url: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    enabled: boolean;
+    tools_cache?: Array<McpTool> | null;
+    tools_filter?: Array<string> | null;
+    created_at: string;
+    updated_at: string;
+};
+
+/**
+ * Admin-managed MCP server URL allowlist entry.
+ * Admins/managers register MCP server URLs that users can then create instances of.
+ */
+export type McpServer = {
+    /**
+     * Unique identifier (UUID)
+     */
+    id: string;
+    /**
+     * MCP server URL (exact match, no normalization)
+     */
+    url: string;
+    /**
+     * Whether this MCP server URL is enabled
+     */
+    enabled: boolean;
+    /**
+     * User who last updated this entry
+     */
+    updated_by: string;
+    /**
+     * When this entry was created
+     */
+    created_at: string;
+    /**
+     * When this entry was last updated
+     */
+    updated_at: string;
+};
+
+/**
+ * Tool schema cached from an MCP server's tools/list response.
+ */
+export type McpTool = {
+    /**
+     * Tool name as declared by the MCP server
+     */
+    name: string;
+    /**
+     * Human-readable description of the tool
+     */
+    description?: string | null;
+    /**
+     * JSON Schema for tool input parameters
+     */
+    input_schema?: unknown;
+};
+
+export type McpToolsResponse = {
+    tools: Array<McpTool>;
 };
 
 export type Message = {
@@ -2321,6 +2418,13 @@ export type UpdateApiTokenRequest = {
      * New status for the token (active/inactive)
      */
     status: TokenStatus;
+};
+
+export type UpdateMcpRequest = {
+    name: string;
+    slug: string;
+    description?: string | null;
+    enabled?: boolean;
 };
 
 /**
@@ -3642,6 +3746,476 @@ export type LogoutUserResponses = {
 };
 
 export type LogoutUserResponse = LogoutUserResponses[keyof LogoutUserResponses];
+
+export type DisableMcpServerData = {
+    body: EnableMcpServerRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcp_servers';
+};
+
+export type DisableMcpServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DisableMcpServerError = DisableMcpServerErrors[keyof DisableMcpServerErrors];
+
+export type DisableMcpServerResponses = {
+    /**
+     * MCP server disabled
+     */
+    200: McpServer;
+};
+
+export type DisableMcpServerResponse = DisableMcpServerResponses[keyof DisableMcpServerResponses];
+
+export type ListMcpServersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter by exact URL match
+         */
+        url?: string;
+    };
+    url: '/bodhi/v1/mcp_servers';
+};
+
+export type ListMcpServersErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListMcpServersError = ListMcpServersErrors[keyof ListMcpServersErrors];
+
+export type ListMcpServersResponses = {
+    /**
+     * List of MCP servers
+     */
+    200: ListMcpServersResponse;
+};
+
+export type ListMcpServersResponse2 = ListMcpServersResponses[keyof ListMcpServersResponses];
+
+export type EnableMcpServerData = {
+    body: EnableMcpServerRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcp_servers';
+};
+
+export type EnableMcpServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type EnableMcpServerError = EnableMcpServerErrors[keyof EnableMcpServerErrors];
+
+export type EnableMcpServerResponses = {
+    /**
+     * MCP server enabled
+     */
+    200: McpServer;
+};
+
+export type EnableMcpServerResponse = EnableMcpServerResponses[keyof EnableMcpServerResponses];
+
+export type ListMcpsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps';
+};
+
+export type ListMcpsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListMcpsError = ListMcpsErrors[keyof ListMcpsErrors];
+
+export type ListMcpsResponses = {
+    /**
+     * List of user's MCP instances
+     */
+    200: ListMcpsResponse;
+};
+
+export type ListMcpsResponse2 = ListMcpsResponses[keyof ListMcpsResponses];
+
+export type CreateMcpData = {
+    body: CreateMcpRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps';
+};
+
+export type CreateMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateMcpError = CreateMcpErrors[keyof CreateMcpErrors];
+
+export type CreateMcpResponses = {
+    /**
+     * MCP created
+     */
+    201: McpResponse;
+};
+
+export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
+
+export type DeleteMcpData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}';
+};
+
+export type DeleteMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteMcpError = DeleteMcpErrors[keyof DeleteMcpErrors];
+
+export type DeleteMcpResponses = {
+    /**
+     * MCP deleted
+     */
+    204: void;
+};
+
+export type DeleteMcpResponse = DeleteMcpResponses[keyof DeleteMcpResponses];
+
+export type GetMcpData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}';
+};
+
+export type GetMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetMcpError = GetMcpErrors[keyof GetMcpErrors];
+
+export type GetMcpResponses = {
+    /**
+     * MCP instance
+     */
+    200: McpResponse;
+};
+
+export type GetMcpResponse = GetMcpResponses[keyof GetMcpResponses];
+
+export type UpdateMcpData = {
+    body: UpdateMcpRequest;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}';
+};
+
+export type UpdateMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateMcpError = UpdateMcpErrors[keyof UpdateMcpErrors];
+
+export type UpdateMcpResponses = {
+    /**
+     * MCP updated
+     */
+    200: McpResponse;
+};
+
+export type UpdateMcpResponse = UpdateMcpResponses[keyof UpdateMcpResponses];
+
+export type ListMcpToolsData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}/tools';
+};
+
+export type ListMcpToolsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListMcpToolsError = ListMcpToolsErrors[keyof ListMcpToolsErrors];
+
+export type ListMcpToolsResponses = {
+    /**
+     * List of cached tools
+     */
+    200: McpToolsResponse;
+};
+
+export type ListMcpToolsResponse = ListMcpToolsResponses[keyof ListMcpToolsResponses];
+
+export type RefreshMcpToolsData = {
+    body?: never;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}/tools/refresh';
+};
+
+export type RefreshMcpToolsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type RefreshMcpToolsError = RefreshMcpToolsErrors[keyof RefreshMcpToolsErrors];
+
+export type RefreshMcpToolsResponses = {
+    /**
+     * Refreshed list of tools
+     */
+    200: McpToolsResponse;
+};
+
+export type RefreshMcpToolsResponse = RefreshMcpToolsResponses[keyof RefreshMcpToolsResponses];
+
+export type ExecuteMcpToolData = {
+    body: McpExecuteRequest;
+    path: {
+        /**
+         * MCP instance UUID
+         */
+        id: string;
+        /**
+         * Tool name to execute
+         */
+        tool_name: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/{id}/tools/{tool_name}/execute';
+};
+
+export type ExecuteMcpToolErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP or tool not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ExecuteMcpToolError = ExecuteMcpToolErrors[keyof ExecuteMcpToolErrors];
+
+export type ExecuteMcpToolResponses = {
+    /**
+     * Tool execution result
+     */
+    200: McpExecuteResponse;
+};
+
+export type ExecuteMcpToolResponse = ExecuteMcpToolResponses[keyof ExecuteMcpToolResponses];
 
 export type ListModelFilesData = {
     body?: never;

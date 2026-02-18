@@ -20,6 +20,7 @@ mod token;
 // -- AI & external API services
 mod ai_api_service;
 mod exa_service;
+mod mcp_service;
 mod tool_service;
 
 // -- Model & data management
@@ -60,6 +61,7 @@ pub use token::*;
 // -- Re-exports: AI & external API services
 pub use ai_api_service::*;
 pub use exa_service::*;
+pub use mcp_service::*;
 pub use tool_service::*;
 
 // -- Re-exports: model & data management

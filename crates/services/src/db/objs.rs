@@ -235,3 +235,36 @@ pub struct AppAccessRequestRow {
   pub created_at: i64,
   pub updated_at: i64,
 }
+
+// ============================================================================
+// McpServerRow - Database row for admin MCP server URL allowlist
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpServerRow {
+  pub id: String,
+  pub url: String,
+  pub enabled: bool,
+  pub updated_by: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
+
+// ============================================================================
+// McpRow - Database row for user-owned MCP instances
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpRow {
+  pub id: String,
+  pub user_id: String,
+  pub mcp_server_id: String,
+  pub name: String,
+  pub slug: String,
+  pub description: Option<String>,
+  pub enabled: bool,
+  pub tools_cache: Option<String>,
+  pub tools_filter: Option<String>,
+  pub created_at: i64,
+  pub updated_at: i64,
+}

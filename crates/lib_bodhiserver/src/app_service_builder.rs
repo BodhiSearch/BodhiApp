@@ -4,11 +4,11 @@ use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AccessRequestService, AiApiService, AppService, AuthService, CacheService, DataService,
   DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
-  DefaultNetworkService, DefaultSecretService, DefaultToolService, ExaService, HfHubService,
-  HubService, InMemoryQueue, KeycloakAuthService, KeyringStore, LocalConcurrencyService,
-  LocalDataService, MokaCacheService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker,
-  SecretService, SecretServiceExt, SessionService, SettingService, SqliteSessionService,
-  SystemKeyringStore, ToolService, HF_TOKEN,
+  DefaultMcpService, DefaultNetworkService, DefaultSecretService, DefaultToolService, ExaService,
+  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
+  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, NetworkService,
+  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
+  SettingService, SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -208,6 +208,7 @@ impl AppServiceBuilder {
       time_service.clone(),
     );
     let network_service = self.get_or_build_network_service();
+    let mcp_service = self.get_or_build_mcp_service(db_service.clone(), time_service.clone());
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -244,6 +245,7 @@ impl AppServiceBuilder {
       tool_service,
       network_service,
       access_request_service,
+      mcp_service,
     );
     Ok(app_service)
   }
@@ -453,6 +455,16 @@ impl AppServiceBuilder {
     }
 
     Arc::new(DefaultNetworkService)
+  }
+
+  /// Gets or builds the MCP service.
+  fn get_or_build_mcp_service(
+    &mut self,
+    db_service: Arc<dyn DbService>,
+    time_service: Arc<dyn TimeService>,
+  ) -> Arc<dyn McpService> {
+    let mcp_client = Arc::new(mcp_client::DefaultMcpClient::new());
+    Arc::new(DefaultMcpService::new(db_service, mcp_client, time_service))
   }
 }
 

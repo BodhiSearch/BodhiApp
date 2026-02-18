@@ -32,6 +32,12 @@ use crate::{
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
 };
 use crate::{
+  create_mcp_handler, delete_mcp_handler, disable_mcp_server_handler, enable_mcp_server_handler,
+  execute_mcp_tool_handler, get_mcp_handler, list_mcp_servers_handler, list_mcp_tools_handler,
+  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, ENDPOINT_MCPS,
+  ENDPOINT_MCP_SERVERS,
+};
+use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
@@ -158,6 +164,29 @@ pub fn build_routes(
       &format!("{ENDPOINT_TOOLSETS}/{{id}}"),
       delete(delete_toolset_handler),
     )
+    // MCP CRUD (session-only)
+    .route(ENDPOINT_MCPS, post(create_mcp_handler))
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(get_mcp_handler))
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(update_mcp_handler))
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}"),
+      delete(delete_mcp_handler),
+    )
+    // MCP tool operations (session-only)
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/tools"),
+      get(list_mcp_tools_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/tools/refresh"),
+      post(refresh_mcp_tools_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
+      post(execute_mcp_tool_handler),
+    )
+    // MCP servers (read for all users)
+    .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))
     // App access request review/approve/deny (session-only)
     .route(
       ENDPOINT_ACCESS_REQUESTS_REVIEW,
@@ -176,9 +205,10 @@ pub fn build_routes(
       move |state, req, next| api_auth_middleware(ResourceRole::User, None, None, state, req, next),
     ));
 
-  // Toolset list API (session and OAuth, no API tokens)
+  // Toolset and MCP list API (session and OAuth, no API tokens)
   let user_oauth_apis = Router::new()
     .route(ENDPOINT_TOOLSETS, get(list_toolsets_handler))
+    .route(ENDPOINT_MCPS, get(list_mcps_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -306,6 +336,9 @@ pub fn build_routes(
       "/bodhi/v1/toolset_types/{toolset_type}/app-config",
       delete(disable_type_handler),
     )
+    // MCP server enable/disable (admin only)
+    .route(ENDPOINT_MCP_SERVERS, put(enable_mcp_server_handler))
+    .route(ENDPOINT_MCP_SERVERS, delete(disable_mcp_server_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {

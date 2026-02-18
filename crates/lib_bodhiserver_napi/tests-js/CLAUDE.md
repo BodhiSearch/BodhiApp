@@ -1,27 +1,50 @@
-# CLAUDE.md - NAPI E2E Tests (Playwright)
+# CLAUDE.md - E2E Tests (Playwright)
 
-## Pre-configured Test Credentials
+*For detailed test writing patterns, anti-patterns, and conventions, see [E2E.md](E2E.md).*
 
-The E2E tests use pre-configured OAuth credentials from `.env.test` (see `.env.test.example`).
+## Purpose
+
+Playwright E2E tests that validate **user journeys** through the Bodhi App. NAPI bindings embed the Rust server directly into Node.js so tests run against a real server without Docker or external processes. Tests are written in JavaScript/MJS.
+
+These are user journey tests, NOT unit tests. Each test covers a complete flow: login, perform actions, verify results. See [E2E.md](E2E.md) for the test philosophy and how to write new specs.
+
+## Running Tests
+
+All commands run from the `crates/lib_bodhiserver_napi/` package root:
+
+| Command | Purpose |
+|---|---|
+| `npm run test:playwright` | Headless run (CI default) |
+| `npm run test:playwright:headed` | Visible browser |
+| `npm run test:playwright:ui` | Playwright UI mode |
+| `npm run test:playwright:scheduled` | Local-only token refresh tests |
+
+Tests run sequentially (`workers: 1`, `fullyParallel: false`) to avoid port conflicts. The `@scheduled` tag marks long-running token refresh debugging tests that are excluded by default via `grepInvert: /@scheduled/` in `playwright.config.mjs`.
+
+## Environment and Credentials
+
+Tests load OAuth credentials from `.env.test` (see `.env.test.example` for required variables).
 
 ### Resource Client
 
 The pre-configured resource client (`INTEG_TEST_RESOURCE_CLIENT_ID`, `INTEG_TEST_RESOURCE_CLIENT_SECRET`) must have:
-- **Direct Access Grants** enabled in Keycloak
+- **Direct Access Grants** enabled in Keycloak (used by `getResourceUserToken()` with `grant_type: 'password'`)
 - `user@email.com` assigned as **resource admin** on the client
 - `manager@email.com` assigned as **resource manager** on the client
 
-This allows tests to start the Bodhi server in `ready` mode without needing to create a resource client dynamically via the Keycloak admin API.
+This allows tests to start the Bodhi server in `ready` mode without dynamic client creation.
 
 ### App Client
 
-The pre-configured app client (`INTEG_TEST_APP_CLIENT_ID`) is a public OAuth client in Keycloak with redirect URIs configured for:
+The pre-configured app client (`INTEG_TEST_APP_CLIENT_ID`) is a public OAuth client in Keycloak with redirect URIs pre-configured for:
 - `http://localhost:51135/ui/auth/callback` (Bodhi server)
 - `http://localhost:55173/callback` (React OAuth test app)
 
-The redirect URI for the test app is also registered dynamically in `test.beforeAll` via `authClient.addRedirectUri()`.
+Since the app client is reused across tests with the same user, Keycloak remembers prior consent -- `handleConsent()` is NOT needed. Tests with an active KC session (from prior `performOAuthLogin()`) also skip `waitForAuthServerRedirect()` since Keycloak auto-redirects instantly.
 
-Since the app client is reused across tests with the same user, Keycloak remembers prior consent — so `handleConsent()` is NOT needed. Tests that have an active KC session (from prior `performOAuthLogin()`) also skip `waitForAuthServerRedirect()` since Keycloak auto-redirects instantly.
+### Realm Admin
+
+`INTEG_TEST_REALM_ADMIN` and `INTEG_TEST_REALM_ADMIN_PASS` are used by `AuthServerTestClient` for dedicated-server tests that need dynamic resource client creation and role assignment.
 
 ### Test Users
 
@@ -30,36 +53,61 @@ Since the app client is reused across tests with the same user, Keycloak remembe
 | `user@email.com` | `INTEG_TEST_USERNAME`, `INTEG_TEST_USERNAME_ID`, `INTEG_TEST_PASSWORD` | Resource admin |
 | `manager@email.com` | `INTEG_TEST_USER_MANAGER`, `INTEG_TEST_USER_MANAGER_ID`, `INTEG_TEST_PASSWORD` | Resource manager |
 
-Multi-user tests (e.g., token isolation, user management) require both users to be set up on the resource client with their respective roles.
+Multi-user tests (e.g., token isolation, user management) require both users set up on the resource client.
 
-## Fixed Ports
+### Fixed Ports
 
 | Service | Port |
 |---|---|
 | Bodhi server | `51135` |
 | React OAuth test app | `55173` |
 
-Tests run sequentially (`workers: 1`) to avoid port conflicts.
+## Architecture Overview
 
-## Common Patterns
+### Directory Layout
 
-### Chat Settings: Model Selection Before API Token
+| Directory | Contents |
+|---|---|
+| `specs/` | 25 test files across 11 domain folders |
+| `pages/` | 28 page objects extending `BasePage` |
+| `fixtures/` | 8 test data modules (classes with static methods) |
+| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `mock-openai-server.mjs` |
+| `scripts/` | `start-shared-server.mjs` (shared server startup) |
+| `data/` | Test GGUF model refs for model-metadata tests |
 
-When setting both a model and an API token in chat settings, always select the model FIRST, then set the API token. Model selection triggers a React re-render that can clear the token input field.
+### Key Mechanisms
+
+- **Path alias**: `@/` maps to `tests-js/` (e.g., `import { test } from '@/fixtures.mjs'`)
+- **Shared server**: Auto-started by Playwright `webServer` config on port 51135 via `scripts/start-shared-server.mjs`
+- **Auto DB reset**: `@/fixtures.mjs` extends Playwright's `test` with an `autoResetDb` fixture that calls `POST /dev/db-reset` before each test
+- **Page Object Model**: All page objects extend `BasePage` from `@/pages/BasePage.mjs`
+
+## Server Patterns
+
+- **Shared server** (default): For app state=ready with `user@email.com` as admin. Import `test` and `expect` from `@/fixtures.mjs` to get auto DB reset.
+- **Dedicated server**: For non-ready app state (setup flow), multi-user scenarios, or custom config (e.g., overridden HF_HOME). Import from `@playwright/test` directly and manage server lifecycle with `createServerManager()` in `beforeAll`/`afterAll`.
+
+See [E2E.md](E2E.md) "Server Configuration Decision Tree" for the full decision criteria.
+
+## Known Quirks
+
+### Model Selection Before API Token
+
+Select the model FIRST, then set the API token in chat settings. Model selection triggers a React re-render that clears the token input.
 
 ```js
-// Correct order:
+// Correct:
 await chatSettings.selectModelQwen();
 await chatSettings.setApiToken(true, token);
 
-// Wrong order (token gets cleared by model selection re-render):
+// Wrong (token cleared by re-render):
 await chatSettings.setApiToken(true, token);
 await chatSettings.selectModelQwen();
 ```
 
-### OAuth Flow Patterns (TestAppPage composite)
+### OAuth Flow Variants
 
-Tests with an active KC session (from `loginPage.performOAuthLogin()`):
+Tests WITH an active KC session (from `loginPage.performOAuthLogin()`):
 ```js
 await testAppPage.config.clickLogin();
 await testAppPage.oauth.waitForTokenExchange(testAppUrl);  // KC auto-redirects
@@ -80,15 +128,26 @@ await testAppPage.accessCallback.waitForLoaded();
 await testAppPage.accessCallback.clickLogin();
 ```
 
-### E2E vs server_app Testing Boundary
+### Other Quirks
+
+- **SPA navigation**: Always call `waitForSPAReady()` after navigation. Use `page.waitForURL()` for route changes, not `page.goto()` + immediate assertion.
+- **Page object lifecycle**: Create page objects in `beforeEach`, NOT `beforeAll`. Playwright's `page` is per-test.
+- **KC session persistence**: Consent auto-skipped on reused app client. `waitForAuthServerRedirect()` skipped when KC session exists from earlier login.
+- **Toast handling**: Tech debt -- 5+ methods in BasePage with fallbacks. Use `waitForToast` for critical assertions only; `waitForToastOptional` for non-critical confirmations.
+- **Flakiness sources**: Toast appearance timing, KC redirect timing, LLM model loading variability. Never add inline timeouts -- rely on the config-level `PLAYWRIGHT_TIMEOUT`.
+
+## E2E vs server_app Testing Boundary
 
 E2E tests validate:
 - External auth service (Keycloak) behavior (error responses, consent, scope validation)
-- UI wiring — that the UI is plugged in properly for user journeys
+- UI wiring -- that the UI is plugged in properly for user journeys
 - Browser-dependent flows (background tab token refresh, multi-user contexts)
 
-Tests that only validate our code's behavior given auth state should be migrated to
-server_app using ExternalTokenSimulator. The server_app OAuth test infrastructure
-(Phase 1 of the migration plan) is in place but the toolset auth and user info test
-migration (Phases 3-4) was reverted — stubbed tokens hide token exchange complexity
-that needs real Keycloak behavior for 3rd-party app OAuth flows.
+Tests that only validate our code's behavior given auth state should be in server_app using `ExternalTokenSimulator`. The server_app OAuth test infrastructure (Phase 1) is in place but the toolset auth and user info test migration (Phases 3-4) was reverted -- stubbed tokens hide token exchange complexity that needs real Keycloak behavior for 3rd-party app OAuth flows.
+
+## CI Considerations
+
+- `HEADLESS=true` set in `test:playwright` npm script
+- Environment variables from GitHub repo vars/secrets (`.env.test`)
+- `PLAYWRIGHT_TIMEOUT` env var for slower CI infrastructure (default: 120000ms)
+- `@scheduled` tests excluded in CI -- local-only for token refresh debugging

@@ -35,6 +35,7 @@ routes_app = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true }
 llama_server_proc = { workspace = true, features = ["test-utils"] }
+mcp_client = { workspace = true }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }

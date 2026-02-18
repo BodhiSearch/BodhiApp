@@ -14,6 +14,7 @@ members = [
   "crates/lib_bodhiserver",
   "crates/lib_bodhiserver_napi",
   "crates/bodhi/src-tauri",
+  "crates/mcp_client",
   "crates/ci_optims",
 ]
 resolver = "2"
@@ -37,6 +38,7 @@ auth_middleware = { path = "crates/auth_middleware" }
 routes_app = { path = "crates/routes_app" }
 server_app = { path = "crates/server_app" }
 lib_bodhiserver = { path = "crates/lib_bodhiserver" }
+mcp_client = { path = "crates/mcp_client" }
 lib_bodhiserver_napi = { path = "crates/lib_bodhiserver_napi" }
 bodhi = { path = "crates/bodhi/src-tauri" }
 ci_optims = { path = "crates/ci_optims" }

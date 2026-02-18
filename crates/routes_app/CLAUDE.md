@@ -187,6 +187,65 @@ This distinction keeps `routes_app` tests fast (no TCP listener overhead), focus
 3. Add `#[utoipa::path(...)]` annotations with comprehensive request/response examples and security requirements
 4. Coordinate through `RouterState` for service access
 5. For complex multi-service operations, consider delegating to the `commands` crate
+6. **Register in OpenAPI and generate TypeScript types** -- see the checklist below
+
+### OpenAPI Registration and TypeScript Client Checklist
+Every new route must complete these steps to keep the OpenAPI spec, generated TypeScript client, and frontend in sync:
+
+**Step 1 -- Add `#[utoipa::path]` to every handler**
+Annotate each handler function following the pattern in existing modules (e.g., `routes_toolsets/toolsets.rs`, `routes_mcps/mcps.rs`):
+```rust
+#[utoipa::path(
+  get,
+  path = ENDPOINT_MCPS,
+  tag = API_TAG_MCPS,
+  operation_id = "listMcps",
+  responses(
+    (status = 200, description = "List of user's MCP instances", body = ListMcpsResponse),
+  ),
+  security(("bearer" = []))
+)]
+```
+The `#[utoipa::path]` macro generates `__path_<handler_name>` symbols used by the OpenAPI derive macro.
+
+**Step 2 -- Add an API tag constant (if new domain)**
+Add `pub const API_TAG_<DOMAIN>: &str = "<domain>";` to `crates/objs/src/api_tags.rs`. This is re-exported via `objs::*`.
+
+**Step 3 -- Register in `openapi.rs`**
+In `crates/routes_app/src/shared/openapi.rs`, update the `#[derive(OpenApi)]` on `BodhiOpenAPIDoc`:
+- **Imports**: Add `use crate::{ <DTOs>, __path_<handler>... };` and `use objs::{ <domain types>, API_TAG_<DOMAIN> };`
+- **Tags**: Add `(name = API_TAG_<DOMAIN>, description = "...")` to the `tags(...)` block
+- **Schemas**: Add all request/response DTOs and domain types to the `schemas(...)` block inside `components(...)`
+- **Paths**: Add all `<handler_name>` entries to the `paths(...)` block
+
+All request/response types must derive `utoipa::ToSchema`. Domain types from `objs` (e.g., `McpServer`, `McpTool`) must also derive `ToSchema`.
+
+**Step 4 -- Regenerate OpenAPI spec**
+```bash
+cargo run --package xtask openapi
+```
+This writes `openapi.json` at the project root. The `test_all_endpoints_match_spec` test will fail until this is run.
+
+**Step 5 -- Build the TypeScript client**
+```bash
+make build.ts-client
+```
+This generates typed interfaces in `ts-client/src/types/types.gen.ts` and the OpenAPI schema in `ts-client/src/openapi-typescript/openapi-schema.ts`.
+
+**Step 6 -- Use generated types in the frontend**
+Import from `@bodhiapp/ts-client` instead of hand-rolling interfaces. Follow the pattern in `crates/bodhi/src/hooks/useMcps.ts` or `useToolsets.ts`:
+```typescript
+import { McpResponse, CreateMcpRequest, McpTool } from '@bodhiapp/ts-client';
+```
+Re-export types for consumers of the hook module:
+```typescript
+export type { McpResponse, CreateMcpRequest, McpTool };
+```
+
+**Step 7 -- Verify**
+- `cargo test -p routes_app -- openapi` -- ensures OpenAPI spec matches `openapi.json`
+- `npm run test` (from `crates/bodhi`) -- ensures frontend compiles and tests pass with generated types
+- `cargo fmt --all && npm run format` (from `crates/bodhi`) -- formatting
 
 ### Adding New Error Variants
 When extending existing error enums:

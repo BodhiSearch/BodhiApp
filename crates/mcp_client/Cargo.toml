@@ -1,0 +1,27 @@
+[package]
+name = "mcp_client"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+mockall = { workspace = true, optional = true }
+objs = { workspace = true }
+reqwest = { workspace = true }
+rmcp = { version = "0.14", features = [
+  "client",
+  "transport-streamable-http-client",
+  "transport-streamable-http-client-reqwest",
+  "reqwest",
+] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+mockall = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+[features]
+test-utils = ["mockall"]

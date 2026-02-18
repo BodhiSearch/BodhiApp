@@ -1,8 +1,8 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, ModelMetadataRow, ModelRepository,
-  SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
-  UserAccessRequestStatus, UserAliasRepository,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpRepository, McpRow, McpServerRow,
+  ModelMetadataRow, ModelRepository, SqliteDbService, TimeService, TokenRepository,
+  ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -527,6 +527,94 @@ impl ToolsetRepository for TestDbService {
 }
 
 #[async_trait::async_trait]
+impl McpRepository for TestDbService {
+  async fn set_mcp_server_enabled(
+    &self,
+    url: &str,
+    enabled: bool,
+    updated_by: &str,
+  ) -> Result<McpServerRow, DbError> {
+    self
+      .inner
+      .set_mcp_server_enabled(url, enabled, updated_by)
+      .await
+      .tap(|_| self.notify("set_mcp_server_enabled"))
+  }
+
+  async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError> {
+    self
+      .inner
+      .get_mcp_server(id)
+      .await
+      .tap(|_| self.notify("get_mcp_server"))
+  }
+
+  async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServerRow>, DbError> {
+    self
+      .inner
+      .get_mcp_server_by_url(url)
+      .await
+      .tap(|_| self.notify("get_mcp_server_by_url"))
+  }
+
+  async fn list_mcp_servers(&self) -> Result<Vec<McpServerRow>, DbError> {
+    self
+      .inner
+      .list_mcp_servers()
+      .await
+      .tap(|_| self.notify("list_mcp_servers"))
+  }
+
+  async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
+    self
+      .inner
+      .create_mcp(row)
+      .await
+      .tap(|_| self.notify("create_mcp"))
+  }
+
+  async fn get_mcp(&self, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError> {
+    self
+      .inner
+      .get_mcp(user_id, id)
+      .await
+      .tap(|_| self.notify("get_mcp"))
+  }
+
+  async fn get_mcp_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError> {
+    self
+      .inner
+      .get_mcp_by_slug(user_id, slug)
+      .await
+      .tap(|_| self.notify("get_mcp_by_slug"))
+  }
+
+  async fn list_mcps(&self, user_id: &str) -> Result<Vec<McpRow>, DbError> {
+    self
+      .inner
+      .list_mcps(user_id)
+      .await
+      .tap(|_| self.notify("list_mcps"))
+  }
+
+  async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError> {
+    self
+      .inner
+      .update_mcp(row)
+      .await
+      .tap(|_| self.notify("update_mcp"))
+  }
+
+  async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp(user_id, id)
+      .await
+      .tap(|_| self.notify("delete_mcp"))
+  }
+}
+
+#[async_trait::async_trait]
 impl UserAliasRepository for TestDbService {
   async fn create_user_alias(&self, alias: &UserAlias) -> Result<(), DbError> {
     self
@@ -721,6 +809,20 @@ mockall::mock! {
     async fn set_app_toolset_enabled(&self, toolset_type: &str, enabled: bool, updated_by: &str) -> Result<AppToolsetConfigRow, DbError>;
     async fn list_app_toolset_configs(&self) -> Result<Vec<AppToolsetConfigRow>, DbError>;
     async fn get_app_toolset_config(&self, toolset_type: &str) -> Result<Option<AppToolsetConfigRow>, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl McpRepository for DbService {
+    async fn set_mcp_server_enabled(&self, url: &str, enabled: bool, updated_by: &str) -> Result<McpServerRow, DbError>;
+    async fn get_mcp_server(&self, id: &str) -> Result<Option<McpServerRow>, DbError>;
+    async fn get_mcp_server_by_url(&self, url: &str) -> Result<Option<McpServerRow>, DbError>;
+    async fn list_mcp_servers(&self) -> Result<Vec<McpServerRow>, DbError>;
+    async fn create_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
+    async fn get_mcp(&self, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError>;
+    async fn get_mcp_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError>;
+    async fn list_mcps(&self, user_id: &str) -> Result<Vec<McpRow>, DbError>;
+    async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
+    async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]
