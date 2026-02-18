@@ -8,6 +8,7 @@ The crate is organized into these modules (see `crates/auth_middleware/src/lib.r
 
 - `auth_middleware` - Core authentication middleware, header constants, session handling, same-origin validation
 - `api_auth_middleware` - Role and scope-based API authorization middleware
+- `access_request_auth_middleware` - Generic access request validation middleware with `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`, `AccessRequestAuthError`
 - `toolset_auth_middleware` - Specialized authorization for toolset execution endpoints
 - `auth_context` - `AuthContext` enum definition, convenience methods, test factory methods
 - `token_service` - JWT token validation, refresh, exchange, and caching via `DefaultTokenService`
@@ -186,6 +187,7 @@ Multiple error enums for different middleware concerns:
 
 - `AuthError` (see `crates/auth_middleware/src/auth_middleware.rs`) - Authentication failures: InvalidAccess, RefreshTokenNotFound, TokenInactive, TowerSession
 - `ApiAuthError` (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Authorization failures: Forbidden, MissingAuth
+- `AccessRequestAuthError` (see `crates/auth_middleware/src/access_request_auth_middleware.rs`) - Access request authorization: MissingAuth, EntityNotFound, EntityNotApproved, AccessRequestNotFound, AccessRequestNotApproved, AppClientMismatch, UserMismatch, AccessRequestInvalid, InvalidApprovedJson
 - `ToolsetAuthError` (see `crates/auth_middleware/src/toolset_auth_middleware.rs`) - Toolset authorization: MissingUserId, MissingAuth, AppClientNotRegistered, MissingToolsetScope, ToolsetNotFound
 
 All error types use `thiserror` for message formatting and `errmeta_derive::ErrorMeta` with `AppError` trait implementation for consistent HTTP response generation.

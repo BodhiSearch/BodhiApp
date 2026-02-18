@@ -48,7 +48,7 @@ async function executeToolCall(
 
   const baseUrl =
     apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-  const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/execute/${method}`;
+  const url = `${baseUrl}/bodhi/v1/toolsets/${toolsetId}/tools/${method}/execute`;
 
   try {
     const response = await fetch(url, {

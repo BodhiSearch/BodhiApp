@@ -4,7 +4,7 @@ export async function requestAccess(
     app_client_id: string;
     flow_type: string;
     redirect_url: string;
-    requested?: { toolset_types: unknown[] };
+    requested?: Record<string, unknown>;
   }
 ) {
   const response = await fetch(`${bodhiServerUrl}/bodhi/v1/apps/request-access`, {

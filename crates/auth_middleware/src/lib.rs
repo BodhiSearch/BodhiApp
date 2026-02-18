@@ -14,7 +14,7 @@ mod utils;
 
 pub use access_request_auth_middleware::{
   access_request_auth_middleware, AccessRequestAuthError, AccessRequestValidator,
-  ToolsetAccessRequestValidator,
+  McpAccessRequestValidator, ToolsetAccessRequestValidator,
 };
 pub use api_auth_middleware::api_auth_middleware;
 pub use auth_context::AuthContext;

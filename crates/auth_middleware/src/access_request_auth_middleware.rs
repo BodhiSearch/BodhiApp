@@ -5,7 +5,7 @@ use axum::{
   middleware::Next,
   response::Response,
 };
-use objs::{ApiError, AppError, ErrorType};
+use objs::{ApiError, AppError, ApprovedResources, ErrorType};
 use server_core::RouterState;
 use services::db::DbService;
 use std::sync::Arc;
@@ -191,26 +191,55 @@ impl AccessRequestValidator for ToolsetAccessRequestValidator {
       });
     };
 
-    let approvals: serde_json::Value = serde_json::from_str(approved_json).map_err(|e| {
+    let approvals: ApprovedResources = serde_json::from_str(approved_json).map_err(|e| {
       AccessRequestAuthError::InvalidApprovedJson {
         error: e.to_string(),
       }
     })?;
 
-    let toolsets = approvals.get("toolsets").and_then(|v| v.as_array()).ok_or(
-      AccessRequestAuthError::InvalidApprovedJson {
-        error: "Missing toolsets array".to_string(),
-      },
-    )?;
+    let instance_approved = approvals
+      .toolsets
+      .iter()
+      .any(|a| a.status == "approved" && a.instance.as_ref().is_some_and(|i| i.id == entity_id));
 
-    let instance_approved = toolsets.iter().any(|approval| {
-      approval.get("status").and_then(|s| s.as_str()) == Some("approved")
-        && approval
-          .get("instance")
-          .and_then(|i| i.get("id"))
-          .and_then(|id| id.as_str())
-          == Some(entity_id)
-    });
+    if !instance_approved {
+      return Err(AccessRequestAuthError::EntityNotApproved {
+        entity_id: entity_id.to_string(),
+      });
+    }
+
+    Ok(())
+  }
+}
+
+pub struct McpAccessRequestValidator;
+
+impl AccessRequestValidator for McpAccessRequestValidator {
+  fn extract_entity_id(&self, path: &str) -> Result<String, AccessRequestAuthError> {
+    extract_uuid_from_path(path)
+  }
+
+  fn validate_approved(
+    &self,
+    approved_json: &Option<String>,
+    entity_id: &str,
+  ) -> Result<(), AccessRequestAuthError> {
+    let Some(approved_json) = approved_json else {
+      return Err(AccessRequestAuthError::EntityNotApproved {
+        entity_id: entity_id.to_string(),
+      });
+    };
+
+    let approvals: ApprovedResources = serde_json::from_str(approved_json).map_err(|e| {
+      AccessRequestAuthError::InvalidApprovedJson {
+        error: e.to_string(),
+      }
+    })?;
+
+    let instance_approved = approvals
+      .mcps
+      .iter()
+      .any(|a| a.status == "approved" && a.instance.as_ref().is_some_and(|i| i.id == entity_id));
 
     if !instance_approved {
       return Err(AccessRequestAuthError::EntityNotApproved {
@@ -625,5 +654,171 @@ mod tests {
       .unwrap();
 
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
+  }
+
+  // ============================================================================
+  // MCP validator tests
+  // ============================================================================
+
+  #[fixture]
+  fn mcp_validator() -> Arc<dyn AccessRequestValidator> {
+    Arc::new(McpAccessRequestValidator)
+  }
+
+  async fn test_mcp_router(
+    validator: Arc<dyn AccessRequestValidator>,
+    auth_context: AuthContext,
+  ) -> Router {
+    let mock_db_service = MockDbService::new();
+
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(mock_db_service))
+      .build()
+      .await
+      .unwrap();
+
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+
+    let ctx = auth_context.clone();
+    let v = validator.clone();
+    Router::new()
+      .route(
+        "/mcps/{id}/tools/{tool_name}/execute",
+        post(test_handler).route_layer(from_fn_with_state(
+          state.clone(),
+          move |state, req, next| {
+            let v = v.clone();
+            access_request_auth_middleware(v, state, req, next)
+          },
+        )),
+      )
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
+      .with_state(state)
+  }
+
+  async fn test_mcp_router_with_db(
+    validator: Arc<dyn AccessRequestValidator>,
+    db_service: Arc<TestDbService>,
+    auth_context: AuthContext,
+  ) -> Router {
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(db_service)
+      .build()
+      .await
+      .unwrap();
+
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+
+    let ctx = auth_context.clone();
+    let v = validator.clone();
+    Router::new()
+      .route(
+        "/mcps/{id}/tools/{tool_name}/execute",
+        post(test_handler).route_layer(from_fn_with_state(
+          state.clone(),
+          move |state, req, next| {
+            let v = v.clone();
+            access_request_auth_middleware(v, state, req, next)
+          },
+        )),
+      )
+      .layer(axum::middleware::from_fn(move |req, next| {
+        let ctx = ctx.clone();
+        inject_auth_context(ctx, req, next)
+      }))
+      .with_state(state)
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessRequestValidator>) {
+    let ctx = AuthContext::test_session("user123", "user@test.com", ResourceRole::User);
+    let app = test_mcp_router(mcp_validator, ctx).await;
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri("/mcps/550e8400-e29b-41d4-a716-446655440000/tools/read/execute")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+  }
+
+  #[rstest]
+  #[case::mcp_approved_instance_in_list(
+    "approved",
+    Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#.to_string()),
+    StatusCode::OK,
+  )]
+  #[case::mcp_denied("denied", None, StatusCode::FORBIDDEN)]
+  #[case::mcp_not_in_approved_list(
+    "approved",
+    Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"different-mcp-id"}}]}"#.to_string()),
+    StatusCode::FORBIDDEN,
+  )]
+  #[tokio::test]
+  async fn test_mcp_oauth_access_request_validation(
+    mcp_validator: Arc<dyn AccessRequestValidator>,
+    #[case] status: &str,
+    #[case] approved: Option<String>,
+    #[case] expected_status: StatusCode,
+  ) {
+    use objs::test_utils::temp_dir;
+    use services::test_utils::test_db_service_with_temp_dir;
+
+    let temp_dir = Arc::new(temp_dir());
+    let test_db = test_db_service_with_temp_dir(temp_dir.clone()).await;
+    let now = test_db.now();
+
+    let access_request_row = services::db::AppAccessRequestRow {
+      id: "ar-uuid".to_string(),
+      app_client_id: "app1".to_string(),
+      app_name: None,
+      app_description: None,
+      flow_type: "redirect".to_string(),
+      redirect_uri: Some("http://localhost:3000/callback".to_string()),
+      status: status.to_string(),
+      requested: r#"{"mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#.to_string(),
+      approved,
+      user_id: Some("user123".to_string()),
+      resource_scope: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at: (now + chrono::Duration::hours(1)).timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
+
+    test_db.create(&access_request_row).await.unwrap();
+
+    let ctx = AuthContext::test_external_app("user123", UserScope::User, "app1", Some("ar-uuid"));
+    let app = test_mcp_router_with_db(mcp_validator, Arc::new(test_db), ctx).await;
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri("/mcps/550e8400-e29b-41d4-a716-446655440000/tools/read/execute")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), expected_status);
   }
 }

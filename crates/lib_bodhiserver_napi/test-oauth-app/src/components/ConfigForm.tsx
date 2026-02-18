@@ -24,7 +24,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [clientSecret, setClientSecret] = useState(import.meta.env.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET || 'change-me');
   const [redirectUri, setRedirectUri] = useState(`${window.location.origin}/callback`);
   const [scope, setScope] = useState('openid profile email roles');
-  const [requestedToolsets, setRequestedToolsets] = useState('[{"toolset_type":"builtin-exa-search"}]');
+  const [requested, setRequested] = useState('{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}');
 
   const [buttonState, setButtonState] = useState<'request-access' | 'login'>('request-access');
   const [loading, setLoading] = useState(false);
@@ -51,19 +51,18 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
       return;
     }
 
-    // Parse requested toolsets if provided
-    let requested: { toolset_types: unknown[] } | undefined;
-    if (requestedToolsets.trim()) {
+    let parsedRequested: Record<string, unknown> | undefined;
+    const hasRequested = requested.trim().length > 0;
+
+    if (hasRequested) {
       try {
-        const parsed = JSON.parse(requestedToolsets.trim());
-        requested = { toolset_types: parsed };
+        parsedRequested = JSON.parse(requested.trim());
       } catch (err) {
-        setError('Invalid JSON in Requested Toolsets: ' + (err instanceof Error ? err.message : String(err)));
+        setError('Invalid JSON in Requested Resources: ' + (err instanceof Error ? err.message : String(err)));
         return;
       }
     }
 
-    // Save config to sessionStorage
     const config: OAuthConfig = {
       bodhiServerUrl,
       authServerUrl,
@@ -73,7 +72,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
       clientSecret,
       redirectUri,
       scope,
-      requestedToolsets,
+      requested,
     };
     saveConfig(config);
 
@@ -84,14 +83,14 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         app_client_id: string;
         flow_type: string;
         redirect_url: string;
-        requested?: { toolset_types: unknown[] };
+        requested?: Record<string, unknown>;
       } = {
         app_client_id: clientId,
         flow_type: 'redirect',
         redirect_url: window.location.origin + '/access-callback',
       };
-      if (requested) {
-        body.requested = requested;
+      if (parsedRequested) {
+        body.requested = parsedRequested;
       }
 
       const data = await requestAccess(bodhiServerUrl, body);
@@ -258,13 +257,13 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="requested-toolsets">Requested Toolsets (JSON array)</Label>
+          <Label htmlFor="requested">Requested Resources (JSON)</Label>
           <Textarea
-            id="requested-toolsets"
-            data-testid="input-requested-toolsets"
-            value={requestedToolsets}
-            onChange={(e) => setRequestedToolsets(e.target.value)}
-            placeholder='[{"toolset_type":"builtin-exa-search"}]'
+            id="requested"
+            data-testid="input-requested"
+            value={requested}
+            onChange={(e) => setRequested(e.target.value)}
+            placeholder='{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}'
             rows={3}
           />
         </div>

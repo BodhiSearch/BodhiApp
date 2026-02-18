@@ -59,3 +59,37 @@ pub struct ToolsetApproval {
 pub struct ToolsetInstance {
   pub id: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpServerRequest {
+  pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpApproval {
+  pub url: String,
+  pub status: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub instance: Option<McpInstance>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpInstance {
+  pub id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
+pub struct ApprovedResources {
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub toolsets: Vec<ToolsetApproval>,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub mcps: Vec<McpApproval>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Default)]
+pub struct RequestedResources {
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub toolset_types: Vec<ToolsetTypeRequest>,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub mcp_servers: Vec<McpServerRequest>,
+}

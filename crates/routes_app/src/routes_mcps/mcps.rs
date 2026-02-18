@@ -10,7 +10,7 @@ use axum::{
   http::StatusCode,
   Extension, Json,
 };
-use objs::{ApiError, API_TAG_MCPS};
+use objs::{ApiError, ApprovedResources, API_TAG_MCPS};
 use server_core::RouterState;
 use std::sync::Arc;
 
@@ -236,9 +236,49 @@ pub async fn list_mcps_handler(
   let mcp_service = state.app_service().mcp_service();
 
   let mcps = mcp_service.list(user_id).await?;
-  let responses: Vec<McpResponse> = mcps.into_iter().map(McpResponse::from).collect();
+
+  let responses: Vec<McpResponse> = match &auth_context {
+    AuthContext::ExternalApp {
+      access_request_id: Some(ar_id),
+      ..
+    } => {
+      let db_service = state.app_service().db_service();
+      let approved_ids = extract_approved_mcp_ids(&db_service, ar_id).await;
+      mcps
+        .into_iter()
+        .filter(|m| approved_ids.contains(&m.id))
+        .map(McpResponse::from)
+        .collect()
+    }
+    AuthContext::ExternalApp {
+      access_request_id: None,
+      ..
+    } => vec![],
+    _ => mcps.into_iter().map(McpResponse::from).collect(),
+  };
 
   Ok(Json(ListMcpsResponse { mcps: responses }))
+}
+
+async fn extract_approved_mcp_ids(
+  db_service: &std::sync::Arc<dyn services::db::DbService>,
+  access_request_id: &str,
+) -> Vec<String> {
+  let Some(ar) = db_service.get(access_request_id).await.ok().flatten() else {
+    return vec![];
+  };
+  let Some(approved_json) = &ar.approved else {
+    return vec![];
+  };
+  let Ok(approvals) = serde_json::from_str::<ApprovedResources>(approved_json) else {
+    return vec![];
+  };
+  approvals
+    .mcps
+    .iter()
+    .filter(|a| a.status == "approved")
+    .filter_map(|a| a.instance.as_ref().map(|i| i.id.clone()))
+    .collect()
 }
 
 /// Create a new MCP instance

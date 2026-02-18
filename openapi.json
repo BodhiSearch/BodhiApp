@@ -3190,86 +3190,6 @@
         ]
       }
     },
-    "/bodhi/v1/mcps/{id}/tools": {
-      "get": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "List cached tools for an MCP instance",
-        "operationId": "listMcpTools",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "MCP instance UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of cached tools",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpToolsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
     "/bodhi/v1/mcps/{id}/tools/refresh": {
       "post": {
         "tags": [
@@ -6121,13 +6041,13 @@
         ]
       }
     },
-    "/bodhi/v1/toolsets/{id}/execute/{method}": {
+    "/bodhi/v1/toolsets/{id}/tools/{tool_name}/execute": {
       "post": {
         "tags": [
           "toolsets"
         ],
         "summary": "Execute a tool method on a toolset",
-        "operationId": "executeToolset",
+        "operationId": "executeToolsetTool",
         "parameters": [
           {
             "name": "id",
@@ -6139,9 +6059,9 @@
             }
           },
           {
-            "name": "method",
+            "name": "tool_name",
             "in": "path",
-            "description": "Tool method name",
+            "description": "Tool name to execute",
             "required": true,
             "schema": {
               "type": "string"
@@ -7402,6 +7322,13 @@
               "$ref": "#/components/schemas/ToolTypeReviewInfo"
             },
             "description": "Tool type information with user instances"
+          },
+          "mcps_info": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpServerReviewInfo"
+            },
+            "description": "MCP server information with user instances"
           }
         }
       },
@@ -8002,9 +7929,20 @@
         },
         "example": {
           "approved": {
-            "toolset_types": [
+            "mcps": [
               {
-                "instance_id": "instance-uuid",
+                "instance": {
+                  "id": "instance-uuid"
+                },
+                "status": "approved",
+                "url": "https://mcp.deepwiki.com/mcp"
+              }
+            ],
+            "toolsets": [
+              {
+                "instance": {
+                  "id": "instance-uuid"
+                },
                 "status": "approved",
                 "toolset_type": "builtin-exa-search"
               }
@@ -8031,12 +7969,17 @@
       "ApprovedResources": {
         "type": "object",
         "properties": {
-          "toolset_types": {
+          "toolsets": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolsetApproval"
-            },
-            "description": "Toolset approvals with instance selections"
+            }
+          },
+          "mcps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpApproval"
+            }
           }
         }
       },
@@ -11352,6 +11295,105 @@
           }
         }
       },
+      "Mcp": {
+        "type": "object",
+        "description": "User-owned MCP server instance with tool caching and filtering.",
+        "required": [
+          "id",
+          "mcp_server",
+          "slug",
+          "name",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique instance identifier (UUID)"
+          },
+          "mcp_server": {
+            "$ref": "#/components/schemas/McpServerInfo",
+            "description": "Server info resolved via JOIN"
+          },
+          "slug": {
+            "type": "string",
+            "description": "User-defined slug for this instance"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional description for this instance"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this instance is enabled"
+          },
+          "tools_cache": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/McpTool"
+            },
+            "description": "Cached tool schemas from the MCP server (JSON array)"
+          },
+          "tools_filter": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Whitelisted tool names (empty = block all)"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this instance was created",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this instance was last updated",
+            "example": "2024-11-10T04:52:06.786Z"
+          }
+        }
+      },
+      "McpApproval": {
+        "type": "object",
+        "required": [
+          "url",
+          "status"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/McpInstance"
+              }
+            ]
+          }
+        }
+      },
       "McpExecuteRequest": {
         "type": "object",
         "required": [
@@ -11370,6 +11412,17 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "McpInstance": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
           }
         }
       },
@@ -11515,6 +11568,17 @@
           }
         }
       },
+      "McpServerRequest": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "McpServerResponse": {
         "type": "object",
         "required": [
@@ -11567,6 +11631,26 @@
           },
           "updated_at": {
             "type": "string"
+          }
+        }
+      },
+      "McpServerReviewInfo": {
+        "type": "object",
+        "required": [
+          "url",
+          "instances"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Requested MCP server URL"
+          },
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mcp"
+            },
+            "description": "User's MCP instances connected to this server URL"
           }
         }
       },
@@ -12682,8 +12766,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ToolsetTypeRequest"
-            },
-            "description": "Toolset types being requested"
+            }
+          },
+          "mcp_servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpServerRequest"
+            }
           }
         }
       },
@@ -13319,10 +13408,14 @@
           "status": {
             "type": "string"
           },
-          "instance_id": {
-            "type": [
-              "string",
-              "null"
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ToolsetInstance"
+              }
             ]
           }
         }
@@ -13371,6 +13464,17 @@
               "null"
             ],
             "description": "Error message, if execution failed"
+          }
+        }
+      },
+      "ToolsetInstance": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
           }
         }
       },

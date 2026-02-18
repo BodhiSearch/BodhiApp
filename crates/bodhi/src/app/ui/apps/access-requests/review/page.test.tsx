@@ -7,6 +7,9 @@ import {
   MOCK_REQUEST_ID,
   mockApprovedReviewResponse,
   mockDeniedReviewResponse,
+  mockDraftMcpNoInstancesResponse,
+  mockDraftMcpResponse,
+  mockDraftMixedResourcesResponse,
   mockDraftMultiToolMixedResponse,
   mockDraftMultiToolResponse,
   mockDraftNoInstancesResponse,
@@ -816,18 +819,20 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Verify body structure
     const body = capturedBody as {
       approved: {
-        toolset_types: Array<{ toolset_type: string; status: string; instance_id?: string }>;
+        toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
+        mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
       };
     };
-    expect(body.approved.toolset_types).toHaveLength(2);
+    expect(body.approved.toolsets).toHaveLength(2);
+    expect(body.approved.mcps).toHaveLength(0);
 
-    const exaApproval = body.approved.toolset_types.find((t) => t.toolset_type === 'builtin-exa-search');
+    const exaApproval = body.approved.toolsets.find((t) => t.toolset_type === 'builtin-exa-search');
     expect(exaApproval?.status).toBe('approved');
-    expect(exaApproval?.instance_id).toBe('instance-1');
+    expect(exaApproval?.instance?.id).toBe('instance-1');
 
-    const weatherApproval = body.approved.toolset_types.find((t) => t.toolset_type === 'builtin-weather');
+    const weatherApproval = body.approved.toolsets.find((t) => t.toolset_type === 'builtin-weather');
     expect(weatherApproval?.status).toBe('denied');
-    expect(weatherApproval?.instance_id).toBeUndefined();
+    expect(weatherApproval?.instance).toBeUndefined();
   });
 
   it('multi-tool mixed: one with instances, one without -- uncheck no-instances tool to enable Approve', async () => {
@@ -911,6 +916,229 @@ describe('ReviewAccessRequestPage - Partial Approve', () => {
     // Button should say "Approve Selected"
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).toHaveTextContent('Approve Selected');
+    });
+  });
+});
+
+// ============================================================================
+// MCP Server Review
+// ============================================================================
+
+describe('ReviewAccessRequestPage - MCP Server Review', () => {
+  it('renders MCP server card with URL badge', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-mcp-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    expect(screen.getByText('MCP Server')).toBeInTheDocument();
+  });
+
+  it('shows instance select for MCP when approved', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    });
+  });
+
+  it('Approve button disabled until MCP instance is selected', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+  });
+
+  it('selecting MCP instance enables Approve button', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    });
+
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
+    await user.click(option);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('shows "No MCP instances" alert when no instances available', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpNoInstancesResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-no-mcp-instances-https://mcp.example.com/mcp')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/No MCP instances connected/)).toBeInTheDocument();
+  });
+
+  it('unchecking MCP checkbox enables Approve without instance selection', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMcpResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    const checkbox = screen.getByTestId('review-mcp-toggle-https://mcp.deepwiki.com/mcp');
+    await user.click(checkbox);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
+    });
+  });
+
+  it('approve with MCP sends correct body', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftMcpResponse),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, {
+        onBody: (body) => {
+          capturedBody = body;
+        },
+      })
+    );
+    setupWindowClose();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    });
+
+    const selectTrigger = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(selectTrigger);
+    const option = await screen.findByText('DeepWiki (deepwiki-prod)');
+    await user.click(option);
+
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => {
+      expect(approveButton).not.toBeDisabled();
+    });
+    await user.click(approveButton);
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+
+    const body = capturedBody as {
+      approved: {
+        toolsets: Array<{ toolset_type: string; status: string; instance?: { id: string } }>;
+        mcps: Array<{ url: string; status: string; instance?: { id: string } }>;
+      };
+    };
+    expect(body.approved.toolsets).toHaveLength(0);
+    expect(body.approved.mcps).toHaveLength(1);
+    expect(body.approved.mcps[0].url).toBe('https://mcp.deepwiki.com/mcp');
+    expect(body.approved.mcps[0].status).toBe('approved');
+    expect(body.approved.mcps[0].instance?.id).toBe('mcp-instance-1');
+  });
+});
+
+// ============================================================================
+// Mixed Resources (Tools + MCPs)
+// ============================================================================
+
+describe('ReviewAccessRequestPage - Mixed Resources', () => {
+  it('renders both tool cards and MCP cards', async () => {
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMixedResourcesResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-tool-builtin-exa-search')).toBeInTheDocument();
+      expect(screen.getByTestId('review-mcp-https://mcp.deepwiki.com/mcp')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Requested Tools:')).toBeInTheDocument();
+    expect(screen.getByText('Requested MCP Servers:')).toBeInTheDocument();
+  });
+
+  it('Approve button requires selections for both tools and MCPs', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftMixedResourcesResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Select tool instance only
+    const toolSelect = screen.getByTestId('review-instance-select-builtin-exa-search');
+    await user.click(toolSelect);
+    const toolOption = await screen.findByText('my-exa-instance');
+    await user.click(toolOption);
+
+    // Still disabled -- MCP instance not selected
+    expect(screen.getByTestId('review-approve-button')).toBeDisabled();
+
+    // Select MCP instance
+    const mcpSelect = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(mcpSelect);
+    const mcpOption = await screen.findByText('DeepWiki (deepwiki-prod)');
+    await user.click(mcpOption);
+
+    // Now approve should be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
   });
 });

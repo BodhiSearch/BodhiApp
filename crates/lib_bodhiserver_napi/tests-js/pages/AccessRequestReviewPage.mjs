@@ -7,6 +7,7 @@ export class AccessRequestReviewPage extends BasePage {
     denyButton: '[data-testid="review-deny-button"]',
   };
 
+  // Toolset selectors
   toolCheckbox(toolsetType) {
     return `[data-testid="review-tool-checkbox-${toolsetType}"]`;
   }
@@ -19,15 +20,31 @@ export class AccessRequestReviewPage extends BasePage {
     return `[data-testid="review-instance-option-${instanceId}"]`;
   }
 
+  // MCP selectors
+  mcpToggle(url) {
+    return `[data-testid="review-mcp-toggle-${url}"]`;
+  }
+
+  mcpSelectTrigger(url) {
+    return `[data-testid="review-mcp-select-trigger-${url}"]`;
+  }
+
+  mcpInstanceOption(instanceId) {
+    return `[data-testid="review-mcp-instance-option-${instanceId}"]`;
+  }
+
   async waitForReviewPage() {
     await this.expectVisible(this.selectors.reviewPage);
   }
 
   async selectInstance(toolsetType, instanceId) {
-    // Click the select trigger to open the dropdown
     await this.page.click(this.instanceSelectTrigger(toolsetType));
-    // Radix Select renders options in a portal, so use page-level locator
     await this.page.locator(this.instanceOption(instanceId)).click();
+  }
+
+  async selectMcpInstance(url, instanceId) {
+    await this.page.click(this.mcpSelectTrigger(url));
+    await this.page.locator(this.mcpInstanceOption(instanceId)).click();
   }
 
   async clickApprove() {
@@ -47,6 +64,40 @@ export class AccessRequestReviewPage extends BasePage {
 
     for (const { toolsetType, instanceId } of selections) {
       await this.selectInstance(toolsetType, instanceId);
+    }
+
+    await this.clickApprove();
+  }
+
+  /**
+   * Approve with specific MCP server selections.
+   * @param {Array<{url: string, instanceId: string}>} selections
+   */
+  async approveWithMcps(selections) {
+    await this.waitForReviewPage();
+
+    for (const { url, instanceId } of selections) {
+      await this.selectMcpInstance(url, instanceId);
+    }
+
+    await this.clickApprove();
+  }
+
+  /**
+   * Approve with both toolset and MCP selections.
+   * @param {Object} params
+   * @param {Array<{toolsetType: string, instanceId: string}>} [params.toolsets]
+   * @param {Array<{url: string, instanceId: string}>} [params.mcps]
+   */
+  async approveWithResources({ toolsets = [], mcps = [] }) {
+    await this.waitForReviewPage();
+
+    for (const { toolsetType, instanceId } of toolsets) {
+      await this.selectInstance(toolsetType, instanceId);
+    }
+
+    for (const { url, instanceId } of mcps) {
+      await this.selectMcpInstance(url, instanceId);
     }
 
     await this.clickApprove();

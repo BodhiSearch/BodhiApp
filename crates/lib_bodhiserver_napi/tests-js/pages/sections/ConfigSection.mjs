@@ -7,7 +7,7 @@ export class ConfigSection {
     clientId: '[data-testid="input-client-id"]',
     redirectUri: '[data-testid="input-redirect-uri"]',
     scope: '[data-testid="input-scope"]',
-    requestedToolsets: '[data-testid="input-requested-toolsets"]',
+    requested: '[data-testid="input-requested"]',
     confidentialToggle: '[data-testid="toggle-confidential"]',
     clientSecret: '[data-testid="input-client-secret"]',
     submitButton: '[data-testid="btn-request-access"]',
@@ -33,7 +33,7 @@ export class ConfigSection {
     clientId,
     redirectUri,
     scope,
-    requestedToolsets,
+    requested,
   }) {
     await this.page.fill(this.selectors.bodhiServerUrl, bodhiServerUrl);
     await this.page.fill(this.selectors.authServerUrl, authServerUrl);
@@ -41,7 +41,7 @@ export class ConfigSection {
     await this.page.fill(this.selectors.clientId, clientId);
     await this.page.fill(this.selectors.redirectUri, redirectUri);
     await this.page.fill(this.selectors.scope, scope);
-    await this.page.fill(this.selectors.requestedToolsets, requestedToolsets || '');
+    await this.page.fill(this.selectors.requested, requested || '');
   }
 
   async submitAccessRequest() {

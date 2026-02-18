@@ -651,7 +651,10 @@ async fn test_execute_toolset(
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri(format!("/toolsets/{}/execute/search", test_instance.id))
+        .uri(format!(
+          "/toolsets/{}/tools/search/execute",
+          test_instance.id
+        ))
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_string(&request_body)?))?
         .with_auth_context(AuthContext::test_session(
@@ -868,7 +871,7 @@ async fn test_disable_type(
 #[case::get_toolset("GET", "/bodhi/v1/toolsets/some_id")]
 #[case::update_toolset("PUT", "/bodhi/v1/toolsets/some_id")]
 #[case::delete_toolset("DELETE", "/bodhi/v1/toolsets/some_id")]
-#[case::execute_toolset("POST", "/bodhi/v1/toolsets/some_id/execute/some_method")]
+#[case::execute_toolset("POST", "/bodhi/v1/toolsets/some_id/tools/some_method/execute")]
 #[case::list_toolset_types("GET", "/bodhi/v1/toolset_types")]
 #[case::enable_toolset_type("PUT", "/bodhi/v1/toolset_types/some_type/app-config")]
 #[case::disable_toolset_type("DELETE", "/bodhi/v1/toolset_types/some_type/app-config")]
@@ -962,7 +965,7 @@ async fn test_toolset_type_read_endpoints_allow_any_resource_role(
 #[case::get("GET", "/bodhi/v1/toolsets/some-id")]
 #[case::update("PUT", "/bodhi/v1/toolsets/some-id")]
 #[case::delete("DELETE", "/bodhi/v1/toolsets/some-id")]
-#[case::execute("POST", "/bodhi/v1/toolsets/some-id/execute/some-method")]
+#[case::execute("POST", "/bodhi/v1/toolsets/some-id/tools/some-method/execute")]
 #[tokio::test]
 async fn test_toolset_endpoints_reject_api_token(
   #[case] method: &str,

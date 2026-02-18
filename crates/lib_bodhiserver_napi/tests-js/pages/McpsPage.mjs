@@ -253,6 +253,20 @@ export class McpsPage extends BasePage {
     await this.expectToolsSection();
   }
 
+  /**
+   * Full flow: create instance, fetch tools, select all, and save.
+   * Returns to the MCPs list after completion.
+   */
+  async createMcpInstanceWithAllTools(serverName, name, slug, description = '') {
+    await this.createMcpInstance(serverName, name, slug, description);
+    await this.clickFetchTools();
+    await this.expectToolsList();
+    await this.selectAllTools();
+    await this.clickDone();
+    await this.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+    await this.waitForSPAReady();
+  }
+
   // ========== Tools Section Methods ==========
 
   async expectToolsSection() {
@@ -275,6 +289,10 @@ export class McpsPage extends BasePage {
 
   async toggleTool(toolName) {
     await this.page.click(this.selectors.toolCheckbox(toolName));
+  }
+
+  async selectAllTools() {
+    await this.page.click(this.selectors.selectAllButton);
   }
 
   // ========== Playground Page Methods ==========

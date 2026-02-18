@@ -79,6 +79,16 @@ The `remove_app_headers` function strips any incoming `X-BodhiApp-*` headers fro
 - **OAuth flow** (`ExternalApp` with `access_request_id`): Access request validation + status check + app client match + user match + instance in approved list + type enabled + instance configured
 - API tokens are blocked at route level before reaching this middleware
 
+### Access Request Authorization Architecture
+
+**`access_request_auth_middleware`** -- Generic middleware for validating entity access against approved resources in access requests (see `access_request_auth_middleware.rs`):
+- `AccessRequestValidator` trait with two methods: `extract_entity_id(path)` and `validate_approved(approved_json, entity_id)`
+- Two implementations: `ToolsetAccessRequestValidator` (validates toolset instance in `approved.toolsets`), `McpAccessRequestValidator` (validates MCP instance in `approved.mcps`)
+- Deserializes `approved` JSON from access request into `objs::ApprovedResources` struct
+- `AccessRequestAuthError` enum with variants like `EntityNotApproved`, `AccessRequestNotFound`, `AppClientMismatch` etc.
+- **Session flow**: passes through (session users have direct access)
+- **OAuth flow** (`ExternalApp` with `access_request_id`): validates access request status, app client ID match, user match, then delegates to validator for entity-level approval check
+
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
@@ -159,6 +169,7 @@ Behind the `test-utils` feature flag in `auth_context.rs`:
 - `auth_context.rs` -- `AuthContext` enum definition, convenience methods, test factories
 - `auth_middleware.rs` -- `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError`, session key constants
 - `api_auth_middleware.rs` -- `api_auth_middleware`, `ApiAuthError`, role/scope authorization logic
+- `access_request_auth_middleware.rs` -- `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`
 - `toolset_auth_middleware.rs` -- `toolset_auth_middleware`, `ToolsetAuthError`, toolset access validation
 - `token_service.rs` -- `DefaultTokenService`, token validation/refresh/exchange orchestration
 - `canonical_url_middleware.rs` -- Canonical URL redirection middleware

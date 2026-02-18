@@ -91,6 +91,28 @@ The project uses a Cargo workspace with these main crates:
 - `lib_bodhiserver_napi` - Node.js bindings for server functionality
 - `xtask` - Build automation and code generation
 
+### Crate-Level Documentation (Progressive Disclosure)
+
+**When working on a task, load the CLAUDE.md and PACKAGE.md for the relevant crate(s).** Each crate's docs guide you to the right source files -- read those source files rather than guessing conventions. For cross-crate tasks, load docs for each involved crate.
+
+| Crate | CLAUDE.md | PACKAGE.md | Keywords |
+|---|---|---|---|
+| `objs` | `crates/objs/CLAUDE.md` | `crates/objs/PACKAGE.md` | Universal foundation layer. ErrorType, AppError, ApiError envelope, error propagation. Validation constants: slug length limits (MAX_MCP_SLUG_LEN, MAX_TOOLSET_SLUG_LEN), field limits. Serde conventions (default, skip_serializing_if). Role/scope hierarchy (Admin>Manager>PowerUser>User). GGUF model format. OAI request params. Repo/HubFile/Alias domain types. Test utilities: builders, fixtures, temp_bodhi_home |
+| `errmeta_derive` | `crates/errmeta_derive/CLAUDE.md` | `crates/errmeta_derive/PACKAGE.md` | ErrorMeta proc macro generating error_type(), code(), args(). Error code naming: `{enum_name_snake_case}-{variant_name_snake_case}`. Integrates with thiserror. Supports transparent delegation, per-variant ErrorType override. trybuild compile-time tests |
+| `services` | `crates/services/CLAUDE.md` | `crates/services/PACKAGE.md` | Business logic service traits. DB operations (SqliteDbService), TimeService (never Utc::now()), impl_error_from! macro. HubService, DataService, McpService, ToolService, AuthService, AccessRequestService. Error chain: service error→AppError→ApiError. Test infra: TestDbService, AppServiceStub builder, FrozenTimeService, OfflineHubService, SecretServiceStub |
+| `auth_middleware` | `crates/auth_middleware/CLAUDE.md` | `crates/auth_middleware/PACKAGE.md` | AuthContext enum (Anonymous, Session, ApiToken, ExternalApp). auth_middleware, optional_auth_middleware. api_auth_middleware role/scope checks. AccessRequestValidator trait, AccessRequestAuthError enum (EntityNotApproved, etc.). ToolsetAuthError. JWT DefaultTokenService. Token digest. Same-origin CSRF. Test factories: test_session, test_external_app, RequestAuthContextExt |
+| `server_core` | `crates/server_core/CLAUDE.md` | `crates/server_core/PACKAGE.md` | RouterState trait, SharedContext for LLM. SSE: DirectSSE, ForwardedSSE. Test utilities: ResponseTestExt (json/text/sse parsing), RequestTestExt, router_state_stub fixture, ServerFactoryStub |
+| `routes_app` | `crates/routes_app/CLAUDE.md` | `crates/routes_app/PACKAGE.md` | API orchestration layer. Domain-specific error enums per module (LoginError, AccessRequestError, McpValidationError, etc.) with errmeta_derive. OpenAPI utoipa registration checklist (7 steps). AuthContext handler patterns. List response shapes: non-paginated use resource-plural field names ({mcps:[...]}, {toolsets:[...]}), paginated use {data:[], total, page, page_size}. Toolset/MCP CRUD, app access request workflow |
+| `server_app` | `crates/server_app/CLAUDE.md` | `crates/server_app/PACKAGE.md` | Standalone HTTP server. Live integration tests (multi-turn, full stack, no mocks). OAuth2 test infra: TestServerHandle, ExternalTokenSimulator, authenticated sessions. Serial test execution |
+| `lib_bodhiserver` | `crates/lib_bodhiserver/CLAUDE.md` | `crates/lib_bodhiserver/PACKAGE.md` | Embeddable server library. Service composition, app bootstrap, AppOptionsBuilder |
+| `bodhi/src` | `crates/bodhi/src/CLAUDE.md` | `crates/bodhi/src/PACKAGE.md` | Next.js 14 frontend. @bodhiapp/ts-client generated types from OpenAPI. react-hook-form + zod schema validation. API hooks (useQuery, useMutation). Component architecture: pages + co-located components. Absolute imports with @/ prefix |
+| `bodhi/src-tauri` | `crates/bodhi/src-tauri/CLAUDE.md` | -- | Tauri desktop app, native features, system tray, NativeError, AppSetupError |
+| `llama_server_proc` | `crates/llama_server_proc/CLAUDE.md` | `crates/llama_server_proc/PACKAGE.md` | LLM process lifecycle, Server trait, health checks, binary management |
+| `lib_bodhiserver_napi` | `crates/lib_bodhiserver_napi/CLAUDE.md` | `crates/lib_bodhiserver_napi/PACKAGE.md` | NAPI bindings embedding Rust server into Node.js. createTestServer |
+| tests-js | `crates/lib_bodhiserver_napi/tests-js/CLAUDE.md` | -- | Playwright E2E user journey tests. Page Object Model (BasePage). Fixtures with static factory methods. Shared vs dedicated server patterns. Known quirks (SPA nav, KC session, toast). Also load `tests-js/E2E.md` for test writing conventions, anti-patterns, canonical examples |
+| `xtask` | `xtask/CLAUDE.md` | `xtask/PACKAGE.md` | OpenAPI spec generation from BodhiOpenAPIDoc, TypeScript client pipeline |
+| `ci_optims` | `crates/ci_optims/CLAUDE.md` | `crates/ci_optims/PACKAGE.md` | Docker layer caching, CI dependency pre-compilation |
+
 ### Frontend Structure
 Located in `crates/bodhi/`, this is a Next.js 14 application using:
 - React with TypeScript

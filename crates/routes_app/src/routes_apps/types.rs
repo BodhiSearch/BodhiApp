@@ -1,4 +1,4 @@
-use objs::{Toolset, ToolsetApproval, ToolsetTypeRequest};
+use objs::{ApprovedResources, RequestedResources, Toolset};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -23,14 +23,6 @@ pub struct CreateAccessRequestBody {
   pub redirect_url: Option<String>,
   /// Resources requested (tools, etc.)
   pub requested: Option<RequestedResources>,
-}
-
-// Wrapper for requested resources
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct RequestedResources {
-  /// Toolset types being requested
-  #[serde(default)]
-  pub toolset_types: Vec<ToolsetTypeRequest>,
 }
 
 // Response for POST /apps/request-access
@@ -98,6 +90,9 @@ pub struct AccessRequestReviewResponse {
   pub requested: RequestedResources,
   /// Tool type information with user instances
   pub tools_info: Vec<ToolTypeReviewInfo>,
+  /// MCP server information with user instances
+  #[serde(default)]
+  pub mcps_info: Vec<McpServerReviewInfo>,
 }
 
 // Tool type review info with user instances
@@ -111,6 +106,15 @@ pub struct ToolTypeReviewInfo {
   pub description: String,
   /// User's configured instances of this tool type
   pub instances: Vec<Toolset>,
+}
+
+// MCP server review info with user instances
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct McpServerReviewInfo {
+  /// Requested MCP server URL
+  pub url: String,
+  /// User's MCP instances connected to this server URL
+  pub instances: Vec<objs::Mcp>,
 }
 
 // Response for PUT /access-requests/:id/approve and POST /access-requests/:id/deny
@@ -135,18 +139,17 @@ pub struct AccessRequestActionResponse {
                 "status": "approved",
                 "instance": {"id": "instance-uuid"}
             }
+        ],
+        "mcps": [
+            {
+                "url": "https://mcp.deepwiki.com/mcp",
+                "status": "approved",
+                "instance": {"id": "instance-uuid"}
+            }
         ]
     }
 }))]
 pub struct ApproveAccessRequestBody {
   /// Approved resources with selections
   pub approved: ApprovedResources,
-}
-
-// Wrapper for approved resources
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ApprovedResources {
-  /// Toolset approvals with instance selections
-  #[serde(default)]
-  pub toolsets: Vec<ToolsetApproval>,
 }

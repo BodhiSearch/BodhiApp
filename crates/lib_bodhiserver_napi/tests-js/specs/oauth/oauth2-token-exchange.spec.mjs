@@ -46,7 +46,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
           clientId: appClient.clientId,
           redirectUri,
           scope: testData.scopes,
-          requestedToolsets: null,
+          requested: null,
         });
       });
 

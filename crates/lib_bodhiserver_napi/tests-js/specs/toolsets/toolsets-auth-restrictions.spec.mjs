@@ -146,7 +146,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email scope_user_user',
-        requestedToolsets: JSON.stringify([{ toolset_type: TOOLSET_TYPE }]),
+        requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
       });
     });
 
@@ -194,7 +194,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // Execute the toolset using OAuth token
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+        url: `/bodhi/v1/toolsets/${exaToolset.id}/tools/search/execute`,
 
         body: JSON.stringify({
           params: {
@@ -264,7 +264,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email scope_user_user',
-        requestedToolsets: JSON.stringify([{ toolset_type: TOOLSET_TYPE }]),
+        requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
       });
     });
 
@@ -317,7 +317,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       // But executing the toolset should fail without access_request_scope
       await app.rest.sendRequest({
         method: 'POST',
-        url: `/bodhi/v1/toolsets/${exaToolset.id}/execute/search`,
+        url: `/bodhi/v1/toolsets/${exaToolset.id}/tools/search/execute`,
 
         body: JSON.stringify({
           params: {
@@ -361,7 +361,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email scope_user_user',
-        requestedToolsets: null,
+        requested: null,
       });
     });
 
@@ -414,7 +414,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email scope_user_user',
-        requestedToolsets: null,
+        requested: null,
       });
     });
 
@@ -510,7 +510,7 @@ test.describe(
           clientId: appClient.clientId,
           redirectUri,
           scope: 'openid profile email scope_user_user',
-          requestedToolsets: null,
+          requested: null,
         });
       });
 

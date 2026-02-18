@@ -39,7 +39,7 @@ test.describe('OAuth Chat Streaming', () => {
         clientId: appClient.clientId,
         redirectUri,
         scope: 'openid profile email scope_user_user',
-        requestedToolsets: null,
+        requested: null,
       });
 
       await app.config.submitAccessRequest();

@@ -31,7 +31,7 @@ pub fn routes_toolsets(state: Arc<dyn RouterState>) -> Router {
     .route("/toolsets/{id}", delete(delete_toolset_handler))
     // Execute (middleware at routes level)
     .route(
-      "/toolsets/{id}/execute/{method}",
+      "/toolsets/{id}/tools/{tool_name}/execute",
       post(execute_toolset_handler),
     )
     // Type listing (separate namespace avoids {id} collision)
@@ -244,12 +244,12 @@ pub async fn delete_toolset_handler(
 /// Execute a tool method on a toolset
 #[utoipa::path(
   post,
-  path = ENDPOINT_TOOLSETS.to_owned() + "/{id}/execute/{method}",
+  path = ENDPOINT_TOOLSETS.to_owned() + "/{id}/tools/{tool_name}/execute",
   tag = API_TAG_TOOLSETS,
-  operation_id = "executeToolset",
+  operation_id = "executeToolsetTool",
   params(
     ("id" = String, Path, description = "Toolset instance UUID"),
-    ("method" = String, Path, description = "Tool method name")
+    ("tool_name" = String, Path, description = "Tool name to execute")
   ),
   request_body = ExecuteToolsetRequest,
   responses(
@@ -262,14 +262,14 @@ pub async fn delete_toolset_handler(
 pub async fn execute_toolset_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
-  Path((id, method)): Path<(String, String)>,
+  Path((id, tool_name)): Path<(String, String)>,
   Json(request): Json<ExecuteToolsetRequest>,
 ) -> Result<Json<ToolsetExecutionResponse>, ApiError> {
   let user_id = auth_context.user_id().expect("requires auth middleware");
   let tool_service = state.app_service().tool_service();
 
   let response = tool_service
-    .execute(user_id, &id, &method, request.into())
+    .execute(user_id, &id, &tool_name, request.into())
     .await?;
 
   Ok(Json(response))

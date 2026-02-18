@@ -54,8 +54,8 @@ use crate::{
   UpdateMcpRequest, UpdateMcpServerRequest, __path_create_mcp_handler,
   __path_create_mcp_server_handler, __path_delete_mcp_handler, __path_execute_mcp_tool_handler,
   __path_get_mcp_handler, __path_get_mcp_server_handler, __path_list_mcp_servers_handler,
-  __path_list_mcp_tools_handler, __path_list_mcps_handler, __path_refresh_mcp_tools_handler,
-  __path_update_mcp_handler, __path_update_mcp_server_handler,
+  __path_list_mcps_handler, __path_refresh_mcp_tools_handler, __path_update_mcp_handler,
+  __path_update_mcp_server_handler,
 };
 use async_openai::types::{
   chat::{
@@ -486,7 +486,6 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         get_mcp_handler,
         update_mcp_handler,
         delete_mcp_handler,
-        list_mcp_tools_handler,
         refresh_mcp_tools_handler,
         execute_mcp_tool_handler,
         // MCP server admin endpoints

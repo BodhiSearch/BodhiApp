@@ -33,9 +33,9 @@ use crate::{
 };
 use crate::{
   create_mcp_handler, create_mcp_server_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler, list_mcp_tools_handler,
-  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler,
-  ENDPOINT_MCPS, ENDPOINT_MCP_SERVERS,
+  get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler, list_mcps_handler,
+  refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler, ENDPOINT_MCPS,
+  ENDPOINT_MCP_SERVERS,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -44,7 +44,7 @@ use crate::{
 use auth_middleware::canonical_url_middleware;
 use auth_middleware::{
   access_request_auth_middleware, api_auth_middleware, auth_middleware, optional_auth_middleware,
-  ToolsetAccessRequestValidator,
+  McpAccessRequestValidator, ToolsetAccessRequestValidator,
 };
 use axum::{
   middleware::from_fn_with_state,
@@ -167,24 +167,10 @@ pub fn build_routes(
     )
     // MCP CRUD (session-only)
     .route(ENDPOINT_MCPS, post(create_mcp_handler))
-    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(get_mcp_handler))
     .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(update_mcp_handler))
     .route(
       &format!("{ENDPOINT_MCPS}/{{id}}"),
       delete(delete_mcp_handler),
-    )
-    // MCP tool operations (session-only)
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/tools"),
-      get(list_mcp_tools_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/tools/refresh"),
-      post(refresh_mcp_tools_handler),
-    )
-    .route(
-      &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
-      post(execute_mcp_tool_handler),
     )
     // MCP servers (read for all users)
     .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))
@@ -233,13 +219,47 @@ pub fn build_routes(
     Arc::new(ToolsetAccessRequestValidator);
   let toolset_exec_apis = Router::new()
     .route(
-      &format!("{ENDPOINT_TOOLSETS}/{{id}}/execute/{{method}}"),
+      &format!("{ENDPOINT_TOOLSETS}/{{id}}/tools/{{tool_name}}/execute"),
       post(execute_toolset_handler),
     )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
         let v = toolset_validator.clone();
+        access_request_auth_middleware(v, state, req, next)
+      },
+    ))
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        api_auth_middleware(
+          ResourceRole::User,
+          None,
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
+      },
+    ));
+
+  // MCP exec APIs with access request middleware - session and OAuth tokens, NOT API tokens
+  let mcp_validator: Arc<dyn auth_middleware::AccessRequestValidator> =
+    Arc::new(McpAccessRequestValidator);
+  let mcp_exec_apis = Router::new()
+    .route(&format!("{ENDPOINT_MCPS}/{{id}}"), get(get_mcp_handler))
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/tools/refresh"),
+      post(refresh_mcp_tools_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MCPS}/{{id}}/tools/{{tool_name}}/execute"),
+      post(execute_mcp_tool_handler),
+    )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| {
+        let v = mcp_validator.clone();
         access_request_auth_middleware(v, state, req, next)
       },
     ))
@@ -399,6 +419,7 @@ pub fn build_routes(
     .merge(user_session_apis)
     .merge(user_oauth_apis)
     .merge(toolset_exec_apis)
+    .merge(mcp_exec_apis)
     .merge(power_user_apis)
     .merge(power_user_session_apis)
     .merge(admin_session_apis)

@@ -432,13 +432,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List MCP server allowlist entries, optionally filtered by URL */
+        /** List MCP servers, optionally filtered by enabled status */
         get: operations["listMcpServers"];
-        /** Enable an MCP server URL in the allowlist */
-        put: operations["enableMcpServer"];
+        put?: never;
+        /** Create a new MCP server entry (admin/manager only) */
+        post: operations["createMcpServer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/mcp_servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a specific MCP server by ID */
+        get: operations["getMcpServer"];
+        /** Update an existing MCP server entry (admin/manager only) */
+        put: operations["updateMcpServer"];
         post?: never;
-        /** Disable an MCP server URL in the allowlist */
-        delete: operations["disableMcpServer"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -476,23 +493,6 @@ export interface paths {
         post?: never;
         /** Delete an MCP instance */
         delete: operations["deleteMcp"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/bodhi/v1/mcps/{id}/tools": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List cached tools for an MCP instance */
-        get: operations["listMcpTools"];
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -894,7 +894,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/toolsets/{id}/execute/{method}": {
+    "/bodhi/v1/toolsets/{id}/tools/{tool_name}/execute": {
         parameters: {
             query?: never;
             header?: never;
@@ -904,7 +904,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Execute a tool method on a toolset */
-        post: operations["executeToolset"];
+        post: operations["executeToolsetTool"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1180,6 +1180,8 @@ export interface components {
             requested: components["schemas"]["RequestedResources"];
             /** @description Tool type information with user instances */
             tools_info: components["schemas"]["ToolTypeReviewInfo"][];
+            /** @description MCP server information with user instances */
+            mcps_info?: components["schemas"]["McpServerReviewInfo"][];
         };
         /** @example {
          *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
@@ -1393,9 +1395,20 @@ export interface components {
         };
         /** @example {
          *       "approved": {
-         *         "toolset_types": [
+         *         "mcps": [
          *           {
-         *             "instance_id": "instance-uuid",
+         *             "instance": {
+         *               "id": "instance-uuid"
+         *             },
+         *             "status": "approved",
+         *             "url": "https://mcp.deepwiki.com/mcp"
+         *           }
+         *         ],
+         *         "toolsets": [
+         *           {
+         *             "instance": {
+         *               "id": "instance-uuid"
+         *             },
          *             "status": "approved",
          *             "toolset_type": "builtin-exa-search"
          *           }
@@ -1417,8 +1430,8 @@ export interface components {
             role: components["schemas"]["ResourceRole"];
         };
         ApprovedResources: {
-            /** @description Toolset approvals with instance selections */
-            toolset_types?: components["schemas"]["ToolsetApproval"][];
+            toolsets?: components["schemas"]["ToolsetApproval"][];
+            mcps?: components["schemas"]["McpApproval"][];
         };
         /** @example {
          *       "code": "auth_code_123",
@@ -2197,9 +2210,15 @@ export interface components {
         CreateMcpRequest: {
             name: string;
             slug: string;
-            url: string;
+            mcp_server_id: string;
             description?: string | null;
-            enabled?: boolean;
+            enabled: boolean;
+        };
+        CreateMcpServerRequest: {
+            url: string;
+            name: string;
+            description?: string | null;
+            enabled: boolean;
         };
         /** @description Request to create a toolset */
         CreateToolsetRequest: {
@@ -2303,10 +2322,6 @@ export interface components {
              * @description The total number of tokens used by the request.
              */
             total_tokens: number;
-        };
-        EnableMcpServerRequest: {
-            url: string;
-            enabled?: boolean;
         };
         /** @enum {string} */
         EncodingFormat: "float" | "base64";
@@ -2453,7 +2468,7 @@ export interface components {
         /** @enum {string} */
         InputAudioFormat: "wav" | "mp3";
         ListMcpServersResponse: {
-            mcp_servers: components["schemas"]["McpServer"][];
+            mcp_servers: components["schemas"]["McpServerResponse"][];
         };
         ListMcpsResponse: {
             mcps: components["schemas"]["McpResponse"][];
@@ -2495,6 +2510,42 @@ export interface components {
             };
             metadata?: null | components["schemas"]["ModelMetadata"];
         };
+        /** @description User-owned MCP server instance with tool caching and filtering. */
+        Mcp: {
+            /** @description Unique instance identifier (UUID) */
+            id: string;
+            /** @description Server info resolved via JOIN */
+            mcp_server: components["schemas"]["McpServerInfo"];
+            /** @description User-defined slug for this instance */
+            slug: string;
+            /** @description Human-readable name */
+            name: string;
+            /** @description Optional description for this instance */
+            description?: string | null;
+            /** @description Whether this instance is enabled */
+            enabled: boolean;
+            /** @description Cached tool schemas from the MCP server (JSON array) */
+            tools_cache?: components["schemas"]["McpTool"][] | null;
+            /** @description Whitelisted tool names (empty = block all) */
+            tools_filter?: string[] | null;
+            /**
+             * Format: date-time
+             * @description When this instance was created
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When this instance was last updated
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            updated_at: string;
+        };
+        McpApproval: {
+            url: string;
+            status: string;
+            instance?: null | components["schemas"]["McpInstance"];
+        };
         McpExecuteRequest: {
             params: unknown;
         };
@@ -2502,10 +2553,12 @@ export interface components {
             result?: unknown;
             error?: string | null;
         };
+        McpInstance: {
+            id: string;
+        };
         McpResponse: {
             id: string;
-            mcp_server_id: string;
-            url: string;
+            mcp_server: components["schemas"]["McpServerInfo"];
             slug: string;
             name: string;
             description?: string | null;
@@ -2515,15 +2568,21 @@ export interface components {
             created_at: string;
             updated_at: string;
         };
-        /** @description Admin-managed MCP server URL allowlist entry.
+        /** @description Admin-managed MCP server registry entry.
          *     Admins/managers register MCP server URLs that users can then create instances of. */
         McpServer: {
             /** @description Unique identifier (UUID) */
             id: string;
-            /** @description MCP server URL (exact match, no normalization) */
+            /** @description MCP server endpoint URL (trimmed, case-insensitive unique) */
             url: string;
-            /** @description Whether this MCP server URL is enabled */
+            /** @description Human-readable display name */
+            name: string;
+            /** @description Optional description */
+            description?: string | null;
+            /** @description Whether this MCP server is enabled */
             enabled: boolean;
+            /** @description User who created this entry */
+            created_by: string;
             /** @description User who last updated this entry */
             updated_by: string;
             /**
@@ -2538,6 +2597,37 @@ export interface components {
              * @example 2024-11-10T04:52:06.786Z
              */
             updated_at: string;
+        };
+        /** @description Minimal MCP server info embedded in MCP instance responses. */
+        McpServerInfo: {
+            id: string;
+            url: string;
+            name: string;
+            enabled: boolean;
+        };
+        McpServerRequest: {
+            url: string;
+        };
+        McpServerResponse: {
+            id: string;
+            url: string;
+            name: string;
+            description?: string | null;
+            enabled: boolean;
+            created_by: string;
+            updated_by: string;
+            /** Format: int64 */
+            enabled_mcp_count: number;
+            /** Format: int64 */
+            disabled_mcp_count: number;
+            created_at: string;
+            updated_at: string;
+        };
+        McpServerReviewInfo: {
+            /** @description Requested MCP server URL */
+            url: string;
+            /** @description User's MCP instances connected to this server URL */
+            instances: components["schemas"]["Mcp"][];
         };
         /** @description Tool schema cached from an MCP server's tools/list response. */
         McpTool: {
@@ -2911,8 +3001,8 @@ export interface components {
          */
         RefreshSource: "all" | "model";
         RequestedResources: {
-            /** @description Toolset types being requested */
             toolset_types?: components["schemas"]["ToolsetTypeRequest"][];
+            mcp_servers?: components["schemas"]["McpServerRequest"][];
         };
         /** @enum {string} */
         ResourceRole: "resource_user" | "resource_power_user" | "resource_manager" | "resource_admin";
@@ -3139,7 +3229,7 @@ export interface components {
         ToolsetApproval: {
             toolset_type: string;
             status: string;
-            instance_id?: string | null;
+            instance?: null | components["schemas"]["ToolsetInstance"];
         };
         /** @description A toolset is a connector that provides one or more tools.
          *     Example: Exa Web Search toolset provides search, find_similar, get_contents, answer tools. */
@@ -3159,6 +3249,9 @@ export interface components {
             result?: unknown;
             /** @description Error message, if execution failed */
             error?: string | null;
+        };
+        ToolsetInstance: {
+            id: string;
         };
         /** @description Toolset response */
         ToolsetResponse: {
@@ -3257,8 +3350,14 @@ export interface components {
             name: string;
             slug: string;
             description?: string | null;
-            enabled?: boolean;
+            enabled: boolean;
             tools_filter?: string[] | null;
+        };
+        UpdateMcpServerRequest: {
+            url: string;
+            name: string;
+            description?: string | null;
+            enabled: boolean;
         };
         /**
          * @description Request to update a setting value
@@ -5297,8 +5396,8 @@ export interface operations {
     listMcpServers: {
         parameters: {
             query?: {
-                /** @description Filter by exact URL match */
-                url?: string;
+                /** @description Filter by enabled status */
+                enabled?: boolean;
             };
             header?: never;
             path?: never;
@@ -5353,7 +5452,7 @@ export interface operations {
             };
         };
     };
-    enableMcpServer: {
+    createMcpServer: {
         parameters: {
             query?: never;
             header?: never;
@@ -5362,17 +5461,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EnableMcpServerRequest"];
+                "application/json": components["schemas"]["CreateMcpServerRequest"];
             };
         };
         responses: {
-            /** @description MCP server enabled */
-            200: {
+            /** @description MCP server created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["McpServer"];
+                    "application/json": components["schemas"]["McpServerResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5401,6 +5500,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description URL already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {
@@ -5413,26 +5519,25 @@ export interface operations {
             };
         };
     };
-    disableMcpServer: {
+    getMcpServer: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description MCP server UUID */
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EnableMcpServerRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description MCP server disabled */
+            /** @description MCP server */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["McpServer"];
+                    "application/json": components["schemas"]["McpServerResponse"];
                 };
             };
             /** @description Invalid request parameters */
@@ -5461,6 +5566,90 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateMcpServer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description MCP server UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMcpServerRequest"];
+            };
+        };
+        responses: {
+            /** @description MCP server updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description URL already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {
@@ -5743,72 +5932,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Invalid request parameters */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Not authenticated */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description Insufficient permissions */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-            /** @description MCP not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenAIApiError"];
-                };
-            };
-        };
-    };
-    listMcpTools: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description MCP instance UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of cached tools */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["McpToolsResponse"];
-                };
             };
             /** @description Invalid request parameters */
             400: {
@@ -8016,15 +8139,15 @@ export interface operations {
             };
         };
     };
-    executeToolset: {
+    executeToolsetTool: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description Toolset instance UUID */
                 id: string;
-                /** @description Tool method name */
-                method: string;
+                /** @description Tool name to execute */
+                tool_name: string;
             };
             cookie?: never;
         };

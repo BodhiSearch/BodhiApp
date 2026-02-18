@@ -18,6 +18,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     flow_type: String,
     redirect_uri: Option<String>,
     tools_requested: Vec<objs::ToolsetTypeRequest>,
+    mcp_servers_requested: Vec<objs::McpServerRequest>,
   ) -> Result<AppAccessRequestRow>;
 
   /// Get access request by ID
@@ -30,6 +31,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_id: &str,
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
+    mcp_approvals: Vec<objs::McpApproval>,
   ) -> Result<AppAccessRequestRow>;
 
   /// Deny access request
@@ -65,13 +67,20 @@ impl DefaultAccessRequestService {
     }
   }
 
-  /// Generate description for KC consent screen from tool approvals
-  fn generate_description(&self, tool_approvals: &[objs::ToolsetApproval]) -> String {
+  fn generate_description(
+    &self,
+    tool_approvals: &[objs::ToolsetApproval],
+    mcp_approvals: &[objs::McpApproval],
+  ) -> String {
     let mut lines = Vec::new();
     for approval in tool_approvals {
       if approval.status == "approved" {
-        // Use toolset_type as the description
         lines.push(format!("- {}", approval.toolset_type));
+      }
+    }
+    for approval in mcp_approvals {
+      if approval.status == "approved" {
+        lines.push(format!("- MCP: {}", approval.url));
       }
     }
     lines.join("\n")
@@ -86,30 +95,27 @@ impl AccessRequestService for DefaultAccessRequestService {
     flow_type: String,
     redirect_uri: Option<String>,
     toolsets_requested: Vec<objs::ToolsetTypeRequest>,
+    mcp_servers_requested: Vec<objs::McpServerRequest>,
   ) -> Result<AppAccessRequestRow> {
-    // Validate flow type
     if flow_type != "redirect" && flow_type != "popup" {
       return Err(AccessRequestError::InvalidFlowType(flow_type));
     }
 
-    // Validate redirect_uri for redirect flow
     if flow_type == "redirect" && redirect_uri.is_none() {
       return Err(AccessRequestError::MissingRedirectUri);
     }
 
-    // Generate UUID
     let access_request_id = Uuid::new_v4().to_string();
 
     let now = self.time_service.utc_now();
     let expires_at = now + Duration::minutes(10);
 
-    // Serialize tools_requested to JSON with wrapper object
     let requested_json = serde_json::to_string(&serde_json::json!({
-      "toolset_types": toolsets_requested
+      "toolset_types": toolsets_requested,
+      "mcp_servers": mcp_servers_requested,
     }))
     .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
-    // Modify redirect_uri to include access_request_id
     let modified_redirect_uri = redirect_uri.map(|uri| {
       if uri.contains('?') {
         format!("{}&id={}", uri, access_request_id)
@@ -118,8 +124,7 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     });
 
-    // Check for auto-approve (no tools requested)
-    let is_auto_approve = toolsets_requested.is_empty();
+    let is_auto_approve = toolsets_requested.is_empty() && mcp_servers_requested.is_empty();
 
     if is_auto_approve {
       // Auto-approve flow: call auth server to register resource access
@@ -213,22 +218,19 @@ impl AccessRequestService for DefaultAccessRequestService {
     user_id: &str,
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
+    mcp_approvals: Vec<objs::McpApproval>,
   ) -> Result<AppAccessRequestRow> {
-    // Get current request
     let row = self
       .get_request(id)
       .await?
       .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
 
-    // Check status
     if row.status != "draft" {
       return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
     }
 
-    // Generate consent description from tool approvals
-    let description = self.generate_description(&tool_approvals);
+    let description = self.generate_description(&tool_approvals, &mcp_approvals);
 
-    // Call KC to register consent
     let kc_response = match self
       .auth_service
       .register_access_request_consent(user_token, &row.app_client_id, id, &description)
@@ -236,24 +238,21 @@ impl AccessRequestService for DefaultAccessRequestService {
     {
       Ok(resp) => resp,
       Err(e) => {
-        // Check if 409 Conflict
         let error_msg = e.to_string();
         if error_msg.contains("409") || error_msg.contains("UUID collision") {
-          // Mark as failed, app must create new draft
           let failure_msg =
             "KC registration failed: UUID collision (409). Please retry with new request.";
           let failed_row = self.db_service.update_failure(id, failure_msg).await?;
           return Ok(failed_row);
         } else {
-          // Network error or other failure - keep as draft for retry
           return Err(AccessRequestError::KcRegistrationFailed(error_msg));
         }
       }
     };
 
-    // Serialize tool_approvals to JSON with wrapper object
     let approved_json = serde_json::to_string(&serde_json::json!({
-      "toolsets": tool_approvals
+      "toolsets": tool_approvals,
+      "mcps": mcp_approvals,
     }))
     .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 

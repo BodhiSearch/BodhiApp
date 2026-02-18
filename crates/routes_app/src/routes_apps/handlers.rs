@@ -1,7 +1,7 @@
 use crate::routes_apps::{
   AccessRequestActionResponse, AccessRequestReviewResponse, AccessRequestStatusResponse,
   AppAccessRequestError, ApproveAccessRequestBody, CreateAccessRequestBody,
-  CreateAccessRequestResponse, RequestedResources, ToolTypeReviewInfo,
+  CreateAccessRequestResponse, ToolTypeReviewInfo,
 };
 use auth_middleware::AuthContext;
 use axum::{
@@ -10,7 +10,7 @@ use axum::{
   response::Json,
   Extension,
 };
-use objs::{ApiError, OpenAIApiError, ToolsetTypeRequest, API_TAG_AUTH};
+use objs::{ApiError, OpenAIApiError, RequestedResources, ToolsetTypeRequest, API_TAG_AUTH};
 use serde::Deserialize;
 use server_core::RouterState;
 use std::sync::Arc;
@@ -75,20 +75,23 @@ pub async fn create_access_request_handler(
     body.app_client_id
   );
 
-  // Extract tool types from requested
   let tool_types: Vec<ToolsetTypeRequest> = body
     .requested
     .as_ref()
     .map(|r| r.toolset_types.clone())
     .unwrap_or_default();
 
-  // Validate tool types exist
+  let mcp_servers: Vec<objs::McpServerRequest> = body
+    .requested
+    .as_ref()
+    .map(|r| r.mcp_servers.clone())
+    .unwrap_or_default();
+
   let tool_service = state.app_service().tool_service();
   for tool_type_req in &tool_types {
     tool_service.validate_type(&tool_type_req.toolset_type)?;
   }
 
-  // Create draft or auto-approve
   let access_request_service = state.app_service().access_request_service();
   let created = access_request_service
     .create_draft(
@@ -96,6 +99,7 @@ pub async fn create_access_request_handler(
       body.flow_type,
       body.redirect_url,
       tool_types,
+      mcp_servers,
     )
     .await?;
 
@@ -206,23 +210,16 @@ pub async fn get_access_request_review_handler(
     .await?
     .ok_or(AppAccessRequestError::NotFound)?;
 
-  // Parse requested tools
-  let requested: RequestedResources =
-    serde_json::from_str(&request.requested).unwrap_or_else(|_| RequestedResources {
-      toolset_types: vec![],
-    });
+  let requested: RequestedResources = serde_json::from_str(&request.requested).unwrap_or_default();
 
-  // Enrich with tool info
   let tool_service = state.app_service().tool_service();
   let mut tools_info = Vec::new();
 
   for tool_type_req in &requested.toolset_types {
-    // Get tool type definition
     let tool_def = tool_service
       .get_type(&tool_type_req.toolset_type)
       .ok_or_else(|| AppAccessRequestError::InvalidToolType(tool_type_req.toolset_type.clone()))?;
 
-    // Get user's instances of this tool type
     let user_toolsets = tool_service.list(user_id).await?;
     let instances = user_toolsets
       .into_iter()
@@ -237,6 +234,22 @@ pub async fn get_access_request_review_handler(
     });
   }
 
+  let mcp_service = state.app_service().mcp_service();
+  let mut mcps_info = Vec::new();
+
+  for mcp_server_req in &requested.mcp_servers {
+    let user_mcps = mcp_service.list(user_id).await?;
+    let instances = user_mcps
+      .into_iter()
+      .filter(|m| m.mcp_server.url == mcp_server_req.url)
+      .collect();
+
+    mcps_info.push(crate::routes_apps::McpServerReviewInfo {
+      url: mcp_server_req.url.clone(),
+      instances,
+    });
+  }
+
   Ok(Json(AccessRequestReviewResponse {
     id: request.id,
     app_client_id: request.app_client_id,
@@ -246,6 +259,7 @@ pub async fn get_access_request_review_handler(
     status: request.status,
     requested,
     tools_info,
+    mcps_info,
   }))
 }
 
@@ -324,9 +338,47 @@ pub async fn approve_access_request_handler(
     }
   }
 
+  let mcp_service = state.app_service().mcp_service();
+
+  for approval in &body.approved.mcps {
+    if approval.status == "approved" {
+      let instance = approval.instance.as_ref().ok_or_else(|| {
+        AppAccessRequestError::ToolInstanceNotConfigured(format!(
+          "instance required for approved MCP: {}",
+          approval.url
+        ))
+      })?;
+
+      let mcp = mcp_service
+        .get(user_id, &instance.id)
+        .await?
+        .ok_or_else(|| AppAccessRequestError::ToolInstanceNotOwned(instance.id.clone()))?;
+
+      if mcp.mcp_server.url != approval.url {
+        return Err(AppAccessRequestError::InvalidToolType(format!(
+          "MCP instance {} is not connected to server {}",
+          instance.id, approval.url
+        )))?;
+      }
+
+      if !mcp.enabled {
+        return Err(AppAccessRequestError::ToolInstanceNotConfigured(format!(
+          "MCP instance {} is not enabled",
+          instance.id
+        )))?;
+      }
+    }
+  }
+
   let access_request_service = state.app_service().access_request_service();
   let updated = access_request_service
-    .approve_request(&id, user_id, token, body.approved.toolsets)
+    .approve_request(
+      &id,
+      user_id,
+      token,
+      body.approved.toolsets,
+      body.approved.mcps,
+    )
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);

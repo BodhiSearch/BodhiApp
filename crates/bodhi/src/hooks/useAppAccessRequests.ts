@@ -1,4 +1,11 @@
-import { OpenAiApiError, Toolset, ToolTypeReviewInfo } from '@bodhiapp/ts-client';
+import {
+  AccessRequestReviewResponse,
+  McpServerReviewInfo,
+  OpenAiApiError,
+  RequestedResources,
+  Toolset,
+  ToolTypeReviewInfo,
+} from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
@@ -8,32 +15,30 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 type ErrorResponse = OpenAiApiError;
 
 // Re-export types for consumers
-export type { ToolTypeReviewInfo, Toolset };
-
-export interface RequestedResources {
-  toolset_types: { toolset_type: string }[];
-}
-
-export interface AccessRequestReviewResponse {
-  id: string;
-  app_client_id: string;
-  app_name: string | null;
-  app_description: string | null;
-  flow_type: string;
-  status: string;
-  requested: RequestedResources;
-  tools_info: ToolTypeReviewInfo[];
-}
+export type {
+  AccessRequestReviewResponse,
+  McpServerReviewInfo,
+  RequestedResources,
+  ToolTypeReviewInfo,
+  Toolset,
+};
 
 export interface ToolApprovalItem {
   toolset_type: string;
   status: string;
-  instance_id?: string;
+  instance?: { id: string };
+}
+
+export interface McpApprovalItem {
+  url: string;
+  status: string;
+  instance?: { id: string };
 }
 
 export interface ApproveAccessRequestBody {
   approved: {
-    toolset_types: ToolApprovalItem[];
+    toolsets: ToolApprovalItem[];
+    mcps: McpApprovalItem[];
   };
 }
 

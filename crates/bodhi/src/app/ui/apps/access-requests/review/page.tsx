@@ -23,6 +23,7 @@ import {
 import type {
   AccessRequestActionResponse,
   ApproveAccessRequestBody,
+  McpServerReviewInfo,
   ToolTypeReviewInfo,
 } from '@/hooks/useAppAccessRequests';
 
@@ -116,6 +117,89 @@ const ToolTypeCard = ({
 };
 
 // ============================================================================
+// MCP Server Card Component
+// ============================================================================
+
+const McpServerCard = ({
+  mcpInfo,
+  selectedInstance,
+  isApproved,
+  onSelectInstance,
+  onToggleApproval,
+}: {
+  mcpInfo: McpServerReviewInfo;
+  selectedInstance: string | undefined;
+  isApproved: boolean;
+  onSelectInstance: (url: string, instanceId: string) => void;
+  onToggleApproval: (url: string, approved: boolean) => void;
+}) => {
+  const hasInstances = mcpInfo.instances.length > 0;
+  const validInstances = mcpInfo.instances.filter((i) => i.enabled);
+
+  return (
+    <Card data-testid={`review-mcp-${mcpInfo.url}`} className="mb-3">
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            checked={isApproved}
+            onCheckedChange={(checked) => onToggleApproval(mcpInfo.url, !!checked)}
+            data-testid={`review-mcp-toggle-${mcpInfo.url}`}
+            className="mt-1"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-medium text-sm">MCP Server</span>
+              <Badge variant="outline" className="text-xs">
+                {mcpInfo.url}
+              </Badge>
+            </div>
+
+            {hasInstances && validInstances.length > 0 && isApproved && (
+              <Select
+                value={selectedInstance ?? ''}
+                onValueChange={(value) => onSelectInstance(mcpInfo.url, value)}
+                data-testid={`review-mcp-select-${mcpInfo.url}`}
+              >
+                <SelectTrigger className="w-full mt-2" data-testid={`review-mcp-select-trigger-${mcpInfo.url}`}>
+                  <SelectValue placeholder="Select an MCP instance..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {validInstances.map((instance) => (
+                    <SelectItem
+                      key={instance.id}
+                      value={instance.id}
+                      data-testid={`review-mcp-instance-option-${instance.id}`}
+                    >
+                      {instance.name} ({instance.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {!hasInstances && (
+              <Alert variant="destructive" data-testid={`review-no-mcp-instances-${mcpInfo.url}`}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No MCP instances connected to this server. Create an instance first.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {hasInstances && validInstances.length === 0 && (
+              <Alert variant="destructive" data-testid={`review-no-valid-mcp-instances-${mcpInfo.url}`}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>All MCP instances are disabled. Enable an instance to approve.</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ============================================================================
 // Non-Draft Status Handler
 // ============================================================================
 
@@ -181,6 +265,8 @@ const ReviewContent = () => {
   const { showError } = useToastMessages();
   const [selectedInstances, setSelectedInstances] = useState<Record<string, string>>({});
   const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
+  const [selectedMcpInstances, setSelectedMcpInstances] = useState<Record<string, string>>({});
+  const [approvedMcps, setApprovedMcps] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
@@ -211,7 +297,6 @@ const ReviewContent = () => {
     },
   });
 
-  // Initialize all tool types as approved (checked) by default
   useEffect(() => {
     if (reviewData?.tools_info) {
       const initial: Record<string, boolean> = {};
@@ -220,29 +305,41 @@ const ReviewContent = () => {
       });
       setApprovedTools(initial);
     }
+    if (reviewData?.mcps_info) {
+      const initial: Record<string, boolean> = {};
+      reviewData.mcps_info.forEach((mcp) => {
+        initial[mcp.url] = true;
+      });
+      setApprovedMcps(initial);
+    }
   }, [reviewData]);
 
-  // Check if approved (checked) tool types have a valid instance selected
   const canApprove = useMemo(() => {
-    if (!reviewData?.tools_info) return false;
-    return reviewData.tools_info.every((tool) => {
-      // Denied (unchecked) tool types are always valid
+    if (!reviewData) return false;
+    const toolsValid = (reviewData.tools_info ?? []).every((tool) => {
       if (!approvedTools[tool.toolset_type]) return true;
-      // Approved tool types require valid instance selection
       if (tool.instances.length === 0) return false;
       const validInstances = tool.instances.filter((i) => i.enabled && i.has_api_key);
       if (validInstances.length === 0) return false;
       return !!selectedInstances[tool.toolset_type];
     });
-  }, [reviewData, selectedInstances, approvedTools]);
+    const mcpsValid = (reviewData.mcps_info ?? []).every((mcp) => {
+      if (!approvedMcps[mcp.url]) return true;
+      const validInstances = mcp.instances.filter((i) => i.enabled);
+      if (validInstances.length === 0) return false;
+      return !!selectedMcpInstances[mcp.url];
+    });
+    return toolsValid && mcpsValid;
+  }, [reviewData, selectedInstances, approvedTools, selectedMcpInstances, approvedMcps]);
 
   // Compute approve button label
   const approvedCount = useMemo(() => {
-    if (!reviewData?.tools_info) return 0;
-    return reviewData.tools_info.filter((t) => approvedTools[t.toolset_type]).length;
-  }, [reviewData, approvedTools]);
+    const toolsApproved = (reviewData?.tools_info ?? []).filter((t) => approvedTools[t.toolset_type]).length;
+    const mcpsApproved = (reviewData?.mcps_info ?? []).filter((m) => approvedMcps[m.url]).length;
+    return toolsApproved + mcpsApproved;
+  }, [reviewData, approvedTools, approvedMcps]);
 
-  const totalCount = reviewData?.tools_info?.length ?? 0;
+  const totalCount = (reviewData?.tools_info?.length ?? 0) + (reviewData?.mcps_info?.length ?? 0);
 
   // No id query param
   if (!id) {
@@ -299,10 +396,19 @@ const ReviewContent = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequestBody = {
       approved: {
-        toolset_types: reviewData.tools_info.map((tool) => ({
+        toolsets: (reviewData.tools_info ?? []).map((tool) => ({
           toolset_type: tool.toolset_type,
           status: approvedTools[tool.toolset_type] ? 'approved' : 'denied',
-          instance_id: approvedTools[tool.toolset_type] ? selectedInstances[tool.toolset_type] : undefined,
+          instance:
+            approvedTools[tool.toolset_type] && selectedInstances[tool.toolset_type]
+              ? { id: selectedInstances[tool.toolset_type] }
+              : undefined,
+        })),
+        mcps: (reviewData.mcps_info ?? []).map((mcp) => ({
+          url: mcp.url,
+          status: approvedMcps[mcp.url] ? 'approved' : 'denied',
+          instance:
+            approvedMcps[mcp.url] && selectedMcpInstances[mcp.url] ? { id: selectedMcpInstances[mcp.url] } : undefined,
         })),
       },
     };
@@ -330,7 +436,7 @@ const ReviewContent = () => {
             <span data-testid="review-app-name" className="font-medium">
               {displayName}
             </span>
-            {' is requesting access to your tools.'}
+            {' is requesting access to your resources.'}
           </CardDescription>
           {reviewData.app_description && (
             <p className="text-sm text-muted-foreground mt-1" data-testid="review-app-description">
@@ -339,19 +445,39 @@ const ReviewContent = () => {
           )}
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Requested Tools:</h3>
-            {reviewData.tools_info.map((toolInfo) => (
-              <ToolTypeCard
-                key={toolInfo.toolset_type}
-                toolInfo={toolInfo}
-                selectedInstance={selectedInstances[toolInfo.toolset_type]}
-                isApproved={approvedTools[toolInfo.toolset_type] ?? true}
-                onSelectInstance={handleSelectInstance}
-                onToggleApproval={handleToggleApproval}
-              />
-            ))}
-          </div>
+          {reviewData.tools_info && reviewData.tools_info.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium mb-2">Requested Tools:</h3>
+              {reviewData.tools_info.map((toolInfo) => (
+                <ToolTypeCard
+                  key={toolInfo.toolset_type}
+                  toolInfo={toolInfo}
+                  selectedInstance={selectedInstances[toolInfo.toolset_type]}
+                  isApproved={approvedTools[toolInfo.toolset_type] ?? true}
+                  onSelectInstance={handleSelectInstance}
+                  onToggleApproval={handleToggleApproval}
+                />
+              ))}
+            </div>
+          )}
+
+          {reviewData.mcps_info && reviewData.mcps_info.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium mb-2">Requested MCP Servers:</h3>
+              {reviewData.mcps_info.map((mcpInfo) => (
+                <McpServerCard
+                  key={mcpInfo.url}
+                  mcpInfo={mcpInfo}
+                  selectedInstance={selectedMcpInstances[mcpInfo.url]}
+                  isApproved={approvedMcps[mcpInfo.url] ?? true}
+                  onSelectInstance={(url, instanceId) =>
+                    setSelectedMcpInstances((prev) => ({ ...prev, [url]: instanceId }))
+                  }
+                  onToggleApproval={(url, approved) => setApprovedMcps((prev) => ({ ...prev, [url]: approved }))}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-between gap-4">
             <Button variant="outline" onClick={handleDeny} disabled={isSubmitting} data-testid="review-deny-button">

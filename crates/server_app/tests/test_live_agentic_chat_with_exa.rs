@@ -217,7 +217,7 @@ async fn test_live_agentic_chat_with_exa_toolset(
   println!("Step 6: Executing tool call via backend...");
   let execute_response = client
     .post(format!(
-      "{}/bodhi/v1/toolsets/{}/execute/{}",
+      "{}/bodhi/v1/toolsets/{}/tools/{}/execute",
       base_url, toolset_uuid, method
     ))
     .header("Cookie", session_cookie.to_string())

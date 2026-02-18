@@ -259,21 +259,7 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
     tool_names
   );
 
-  // Step 4: List cached tools (should return same tools from cache)
-  let resp = client
-    .get(format!(
-      "{}/bodhi/v1/mcps/{}/tools",
-      server.base_url, mcp_id
-    ))
-    .header("Cookie", &admin_cookie)
-    .send()
-    .await?;
-  assert_eq!(StatusCode::OK, resp.status());
-  let cached_tools: Value = resp.json().await?;
-  let cached = cached_tools["tools"].as_array().unwrap();
-  assert_eq!(tools.len(), cached.len());
-
-  // Step 5: Execute read_wiki_structure tool
+  // Step 4: Execute read_wiki_structure tool
   let resp = client
     .post(format!(
       "{}/bodhi/v1/mcps/{}/tools/read_wiki_structure/execute",
