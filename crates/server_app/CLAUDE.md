@@ -34,11 +34,15 @@ Comprehensive service initialization with sophisticated dependency management:
 
 ## Architecture Position
 
-The `server_app` crate serves as BodhiApp's **main HTTP server executable orchestration layer**:
-- **Above all other crates**: Coordinates complete application bootstrap including services, routes, server_core, and infrastructure
-- **Below deployment infrastructure**: Provides production-ready server executable for Docker, systemd, and cloud deployments
-- **Integration with llama_server_proc**: Manages LLM server process lifecycle through SharedContext coordination
-- **Cross-cutting with all layers**: Implements application-wide concerns like graceful shutdown, configuration management, and service health monitoring
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain types, configuration (`AppOptions`)
+- [`services`](../services/CLAUDE.md) -- `AppService`, `SettingService`, `DefaultAppService`
+- [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`, `DefaultSharedContext`
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- authentication middleware composition
+- [`routes_app`](../routes_app/CLAUDE.md) -- route handlers including `/dev/db-reset` endpoint
+- [`llama_server_proc`](../llama_server_proc/CLAUDE.md) -- LLM server binary management
+
+**Downstream consumers**: None (this is a near-leaf crate consumed by `bodhi/src-tauri` and `lib_bodhiserver` for route/server composition patterns)
 
 ## Cross-Crate Integration Patterns
 

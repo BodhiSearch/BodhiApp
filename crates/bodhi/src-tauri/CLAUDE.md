@@ -59,12 +59,14 @@ Sophisticated environment-specific configuration coordination across deployment 
 
 ## Architecture Position
 
-The `crates/bodhi/src-tauri` crate serves as BodhiApp's **unified application orchestration layer**:
+The `crates/bodhi/src-tauri` crate is a **leaf crate** in the dependency chain -- it consumes all foundation crates and is not consumed by any other Rust crate.
 
-- **Above lib_bodhiserver**: Coordinates complete application embedding with service composition, configuration management, and deployment coordination
-- **Below deployment infrastructure**: Provides executable entry points for native desktop and container deployment scenarios with feature-based compilation
-- **Integration with objs**: Uses domain objects for error handling, configuration validation, CLI parameter management, and user-friendly error messages
-- **Cross-cutting coordination**: Implements application-wide concerns including logging configuration, environment management, resource lifecycle, and deployment orchestration
+**Upstream dependencies** (crates this depends on):
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- `build_app_service()`, `setup_app_dirs()`, `ServeCommand`, embedded UI assets
+- [`objs`](../objs/CLAUDE.md) -- domain types, error handling, `AppOptions`, `AppType`, `EnvType`
+- [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- `#[derive(ErrorMeta)]` for error types
+
+**Downstream consumers**: None (this is the final executable crate)
 
 ## Cross-Crate Integration Patterns
 

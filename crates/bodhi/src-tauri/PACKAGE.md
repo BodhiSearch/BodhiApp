@@ -188,7 +188,7 @@ pub use lib_bodhiserver::EMBEDDED_UI_ASSETS as ASSETS;
 ### Error Handling Integration
 
 **Error Translation Patterns** (`src/native_init.rs`):
-The crate implements comprehensive error handling with errmeta_derive integration for consistent error metadata and localization support:
+The crate implements error handling with errmeta_derive integration for consistent error metadata:
 
 ```rust
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -354,7 +354,7 @@ For expanding the test_utils module:
 ### Support Modules
 
 - `src/ui.rs` - UI asset embedding and integration
-- `src/error.rs` - Application error types with localization support
+- `src/error.rs` - Application error types with errmeta_derive integration
 - `src/error_test.rs` - Error handling test scenarios
 - `src/test_utils/mod.rs` - Testing utilities foundation
 - `build.rs` - Build-time configuration and asset preparation

@@ -27,9 +27,13 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 
 ### Core Features
 
-- **Chat Interface**: Real-time chat with streaming responses and message history
+- **Chat Interface**: Real-time chat with streaming responses, message history, and tool calling support
 - **Model Management**: Create, edit, and manage model aliases and configurations
-- **User Setup**: Guided onboarding flow for first-time users
+- **MCP Server Management**: CRUD for MCP server instances, tool discovery, admin enable flow (`useMcps` hook, `mcps/` pages)
+- **Toolset Management**: Toolset CRUD, type management, tool selection for chat (`useToolsets`, `use-toolset-selection` hooks, `toolsets/` pages)
+- **Access Request Management**: User access requests and app access request review/approval (`useAccessRequests`, `useAppAccessRequests` hooks, `apps/access-requests/` pages)
+- **API Model Management**: External API model configuration (`useApiModels` hook, `api-models/` pages)
+- **User Setup**: Guided onboarding flow for first-time users (toolsets, API models, LLM engine, browser extension)
 - **Settings Management**: Application settings and API token management
 - **Authentication**: OAuth login/logout with session management
 
@@ -111,12 +115,15 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 
 ## Architecture Position
 
-The frontend application sits at the user interface layer:
+The frontend application sits at the user interface layer, consuming the Rust backend API.
 
-- **Provides**: Complete web-based user interface for BodhiApp
-- **Communicates**: With BodhiApp HTTP API endpoints for all functionality
-- **Manages**: Client-side state, authentication, and user experience
-- **Renders**: Static export compatible with desktop embedding
+**Upstream dependencies** (backend APIs this consumes):
+- [`routes_app`](../../routes_app/CLAUDE.md) -- all HTTP API endpoints (models, auth, toolsets, MCPs, access requests, settings, etc.)
+- [`@bodhiapp/ts-client`](../../../../ts-client/) -- generated TypeScript types from OpenAPI spec
+
+**Downstream consumers** (crates that embed this UI):
+- [`bodhi/src-tauri`](../src-tauri/CLAUDE.md) -- Tauri desktop app embeds the static export via `lib_bodhiserver::EMBEDDED_UI_ASSETS`
+- [`lib_bodhiserver`](../../lib_bodhiserver/CLAUDE.md) -- embeddable library serves the static export
 
 ## TypeScript Client Integration
 
@@ -240,26 +247,14 @@ export function useChat() {
 ### API Client Configuration
 
 ```tsx
-// src/lib/apiClient.ts - Simplified axios client for BodhiApp API
-import axios from 'axios';
-
-const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+// src/lib/apiClient.ts
 const apiClient = axios.create({
   baseURL: isTest ? 'http://localhost:3000' : '',
   maxRedirects: 0,
 });
-
-// Request/response interceptors for debugging and error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('Error:', error.response?.status, error.config?.url);
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
 ```
+
+Note: In tests, `baseURL` is set to `http://localhost:3000` (via `tests/setup.ts`). In production, `baseURL` is empty string `''` (relative to current origin).
 
 ### Type-Safe API Integration
 
@@ -426,32 +421,24 @@ export default function ChatPage() {
 ### App Router Organization
 
 ```
-src/app/
-├── layout.tsx                    # Root layout with providers
-├── page.tsx                      # Landing page
-├── globals.css                   # Global styles
-├── ui/                          # Main application routes
-│   ├── home/page.tsx            # Dashboard/home page
-│   ├── chat/page.tsx            # Chat interface
-│   ├── models/                  # Model management
-│   │   ├── page.tsx             # Models list
-│   │   ├── new/page.tsx         # Create new model
-│   │   └── edit/page.tsx        # Edit model
-│   ├── pull/page.tsx            # Model pull interface
-│   ├── settings/page.tsx        # Application settings
-│   ├── tokens/page.tsx          # API token management
-│   ├── login/page.tsx           # Login page
-│   ├── setup/                   # Onboarding flow
-│   │   ├── page.tsx             # Setup start
-│   │   ├── llm-engine/page.tsx  # LLM engine selection
-│   │   ├── download-models/page.tsx # Model downloads
-│   │   └── complete/page.tsx    # Setup completion
-│   └── auth/
-│       └── callback/page.tsx    # OAuth callback
-└── docs/                        # Documentation system
-    ├── layout.tsx               # Docs layout
-    ├── page.tsx                 # Docs index
-    └── [...slug]/page.tsx       # Dynamic doc pages
+src/app/ui/
+├── home/                        # Dashboard/home page
+├── chat/                        # Chat interface with tool calling
+├── models/                      # Model alias management (list, new, edit)
+├── modelfiles/                  # Modelfiles page
+├── pull/                        # Model pull interface
+├── api-models/                  # API model config (new, edit)
+├── mcps/                        # MCP server management (list, new)
+├── toolsets/                    # Toolset management (list, new, edit, admin)
+├── tokens/                      # API token management
+├── settings/                    # Application settings
+├── users/                       # User management (list, pending, access-requests)
+├── apps/                        # App access request review
+│   └── access-requests/review/
+├── request-access/              # User access request form
+├── setup/                       # Onboarding flow (download-models, toolsets, api-models, llm-engine, browser-extension, complete)
+├── login/                       # Login page
+└── auth/callback/               # OAuth callback
 ```
 
 ### Component Architecture
@@ -476,14 +463,27 @@ src/components/
 
 ```
 src/hooks/
-├── use-chat.tsx                # Main chat functionality
+├── use-chat.tsx                # Main chat functionality with tool calling
 ├── use-chat-completions.ts     # Chat API integration
 ├── use-chat-db.tsx             # Local chat storage
 ├── use-chat-settings.tsx       # Chat configuration
-├── use-navigation.tsx          # Navigation state
-├── useOAuth.ts                 # OAuth authentication
+├── useMcps.ts                  # MCP server CRUD, tool discovery
+├── useToolsets.ts              # Toolset CRUD, type management
+├── use-toolset-selection.ts    # Toolset selection state for chat
+├── useAccessRequests.ts        # User access request management
+├── useAppAccessRequests.ts     # App access request review/approve/deny
+├── useApiModels.ts             # API model configuration
 ├── useApiTokens.ts             # API token management
-└── use-toast-messages.ts       # Toast notifications
+├── useModels.ts                # Model alias management
+├── useModelMetadata.ts         # Model metadata refresh
+├── useModelCatalog.ts          # Model catalog browsing
+├── useUsers.ts                 # User management
+├── useSettings.ts              # Settings management
+├── useInfo.ts                  # App info
+├── useAuth.ts                  # OAuth authentication
+├── use-navigation.tsx          # Navigation state
+├── use-toast-messages.ts       # Toast notifications
+└── useQuery.ts                 # Generic query/mutation hooks
 ```
 
 ## State Management

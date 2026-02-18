@@ -49,8 +49,6 @@ The error system coordinates across all BodhiApp layers through these key files:
 - **API Conversion**: `src/error/error_api.rs` - `ApiError` envelope converting any `AppError` to OpenAI-compatible JSON responses. Tests use a test-only `TestError` enum to verify the conversion pipeline.
 - **Error Trait & Types**: `src/error/common.rs` - `ErrorType` enum (HTTP status mapping), `AppError` trait, `ErrorMessage` struct
 - **OpenAI Format**: `src/error/error_oai.rs` - `OpenAIApiError` and `ErrorBody` for OpenAI-compatible error responses with utoipa schema annotations
-- **Localization Errors**: `src/error/l10n.rs` - `LocalizationSetupError`, `LocalizationMessageError`, `LocaleNotSupportedError`
-
 **Important**: Generic HTTP wrapper structs (`BadRequestError`, `NotFoundError`, `InternalServerError`, `UnauthorizedError`, `ConflictError`, `UnprocessableEntityError`, `ServiceUnavailableError`) have been removed. Use domain-specific error enums with `#[error_meta(error_type = ErrorType::...)]` instead.
 
 **Error Message Guidelines**:

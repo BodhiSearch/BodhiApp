@@ -6,6 +6,19 @@ See [crates/server_core/PACKAGE.md](crates/server_core/PACKAGE.md) for implement
 
 The `server_core` crate implements BodhiApp's **HTTP infrastructure orchestration layer**, providing server-sent event streaming, LLM server context management, model request routing, and HTTP state coordination. This crate bridges the service layer with HTTP route handlers while managing the complex lifecycle of LLM server processes and real-time streaming connections.
 
+## Architecture Position
+
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain types, `ApiError`, `AppError` trait, `ErrorType`
+- [`services`](../services/CLAUDE.md) -- `AppService` trait, business service traits
+- [`llama_server_proc`](../llama_server_proc/CLAUDE.md) -- LLM server process management
+
+**Downstream consumers** (crates that depend on this):
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- uses `RouterState` for middleware integration
+- [`routes_app`](../routes_app/CLAUDE.md) -- uses `RouterState`, SSE streaming, `SharedContext`
+- [`server_app`](../server_app/CLAUDE.md) -- constructs `DefaultRouterState` and `DefaultSharedContext`
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- constructs and embeds server infrastructure
+
 ## Architectural Design Rationale
 
 ### Why RouterState Dependency Injection

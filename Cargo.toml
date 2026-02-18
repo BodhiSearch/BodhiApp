@@ -6,6 +6,7 @@ members = [
   "crates/llama_server_proc",
   "crates/errmeta_derive",
   "crates/objs",
+  "crates/mcp_client",
   "crates/services",
   "crates/server_core",
   "crates/auth_middleware",
@@ -14,7 +15,6 @@ members = [
   "crates/lib_bodhiserver",
   "crates/lib_bodhiserver_napi",
   "crates/bodhi/src-tauri",
-  "crates/mcp_client",
   "crates/ci_optims",
 ]
 resolver = "2"

@@ -9,7 +9,7 @@ The crate is organized into these modules (see `crates/auth_middleware/src/lib.r
 - `auth_middleware` - Core authentication middleware, header constants, session handling, same-origin validation
 - `api_auth_middleware` - Role and scope-based API authorization middleware
 - `toolset_auth_middleware` - Specialized authorization for toolset execution endpoints
-- `extractors` - Axum `FromRequestParts` extractors for type-safe internal header extraction
+- `auth_context` - `AuthContext` enum definition, convenience methods, test factory methods
 - `token_service` - JWT token validation, refresh, exchange, and caching via `DefaultTokenService`
 - `canonical_url_middleware` - SEO and security canonical URL redirection
 - `utils` - Utility functions (app status, random string generation, error response types)
@@ -17,65 +17,40 @@ The crate is organized into these modules (see `crates/auth_middleware/src/lib.r
 
 All modules are re-exported publicly from `lib.rs`.
 
-## Type-Safe Header Extraction
+## AuthContext Extension Pattern
 
-### HeaderExtractionError and Validation Helpers
-Centralized error type and shared validation logic (see `crates/auth_middleware/src/extractors.rs`):
+Route handlers receive authentication context through `Extension<AuthContext>` from Axum request extensions, set by the auth middleware. This replaced the previous header-based extractor approach (`ExtractUserId`, `ExtractRole`, `ExtractToken`, etc.) which has been removed.
+
+### AuthContext Variants
+
+| Variant | Fields | Authenticated |
+|---------|--------|:------------:|
+| `Anonymous` | (none) | No |
+| `Session` | `user_id`, `username`, `role: Option<ResourceRole>`, `token` | Yes |
+| `ApiToken` | `user_id`, `scope: TokenScope`, `token` | Yes |
+| `ExternalApp` | `user_id`, `scope: UserScope`, `token`, `azp`, `access_request_id: Option<String>` | Yes |
+
+### Handler Pattern
 
 ```rust
-// Three-variant error with descriptive messages including header name
-pub enum HeaderExtractionError {
-  Missing { header: String },
-  Invalid { header: String, reason: String },
-  Empty { header: String },
+async fn handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+) -> Result<..., ApiError> {
+  let user_id = auth_context.user_id().expect("behind auth middleware");
 }
-
-// Validation pipeline: present -> valid UTF-8 -> non-empty
-fn extract_required_header(parts: &Parts, header: &str) -> Result<String, HeaderExtractionError>;
-fn extract_optional_header(parts: &Parts, header: &str) -> Result<Option<String>, HeaderExtractionError>;
 ```
 
-### Extractor Types
-Seven extractors cover all internal header access patterns (see `crates/auth_middleware/src/extractors.rs`):
-
-**Required extractors** -- reject with 400 Bad Request if header is missing or empty:
-
-| Extractor | Header | Inner Type | Notes |
-|-----------|--------|------------|-------|
-| `ExtractToken` | `X-BodhiApp-Token` | `String` | Authentication token |
-| `ExtractUserId` | `X-BodhiApp-User-Id` | `String` | User identifier |
-| `ExtractUsername` | `X-BodhiApp-Username` | `String` | Display username |
-| `ExtractRole` | `X-BodhiApp-Role` | `ResourceRole` | Parsed via `FromStr` |
-| `ExtractScope` | `X-BodhiApp-Scope` | `String` | Authorization scope |
-
-**Optional extractors** -- return `None` if header is missing or empty:
-
-| Extractor | Header | Inner Type | Notes |
-|-----------|--------|------------|-------|
-| `MaybeToken` | `X-BodhiApp-Token` | `Option<String>` | Never fails on missing |
-| `MaybeRole` | `X-BodhiApp-Role` | `Option<ResourceRole>` | Fails on invalid parse |
-
-### Extractor Usage Pattern in Route Handlers
-Extractors are used as handler parameters via Axum destructuring:
+### Test Injection
 
 ```rust
-// Required extraction - 400 if missing
-async fn handler(
-  ExtractToken(token): ExtractToken,
-  ExtractUserId(user_id): ExtractUserId,
-) -> impl IntoResponse { /* ... */ }
-
-// Optional extraction - None if missing
-async fn handler(
-  MaybeRole(role): MaybeRole,
-) -> impl IntoResponse { /* ... */ }
+use auth_middleware::RequestAuthContextExt;
+let request = Request::builder()
+  .uri("/endpoint")
+  .body(Body::empty())
+  .unwrap()
+  .with_auth_context(AuthContext::test_session("user", "name", ResourceRole::Admin));
 ```
-
-Key downstream consumers in `routes_app`:
-- `crates/routes_app/src/routes_access_request.rs` - Uses `ExtractUsername`, `ExtractUserId`, `MaybeRole`, `ExtractRole`, `ExtractToken`
-- `crates/routes_app/src/routes_api_token.rs` - Uses `ExtractToken`
-- `crates/routes_app/src/routes_users_list.rs` - Uses `ExtractToken`
-- `crates/routes_app/src/routes_toolsets.rs` - Uses `ExtractToken`, `ExtractUserId`
 
 ## Internal Header Constants
 
@@ -209,7 +184,6 @@ SEO and security URL normalization (see `crates/auth_middleware/src/canonical_ur
 ### Error Types
 Multiple error enums for different middleware concerns:
 
-- `HeaderExtractionError` (see `crates/auth_middleware/src/extractors.rs`) - Missing, Invalid, Empty header errors with `ErrorType::BadRequest`
 - `AuthError` (see `crates/auth_middleware/src/auth_middleware.rs`) - Authentication failures: InvalidAccess, RefreshTokenNotFound, TokenInactive, TowerSession
 - `ApiAuthError` (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Authorization failures: Forbidden, MissingAuth
 - `ToolsetAuthError` (see `crates/auth_middleware/src/toolset_auth_middleware.rs`) - Toolset authorization: MissingUserId, MissingAuth, AppClientNotRegistered, MissingToolsetScope, ToolsetNotFound
@@ -226,7 +200,6 @@ Core utility functions (see `crates/auth_middleware/src/utils.rs`):
 ## Testing Infrastructure
 
 ### Unit Tests
-- Extractor tests (see `crates/auth_middleware/src/extractors.rs`) - Tests for present/missing/invalid headers using `Router::oneshot`
 - Auth middleware tests (see `crates/auth_middleware/src/auth_middleware.rs`) - Session and bearer token flows with mock services
 - API auth middleware tests (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Role/scope authorization combinations
 - Toolset auth middleware tests (see `crates/auth_middleware/src/toolset_auth_middleware.rs`) - Session and OAuth auth paths with `MockToolService`

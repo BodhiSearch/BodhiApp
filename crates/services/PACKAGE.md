@@ -6,7 +6,7 @@
 
 ### Core Service Registry
 - `src/lib.rs` - Crate root with module exports and feature flags
-- `src/app_service.rs` - Central `AppService` trait and `DefaultAppService` implementation (13 service accessors)
+- `src/app_service.rs` - Central `AppService` trait and `DefaultAppService` implementation (16 service accessors)
 - `src/service_ext.rs` - Service extension utilities
 - `src/macros.rs` - `asref_impl!` macro for service trait AsRef implementations
 
@@ -25,8 +25,21 @@
 
 ### AI and Tool Services
 - `src/ai_api_service.rs` - External AI API integration with test prompt, model listing, and request forwarding
-- `src/tool_service.rs` - Toolset management and execution for LLM function calling
+- `src/tool_service/mod.rs` - Module root for toolset management
+- `src/tool_service/service.rs` - `ToolService` trait and `DefaultToolService` implementation for LLM function calling
+- `src/tool_service/error.rs` - `ToolsetError` domain error enum
+- `src/tool_service/tests.rs` - Toolset service unit tests
 - `src/exa_service.rs` - Exa AI semantic search API integration (search, find similar, contents, answer)
+
+### MCP Services
+- `src/mcp_service/mod.rs` - Module root for MCP server management
+- `src/mcp_service/service.rs` - `McpService` trait and `DefaultMcpService` implementation for CRUD, tool discovery, execution
+- `src/mcp_service/error.rs` - `McpError` domain error enum
+
+### Access Control Services
+- `src/access_request_service/mod.rs` - Module root for access request management
+- `src/access_request_service/service.rs` - `AccessRequestService` trait and implementation
+- `src/access_request_service/error.rs` - Access request error types
 
 ### Infrastructure Services
 - `src/db/mod.rs` - Database module exports
@@ -34,7 +47,12 @@
 - `src/db/sqlite_pool.rs` - Connection pool management
 - `src/db/encryption.rs` - Database-level API key encryption utilities
 - `src/db/error.rs` - Database error types (`SqlxError`, `SqlxMigrateError`, `ItemNotFound`)
-- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `UserAccessRequest`, `ModelMetadataRow`, etc.)
+- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `UserAccessRequest`, `ModelMetadataRow`, `McpRow`, `McpServerRow`, `ToolsetRow`, `AppToolsetConfigRow`, etc.)
+- `src/db/mcp_repository.rs` - MCP server and instance persistence
+- `src/db/toolset_repository.rs` - Toolset and app toolset config persistence
+- `src/db/access_repository.rs` - Access control persistence
+- `src/db/access_request_repository.rs` - User access request persistence
+- `src/db/user_alias_repository.rs` - User alias persistence
 
 ### Configuration and Environment
 - `src/setting_service.rs` - Application configuration management with `SettingsChangeListener` notification
@@ -60,7 +78,7 @@
 
 ### Service Registry Pattern
 ```rust
-// src/app_service.rs - 13 services in the registry
+// src/app_service.rs - 16 services in the registry
 #[cfg_attr(test, mockall::automock)]
 pub trait AppService: std::fmt::Debug + Send + Sync {
   fn setting_service(&self) -> Arc<dyn SettingService>;
@@ -76,6 +94,9 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn concurrency_service(&self) -> Arc<dyn ConcurrencyService>;
   fn queue_producer(&self) -> Arc<dyn QueueProducer>;
   fn tool_service(&self) -> Arc<dyn ToolService>;
+  fn network_service(&self) -> Arc<dyn NetworkService>;
+  fn access_request_service(&self) -> Arc<dyn AccessRequestService>;
+  fn mcp_service(&self) -> Arc<dyn McpService>;
 }
 ```
 
@@ -150,7 +171,8 @@ impl_error_from!(sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
 | DbService | `DbError` | (none) | `SqlxError`, `SqlxMigrateError`, `StrumParse`, `TokenValidation`, `PrefixExists` |
 | SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError` |
 | AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
-| ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `ToolsetNotConfigured`, `ToolsetDisabled`, `NameExists`, `DbError`, `ExaError` |
+| ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `ToolsetNotConfigured`, `ToolsetDisabled`, `ToolsetAppDisabled`, `SlugExists`, `InvalidSlug`, `InvalidDescription`, `InvalidToolsetType`, `DbError`, `ExaError` |
+| McpService | `McpError` | (none) | `McpNotFound`, `McpUrlNotAllowed`, `McpDisabled`, `ToolNotAllowed`, `ToolNotFound`, `SlugExists`, `InvalidSlug`, `InvalidDescription`, `NameRequired`, `ConnectionFailed`, `ExecutionFailed`, `DbError` |
 | ExaService | `ExaError` | (none) | `RequestFailed`, `RateLimited`, `InvalidApiKey`, `Timeout` |
 | KeyringService | `KeyringError` | (none) | `KeyringError`, `DecodeError` |
 | Token | `TokenError` | (none) | `InvalidToken`, `SerdeJson`, `InvalidIssuer`, `ScopeEmpty`, `Expired` |
@@ -191,7 +213,8 @@ let app_service = DefaultAppService::new(
   auth_service, db_service, session_service,
   secret_service, cache_service, time_service,
   ai_api_service, concurrency_service,
-  queue_producer, tool_service,
+  queue_producer, tool_service, network_service,
+  access_request_service, mcp_service,
 );
 ```
 
@@ -240,6 +263,8 @@ All service modules contain inline `#[cfg(test)] mod tests` blocks. Three module
 | `db` | `src/db/tests.rs` (separate file) |
 | `setting_service` | `src/setting_service/tests.rs` (separate file) |
 | `tool_service` | `src/tool_service/tests.rs` (separate file) |
+| `mcp_service` | Inline in `src/mcp_service/service.rs` |
+| `access_request_service` | Inline in `src/access_request_service/service.rs` |
 | All other services | Inline `mod tests` at bottom of source file |
 
 Additionally, `src/db/encryption.rs`, `src/db/error.rs`, and `src/db/sqlite_pool.rs` have inline test modules for their focused concerns.
@@ -301,6 +326,7 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 ### Core Dependencies
 - `objs` - Domain objects, error types, `IoError` enum, `impl_error_from!` macro
 - `llama_server_proc` - LLM process management
+- `mcp_client` - MCP protocol client for tool discovery and execution
 - `async-trait` - Async trait support
 - `axum` - HTTP framework integration
 - `sqlx` - Database operations (SQLite)
@@ -327,8 +353,10 @@ See individual module files for complete implementation details:
 - Authentication: `src/auth_service.rs`, `src/session_service.rs`, `src/concurrency_service.rs`
 - Security: `src/secret_service.rs`, `src/keyring_service.rs`
 - Model management: `src/hub_service.rs`, `src/data_service.rs`
-- AI integration: `src/ai_api_service.rs`, `src/tool_service.rs`, `src/exa_service.rs`
-- Database: `src/db/*.rs`
+- AI integration: `src/ai_api_service.rs`, `src/tool_service/*.rs`, `src/exa_service.rs`
+- MCP: `src/mcp_service/*.rs`
+- Access control: `src/access_request_service/*.rs`
+- Database: `src/db/*.rs` (includes `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`)
 - Configuration: `src/setting_service.rs`, `src/env_wrapper.rs`
 - Background processing: `src/queue_service.rs`, `src/progress_tracking.rs`
 - Domain objects: `src/objs.rs`

@@ -69,12 +69,19 @@ Structured API surface management for OpenAPI generation:
 
 ## Architecture Position
 
-The `objs` crate serves as BodhiApp's **architectural keystone**:
-- **Universal Foundation**: All other crates depend on objs for core types and error handling
-- **Cross-Crate Consistency**: Ensures unified behavior across services, routes, CLI, and desktop components
-- **Integration Coordinator**: Bridges external APIs (OpenAI, Hugging Face, OAuth2) with internal representations
-- **Error Message Hub**: Provides centralized error message templates consumed by all user-facing components
-- **Domain Authority**: Defines canonical business entities used throughout the application ecosystem
+The `objs` crate serves as BodhiApp's **architectural keystone** -- the foundation crate with no workspace dependencies.
+
+**Upstream dependencies**: None (this is the foundation crate)
+
+**Downstream consumers** (all workspace crates depend on this):
+- [`services`](../services/CLAUDE.md) -- domain types, error handling, `IoError`, `impl_error_from!` macro
+- [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `ApiError`, domain types
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- `AuthContext`, `ResourceRole`, `TokenScope`
+- [`routes_app`](../routes_app/CLAUDE.md) -- API tag constants, request/response types, error types
+- [`server_app`](../server_app/CLAUDE.md) -- `AppOptions`, configuration types
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- configuration types, embedded UI assets
+- [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- `AppOptions`, `AppType`, `EnvType`
+- [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- proc macro operates on `AppError` trait defined here
 
 ## Cross-Crate Integration Patterns
 

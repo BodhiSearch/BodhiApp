@@ -15,7 +15,7 @@ Advanced library interface for embedding BodhiApp functionality:
 - **AppServiceBuilder Architecture**: Sophisticated dependency injection with automatic service resolution and comprehensive error handling
 - **Application Directory Management**: Complete filesystem setup with BODHI_HOME, HF_HOME, and configuration directory orchestration
 - **Configuration System Integration**: Flexible configuration with environment variables, settings files, and system defaults coordination
-- **Service Composition Orchestration**: Complete service registry initialization with all 10 business services and dependency management
+- **Service Composition Orchestration**: Complete service registry initialization with all 16 business services and dependency management
 - **Resource Lifecycle Management**: Proper initialization, configuration, and cleanup coordination for embedded deployments
 
 ### Cross-Crate Service Integration Architecture
@@ -36,18 +36,24 @@ Sophisticated application initialization with comprehensive configuration manage
 
 ## Architecture Position
 
-The `lib_bodhiserver` crate serves as BodhiApp's **embeddable server library orchestration layer**:
-- **Above all other crates**: Coordinates complete application composition including services, routes, server_core, and infrastructure for embedding
-- **Below external applications**: Provides clean library interface for Tauri desktop apps, NAPI Node.js bindings, and other embedding scenarios
-- **Integration with server_app**: Leverages server application orchestration for complete HTTP server functionality when needed
-- **Cross-cutting with all layers**: Implements application-wide concerns like configuration management, service composition, and resource lifecycle
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain types, `AppOptions`, `AppType`, `EnvType`
+- [`services`](../services/CLAUDE.md) -- all 16 service traits and implementations
+- [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- authentication middleware
+- [`routes_app`](../routes_app/CLAUDE.md) -- route handlers
+- [`server_app`](../server_app/CLAUDE.md) -- `ServeCommand`, server lifecycle
+
+**Downstream consumers** (crates that depend on this):
+- [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- Tauri desktop app calls `build_app_service()`, `setup_app_dirs()`
+- [`lib_bodhiserver_napi`](../lib_bodhiserver_napi/CLAUDE.md) -- NAPI Node.js bindings call `build_app_service()`, `setup_app_dirs()`
 
 ## Cross-Crate Integration Patterns
 
 ### Service Layer Composition Coordination
 Complex service orchestration for embeddable library functionality:
 - **AppServiceBuilder Integration**: Sophisticated dependency injection with automatic service resolution and comprehensive error handling
-- **Service Registry Composition**: Complete AppService registry initialization with all 10 business services including authentication, model management, and configuration
+- **Service Registry Composition**: Complete AppService registry initialization with all 16 business services including authentication, model management, toolsets, MCP, and configuration
 - **Database Service Coordination**: SQLite database setup with migration management, connection pooling, and transaction support for embedded scenarios
 - **Authentication Service Integration**: OAuth2 flows, session management, and API token support coordinated through SecretService and KeyringService
 - **Configuration Service Management**: SettingService integration with environment variables, settings files, and system defaults coordination
@@ -74,7 +80,7 @@ Complex application initialization with comprehensive service orchestration:
 
 1. **Configuration Validation**: AppOptions validation with environment variables, system settings, and application configuration verification
 2. **Directory Setup**: BODHI_HOME, HF_HOME, aliases, databases, and logs directory creation with proper permissions and error handling
-3. **Service Composition**: AppServiceBuilder orchestration with all 10 business services including dependency injection and error recovery
+3. **Service Composition**: AppServiceBuilder orchestration with all 16 business services including dependency injection and error recovery
 4. **Database Migration**: SQLite database setup with schema migration, connection pooling, and transaction support for embedded scenarios
 5. **Service Initialization**: Complete service initialization with error handling and recovery mechanisms
 
@@ -110,7 +116,7 @@ Comprehensive error management across embeddable library boundaries:
 
 ### Service Composition Standards
 - AppServiceBuilder must resolve all service dependencies automatically with comprehensive error handling and validation
-- Service registry must provide access to all 10 business services with proper lifecycle management and cleanup coordination
+- Service registry must provide access to all 16 business services with proper lifecycle management and cleanup coordination
 - Database services must support embedded SQLite with migration management and connection pooling for performance
 - Authentication services must integrate with platform-specific credential storage and OAuth2 flows for embedded scenarios
 

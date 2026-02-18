@@ -36,11 +36,16 @@ Advanced server orchestration with comprehensive lifecycle coordination:
 
 ## Architecture Position
 
-The `lib_bodhiserver_napi` crate serves as BodhiApp's **Node.js binding orchestration layer**:
-- **Above lib_bodhiserver**: Coordinates embeddable server library functionality for Node.js integration with NAPI bindings
-- **Below Node.js applications**: Provides native module interface for JavaScript applications, Electron apps, and Node.js servers
-- **Integration with all layers**: Bridges complete BodhiApp functionality including services, routes, server_core, and infrastructure for Node.js ecosystem
-- **Cross-platform deployment**: Enables BodhiApp embedding in Node.js applications across Windows, macOS, and Linux platforms
+The `lib_bodhiserver_napi` crate is a **leaf crate** providing Node.js bindings for the BodhiApp server.
+
+**Upstream dependencies** (crates this depends on):
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- `build_app_service()`, `setup_app_dirs()`, `ServeCommand`, embedded UI assets
+
+**Downstream consumers**: None (this is a leaf crate consumed by Node.js applications)
+
+**Associated test infrastructure**: See [`tests-js/CLAUDE.md`](tests-js/CLAUDE.md) for the Playwright E2E test suite that validates BodhiApp via these NAPI bindings.
+
+**npm package**: `@bodhiapp/app-bindings` -- published NAPI bindings package (requires Node.js >= 22)
 
 ## Cross-Crate Integration Patterns
 

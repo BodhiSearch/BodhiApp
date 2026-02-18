@@ -28,6 +28,8 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `MetadataError` -- Model metadata operations (InvalidRepoFormat, ListAliasesFailed, AliasNotFound, ExtractionFailed, EnqueueFailed)
 - `ModelError` -- Model listing (MetadataFetchFailed)
 - `ToolsetValidationError` -- Toolset CRUD validation
+- `McpValidationError` -- MCP CRUD validation
+- `AppAccessRequestError` -- App access request workflow (review, approve, deny)
 - `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
 - `CreateAliasError` -- Model alias creation
 
@@ -76,9 +78,17 @@ Factory methods: `AuthContext::test_session()`, `AuthContext::test_session_with_
 ## Architecture Position
 
 The `routes_app` crate sits in the **API layer** of BodhiApp's architecture:
-- **Depends on**: `objs` (domain types, errors), `services` (business logic), `commands` (CLI orchestration), `auth_middleware` (AuthContext extension, session helpers), `server_core` (RouterState)
-- **Consumed by**: `server_app` (standalone server), `bodhi` (Tauri app)
-- **Parallel to**: `routes_oai` (OpenAI-compatible endpoints)
+
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain types, errors, API tag constants
+- [`services`](../services/CLAUDE.md) -- business logic (AppService, ToolService, McpService, etc.)
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- `AuthContext` extension, session helpers
+- [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `SharedContext`
+
+**Downstream consumers** (crates that depend on this):
+- [`server_app`](../server_app/CLAUDE.md) -- standalone HTTP server composes routes
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- embeddable library composes routes
+- [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- Tauri desktop app composes routes
 
 ## Cross-Crate Integration Patterns
 
@@ -92,6 +102,9 @@ All route handlers access business logic through `RouterState`, which provides `
 - `setting_service()` -- Configuration management, environment detection
 - `session_service()` -- Session clearing for role changes
 - `tool_service()` -- Toolset CRUD, type management, execution
+- `mcp_service()` -- MCP server CRUD, tool discovery, execution
+- `access_request_service()` -- User and app access request workflows
+- `network_service()` -- Network availability checks
 - `time_service()` -- Testable time source (never use `Utc::now()` directly)
 - `queue_producer()` -- Async task enqueueing for metadata refresh
 
@@ -127,6 +140,20 @@ Toolset routes use a dual-auth model based on `AuthContext` variant:
 - `AuthContext::Session` grants full access to all toolset types
 - `AuthContext::ExternalApp` restricts access to toolset types matching `scope_toolset-*` scopes in the token
 - The handler matches on the `AuthContext` variant to distinguish these two auth modes
+
+### MCP Server Management
+MCP routes (`routes_mcps/`) provide full CRUD for MCP server instances plus tool discovery and execution:
+- Instance CRUD: list, create, get, update, delete (`/bodhi/v1/mcps`)
+- Tool operations: list tools, refresh tools, execute tool (`/bodhi/v1/mcps/{id}/tools`)
+- Server allowlist: list, enable, disable MCP server URLs (`/bodhi/v1/mcp_servers`)
+- Auth: session-only for CRUD and tool ops; server enable/disable is admin-only
+
+### App Access Request Workflow
+App access request routes (`routes_apps/`) handle external application resource access:
+1. External app creates access request via `create_access_request_handler` (`POST /bodhi/v1/apps/request-access`)
+2. Admin reviews via `get_access_request_review_handler` (`GET /bodhi/v1/access-requests/{id}/review`)
+3. Approval via `approve_access_request_handler` (`PUT /bodhi/v1/access-requests/{id}/approve`)
+4. Denial via `deny_access_request_handler` (`POST /bodhi/v1/access-requests/{id}/deny`)
 
 ### Model Metadata Refresh
 Supports two modes via discriminated union request body:

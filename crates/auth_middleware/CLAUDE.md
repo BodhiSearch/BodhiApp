@@ -81,10 +81,15 @@ The `remove_app_headers` function strips any incoming `X-BodhiApp-*` headers fro
 
 ## Architecture Position
 
-- **Above server_core and services**: Coordinates HTTP infrastructure and business services for authentication
-- **Below route implementations**: Provides `AuthContext` extension for routes_app and routes_oai handlers
-- **Integration with objs**: Uses domain types (`ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `ResourceScope`)
-- **Handler consumption**: Route handlers extract `Extension<AuthContext>` and pattern match on variants instead of reading individual headers
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain types (`ResourceRole`, `TokenScope`, `UserScope`, `AppRole`, `ResourceScope`, `ErrorType`)
+- [`services`](../services/CLAUDE.md) -- `AuthService`, `DbService`, `CacheService`, `SessionService`, `SecretService`, `ToolService`
+- [`server_core`](../server_core/CLAUDE.md) -- `RouterState` for middleware integration
+
+**Downstream consumers** (crates that depend on this):
+- [`routes_app`](../routes_app/CLAUDE.md) -- route handlers consume `Extension<AuthContext>` from middleware
+- [`server_app`](../server_app/CLAUDE.md) -- composes auth middleware into the server's router
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- composes auth middleware into embedded server
 
 ## Cross-Crate Integration Patterns
 

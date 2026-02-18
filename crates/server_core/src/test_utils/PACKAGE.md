@@ -538,8 +538,6 @@ HTTP infrastructure testing must coordinate across multiple systems:
 4. **Error Testing Coordination**: Coordinate HTTP error testing across service boundaries and infrastructure layers
 5. **Performance Testing Integration**: Coordinate HTTP infrastructure performance testing with service and process testing
 
-## Commands for HTTP Infrastructure Testing
-
 ## File Structure and Key Components
 
 **Test Utility Modules** (`crates/server_core/src/test_utils/`):

@@ -272,11 +272,31 @@ crates/bodhi/src/schemas/
 
 ```
 crates/bodhi/src/test-utils/
-├── msw-handlers.ts             # Mock Service Worker setup
-└── test-setup.ts               # Vitest configuration
+├── msw-v2/                     # MSW v2 setup and handlers
+│   ├── setup.ts                # MSW server setup
+│   └── handlers/               # Domain-specific mock handlers
+│       ├── access-requests.ts  # User access request mocks
+│       ├── app-access-requests.ts # App access request mocks
+│       ├── api-models.ts       # API model mocks
+│       ├── auth.ts             # Auth mocks
+│       ├── chat-completions.ts # Chat completion mocks
+│       ├── info.ts             # App info mocks
+│       ├── mcps.ts             # MCP server mocks
+│       ├── models.ts           # Model mocks
+│       ├── modelfiles.ts       # Modelfile mocks
+│       ├── setup.ts            # Setup flow mocks
+│       ├── settings.ts         # Settings mocks
+│       ├── tokens.ts           # API token mocks
+│       ├── toolsets.ts         # Toolset mocks
+│       └── user.ts             # User mocks
+├── fixtures/chat.ts            # Chat test fixtures
+├── api-model-test-utils.ts     # API model test helpers
+└── mock-user.ts                # Mock user data
 
-crates/bodhi/src/test-fixtures/
-└── (test data files)           # Mock data for testing
+crates/bodhi/src/tests/
+├── setup.ts                    # Vitest setup (sets apiClient.defaults.baseURL)
+├── wrapper.tsx                 # Test wrapper with providers
+└── mocks/framer-motion.tsx     # Framer motion mock
 ```
 
 ## Key Build & Development Commands

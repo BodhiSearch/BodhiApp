@@ -4,7 +4,22 @@ See [crates/services/PACKAGE.md](crates/services/PACKAGE.md) for implementation 
 
 ## Purpose
 
-The `services` crate implements BodhiApp's **business logic orchestration layer**, providing 13+ interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, toolset execution, user access control, data persistence, concurrency control, and multi-layer security. This crate bridges domain objects from `objs` with external systems while maintaining deployment flexibility across standalone servers, desktop applications, and embedded contexts.
+The `services` crate implements BodhiApp's **business logic orchestration layer**, providing 16 interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, toolset execution, MCP server management, user access control, data persistence, concurrency control, and multi-layer security. This crate bridges domain objects from `objs` with external systems while maintaining deployment flexibility across standalone servers, desktop applications, and embedded contexts.
+
+## Architecture Position
+
+**Upstream dependencies** (crates this depends on):
+- [`objs`](../objs/CLAUDE.md) -- domain objects, error types, `IoError`, `impl_error_from!` macro
+- [`server_core`](../server_core/CLAUDE.md) -- `SharedContext`, `RouterState` HTTP infrastructure
+- [`llama_server_proc`](../llama_server_proc/CLAUDE.md) -- LLM process management
+- [`mcp_client`](../mcp_client/) -- MCP protocol client for tool discovery and execution
+- [`errmeta_derive`](../errmeta_derive/CLAUDE.md) -- `#[derive(ErrorMeta)]` proc macro
+
+**Downstream consumers** (crates that depend on this):
+- [`routes_app`](../routes_app/CLAUDE.md) -- HTTP route handlers consume service traits
+- [`server_app`](../server_app/CLAUDE.md) -- standalone server bootstraps `DefaultAppService`
+- [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- embeddable library bootstraps `DefaultAppService`
+- [`bodhi/src-tauri`](../bodhi/src-tauri/CLAUDE.md) -- Tauri desktop app bootstraps services
 
 ## Architectural Design Rationale
 
@@ -148,18 +163,41 @@ BodhiApp implements a sophisticated OAuth2 flow with runtime client registration
 
 ### Toolset and External API Integration Architecture
 
-The ToolService and ExaService represent the extensibility pattern for external service integrations:
+The `ToolService` and `ExaService` represent the extensibility pattern for external service integrations:
 
-**ToolService Design**:
+**ToolService Design** (module: `tool_service/`):
 - Manages toolset definitions (function calling schemas) for LLM integrations
-- Per-user toolset configuration with enable/disable controls
+- Dual-level configuration: app-level admin enable/disable (`AppToolsetConfig`) and per-user enable/disable
+- Toolset type system with `ToolsetScope` for type validation and built-in toolset registration
+- Built-in toolset: `builtin-exa-search` (Exa search, findSimilar, contents, answer)
 - Toolset execution delegates to specialized services (e.g., ExaService for web search)
-- Error types distinguish between configuration issues and execution failures
+- Terminology: `slug` (unique identifier), `toolset_type` (type classification), `name` (display name)
 
 **ExaService Design**:
 - Isolated external API client for Exa AI semantic search
 - Timeout-based request management (30 second default)
 - Error classification separates auth failures, rate limits, and timeouts
+
+### MCP Server Management Architecture
+
+The `McpService` (module: `mcp_service/`) manages Model Context Protocol server integrations:
+
+**McpService Design**:
+- CRUD operations for MCP server instances with slug-based identification
+- Server allowlist management: `is_url_enabled`, `set_mcp_server_enabled`, `list_mcp_servers`, `get_mcp_server_by_url`
+- Tool discovery via `fetch_tools` and execution via `execute` delegating to `mcp_client` crate
+- Admin enable flow: new MCP URLs require explicit admin approval before tools can be fetched
+- Error types: `McpError` with variants for not-found, URL not allowed, disabled, tool-specific errors, connection/execution failures
+
+**Dependencies**: `mcp_client` crate for MCP protocol communication, `DbService` for persistence, `TimeService` for timestamps
+
+### Access Request Management Architecture
+
+The `AccessRequestService` (module: `access_request_service/`) handles user access control workflows:
+
+- User access request creation, approval, and denial
+- Status tracking (pending, approved, denied)
+- Integration with `DbService` for persistence via `AccessRequestRepository`
 
 ### Queue-Based Metadata Extraction
 
@@ -333,9 +371,11 @@ Services must initialize in dependency order:
 5. AuthService (depends on above)
 6. SessionService (depends on SQLite pool)
 7. HubService, DataService, CacheService (depend on configuration)
-8. ConcurrencyService (standalone)
+8. ConcurrencyService, NetworkService (standalone)
 9. AiApiService, ToolService, ExaService (depend on DbService)
-10. QueueProducer (depends on DataService, HubService, DbService)
+10. McpService (depends on DbService, mcp_client, TimeService)
+11. AccessRequestService (depends on DbService)
+12. QueueProducer (depends on DataService, HubService, DbService)
 
 ## Thread Safety Requirements
 
