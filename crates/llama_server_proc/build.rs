@@ -1,15 +1,12 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use fs2::FileExt;
 use once_cell::sync::Lazy;
-use reqwest::header::{HeaderMap, HeaderValue};
-use serde::Deserialize;
 use std::{
   collections::HashSet,
   env,
   fs::{self, File},
-  io::{self},
   path::{Path, PathBuf},
-  process::Command,
+  process::{Command, Stdio},
   thread,
   time::{Duration, Instant},
 };
@@ -100,29 +97,24 @@ fn try_main(project_dir: &Path) -> Result<()> {
   let variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| build.default.clone());
   set_build_envs(build, &variant)?;
   if env::var("CI_RELEASE").unwrap_or("false".to_string()) == "true" {
-    let Ok(gh_pat) = env::var("GH_PAT") else {
-      bail!("GH_PAT is not set");
-    };
-    println!("building all variants");
     clean_bin_dir(project_dir)?;
-    let client = build_gh_client(gh_pat)?;
-    let release = find_latest_binary_release(&client)?;
-    for variant in build.variants.iter() {
-      // Check if binary exists for this platform/variant combination first
-      if !binary_exists_for_platform(&release, build, variant) {
-        bail!(
-          "No pre-built binary available for platform: {}-{}. Available assets: {}",
-          build.target,
-          variant,
-          release
-            .assets
-            .iter()
-            .map(|a| a.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-        );
-      }
-      fetch_llama_server(&client, build, variant, &release)?;
+    let script = project_dir.join("../../scripts/download-llama-bins.js");
+    let status = Command::new("node")
+      .arg(&script)
+      .arg("--target")
+      .arg(&build.target)
+      .arg("--variants")
+      .arg(build.variants.join(","))
+      .arg("--extension")
+      .arg(&build.extension)
+      .arg("--bin-dir")
+      .arg(project_dir.join("bin"))
+      .stdout(Stdio::inherit())
+      .stderr(Stdio::inherit())
+      .status()
+      .context("Failed to run download-llama-bins.js")?;
+    if !status.success() {
+      bail!("download-llama-bins.js failed");
     }
   } else {
     println!("building default variants");
@@ -130,73 +122,6 @@ fn try_main(project_dir: &Path) -> Result<()> {
     build_llama_server(build, &variant)?;
   }
   Ok(())
-}
-
-fn build_gh_client(gh_pat: String) -> Result<reqwest::blocking::Client, anyhow::Error> {
-  let mut headers = HeaderMap::<HeaderValue>::default();
-  headers.append(
-    "Authorization",
-    format!("Bearer {}", gh_pat).parse().unwrap(),
-  );
-  headers.append("Accept", "application/vnd.github.v3+json".parse().unwrap());
-  headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
-  headers.append("User-Agent", "Bodhi-Build".parse().unwrap());
-  let client = reqwest::blocking::ClientBuilder::default()
-    .default_headers(headers)
-    .build()?;
-  Ok(client)
-}
-
-fn find_latest_binary_release(client: &reqwest::blocking::Client) -> Result<GithubRelease> {
-  let response = client
-    .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases")
-    .send()?;
-
-  // Check HTTP status code first
-  if !response.status().is_success() {
-    let status = response.status();
-    let response_text = response
-      .text()
-      .with_context(|| "Failed to read error response text".to_string())?;
-    bail!(
-      "GitHub API request failed with status {}: {}",
-      status,
-      response_text
-    );
-  }
-
-  let response_text = response
-    .text()
-    .with_context(|| "Failed to read response text for releases".to_string())?;
-  let releases: Vec<GithubRelease> = serde_json::from_str(&response_text).unwrap_or_else(|err| {
-    panic!(
-      "Failed to deserialize response: {}\nError: {}",
-      response_text, err
-    );
-  });
-
-  // Find first release with binary assets (non-empty assets)
-  let release = releases.into_iter()
-    .find(|release| !release.assets.is_empty())
-    .ok_or_else(|| {
-      anyhow!("No binary releases found in latest releases. All releases appear to be Docker image releases without binary assets.")
-    })?;
-
-  println!(
-    "cargo:warning=Selected binary release: {}",
-    release.tag_name
-  );
-  println!(
-    "assets: {:?}",
-    release
-      .assets
-      .iter()
-      .map(|a| a.name.clone())
-      .collect::<Vec<String>>()
-      .join(",")
-  );
-
-  Ok(release)
 }
 
 fn get_makefile_args() -> Vec<&'static str> {
@@ -271,218 +196,6 @@ fn build_llama_server(build: &LlamaServerBuild, variant: &str) -> Result<()> {
   Ok(())
 }
 
-#[derive(Deserialize)]
-struct GithubRelease {
-  tag_name: String,
-  assets: Vec<GithubAsset>,
-}
-
-#[derive(Deserialize)]
-struct GithubAsset {
-  name: String,
-  browser_download_url: String,
-}
-
-fn fetch_llama_server(
-  client: &reqwest::blocking::Client,
-  build: &LlamaServerBuild,
-  variant: &str,
-  release: &GithubRelease,
-) -> Result<()> {
-  try_fetch_llama_server(client, build, variant, release)
-}
-
-fn try_fetch_llama_server(
-  client: &reqwest::blocking::Client,
-  build: &LlamaServerBuild,
-  variant: &str,
-  release: &GithubRelease,
-) -> Result<()> {
-  let target_file_prefix = format!("llama-server--{}--{}", build.target, variant);
-  // Filter assets based on the target and variant
-  let Some(asset) = release
-    .assets
-    .iter()
-    .find(|asset| asset.name.starts_with(&target_file_prefix))
-  else {
-    bail!(
-      "No matching assets found for {}, found: {}",
-      target_file_prefix,
-      release
-        .assets
-        .iter()
-        .map(|a| a.name.clone())
-        .collect::<Vec<String>>()
-        .join(",")
-    );
-  };
-
-  // Download each matching asset with retry logic
-  let download_url = &asset.browser_download_url;
-  println!("cargo:warning=Downloading {}", download_url);
-
-  let mut attempts = 0;
-  let max_attempts = 3;
-  let response = loop {
-    attempts += 1;
-
-    match client.get(download_url).send() {
-      Ok(resp) if resp.status().is_success() => {
-        break resp;
-      }
-      Ok(resp) => {
-        let status = resp.status();
-        if attempts >= max_attempts {
-          bail!(
-            "Failed to download file after {} attempts: {} (status: {})",
-            max_attempts,
-            download_url,
-            status
-          );
-        }
-        println!(
-          "cargo:warning=Download failed with status {} (attempt {}/{}), retrying in 5s...",
-          status, attempts, max_attempts
-        );
-      }
-      Err(e) => {
-        if attempts >= max_attempts {
-          bail!(
-            "Failed to download file after {} attempts: {} (error: {})",
-            max_attempts,
-            download_url,
-            e
-          );
-        }
-        println!(
-          "cargo:warning=Download failed with error: {} (attempt {}/{}), retrying in 5s...",
-          e, attempts, max_attempts
-        );
-      }
-    }
-
-    thread::sleep(Duration::from_secs(5));
-  };
-
-  // Create the target directory
-  let target_dir = Path::new("bin").join(&build.target).join(variant);
-  fs::create_dir_all(&target_dir)?;
-
-  let bytes = response.bytes()?;
-
-  if asset.name.ends_with(".zip") {
-    // Handle zip file
-    let temp_dir = tempfile::tempdir()?;
-    let zip_path = temp_dir.path().join("download.zip");
-
-    // Write zip file to temp location
-    let mut temp_file = File::create(&zip_path)?;
-    io::copy(&mut bytes.as_ref(), &mut temp_file)?;
-
-    // Check if zip is available
-    check_zip_installation()?;
-
-    // Extract using system zip command
-    let unzip_status = if cfg!(windows) {
-      Command::new("pwsh")
-        .args([
-          "-Command",
-          &format!(
-            "Expand-Archive -Path '{}' -DestinationPath '{}'",
-            zip_path.display(),
-            temp_dir.path().display()
-          ),
-        ])
-        .status()?
-    } else {
-      Command::new("unzip")
-        .args([
-          "-o", // overwrite files without prompting
-          zip_path.to_str().unwrap(),
-          "-d",
-          temp_dir.path().to_str().unwrap(),
-        ])
-        .status()?
-    };
-
-    if !unzip_status.success() {
-      bail!("Failed to extract zip file");
-    }
-
-    // Move extracted contents to target directory
-    for entry in fs::read_dir(temp_dir.path())? {
-      let entry = entry?;
-      let path = entry.path();
-      if path.file_name().unwrap() == "download.zip" {
-        continue;
-      }
-
-      let target_path = target_dir.join(path.file_name().unwrap());
-      fs::rename(&path, &target_path)?;
-
-      // Set executable permissions only for llama-server
-      #[cfg(unix)]
-      {
-        if target_path.file_name().unwrap() == "llama-server" {
-          use std::os::unix::fs::PermissionsExt;
-          let mut perms = fs::metadata(&target_path)?.permissions();
-          perms.set_mode(0o755);
-          fs::set_permissions(&target_path, perms)?;
-        }
-      }
-    }
-  } else {
-    // Handle direct file copy
-    let target_path = target_dir.join(build.execname());
-    let mut file = File::create(&target_path)?;
-    io::copy(&mut bytes.as_ref(), &mut file)?;
-
-    // Set executable permissions
-    #[cfg(unix)]
-    {
-      use std::os::unix::fs::PermissionsExt;
-      let mut perms = file.metadata()?.permissions();
-      perms.set_mode(0o755);
-      std::fs::set_permissions(&target_path, perms)?;
-    }
-  }
-
-  println!(
-    "cargo:warning=Successfully downloaded and moved {} for {}-{}",
-    asset.name, build.target, variant
-  );
-
-  Ok(())
-}
-
-fn check_zip_installation() -> Result<()> {
-  let check_command = if cfg!(windows) {
-    Command::new("pwsh")
-      .args([
-        "-Command",
-        "if (!(Get-Command Expand-Archive -ErrorAction SilentlyContinue)) { exit 1 }",
-      ])
-      .status()?
-  } else {
-    Command::new("which").arg("unzip").status()?
-  };
-
-  if !check_command.success() {
-    let msg = if cfg!(target_os = "macos") {
-      "zip utility not found. Please install it using: brew install unzip"
-    } else if cfg!(target_os = "linux") {
-      "zip utility not found. Please install it using: sudo apt-get install unzip"
-    } else if cfg!(windows) {
-      "PowerShell 5.0 or later with Expand-Archive cmdlet is required. Please install latest PowerShell: choco install powershell-core"
-    } else {
-      "zip utility not found. Please install it using your system's package manager"
-    };
-    bail!(msg);
-  }
-
-  Ok(())
-}
-
 // New function to clean the output directory
 fn clean_bin_dir(project_dir: &Path) -> Result<()> {
   let bin_dir = project_dir.join("bin");
@@ -531,18 +244,6 @@ impl LlamaServerBuild {
       format!("llama-server.{}", self.extension)
     }
   }
-}
-
-fn binary_exists_for_platform(
-  release: &GithubRelease,
-  build: &LlamaServerBuild,
-  variant: &str,
-) -> bool {
-  let target_file_prefix = format!("llama-server--{}--{}", build.target, variant);
-  release
-    .assets
-    .iter()
-    .any(|asset| asset.name.starts_with(&target_file_prefix))
 }
 
 fn get_target_from_platform() -> Result<String> {

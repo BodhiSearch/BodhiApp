@@ -15,11 +15,10 @@ ci.coverage: ## Run coverage in CI environment
 	$(MAKE) test.coverage
 
 ci.build-only: ## Build without running tests for faster CI
-	cd crates/bodhi && npm install && npm run build; \
-	cargo build -p async-openai; \
-	cargo build -p llama_server_proc; \
-	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai" and .name != "bodhi") | .name' | sed 's/^/-p /'); \
-	cargo build --all-features $$PACKAGES; \
+	cargo build --all-features -p async-openai && \
+	cargo build --all-features -p llama_server_proc && \
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name != "async-openai" and .name != "bodhi") | .name' | sed 's/^/-p /') && \
+	cargo build --all-features $$PACKAGES && \
 	cargo build --all-features -p bodhi
 
 ci.build: ## Build the Tauri application

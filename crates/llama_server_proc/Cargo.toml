@@ -35,16 +35,12 @@ rstest = { workspace = true }
 url = { workspace = true }
 
 [build-dependencies]
-reqwest = { workspace = true, features = ["blocking", "json"] }
-serde_json = { workspace = true }
 anyhow = { workspace = true }
 fs2 = { workspace = true }
 once_cell = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-tempfile = { workspace = true }
 
 [features]
 test-utils = ["dirs", "http", "mockall", "rstest", "url"]
 
 [package.metadata.cargo-machete]
-ignored = ["anyhow", "fs2", "once_cell", "serde", "tempfile"]
+ignored = ["anyhow", "fs2", "once_cell"]
