@@ -70,7 +70,8 @@
     "ua-parser-js": "^1.0.40",
     "unified": "^11.0.5",
     "vaul": "^1.1.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",

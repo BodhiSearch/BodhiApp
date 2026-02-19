@@ -68,4 +68,27 @@ export class McpFixtures {
       description: 'Tavily search with header auth',
     };
   }
+
+  static OAUTH_MCP_URL = `http://localhost:${process.env.TEST_MCP_OAUTH_PORT || '55174'}/mcp`;
+  static OAUTH_CLIENT_ID = process.env.TEST_MCP_OAUTH_CLIENT_ID || 'test-mcp-client-id';
+  static OAUTH_CLIENT_SECRET = process.env.TEST_MCP_OAUTH_CLIENT_SECRET || 'test-mcp-client-secret';
+  static OAUTH_EXPECTED_TOOL = 'echo';
+
+  static createOAuthServerData() {
+    const ts = Date.now();
+    return {
+      url: McpFixtures.OAUTH_MCP_URL,
+      name: `OAuth-MCP-Server-${ts}`,
+      description: 'Test MCP OAuth Server',
+    };
+  }
+
+  static createOAuthInstanceData() {
+    const ts = Date.now();
+    return {
+      name: `OAuth-MCP-${ts}`,
+      slug: `oauth-mcp-${ts}`,
+      description: 'OAuth-authenticated MCP instance',
+    };
+  }
 }

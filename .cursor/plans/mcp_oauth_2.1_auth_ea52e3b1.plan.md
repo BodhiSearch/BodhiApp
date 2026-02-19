@@ -10,31 +10,43 @@ todos:
     status: completed
   - id: m1-frontend
     content: "M1.3: Header auth frontend - update MCP form for 2-step auth config flow, new hooks, component tests. Test: npm run test, make test.backend"
-    status: pending
+    status: completed
   - id: m1-e2e
     content: "M1.4: Header auth E2E - update e2e tests for new API shape. Build: make build.ui-rebuild. Test: updated specs, then make test.napi"
-    status: pending
+    status: completed
   - id: m1-commit
     content: "M1.5: Commit milestone 1 (header auth refactoring complete)"
-    status: pending
+    status: completed
   - id: m2-schema
     content: "M2.1: New migration 0012 - mcp_oauth_configs + mcp_oauth_tokens tables"
-    status: pending
+    status: completed
   - id: m2-backend
-    content: "M2.2: OAuth backend - oauth-configs CRUD, login/token/discover endpoints, token refresh in McpService, encryption. Test: cargo test -p routes_app and upstream"
-    status: pending
+    content: "M2.2: OAuth backend - oauth-configs CRUD, login/token/discover endpoints, token refresh in McpService, encryption"
+    status: completed
   - id: m2-frontend
-    content: "M2.3: OAuth frontend - OAuth config form, auto-detect, authorize flow, callback page, sessionStorage state. Test: npm run test, make test.backend"
-    status: pending
+    content: "M2.3: OAuth frontend - OAuth config form, auto-detect, authorize flow, callback page, sessionStorage state"
+    status: completed
   - id: m2-test-server
     content: "M2.4: Test MCP OAuth server - TypeScript + MCP SDK, embedded OAuth AS, pre-registered client, simple tools"
-    status: pending
+    status: completed
+  - id: m2-bugfix
+    content: "M2.5a: Bug fix - fetch_tools_for_server only resolves auth_uuid as auth header, not OAuth config. Fix to try auth_header then fall back to OAuth token resolution"
+    status: completed
+  - id: m2-autodetect-fix
+    content: "M2.5b: Fix auto-detect UX - add 'Authorization Server URL' field pre-filled with MCP server domain (not full MCP URL), use it for .well-known discovery"
+    status: completed
+  - id: m2-backend-tests
+    content: "M2.5c: OAuth backend tests - repository tests (config/token CRUD, encryption), service tests (token resolution, orphan cleanup), route handler tests (config CRUD, login, token exchange, discover)"
+    status: completed
+  - id: m2-frontend-tests
+    content: "M2.5d: Frontend fixes and tests - update OAuth form with authorization_server_url field, update component tests and MSW handlers"
+    status: completed
   - id: m2-e2e
-    content: "M2.5: OAuth E2E tests - new spec covering admin setup, user OAuth flow, tool execution via session + 3rd party. Build: make build.ui-rebuild. Test: new specs, then make test.napi"
-    status: pending
+    content: "M2.5e: OAuth E2E tests - UI-driven spec (form navigation, auto-detect, authorize, callback, tool exec) + 3rd party access request test"
+    status: completed
   - id: m2-commit
     content: "M2.6: Commit milestone 2 (OAuth pre-registered flow complete)"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -511,4 +523,150 @@ Backend (bottom-up)     Frontend          E2E
 - After E2E changes: `make build.ui-rebuild` then run updated specs, then `make test.napi`
 - Format before commit: `cargo fmt` + `make format`
 - Full validation before commit: `make test.backend` + `make test.napi`
+
+---
+
+# Post-Review: Bug Fixes, Tests, and E2E (M2.5a–M2.5e)
+
+Identified during review after M2.1–M2.4 completion.
+
+---
+
+## M2.5a: Bug Fix - fetch_tools_for_server OAuth Resolution
+
+**Problem**: `fetch_tools_for_server` in `crates/services/src/mcp_service/service.rs:872` only calls `get_decrypted_auth_header(uuid)` when given an `auth_uuid`. For OAuth configs, this returns `None` because the UUID is in `mcp_oauth_configs`, not `mcp_auth_headers`. The MCP request goes unauthenticated → 401 from OAuth MCP server → 500 error.
+
+**Fix**: When `auth_uuid` is provided and `get_decrypted_auth_header` returns `None`, fall back to OAuth config resolution:
+
+1. Try `get_decrypted_auth_header(uuid)` → if `Some`, return it
+2. Try `get_mcp_oauth_config(uuid)` → if found, get latest token, decrypt access_token, return `("Authorization", "Bearer <token>")`
+3. If neither found, return `None`
+
+**Test**: Add unit test in `mcp_service/tests.rs` for `fetch_tools_for_server` with OAuth `auth_uuid`.
+
+---
+
+## M2.5b: Fix Auto-Detect UX
+
+**Problem**: Auto-detect sends the MCP server URL (e.g., `https://mcp.deepwiki.com/mcp`) to the discover endpoint, which appends `/.well-known/oauth-authorization-server`. This produces `https://mcp.deepwiki.com/mcp/.well-known/...` which is wrong. The `.well-known` endpoint lives at the domain origin.
+
+**Fix**:
+
+1. Add `oauth_server_url` field to the form schema (zod validation: required when auth_type is `oauth-pre-registered`)
+2. When user selects OAuth auth type, auto-derive the origin from the selected MCP server URL (e.g., `https://mcp.deepwiki.com/mcp` → `https://mcp.deepwiki.com`) and pre-fill
+3. User can edit this field if the authorization server is at a different domain
+4. Auto-detect button uses `oauth_server_url` instead of `selectedServer.url`
+5. Add `data-testid="oauth-server-url"` for E2E tests
+
+**Frontend field placement**: Between auth type selector and client_id field.
+
+---
+
+## M2.5c: OAuth Backend Tests
+
+Write tests following crate conventions (see `.claude/skills/test-services/SKILL.md` and `.claude/skills/test-routes-app/SKILL.md`).
+
+### Repository tests (`crates/services/src/db/test_mcp_repository.rs`)
+
+- `test_init_service_create_mcp_oauth_config_and_read`: Create config, verify fields + encrypted secret
+- `test_init_service_update_mcp_oauth_config`: Create → update → verify
+- `test_init_service_delete_mcp_oauth_config`: Create → delete → verify gone
+- `test_init_service_get_decrypted_client_secret`: Create → decrypt → verify matches plaintext
+- `test_init_service_create_mcp_oauth_token_and_read`: Create token linked to config, verify fields
+- `test_init_service_get_latest_oauth_token_by_config`: Create multiple tokens → verify latest returned
+- `test_init_service_delete_oauth_tokens_by_config`: Create tokens → delete by config → verify all gone
+- `test_init_service_get_decrypted_oauth_access_token`: Create → decrypt → verify
+- `test_init_service_get_decrypted_oauth_refresh_token`: Create with refresh → decrypt → verify
+
+### Service tests (`crates/services/src/mcp_service/tests.rs`)
+
+- `test_fetch_tools_for_server_with_oauth_auth_uuid`: Mock OAuth config + token, verify Bearer header passed to McpClient
+- `test_execute_with_oauth_auth_type`: Mock MCP with oauth-pre-registered auth, verify tool execution with Bearer token
+- `test_update_mcp_orphan_cleanup_oauth_to_public`: Update auth_type from oauth → public, verify OAuth config + tokens deleted
+- `test_delete_mcp_cleans_up_oauth_config`: Delete MCP with OAuth auth, verify config + tokens deleted
+
+### Route handler tests (`crates/routes_app/src/routes_mcps/tests/`)
+
+- `test_create_oauth_config_handler`: POST config → 201 + masked response
+- `test_get_oauth_config_handler`: GET config → 200 + correct fields
+- `test_update_oauth_config_handler`: PUT config → 200 + updated fields
+- `test_oauth_discover_handler`: Mock well-known response → 200 + endpoints
+
+### Test checkpoint
+
+```bash
+cargo test -p services
+cargo test -p routes_app
+cargo test -p server_app
+```
+
+---
+
+## M2.5d: Frontend Fixes and Tests
+
+### Form changes (`crates/bodhi/src/app/ui/mcps/new/page.tsx`)
+
+- Add `oauth_server_url` to zod schema
+- Add form field with `data-testid="oauth-server-url"`
+- Pre-fill with domain from selected MCP server URL when auth_type changes to oauth-pre-registered
+- Update `handleOAuthAutoDetect` to use `oauth_server_url` field value
+- Include `oauth_server_url` in sessionStorage save/restore for OAuth redirect flow
+
+### MSW handlers (`crates/bodhi/src/test-utils/msw-v2/handlers/mcps.ts`)
+
+- No changes needed (discover mock already accepts any URL)
+
+### Component tests (`crates/bodhi/src/app/ui/mcps/new/page.test.tsx`)
+
+- Update auto-detect test to verify `oauth_server_url` field pre-filled from server domain
+- Verify auto-detect uses `oauth_server_url` field value
+
+### Test checkpoint
+
+```bash
+cd crates/bodhi && npm run test
+make test.backend
+```
+
+---
+
+## M2.5e: OAuth E2E Tests (UI-Driven)
+
+### Test spec: `crates/lib_bodhiserver_napi/tests-js/specs/mcps/mcps-oauth-auth.spec.mjs`
+
+**Rewrite as UI-driven flow:**
+
+1. Admin login → navigate to MCP servers page → create MCP server pointing to test OAuth server
+2. Navigate to MCP create form (`/ui/mcps/new`)
+3. Select MCP server from dropdown
+4. Select "OAuth 2.1 (Pre-registered)" auth type
+5. Verify authorization server URL field pre-filled with MCP server domain
+6. Enter client_id + client_secret from .env.test
+7. Click "Auto-Detect" → verify authorization_endpoint, token_endpoint fields populated
+8. Click "Authorize" → redirected to test server authorize page
+9. Click "Approve" on test server → redirected to `/ui/mcps/oauth/callback`
+10. Callback exchanges code → redirected back to form with auth config restored
+11. Fill name + slug, discover tools, select tools
+12. Submit form → MCP created with auth_type=oauth-pre-registered
+13. Verify MCP appears in list with correct auth type
+14. Execute tool via REST API → 200 OK
+
+**3rd party access request test (same or separate test):**
+
+1. External app (test-oauth-app) creates access request including the OAuth MCP
+2. Admin approves the request
+3. External app uses its token to execute the MCP tool via REST API → 200 OK
+
+### Page object updates (`tests-js/pages/McpsPage.mjs`)
+
+- Add `oauthServerUrl` selector for new field
+- Add method to fill/verify authorization server URL
+
+### Test checkpoint
+
+```bash
+make build.ui-rebuild
+npx playwright test tests-js/specs/mcps/mcps-oauth-auth.spec.mjs
+make test.napi
+```
 

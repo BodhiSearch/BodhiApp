@@ -10,6 +10,9 @@ import type {
   McpServerInfo,
   McpServerResponse,
   McpTool,
+  OAuthConfigResponse,
+  OAuthConfigsListResponse,
+  OAuthTokenResponse,
 } from '@/hooks/useMcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 
@@ -80,6 +83,40 @@ export const mockMcpWithHeaderAuth: McpResponse = {
   name: 'Header Auth MCP',
   auth_type: 'header',
   auth_uuid: 'auth-header-uuid-1',
+};
+
+export const mockOAuthConfig: OAuthConfigResponse = {
+  id: 'oauth-config-uuid-1',
+  mcp_server_id: 'server-uuid-1',
+  client_id: 'test-client-id',
+  authorization_endpoint: 'https://auth.example.com/authorize',
+  token_endpoint: 'https://auth.example.com/token',
+  scopes: 'mcp:tools mcp:read',
+  has_client_secret: true,
+  created_by: 'test-user',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockOAuthToken: OAuthTokenResponse = {
+  id: 'oauth-token-uuid-1',
+  mcp_oauth_config_id: 'oauth-config-uuid-1',
+  scopes_granted: 'mcp:tools mcp:read',
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  has_access_token: true,
+  has_refresh_token: true,
+  created_by: 'test-user',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockMcpWithOAuth: McpResponse = {
+  ...mockMcp,
+  id: 'mcp-uuid-3',
+  slug: 'oauth-mcp',
+  name: 'OAuth MCP',
+  auth_type: 'oauth-pre-registered',
+  auth_uuid: 'oauth-token-uuid-1',
 };
 
 // ============================================================================
@@ -180,6 +217,58 @@ export function mockExecuteMcpTool(response: McpExecuteResponse = { result: { da
 }
 
 // ============================================================================
+// Handler Factories - OAuth Config CRUD (nested under mcp-servers)
+// ============================================================================
+
+export function mockListOAuthConfigs(response: OAuthConfigsListResponse = { oauth_configs: [mockOAuthConfig] }) {
+  return http.get(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs`, () => HttpResponse.json(response));
+}
+
+export function mockCreateOAuthConfig(response: OAuthConfigResponse = mockOAuthConfig) {
+  return http.post(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs`, () =>
+    HttpResponse.json(response, { status: 201 })
+  );
+}
+
+export function mockGetOAuthConfig(response: OAuthConfigResponse = mockOAuthConfig) {
+  return http.get(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs/:id`, () => HttpResponse.json(response));
+}
+
+export function mockOAuthLogin() {
+  return http.post(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs/:id/login`, () =>
+    HttpResponse.json({ authorization_url: 'https://auth.example.com/authorize?client_id=test&state=abc123' })
+  );
+}
+
+export function mockOAuthTokenExchange(response: OAuthTokenResponse = mockOAuthToken) {
+  return http.post(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs/:id/token`, () =>
+    HttpResponse.json(response)
+  );
+}
+
+export function mockOAuthDiscover() {
+  return http.post(`${BODHI_API_BASE}/mcps/oauth/discover`, () =>
+    HttpResponse.json({
+      authorization_endpoint: 'https://auth.example.com/authorize',
+      token_endpoint: 'https://auth.example.com/token',
+      scopes_supported: ['mcp:tools', 'mcp:read'],
+    })
+  );
+}
+
+// ============================================================================
+// Handler Factories - OAuth Token CRUD
+// ============================================================================
+
+export function mockGetOAuthToken(response: OAuthTokenResponse = mockOAuthToken) {
+  return http.get(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () => HttpResponse.json(response));
+}
+
+export function mockDeleteOAuthToken() {
+  return http.delete(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () => new HttpResponse(null, { status: 204 }));
+}
+
+// ============================================================================
 // Error Handlers
 // ============================================================================
 
@@ -212,6 +301,28 @@ export function mockExecuteMcpToolError({
   );
 }
 
+export function mockCreateOAuthConfigError({
+  message = 'Failed to create OAuth config',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcp-servers/:serverId/oauth-configs`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
+export function mockDeleteOAuthTokenError({
+  message = 'Failed to delete token',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.delete(`${BODHI_API_BASE}/mcps/oauth-tokens/:tokenId`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
 // ============================================================================
 // Default Handlers
 // ============================================================================
@@ -233,4 +344,12 @@ export const mcpsHandlers = [
   mockFetchMcpTools(),
   mockRefreshMcpTools(),
   mockExecuteMcpTool(),
+  mockListOAuthConfigs(),
+  mockCreateOAuthConfig(),
+  mockGetOAuthConfig(),
+  mockOAuthLogin(),
+  mockOAuthTokenExchange(),
+  mockOAuthDiscover(),
+  mockGetOAuthToken(),
+  mockDeleteOAuthToken(),
 ];

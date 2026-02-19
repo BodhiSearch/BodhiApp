@@ -1,19 +1,25 @@
 use crate::{
   AuthHeaderResponse, CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest,
-  FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest,
-  McpExecuteResponse, McpResponse, McpServerQuery, McpServerResponse, McpToolsResponse,
-  McpValidationError, UpdateAuthHeaderRequest, UpdateMcpRequest, UpdateMcpServerRequest,
-  ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_HEADERS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
+  CreateOAuthConfigRequest, FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse,
+  McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery, McpServerResponse,
+  McpToolsResponse, McpValidationError, OAuthConfigResponse, OAuthConfigsListResponse,
+  OAuthDiscoverRequest, OAuthDiscoverResponse, OAuthLoginRequest, OAuthLoginResponse,
+  OAuthTokenExchangeRequest, OAuthTokenResponse, UpdateAuthHeaderRequest, UpdateMcpRequest,
+  UpdateMcpServerRequest, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_HEADERS, ENDPOINT_MCPS_FETCH_TOOLS,
+  ENDPOINT_MCPS_OAUTH_DISCOVER, ENDPOINT_MCP_SERVERS,
 };
-use auth_middleware::AuthContext;
+use auth_middleware::{generate_random_string, AuthContext};
 use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   Extension, Json,
 };
+use base64::{engine::general_purpose, Engine};
 use objs::{ApiError, ApprovedResources, API_TAG_MCPS};
 use server_core::RouterState;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use tower_sessions::Session;
 
 // ============================================================================
 // MCP Server Admin Handlers
@@ -324,7 +330,7 @@ pub async fn create_mcp_handler(
       request.enabled,
       request.tools_cache,
       request.tools_filter,
-      &request.auth_type,
+      request.auth_type.clone(),
       request.auth_uuid,
     )
     .await?;
@@ -654,13 +660,15 @@ pub async fn create_auth_header_handler(
   security(("bearer" = []))
 )]
 pub async fn get_auth_header_handler(
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<AuthHeaderResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let mcp_service = state.app_service().mcp_service();
 
   let auth_header = mcp_service
-    .get_auth_header(&id)
+    .get_auth_header(user_id, &id)
     .await?
     .ok_or_else(|| objs::EntityError::NotFound("Auth header config".to_string()))?;
 
@@ -724,12 +732,446 @@ pub async fn update_auth_header_handler(
   security(("bearer" = []))
 )]
 pub async fn delete_auth_header_handler(
+  Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
   let mcp_service = state.app_service().mcp_service();
 
-  mcp_service.delete_auth_header(&id).await?;
+  mcp_service.delete_auth_header(user_id, &id).await?;
 
+  Ok(StatusCode::NO_CONTENT)
+}
+
+// ============================================================================
+// MCP OAuth Config CRUD Handlers
+// ============================================================================
+
+/// Create a new OAuth config for an MCP server
+#[utoipa::path(
+  post,
+  path = "/bodhi/v1/mcp-servers/{server_id}/oauth-configs",
+  tag = API_TAG_MCPS,
+  operation_id = "createMcpOAuthConfig",
+  params(
+    ("server_id" = String, Path, description = "MCP server UUID")
+  ),
+  request_body = CreateOAuthConfigRequest,
+  responses(
+    (status = 201, description = "OAuth config created", body = OAuthConfigResponse),
+    (status = 400, description = "Validation error"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn create_oauth_config_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(server_id): Path<String>,
+  Json(request): Json<CreateOAuthConfigRequest>,
+) -> Result<(StatusCode, Json<OAuthConfigResponse>), ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+
+  if request.client_id.is_empty() {
+    return Err(McpValidationError::Validation("client_id is required".to_string()).into());
+  }
+  if request.client_secret.is_empty() {
+    return Err(McpValidationError::Validation("client_secret is required".to_string()).into());
+  }
+  if request.authorization_endpoint.is_empty() {
+    return Err(
+      McpValidationError::Validation("authorization_endpoint is required".to_string()).into(),
+    );
+  }
+  if request.token_endpoint.is_empty() {
+    return Err(McpValidationError::Validation("token_endpoint is required".to_string()).into());
+  }
+
+  let mcp_service = state.app_service().mcp_service();
+
+  let config = mcp_service
+    .create_oauth_config(
+      user_id,
+      &server_id,
+      &request.client_id,
+      &request.client_secret,
+      &request.authorization_endpoint,
+      &request.token_endpoint,
+      request.scopes,
+    )
+    .await?;
+
+  Ok((StatusCode::CREATED, Json(OAuthConfigResponse::from(config))))
+}
+
+/// Get an OAuth config by ID
+#[utoipa::path(
+  get,
+  path = "/bodhi/v1/mcp-servers/{server_id}/oauth-configs/{config_id}",
+  tag = API_TAG_MCPS,
+  operation_id = "getMcpOAuthConfig",
+  params(
+    ("server_id" = String, Path, description = "MCP server UUID"),
+    ("config_id" = String, Path, description = "OAuth config UUID")
+  ),
+  responses(
+    (status = 200, description = "OAuth config", body = OAuthConfigResponse),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn get_oauth_config_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path((_server_id, config_id)): Path<(String, String)>,
+) -> Result<Json<OAuthConfigResponse>, ApiError> {
+  let mcp_service = state.app_service().mcp_service();
+
+  let config = mcp_service
+    .get_oauth_config(&config_id)
+    .await?
+    .ok_or_else(|| objs::EntityError::NotFound("OAuth config".to_string()))?;
+
+  Ok(Json(OAuthConfigResponse::from(config)))
+}
+
+// ============================================================================
+// OAuth Flow Handlers
+// ============================================================================
+
+/// Initiate OAuth login for a config
+#[utoipa::path(
+  post,
+  path = "/bodhi/v1/mcp-servers/{server_id}/oauth-configs/{config_id}/login",
+  tag = API_TAG_MCPS,
+  operation_id = "mcpOAuthLogin",
+  params(
+    ("server_id" = String, Path, description = "MCP server UUID"),
+    ("config_id" = String, Path, description = "OAuth config UUID")
+  ),
+  request_body = OAuthLoginRequest,
+  responses(
+    (status = 200, description = "Authorization URL", body = OAuthLoginResponse),
+    (status = 404, description = "OAuth config not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn oauth_login_handler(
+  session: Session,
+  State(state): State<Arc<dyn RouterState>>,
+  Path((_server_id, config_id)): Path<(String, String)>,
+  Json(request): Json<OAuthLoginRequest>,
+) -> Result<Json<OAuthLoginResponse>, ApiError> {
+  let mcp_service = state.app_service().mcp_service();
+
+  let config = mcp_service
+    .get_oauth_config(&config_id)
+    .await?
+    .ok_or_else(|| objs::EntityError::NotFound("OAuth config".to_string()))?;
+
+  let code_verifier = generate_random_string(43);
+  let code_challenge =
+    general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
+  let oauth_state = uuid::Uuid::new_v4().to_string();
+
+  let session_key = format!("mcp_oauth_{}", config_id);
+  session
+    .insert(
+      &session_key,
+      serde_json::json!({
+        "code_verifier": code_verifier,
+        "state": oauth_state,
+      }),
+    )
+    .await
+    .map_err(|e| McpValidationError::Validation(e.to_string()))?;
+
+  let mut auth_url = url::Url::parse(&config.authorization_endpoint).map_err(|e| {
+    McpValidationError::Validation(format!("invalid authorization endpoint: {}", e))
+  })?;
+  auth_url
+    .query_pairs_mut()
+    .append_pair("response_type", "code")
+    .append_pair("client_id", &config.client_id)
+    .append_pair("redirect_uri", &request.redirect_uri)
+    .append_pair("code_challenge", &code_challenge)
+    .append_pair("code_challenge_method", "S256")
+    .append_pair("state", &oauth_state);
+  if let Some(scopes) = &config.scopes {
+    auth_url.query_pairs_mut().append_pair("scope", scopes);
+  }
+
+  Ok(Json(OAuthLoginResponse {
+    authorization_url: auth_url.to_string(),
+  }))
+}
+
+/// Exchange authorization code for tokens
+#[utoipa::path(
+  post,
+  path = "/bodhi/v1/mcp-servers/{server_id}/oauth-configs/{config_id}/token",
+  tag = API_TAG_MCPS,
+  operation_id = "mcpOAuthTokenExchange",
+  params(
+    ("server_id" = String, Path, description = "MCP server UUID"),
+    ("config_id" = String, Path, description = "OAuth config UUID")
+  ),
+  request_body = OAuthTokenExchangeRequest,
+  responses(
+    (status = 200, description = "Token stored", body = OAuthTokenResponse),
+    (status = 400, description = "Validation error"),
+    (status = 404, description = "OAuth config not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn oauth_token_exchange_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  session: Session,
+  State(state): State<Arc<dyn RouterState>>,
+  Path((_server_id, config_id)): Path<(String, String)>,
+  Json(request): Json<OAuthTokenExchangeRequest>,
+) -> Result<Json<OAuthTokenResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let mcp_service = state.app_service().mcp_service();
+
+  let session_key = format!("mcp_oauth_{}", config_id);
+  let session_data: serde_json::Value = session
+    .get(&session_key)
+    .await
+    .map_err(|e| McpValidationError::Validation(e.to_string()))?
+    .ok_or_else(|| {
+      McpValidationError::Validation(
+        "OAuth session data not found. Initiate login first.".to_string(),
+      )
+    })?;
+
+  let code_verifier = session_data["code_verifier"]
+    .as_str()
+    .ok_or_else(|| {
+      McpValidationError::Validation("code_verifier not found in session".to_string())
+    })?
+    .to_string();
+
+  let expected_state = session_data["state"]
+    .as_str()
+    .ok_or_else(|| McpValidationError::Validation("state not found in session".to_string()))?
+    .to_string();
+
+  if request.state != expected_state {
+    return Err(
+      McpValidationError::Validation("OAuth state mismatch (CSRF protection)".to_string()).into(),
+    );
+  }
+
+  let _ = session.remove::<serde_json::Value>(&session_key).await;
+
+  let db_service = state.app_service().db_service();
+  let (client_id, client_secret) = db_service
+    .get_decrypted_client_secret(&config_id)
+    .await
+    .map_err(|e| McpValidationError::Validation(e.to_string()))?
+    .ok_or_else(|| objs::EntityError::NotFound("OAuth config".to_string()))?;
+
+  let config = mcp_service
+    .get_oauth_config(&config_id)
+    .await?
+    .ok_or_else(|| objs::EntityError::NotFound("OAuth config".to_string()))?;
+
+  let http_client = reqwest::Client::new();
+  let params = &[
+    ("grant_type", "authorization_code"),
+    ("code", &request.code),
+    ("redirect_uri", &request.redirect_uri),
+    ("client_id", &client_id),
+    ("client_secret", &client_secret),
+    ("code_verifier", &code_verifier),
+  ];
+  let resp = http_client
+    .post(&config.token_endpoint)
+    .header("Accept", "application/json")
+    .form(params)
+    .send()
+    .await
+    .map_err(|e| McpValidationError::Validation(format!("Token exchange failed: {}", e)))?;
+
+  let status = resp.status();
+  if !status.is_success() {
+    let body = resp.text().await.unwrap_or_default();
+    return Err(
+      McpValidationError::Validation(format!("Token exchange failed (HTTP {}): {}", status, body))
+        .into(),
+    );
+  }
+  let body = resp.text().await.unwrap_or_default();
+  let token_resp: serde_json::Value = serde_json::from_str(&body)
+    .map_err(|e| McpValidationError::Validation(format!("Invalid token response: {}", e)))?;
+
+  let access_token = token_resp["access_token"]
+    .as_str()
+    .ok_or_else(|| {
+      McpValidationError::Validation("missing access_token in token response".to_string())
+    })?
+    .to_string();
+
+  let refresh_token = token_resp["refresh_token"].as_str().map(|s| s.to_string());
+  let expires_in = token_resp["expires_in"].as_i64();
+  let scopes_granted = token_resp["scope"].as_str().map(|s| s.to_string());
+
+  let token = mcp_service
+    .store_oauth_token(
+      user_id,
+      &config_id,
+      &access_token,
+      refresh_token,
+      scopes_granted,
+      expires_in,
+    )
+    .await?;
+
+  Ok(Json(OAuthTokenResponse::from(token)))
+}
+
+// ============================================================================
+// OAuth Discovery Handler
+// ============================================================================
+
+/// Discover OAuth metadata from a server URL
+#[utoipa::path(
+  post,
+  path = ENDPOINT_MCPS_OAUTH_DISCOVER,
+  tag = API_TAG_MCPS,
+  operation_id = "mcpOAuthDiscover",
+  request_body = OAuthDiscoverRequest,
+  responses(
+    (status = 200, description = "OAuth discovery metadata", body = OAuthDiscoverResponse),
+    (status = 400, description = "Validation error"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn oauth_discover_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Json(request): Json<OAuthDiscoverRequest>,
+) -> Result<Json<OAuthDiscoverResponse>, ApiError> {
+  if request.url.is_empty() {
+    return Err(McpValidationError::Validation("url is required".to_string()).into());
+  }
+
+  let mcp_service = state.app_service().mcp_service();
+
+  let metadata = mcp_service.discover_oauth_metadata(&request.url).await?;
+
+  let authorization_endpoint = metadata["authorization_endpoint"]
+    .as_str()
+    .unwrap_or_default()
+    .to_string();
+  let token_endpoint = metadata["token_endpoint"]
+    .as_str()
+    .unwrap_or_default()
+    .to_string();
+  let scopes_supported = metadata["scopes_supported"].as_array().map(|arr| {
+    arr
+      .iter()
+      .filter_map(|v| v.as_str().map(String::from))
+      .collect()
+  });
+
+  Ok(Json(OAuthDiscoverResponse {
+    authorization_endpoint,
+    token_endpoint,
+    scopes_supported,
+  }))
+}
+
+// ============================================================================
+// OAuth Config List Handler
+// ============================================================================
+
+/// List OAuth configs for an MCP server
+#[utoipa::path(
+  get,
+  path = "/bodhi/v1/mcp-servers/{server_id}/oauth-configs",
+  tag = API_TAG_MCPS,
+  operation_id = "listMcpOAuthConfigs",
+  params(
+    ("server_id" = String, Path, description = "MCP server UUID")
+  ),
+  responses(
+    (status = 200, description = "List of OAuth configs", body = OAuthConfigsListResponse),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn list_oauth_configs_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(server_id): Path<String>,
+) -> Result<Json<OAuthConfigsListResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let mcp_service = state.app_service().mcp_service();
+  let configs = mcp_service
+    .list_oauth_configs_by_server(&server_id, user_id)
+    .await?;
+  let oauth_configs: Vec<OAuthConfigResponse> =
+    configs.into_iter().map(OAuthConfigResponse::from).collect();
+  Ok(Json(OAuthConfigsListResponse { oauth_configs }))
+}
+
+// ============================================================================
+// OAuth Token Handlers
+// ============================================================================
+
+/// Get an OAuth token by ID
+#[utoipa::path(
+  get,
+  path = "/bodhi/v1/mcps/oauth-tokens/{token_id}",
+  tag = API_TAG_MCPS,
+  operation_id = "getMcpOAuthToken",
+  params(
+    ("token_id" = String, Path, description = "OAuth token UUID")
+  ),
+  responses(
+    (status = 200, description = "OAuth token", body = OAuthTokenResponse),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn get_oauth_token_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(token_id): Path<String>,
+) -> Result<Json<OAuthTokenResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let mcp_service = state.app_service().mcp_service();
+  let token = mcp_service
+    .get_oauth_token(user_id, &token_id)
+    .await?
+    .ok_or_else(|| objs::EntityError::NotFound("OAuth token".to_string()))?;
+  Ok(Json(OAuthTokenResponse::from(token)))
+}
+
+/// Delete an OAuth token by ID
+#[utoipa::path(
+  delete,
+  path = "/bodhi/v1/mcps/oauth-tokens/{token_id}",
+  tag = API_TAG_MCPS,
+  operation_id = "deleteMcpOAuthToken",
+  params(
+    ("token_id" = String, Path, description = "OAuth token UUID")
+  ),
+  responses(
+    (status = 204, description = "OAuth token deleted"),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn delete_oauth_token_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(token_id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+  let db_service = state.app_service().db_service();
+  db_service
+    .delete_mcp_oauth_token(user_id, &token_id)
+    .await
+    .map_err(|e| McpValidationError::Validation(e.to_string()))?;
   Ok(StatusCode::NO_CONTENT)
 }

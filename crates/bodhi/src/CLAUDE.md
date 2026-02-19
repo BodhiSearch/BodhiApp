@@ -30,6 +30,7 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 - **Chat Interface**: Real-time chat with streaming responses, message history, and tool calling support
 - **Model Management**: Create, edit, and manage model aliases and configurations
 - **MCP Server Management**: CRUD for MCP server instances, tool discovery, admin enable flow (`useMcps` hook, `mcps/` pages)
+- **MCP OAuth**: Callback page validates `state` parameter, handles corrupt session data gracefully; `mcpFormStore.reset()` clears sessionStorage; MCP form uses Zod refinements for required OAuth fields when `auth_type === 'oauth-pre-registered'`
 - **Toolset Management**: Toolset CRUD, type management, tool selection for chat (`useToolsets`, `use-toolset-selection` hooks, `toolsets/` pages)
 - **Access Request Management**: User access requests and app access request review/approval (`useAccessRequests`, `useAppAccessRequests` hooks, `apps/access-requests/` pages)
 - **API Model Management**: External API model configuration (`useApiModels` hook, `api-models/` pages)

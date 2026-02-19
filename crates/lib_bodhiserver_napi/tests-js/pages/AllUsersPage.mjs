@@ -361,7 +361,9 @@ export class AllUsersPage extends BasePage {
     // Wait for the user row to be fully loaded
     await this.page.waitForSelector(
       `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
-      { timeout: 10000 }
+      {
+        timeout: 10000,
+      }
     );
 
     const row = await this.findUserRowByUsername(username);
@@ -387,7 +389,9 @@ export class AllUsersPage extends BasePage {
     // Wait for the user row to be fully loaded
     await this.page.waitForSelector(
       `tbody tr:has([data-testid="user-username"]:has-text("${username}"))`,
-      { timeout: 10000 }
+      {
+        timeout: 10000,
+      }
     );
 
     const row = await this.findUserRowByUsername(username);

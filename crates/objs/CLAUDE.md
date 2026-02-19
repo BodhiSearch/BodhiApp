@@ -60,6 +60,11 @@ Comprehensive configuration architecture for multi-environment deployments:
 - **Setting System**: Hierarchical configuration with source tracking (System > CommandLine > Environment > User)
 - **SettingMetadata**: Configuration mutation tracking and validation requirements
 
+### MCP Domain Types
+- **McpAuthType enum**: `Public`, `Header`, `OauthPreRegistered` with kebab-case serialization (`public`, `header`, `oauth-pre-registered`)
+- Implements `Default` (Public), `FromStr`, `Display`, `as_str()`
+- Used by `Mcp.auth_type` field (replaces former string)
+
 ### API Organization and Documentation System
 Structured API surface management for OpenAPI generation:
 - **API Tags**: Centralized tag constants ensuring consistent OpenAPI documentation grouping

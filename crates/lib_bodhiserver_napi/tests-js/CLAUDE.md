@@ -1,6 +1,6 @@
 # CLAUDE.md - E2E Tests (Playwright)
 
-*For detailed test writing patterns, anti-patterns, and conventions, see [E2E.md](E2E.md).*
+_For detailed test writing patterns, anti-patterns, and conventions, see [E2E.md](E2E.md)._
 
 ## Purpose
 
@@ -12,11 +12,11 @@ These are user journey tests, NOT unit tests. Each test covers a complete flow: 
 
 All commands run from the `crates/lib_bodhiserver_napi/` package root:
 
-| Command | Purpose |
-|---|---|
-| `npm run test:playwright` | Headless run (CI default) |
-| `npm run test:playwright:headed` | Visible browser |
-| `npm run test:playwright:ui` | Playwright UI mode |
+| Command                             | Purpose                        |
+| ----------------------------------- | ------------------------------ |
+| `npm run test:playwright`           | Headless run (CI default)      |
+| `npm run test:playwright:headed`    | Visible browser                |
+| `npm run test:playwright:ui`        | Playwright UI mode             |
 | `npm run test:playwright:scheduled` | Local-only token refresh tests |
 
 Tests run sequentially (`workers: 1`, `fullyParallel: false`) to avoid port conflicts. The `@scheduled` tag marks long-running token refresh debugging tests that are excluded by default via `grepInvert: /@scheduled/` in `playwright.config.mjs`.
@@ -28,6 +28,7 @@ Tests load OAuth credentials from `.env.test` (see `.env.test.example` for requi
 ### Resource Client
 
 The pre-configured resource client (`INTEG_TEST_RESOURCE_CLIENT_ID`, `INTEG_TEST_RESOURCE_CLIENT_SECRET`) must have:
+
 - **Direct Access Grants** enabled in Keycloak (used by `getResourceUserToken()` with `grant_type: 'password'`)
 - `user@email.com` assigned as **resource admin** on the client
 - `manager@email.com` assigned as **resource manager** on the client
@@ -37,6 +38,7 @@ This allows tests to start the Bodhi server in `ready` mode without dynamic clie
 ### App Client
 
 The pre-configured app client (`INTEG_TEST_APP_CLIENT_ID`) is a public OAuth client in Keycloak with redirect URIs pre-configured for:
+
 - `http://localhost:51135/ui/auth/callback` (Bodhi server)
 - `http://localhost:55173/callback` (React OAuth test app)
 
@@ -48,32 +50,33 @@ Since the app client is reused across tests with the same user, Keycloak remembe
 
 ### Test Users
 
-| User | Env Vars | Role on Resource Client |
-|---|---|---|
-| `user@email.com` | `INTEG_TEST_USERNAME`, `INTEG_TEST_USERNAME_ID`, `INTEG_TEST_PASSWORD` | Resource admin |
-| `manager@email.com` | `INTEG_TEST_USER_MANAGER`, `INTEG_TEST_USER_MANAGER_ID`, `INTEG_TEST_PASSWORD` | Resource manager |
+| User                | Env Vars                                                                       | Role on Resource Client |
+| ------------------- | ------------------------------------------------------------------------------ | ----------------------- |
+| `user@email.com`    | `INTEG_TEST_USERNAME`, `INTEG_TEST_USERNAME_ID`, `INTEG_TEST_PASSWORD`         | Resource admin          |
+| `manager@email.com` | `INTEG_TEST_USER_MANAGER`, `INTEG_TEST_USER_MANAGER_ID`, `INTEG_TEST_PASSWORD` | Resource manager        |
 
 Multi-user tests (e.g., token isolation, user management) require both users set up on the resource client.
 
 ### Fixed Ports
 
-| Service | Port |
-|---|---|
-| Bodhi server | `51135` |
-| React OAuth test app | `55173` |
+| Service               | Port    |
+| --------------------- | ------- |
+| Bodhi server          | `51135` |
+| React OAuth test app  | `55173` |
+| Test MCP OAuth server | `55174` |
 
 ## Architecture Overview
 
 ### Directory Layout
 
-| Directory | Contents |
-|---|---|
-| `specs/` | 25 test files across 11 domain folders |
-| `pages/` | 28 page objects extending `BasePage` |
-| `fixtures/` | 8 test data modules (classes with static methods) |
-| `utils/` | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `mock-openai-server.mjs` |
-| `scripts/` | `start-shared-server.mjs` (shared server startup) |
-| `data/` | Test GGUF model refs for model-metadata tests |
+| Directory   | Contents                                                                                                 |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| `specs/`    | 25 test files across 11 domain folders                                                                   |
+| `pages/`    | 28 page objects extending `BasePage`                                                                     |
+| `fixtures/` | 8 test data modules (classes with static methods)                                                        |
+| `utils/`    | `auth-server-client.mjs`, `bodhi-app-server.mjs`, `browser-with-extension.mjs`, `mock-openai-server.mjs` |
+| `scripts/`  | `start-shared-server.mjs` (shared server startup)                                                        |
+| `data/`     | Test GGUF model refs for model-metadata tests                                                            |
 
 ### Key Mechanisms
 
@@ -108,12 +111,14 @@ await chatSettings.selectModelQwen();
 ### OAuth Flow Variants
 
 Tests WITH an active KC session (from `loginPage.performOAuthLogin()`):
+
 ```js
 await testAppPage.config.clickLogin();
-await testAppPage.oauth.waitForTokenExchange(testAppUrl);  // KC auto-redirects
+await testAppPage.oauth.waitForTokenExchange(testAppUrl); // KC auto-redirects
 ```
 
 Tests WITHOUT a prior KC session (e.g., `oauth2-token-exchange`):
+
 ```js
 await testAppPage.config.clickLogin();
 await testAppPage.oauth.waitForAuthServerRedirect(authServerConfig.authUrl);
@@ -122,6 +127,7 @@ await testAppPage.oauth.waitForTokenExchange(testAppUrl);
 ```
 
 For draft/review flows (access-callback page):
+
 ```js
 await testAppPage.oauth.waitForAccessRequestCallback(testAppUrl);
 await testAppPage.accessCallback.waitForLoaded();
@@ -139,6 +145,7 @@ await testAppPage.accessCallback.clickLogin();
 ## E2E vs server_app Testing Boundary
 
 E2E tests validate:
+
 - External auth service (Keycloak) behavior (error responses, consent, scope validation)
 - UI wiring -- that the UI is plugged in properly for user journeys
 - Browser-dependent flows (background tab token refresh, multi-user contexts)

@@ -1,12 +1,15 @@
 use crate::{
   create_auth_header_handler, create_mcp_handler, create_mcp_server_handler,
-  delete_auth_header_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  fetch_mcp_tools_handler, get_auth_header_handler, get_mcp_handler, get_mcp_server_handler,
-  list_mcp_servers_handler, list_mcp_tools_handler, list_mcps_handler, refresh_mcp_tools_handler,
+  create_oauth_config_handler, delete_auth_header_handler, delete_mcp_handler,
+  delete_oauth_token_handler, execute_mcp_tool_handler, fetch_mcp_tools_handler,
+  get_auth_header_handler, get_mcp_handler, get_mcp_server_handler, get_oauth_config_handler,
+  get_oauth_token_handler, list_mcp_servers_handler, list_mcp_tools_handler, list_mcps_handler,
+  list_oauth_configs_handler, oauth_discover_handler, refresh_mcp_tools_handler,
   update_auth_header_handler, update_mcp_handler, update_mcp_server_handler, AuthHeaderResponse,
-  CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, McpAuth,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
-  UpdateMcpRequest,
+  CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest, CreateOAuthConfigRequest,
+  FetchMcpToolsRequest, McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse,
+  McpServerResponse, McpToolsResponse, OAuthConfigResponse, OAuthDiscoverRequest,
+  OAuthDiscoverResponse, UpdateMcpRequest,
 };
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
@@ -15,7 +18,9 @@ use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post, put};
 use axum::Router;
 use chrono::Utc;
-use objs::{Mcp, McpAuthHeader, McpServer, McpServerInfo};
+use objs::{
+  Mcp, McpAuthHeader, McpAuthType, McpOAuthConfig, McpOAuthToken, McpServer, McpServerInfo,
+};
 use objs::{McpExecutionResponse, McpTool, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
@@ -62,7 +67,7 @@ fn test_mcp_instance() -> Mcp {
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "public".to_string(),
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
     created_at: now,
     updated_at: now,
@@ -102,6 +107,27 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
         "/mcps/{id}/tools/{tool_name}/execute",
         post(execute_mcp_tool_handler),
       )
+      .route(
+        "/mcp-servers/{server_id}/oauth-configs",
+        get(list_oauth_configs_handler),
+      )
+      .route(
+        "/mcp-servers/{server_id}/oauth-configs",
+        post(create_oauth_config_handler),
+      )
+      .route(
+        "/mcp-servers/{server_id}/oauth-configs/{config_id}",
+        get(get_oauth_config_handler),
+      )
+      .route(
+        "/mcps/oauth-tokens/{token_id}",
+        get(get_oauth_token_handler),
+      )
+      .route(
+        "/mcps/oauth-tokens/{token_id}",
+        delete(delete_oauth_token_handler),
+      )
+      .route("/mcps/oauth/discover", post(oauth_discover_handler))
       .route("/mcp_servers", get(list_mcp_servers_handler))
       .route("/mcp_servers", post(create_mcp_server_handler))
       .route("/mcp_servers/{id}", get(get_mcp_server_handler))
@@ -229,7 +255,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
           && name == "DeepWiki MCP"
           && slug == "deepwiki"
           && mcp_server_id == "server-uuid-1"
-          && auth_type == "public"
+          && *auth_type == McpAuthType::Public
       },
     )
     .times(1)
@@ -245,7 +271,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "public".to_string(),
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
   })?;
 
@@ -267,7 +293,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
   let body: McpResponse = response.json().await?;
   assert_eq!("mcp-uuid-1", body.id);
   assert_eq!("deepwiki", body.slug);
-  assert_eq!("public", body.auth_type);
+  assert_eq!(McpAuthType::Public, body.auth_type);
   assert_eq!(None, body.auth_uuid);
   Ok(())
 }
@@ -278,13 +304,13 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
   let mut instance = test_mcp_instance.clone();
-  instance.auth_type = "header".to_string();
+  instance.auth_type = McpAuthType::Header;
   instance.auth_uuid = Some("auth-uuid-1".to_string());
 
   mock
     .expect_create()
     .withf(|_, _, _, _, _, _, _, _, auth_type, auth_uuid| {
-      auth_type == "header" && auth_uuid.as_deref() == Some("auth-uuid-1")
+      *auth_type == McpAuthType::Header && auth_uuid.as_deref() == Some("auth-uuid-1")
     })
     .times(1)
     .returning(move |_, _, _, _, _, _, _, _, _, _| Ok(instance.clone()));
@@ -299,7 +325,7 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "header".to_string(),
+    auth_type: McpAuthType::Header,
     auth_uuid: Some("auth-uuid-1".to_string()),
   })?;
 
@@ -317,7 +343,7 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
 
   assert_eq!(StatusCode::CREATED, response.status());
   let body: McpResponse = response.json().await?;
-  assert_eq!("header", body.auth_type);
+  assert_eq!(McpAuthType::Header, body.auth_type);
   assert_eq!(Some("auth-uuid-1".to_string()), body.auth_uuid);
   Ok(())
 }
@@ -934,5 +960,498 @@ async fn test_integration_list_mcps_shows_auth_info() -> anyhow::Result<()> {
   let header_mcp = mcps.iter().find(|m| m["slug"] == "header-one").unwrap();
   assert_eq!("header", header_mcp["auth_type"]);
   assert_eq!(auth_id, header_mcp["auth_uuid"].as_str().unwrap());
+  Ok(())
+}
+
+// ============================================================================
+// OAuth Config CRUD handlers
+// ============================================================================
+
+fn test_oauth_config() -> McpOAuthConfig {
+  let now = Utc::now();
+  McpOAuthConfig {
+    id: "oauth-config-uuid-1".to_string(),
+    mcp_server_id: "server-uuid-1".to_string(),
+    client_id: "my-client-id".to_string(),
+    authorization_endpoint: "https://auth.example.com/authorize".to_string(),
+    token_endpoint: "https://auth.example.com/token".to_string(),
+    scopes: Some("openid profile".to_string()),
+    has_client_secret: true,
+    created_by: "user123".to_string(),
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_oauth_config_success() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+  let config = test_oauth_config();
+
+  mock
+    .expect_create_oauth_config()
+    .withf(
+      |user_id, mcp_server_id, client_id, client_secret, auth_endpoint, token_endpoint, scopes| {
+        user_id == "user123"
+          && mcp_server_id == "server-uuid-1"
+          && client_id == "my-client-id"
+          && client_secret == "my-client-secret"
+          && auth_endpoint == "https://auth.example.com/authorize"
+          && token_endpoint == "https://auth.example.com/token"
+          && scopes.as_deref() == Some("openid profile")
+      },
+    )
+    .times(1)
+    .returning(move |_, _, _, _, _, _, _| Ok(config.clone()));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&CreateOAuthConfigRequest {
+    client_id: "my-client-id".to_string(),
+    client_secret: "my-client-secret".to_string(),
+    authorization_endpoint: "https://auth.example.com/authorize".to_string(),
+    token_endpoint: "https://auth.example.com/token".to_string(),
+    scopes: Some("openid profile".to_string()),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcp-servers/server-uuid-1/oauth-configs")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::CREATED, response.status());
+  let body: OAuthConfigResponse = response.json().await?;
+  assert_eq!("oauth-config-uuid-1", body.id);
+  assert_eq!("my-client-id", body.client_id);
+  assert_eq!(
+    "https://auth.example.com/authorize",
+    body.authorization_endpoint
+  );
+  assert_eq!("https://auth.example.com/token", body.token_endpoint);
+  assert_eq!(Some("openid profile".to_string()), body.scopes);
+  assert!(body.has_client_secret);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_oauth_config_success() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+  let config = test_oauth_config();
+
+  mock
+    .expect_get_oauth_config()
+    .withf(|id| id == "oauth-config-uuid-1")
+    .times(1)
+    .returning(move |_| Ok(Some(config.clone())));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let request = Request::builder()
+    .method("GET")
+    .uri("/mcp-servers/server-uuid-1/oauth-configs/oauth-config-uuid-1")
+    .body(Body::empty())?;
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let body: OAuthConfigResponse = response.json().await?;
+  assert_eq!("oauth-config-uuid-1", body.id);
+  assert_eq!("my-client-id", body.client_id);
+  assert_eq!(
+    "https://auth.example.com/authorize",
+    body.authorization_endpoint
+  );
+  assert_eq!("https://auth.example.com/token", body.token_endpoint);
+  Ok(())
+}
+
+// ============================================================================
+// OAuth Discovery handler
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oauth_discover_success() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+
+  mock
+    .expect_discover_oauth_metadata()
+    .withf(|url| url == "https://mcp.example.com")
+    .times(1)
+    .returning(|_| {
+      Ok(json!({
+        "authorization_endpoint": "https://auth.example.com/authorize",
+        "token_endpoint": "https://auth.example.com/token",
+        "scopes_supported": ["openid", "profile", "email"]
+      }))
+    });
+
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&OAuthDiscoverRequest {
+    url: "https://mcp.example.com".to_string(),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcps/oauth/discover")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let body: OAuthDiscoverResponse = response.json().await?;
+  assert_eq!(
+    "https://auth.example.com/authorize",
+    body.authorization_endpoint
+  );
+  assert_eq!("https://auth.example.com/token", body.token_endpoint);
+  assert_eq!(
+    Some(vec![
+      "openid".to_string(),
+      "profile".to_string(),
+      "email".to_string()
+    ]),
+    body.scopes_supported
+  );
+  Ok(())
+}
+
+// ============================================================================
+// OAuth Login handler tests (integration - needs session middleware)
+// ============================================================================
+
+async fn create_oauth_config_in_db(
+  router: &Router,
+  user_cookie: &str,
+  server_id: &str,
+) -> anyhow::Result<String> {
+  let body = json!({
+    "client_id": "test-client-id",
+    "client_secret": "test-client-secret",
+    "authorization_endpoint": "https://auth.example.com/authorize",
+    "token_endpoint": "https://auth.example.com/token",
+    "scopes": "openid profile"
+  });
+  let response = router
+    .clone()
+    .oneshot(session_request_with_body(
+      "POST",
+      &format!("/bodhi/v1/mcp-servers/{}/oauth-configs", server_id),
+      user_cookie,
+      Body::from(serde_json::to_string(&body)?),
+    ))
+    .await?;
+  assert_eq!(StatusCode::CREATED, response.status());
+  let config: Value = response.json().await?;
+  Ok(config["id"].as_str().unwrap().to_string())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oauth_login_generates_pkce_and_returns_auth_url() -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
+
+  let admin_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_admin"])
+      .await?;
+  let user_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
+      .await?;
+
+  let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
+  let config_id = create_oauth_config_in_db(&router, &user_cookie, &server_id).await?;
+
+  let body = json!({ "redirect_uri": "http://localhost:3000/callback" });
+  let response = router
+    .clone()
+    .oneshot(session_request_with_body(
+      "POST",
+      &format!(
+        "/bodhi/v1/mcp-servers/{}/oauth-configs/{}/login",
+        server_id, config_id
+      ),
+      &user_cookie,
+      Body::from(serde_json::to_string(&body)?),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let resp: Value = response.json().await?;
+  let auth_url_str = resp["authorization_url"].as_str().unwrap();
+  let auth_url = url::Url::parse(auth_url_str)?;
+
+  assert_eq!("https", auth_url.scheme());
+  assert_eq!(Some("auth.example.com"), auth_url.host_str());
+  assert_eq!("/authorize", auth_url.path());
+
+  let params: std::collections::HashMap<_, _> = auth_url.query_pairs().collect();
+  assert_eq!(
+    Some(&std::borrow::Cow::Borrowed("code")),
+    params.get("response_type")
+  );
+  assert_eq!(
+    Some(&std::borrow::Cow::Borrowed("test-client-id")),
+    params.get("client_id")
+  );
+  assert_eq!(
+    Some(&std::borrow::Cow::Borrowed(
+      "http://localhost:3000/callback"
+    )),
+    params.get("redirect_uri")
+  );
+  assert!(params.contains_key("code_challenge"));
+  assert_eq!(
+    Some(&std::borrow::Cow::Borrowed("S256")),
+    params.get("code_challenge_method")
+  );
+  assert!(params.contains_key("state"));
+  assert_eq!(
+    Some(&std::borrow::Cow::Borrowed("openid profile")),
+    params.get("scope")
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oauth_login_config_not_found_returns_404() -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
+
+  let admin_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_admin"])
+      .await?;
+  let user_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
+      .await?;
+
+  let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
+
+  let body = json!({ "redirect_uri": "http://localhost:3000/callback" });
+  let response = router
+    .clone()
+    .oneshot(session_request_with_body(
+      "POST",
+      &format!(
+        "/bodhi/v1/mcp-servers/{}/oauth-configs/nonexistent-config/login",
+        server_id
+      ),
+      &user_cookie,
+      Body::from(serde_json::to_string(&body)?),
+    ))
+    .await?;
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// OAuth Token Exchange - state mismatch (CSRF protection)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_oauth_token_exchange_state_mismatch_returns_400() -> anyhow::Result<()> {
+  let (router, app_service, _temp) = build_test_router().await?;
+
+  let admin_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_admin"])
+      .await?;
+  let user_cookie =
+    create_authenticated_session(app_service.session_service().as_ref(), &["resource_user"])
+      .await?;
+
+  let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
+  let config_id = create_oauth_config_in_db(&router, &user_cookie, &server_id).await?;
+
+  let login_body = json!({ "redirect_uri": "http://localhost:3000/callback" });
+  let login_resp = router
+    .clone()
+    .oneshot(session_request_with_body(
+      "POST",
+      &format!(
+        "/bodhi/v1/mcp-servers/{}/oauth-configs/{}/login",
+        server_id, config_id
+      ),
+      &user_cookie,
+      Body::from(serde_json::to_string(&login_body)?),
+    ))
+    .await?;
+  assert_eq!(StatusCode::OK, login_resp.status());
+
+  let exchange_body = json!({
+    "code": "auth-code-123",
+    "redirect_uri": "http://localhost:3000/callback",
+    "state": "wrong-state-value"
+  });
+  let exchange_resp = router
+    .clone()
+    .oneshot(session_request_with_body(
+      "POST",
+      &format!(
+        "/bodhi/v1/mcp-servers/{}/oauth-configs/{}/token",
+        server_id, config_id
+      ),
+      &user_cookie,
+      Body::from(serde_json::to_string(&exchange_body)?),
+    ))
+    .await?;
+  assert_eq!(StatusCode::BAD_REQUEST, exchange_resp.status());
+
+  let body: Value = exchange_resp.json().await?;
+  assert_eq!(
+    "mcp_validation_error-validation",
+    body["error"]["code"].as_str().unwrap()
+  );
+  Ok(())
+}
+
+// ============================================================================
+// GET /mcps/oauth-tokens/{token_id} - OAuth Token handlers
+// ============================================================================
+
+fn test_oauth_token() -> McpOAuthToken {
+  let now = Utc::now();
+  McpOAuthToken {
+    id: "token-uuid-1".to_string(),
+    mcp_oauth_config_id: "oauth-config-uuid-1".to_string(),
+    scopes_granted: Some("openid profile".to_string()),
+    expires_at: Some(1700000000),
+    has_access_token: true,
+    has_refresh_token: true,
+    created_by: "user123".to_string(),
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_oauth_token_handler_success() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+  let token = test_oauth_token();
+
+  mock
+    .expect_get_oauth_token()
+    .withf(|user_id, token_id| user_id == "user123" && token_id == "token-uuid-1")
+    .times(1)
+    .returning(move |_, _| Ok(Some(token.clone())));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let request = Request::builder()
+    .method("GET")
+    .uri("/mcps/oauth-tokens/token-uuid-1")
+    .body(Body::empty())?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+  let body: Value = response.json().await?;
+  assert_eq!("token-uuid-1", body["id"].as_str().unwrap());
+  assert_eq!(
+    "oauth-config-uuid-1",
+    body["mcp_oauth_config_id"].as_str().unwrap()
+  );
+  assert_eq!("openid profile", body["scopes_granted"].as_str().unwrap());
+  assert!(body["has_access_token"].as_bool().unwrap());
+  assert!(body["has_refresh_token"].as_bool().unwrap());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_oauth_token_handler_wrong_user_returns_404() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+
+  mock
+    .expect_get_oauth_token()
+    .withf(|user_id, token_id| user_id == "wrong-user" && token_id == "token-uuid-1")
+    .times(1)
+    .returning(|_, _| Ok(None));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let request = Request::builder()
+    .method("GET")
+    .uri("/mcps/oauth-tokens/token-uuid-1")
+    .body(Body::empty())?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "wrong-user",
+    "wronguser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
+  Ok(())
+}
+
+// ============================================================================
+// DELETE /mcps/oauth-tokens/{token_id} - OAuth Token delete handlers
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
+  let mock = MockMcpService::new();
+  let app = test_router_for_crud(mock).await?;
+
+  let request = Request::builder()
+    .method("DELETE")
+    .uri("/mcps/oauth-tokens/token-uuid-1")
+    .body(Body::empty())?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::NO_CONTENT, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_delete_oauth_token_handler_wrong_user_returns_204() -> anyhow::Result<()> {
+  let mock = MockMcpService::new();
+  let app = test_router_for_crud(mock).await?;
+
+  let request = Request::builder()
+    .method("DELETE")
+    .uri("/mcps/oauth-tokens/nonexistent-token")
+    .body(Body::empty())?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "wrong-user",
+    "wronguser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  // DELETE is idempotent - returns 204 even when token doesn't belong to user
+  assert_eq!(StatusCode::NO_CONTENT, response.status());
   Ok(())
 }

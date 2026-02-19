@@ -122,5 +122,11 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 30000,
     },
+    {
+      command: 'cd test-mcp-oauth-server && npm run build && npm start',
+      url: 'http://localhost:55174/.well-known/oauth-authorization-server',
+      reuseExistingServer: false,
+      timeout: 30000,
+    },
   ],
 });

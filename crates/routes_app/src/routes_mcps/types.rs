@@ -1,4 +1,4 @@
-use objs::{McpAuthHeader, McpServerInfo, McpTool};
+use objs::{McpAuthHeader, McpAuthType, McpOAuthConfig, McpOAuthToken, McpServerInfo, McpTool};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -82,14 +82,10 @@ pub struct CreateMcpRequest {
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(default)]
   pub tools_filter: Option<Vec<String>>,
-  #[serde(default = "default_auth_type")]
-  pub auth_type: String,
+  #[serde(default)]
+  pub auth_type: McpAuthType,
   #[serde(default)]
   pub auth_uuid: Option<String>,
-}
-
-fn default_auth_type() -> String {
-  "public".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -104,7 +100,7 @@ pub struct UpdateMcpRequest {
   #[serde(default)]
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(default)]
-  pub auth_type: Option<String>,
+  pub auth_type: Option<McpAuthType>,
   #[serde(default)]
   pub auth_uuid: Option<String>,
 }
@@ -165,7 +161,7 @@ pub struct McpResponse {
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
-  pub auth_type: String,
+  pub auth_type: McpAuthType,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub auth_uuid: Option<String>,
   pub created_at: String,
@@ -198,6 +194,122 @@ pub struct McpExecuteResponse {
   pub result: Option<serde_json::Value>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub error: Option<String>,
+}
+
+// ============================================================================
+// OAuth Config DTOs
+// ============================================================================
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct CreateOAuthConfigRequest {
+  pub client_id: String,
+  pub client_secret: String,
+  pub authorization_endpoint: String,
+  pub token_endpoint: String,
+  #[serde(default)]
+  pub scopes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct OAuthConfigResponse {
+  pub id: String,
+  pub mcp_server_id: String,
+  pub client_id: String,
+  pub authorization_endpoint: String,
+  pub token_endpoint: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scopes: Option<String>,
+  pub has_client_secret: bool,
+  pub created_by: String,
+  pub created_at: String,
+  pub updated_at: String,
+}
+
+impl From<McpOAuthConfig> for OAuthConfigResponse {
+  fn from(c: McpOAuthConfig) -> Self {
+    OAuthConfigResponse {
+      id: c.id,
+      mcp_server_id: c.mcp_server_id,
+      client_id: c.client_id,
+      authorization_endpoint: c.authorization_endpoint,
+      token_endpoint: c.token_endpoint,
+      scopes: c.scopes,
+      has_client_secret: c.has_client_secret,
+      created_by: c.created_by,
+      created_at: c.created_at.to_rfc3339(),
+      updated_at: c.updated_at.to_rfc3339(),
+    }
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct OAuthConfigsListResponse {
+  pub oauth_configs: Vec<OAuthConfigResponse>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OAuthTokenResponse {
+  pub id: String,
+  pub mcp_oauth_config_id: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scopes_granted: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub expires_at: Option<i64>,
+  pub has_access_token: bool,
+  pub has_refresh_token: bool,
+  pub created_by: String,
+  pub created_at: String,
+  pub updated_at: String,
+}
+
+impl From<McpOAuthToken> for OAuthTokenResponse {
+  fn from(t: McpOAuthToken) -> Self {
+    OAuthTokenResponse {
+      id: t.id,
+      mcp_oauth_config_id: t.mcp_oauth_config_id,
+      scopes_granted: t.scopes_granted,
+      expires_at: t.expires_at,
+      has_access_token: t.has_access_token,
+      has_refresh_token: t.has_refresh_token,
+      created_by: t.created_by,
+      created_at: t.created_at.to_rfc3339(),
+      updated_at: t.updated_at.to_rfc3339(),
+    }
+  }
+}
+
+// ============================================================================
+// OAuth Flow DTOs
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OAuthLoginRequest {
+  pub redirect_uri: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OAuthLoginResponse {
+  pub authorization_url: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct OAuthTokenExchangeRequest {
+  pub code: String,
+  pub redirect_uri: String,
+  pub state: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct OAuthDiscoverRequest {
+  pub url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OAuthDiscoverResponse {
+  pub authorization_endpoint: String,
+  pub token_endpoint: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scopes_supported: Option<Vec<String>>,
 }
 
 impl From<objs::Mcp> for McpResponse {

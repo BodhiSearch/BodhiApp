@@ -1,9 +1,9 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpAuthHeaderRow, McpRepository, McpRow,
-  McpServerRow, McpWithServerRow, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
-  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
-  UserAliasRepository,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow,
+  McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow, ModelMetadataRow,
+  ModelRepository, SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow,
+  UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -633,10 +633,14 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("delete_mcp"))
   }
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError> {
+  async fn get_mcp_auth_header(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpAuthHeaderRow>, DbError> {
     self
       .inner
-      .get_mcp_auth_header(id)
+      .get_mcp_auth_header(user_id, id)
       .await
       .tap(|_| self.notify("get_mcp_auth_header"))
   }
@@ -663,10 +667,10 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("update_mcp_auth_header"))
   }
 
-  async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError> {
+  async fn delete_mcp_auth_header(&self, user_id: &str, id: &str) -> Result<(), DbError> {
     self
       .inner
-      .delete_mcp_auth_header(id)
+      .delete_mcp_auth_header(user_id, id)
       .await
       .tap(|_| self.notify("delete_mcp_auth_header"))
   }
@@ -677,6 +681,128 @@ impl McpRepository for TestDbService {
       .get_decrypted_auth_header(id)
       .await
       .tap(|_| self.notify("get_decrypted_auth_header"))
+  }
+
+  async fn create_mcp_oauth_config(
+    &self,
+    row: &McpOAuthConfigRow,
+  ) -> Result<McpOAuthConfigRow, DbError> {
+    self
+      .inner
+      .create_mcp_oauth_config(row)
+      .await
+      .tap(|_| self.notify("create_mcp_oauth_config"))
+  }
+
+  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError> {
+    self
+      .inner
+      .get_mcp_oauth_config(id)
+      .await
+      .tap(|_| self.notify("get_mcp_oauth_config"))
+  }
+
+  async fn list_mcp_oauth_configs_by_server(
+    &self,
+    mcp_server_id: &str,
+    created_by: &str,
+  ) -> Result<Vec<McpOAuthConfigRow>, DbError> {
+    self
+      .inner
+      .list_mcp_oauth_configs_by_server(mcp_server_id, created_by)
+      .await
+      .tap(|_| self.notify("list_mcp_oauth_configs_by_server"))
+  }
+
+  async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp_oauth_config(id)
+      .await
+      .tap(|_| self.notify("delete_mcp_oauth_config"))
+  }
+
+  async fn get_decrypted_client_secret(
+    &self,
+    id: &str,
+  ) -> Result<Option<(String, String)>, DbError> {
+    self
+      .inner
+      .get_decrypted_client_secret(id)
+      .await
+      .tap(|_| self.notify("get_decrypted_client_secret"))
+  }
+
+  async fn create_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError> {
+    self
+      .inner
+      .create_mcp_oauth_token(row)
+      .await
+      .tap(|_| self.notify("create_mcp_oauth_token"))
+  }
+
+  async fn get_mcp_oauth_token(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+    self
+      .inner
+      .get_mcp_oauth_token(user_id, id)
+      .await
+      .tap(|_| self.notify("get_mcp_oauth_token"))
+  }
+
+  async fn get_latest_oauth_token_by_config(
+    &self,
+    config_id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+    self
+      .inner
+      .get_latest_oauth_token_by_config(config_id)
+      .await
+      .tap(|_| self.notify("get_latest_oauth_token_by_config"))
+  }
+
+  async fn update_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError> {
+    self
+      .inner
+      .update_mcp_oauth_token(row)
+      .await
+      .tap(|_| self.notify("update_mcp_oauth_token"))
+  }
+
+  async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp_oauth_token(user_id, id)
+      .await
+      .tap(|_| self.notify("delete_mcp_oauth_token"))
+  }
+
+  async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_oauth_tokens_by_config(config_id)
+      .await
+      .tap(|_| self.notify("delete_oauth_tokens_by_config"))
+  }
+
+  async fn get_decrypted_oauth_bearer(
+    &self,
+    id: &str,
+  ) -> Result<Option<(String, String)>, DbError> {
+    self
+      .inner
+      .get_decrypted_oauth_bearer(id)
+      .await
+      .tap(|_| self.notify("get_decrypted_oauth_bearer"))
   }
 }
 
@@ -893,10 +1019,22 @@ mockall::mock! {
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn create_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
-    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
+    async fn get_mcp_auth_header(&self, user_id: &str, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
     async fn update_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
-    async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
+    async fn delete_mcp_auth_header(&self, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigRow) -> Result<McpOAuthConfigRow, DbError>;
+    async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError>;
+    async fn list_mcp_oauth_configs_by_server(&self, mcp_server_id: &str, created_by: &str) -> Result<Vec<McpOAuthConfigRow>, DbError>;
+    async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError>;
+    async fn get_decrypted_client_secret(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
+    async fn get_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<Option<McpOAuthTokenRow>, DbError>;
+    async fn get_latest_oauth_token_by_config(&self, config_id: &str) -> Result<Option<McpOAuthTokenRow>, DbError>;
+    async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
+    async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+    async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError>;
+    async fn get_decrypted_oauth_bearer(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
   }
 
   #[async_trait::async_trait]

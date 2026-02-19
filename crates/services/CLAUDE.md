@@ -188,8 +188,13 @@ The `McpService` (module: `mcp_service/`) manages Model Context Protocol server 
 - Tool discovery via `fetch_tools` and execution via `execute` delegating to `mcp_client` crate
 - Admin enable flow: new MCP URLs require explicit admin approval before tools can be fetched
 - Error types: `McpError` with variants for not-found, URL not allowed, disabled, tool-specific errors, connection/execution failures
+- OAuth token refresh has per-key concurrency guard (Mutex-based, keyed by `oauth_refresh:{config_id}`)
+- Ownership checks: `get_mcp_auth_header`, `delete_mcp_auth_header`, `get_mcp_oauth_token`, `delete_mcp_oauth_token` require `user_id`
+- `DefaultMcpService` shares a single `reqwest::Client` instance
 
 **Dependencies**: `mcp_client` crate for MCP protocol communication, `DbService` for persistence, `TimeService` for timestamps
+
+**Migration 0012**: Indexes on `mcp_oauth_configs(mcp_server_id)` and `mcp_oauth_tokens(mcp_oauth_config_id)`
 
 ### Access Request Management Architecture
 

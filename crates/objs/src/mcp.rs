@@ -47,6 +47,47 @@ pub struct McpServerInfo {
 }
 
 // ============================================================================
+// McpAuthType - Authentication type for MCP instances
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum McpAuthType {
+  #[default]
+  Public,
+  Header,
+  OauthPreRegistered,
+}
+
+impl McpAuthType {
+  pub fn as_str(&self) -> &'static str {
+    match self {
+      McpAuthType::Public => "public",
+      McpAuthType::Header => "header",
+      McpAuthType::OauthPreRegistered => "oauth-pre-registered",
+    }
+  }
+}
+
+impl std::fmt::Display for McpAuthType {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(self.as_str())
+  }
+}
+
+impl std::str::FromStr for McpAuthType {
+  type Err = String;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "public" => Ok(McpAuthType::Public),
+      "header" => Ok(McpAuthType::Header),
+      "oauth-pre-registered" => Ok(McpAuthType::OauthPreRegistered),
+      other => Err(format!("unknown auth type: {}", other)),
+    }
+  }
+}
+
+// ============================================================================
 // Mcp - User-owned MCP instance (public API model)
 // ============================================================================
 
@@ -72,8 +113,7 @@ pub struct Mcp {
   /// Whitelisted tool names (empty = block all)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
-  /// Authentication type: "public", "header", "oauth-pre-registered"
-  pub auth_type: String,
+  pub auth_type: McpAuthType,
   /// Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub auth_uuid: Option<String>,
@@ -104,6 +144,50 @@ pub struct McpAuthHeader {
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   /// When this config was last updated
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// McpOAuthConfig - Public API model for OAuth 2.1 pre-registered client config
+// ============================================================================
+
+/// OAuth 2.1 config for pre-registered client (secrets masked).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpOAuthConfig {
+  pub id: String,
+  pub mcp_server_id: String,
+  pub client_id: String,
+  pub authorization_endpoint: String,
+  pub token_endpoint: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scopes: Option<String>,
+  pub has_client_secret: bool,
+  pub created_by: String,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// McpOAuthToken - Public API model for OAuth 2.1 stored token
+// ============================================================================
+
+/// OAuth 2.1 token stored for a config (secrets masked).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpOAuthToken {
+  pub id: String,
+  pub mcp_oauth_config_id: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub scopes_granted: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub expires_at: Option<i64>,
+  pub has_access_token: bool,
+  pub has_refresh_token: bool,
+  pub created_by: String,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }

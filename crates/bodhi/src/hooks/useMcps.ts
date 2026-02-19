@@ -1,6 +1,7 @@
 import {
   AuthHeaderResponse,
   CreateAuthHeaderRequest,
+  CreateOAuthConfigRequest,
   McpServerInfo,
   McpServerResponse,
   CreateMcpServerRequest,
@@ -16,6 +17,14 @@ import {
   McpToolsResponse,
   McpExecuteRequest,
   McpExecuteResponse,
+  OAuthConfigResponse,
+  OAuthConfigsListResponse,
+  OAuthDiscoverRequest,
+  OAuthDiscoverResponse,
+  OAuthLoginRequest,
+  OAuthLoginResponse,
+  OAuthTokenExchangeRequest,
+  OAuthTokenResponse,
   OpenAiApiError,
   UpdateAuthHeaderRequest,
 } from '@bodhiapp/ts-client';
@@ -27,6 +36,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 export type {
   AuthHeaderResponse,
   CreateAuthHeaderRequest,
+  CreateOAuthConfigRequest,
   McpServerInfo,
   McpServerResponse,
   CreateMcpServerRequest,
@@ -42,6 +52,14 @@ export type {
   McpToolsResponse,
   McpExecuteRequest,
   McpExecuteResponse,
+  OAuthConfigResponse,
+  OAuthConfigsListResponse,
+  OAuthDiscoverRequest,
+  OAuthDiscoverResponse,
+  OAuthLoginRequest,
+  OAuthLoginResponse,
+  OAuthTokenExchangeRequest,
+  OAuthTokenResponse,
   UpdateAuthHeaderRequest,
 };
 
@@ -54,7 +72,12 @@ type ErrorResponse = OpenAiApiError;
 export const MCPS_ENDPOINT = `${BODHI_API_BASE}/mcps`;
 export const MCPS_FETCH_TOOLS_ENDPOINT = `${BODHI_API_BASE}/mcps/fetch-tools`;
 export const MCPS_AUTH_HEADERS_ENDPOINT = `${BODHI_API_BASE}/mcps/auth-headers`;
+export const MCPS_OAUTH_DISCOVER_ENDPOINT = `${BODHI_API_BASE}/mcps/oauth/discover`;
+export const MCPS_OAUTH_TOKENS_ENDPOINT = `${BODHI_API_BASE}/mcps/oauth-tokens`;
 export const MCP_SERVERS_ENDPOINT = `${BODHI_API_BASE}/mcp_servers`;
+
+export const MCP_SERVERS_OAUTH_CONFIGS_ENDPOINT = (serverId: string) =>
+  `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs`;
 
 // ============================================================================
 // Query Hooks - MCP Instance CRUD
@@ -102,6 +125,51 @@ export function useMcpServer(
   options?: { enabled?: boolean }
 ): UseQueryResult<McpServerResponse, AxiosError<ErrorResponse>> {
   return useQuery<McpServerResponse>(['mcp_servers', id], `${MCP_SERVERS_ENDPOINT}/${id}`, undefined, options);
+}
+
+// ============================================================================
+// Query Hooks - OAuth Configs (nested under server)
+// ============================================================================
+
+export function useListOAuthConfigs(
+  serverId: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<OAuthConfigsListResponse, AxiosError<ErrorResponse>> {
+  return useQuery<OAuthConfigsListResponse>(
+    ['oauth-configs', 'list', serverId],
+    `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs`,
+    undefined,
+    { ...options, enabled: !!serverId && options?.enabled !== false }
+  );
+}
+
+export function useOAuthConfig(
+  serverId: string,
+  id: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<OAuthConfigResponse, AxiosError<ErrorResponse>> {
+  return useQuery<OAuthConfigResponse>(
+    ['oauth-configs', id],
+    `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs/${id}`,
+    undefined,
+    options
+  );
+}
+
+// ============================================================================
+// Query Hooks - OAuth Tokens
+// ============================================================================
+
+export function useGetOAuthToken(
+  tokenId: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<OAuthTokenResponse, AxiosError<ErrorResponse>> {
+  return useQuery<OAuthTokenResponse>(
+    ['oauth-tokens', tokenId],
+    `${MCPS_OAUTH_TOKENS_ENDPOINT}/${tokenId}`,
+    undefined,
+    { ...options, enabled: !!tokenId && options?.enabled !== false }
+  );
 }
 
 // ============================================================================
@@ -335,5 +403,124 @@ export function useExecuteMcpTool(options?: {
       },
     },
     { transformBody: ({ id: _id, toolName: _tn, ...body }) => body }
+  );
+}
+
+// ============================================================================
+// Mutation Hooks - OAuth Config CRUD (nested under server)
+// ============================================================================
+
+export function useCreateOAuthConfig(options?: {
+  onSuccess?: (config: OAuthConfigResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<OAuthConfigResponse>,
+  AxiosError<ErrorResponse>,
+  CreateOAuthConfigRequest & { serverId: string }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<OAuthConfigResponse, CreateOAuthConfigRequest & { serverId: string }>(
+    ({ serverId }) => `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs`,
+    'post',
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['oauth-configs']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to create OAuth config';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ serverId: _sid, ...body }) => body }
+  );
+}
+
+// ============================================================================
+// Mutation Hooks - OAuth Discovery & Login & Token
+// ============================================================================
+
+export function useOAuthDiscover(options?: {
+  onSuccess?: (response: OAuthDiscoverResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<OAuthDiscoverResponse>, AxiosError<ErrorResponse>, OAuthDiscoverRequest> {
+  return useMutationQuery<OAuthDiscoverResponse, OAuthDiscoverRequest>(() => MCPS_OAUTH_DISCOVER_ENDPOINT, 'post', {
+    onSuccess: (response) => options?.onSuccess?.(response.data),
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to discover OAuth endpoints';
+      options?.onError?.(message);
+    },
+  });
+}
+
+export function useOAuthLogin(options?: {
+  onSuccess?: (response: OAuthLoginResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<OAuthLoginResponse>,
+  AxiosError<ErrorResponse>,
+  OAuthLoginRequest & { id: string; serverId: string }
+> {
+  return useMutationQuery<OAuthLoginResponse, OAuthLoginRequest & { id: string; serverId: string }>(
+    ({ serverId, id }) => `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs/${id}/login`,
+    'post',
+    {
+      onSuccess: (response) => options?.onSuccess?.(response.data),
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth login';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ id: _id, serverId: _sid, ...body }) => body }
+  );
+}
+
+export function useOAuthTokenExchange(options?: {
+  onSuccess?: (response: OAuthTokenResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<OAuthTokenResponse>,
+  AxiosError<ErrorResponse>,
+  OAuthTokenExchangeRequest & { id: string; serverId: string }
+> {
+  return useMutationQuery<OAuthTokenResponse, OAuthTokenExchangeRequest & { id: string; serverId: string }>(
+    ({ serverId, id }) => `${BODHI_API_BASE}/mcp-servers/${serverId}/oauth-configs/${id}/token`,
+    'post',
+    {
+      onSuccess: (response) => options?.onSuccess?.(response.data),
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to exchange OAuth token';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ id: _id, serverId: _sid, ...body }) => body }
+  );
+}
+
+// ============================================================================
+// Mutation Hooks - OAuth Token operations
+// ============================================================================
+
+export function useDeleteOAuthToken(options?: {
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { tokenId: string }> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<void, { tokenId: string }>(
+    ({ tokenId }) => `${MCPS_OAUTH_TOKENS_ENDPOINT}/${tokenId}`,
+    'delete',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['oauth-tokens']);
+        options?.onSuccess?.();
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to delete OAuth token';
+        options?.onError?.(message);
+      },
+    },
+    { noBody: true }
   );
 }

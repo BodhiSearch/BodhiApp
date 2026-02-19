@@ -63,6 +63,34 @@ export class McpsPage extends BasePage {
     authHeaderKey: '[data-testid="mcp-auth-header-key"]',
     authHeaderValue: '[data-testid="mcp-auth-header-value"]',
 
+    // OAuth auth type option
+    authTypeOAuth: '[data-testid="mcp-auth-type-oauth"]',
+
+    // OAuth connected state
+    oauthConnectedCard: '[data-testid="oauth-connected-card"]',
+    oauthConnectedBadge: '[data-testid="oauth-connected-badge"]',
+    oauthDisconnectButton: '[data-testid="oauth-disconnect-button"]',
+    oauthConnectedInfo: '[data-testid="oauth-connected-info"]',
+
+    // OAuth config dropdown
+    oauthConfigDropdown: '[data-testid="oauth-config-dropdown"]',
+    oauthConfigSelect: '[data-testid="oauth-config-select"]',
+    oauthConfigOptionNew: '[data-testid="oauth-config-option-new"]',
+    oauthConfigSummary: '[data-testid="oauth-config-summary"]',
+
+    // OAuth form fields
+    oauthFieldsSection: '[data-testid="oauth-fields-section"]',
+    oauthServerUrl: '[data-testid="oauth-server-url"]',
+    oauthClientId: '[data-testid="oauth-client-id"]',
+    oauthClientSecret: '[data-testid="oauth-client-secret"]',
+    oauthAuthorizationEndpoint: '[data-testid="oauth-authorization-endpoint"]',
+    oauthTokenEndpoint: '[data-testid="oauth-token-endpoint"]',
+    oauthScopes: '[data-testid="oauth-scopes"]',
+    oauthAutoDetectButton: '[data-testid="oauth-auto-detect"]',
+    oauthAuthorizeButton: '[data-testid="oauth-authorize"]',
+    oauthAuthorizeExistingButton: '[data-testid="oauth-authorize-existing"]',
+    oauthStatusMessage: '[data-testid="oauth-status"]',
+
     // Tools section
     toolsSection: '[data-testid="mcp-tools-section"]',
     fetchToolsButton: '[data-testid="mcp-fetch-tools-button"]',
@@ -107,9 +135,8 @@ export class McpsPage extends BasePage {
   }
 
   async expectServersListPage() {
-    await expect(this.page.locator(this.selectors.serversPage)).toBeVisible({
-      timeout: 15000,
-    });
+    await this.page.waitForURL(/\/ui\/mcp-servers/);
+    await this.waitForSPAReady();
   }
 
   async clickNewServer() {
@@ -162,9 +189,8 @@ export class McpsPage extends BasePage {
   }
 
   async expectMcpsListPage() {
-    await expect(this.page.locator(this.selectors.pageContainer)).toBeVisible({
-      timeout: 15000,
-    });
+    await this.page.waitForURL(/\/ui\/mcps(?:\/)?$/);
+    await this.waitForSPAReady();
   }
 
   async clickNewMcp() {
@@ -199,7 +225,8 @@ export class McpsPage extends BasePage {
   // ========== New/Edit MCP Instance Methods ==========
 
   async expectNewMcpPage() {
-    await expect(this.page.locator(this.selectors.newPageContainer)).toBeVisible();
+    await this.page.waitForURL(/\/ui\/mcps\/new/);
+    await this.waitForSPAReady();
   }
 
   async selectServerFromCombobox(serverName) {
@@ -303,6 +330,147 @@ export class McpsPage extends BasePage {
     await expect(input).toHaveValue(key);
   }
 
+  async selectAuthTypeOAuth() {
+    await this.page.click(this.selectors.authTypeSelect);
+    await expect(this.page.locator(this.selectors.authTypeOAuth)).toBeVisible();
+    await this.page.click(this.selectors.authTypeOAuth);
+  }
+
+  async fillOAuthServerUrl(value) {
+    await this.page.fill(this.selectors.oauthServerUrl, value);
+  }
+
+  async expectOAuthServerUrlValue(value) {
+    await expect(this.page.locator(this.selectors.oauthServerUrl)).toHaveValue(value);
+  }
+
+  async fillOAuthClientId(value) {
+    await this.page.fill(this.selectors.oauthClientId, value);
+  }
+
+  async fillOAuthClientSecret(value) {
+    await this.page.fill(this.selectors.oauthClientSecret, value);
+  }
+
+  async fillOAuthAuthorizationEndpoint(value) {
+    await this.page.fill(this.selectors.oauthAuthorizationEndpoint, value);
+  }
+
+  async fillOAuthTokenEndpoint(value) {
+    await this.page.fill(this.selectors.oauthTokenEndpoint, value);
+  }
+
+  async fillOAuthScopes(value) {
+    await this.page.fill(this.selectors.oauthScopes, value);
+  }
+
+  async clickAutoDetect() {
+    await this.page.click(this.selectors.oauthAutoDetectButton);
+  }
+
+  async clickAuthorize() {
+    await this.page.click(this.selectors.oauthAuthorizeButton);
+  }
+
+  async expectOAuthConnected() {
+    await expect(this.page.locator(this.selectors.oauthConnectedBadge)).toBeVisible();
+  }
+
+  async clickDisconnect() {
+    await this.page.click(this.selectors.oauthDisconnectButton);
+  }
+
+  async expectNewOAuthConfigForm() {
+    await expect(this.page.locator(this.selectors.oauthConfigDropdown)).not.toBeVisible();
+    await expect(this.page.locator(this.selectors.oauthClientId)).toBeVisible();
+  }
+
+  async selectExistingOAuthConfig(configId) {
+    const dropdown = this.page.locator(this.selectors.oauthConfigDropdown);
+    await expect(dropdown).toBeVisible();
+    await this.page.click(this.selectors.oauthConfigSelect);
+    if (configId) {
+      await this.page.click(`[data-testid="oauth-config-option-${configId}"]`);
+    } else {
+      const firstConfig = this.page
+        .locator('[role="option"]')
+        .filter({ hasNotText: '+ New OAuth Config' })
+        .first();
+      await firstConfig.click();
+    }
+  }
+
+  async selectNewFromDropdown() {
+    const dropdown = this.page.locator(this.selectors.oauthConfigDropdown);
+    await expect(dropdown).toBeVisible();
+    await this.page.click(this.selectors.oauthConfigSelect);
+    await this.page.click(this.selectors.oauthConfigOptionNew);
+  }
+
+  async expectOAuthFields() {
+    await expect(this.page.locator(this.selectors.oauthClientId)).toBeVisible();
+    await expect(this.page.locator(this.selectors.oauthClientSecret)).toBeVisible();
+  }
+
+  async waitForAutoDetectComplete() {
+    await expect(
+      this.page.locator(`${this.selectors.oauthAutoDetectButton}[data-test-state="success"]`)
+    ).toBeVisible();
+  }
+
+  async waitForAutoDetectTerminal() {
+    await expect(
+      this.page.locator(
+        `${this.selectors.oauthAutoDetectButton}[data-test-state="success"], ${this.selectors.oauthAutoDetectButton}[data-test-state="error"]`
+      )
+    ).toBeVisible();
+  }
+
+  async clickAuthorizeExisting() {
+    await this.page.click(this.selectors.oauthAuthorizeExistingButton);
+  }
+
+  async createOAuthMcpInstance({
+    serverName,
+    mcpName,
+    mcpSlug,
+    clientId,
+    clientSecret,
+    oauthServerUrl,
+    approveSelector = '[data-testid="approve-btn"]',
+  }) {
+    await this.navigateToMcpsList();
+    await this.expectMcpsListPage();
+    await this.clickNewMcp();
+    await this.expectNewMcpPage();
+
+    await this.selectServerFromCombobox(serverName);
+    await this.selectAuthTypeOAuth();
+    await this.expectNewOAuthConfigForm();
+
+    await this.fillOAuthClientId(clientId);
+    await this.fillOAuthClientSecret(clientSecret);
+    if (oauthServerUrl) {
+      await this.fillOAuthServerUrl(oauthServerUrl);
+    }
+    await this.clickAutoDetect();
+    await this.waitForAutoDetectComplete();
+
+    await this.clickAuthorize();
+    await this.page.waitForURL(/\/authorize/);
+    await this.page.click(approveSelector);
+
+    await this.page.waitForURL(/\/ui\/mcps\/new/);
+    await this.waitForSPAReady();
+    await this.expectOAuthConnected();
+
+    await this.fillName(mcpName);
+    await this.fillSlug(mcpSlug);
+    await this.clickFetchTools();
+    await this.expectToolsList();
+    await this.clickCreate();
+  }
+
   async createMcpInstanceWithAuth(
     serverName,
     name,
@@ -341,9 +509,7 @@ export class McpsPage extends BasePage {
   }
 
   async expectToolsList() {
-    await expect(this.page.locator(this.selectors.toolsList)).toBeVisible({
-      timeout: 30000,
-    });
+    await expect(this.page.locator(this.selectors.toolsList)).toBeVisible();
   }
 
   async expectToolItem(toolName) {
@@ -367,9 +533,7 @@ export class McpsPage extends BasePage {
   }
 
   async expectPlaygroundPage() {
-    await expect(this.page.locator(this.selectors.playgroundPage)).toBeVisible({
-      timeout: 15000,
-    });
+    await expect(this.page.locator(this.selectors.playgroundPage)).toBeVisible();
   }
 
   async selectPlaygroundTool(name) {
@@ -423,13 +587,13 @@ export class McpsPage extends BasePage {
 
   async expectPlaygroundResultSuccess() {
     const status = this.page.locator(this.selectors.playgroundResultStatus);
-    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toBeVisible();
     await expect(status).toHaveAttribute('data-test-state', 'success');
   }
 
   async expectPlaygroundResultError() {
     const status = this.page.locator(this.selectors.playgroundResultStatus);
-    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toBeVisible();
     await expect(status).toHaveAttribute('data-test-state', 'error');
   }
 

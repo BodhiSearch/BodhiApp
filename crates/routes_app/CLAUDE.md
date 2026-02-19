@@ -147,6 +147,11 @@ MCP routes (`routes_mcps/`) provide full CRUD for MCP server instances plus tool
 - Tool operations: list tools, refresh tools, execute tool (`/bodhi/v1/mcps/{id}/tools`)
 - Server allowlist: list, enable, disable MCP server URLs (`/bodhi/v1/mcp_servers`)
 - Auth: session-only for CRUD and tool ops; server enable/disable is admin-only
+- OAuth token exchange validates CSRF `state` parameter from session
+- Authorization URL uses proper URL encoding via `url::Url` (not string concatenation)
+- Auth header and OAuth token handlers enforce ownership via `user_id`
+- API types use `McpAuthType` enum instead of strings
+- `OAuthTokenExchangeRequest` includes `state: String` for CSRF
 
 ### App Access Request Workflow
 App access request routes (`routes_apps/`) handle external application resource access:
