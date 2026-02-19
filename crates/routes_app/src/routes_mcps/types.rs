@@ -50,22 +50,20 @@ pub struct McpServerQuery {
 // ============================================================================
 
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
-#[serde(tag = "auth")]
+#[serde(tag = "type")]
 pub enum McpAuth {
   #[serde(rename = "public")]
   Public,
-}
-
-impl Default for McpAuth {
-  fn default() -> Self {
-    McpAuth::Public
-  }
+  #[serde(rename = "header")]
+  Header {
+    header_key: String,
+    header_value: String,
+  },
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct FetchMcpToolsRequest {
   pub mcp_server_id: String,
-  #[serde(flatten, default)]
   pub auth: McpAuth,
 }
 
@@ -81,6 +79,7 @@ pub struct CreateMcpRequest {
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(default)]
   pub tools_filter: Option<Vec<String>>,
+  pub auth: McpAuth,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -94,6 +93,8 @@ pub struct UpdateMcpRequest {
   pub tools_filter: Option<Vec<String>>,
   #[serde(default)]
   pub tools_cache: Option<Vec<McpTool>>,
+  #[serde(default)]
+  pub auth: Option<McpAuth>,
 }
 
 // ============================================================================
@@ -113,6 +114,10 @@ pub struct McpResponse {
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
+  pub auth_type: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub auth_header_key: Option<String>,
+  pub has_auth_header_value: bool,
   pub created_at: String,
   pub updated_at: String,
 }
@@ -156,6 +161,9 @@ impl From<objs::Mcp> for McpResponse {
       enabled: mcp.enabled,
       tools_cache: mcp.tools_cache,
       tools_filter: mcp.tools_filter,
+      auth_type: mcp.auth_type,
+      auth_header_key: mcp.auth_header_key,
+      has_auth_header_value: mcp.has_auth_header_value,
       created_at: mcp.created_at.to_rfc3339(),
       updated_at: mcp.updated_at.to_rfc3339(),
     }

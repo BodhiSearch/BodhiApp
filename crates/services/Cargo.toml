@@ -62,7 +62,7 @@ urlencoding = "2.1.3"
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
-
+mcp_client = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }

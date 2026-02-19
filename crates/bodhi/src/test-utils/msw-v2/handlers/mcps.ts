@@ -52,8 +52,20 @@ export const mockMcp: McpResponse = {
   enabled: true,
   tools_cache: [mockMcpTool],
   tools_filter: ['read_wiki_structure'],
+  auth_type: 'public',
+  has_auth_header_value: false,
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockMcpWithHeaderAuth: McpResponse = {
+  ...mockMcp,
+  id: 'mcp-uuid-2',
+  slug: 'header-mcp',
+  name: 'Header Auth MCP',
+  auth_type: 'header',
+  auth_header_key: 'Authorization',
+  has_auth_header_value: true,
 };
 
 // ============================================================================

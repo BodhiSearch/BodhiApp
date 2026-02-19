@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -121,7 +122,7 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
           .replace(/[^a-z0-9-]/g, '')
       );
     }
-  }, [toolsetType?.toolset_type, form]);
+  }, [toolsetType?.toolset_type, toolsetType?.name, form]);
 
   const handleToggleClick = (checked: boolean) => {
     if (checked) {
@@ -266,9 +267,8 @@ export function SetupToolsetForm({ onSuccess }: SetupToolsetFormProps) {
                       <FormItem>
                         <FormLabel>API Key</FormLabel>
                         <FormControl>
-                          <Input
+                          <PasswordInput
                             {...field}
-                            type="password"
                             placeholder="Enter API key"
                             disabled={isFormDisabled}
                             data-testid="toolset-api-key-input"

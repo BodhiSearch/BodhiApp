@@ -1,6 +1,6 @@
 use crate::{
   CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, ListMcpServersResponse,
-  ListMcpsResponse, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery,
+  ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery,
   McpServerResponse, McpToolsResponse, McpValidationError, UpdateMcpRequest,
   UpdateMcpServerRequest, ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
 };
@@ -313,6 +313,14 @@ pub async fn create_mcp_handler(
 
   let mcp_service = state.app_service().mcp_service();
 
+  let (auth_header_key, auth_header_value) = match request.auth {
+    McpAuth::Header {
+      header_key,
+      header_value,
+    } => (Some(header_key), Some(header_value)),
+    McpAuth::Public => (None, None),
+  };
+
   let mcp = mcp_service
     .create(
       user_id,
@@ -323,6 +331,8 @@ pub async fn create_mcp_handler(
       request.enabled,
       request.tools_cache,
       request.tools_filter,
+      auth_header_key,
+      auth_header_value,
     )
     .await?;
 
@@ -394,6 +404,15 @@ pub async fn update_mcp_handler(
 
   let mcp_service = state.app_service().mcp_service();
 
+  let (auth_header_key, auth_header_value, auth_keep) = match request.auth {
+    Some(McpAuth::Header {
+      header_key,
+      header_value,
+    }) => (Some(header_key), Some(header_value), false),
+    Some(McpAuth::Public) => (None, None, false),
+    None => (None, None, true),
+  };
+
   let mcp = mcp_service
     .update(
       user_id,
@@ -404,6 +423,9 @@ pub async fn update_mcp_handler(
       request.enabled,
       request.tools_filter,
       request.tools_cache,
+      auth_header_key,
+      auth_header_value,
+      auth_keep,
     )
     .await?;
 
@@ -465,8 +487,17 @@ pub async fn fetch_mcp_tools_handler(
   }
 
   let mcp_service = state.app_service().mcp_service();
+
+  let (auth_header_key, auth_header_value) = match request.auth {
+    McpAuth::Header {
+      header_key,
+      header_value,
+    } => (Some(header_key), Some(header_value)),
+    McpAuth::Public => (None, None),
+  };
+
   let tools = mcp_service
-    .fetch_tools_for_server(&request.mcp_server_id)
+    .fetch_tools_for_server(&request.mcp_server_id, auth_header_key, auth_header_value)
     .await?;
 
   Ok(Json(McpToolsResponse { tools }))

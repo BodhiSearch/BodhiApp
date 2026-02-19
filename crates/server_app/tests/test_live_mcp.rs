@@ -97,7 +97,8 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
       "slug": "deepwiki",
       "mcp_server_id": mcp_server_id,
       "description": "DeepWiki documentation tool",
-      "enabled": true
+      "enabled": true,
+      "auth": { "type": "public" }
     }))
     .send()
     .await?;
@@ -227,7 +228,8 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
       "name": "DeepWiki MCP",
       "slug": "deepwiki",
       "mcp_server_id": mcp_server_id,
-      "enabled": true
+      "enabled": true,
+      "auth": { "type": "public" }
     }))
     .send()
     .await?;
@@ -314,6 +316,170 @@ async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
     resp.status(),
     "Non-admin should not be able to create MCP servers"
   );
+
+  server.handle.shutdown().await?;
+  Ok(())
+}
+
+/// Multi-step auth lifecycle:
+///   1. Admin creates MCP server
+///   2. User creates MCP with header auth (Authorization: Bearer token-1)
+///   3. Verify response: auth_type=header, has_auth_header_value=true, no raw value leaked
+///   4. User updates header key only (X-Api-Key with new value)
+///   5. Verify updated key
+///   6. User updates header value only (same key, new value)
+///   7. Verify auth persists
+///   8. User switches to public auth
+///   9. Verify auth cleared
+///  10. User switches back to header auth
+///  11. Verify auth restored
+#[anyhow_trace]
+#[tokio::test]
+#[serial_test::serial(live)]
+async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
+  let server = start_test_live_server().await?;
+  let client = reqwest::Client::new();
+
+  let (admin_cookie, _) =
+    create_test_session_for_live_server(&server.app_service, &["resource_admin"]).await?;
+
+  // Step 1: Create MCP server
+  let resp = client
+    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "url": "https://mcp.auth-test.example.com/mcp",
+      "name": "Auth Test Server",
+      "enabled": true
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let server_resp: Value = resp.json().await?;
+  let mcp_server_id = server_resp["id"].as_str().unwrap().to_string();
+
+  // Step 2: Create MCP with header auth
+  let resp = client
+    .post(format!("{}/bodhi/v1/mcps", server.base_url))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "name": "Auth MCP",
+      "slug": "auth-mcp",
+      "mcp_server_id": mcp_server_id,
+      "enabled": true,
+      "auth": { "type": "header", "header_key": "Authorization", "header_value": "Bearer token-1" }
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::CREATED, resp.status());
+  let mcp: Value = resp.json().await?;
+  let mcp_id = mcp["id"].as_str().unwrap().to_string();
+
+  // Step 3: Verify auth fields in response
+  assert_eq!("header", mcp["auth_type"]);
+  assert_eq!("Authorization", mcp["auth_header_key"]);
+  assert_eq!(true, mcp["has_auth_header_value"]);
+  assert!(
+    mcp.get("auth_header_value").is_none(),
+    "Raw auth value must not leak in response"
+  );
+  assert!(
+    mcp.get("encrypted_auth_header_value").is_none(),
+    "Encrypted value must not leak in response"
+  );
+
+  // Step 4: Update header key to X-Api-Key with new value
+  let resp = client
+    .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "name": "Auth MCP",
+      "slug": "auth-mcp",
+      "enabled": true,
+      "auth": { "type": "header", "header_key": "X-Api-Key", "header_value": "key-abc-123" }
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let updated: Value = resp.json().await?;
+
+  // Step 5: Verify updated key
+  assert_eq!("header", updated["auth_type"]);
+  assert_eq!("X-Api-Key", updated["auth_header_key"]);
+  assert_eq!(true, updated["has_auth_header_value"]);
+
+  // Step 6: Update value only (same key, new value)
+  let resp = client
+    .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "name": "Auth MCP",
+      "slug": "auth-mcp",
+      "enabled": true,
+      "auth": { "type": "header", "header_key": "X-Api-Key", "header_value": "key-new-456" }
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let updated2: Value = resp.json().await?;
+
+  // Step 7: Verify auth persists
+  assert_eq!("header", updated2["auth_type"]);
+  assert_eq!("X-Api-Key", updated2["auth_header_key"]);
+  assert_eq!(true, updated2["has_auth_header_value"]);
+
+  // Step 8: Switch to public auth
+  let resp = client
+    .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "name": "Auth MCP",
+      "slug": "auth-mcp",
+      "enabled": true,
+      "auth": { "type": "public" }
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let public_mcp: Value = resp.json().await?;
+
+  // Step 9: Verify auth cleared
+  assert_eq!("public", public_mcp["auth_type"]);
+  assert_eq!(Value::Null, public_mcp["auth_header_key"]);
+  assert_eq!(false, public_mcp["has_auth_header_value"]);
+
+  // Step 10: Switch back to header auth
+  let resp = client
+    .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
+    .header("Cookie", &admin_cookie)
+    .json(&json!({
+      "name": "Auth MCP",
+      "slug": "auth-mcp",
+      "enabled": true,
+      "auth": { "type": "header", "header_key": "Authorization", "header_value": "Bearer restored-token" }
+    }))
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let restored: Value = resp.json().await?;
+
+  // Step 11: Verify auth restored
+  assert_eq!("header", restored["auth_type"]);
+  assert_eq!("Authorization", restored["auth_header_key"]);
+  assert_eq!(true, restored["has_auth_header_value"]);
+
+  // Verify via list that auth info is present
+  let resp = client
+    .get(format!("{}/bodhi/v1/mcps", server.base_url))
+    .header("Cookie", &admin_cookie)
+    .send()
+    .await?;
+  assert_eq!(StatusCode::OK, resp.status());
+  let list: Value = resp.json().await?;
+  let items = list["mcps"].as_array().unwrap();
+  assert_eq!(1, items.len());
+  assert_eq!("header", items[0]["auth_type"]);
+  assert_eq!(true, items[0]["has_auth_header_value"]);
 
   server.handle.shutdown().await?;
   Ok(())

@@ -1217,6 +1217,7 @@ export type CreateMcpRequest = {
     enabled: boolean;
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
+    auth: McpAuth;
 };
 
 export type CreateMcpServerRequest = {
@@ -1389,8 +1390,9 @@ export type ExecuteToolsetRequest = {
     params: unknown;
 };
 
-export type FetchMcpToolsRequest = McpAuth & {
+export type FetchMcpToolsRequest = {
     mcp_server_id: string;
+    auth: McpAuth;
 };
 
 /**
@@ -1616,6 +1618,18 @@ export type Mcp = {
      */
     tools_filter?: Array<string> | null;
     /**
+     * Authentication type: "public" or "header"
+     */
+    auth_type: string;
+    /**
+     * Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key")
+     */
+    auth_header_key?: string | null;
+    /**
+     * Whether an encrypted auth header value is configured
+     */
+    has_auth_header_value: boolean;
+    /**
      * When this instance was created
      */
     created_at: string;
@@ -1632,7 +1646,11 @@ export type McpApproval = {
 };
 
 export type McpAuth = {
-    auth: 'public';
+    type: 'public';
+} | {
+    header_key: string;
+    header_value: string;
+    type: 'header';
 };
 
 export type McpExecuteRequest = {
@@ -1657,6 +1675,9 @@ export type McpResponse = {
     enabled: boolean;
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
+    auth_type: string;
+    auth_header_key?: string | null;
+    has_auth_header_value: boolean;
     created_at: string;
     updated_at: string;
 };
@@ -2549,6 +2570,7 @@ export type UpdateMcpRequest = {
     enabled: boolean;
     tools_filter?: Array<string> | null;
     tools_cache?: Array<McpTool> | null;
+    auth?: null | McpAuth;
 };
 
 export type UpdateMcpServerRequest = {

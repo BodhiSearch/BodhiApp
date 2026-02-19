@@ -11,6 +11,11 @@ export class McpFixtures {
   static PLAYGROUND_PARAM = 'repoName';
   static PLAYGROUND_PARAMS = { repoName: 'facebook/react' };
 
+  static TAVILY_URL = 'https://mcp.tavily.com/mcp/';
+  static TAVILY_API_KEY = process.env.TAVILY_API_KEY;
+  static TAVILY_EXPECTED_TOOL = 'tavily_search';
+  static TAVILY_SEARCH_PARAMS = { query: 'BodhiApp AI', max_results: 1 };
+
   static createServerData() {
     const ts = Date.now();
     return {
@@ -43,6 +48,24 @@ export class McpFixtures {
       name: `Playground-${ts}`,
       slug: `pg-${ts}`,
       description: 'Playground test MCP',
+    };
+  }
+
+  static createTavilyServerData() {
+    const ts = Date.now();
+    return {
+      url: McpFixtures.TAVILY_URL,
+      name: `Tavily-Server-${ts}`,
+      description: 'Tavily MCP Server with header auth',
+    };
+  }
+
+  static createTavilyInstanceData() {
+    const ts = Date.now();
+    return {
+      name: `Tavily-${ts}`,
+      slug: `tavily-${ts}`,
+      description: 'Tavily search with header auth',
     };
   }
 }

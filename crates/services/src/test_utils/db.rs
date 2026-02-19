@@ -632,6 +632,14 @@ impl McpRepository for TestDbService {
       .await
       .tap(|_| self.notify("delete_mcp"))
   }
+
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
+    self
+      .inner
+      .get_mcp_auth_header(id)
+      .await
+      .tap(|_| self.notify("get_mcp_auth_header"))
+  }
 }
 
 #[async_trait::async_trait]
@@ -846,6 +854,7 @@ mockall::mock! {
     async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError>;
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
   }
 
   #[async_trait::async_trait]

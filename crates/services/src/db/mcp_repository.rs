@@ -31,4 +31,8 @@ pub trait McpRepository: Send + Sync {
   async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
 
   async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+
+  /// Get the decrypted auth header for an MCP instance.
+  /// Returns Some((header_key, header_value)) if auth_type is "header", None otherwise.
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
 }

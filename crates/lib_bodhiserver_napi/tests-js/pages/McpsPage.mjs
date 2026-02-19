@@ -55,6 +55,14 @@ export class McpsPage extends BasePage {
     doneButton: '[data-testid="mcp-done-button"]',
     backButton: '[data-testid="mcp-back-button"]',
 
+    // Auth section
+    authSection: '[data-testid="mcp-auth-section"]',
+    authTypeSelect: '[data-testid="mcp-auth-type-select"]',
+    authTypePublic: '[data-testid="mcp-auth-type-public"]',
+    authTypeHeader: '[data-testid="mcp-auth-type-header"]',
+    authHeaderKey: '[data-testid="mcp-auth-header-key"]',
+    authHeaderValue: '[data-testid="mcp-auth-header-value"]',
+
     // Tools section
     toolsSection: '[data-testid="mcp-tools-section"]',
     fetchToolsButton: '[data-testid="mcp-fetch-tools-button"]',
@@ -255,6 +263,71 @@ export class McpsPage extends BasePage {
    */
   async createMcpInstanceWithAllTools(serverName, name, slug, description = '') {
     await this.createMcpInstance(serverName, name, slug, description);
+  }
+
+  // ========== Auth Section Methods ==========
+
+  async selectAuthType(type) {
+    await this.page.click(this.selectors.authTypeSelect);
+    const option =
+      type === 'header' ? this.selectors.authTypeHeader : this.selectors.authTypePublic;
+    await expect(this.page.locator(option)).toBeVisible();
+    await this.page.click(option);
+  }
+
+  async fillAuthHeaderKey(key) {
+    await this.page.fill(this.selectors.authHeaderKey, key);
+  }
+
+  async fillAuthHeaderValue(value) {
+    await this.page.fill(this.selectors.authHeaderValue, value);
+  }
+
+  async expectAuthHeaderFields() {
+    await expect(this.page.locator(this.selectors.authHeaderKey)).toBeVisible();
+    await expect(this.page.locator(this.selectors.authHeaderValue)).toBeVisible();
+  }
+
+  async expectNoAuthHeaderFields() {
+    await expect(this.page.locator(this.selectors.authHeaderKey)).not.toBeVisible();
+    await expect(this.page.locator(this.selectors.authHeaderValue)).not.toBeVisible();
+  }
+
+  async expectAuthTypeState(type) {
+    const trigger = this.page.locator(this.selectors.authTypeSelect);
+    await expect(trigger).toHaveAttribute('data-test-state', type);
+  }
+
+  async expectAuthHeaderKeyValue(key) {
+    const input = this.page.locator(this.selectors.authHeaderKey);
+    await expect(input).toHaveValue(key);
+  }
+
+  async createMcpInstanceWithAuth(
+    serverName,
+    name,
+    slug,
+    headerKey,
+    headerValue,
+    description = ''
+  ) {
+    await this.navigateToMcpsList();
+    await this.expectMcpsListPage();
+    await this.clickNewMcp();
+    await this.expectNewMcpPage();
+
+    await this.selectServerFromCombobox(serverName);
+    if (name) await this.fillName(name);
+    await this.fillSlug(slug);
+    if (description) await this.fillDescription(description);
+
+    await this.selectAuthType('header');
+    await this.fillAuthHeaderKey(headerKey);
+    await this.fillAuthHeaderValue(headerValue);
+
+    await this.clickFetchTools();
+    await this.expectToolsList();
+    await this.clickCreate();
   }
 
   // ========== Tools Section Methods ==========

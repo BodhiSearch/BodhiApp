@@ -72,6 +72,13 @@ pub struct Mcp {
   /// Whitelisted tool names (empty = block all)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
+  /// Authentication type: "public" or "header"
+  pub auth_type: String,
+  /// Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key")
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub auth_header_key: Option<String>,
+  /// Whether an encrypted auth header value is configured
+  pub has_auth_header_value: bool,
   /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,

@@ -2232,6 +2232,7 @@ export interface components {
             enabled: boolean;
             tools_cache?: components["schemas"]["McpTool"][] | null;
             tools_filter?: string[] | null;
+            auth: components["schemas"]["McpAuth"];
         };
         CreateMcpServerRequest: {
             url: string;
@@ -2385,8 +2386,9 @@ export interface components {
             /** @description Function parameters as JSON */
             params: unknown;
         };
-        FetchMcpToolsRequest: components["schemas"]["McpAuth"] & {
+        FetchMcpToolsRequest: {
             mcp_server_id: string;
+            auth: components["schemas"]["McpAuth"];
         };
         /**
          * @description Request to fetch available models from provider
@@ -2550,6 +2552,12 @@ export interface components {
             tools_cache?: components["schemas"]["McpTool"][] | null;
             /** @description Whitelisted tool names (empty = block all) */
             tools_filter?: string[] | null;
+            /** @description Authentication type: "public" or "header" */
+            auth_type: string;
+            /** @description Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key") */
+            auth_header_key?: string | null;
+            /** @description Whether an encrypted auth header value is configured */
+            has_auth_header_value: boolean;
             /**
              * Format: date-time
              * @description When this instance was created
@@ -2570,7 +2578,12 @@ export interface components {
         };
         McpAuth: {
             /** @enum {string} */
-            auth: "public";
+            type: "public";
+        } | {
+            header_key: string;
+            header_value: string;
+            /** @enum {string} */
+            type: "header";
         };
         McpExecuteRequest: {
             params: unknown;
@@ -2591,6 +2604,9 @@ export interface components {
             enabled: boolean;
             tools_cache?: components["schemas"]["McpTool"][] | null;
             tools_filter?: string[] | null;
+            auth_type: string;
+            auth_header_key?: string | null;
+            has_auth_header_value: boolean;
             created_at: string;
             updated_at: string;
         };
@@ -3379,6 +3395,7 @@ export interface components {
             enabled: boolean;
             tools_filter?: string[] | null;
             tools_cache?: components["schemas"]["McpTool"][] | null;
+            auth?: null | components["schemas"]["McpAuth"];
         };
         UpdateMcpServerRequest: {
             url: string;

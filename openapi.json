@@ -10545,7 +10545,8 @@
           "name",
           "slug",
           "mcp_server_id",
-          "enabled"
+          "enabled",
+          "auth"
         ],
         "properties": {
           "name": {
@@ -10583,6 +10584,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "auth": {
+            "$ref": "#/components/schemas/McpAuth"
           }
         }
       },
@@ -10990,22 +10994,19 @@
         }
       },
       "FetchMcpToolsRequest": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/McpAuth"
+        "type": "object",
+        "required": [
+          "mcp_server_id",
+          "auth"
+        ],
+        "properties": {
+          "mcp_server_id": {
+            "type": "string"
           },
-          {
-            "type": "object",
-            "required": [
-              "mcp_server_id"
-            ],
-            "properties": {
-              "mcp_server_id": {
-                "type": "string"
-              }
-            }
+          "auth": {
+            "$ref": "#/components/schemas/McpAuth"
           }
-        ]
+        }
       },
       "FetchModelsRequest": {
         "type": "object",
@@ -11419,6 +11420,8 @@
           "slug",
           "name",
           "enabled",
+          "auth_type",
+          "has_auth_header_value",
           "created_at",
           "updated_at"
         ],
@@ -11470,6 +11473,21 @@
             },
             "description": "Whitelisted tool names (empty = block all)"
           },
+          "auth_type": {
+            "type": "string",
+            "description": "Authentication type: \"public\" or \"header\""
+          },
+          "auth_header_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Header name when auth_type is \"header\" (e.g. \"Authorization\", \"X-API-Key\")"
+          },
+          "has_auth_header_value": {
+            "type": "boolean",
+            "description": "Whether an encrypted auth header value is configured"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -11514,13 +11532,35 @@
           {
             "type": "object",
             "required": [
-              "auth"
+              "type"
             ],
             "properties": {
-              "auth": {
+              "type": {
                 "type": "string",
                 "enum": [
                   "public"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "header_key",
+              "header_value",
+              "type"
+            ],
+            "properties": {
+              "header_key": {
+                "type": "string"
+              },
+              "header_value": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "header"
                 ]
               }
             }
@@ -11567,6 +11607,8 @@
           "slug",
           "name",
           "enabled",
+          "auth_type",
+          "has_auth_header_value",
           "created_at",
           "updated_at"
         ],
@@ -11609,6 +11651,18 @@
             "items": {
               "type": "string"
             }
+          },
+          "auth_type": {
+            "type": "string"
+          },
+          "auth_header_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_auth_header_value": {
+            "type": "boolean"
           },
           "created_at": {
             "type": "string"
@@ -13870,6 +13924,16 @@
             "items": {
               "$ref": "#/components/schemas/McpTool"
             }
+          },
+          "auth": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/McpAuth"
+              }
+            ]
           }
         }
       },

@@ -1,121 +1,45 @@
+import {
+  McpServerInfo,
+  McpServerResponse,
+  CreateMcpServerRequest,
+  UpdateMcpServerRequest,
+  ListMcpServersResponse,
+  McpTool,
+  McpResponse,
+  McpAuth,
+  CreateMcpRequest,
+  UpdateMcpRequest,
+  FetchMcpToolsRequest,
+  ListMcpsResponse,
+  McpToolsResponse,
+  McpExecuteRequest,
+  McpExecuteResponse,
+  OpenAiApiError,
+} from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
 import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/hooks/useQuery';
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
-// ============================================================================
-// Types - MCP Server (admin registry)
-// ============================================================================
+export type {
+  McpServerInfo,
+  McpServerResponse,
+  CreateMcpServerRequest,
+  UpdateMcpServerRequest,
+  ListMcpServersResponse,
+  McpTool,
+  McpResponse,
+  McpAuth,
+  CreateMcpRequest,
+  UpdateMcpRequest,
+  FetchMcpToolsRequest,
+  ListMcpsResponse,
+  McpToolsResponse,
+  McpExecuteRequest,
+  McpExecuteResponse,
+};
 
-export interface McpServerInfo {
-  id: string;
-  url: string;
-  name: string;
-  enabled: boolean;
-}
-
-export interface McpServerResponse {
-  id: string;
-  url: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
-  created_by: string;
-  updated_by: string;
-  enabled_mcp_count: number;
-  disabled_mcp_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateMcpServerRequest {
-  url: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
-}
-
-export interface UpdateMcpServerRequest {
-  url: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
-}
-
-export interface ListMcpServersResponse {
-  mcp_servers: McpServerResponse[];
-}
-
-// ============================================================================
-// Types - MCP Instance (user-owned)
-// ============================================================================
-
-export interface McpTool {
-  name: string;
-  description?: string;
-  input_schema?: unknown;
-}
-
-export interface McpResponse {
-  id: string;
-  mcp_server: McpServerInfo;
-  slug: string;
-  name: string;
-  description?: string;
-  enabled: boolean;
-  tools_cache?: McpTool[];
-  tools_filter?: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateMcpRequest {
-  name: string;
-  slug: string;
-  mcp_server_id: string;
-  description?: string;
-  enabled: boolean;
-  tools_cache?: McpTool[];
-  tools_filter?: string[];
-}
-
-export interface UpdateMcpRequest {
-  name: string;
-  slug: string;
-  description?: string;
-  enabled: boolean;
-  tools_filter?: string[];
-  tools_cache?: McpTool[];
-}
-
-export interface FetchMcpToolsRequest {
-  mcp_server_id: string;
-  auth: 'public';
-}
-
-export interface ListMcpsResponse {
-  mcps: McpResponse[];
-}
-
-export interface McpToolsResponse {
-  tools: McpTool[];
-}
-
-export interface McpExecuteRequest {
-  params: unknown;
-}
-
-export interface McpExecuteResponse {
-  result?: unknown;
-  error?: string;
-}
-
-// Error type alias
-interface ErrorResponse {
-  error?: {
-    message?: string;
-  };
-}
+type ErrorResponse = OpenAiApiError;
 
 // ============================================================================
 // Endpoints

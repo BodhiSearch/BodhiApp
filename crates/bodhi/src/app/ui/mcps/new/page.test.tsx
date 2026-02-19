@@ -10,6 +10,8 @@ import {
   mockMcp,
   mockMcpServerResponse,
   mockMcpTool,
+  mockMcpWithHeaderAuth,
+  mockUpdateMcp,
 } from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
@@ -236,5 +238,280 @@ describe('NewMcpPage - Edit flow', () => {
     });
 
     expect(screen.queryByTestId('mcp-create-button')).not.toBeInTheDocument();
+  });
+});
+
+describe('NewMcpPage - Auth type selector', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockListMcpServers([mockMcpServerResponse]),
+      mockFetchMcpTools([mockMcpTool]),
+      mockCreateMcp(mockMcp)
+    );
+  });
+
+  it('renders auth section with default public type', async () => {
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-section')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    expect(screen.queryByTestId('mcp-auth-header-key')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mcp-auth-header-value')).not.toBeInTheDocument();
+  });
+
+  it('shows header fields when header auth type selected', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-header')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-header'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('mcp-auth-header-value')).toBeInTheDocument();
+  });
+
+  it('hides header fields when switching back to public', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-header')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-header'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-public')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-public'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mcp-auth-header-key')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('mcp-auth-header-value')).not.toBeInTheDocument();
+  });
+});
+
+describe('NewMcpPage - Bearer warning', () => {
+  beforeEach(() => {
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockListMcpServers([mockMcpServerResponse]),
+      mockFetchMcpTools([mockMcpTool]),
+      mockCreateMcp(mockMcp)
+    );
+  });
+
+  it('shows warning when Authorization header value does not start with Bearer', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-header')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-header'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByTestId('mcp-auth-header-key'));
+    await user.type(screen.getByTestId('mcp-auth-header-key'), 'Authorization');
+    await user.type(screen.getByTestId('mcp-auth-header-value'), 'sk-12345');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-bearer-warning')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show warning when value starts with Bearer', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-header')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-header'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByTestId('mcp-auth-header-key'));
+    await user.type(screen.getByTestId('mcp-auth-header-key'), 'Authorization');
+    await user.type(screen.getByTestId('mcp-auth-header-value'), 'Bearer sk-12345');
+
+    expect(screen.queryByTestId('mcp-auth-bearer-warning')).not.toBeInTheDocument();
+  });
+
+  it('does not show warning for non-Authorization headers', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-select')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mcp-auth-type-select'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-type-header')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('mcp-auth-type-header'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByTestId('mcp-auth-header-key'));
+    await user.type(screen.getByTestId('mcp-auth-header-key'), 'X-API-Key');
+    await user.type(screen.getByTestId('mcp-auth-header-value'), 'sk-12345');
+
+    expect(screen.queryByTestId('mcp-auth-bearer-warning')).not.toBeInTheDocument();
+  });
+});
+
+describe('NewMcpPage - Edit with header auth', () => {
+  beforeEach(() => {
+    searchParamsMap = { id: 'mcp-uuid-2' };
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockGetMcp(mockMcpWithHeaderAuth),
+      mockFetchMcpTools([mockMcpTool]),
+      mockUpdateMcp(mockMcpWithHeaderAuth)
+    );
+  });
+
+  it('loads existing header auth and shows auth fields', async () => {
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-name-input')).toHaveValue('Header Auth MCP');
+    });
+
+    expect(screen.getByTestId('mcp-auth-header-key')).toHaveValue('Authorization');
+    expect(screen.getByTestId('mcp-auth-header-value')).toHaveValue('');
+  });
+
+  it('shows auth type select with header state on edit', async () => {
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-name-input')).toHaveValue('Header Auth MCP');
+    });
+
+    const trigger = screen.getByTestId('mcp-auth-type-select');
+    expect(trigger).toHaveAttribute('data-test-state', 'header');
+  });
+
+  it('shows placeholder hint about existing header value in edit mode', async () => {
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-value')).toBeInTheDocument();
+    });
+
+    const input = screen.getByTestId('mcp-auth-header-value');
+    expect(input).toHaveAttribute('placeholder', 'Leave empty to keep existing');
+  });
+
+  it('toggles header value visibility with eye button', async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-value')).toBeInTheDocument();
+    });
+
+    const input = screen.getByTestId('mcp-auth-header-value');
+    expect(input).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByTestId('mcp-auth-header-value-visibility-toggle'));
+    expect(input).toHaveAttribute('type', 'text');
+
+    await user.click(screen.getByTestId('mcp-auth-header-value-visibility-toggle'));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+});
+
+describe('NewMcpPage - Edit with public auth', () => {
+  beforeEach(() => {
+    searchParamsMap = { id: 'mcp-uuid-1' };
+    server.use(
+      ...mockAppInfo({ status: 'ready' }, { stub: true }),
+      ...mockUserLoggedIn({}, { stub: true }),
+      mockGetMcp(mockMcp),
+      mockFetchMcpTools([mockMcpTool]),
+      mockUpdateMcp(mockMcp)
+    );
+  });
+
+  it('shows auth type select with public state on edit', async () => {
+    await act(async () => {
+      render(<NewMcpPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-name-input')).toHaveValue('Example MCP');
+    });
+
+    const trigger = screen.getByTestId('mcp-auth-type-select');
+    expect(trigger).toHaveAttribute('data-test-state', 'public');
+    expect(screen.queryByTestId('mcp-auth-header-key')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mcp-auth-header-value')).not.toBeInTheDocument();
   });
 });

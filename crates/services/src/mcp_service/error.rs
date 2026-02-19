@@ -1,4 +1,4 @@
-use crate::db::DbError;
+use crate::db::{encryption::EncryptionError, DbError};
 use mcp_client::McpClientError;
 use objs::{AppError, ErrorType};
 
@@ -96,8 +96,18 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   ExecutionFailed(String),
 
+  #[error("Encryption error: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  EncryptionError(String),
+
   #[error(transparent)]
   DbError(#[from] DbError),
+}
+
+impl From<EncryptionError> for McpError {
+  fn from(e: EncryptionError) -> Self {
+    McpError::EncryptionError(e.to_string())
+  }
 }
 
 impl From<McpClientError> for McpError {

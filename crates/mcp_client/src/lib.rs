@@ -19,14 +19,21 @@ type RunningMcpClient = rmcp::service::RunningService<rmcp::RoleClient, ClientIn
 #[async_trait::async_trait]
 pub trait McpClient: Debug + Send + Sync {
   /// Connect to an MCP server, fetch available tools, disconnect.
-  async fn fetch_tools(&self, url: &str) -> Result<Vec<McpTool>, McpClientError>;
+  /// `auth_header`: optional (header_name, header_value) to inject as default header.
+  async fn fetch_tools(
+    &self,
+    url: &str,
+    auth_header: Option<(String, String)>,
+  ) -> Result<Vec<McpTool>, McpClientError>;
 
   /// Connect to an MCP server, call a tool, disconnect.
+  /// `auth_header`: optional (header_name, header_value) to inject as default header.
   async fn call_tool(
     &self,
     url: &str,
     tool_name: &str,
     args: Value,
+    auth_header: Option<(String, String)>,
   ) -> Result<Value, McpClientError>;
 }
 
@@ -55,8 +62,34 @@ impl DefaultMcpClient {
     }
   }
 
-  async fn connect(url: &str) -> Result<RunningMcpClient, McpClientError> {
-    let http_client = reqwest::Client::new();
+  async fn connect(
+    url: &str,
+    auth_header: Option<(String, String)>,
+  ) -> Result<RunningMcpClient, McpClientError> {
+    let http_client = if let Some((header_name, header_value)) = auth_header {
+      let mut headers = reqwest::header::HeaderMap::new();
+      let name = reqwest::header::HeaderName::from_bytes(header_name.to_lowercase().as_bytes())
+        .map_err(|e| McpClientError::ConnectionFailed {
+          url: url.to_string(),
+          reason: format!("Invalid header name '{}': {}", header_name, e),
+        })?;
+      let value = reqwest::header::HeaderValue::from_str(&header_value).map_err(|e| {
+        McpClientError::ConnectionFailed {
+          url: url.to_string(),
+          reason: format!("Invalid header value: {}", e),
+        }
+      })?;
+      headers.insert(name, value);
+      reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .map_err(|e| McpClientError::ConnectionFailed {
+          url: url.to_string(),
+          reason: e.to_string(),
+        })?
+    } else {
+      reqwest::Client::new()
+    };
     let transport = StreamableHttpClientTransport::with_client(
       http_client,
       StreamableHttpClientTransportConfig::with_uri(url),
@@ -74,8 +107,12 @@ impl DefaultMcpClient {
 
 #[async_trait::async_trait]
 impl McpClient for DefaultMcpClient {
-  async fn fetch_tools(&self, url: &str) -> Result<Vec<McpTool>, McpClientError> {
-    let client = Self::connect(url).await?;
+  async fn fetch_tools(
+    &self,
+    url: &str,
+    auth_header: Option<(String, String)>,
+  ) -> Result<Vec<McpTool>, McpClientError> {
+    let client = Self::connect(url, auth_header).await?;
 
     let tools_response =
       client
@@ -105,8 +142,9 @@ impl McpClient for DefaultMcpClient {
     url: &str,
     tool_name: &str,
     args: Value,
+    auth_header: Option<(String, String)>,
   ) -> Result<Value, McpClientError> {
-    let client = Self::connect(url).await?;
+    let client = Self::connect(url, auth_header).await?;
 
     let result = client
       .call_tool(CallToolRequestParams {

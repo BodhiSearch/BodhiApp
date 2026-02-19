@@ -183,6 +183,11 @@ Technical research documents, dependency analysis, and architectural investigati
 - **[AppRegInfo JWT Simplification Analysis](07-research/appreginfo-jwt-simplification-analysis.md)** - Comprehensive analysis of JWT validation fields in AppRegInfo, revealing unused dead code and proposing runtime parameter fetching architecture
 - **[OAuth 2.1 Token Exchange Security Research](07-research/token-exchange.md)** - Research on secure token exchange patterns for preventing privilege escalation when third-party clients access our resource server, with scope-limited exchange recommendations
 
+### 🔧 [Tech Debt](tech-debt/) - Technical Debt Tracking
+Documented technical debt items for future consolidation and refactoring
+
+- **[Password Input Consolidation](tech-debt/20260219-password-input.md)** - Refactor `ApiKeyInput` and chat settings to use the shared `PasswordInput` component
+
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
 

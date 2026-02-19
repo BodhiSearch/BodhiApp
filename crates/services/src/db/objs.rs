@@ -265,6 +265,9 @@ pub struct McpWithServerRow {
   pub enabled: bool,
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
+  pub auth_type: String,
+  pub auth_header_key: Option<String>,
+  pub has_auth_header_value: bool,
   pub created_at: i64,
   pub updated_at: i64,
   // Server info from JOIN
@@ -288,6 +291,11 @@ pub struct McpRow {
   pub enabled: bool,
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
+  pub auth_type: String,
+  pub auth_header_key: Option<String>,
+  pub encrypted_auth_header_value: Option<String>,
+  pub auth_header_salt: Option<String>,
+  pub auth_header_nonce: Option<String>,
   pub created_at: i64,
   pub updated_at: i64,
 }
