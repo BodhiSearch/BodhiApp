@@ -75,6 +75,8 @@ export interface CreateMcpRequest {
   mcp_server_id: string;
   description?: string;
   enabled: boolean;
+  tools_cache?: McpTool[];
+  tools_filter?: string[];
 }
 
 export interface UpdateMcpRequest {
@@ -83,6 +85,12 @@ export interface UpdateMcpRequest {
   description?: string;
   enabled: boolean;
   tools_filter?: string[];
+  tools_cache?: McpTool[];
+}
+
+export interface FetchMcpToolsRequest {
+  mcp_server_id: string;
+  auth: 'public';
 }
 
 export interface ListMcpsResponse {
@@ -114,6 +122,7 @@ interface ErrorResponse {
 // ============================================================================
 
 export const MCPS_ENDPOINT = `${BODHI_API_BASE}/mcps`;
+export const MCPS_FETCH_TOOLS_ENDPOINT = `${BODHI_API_BASE}/mcps/fetch-tools`;
 export const MCP_SERVERS_ENDPOINT = `${BODHI_API_BASE}/mcp_servers`;
 
 // ============================================================================
@@ -268,6 +277,25 @@ export function useUpdateMcpServer(options?: {
     },
     { transformBody: ({ id: _id, ...body }) => body }
   );
+}
+
+// ============================================================================
+// Mutation Hooks - Tool discovery
+// ============================================================================
+
+export function useFetchMcpTools(options?: {
+  onSuccess?: (tools: McpToolsResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<McpToolsResponse>, AxiosError<ErrorResponse>, FetchMcpToolsRequest> {
+  return useMutationQuery<McpToolsResponse, FetchMcpToolsRequest>(() => MCPS_FETCH_TOOLS_ENDPOINT, 'post', {
+    onSuccess: (response) => {
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to fetch tools';
+      options?.onError?.(message);
+    },
+  });
 }
 
 // ============================================================================

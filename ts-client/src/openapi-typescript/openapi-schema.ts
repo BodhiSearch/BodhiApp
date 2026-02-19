@@ -479,6 +479,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/mcps/fetch-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch tools from an MCP server without creating an MCP instance */
+        post: operations["fetchMcpTools"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/mcps/{id}": {
         parameters: {
             query?: never;
@@ -2213,6 +2230,8 @@ export interface components {
             mcp_server_id: string;
             description?: string | null;
             enabled: boolean;
+            tools_cache?: components["schemas"]["McpTool"][] | null;
+            tools_filter?: string[] | null;
         };
         CreateMcpServerRequest: {
             url: string;
@@ -2365,6 +2384,9 @@ export interface components {
         ExecuteToolsetRequest: {
             /** @description Function parameters as JSON */
             params: unknown;
+        };
+        FetchMcpToolsRequest: components["schemas"]["McpAuth"] & {
+            mcp_server_id: string;
         };
         /**
          * @description Request to fetch available models from provider
@@ -2545,6 +2567,10 @@ export interface components {
             url: string;
             status: string;
             instance?: null | components["schemas"]["McpInstance"];
+        };
+        McpAuth: {
+            /** @enum {string} */
+            auth: "public";
         };
         McpExecuteRequest: {
             params: unknown;
@@ -3352,6 +3378,7 @@ export interface components {
             description?: string | null;
             enabled: boolean;
             tools_filter?: string[] | null;
+            tools_cache?: components["schemas"]["McpTool"][] | null;
         };
         UpdateMcpServerRequest: {
             url: string;
@@ -5766,6 +5793,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    fetchMcpTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FetchMcpToolsRequest"];
+            };
+        };
+        responses: {
+            /** @description List of tools from MCP server */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToolsResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description MCP server not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {

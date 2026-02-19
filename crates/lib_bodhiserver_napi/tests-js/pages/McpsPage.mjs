@@ -218,6 +218,8 @@ export class McpsPage extends BasePage {
 
   async clickCreate() {
     await this.page.click(this.selectors.createButton);
+    await this.page.waitForURL(/\/ui\/mcps(?!\/new)/);
+    await this.waitForSPAReady();
   }
 
   async clickUpdate() {
@@ -226,16 +228,9 @@ export class McpsPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  async clickDone() {
-    await this.page.click(this.selectors.doneButton);
-  }
-
-  async clickBackToList() {
-    await this.page.click(this.selectors.backButton);
-  }
-
   /**
-   * Full flow: select server from combobox, fill details, create MCP instance
+   * Single-step flow: select server, fill details, fetch tools, create MCP instance.
+   * Redirects to the MCPs list after creation.
    */
   async createMcpInstance(serverName, name, slug, description = '') {
     await this.navigateToMcpsList();
@@ -249,22 +244,17 @@ export class McpsPage extends BasePage {
     await this.fillSlug(slug);
     if (description) await this.fillDescription(description);
 
+    await this.clickFetchTools();
+    await this.expectToolsList();
     await this.clickCreate();
-    await this.expectToolsSection();
   }
 
   /**
-   * Full flow: create instance, fetch tools, select all, and save.
-   * Returns to the MCPs list after completion.
+   * Single-step flow: create instance with all tools selected.
+   * Equivalent to createMcpInstance since all tools are selected by default.
    */
   async createMcpInstanceWithAllTools(serverName, name, slug, description = '') {
     await this.createMcpInstance(serverName, name, slug, description);
-    await this.clickFetchTools();
-    await this.expectToolsList();
-    await this.selectAllTools();
-    await this.clickDone();
-    await this.page.waitForURL(/\/ui\/mcps(?!\/new)/);
-    await this.waitForSPAReady();
   }
 
   // ========== Tools Section Methods ==========

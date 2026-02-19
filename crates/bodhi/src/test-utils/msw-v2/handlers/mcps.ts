@@ -96,6 +96,21 @@ export function mockUpdateMcpServer(response: McpServerResponse = mockMcpServerR
   return http.put(`${BODHI_API_BASE}/mcp_servers/:id`, () => HttpResponse.json(response));
 }
 
+export function mockFetchMcpTools(tools: McpTool[] = [mockMcpTool]) {
+  return http.post(`${BODHI_API_BASE}/mcps/fetch-tools`, () => HttpResponse.json({ tools }));
+}
+
+export function mockFetchMcpToolsError({
+  message = 'Failed to fetch tools',
+  code = 'internal_server_error',
+  type = 'internal_server_error',
+  status = 500,
+}: { message?: string; code?: string; type?: string; status?: number } = {}) {
+  return http.post(`${BODHI_API_BASE}/mcps/fetch-tools`, () =>
+    HttpResponse.json({ error: { message, code, type } }, { status })
+  );
+}
+
 export function mockRefreshMcpTools(tools: McpTool[] = [mockMcpTool]) {
   return http.post(`${BODHI_API_BASE}/mcps/:id/tools/refresh`, () => HttpResponse.json({ tools }));
 }
@@ -151,6 +166,7 @@ export const mcpsHandlers = [
   mockGetMcpServer(),
   mockCreateMcpServer(),
   mockUpdateMcpServer(),
+  mockFetchMcpTools(),
   mockRefreshMcpTools(),
   mockExecuteMcpTool(),
 ];

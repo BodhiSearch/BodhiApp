@@ -206,17 +206,9 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       const approvedName = `dw-ok-${ts}`;
       const restrictedName = `dw-no-${ts}`;
 
-      await mcpsPage.createMcpInstanceWithAllTools(
-        serverData.name,
-        approvedName,
-        approvedName
-      );
+      await mcpsPage.createMcpInstanceWithAllTools(serverData.name, approvedName, approvedName);
 
-      await mcpsPage.createMcpInstanceWithAllTools(
-        serverData.name,
-        restrictedName,
-        restrictedName
-      );
+      await mcpsPage.createMcpInstanceWithAllTools(serverData.name, restrictedName, restrictedName);
 
       approvedInstanceId = await mcpsPage.getMcpUuidByName(approvedName);
       restrictedInstanceId = await mcpsPage.getMcpUuidByName(restrictedName);

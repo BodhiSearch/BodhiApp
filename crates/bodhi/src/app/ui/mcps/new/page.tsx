@@ -29,12 +29,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import {
   useCreateMcp,
+  useFetchMcpTools,
   useMcp,
   useMcpServers,
-  useRefreshMcpTools,
   useUpdateMcp,
   type McpServerResponse,
   type McpTool,
@@ -92,12 +93,11 @@ function NewMcpPageContent() {
   const [fetchedTools, setFetchedTools] = useState<McpTool[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [toolsFetched, setToolsFetched] = useState(false);
-  const [createdMcpId, setCreatedMcpId] = useState<string | null>(null);
 
   const createMutation = useCreateMcp({
-    onSuccess: (mcp) => {
-      setCreatedMcpId(mcp.id);
-      toast({ title: 'MCP created, fetching tools...' });
+    onSuccess: () => {
+      toast({ title: 'MCP created successfully' });
+      router.push('/ui/mcps');
     },
     onError: (message) => {
       toast({ title: 'Failed to create MCP', description: message, variant: 'destructive' });
@@ -114,7 +114,7 @@ function NewMcpPageContent() {
     },
   });
 
-  const refreshToolsMutation = useRefreshMcpTools({
+  const fetchToolsMutation = useFetchMcpTools({
     onSuccess: (response) => {
       const tools = response.tools || [];
       setFetchedTools(tools);
@@ -178,6 +178,9 @@ function NewMcpPageContent() {
         form.setValue('slug', slug);
       }
 
+      setFetchedTools([]);
+      setSelectedTools(new Set());
+      setToolsFetched(false);
       setComboboxOpen(false);
     },
     [form]
@@ -204,10 +207,9 @@ function NewMcpPageContent() {
   };
 
   const handleFetchTools = () => {
-    if (createdMcpId) {
-      refreshToolsMutation.mutate({ id: createdMcpId });
-    } else if (editId) {
-      refreshToolsMutation.mutate({ id: editId });
+    const serverId = form.getValues('mcp_server_id');
+    if (serverId) {
+      fetchToolsMutation.mutate({ mcp_server_id: serverId, auth: 'public' });
     }
   };
 
@@ -220,6 +222,7 @@ function NewMcpPageContent() {
         description: data.description || undefined,
         enabled: data.enabled,
         tools_filter: Array.from(selectedTools),
+        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
       });
       return;
     }
@@ -230,17 +233,13 @@ function NewMcpPageContent() {
       slug: data.slug,
       description: data.description || undefined,
       enabled: data.enabled,
+      tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+      tools_filter: Array.from(selectedTools),
     });
   };
 
-  const handleSaveAndFinish = () => {
-    if (editId || createdMcpId) {
-      router.push('/ui/mcps');
-    }
-  };
-
   const isSubmitting = createMutation.isLoading || updateMutation.isLoading;
-  const isCreatedOrEditing = !!editId || !!createdMcpId;
+  const canCreate = toolsFetched && !isSubmitting;
 
   if (editId && existingError) {
     const errorMessage = existingError.response?.data?.error?.message || existingError.message || 'Failed to load MCP';
@@ -290,7 +289,7 @@ function NewMcpPageContent() {
                               role="combobox"
                               aria-expanded={comboboxOpen}
                               className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}
-                              disabled={isSubmitting || !!createdMcpId}
+                              disabled={isSubmitting}
                               data-testid="mcp-server-combobox"
                             >
                               {selectedServer
@@ -454,145 +453,137 @@ function NewMcpPageContent() {
                 )}
               />
 
-              {!isCreatedOrEditing && (
-                <div className="flex gap-4">
-                  <Button type="submit" disabled={isSubmitting || !selectedServer} data-testid="mcp-create-button">
-                    {isSubmitting ? 'Creating...' : 'Create MCP'}
-                  </Button>
+              <div className="space-y-4" data-testid="mcp-tools-section">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Tools</h3>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.push('/ui/mcps')}
-                    disabled={isSubmitting}
-                    data-testid="mcp-cancel-button"
+                    size="sm"
+                    onClick={handleFetchTools}
+                    disabled={!selectedServer || fetchToolsMutation.isLoading}
+                    data-testid="mcp-fetch-tools-button"
                   >
-                    Cancel
+                    {fetchToolsMutation.isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    {toolsFetched ? 'Refresh Tools' : 'Fetch Tools'}
                   </Button>
                 </div>
-              )}
 
-              {editId && (
-                <div className="flex gap-4">
+                {!toolsFetched && !fetchToolsMutation.isLoading && (
+                  <p className="text-sm text-muted-foreground" data-testid="mcp-tools-empty-state">
+                    {selectedServer
+                      ? 'Click "Fetch Tools" to discover available tools from this MCP server.'
+                      : 'Select a server and fetch tools to see available tools.'}
+                  </p>
+                )}
+
+                {fetchToolsMutation.isLoading && (
+                  <div className="space-y-2" data-testid="mcp-tools-loading">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                )}
+
+                {toolsFetched && fetchedTools.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 text-sm">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        data-testid="mcp-select-all-tools"
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeselectAll}
+                        data-testid="mcp-deselect-all-tools"
+                      >
+                        Deselect All
+                      </Button>
+                      <span className="ml-auto text-muted-foreground flex items-center">
+                        {selectedTools.size}/{fetchedTools.length} selected
+                      </span>
+                    </div>
+                    <div
+                      className="border rounded-lg divide-y max-h-[400px] overflow-y-auto"
+                      data-testid="mcp-tools-list"
+                    >
+                      {fetchedTools.map((tool) => (
+                        <label
+                          key={tool.name}
+                          className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                          data-testid={`mcp-tool-${tool.name}`}
+                        >
+                          <Checkbox
+                            checked={selectedTools.has(tool.name)}
+                            onCheckedChange={() => handleToolToggle(tool.name)}
+                            className="mt-0.5"
+                            data-testid={`mcp-tool-checkbox-${tool.name}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">{tool.name}</div>
+                            {tool.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{tool.description}</div>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {toolsFetched && fetchedTools.length === 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="mcp-no-tools">
+                    No tools found on this MCP server.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-4">
+                {editId ? (
                   <Button type="submit" disabled={isSubmitting} data-testid="mcp-update-button">
                     {isSubmitting ? 'Updating...' : 'Update MCP'}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push('/ui/mcps')}
-                    disabled={isSubmitting}
-                    data-testid="mcp-cancel-button"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button type="submit" disabled={!canCreate} data-testid="mcp-create-button">
+                            {isSubmitting ? 'Creating...' : 'Create MCP'}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!canCreate && !isSubmitting && (
+                        <TooltipContent>
+                          <p>Fetch tools from server first</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/ui/mcps')}
+                  disabled={isSubmitting}
+                  data-testid="mcp-cancel-button"
+                >
+                  Cancel
+                </Button>
+              </div>
             </form>
           </Form>
-
-          {isCreatedOrEditing && (
-            <div className="mt-6 space-y-4" data-testid="mcp-tools-section">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Tools</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleFetchTools}
-                  disabled={refreshToolsMutation.isLoading}
-                  data-testid="mcp-fetch-tools-button"
-                >
-                  {refreshToolsMutation.isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  {toolsFetched ? 'Refresh Tools' : 'Fetch Tools'}
-                </Button>
-              </div>
-
-              {!toolsFetched && !refreshToolsMutation.isLoading && (
-                <p className="text-sm text-muted-foreground">
-                  Click &quot;Fetch Tools&quot; to discover available tools from this MCP server.
-                </p>
-              )}
-
-              {refreshToolsMutation.isLoading && (
-                <div className="space-y-2" data-testid="mcp-tools-loading">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              )}
-
-              {toolsFetched && fetchedTools.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex gap-2 text-sm">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSelectAll}
-                      data-testid="mcp-select-all-tools"
-                    >
-                      Select All
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeselectAll}
-                      data-testid="mcp-deselect-all-tools"
-                    >
-                      Deselect All
-                    </Button>
-                    <span className="ml-auto text-muted-foreground flex items-center">
-                      {selectedTools.size}/{fetchedTools.length} selected
-                    </span>
-                  </div>
-                  <div
-                    className="border rounded-lg divide-y max-h-[400px] overflow-y-auto"
-                    data-testid="mcp-tools-list"
-                  >
-                    {fetchedTools.map((tool) => (
-                      <label
-                        key={tool.name}
-                        className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer"
-                        data-testid={`mcp-tool-${tool.name}`}
-                      >
-                        <Checkbox
-                          checked={selectedTools.has(tool.name)}
-                          onCheckedChange={() => handleToolToggle(tool.name)}
-                          className="mt-0.5"
-                          data-testid={`mcp-tool-checkbox-${tool.name}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">{tool.name}</div>
-                          {tool.description && (
-                            <div className="text-xs text-muted-foreground mt-0.5">{tool.description}</div>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {toolsFetched && fetchedTools.length === 0 && (
-                <p className="text-sm text-muted-foreground" data-testid="mcp-no-tools">
-                  No tools found on this MCP server.
-                </p>
-              )}
-
-              <div className="flex gap-4 pt-4 border-t">
-                <Button onClick={handleSaveAndFinish} data-testid="mcp-done-button">
-                  Done
-                </Button>
-                <Button variant="outline" onClick={() => router.push('/ui/mcps')} data-testid="mcp-back-button">
-                  Back to List
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

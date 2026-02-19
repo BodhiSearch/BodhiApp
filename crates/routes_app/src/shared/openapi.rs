@@ -49,13 +49,13 @@ use crate::{
 };
 // MCP DTOs and handlers
 use crate::{
-  CreateMcpRequest, CreateMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
-  UpdateMcpRequest, UpdateMcpServerRequest, __path_create_mcp_handler,
+  CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, ListMcpServersResponse,
+  ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse,
+  McpToolsResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_create_mcp_handler,
   __path_create_mcp_server_handler, __path_delete_mcp_handler, __path_execute_mcp_tool_handler,
-  __path_get_mcp_handler, __path_get_mcp_server_handler, __path_list_mcp_servers_handler,
-  __path_list_mcps_handler, __path_refresh_mcp_tools_handler, __path_update_mcp_handler,
-  __path_update_mcp_server_handler,
+  __path_fetch_mcp_tools_handler, __path_get_mcp_handler, __path_get_mcp_server_handler,
+  __path_list_mcp_servers_handler, __path_list_mcps_handler, __path_refresh_mcp_tools_handler,
+  __path_update_mcp_handler, __path_update_mcp_server_handler,
 };
 use async_openai::types::{
   chat::{
@@ -124,6 +124,7 @@ make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
 make_ui_endpoint!(ENDPOINT_MCPS, "mcps");
+make_ui_endpoint!(ENDPOINT_MCPS_FETCH_TOOLS, "mcps/fetch-tools");
 make_ui_endpoint!(ENDPOINT_MCP_SERVERS, "mcp_servers");
 
 // dev-only debugging info endpoint
@@ -375,6 +376,8 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             UpdateMcpRequest,
             CreateMcpServerRequest,
             UpdateMcpServerRequest,
+            FetchMcpToolsRequest,
+            McpAuth,
             McpResponse,
             McpServerResponse,
             ListMcpsResponse,
@@ -486,6 +489,7 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         get_mcp_handler,
         update_mcp_handler,
         delete_mcp_handler,
+        fetch_mcp_tools_handler,
         refresh_mcp_tools_handler,
         execute_mcp_tool_handler,
         // MCP server admin endpoints

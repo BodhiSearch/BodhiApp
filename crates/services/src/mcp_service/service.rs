@@ -52,6 +52,8 @@ pub trait McpService: Debug + Send + Sync {
     mcp_server_id: &str,
     description: Option<String>,
     enabled: bool,
+    tools_cache: Option<Vec<McpTool>>,
+    tools_filter: Option<Vec<String>>,
   ) -> Result<Mcp, McpError>;
 
   async fn update(
@@ -63,11 +65,14 @@ pub trait McpService: Debug + Send + Sync {
     description: Option<String>,
     enabled: bool,
     tools_filter: Option<Vec<String>>,
+    tools_cache: Option<Vec<McpTool>>,
   ) -> Result<Mcp, McpError>;
 
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), McpError>;
 
   async fn fetch_tools(&self, user_id: &str, id: &str) -> Result<Vec<McpTool>, McpError>;
+
+  async fn fetch_tools_for_server(&self, server_id: &str) -> Result<Vec<McpTool>, McpError>;
 
   async fn execute(
     &self,
@@ -369,6 +374,8 @@ impl McpService for DefaultMcpService {
     mcp_server_id: &str,
     description: Option<String>,
     enabled: bool,
+    tools_cache: Option<Vec<McpTool>>,
+    tools_filter: Option<Vec<String>>,
   ) -> Result<Mcp, McpError> {
     if name.is_empty() {
       return Err(McpError::NameRequired);
@@ -399,6 +406,13 @@ impl McpService for DefaultMcpService {
       return Err(McpError::SlugExists(slug.to_string()));
     }
 
+    let tools_cache_json = tools_cache
+      .as_ref()
+      .map(|tc| serde_json::to_string(tc).expect("Vec<McpTool> serialization cannot fail"));
+    let tools_filter_json = tools_filter
+      .as_ref()
+      .map(|tf| serde_json::to_string(tf).expect("Vec<String> serialization cannot fail"));
+
     let now = self.time_service.utc_now().timestamp();
     let row = McpRow {
       id: Uuid::new_v4().to_string(),
@@ -408,8 +422,8 @@ impl McpService for DefaultMcpService {
       slug: slug.to_string(),
       description,
       enabled,
-      tools_cache: None,
-      tools_filter: None,
+      tools_cache: tools_cache_json,
+      tools_filter: tools_filter_json,
       created_at: now,
       updated_at: now,
     };
@@ -427,6 +441,7 @@ impl McpService for DefaultMcpService {
     description: Option<String>,
     enabled: bool,
     tools_filter: Option<Vec<String>>,
+    tools_cache: Option<Vec<McpTool>>,
   ) -> Result<Mcp, McpError> {
     if name.is_empty() {
       return Err(McpError::NameRequired);
@@ -459,6 +474,12 @@ impl McpService for DefaultMcpService {
       existing.tools_filter
     };
 
+    let resolved_cache = if let Some(cache) = tools_cache {
+      Some(serde_json::to_string(&cache).expect("Vec<McpTool> serialization cannot fail"))
+    } else {
+      existing.tools_cache
+    };
+
     let now = self.time_service.utc_now().timestamp();
     let row = McpRow {
       id: id.to_string(),
@@ -468,7 +489,7 @@ impl McpService for DefaultMcpService {
       slug: slug.to_string(),
       description,
       enabled,
-      tools_cache: existing.tools_cache,
+      tools_cache: resolved_cache,
       tools_filter: resolved_filter,
       created_at: existing.created_at,
       updated_at: now,
@@ -518,6 +539,21 @@ impl McpService for DefaultMcpService {
     };
 
     self.db_service.update_mcp(&updated_row).await?;
+    Ok(tools)
+  }
+
+  async fn fetch_tools_for_server(&self, server_id: &str) -> Result<Vec<McpTool>, McpError> {
+    let server = self
+      .db_service
+      .get_mcp_server(server_id)
+      .await?
+      .ok_or_else(|| McpError::McpServerNotFound(server_id.to_string()))?;
+
+    if !server.enabled {
+      return Err(McpError::McpDisabled);
+    }
+
+    let tools = self.mcp_client.fetch_tools(&server.url).await?;
     Ok(tools)
   }
 

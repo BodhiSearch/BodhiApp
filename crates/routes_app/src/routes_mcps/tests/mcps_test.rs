@@ -1,10 +1,10 @@
 use crate::{
   create_mcp_handler, create_mcp_server_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler, list_mcp_tools_handler,
-  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler,
-  CreateMcpRequest, CreateMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
-  UpdateMcpRequest, UpdateMcpServerRequest,
+  fetch_mcp_tools_handler, get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler,
+  list_mcp_tools_handler, list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler,
+  update_mcp_server_handler, CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest,
+  ListMcpServersResponse, ListMcpsResponse, McpExecuteRequest, McpExecuteResponse, McpResponse,
+  McpServerResponse, McpToolsResponse, UpdateMcpRequest, UpdateMcpServerRequest,
 };
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
@@ -81,6 +81,7 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
     Router::new()
       .route("/mcps", get(list_mcps_handler))
       .route("/mcps", post(create_mcp_handler))
+      .route("/mcps/fetch-tools", post(fetch_mcp_tools_handler))
       .route("/mcps/{id}", get(get_mcp_handler))
       .route("/mcps/{id}", put(update_mcp_handler))
       .route("/mcps/{id}", delete(delete_mcp_handler))
@@ -459,14 +460,14 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 
   mock
     .expect_create()
-    .withf(|user_id, name, slug, mcp_server_id, _, _| {
+    .withf(|user_id, name, slug, mcp_server_id, _, _, _, _| {
       user_id == "user123"
         && name == "DeepWiki MCP"
         && slug == "deepwiki"
         && mcp_server_id == "server-uuid-1"
     })
     .times(1)
-    .returning(move |_, _, _, _, _, _| Ok(instance.clone()));
+    .returning(move |_, _, _, _, _, _, _, _| Ok(instance.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
@@ -476,6 +477,8 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
     mcp_server_id: "server-uuid-1".to_string(),
     description: Some("Deep wiki search".to_string()),
     enabled: true,
+    tools_cache: None,
+    tools_filter: None,
   })?;
 
   let request = Request::builder()
@@ -515,6 +518,8 @@ async fn test_create_mcp_empty_name_returns_400() -> anyhow::Result<()> {
     mcp_server_id: "server-uuid-1".to_string(),
     description: None,
     enabled: true,
+    tools_cache: None,
+    tools_filter: None,
   })?;
 
   let request = Request::builder()
@@ -547,6 +552,8 @@ async fn test_create_mcp_empty_mcp_server_id_returns_400() -> anyhow::Result<()>
     mcp_server_id: "".to_string(),
     description: None,
     enabled: true,
+    tools_cache: None,
+    tools_filter: None,
   })?;
 
   let request = Request::builder()
@@ -690,11 +697,11 @@ async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 
   mock
     .expect_update()
-    .withf(|user_id, id, name, slug, _, _, _| {
+    .withf(|user_id, id, name, slug, _, _, _, _| {
       user_id == "user123" && id == "mcp-uuid-1" && name == "Updated Name" && slug == "deepwiki"
     })
     .times(1)
-    .returning(move |_, _, _, _, _, _, _| Ok(updated.clone()));
+    .returning(move |_, _, _, _, _, _, _, _| Ok(updated.clone()));
 
   let app = test_router_for_crud(mock).await?;
 
@@ -704,6 +711,7 @@ async fn test_update_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
     description: Some("Deep wiki search".to_string()),
     enabled: true,
     tools_filter: None,
+    tools_cache: None,
   })?;
 
   let request = Request::builder()
@@ -850,6 +858,163 @@ async fn test_refresh_mcp_tools_success() -> anyhow::Result<()> {
 
   let body: McpToolsResponse = response.json().await?;
   assert_eq!(2, body.tools.len());
+  Ok(())
+}
+
+// ============================================================================
+// POST /mcps/fetch-tools - Fetch tools from MCP server (stateless)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_fetch_mcp_tools_success() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+
+  let tools = vec![
+    McpTool {
+      name: "read_wiki_structure".to_string(),
+      description: Some("Read wiki structure".to_string()),
+      input_schema: None,
+    },
+    McpTool {
+      name: "ask_question".to_string(),
+      description: Some("Ask a question".to_string()),
+      input_schema: None,
+    },
+  ];
+
+  mock
+    .expect_fetch_tools_for_server()
+    .withf(|server_id| server_id == "server-uuid-1")
+    .times(1)
+    .returning(move |_| Ok(tools.clone()));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&FetchMcpToolsRequest {
+    mcp_server_id: "server-uuid-1".to_string(),
+    auth: Default::default(),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcps/fetch-tools")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::OK, response.status());
+
+  let body: McpToolsResponse = response.json().await?;
+  assert_eq!(2, body.tools.len());
+  assert_eq!("read_wiki_structure", body.tools[0].name);
+  assert_eq!("ask_question", body.tools[1].name);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_fetch_mcp_tools_empty_server_id_returns_400() -> anyhow::Result<()> {
+  let mock = MockMcpService::new();
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&FetchMcpToolsRequest {
+    mcp_server_id: "".to_string(),
+    auth: Default::default(),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcps/fetch-tools")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_fetch_mcp_tools_server_not_found_returns_404() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+
+  mock
+    .expect_fetch_tools_for_server()
+    .times(1)
+    .returning(|_| {
+      Err(services::McpError::McpServerNotFound(
+        "nonexistent".to_string(),
+      ))
+    });
+
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&FetchMcpToolsRequest {
+    mcp_server_id: "nonexistent".to_string(),
+    auth: Default::default(),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcps/fetch-tools")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::NOT_FOUND, response.status());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_fetch_mcp_tools_server_disabled_returns_400() -> anyhow::Result<()> {
+  let mut mock = MockMcpService::new();
+
+  mock
+    .expect_fetch_tools_for_server()
+    .times(1)
+    .returning(|_| Err(services::McpError::McpDisabled));
+
+  let app = test_router_for_crud(mock).await?;
+
+  let body = serde_json::to_string(&FetchMcpToolsRequest {
+    mcp_server_id: "server-uuid-1".to_string(),
+    auth: Default::default(),
+  })?;
+
+  let request = Request::builder()
+    .method("POST")
+    .uri("/mcps/fetch-tools")
+    .header("content-type", "application/json")
+    .body(Body::from(body))?;
+  let request = request.with_auth_context(AuthContext::test_session(
+    "user123",
+    "testuser",
+    ResourceRole::User,
+  ));
+  let response = app.oneshot(request).await?;
+
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
   Ok(())
 }
 

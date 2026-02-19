@@ -1,8 +1,8 @@
 use crate::{
-  CreateMcpRequest, CreateMcpServerRequest, ListMcpServersResponse, ListMcpsResponse,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery, McpServerResponse,
-  McpToolsResponse, McpValidationError, UpdateMcpRequest, UpdateMcpServerRequest, ENDPOINT_MCPS,
-  ENDPOINT_MCP_SERVERS,
+  CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, ListMcpServersResponse,
+  ListMcpsResponse, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery,
+  McpServerResponse, McpToolsResponse, McpValidationError, UpdateMcpRequest,
+  UpdateMcpServerRequest, ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
 };
 use auth_middleware::AuthContext;
 use axum::{
@@ -321,6 +321,8 @@ pub async fn create_mcp_handler(
       &request.mcp_server_id,
       request.description,
       request.enabled,
+      request.tools_cache,
+      request.tools_filter,
     )
     .await?;
 
@@ -401,6 +403,7 @@ pub async fn update_mcp_handler(
       request.description,
       request.enabled,
       request.tools_filter,
+      request.tools_cache,
     )
     .await?;
 
@@ -433,6 +436,40 @@ pub async fn delete_mcp_handler(
   mcp_service.delete(user_id, &id).await?;
 
   Ok(StatusCode::NO_CONTENT)
+}
+
+// ============================================================================
+// MCP Tool Discovery Handlers
+// ============================================================================
+
+/// Fetch tools from an MCP server without creating an MCP instance
+#[utoipa::path(
+  post,
+  path = ENDPOINT_MCPS_FETCH_TOOLS,
+  tag = API_TAG_MCPS,
+  operation_id = "fetchMcpTools",
+  request_body = FetchMcpToolsRequest,
+  responses(
+    (status = 200, description = "List of tools from MCP server", body = McpToolsResponse),
+    (status = 400, description = "Validation error"),
+    (status = 404, description = "MCP server not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn fetch_mcp_tools_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Json(request): Json<FetchMcpToolsRequest>,
+) -> Result<Json<McpToolsResponse>, ApiError> {
+  if request.mcp_server_id.is_empty() {
+    return Err(McpValidationError::Validation("mcp_server_id is required".to_string()).into());
+  }
+
+  let mcp_service = state.app_service().mcp_service();
+  let tools = mcp_service
+    .fetch_tools_for_server(&request.mcp_server_id)
+    .await?;
+
+  Ok(Json(McpToolsResponse { tools }))
 }
 
 // ============================================================================

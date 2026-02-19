@@ -2951,6 +2951,85 @@
         ]
       }
     },
+    "/bodhi/v1/mcps/fetch-tools": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Fetch tools from an MCP server without creating an MCP instance",
+        "operationId": "fetchMcpTools",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FetchMcpToolsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "List of tools from MCP server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToolsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MCP server not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/mcps/{id}": {
       "get": {
         "tags": [
@@ -10486,6 +10565,24 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "tools_cache": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/McpTool"
+            }
+          },
+          "tools_filter": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -10891,6 +10988,24 @@
             "description": "Function parameters as JSON"
           }
         }
+      },
+      "FetchMcpToolsRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/McpAuth"
+          },
+          {
+            "type": "object",
+            "required": [
+              "mcp_server_id"
+            ],
+            "properties": {
+              "mcp_server_id": {
+                "type": "string"
+              }
+            }
+          }
+        ]
       },
       "FetchModelsRequest": {
         "type": "object",
@@ -11393,6 +11508,24 @@
             ]
           }
         }
+      },
+      "McpAuth": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "auth"
+            ],
+            "properties": {
+              "auth": {
+                "type": "string",
+                "enum": [
+                  "public"
+                ]
+              }
+            }
+          }
+        ]
       },
       "McpExecuteRequest": {
         "type": "object",
@@ -13727,6 +13860,15 @@
             ],
             "items": {
               "type": "string"
+            }
+          },
+          "tools_cache": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/McpTool"
             }
           }
         }

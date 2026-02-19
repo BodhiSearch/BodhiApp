@@ -15,13 +15,7 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 type ErrorResponse = OpenAiApiError;
 
 // Re-export types for consumers
-export type {
-  AccessRequestReviewResponse,
-  McpServerReviewInfo,
-  RequestedResources,
-  ToolTypeReviewInfo,
-  Toolset,
-};
+export type { AccessRequestReviewResponse, McpServerReviewInfo, RequestedResources, ToolTypeReviewInfo, Toolset };
 
 export interface ToolApprovalItem {
   toolset_type: string;

@@ -33,9 +33,9 @@ use crate::{
 };
 use crate::{
   create_mcp_handler, create_mcp_server_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler, list_mcps_handler,
-  refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler, ENDPOINT_MCPS,
-  ENDPOINT_MCP_SERVERS,
+  fetch_mcp_tools_handler, get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler,
+  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler,
+  ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -167,6 +167,7 @@ pub fn build_routes(
     )
     // MCP CRUD (session-only)
     .route(ENDPOINT_MCPS, post(create_mcp_handler))
+    .route(ENDPOINT_MCPS_FETCH_TOOLS, post(fetch_mcp_tools_handler))
     .route(&format!("{ENDPOINT_MCPS}/{{id}}"), put(update_mcp_handler))
     .route(
       &format!("{ENDPOINT_MCPS}/{{id}}"),

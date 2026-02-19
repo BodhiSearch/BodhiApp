@@ -1215,6 +1215,8 @@ export type CreateMcpRequest = {
     mcp_server_id: string;
     description?: string | null;
     enabled: boolean;
+    tools_cache?: Array<McpTool> | null;
+    tools_filter?: Array<string> | null;
 };
 
 export type CreateMcpServerRequest = {
@@ -1385,6 +1387,10 @@ export type ExecuteToolsetRequest = {
      * Function parameters as JSON
      */
     params: unknown;
+};
+
+export type FetchMcpToolsRequest = McpAuth & {
+    mcp_server_id: string;
 };
 
 /**
@@ -1623,6 +1629,10 @@ export type McpApproval = {
     url: string;
     status: string;
     instance?: null | McpInstance;
+};
+
+export type McpAuth = {
+    auth: 'public';
 };
 
 export type McpExecuteRequest = {
@@ -2538,6 +2548,7 @@ export type UpdateMcpRequest = {
     description?: string | null;
     enabled: boolean;
     tools_filter?: Array<string> | null;
+    tools_cache?: Array<McpTool> | null;
 };
 
 export type UpdateMcpServerRequest = {
@@ -4119,6 +4130,47 @@ export type CreateMcpResponses = {
 };
 
 export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
+
+export type FetchMcpToolsData = {
+    body: FetchMcpToolsRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/fetch-tools';
+};
+
+export type FetchMcpToolsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * MCP server not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type FetchMcpToolsError = FetchMcpToolsErrors[keyof FetchMcpToolsErrors];
+
+export type FetchMcpToolsResponses = {
+    /**
+     * List of tools from MCP server
+     */
+    200: McpToolsResponse;
+};
+
+export type FetchMcpToolsResponse = FetchMcpToolsResponses[keyof FetchMcpToolsResponses];
 
 export type DeleteMcpData = {
     body?: never;

@@ -49,6 +49,26 @@ pub struct McpServerQuery {
 // MCP Instance (mcps table) DTOs
 // ============================================================================
 
+#[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
+#[serde(tag = "auth")]
+pub enum McpAuth {
+  #[serde(rename = "public")]
+  Public,
+}
+
+impl Default for McpAuth {
+  fn default() -> Self {
+    McpAuth::Public
+  }
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct FetchMcpToolsRequest {
+  pub mcp_server_id: String,
+  #[serde(flatten, default)]
+  pub auth: McpAuth,
+}
+
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct CreateMcpRequest {
   pub name: String,
@@ -57,6 +77,10 @@ pub struct CreateMcpRequest {
   #[serde(default)]
   pub description: Option<String>,
   pub enabled: bool,
+  #[serde(default)]
+  pub tools_cache: Option<Vec<McpTool>>,
+  #[serde(default)]
+  pub tools_filter: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -68,6 +92,8 @@ pub struct UpdateMcpRequest {
   pub enabled: bool,
   #[serde(default)]
   pub tools_filter: Option<Vec<String>>,
+  #[serde(default)]
+  pub tools_cache: Option<Vec<McpTool>>,
 }
 
 // ============================================================================

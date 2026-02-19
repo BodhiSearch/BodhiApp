@@ -26,23 +26,19 @@ test.describe('MCP Server Management', () => {
 
     await test.step('Create MCP server (admin)', async () => {
       await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
-      const row = await mcpsPage.page.locator(`[data-test-server-name="${serverData.name}"]`).first();
+      const row = await mcpsPage.page
+        .locator(`[data-test-server-name="${serverData.name}"]`)
+        .first();
       await expect(row).toBeVisible();
     });
 
-    await test.step('Create MCP instance using server combobox', async () => {
+    await test.step('Create MCP instance (single-step with tools)', async () => {
       await mcpsPage.createMcpInstance(
         serverData.name,
         instanceData.name,
         instanceData.slug,
         instanceData.description
       );
-      await mcpsPage.expectToolsSection();
-    });
-
-    await test.step('Verify MCP instance appears in list', async () => {
-      await mcpsPage.clickDone();
-      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
       const row = await mcpsPage.getMcpRowByName(instanceData.name);
       await expect(row).toBeVisible();
@@ -67,8 +63,16 @@ test.describe('MCP Server Management', () => {
       await mcpsPage.createMcpServer(serverData.url, serverData.name);
     });
 
-    await test.step('Create MCP instance and fetch tools', async () => {
-      await mcpsPage.createMcpInstance(serverData.name, instanceData.name, instanceData.slug);
+    await test.step('Create MCP instance (tools fetched during creation)', async () => {
+      await mcpsPage.navigateToMcpsList();
+      await mcpsPage.expectMcpsListPage();
+      await mcpsPage.clickNewMcp();
+      await mcpsPage.expectNewMcpPage();
+
+      await mcpsPage.selectServerFromCombobox(serverData.name);
+      await mcpsPage.fillSlug(instanceData.slug);
+      if (instanceData.name) await mcpsPage.fillName(instanceData.name);
+
       await mcpsPage.clickFetchTools();
       await mcpsPage.expectToolsList();
       await mcpsPage.expectToolItem(McpFixtures.EXPECTED_TOOL);
@@ -90,14 +94,9 @@ test.describe('MCP Server Management', () => {
         instanceData.slug,
         instanceData.description
       );
-      await mcpsPage.clickFetchTools();
-      await mcpsPage.expectToolsList();
-      await mcpsPage.expectToolItem(McpFixtures.PLAYGROUND_TOOL);
     });
 
     await test.step('Navigate to playground from list', async () => {
-      await mcpsPage.clickDone();
-      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
       const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
@@ -169,13 +168,9 @@ test.describe('MCP Server Management', () => {
         instanceData.slug,
         instanceData.description
       );
-      await mcpsPage.clickFetchTools();
-      await mcpsPage.expectToolsList();
     });
 
     await test.step('Deselect tool via edit page', async () => {
-      await mcpsPage.clickDone();
-      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
       const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
@@ -224,13 +219,9 @@ test.describe('MCP Server Management', () => {
         instanceData.slug,
         instanceData.description
       );
-      await mcpsPage.clickFetchTools();
-      await mcpsPage.expectToolsList();
     });
 
     await test.step('Navigate to playground and refresh tools', async () => {
-      await mcpsPage.clickDone();
-      await mcpsPage.page.waitForURL(/\/ui\/mcps(?!\/new)/);
       await mcpsPage.expectMcpsListPage();
       const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
       expect(mcpId).toBeTruthy();
