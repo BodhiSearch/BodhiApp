@@ -2,11 +2,13 @@ use objs::SettingSource;
 use serde_yaml::Value;
 use std::sync::Arc;
 
+mod default_service;
 mod error;
 mod service;
 #[cfg(test)]
 mod tests;
 
+pub use default_service::*;
 pub use error::*;
 pub use service::*;
 

@@ -1,11 +1,11 @@
+mod generate;
+mod parse;
+
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
-use syn::{
-  parse::{Parse, ParseStream},
-  parse_macro_input, Attribute, Data, DeriveInput, Fields, Ident, Token, Variant,
-};
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput};
 
 #[proc_macro_derive(ErrorMeta, attributes(error_meta))]
 pub fn derive_error_metadata(input: TokenStream) -> TokenStream {
@@ -20,16 +20,16 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
   match &input.data {
     Data::Enum(data) => {
       let variants = &data.variants;
-      let error_meta_header = parse_enum_meta_header(&input.attrs);
+      let error_meta_header = parse::parse_enum_meta_header(&input.attrs);
       if variants.is_empty() {
-        return empty_enum(name, &error_meta_header.trait_to_impl);
+        return generate::empty_enum(name, &error_meta_header.trait_to_impl);
       }
 
-      let error_type_body = generate_attribute_method(name, variants, "error_type");
-      let code_body = generate_attribute_method(name, variants, "code");
-      let args_method = generate_args_method(name, &input.data);
+      let error_type_body = generate::generate_attribute_method(name, variants, "error_type");
+      let code_body = generate::generate_attribute_method(name, variants, "code");
+      let args_method = generate::generate_args_method(name, &input.data);
 
-      generate_impl(
+      generate::generate_impl(
         name,
         error_type_body,
         code_body,
@@ -38,7 +38,7 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
       )
     }
     Data::Struct(_) => {
-      let error_meta = parse_struct_meta_attrs(&input.attrs)
+      let error_meta = parse::parse_struct_meta_attrs(&input.attrs)
         .unwrap_or_else(|| panic!("error_meta attribute missing for struct {}", name));
       let error_type = error_meta
         .error_type
@@ -53,8 +53,8 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
           let default_code = name.to_string().to_case(Case::Snake);
           quote! { #default_code.to_string() }
         });
-      let args_method = generate_args_method(name, &input.data);
-      generate_impl(
+      let args_method = generate::generate_args_method(name, &input.data);
+      generate::generate_impl(
         name,
         error_type,
         code,
@@ -66,447 +66,19 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
   }
 }
 
-fn generate_impl(
-  name: &Ident,
-  error_type_body: TokenStream2,
-  code_body: TokenStream2,
-  args_method: TokenStream2,
-  trait_to_impl: &Option<syn::Path>,
-) -> TokenStream2 {
-  let visibility = if trait_to_impl.is_some() {
-    quote! {}
-  } else {
-    quote! { pub }
-  };
-
-  let impl_block = quote! {
-    #visibility fn error_type(&self) -> String {
-      #error_type_body
-    }
-
-    #visibility fn code(&self) -> String {
-      #code_body
-    }
-
-    #visibility fn args(&self) -> ::std::collections::HashMap<String, String> {
-      #args_method
-    }
-  };
-
-  match trait_to_impl {
-    Some(trait_path) => quote! {
-      impl #trait_path for #name {
-        #impl_block
-      }
-    },
-    None => quote! {
-      impl #name {
-        #impl_block
-      }
-    },
-  }
-}
-
-fn empty_enum(name: &Ident, trait_to_impl: &Option<syn::Path>) -> TokenStream2 {
-  generate_impl(
-    name,
-    quote! { unreachable!("Empty enum has no variants") },
-    quote! { unreachable!("Empty enum has no variants") },
-    quote! { unreachable!("Empty enum has no variants") },
-    trait_to_impl,
-  )
-}
-
-fn is_transparent(variant: &Variant) -> bool {
-  variant.attrs.iter().any(|attr| {
-    if attr.path().is_ident("error") {
-      if let Ok(meta) = attr.meta.require_list() {
-        if let Ok(syn::Meta::Path(path)) = meta.parse_args::<syn::Meta>() {
-          return path.is_ident("transparent");
-        }
-      }
-    }
-    false
-  })
-}
-
-fn generate_pattern(fields: &Fields) -> TokenStream2 {
-  match fields {
-    Fields::Named(_) => quote! { { .. } },
-    Fields::Unnamed(_) => quote! { (..) },
-    Fields::Unit => quote! {},
-  }
-}
-
-#[derive(Debug, PartialEq)]
-struct EnumMetaHeader {
-  trait_to_impl: Option<syn::Path>,
-}
-
-impl Parse for EnumMetaHeader {
-  fn parse(input: ParseStream) -> syn::Result<Self> {
-    let mut trait_to_impl = None;
-
-    while !input.is_empty() {
-      let ident: Ident = input.parse()?;
-      input.parse::<Token![=]>()?;
-
-      if ident == "trait_to_impl" {
-        trait_to_impl = Some(input.parse()?);
-      } else {
-        return Err(syn::Error::new(
-          ident.span(),
-          format!("unknown attribute '{}'", ident),
-        ));
-      }
-
-      if input.peek(Token![,]) {
-        input.parse::<Token![,]>()?;
-      }
-    }
-
-    Ok(EnumMetaHeader { trait_to_impl })
-  }
-}
-
-fn parse_enum_meta_header(attrs: &[Attribute]) -> EnumMetaHeader {
-  for attr in attrs {
-    if attr.path().is_ident("error_meta") {
-      let attrs = attr
-        .parse_args::<EnumMetaHeader>()
-        .unwrap_or_else(|e| panic!("error parsing error meta attrs for enum: {}", e));
-      return attrs;
-    }
-  }
-  EnumMetaHeader {
-    trait_to_impl: None,
-  }
-}
-
-#[derive(Debug, PartialEq)]
-struct EnumMetaAttrs {
-  error_type: Option<syn::Expr>,
-  code: Option<syn::Expr>,
-  args_delegate: Option<bool>,
-}
-
-impl Parse for EnumMetaAttrs {
-  fn parse(input: ParseStream) -> syn::Result<Self> {
-    let mut error_type = None;
-    let mut code = None;
-    let mut args_delegate = None;
-
-    while !input.is_empty() {
-      let ident: Ident = input.parse()?;
-      input.parse::<Token![=]>()?;
-
-      match ident.to_string().as_str() {
-        "error_type" => {
-          error_type = Some(input.parse()?);
-        }
-        "code" => {
-          code = Some(input.parse()?);
-        }
-        "args_delegate" => {
-          let lit_bool: syn::LitBool = input.parse()?;
-          args_delegate = Some(lit_bool.value);
-        }
-        attr => {
-          return Err(syn::Error::new(
-            ident.span(),
-            format!("unknown attribute '{}'", attr),
-          ))
-        }
-      }
-
-      if input.peek(Token![,]) {
-        input.parse::<Token![,]>()?;
-      }
-    }
-
-    Ok(EnumMetaAttrs {
-      error_type,
-      code,
-      args_delegate,
-    })
-  }
-}
-
-fn parse_enum_meta_attrs(attrs: &[Attribute]) -> Option<EnumMetaAttrs> {
-  for attr in attrs {
-    if attr.path().is_ident("error_meta") {
-      let attrs = attr
-        .parse_args::<EnumMetaAttrs>()
-        .unwrap_or_else(|e| panic!("error parsing error meta attrs for enum: {}", e));
-      return Some(attrs);
-    }
-  }
-  None
-}
-
-#[derive(Debug, PartialEq)]
-struct StructMetaAttrs {
-  error_type: Option<syn::Expr>,
-  code: Option<syn::Expr>,
-  trait_to_impl: Option<syn::Path>,
-}
-
-impl Parse for StructMetaAttrs {
-  fn parse(input: ParseStream) -> syn::Result<Self> {
-    let mut error_type = None;
-    let mut code = None;
-    let mut trait_to_impl = None;
-
-    while !input.is_empty() {
-      let ident: Ident = input.parse()?;
-      input.parse::<Token![=]>()?;
-
-      match ident.to_string().as_str() {
-        "error_type" => {
-          error_type = Some(input.parse()?);
-        }
-        "code" => {
-          code = Some(input.parse()?);
-        }
-        "trait_to_impl" => {
-          trait_to_impl = Some(input.parse()?);
-        }
-        attr => {
-          return Err(syn::Error::new(
-            ident.span(),
-            format!("unknown attribute '{}'", attr),
-          ))
-        }
-      }
-
-      if input.peek(Token![,]) {
-        input.parse::<Token![,]>()?;
-      }
-    }
-
-    Ok(StructMetaAttrs {
-      error_type,
-      code,
-      trait_to_impl,
-    })
-  }
-}
-
-fn parse_struct_meta_attrs(attrs: &[Attribute]) -> Option<StructMetaAttrs> {
-  for attr in attrs {
-    if attr.path().is_ident("error_meta") {
-      let attrs = attr
-        .parse_args::<StructMetaAttrs>()
-        .unwrap_or_else(|e| panic!("error parsing error meta attrs for struct: {}", e));
-      return Some(attrs);
-    }
-  }
-  None
-}
-
-fn generate_attribute_method(
-  name: &Ident,
-  variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
-  method: &str,
-) -> TokenStream2 {
-  let arms = variants.iter().map(|variant| {
-    let variant_name = &variant.ident;
-    let pattern = generate_pattern(&variant.fields);
-
-    let is_transparent = is_transparent(variant);
-    let error_meta = parse_enum_meta_attrs(&variant.attrs);
-
-    match method {
-      "error_type" => {
-        generate_error_type_arm(name, variant_name, &pattern, is_transparent, &error_meta)
-      }
-      "code" => generate_code_arm(name, variant_name, &pattern, is_transparent, &error_meta),
-      _ => unreachable!(),
-    }
-  });
-
-  quote! {
-    match self {
-      #(#arms)*
-    }
-  }
-}
-
-fn generate_error_type_arm(
-  name: &Ident,
-  variant_name: &Ident,
-  pattern: &TokenStream2,
-  is_transparent: bool,
-  error_meta: &Option<EnumMetaAttrs>,
-) -> TokenStream2 {
-  if let Some(error_meta) = error_meta {
-    if let Some(error_type) = &error_meta.error_type {
-      return quote! {
-        #name::#variant_name #pattern => <_ as AsRef<str>>::as_ref(&#error_type).to_string(),
-      };
-    }
-  }
-
-  if is_transparent {
-    quote! {
-      #name::#variant_name(err) => err.error_type(),
-    }
-  } else {
-    let msg = format!("error_type not specified for variant '{}'", variant_name);
-    quote! {
-      #name::#variant_name #pattern => compile_error!(#msg),
-    }
-  }
-}
-
-fn generate_code_arm(
-  name: &Ident,
-  variant_name: &Ident,
-  pattern: &TokenStream2,
-  is_transparent: bool,
-  error_meta: &Option<EnumMetaAttrs>,
-) -> TokenStream2 {
-  if let Some(error_meta) = error_meta {
-    if let Some(code) = &error_meta.code {
-      return quote! {
-        #name::#variant_name #pattern => <_ as AsRef<str>>::as_ref(&#code).to_string(),
-      };
-    }
-  }
-
-  if is_transparent {
-    quote! {
-      #name::#variant_name(err) => err.code(),
-    }
-  } else {
-    let default_code = format!(
-      "{}-{}",
-      name.to_string().to_case(Case::Snake),
-      variant_name.to_string().to_case(Case::Snake)
-    );
-    quote! {
-      #name::#variant_name #pattern => #default_code.to_string(),
-    }
-  }
-}
-
-fn generate_args_method(name: &Ident, data: &Data) -> TokenStream2 {
-  match data {
-    Data::Enum(data_enum) => {
-      let arms = data_enum.variants.iter().map(|variant| {
-        let variant_name = &variant.ident;
-        let fields = &variant.fields;
-        let is_transparent = is_transparent(variant);
-        let error_meta = parse_enum_meta_attrs(&variant.attrs);
-
-        if is_transparent {
-          let args_delegate = error_meta.and_then(|meta| meta.args_delegate).unwrap_or(true);
-
-          if args_delegate {
-            quote! {
-              #name::#variant_name(err) => err.args()
-            }
-          } else {
-            quote! {
-              #name::#variant_name(err) => {
-                let mut map = ::std::collections::HashMap::new();
-                map.insert("error".to_string(), err.to_string());
-                map
-              }
-            }
-          }
-        } else {
-          match fields {
-            Fields::Named(named_fields) => {
-              let field_names_splat = named_fields.named.iter().map(|f| &f.ident);
-              let field_names = named_fields.named.iter().map(|f| &f.ident);
-              quote! {
-                #name::#variant_name { #(#field_names_splat),* } => {
-                  let mut map = ::std::collections::HashMap::new();
-                  #(
-                    map.insert(stringify!(#field_names).to_string(), format!("{}", #field_names));
-                  )*
-                  map
-                }
-              }
-            }
-            Fields::Unnamed(unnamed_fields) => {
-              let field_indices_names: Vec<_> = (0..unnamed_fields.unnamed.len())
-                .map(|i| format_ident!("var_{i}"))
-                .collect();
-              quote! {
-                #name::#variant_name(#(#field_indices_names),*) => {
-                  let mut map = ::std::collections::HashMap::new();
-                  #(
-                    map.insert(stringify!(#field_indices_names).to_string(), format!("{}", #field_indices_names));
-                  )*
-                  map
-                }
-              }
-            }
-            Fields::Unit => {
-              quote! {
-                #name::#variant_name => ::std::collections::HashMap::new()
-              }
-            }
-          }
-        }
-      });
-
-      quote! {
-        match self {
-          #(#arms,)*
-        }
-      }
-    }
-    Data::Struct(data_struct) => {
-      let fields = &data_struct.fields;
-
-      match fields {
-        Fields::Named(named_fields) => {
-          let field_names = named_fields.named.iter().map(|f| &f.ident);
-          quote! {
-            let mut map = ::std::collections::HashMap::new();
-            #(
-              map.insert(stringify!(#field_names).to_string(), format!("{}", self.#field_names));
-            )*
-            map
-          }
-        }
-        Fields::Unnamed(unnamed_fields) => {
-          let field_indices: Vec<_> = (0..unnamed_fields.unnamed.len())
-            .map(syn::Index::from)
-            .collect();
-          quote! {
-            let mut map = ::std::collections::HashMap::new();
-            #(
-              map.insert(format!("var_{}", #field_indices), format!("{}", self.#field_indices));
-            )*
-            map
-          }
-        }
-        Fields::Unit => {
-          quote! {
-            ::std::collections::HashMap::new()
-          }
-        }
-      }
-    }
-    Data::Union(_) => panic!("Unions are not supported"),
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::{
-    generate_args_method, generate_attribute_method, impl_error_metadata, is_transparent,
-    parse_enum_meta_attrs, EnumMetaAttrs,
+  use crate::generate::{generate_args_method, generate_attribute_method};
+  use crate::parse::{
+    parse_enum_meta_attrs, parse_struct_meta_attrs, EnumMetaAttrs, StructMetaAttrs,
   };
+  use crate::{impl_error_metadata, parse};
   use pretty_assertions::assert_eq;
+  use proc_macro2::TokenStream as TokenStream2;
   use quote::quote;
   use rstest::rstest;
   use syn::parse_quote;
+  use syn::{Attribute, DeriveInput, Ident, Variant};
 
   #[rstest]
   #[case(
@@ -526,7 +98,7 @@ mod tests {
     false
   )]
   fn test_is_transparent(#[case] variant: Variant, #[case] expected: bool) {
-    assert_eq!(expected, is_transparent(&variant));
+    assert_eq!(expected, parse::is_transparent(&variant));
   }
 
   #[rstest]

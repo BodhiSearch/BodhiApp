@@ -7,9 +7,24 @@ mod mcp_repository;
 mod model_repository;
 mod objs;
 mod service;
+mod service_access;
+mod service_access_request;
+mod service_mcp;
+mod service_model;
+mod service_token;
+mod service_toolset;
+mod service_user_alias;
 mod sqlite_pool;
 #[cfg(test)]
-mod tests;
+mod test_access_repository;
+#[cfg(test)]
+mod test_access_request_repository;
+#[cfg(test)]
+mod test_mcp_repository;
+#[cfg(test)]
+mod test_model_repository;
+#[cfg(test)]
+mod test_token_repository;
 mod time_service;
 mod token_repository;
 mod toolset_repository;

@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Check, ChevronsUpDown, KeyRound, Loader2, Plus, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import { KeyRound, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -12,21 +11,10 @@ import * as z from 'zod';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -45,7 +33,8 @@ import {
 } from '@/hooks/useMcps';
 import { useUser } from '@/hooks/useUsers';
 import { isAdminRole } from '@/lib/roles';
-import { cn } from '@/lib/utils';
+import McpServerSelector from '@/app/ui/mcps/new/McpServerSelector';
+import ToolSelection from '@/app/ui/mcps/new/ToolSelection';
 
 const createMcpSchema = z
   .object({
@@ -326,113 +315,18 @@ function NewMcpPageContent() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
+              <McpServerSelector
                 control={form.control}
                 name="mcp_server_id"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>MCP Server</FormLabel>
-                    {editId ? (
-                      <div className="space-y-2">
-                        <Input value={selectedServer?.url || ''} disabled data-testid="mcp-server-url-readonly" />
-                        <p className="text-xs text-muted-foreground">Server: {selectedServer?.name}</p>
-                      </div>
-                    ) : (
-                      <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={comboboxOpen}
-                              className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}
-                              disabled={isSubmitting}
-                              data-testid="mcp-server-combobox"
-                            >
-                              {selectedServer
-                                ? `${selectedServer.name} — ${selectedServer.url}`
-                                : 'Select an MCP server...'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                          <Command>
-                            <CommandInput
-                              placeholder="Search by name, URL, or description..."
-                              data-testid="mcp-server-search"
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                {loadingServers ? (
-                                  <div className="flex items-center gap-2 py-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading servers...
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-4">
-                                    <p className="text-sm text-muted-foreground mb-2">No servers found</p>
-                                    {isAdmin && (
-                                      <Button asChild variant="link" size="sm">
-                                        <Link href="/ui/mcp-servers/new">Register a new server</Link>
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {enabledServers.map((server) => (
-                                  <CommandItem
-                                    key={server.id}
-                                    value={`${server.name} ${server.url} ${server.description || ''}`}
-                                    onSelect={() => handleServerSelect(server)}
-                                    data-testid={`mcp-server-option-${server.id}`}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        'mr-2 h-4 w-4',
-                                        selectedServer?.id === server.id ? 'opacity-100' : 'opacity-0'
-                                      )}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium">{server.name}</div>
-                                      <div className="text-xs text-muted-foreground font-mono truncate">
-                                        {server.url}
-                                      </div>
-                                      {server.description && (
-                                        <div className="text-xs text-muted-foreground truncate">
-                                          {server.description}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                              {isAdmin && (
-                                <>
-                                  <CommandSeparator />
-                                  <CommandGroup>
-                                    <CommandItem
-                                      onSelect={() => router.push('/ui/mcp-servers/new')}
-                                      data-testid="mcp-server-add-new"
-                                    >
-                                      <Plus className="mr-2 h-4 w-4" />
-                                      Add New MCP Server
-                                    </CommandItem>
-                                  </CommandGroup>
-                                </>
-                              )}
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                    {selectedServer && !editId && (
-                      <p className="text-xs text-muted-foreground font-mono">{selectedServer.url}</p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
+                editId={editId}
+                selectedServer={selectedServer}
+                comboboxOpen={comboboxOpen}
+                onComboboxOpenChange={setComboboxOpen}
+                onServerSelect={handleServerSelect}
+                enabledServers={enabledServers}
+                loadingServers={loadingServers}
+                isAdmin={isAdmin}
+                isSubmitting={isSubmitting}
               />
 
               <FormField
@@ -621,101 +515,17 @@ function NewMcpPageContent() {
                 )}
               </div>
 
-              <div className="space-y-4" data-testid="mcp-tools-section">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Tools</h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleFetchTools}
-                    disabled={!selectedServer || fetchToolsMutation.isLoading}
-                    data-testid="mcp-fetch-tools-button"
-                  >
-                    {fetchToolsMutation.isLoading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    {toolsFetched ? 'Refresh Tools' : 'Fetch Tools'}
-                  </Button>
-                </div>
-
-                {!toolsFetched && !fetchToolsMutation.isLoading && (
-                  <p className="text-sm text-muted-foreground" data-testid="mcp-tools-empty-state">
-                    {selectedServer
-                      ? 'Click "Fetch Tools" to discover available tools from this MCP server.'
-                      : 'Select a server and fetch tools to see available tools.'}
-                  </p>
-                )}
-
-                {fetchToolsMutation.isLoading && (
-                  <div className="space-y-2" data-testid="mcp-tools-loading">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                )}
-
-                {toolsFetched && fetchedTools.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex gap-2 text-sm">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSelectAll}
-                        data-testid="mcp-select-all-tools"
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDeselectAll}
-                        data-testid="mcp-deselect-all-tools"
-                      >
-                        Deselect All
-                      </Button>
-                      <span className="ml-auto text-muted-foreground flex items-center">
-                        {selectedTools.size}/{fetchedTools.length} selected
-                      </span>
-                    </div>
-                    <div
-                      className="border rounded-lg divide-y max-h-[400px] overflow-y-auto"
-                      data-testid="mcp-tools-list"
-                    >
-                      {fetchedTools.map((tool) => (
-                        <label
-                          key={tool.name}
-                          className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer"
-                          data-testid={`mcp-tool-${tool.name}`}
-                        >
-                          <Checkbox
-                            checked={selectedTools.has(tool.name)}
-                            onCheckedChange={() => handleToolToggle(tool.name)}
-                            className="mt-0.5"
-                            data-testid={`mcp-tool-checkbox-${tool.name}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm">{tool.name}</div>
-                            {tool.description && (
-                              <div className="text-xs text-muted-foreground mt-0.5">{tool.description}</div>
-                            )}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {toolsFetched && fetchedTools.length === 0 && (
-                  <p className="text-sm text-muted-foreground" data-testid="mcp-no-tools">
-                    No tools found on this MCP server.
-                  </p>
-                )}
-              </div>
+              <ToolSelection
+                selectedServer={selectedServer}
+                isFetchingTools={fetchToolsMutation.isLoading}
+                toolsFetched={toolsFetched}
+                fetchedTools={fetchedTools}
+                selectedTools={selectedTools}
+                onToolToggle={handleToolToggle}
+                onSelectAll={handleSelectAll}
+                onDeselectAll={handleDeselectAll}
+                onFetchTools={handleFetchTools}
+              />
 
               <div className="flex gap-4">
                 {editId ? (

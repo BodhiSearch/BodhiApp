@@ -6,13 +6,13 @@ After migrating `useMcps.ts` to import types from `@bodhiapp/ts-client`, two mor
 
 ## Analysis Summary
 
-| Hook File | Local Types | ts-client Equivalent? | Action |
-|-----------|------------|----------------------|--------|
-| `useAppAccessRequests.ts` | 4 types (lines 20-43) | Yes - all 4 | **Migrate** |
-| `useApiTokens.ts` | 1 type (lines 50-52) | Partial | **Migrate** |
-| `useAuth.ts` | 4 hook config types | No - intentional | Skip |
-| `useUsers.ts` | 1 composite type | No - intentional | Skip |
-| `use-chat-completions.ts` | 7 extension types | No - intentional | Skip |
+| Hook File                 | Local Types           | ts-client Equivalent? | Action      |
+| ------------------------- | --------------------- | --------------------- | ----------- |
+| `useAppAccessRequests.ts` | 4 types (lines 20-43) | Yes - all 4           | **Migrate** |
+| `useApiTokens.ts`         | 1 type (lines 50-52)  | Partial               | **Migrate** |
+| `useAuth.ts`              | 4 hook config types   | No - intentional      | Skip        |
+| `useUsers.ts`             | 1 composite type      | No - intentional      | Skip        |
+| `use-chat-completions.ts` | 7 extension types     | No - intentional      | Skip        |
 
 ## Changes
 
@@ -20,14 +20,15 @@ After migrating `useMcps.ts` to import types from `@bodhiapp/ts-client`, two mor
 
 **Replace 4 local types with ts-client imports:**
 
-| Local Type | ts-client Type | Notes |
-|-----------|---------------|-------|
-| `ToolApprovalItem` | `ToolsetApproval` | Same shape, different name |
-| `McpApprovalItem` | `McpApproval` | Same shape |
-| `ApproveAccessRequestBody` | `ApproveAccessRequestBody` | Same name, uses `ApprovedResources` internally |
-| `AccessRequestActionResponse` | `AccessRequestActionResponse` | Same name and shape |
+| Local Type                    | ts-client Type                | Notes                                          |
+| ----------------------------- | ----------------------------- | ---------------------------------------------- |
+| `ToolApprovalItem`            | `ToolsetApproval`             | Same shape, different name                     |
+| `McpApprovalItem`             | `McpApproval`                 | Same shape                                     |
+| `ApproveAccessRequestBody`    | `ApproveAccessRequestBody`    | Same name, uses `ApprovedResources` internally |
+| `AccessRequestActionResponse` | `AccessRequestActionResponse` | Same name and shape                            |
 
 **Steps:**
+
 1. Add imports: `ToolsetApproval`, `McpApproval`, `ApproveAccessRequestBody`, `AccessRequestActionResponse`, `ApprovedResources` from `@bodhiapp/ts-client`
 2. Remove local interface definitions (lines 20-43)
 3. Add re-exports for consumers
@@ -42,6 +43,7 @@ After migrating `useMcps.ts` to import types from `@bodhiapp/ts-client`, two mor
 The `useMcps.ts` hook uses `UpdateMcpRequest & { id: string }` inline rather than defining a separate interface. Apply the same pattern here.
 
 **Steps:**
+
 1. Remove `UpdateTokenRequestWithId` interface (lines 49-52)
 2. Replace usage with `UpdateApiTokenRequest & { id: string }` inline in the mutation type signatures
 
