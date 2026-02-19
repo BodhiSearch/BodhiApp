@@ -32,12 +32,16 @@ use crate::{
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
 };
 use crate::{
-  create_auth_header_handler, create_mcp_handler, create_mcp_server_handler,
-  delete_auth_header_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  fetch_mcp_tools_handler, get_auth_header_handler, get_mcp_handler, get_mcp_server_handler,
-  list_mcp_servers_handler, list_mcps_handler, refresh_mcp_tools_handler,
-  update_auth_header_handler, update_mcp_handler, update_mcp_server_handler, ENDPOINT_MCPS,
-  ENDPOINT_MCPS_AUTH_HEADERS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
+  create_auth_config_handler, create_mcp_handler, create_mcp_server_handler,
+  delete_auth_config_handler, delete_mcp_handler, delete_oauth_token_handler,
+  execute_mcp_tool_handler, fetch_mcp_tools_handler, get_auth_config_handler, get_mcp_handler,
+  get_mcp_server_handler, get_oauth_token_handler, list_auth_configs_handler,
+  list_mcp_servers_handler, list_mcps_handler, oauth_discover_as_handler,
+  oauth_discover_mcp_handler, oauth_login_handler, oauth_token_exchange_handler,
+  refresh_mcp_tools_handler, standalone_dynamic_register_handler, update_mcp_handler,
+  update_mcp_server_handler, ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_CONFIGS, ENDPOINT_MCPS_FETCH_TOOLS,
+  ENDPOINT_MCPS_OAUTH_DISCOVER_AS, ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
+  ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE, ENDPOINT_MCP_SERVERS,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -175,19 +179,48 @@ pub fn build_routes(
       &format!("{ENDPOINT_MCPS}/{{id}}"),
       delete(delete_mcp_handler),
     )
-    // MCP auth header configs (session-only)
-    .route(ENDPOINT_MCPS_AUTH_HEADERS, post(create_auth_header_handler))
+    // Unified auth config endpoints
+    .route(ENDPOINT_MCPS_AUTH_CONFIGS, post(create_auth_config_handler))
+    .route(ENDPOINT_MCPS_AUTH_CONFIGS, get(list_auth_configs_handler))
     .route(
-      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
-      get(get_auth_header_handler),
+      &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}"),
+      get(get_auth_config_handler),
     )
     .route(
-      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
-      put(update_auth_header_handler),
+      &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}"),
+      delete(delete_auth_config_handler),
+    )
+    // OAuth login and token exchange (nested under auth-configs)
+    .route(
+      &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}/login"),
+      post(oauth_login_handler),
     )
     .route(
-      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
-      delete(delete_auth_header_handler),
+      &format!("{ENDPOINT_MCPS_AUTH_CONFIGS}/{{id}}/token"),
+      post(oauth_token_exchange_handler),
+    )
+    // OAuth token endpoints
+    .route(
+      "/bodhi/v1/mcps/oauth-tokens/{token_id}",
+      get(get_oauth_token_handler),
+    )
+    .route(
+      "/bodhi/v1/mcps/oauth-tokens/{token_id}",
+      delete(delete_oauth_token_handler),
+    )
+    // OAuth discovery
+    .route(
+      ENDPOINT_MCPS_OAUTH_DISCOVER_AS,
+      post(oauth_discover_as_handler),
+    )
+    .route(
+      ENDPOINT_MCPS_OAUTH_DISCOVER_MCP,
+      post(oauth_discover_mcp_handler),
+    )
+    // Standalone dynamic client registration (no server_id)
+    .route(
+      ENDPOINT_MCPS_OAUTH_DYNAMIC_REGISTER_STANDALONE,
+      post(standalone_dynamic_register_handler),
     )
     // MCP servers (read for all users)
     .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))

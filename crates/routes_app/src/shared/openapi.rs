@@ -49,15 +49,21 @@ use crate::{
 };
 // MCP DTOs and handlers
 use crate::{
-  AuthHeaderResponse, CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest,
-  FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest,
-  McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse, UpdateAuthHeaderRequest,
-  UpdateMcpRequest, UpdateMcpServerRequest, __path_create_auth_header_handler,
-  __path_create_mcp_handler, __path_create_mcp_server_handler, __path_delete_auth_header_handler,
-  __path_delete_mcp_handler, __path_execute_mcp_tool_handler, __path_fetch_mcp_tools_handler,
-  __path_get_auth_header_handler, __path_get_mcp_handler, __path_get_mcp_server_handler,
-  __path_list_mcp_servers_handler, __path_list_mcps_handler, __path_refresh_mcp_tools_handler,
-  __path_update_auth_header_handler, __path_update_mcp_handler, __path_update_mcp_server_handler,
+  CreateAuthConfigBody, CreateMcpRequest, CreateMcpServerRequest, DynamicRegisterRequest,
+  DynamicRegisterResponse, FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth,
+  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
+  OAuthDiscoverAsRequest, OAuthDiscoverAsResponse, OAuthDiscoverMcpRequest,
+  OAuthDiscoverMcpResponse, OAuthLoginRequest, OAuthLoginResponse, OAuthTokenExchangeRequest,
+  OAuthTokenResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_create_auth_config_handler,
+  __path_create_mcp_handler, __path_create_mcp_server_handler, __path_delete_auth_config_handler,
+  __path_delete_mcp_handler, __path_delete_oauth_token_handler, __path_execute_mcp_tool_handler,
+  __path_fetch_mcp_tools_handler, __path_get_auth_config_handler, __path_get_mcp_handler,
+  __path_get_mcp_server_handler, __path_get_oauth_token_handler, __path_list_auth_configs_handler,
+  __path_list_mcp_servers_handler, __path_list_mcps_handler, __path_oauth_discover_as_handler,
+  __path_oauth_discover_mcp_handler, __path_oauth_login_handler,
+  __path_oauth_token_exchange_handler, __path_refresh_mcp_tools_handler,
+  __path_standalone_dynamic_register_handler, __path_update_mcp_handler,
+  __path_update_mcp_server_handler,
 };
 use async_openai::types::{
   chat::{
@@ -71,11 +77,12 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, McpServer, McpServerInfo, McpTool, OAIRequestParams, OpenAIApiError,
-  ResourceRole, SettingInfo, SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset,
-  ToolsetDefinition, ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS,
-  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  Alias, ApiFormat, AppRole, CreateMcpAuthConfigRequest, McpAuthConfigResponse,
+  McpAuthConfigsListResponse, McpAuthType, McpServer, McpServerInfo, McpTool, OAIRequestParams,
+  OpenAIApiError, ResourceRole, SettingInfo, SettingMetadata, SettingSource, TokenScope,
+  ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse, UserInfo, UserScope,
+  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA,
+  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -125,10 +132,7 @@ make_ui_endpoint!(ENDPOINT_API_MODELS_API_FORMATS, "api-models/api-formats");
 make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
-make_ui_endpoint!(ENDPOINT_MCPS, "mcps");
-make_ui_endpoint!(ENDPOINT_MCPS_FETCH_TOOLS, "mcps/fetch-tools");
-make_ui_endpoint!(ENDPOINT_MCPS_AUTH_HEADERS, "mcps/auth-headers");
-make_ui_endpoint!(ENDPOINT_MCP_SERVERS, "mcp_servers");
+// MCP endpoint constants are defined in routes_mcp/mod.rs
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
@@ -391,10 +395,23 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             McpToolsResponse,
             McpExecuteRequest,
             McpExecuteResponse,
-            // mcp auth headers
-            CreateAuthHeaderRequest,
-            UpdateAuthHeaderRequest,
-            AuthHeaderResponse,
+            // unified auth configs
+            CreateAuthConfigBody,
+            McpAuthType,
+            CreateMcpAuthConfigRequest,
+            McpAuthConfigResponse,
+            McpAuthConfigsListResponse,
+            // mcp oauth
+            OAuthTokenResponse,
+            OAuthLoginRequest,
+            OAuthLoginResponse,
+            OAuthTokenExchangeRequest,
+            OAuthDiscoverAsRequest,
+            OAuthDiscoverAsResponse,
+            OAuthDiscoverMcpRequest,
+            OAuthDiscoverMcpResponse,
+            DynamicRegisterRequest,
+            DynamicRegisterResponse,
         ),
         responses( ),
     ),
@@ -504,11 +521,21 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         get_mcp_server_handler,
         create_mcp_server_handler,
         update_mcp_server_handler,
-        // MCP auth header endpoints
-        create_auth_header_handler,
-        get_auth_header_handler,
-        update_auth_header_handler,
-        delete_auth_header_handler
+        // Unified auth config endpoints
+        create_auth_config_handler,
+        list_auth_configs_handler,
+        get_auth_config_handler,
+        delete_auth_config_handler,
+        // OAuth flow endpoints
+        oauth_login_handler,
+        oauth_token_exchange_handler,
+        // OAuth discovery endpoints
+        oauth_discover_as_handler,
+        oauth_discover_mcp_handler,
+        standalone_dynamic_register_handler,
+        // OAuth token endpoints
+        get_oauth_token_handler,
+        delete_oauth_token_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

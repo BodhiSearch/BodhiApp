@@ -19,7 +19,7 @@ futures-util = { workspace = true }
 include_dir = { workspace = true }
 indicatif = { workspace = true }
 mockall = { workspace = true, optional = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["form"] }
 rstest = { workspace = true, optional = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

@@ -2486,7 +2486,1086 @@
         }
       }
     },
-    "/bodhi/v1/mcp_servers": {
+    "/bodhi/v1/mcps": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "List all MCP instances for the authenticated user",
+        "operationId": "listMcps",
+        "responses": {
+          "200": {
+            "description": "List of user's MCP instances",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMcpsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Create a new MCP instance",
+        "operationId": "createMcp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMcpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "MCP created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/auth-configs": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "List all auth configs for an MCP server (headers + OAuth configs)",
+        "operationId": "listMcpAuthConfigs",
+        "parameters": [
+          {
+            "name": "mcp_server_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of auth configs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpAuthConfigsListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Create a new auth config (header, OAuth pre-registered, or OAuth dynamic)",
+        "operationId": "createMcpAuthConfig",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthConfigBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Auth config created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpAuthConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/auth-configs/{id}": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Get an auth config by ID",
+        "operationId": "getMcpAuthConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpAuthConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Delete an auth config by ID (cascades to tokens if OAuth)",
+        "operationId": "deleteMcpAuthConfig",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Auth config deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/auth-configs/{id}/login": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Initiate OAuth login for a config",
+        "operationId": "mcpOAuthLogin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthLoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth config not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/auth-configs/{id}/token": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Exchange authorization code for tokens",
+        "operationId": "mcpOAuthTokenExchange",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthTokenExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth config not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/fetch-tools": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Fetch tools from an MCP server without creating an MCP instance",
+        "operationId": "fetchMcpTools",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FetchMcpToolsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "List of tools from MCP server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpToolsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "MCP server not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/oauth-tokens/{token_id}": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Get an OAuth token by ID",
+        "operationId": "getMcpOAuthToken",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "OAuth token UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OAuth token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Delete an OAuth token by ID",
+        "operationId": "deleteMcpOAuthToken",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "OAuth token UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OAuth token deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/oauth/discover-as": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Discover OAuth metadata from an authorization server URL (RFC 8414)",
+        "operationId": "mcpOAuthDiscoverAs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthDiscoverAsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OAuth discovery metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthDiscoverAsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/oauth/discover-mcp": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Discover OAuth metadata from an MCP server URL (RFC 9728 + RFC 8414)",
+        "operationId": "mcpOAuthDiscoverMcp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthDiscoverMcpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "MCP OAuth discovery metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthDiscoverMcpResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/oauth/dynamic-register": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Standalone dynamic client registration (no server_id required)",
+        "operationId": "mcpOAuthDynamicRegisterStandalone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DynamicRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Dynamic client registration result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DynamicRegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/servers": {
       "get": {
         "tags": [
           "mcps"
@@ -2640,7 +3719,7 @@
         ]
       }
     },
-    "/bodhi/v1/mcp_servers/{id}": {
+    "/bodhi/v1/mcps/servers/{id}": {
       "get": {
         "tags": [
           "mcps"
@@ -2792,540 +3871,6 @@
           },
           "409": {
             "description": "URL already exists"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps": {
-      "get": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "List all MCP instances for the authenticated user",
-        "operationId": "listMcps",
-        "responses": {
-          "200": {
-            "description": "List of user's MCP instances",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListMcpsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Create a new MCP instance",
-        "operationId": "createMcp",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateMcpRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "MCP created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps/auth-headers": {
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Create a new auth header config",
-        "operationId": "createMcpAuthHeader",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAuthHeaderRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Auth header config created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthHeaderResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps/auth-headers/{id}": {
-      "get": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Get an auth header config by ID",
-        "operationId": "getMcpAuthHeader",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Auth header config UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Auth header config",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthHeaderResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Update an auth header config",
-        "operationId": "updateMcpAuthHeader",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Auth header config UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateAuthHeaderRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Auth header config updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthHeaderResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Delete an auth header config",
-        "operationId": "deleteMcpAuthHeader",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Auth header config UUID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Auth header config deleted"
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found"
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/bodhi/v1/mcps/fetch-tools": {
-      "post": {
-        "tags": [
-          "mcps"
-        ],
-        "summary": "Fetch tools from an MCP server without creating an MCP instance",
-        "operationId": "fetchMcpTools",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FetchMcpToolsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "List of tools from MCP server",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpToolsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not authenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "MCP server not found"
           },
           "500": {
             "description": "Internal server error",
@@ -8423,37 +8968,6 @@
           "state": "random_state_456"
         }
       },
-      "AuthHeaderResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "header_key",
-          "has_header_value",
-          "created_by",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "header_key": {
-            "type": "string"
-          },
-          "has_header_value": {
-            "type": "boolean"
-          },
-          "created_by": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "string"
-          }
-        }
-      },
       "ChangeRoleRequest": {
         "type": "object",
         "description": "Change user role request",
@@ -10342,20 +10856,24 @@
           "scope": "scope_token_user"
         }
       },
-      "CreateAuthHeaderRequest": {
-        "type": "object",
-        "required": [
-          "header_key",
-          "header_value"
-        ],
-        "properties": {
-          "header_key": {
-            "type": "string"
+      "CreateAuthConfigBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CreateMcpAuthConfigRequest"
           },
-          "header_value": {
-            "type": "string"
+          {
+            "type": "object",
+            "required": [
+              "mcp_server_id"
+            ],
+            "properties": {
+              "mcp_server_id": {
+                "type": "string"
+              }
+            }
           }
-        }
+        ],
+        "description": "Wrapper for creating auth configs with server_id in body instead of path"
       },
       "CreateChatCompletionRequest": {
         "type": "object",
@@ -10900,6 +11418,108 @@
           }
         }
       },
+      "CreateMcpAuthConfigRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "name",
+              "header_key",
+              "header_value",
+              "type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "header_key": {
+                "type": "string"
+              },
+              "header_value": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "header"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "name",
+              "client_id",
+              "authorization_endpoint",
+              "token_endpoint",
+              "type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "client_id": {
+                "type": "string"
+              },
+              "authorization_endpoint": {
+                "type": "string"
+              },
+              "token_endpoint": {
+                "type": "string"
+              },
+              "client_secret": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "scopes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "registration_type": {
+                "$ref": "#/components/schemas/RegistrationType",
+                "description": "`\"pre-registered\"` (default) or `\"dynamic-registration\"`"
+              },
+              "registration_access_token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "registration_endpoint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "token_endpoint_auth_method": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "client_id_issued_at": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "oauth"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Discriminated union for creating any type of MCP auth config.\nThe JSON `\"type\"` field determines the variant: `\"header\"` or `\"oauth\"`."
+      },
       "CreateMcpRequest": {
         "type": "object",
         "required": [
@@ -10946,7 +11566,7 @@
             }
           },
           "auth_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/McpAuthType"
           },
           "auth_uuid": {
             "type": [
@@ -10978,6 +11598,16 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "auth_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CreateMcpAuthConfigRequest"
+              }
+            ]
           }
         }
       },
@@ -11204,6 +11834,63 @@
       },
       "Duration": {
         "type": "string"
+      },
+      "DynamicRegisterRequest": {
+        "type": "object",
+        "required": [
+          "registration_endpoint",
+          "redirect_uri"
+        ],
+        "properties": {
+          "registration_endpoint": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "DynamicRegisterResponse": {
+        "type": "object",
+        "required": [
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "client_id_issued_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "token_endpoint_auth_method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_access_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "Embedding": {
         "type": "object",
@@ -11851,8 +12538,7 @@
             "description": "Whitelisted tool names (empty = block all)"
           },
           "auth_type": {
-            "type": "string",
-            "description": "Authentication type: \"public\", \"header\", \"oauth-pre-registered\""
+            "$ref": "#/components/schemas/McpAuthType"
           },
           "auth_uuid": {
             "type": [
@@ -11940,6 +12626,171 @@
           }
         ]
       },
+      "McpAuthConfigResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "mcp_server_id",
+              "header_key",
+              "has_header_value",
+              "created_by",
+              "created_at",
+              "updated_at",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mcp_server_id": {
+                "type": "string"
+              },
+              "header_key": {
+                "type": "string"
+              },
+              "has_header_value": {
+                "type": "boolean"
+              },
+              "created_by": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "header"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "mcp_server_id",
+              "registration_type",
+              "client_id",
+              "authorization_endpoint",
+              "token_endpoint",
+              "has_client_secret",
+              "has_registration_access_token",
+              "created_by",
+              "created_at",
+              "updated_at",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mcp_server_id": {
+                "type": "string"
+              },
+              "registration_type": {
+                "$ref": "#/components/schemas/RegistrationType"
+              },
+              "client_id": {
+                "type": "string"
+              },
+              "authorization_endpoint": {
+                "type": "string"
+              },
+              "token_endpoint": {
+                "type": "string"
+              },
+              "registration_endpoint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "scopes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "client_id_issued_at": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "int64"
+              },
+              "token_endpoint_auth_method": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "has_client_secret": {
+                "type": "boolean"
+              },
+              "has_registration_access_token": {
+                "type": "boolean"
+              },
+              "created_by": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "oauth"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "Discriminated union response for any type of MCP auth config.\nThe JSON `\"type\"` field determines the variant: `\"header\"` or `\"oauth\"`."
+      },
+      "McpAuthConfigsListResponse": {
+        "type": "object",
+        "description": "List wrapper for unified auth config responses.",
+        "required": [
+          "auth_configs"
+        ],
+        "properties": {
+          "auth_configs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpAuthConfigResponse"
+            }
+          }
+        }
+      },
+      "McpAuthType": {
+        "type": "string",
+        "enum": [
+          "public",
+          "header",
+          "oauth"
+        ]
+      },
       "McpExecuteRequest": {
         "type": "object",
         "required": [
@@ -12025,7 +12876,7 @@
             }
           },
           "auth_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/McpAuthType"
           },
           "auth_uuid": {
             "type": [
@@ -12187,6 +13038,16 @@
           },
           "updated_at": {
             "type": "string"
+          },
+          "auth_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/McpAuthConfigResponse"
+              }
+            ]
           }
         }
       },
@@ -12588,6 +13449,185 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "OAuthDiscoverAsRequest": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthDiscoverAsResponse": {
+        "type": "object",
+        "required": [
+          "authorization_endpoint",
+          "token_endpoint"
+        ],
+        "properties": {
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "scopes_supported": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OAuthDiscoverMcpRequest": {
+        "type": "object",
+        "required": [
+          "mcp_server_url"
+        ],
+        "properties": {
+          "mcp_server_url": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthDiscoverMcpResponse": {
+        "type": "object",
+        "properties": {
+          "authorization_endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token_endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes_supported": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "resource": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "authorization_server_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "OAuthLoginRequest": {
+        "type": "object",
+        "required": [
+          "redirect_uri"
+        ],
+        "properties": {
+          "redirect_uri": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthLoginResponse": {
+        "type": "object",
+        "required": [
+          "authorization_url"
+        ],
+        "properties": {
+          "authorization_url": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthTokenExchangeRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "redirect_uri",
+          "state"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuthTokenResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "mcp_oauth_config_id",
+          "has_access_token",
+          "has_refresh_token",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mcp_oauth_config_id": {
+            "type": "string"
+          },
+          "scopes_granted": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "has_access_token": {
+            "type": "boolean"
+          },
+          "has_refresh_token": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
           }
         }
       },
@@ -13313,6 +14353,14 @@
         "enum": [
           "all",
           "model"
+        ]
+      },
+      "RegistrationType": {
+        "type": "string",
+        "description": "OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).",
+        "enum": [
+          "pre-registered",
+          "dynamic-registration"
         ]
       },
       "RequestedResources": {
@@ -14253,21 +15301,6 @@
           "status": "inactive"
         }
       },
-      "UpdateAuthHeaderRequest": {
-        "type": "object",
-        "required": [
-          "header_key",
-          "header_value"
-        ],
-        "properties": {
-          "header_key": {
-            "type": "string"
-          },
-          "header_value": {
-            "type": "string"
-          }
-        }
-      },
       "UpdateMcpRequest": {
         "type": "object",
         "required": [
@@ -14310,9 +15343,13 @@
             }
           },
           "auth_type": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/McpAuthType"
+              }
             ]
           },
           "auth_uuid": {

@@ -56,6 +56,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make ci.ts-client-check` - Verify TypeScript client is synchronized with OpenAPI specification
 - `make docs.context-update` - Update AI documentation context symlinks (CLAUDE.md/PACKAGE.md)
 
+## Layered Development Methodology
+
+BodhiApp uses strict upstream-to-downstream layered development. When implementing a feature or fix that spans multiple crates, always start from the most upstream crate and work downstream.
+
+### Crate Dependency Chain
+
+```
+objs -> services -> (server_core, auth_middleware) -> routes_app -> server_app -> (lib_bodhiserver, bodhi/src-tauri)
+```
+
+### Development Flow
+
+1. **Upstream Rust crate first**: Make changes to the most upstream crate affected (e.g., `objs`). Run and fix tests for that crate (`cargo test -p objs`). Then run tests for all upstream + current crates to verify no regressions. Mark the crate milestone done.
+2. **Repeat downstream**: Move to the next downstream crate (e.g., `services`). Make changes, run its tests, run cumulative tests for all crates changed so far.
+3. **Continue through the chain**: `routes_app` -> `server_app` -> any other affected crates. At each step, run cumulative tests.
+4. **Full backend validation**: Once all Rust crate changes are done, run `make test.backend` to verify the complete backend.
+5. **Regenerate TypeScript types**: Run `make build.ts-client` to regenerate the TypeScript types used by the frontend in `crates/bodhi/src/`. The frontend imports request/response types from `@bodhiapp/ts-client`.
+6. **Frontend component tests**: Make UI changes in `crates/bodhi/src/`, always using `@bodhiapp/ts-client` for request/response types. Run `cd crates/bodhi && npm run test` to fix component tests. Mark the UI milestone done.
+7. **E2E tests**: Run `make build.ui-rebuild` to rebuild the NAPI bindings with UI changes. Then add/update E2E tests in `crates/lib_bodhiserver_napi/tests-js/`. Run updated/relevant specs first, then `make test.napi` for full regression. Analyze any failures for relevance (some tests are flaky). Mark the E2E milestone done.
+8. **Documentation**: Update crate-level `CLAUDE.md` / `PACKAGE.md` for each modified crate, and project root `CLAUDE.md` for architectural changes.
+
 ## Architecture Overview
 
 BodhiApp is a Rust-based application providing local Large Language Model (LLM) inference with a modern React web interface and Tauri desktop app.
@@ -214,11 +235,16 @@ Local AI model management integrates multiple services and external systems:
 
 ### Testing Practices
 - Write tests that provide maintenance value - avoid testing trivial constructors, derive macros, or standard serialization
-- Use `assert_eq!(expected, actual)` convention for consistency with JUnit patterns  
+- Use `assert_eq!(expected, actual)` convention for consistency with JUnit patterns
 - For React integration/UI tests, prefer `data-testid` attributes with `getByTestId` over CSS selectors that can change
 - Tests should be deterministic - no if-else logic or try-catch blocks in test code
 - Use `console.log` for error scenarios in tests only, and avoid unnecessary comments unless logic is complex
 - Do not add timeouts for Playwright UI tests except on ChatPage which needs model warm-up time
+- **Use rstest for all Rust tests** - leverage rstest features to reduce duplication and improve maintainability:
+  - `#[case]` for parameterized tests: test the same logic with multiple inputs/expected outputs instead of writing separate test functions
+  - `#[values]` for combinatorial testing: generate test cases from all combinations of input values
+  - `#[fixture]` for shared test setup: extract common setup into reusable fixtures with dependency injection
+  - Prefer parameterized tests over multiple assert statements in a single test or duplicated test functions with minor variations
 
 ## Critical UI Development Workflow
 

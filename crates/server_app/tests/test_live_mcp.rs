@@ -11,14 +11,14 @@ const MCP_TEST_URL: &str = "https://mcp.deepwiki.com/mcp";
 /// Full CRUD flow for MCP servers and instances through the live HTTP server.
 ///
 /// Test steps:
-///   1. Admin creates an MCP server via POST /mcp_servers
-///   2. Admin gets MCP server by ID via GET /mcp_servers/{id}
-///   3. Admin updates MCP server via PUT /mcp_servers/{id}
+///   1. Admin creates an MCP server via POST /mcps/servers
+///   2. Admin gets MCP server by ID via GET /mcps/servers/{id}
+///   3. Admin updates MCP server via PUT /mcps/servers/{id}
 ///   4. User creates an MCP instance via POST /mcps (with mcp_server_id)
 ///   5. User lists MCPs via GET /mcps -> asserts instance present with nested mcp_server
 ///   6. User gets MCP by ID via GET /mcps/{id} -> asserts nested mcp_server
 ///   7. User updates MCP via PUT /mcps/{id} -> asserts updated fields
-///   8. User lists MCP servers via GET /mcp_servers -> asserts server with counts
+///   8. User lists MCP servers via GET /mcps/servers -> asserts server with counts
 ///   9. User deletes MCP via DELETE /mcps/{id} -> asserts gone
 #[anyhow_trace]
 #[tokio::test]
@@ -32,7 +32,7 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
 
   // Step 1: Create MCP server (admin)
   let resp = client
-    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcps/servers", server.base_url))
     .header("Cookie", &admin_cookie)
     .json(&json!({
       "url": MCP_TEST_URL,
@@ -58,7 +58,7 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   // Step 2: Get MCP server by ID
   let resp = client
     .get(format!(
-      "{}/bodhi/v1/mcp_servers/{}",
+      "{}/bodhi/v1/mcps/servers/{}",
       server.base_url, mcp_server_id
     ))
     .header("Cookie", &admin_cookie)
@@ -72,7 +72,7 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
   // Step 3: Update MCP server name/description
   let resp = client
     .put(format!(
-      "{}/bodhi/v1/mcp_servers/{}",
+      "{}/bodhi/v1/mcps/servers/{}",
       server.base_url, mcp_server_id
     ))
     .header("Cookie", &admin_cookie)
@@ -160,7 +160,7 @@ async fn test_mcp_crud_flow() -> anyhow::Result<()> {
 
   // Step 8: List MCP servers with counts
   let resp = client
-    .get(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .get(format!("{}/bodhi/v1/mcps/servers", server.base_url))
     .header("Cookie", &admin_cookie)
     .send()
     .await?;
@@ -205,7 +205,7 @@ async fn test_mcp_tool_execution_flow() -> anyhow::Result<()> {
 
   // Step 1: Create MCP server
   let resp = client
-    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcps/servers", server.base_url))
     .header("Cookie", &admin_cookie)
     .json(&json!({
       "url": MCP_TEST_URL,
@@ -299,7 +299,7 @@ async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
     create_test_session_for_live_server(&server.app_service, &["resource_user"]).await?;
 
   let resp = client
-    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcps/servers", server.base_url))
     .header("Cookie", &user_cookie)
     .json(&json!({
       "url": MCP_TEST_URL,
@@ -319,17 +319,16 @@ async fn test_non_admin_cannot_create_mcp_server() -> anyhow::Result<()> {
   Ok(())
 }
 
-/// Multi-step auth lifecycle using two-step auth config flow:
+/// Multi-step auth lifecycle using unified auth config flow:
 ///   1. Admin creates MCP server
-///   2. Admin creates auth header config via /mcps/auth-headers
+///   2. Admin creates auth header config via /mcps/auth-configs
 ///   3. Admin creates MCP with auth_type=header and auth_uuid referencing the config
 ///   4. Verify response: auth_type=header, auth_uuid present, no raw secrets leaked
-///   5. Admin updates auth header config (new key/value)
-///   6. Verify MCP still references updated config
-///   7. Admin switches MCP to public auth (orphan cleanup deletes old config)
-///   8. Verify auth cleared on MCP
-///   9. Admin creates new auth header config and switches MCP back to header auth
-///  10. Verify auth restored
+///   5. Verify MCP references the auth config via GET
+///   6. Admin switches MCP to public auth
+///   7. Verify auth cleared on MCP but auth config preserved
+///   8. Admin creates new auth header config and switches MCP back to header auth
+///   9. Verify auth restored
 #[anyhow_trace]
 #[tokio::test]
 #[serial_test::serial(live)]
@@ -342,7 +341,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
 
   // Step 1: Create MCP server
   let resp = client
-    .post(format!("{}/bodhi/v1/mcp_servers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcps/servers", server.base_url))
     .header("Cookie", &admin_cookie)
     .json(&json!({
       "url": "https://mcp.auth-test.example.com/mcp",
@@ -355,23 +354,28 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   let server_resp: Value = resp.json().await?;
   let mcp_server_id = server_resp["id"].as_str().unwrap().to_string();
 
-  // Step 2: Create auth header config
+  // Step 2: Create auth header config via unified auth-configs endpoint
   let resp = client
-    .post(format!("{}/bodhi/v1/mcps/auth-headers", server.base_url))
+    .post(format!("{}/bodhi/v1/mcps/auth-configs", server.base_url))
     .header("Cookie", &admin_cookie)
     .json(&json!({
+      "mcp_server_id": mcp_server_id,
+      "type": "header",
+      "name": "Test Auth Header",
       "header_key": "Authorization",
       "header_value": "Bearer token-1"
     }))
     .send()
     .await?;
   assert_eq!(StatusCode::CREATED, resp.status());
-  let auth_header: Value = resp.json().await?;
-  let auth_uuid = auth_header["id"].as_str().unwrap().to_string();
-  assert_eq!("Authorization", auth_header["header_key"]);
-  assert!(
-    auth_header.get("header_value").is_none() || auth_header["header_value"].is_null(),
-    "Raw header value must not leak in response"
+  let auth_config: Value = resp.json().await?;
+  let auth_uuid = auth_config["id"].as_str().unwrap().to_string();
+  assert_eq!("header", auth_config["type"]);
+  assert_eq!("Authorization", auth_config["header_key"]);
+  assert_eq!(
+    true,
+    auth_config["has_header_value"].as_bool().unwrap(),
+    "should indicate header value is set"
   );
 
   // Step 3: Create MCP with header auth referencing the config
@@ -404,24 +408,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
     "Encrypted value must not leak in MCP response"
   );
 
-  // Step 5: Update auth header config (new key/value)
-  let resp = client
-    .put(format!(
-      "{}/bodhi/v1/mcps/auth-headers/{}",
-      server.base_url, auth_uuid
-    ))
-    .header("Cookie", &admin_cookie)
-    .json(&json!({
-      "header_key": "X-Api-Key",
-      "header_value": "key-abc-123"
-    }))
-    .send()
-    .await?;
-  assert_eq!(StatusCode::OK, resp.status());
-  let updated_auth: Value = resp.json().await?;
-  assert_eq!("X-Api-Key", updated_auth["header_key"]);
-
-  // Step 6: Verify MCP still references the same auth config
+  // Step 5: Verify MCP references the auth config via GET
   let resp = client
     .get(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
@@ -432,7 +419,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   assert_eq!("header", fetched_mcp["auth_type"]);
   assert_eq!(auth_uuid, fetched_mcp["auth_uuid"]);
 
-  // Step 7: Switch MCP to public auth (orphan cleanup deletes the auth header config)
+  // Step 6: Switch MCP to public auth
   let resp = client
     .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
@@ -447,42 +434,29 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   assert_eq!(StatusCode::OK, resp.status());
   let public_mcp: Value = resp.json().await?;
 
-  // Step 8: Verify auth cleared
+  // Step 7: Verify auth cleared on MCP but auth config preserved
   assert_eq!("public", public_mcp["auth_type"]);
   assert!(
     public_mcp["auth_uuid"].is_null(),
     "auth_uuid should be null after switching to public"
   );
 
-  // Verify old auth header config was cleaned up
+  // Auth configs are admin-managed resources - they should be preserved for reuse
   let resp = client
     .get(format!(
-      "{}/bodhi/v1/mcps/auth-headers/{}",
+      "{}/bodhi/v1/mcps/auth-configs/{}",
       server.base_url, auth_uuid
     ))
     .header("Cookie", &admin_cookie)
     .send()
     .await?;
   assert_eq!(
-    StatusCode::NOT_FOUND,
+    StatusCode::OK,
     resp.status(),
-    "Old auth header config should be deleted by orphan cleanup"
+    "Auth config should be preserved for reuse"
   );
 
-  // Step 9: Create new auth header config and switch MCP back to header auth
-  let resp = client
-    .post(format!("{}/bodhi/v1/mcps/auth-headers", server.base_url))
-    .header("Cookie", &admin_cookie)
-    .json(&json!({
-      "header_key": "Authorization",
-      "header_value": "Bearer restored-token"
-    }))
-    .send()
-    .await?;
-  assert_eq!(StatusCode::CREATED, resp.status());
-  let new_auth: Value = resp.json().await?;
-  let new_auth_uuid = new_auth["id"].as_str().unwrap().to_string();
-
+  // Step 8: Reuse original auth config and switch MCP back to header auth
   let resp = client
     .put(format!("{}/bodhi/v1/mcps/{}", server.base_url, mcp_id))
     .header("Cookie", &admin_cookie)
@@ -491,16 +465,16 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
       "slug": "auth-mcp",
       "enabled": true,
       "auth_type": "header",
-      "auth_uuid": new_auth_uuid
+      "auth_uuid": auth_uuid
     }))
     .send()
     .await?;
   assert_eq!(StatusCode::OK, resp.status());
   let restored: Value = resp.json().await?;
 
-  // Step 10: Verify auth restored
+  // Step 9: Verify auth restored with original auth config
   assert_eq!("header", restored["auth_type"]);
-  assert_eq!(new_auth_uuid, restored["auth_uuid"]);
+  assert_eq!(auth_uuid, restored["auth_uuid"]);
 
   // Verify via list that auth info is present
   let resp = client
@@ -513,7 +487,7 @@ async fn test_mcp_auth_lifecycle_flow() -> anyhow::Result<()> {
   let items = list["mcps"].as_array().unwrap();
   assert_eq!(1, items.len());
   assert_eq!("header", items[0]["auth_type"]);
-  assert_eq!(new_auth_uuid, items[0]["auth_uuid"]);
+  assert_eq!(auth_uuid, items[0]["auth_uuid"]);
 
   server.handle.shutdown().await?;
   Ok(())

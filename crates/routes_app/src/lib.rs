@@ -14,7 +14,7 @@ mod api_dto;
 mod routes_api_models;
 mod routes_apps;
 mod routes_auth;
-mod routes_mcps;
+mod routes_mcp;
 mod routes_models;
 pub mod routes_oai;
 pub mod routes_ollama;
@@ -40,7 +40,7 @@ pub use routes_api_token::*;
 pub use routes_apps::*;
 pub use routes_auth::*;
 pub use routes_dev::*;
-pub use routes_mcps::*;
+pub use routes_mcp::*;
 pub use routes_models::*;
 pub use routes_oai::{
   chat_completions_handler, embeddings_handler, oai_model_handler, oai_models_handler,

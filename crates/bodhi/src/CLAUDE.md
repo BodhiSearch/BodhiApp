@@ -29,7 +29,9 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 
 - **Chat Interface**: Real-time chat with streaming responses, message history, and tool calling support
 - **Model Management**: Create, edit, and manage model aliases and configurations
-- **MCP Server Management**: CRUD for MCP server instances, tool discovery, admin enable flow (`useMcps` hook, `mcps/` pages)
+- **MCP Server Management**: CRUD for MCP server instances, tool discovery, admin enable flow (`useMcps` hook, `mcps/` pages). All API endpoints under `/bodhi/v1/mcps/` prefix. MCP Servers view page (`/ui/mcp-servers/view?id=xxx`) shows server info and auth config list; auth configs (header, OAuth) are created there. Auth type is `McpAuthType` enum: `public`, `header`, `oauth`. OAuth pre-registered vs dynamic is distinguished by `registration_type` field, not separate auth types. MCP Servers new page (`/ui/mcp-servers/new`) supports optional auth config creation with OAuth registration type sub-dropdown. MCPs new/edit page uses an auth config dropdown.
+- **MCP OAuth**: Callback page validates `state` parameter, handles corrupt session data gracefully; `mcpFormStore.reset()` clears sessionStorage. `mcpFormStore.ts` uses simplified auth state (auth config selection via dropdown). MSW handlers in `test-utils/msw-v2/handlers/mcps.ts` include unified auth config handlers at `/mcps/auth-configs`. **Important**: MSW handler registration order matters — sub-path handlers (`/mcps/servers`, `/mcps/auth-configs`) must be registered before wildcard `/mcps/:id` handlers to avoid route interception.
+- **Auto-DCR behavior difference between new and view pages**: New server page (`mcp-servers/new/page.tsx`) uses `enableAutoDcr={true}` — when OAuth is selected, it silently tries OAuth discovery first, then falls back to pre-registered if discovery fails (no error shown to user). View/edit server page (`mcp-servers/view/page.tsx`) uses `enableAutoDcr={false}` — when OAuth is selected, discovery errors are shown to the user so they can retry; there is no silent fallback to pre-registered.
 - **Toolset Management**: Toolset CRUD, type management, tool selection for chat (`useToolsets`, `use-toolset-selection` hooks, `toolsets/` pages)
 - **Access Request Management**: User access requests and app access request review/approval (`useAccessRequests`, `useAppAccessRequests` hooks, `apps/access-requests/` pages)
 - **API Model Management**: External API model configuration (`useApiModels` hook, `api-models/` pages)
@@ -430,7 +432,9 @@ src/app/ui/
 ├── modelfiles/                  # Modelfiles page
 ├── pull/                        # Model pull interface
 ├── api-models/                  # API model config (new, edit)
-├── mcps/                        # MCP server management (list, new)
+├── mcps/                        # MCP server management (list, new, edit)
+├── mcp-servers/                 # MCP server allowlist and auth config management
+│   └── view/                    # Server view page (server info + auth config list)
 ├── toolsets/                    # Toolset management (list, new, edit, admin)
 ├── tokens/                      # API token management
 ├── settings/                    # Application settings

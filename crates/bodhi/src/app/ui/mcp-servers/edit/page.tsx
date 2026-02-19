@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { Trash2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import AppInitializer from '@/components/AppInitializer';
@@ -15,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -24,13 +26,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useMcpServer, useUpdateMcpServer } from '@/hooks/useMcps';
+import {
+  useMcpServer,
+  useUpdateMcpServer,
+  useListAuthConfigs,
+  useDeleteAuthConfig,
+  type McpAuthConfigResponse,
+} from '@/hooks/useMcps';
+import { authConfigTypeBadge, authConfigBadgeVariant, authConfigDetail } from '@/lib/mcpUtils';
 
 function EditMcpServerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serverId = searchParams.get('id') || '';
   const { data: server, isLoading, error } = useMcpServer(serverId, { enabled: !!serverId });
+  const { data: authConfigsData, isLoading: configsLoading } = useListAuthConfigs(serverId);
 
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
@@ -39,14 +49,28 @@ function EditMcpServerContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [urlWarning, setUrlWarning] = useState(false);
   const [originalUrl, setOriginalUrl] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<McpAuthConfigResponse | null>(null);
+
+  const authConfigs = authConfigsData?.auth_configs ?? [];
 
   const updateMutation = useUpdateMcpServer({
     onSuccess: () => {
       toast({ title: 'MCP server updated' });
-      router.push('/ui/mcp-servers');
+      router.push(`/ui/mcp-servers/view?id=${serverId}`);
     },
     onError: (message) => {
       toast({ title: 'Failed to update MCP server', description: message, variant: 'destructive' });
+    },
+  });
+
+  const deleteAuthConfig = useDeleteAuthConfig({
+    onSuccess: () => {
+      toast({ title: 'Auth config deleted' });
+      setDeleteTarget(null);
+    },
+    onError: (message) => {
+      toast({ title: 'Failed to delete auth config', description: message, variant: 'destructive' });
+      setDeleteTarget(null);
     },
   });
 
@@ -97,6 +121,11 @@ function EditMcpServerContent() {
       enabled,
     });
     setUrlWarning(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    deleteAuthConfig.mutate({ configId: deleteTarget.id });
   };
 
   if (!serverId) {
@@ -180,6 +209,54 @@ function EditMcpServerContent() {
               <Label htmlFor="enabled">Enabled</Label>
             </div>
 
+            {/* Auth Configurations Section (read-only) */}
+            <div className="border-t pt-4 mt-6" data-testid="auth-configs-section">
+              <h3 className="text-lg font-semibold mb-3">Auth Configurations</h3>
+
+              {configsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : authConfigs.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No auth configurations yet.
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {authConfigs.map((config) => {
+                    const id = config.id;
+                    return (
+                      <Card key={id} data-testid={`auth-config-row-${id}`}>
+                        <CardContent className="py-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium">{config.name}</span>
+                            <Badge
+                              variant={authConfigBadgeVariant(config)}
+                              data-testid={`auth-config-type-badge-${id}`}
+                            >
+                              {authConfigTypeBadge(config)}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">{authConfigDetail(config)}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(config)}
+                            data-testid={`auth-config-delete-button-${id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => router.push('/ui/mcp-servers')}>
                 Cancel
@@ -191,6 +268,34 @@ function EditMcpServerContent() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Delete Auth Config Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent data-testid="delete-auth-config-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Auth Config</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? All associated OAuth tokens will also be
+              deleted. MCPs using this config will no longer have authentication.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleteAuthConfig.isLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteAuthConfig.isLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={urlWarning} onOpenChange={setUrlWarning}>
         <AlertDialogContent>

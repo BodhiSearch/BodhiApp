@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS mcps (
     enabled INTEGER NOT NULL DEFAULT 1,    -- boolean as integer
     tools_cache TEXT,                      -- JSON array of tool schemas
     tools_filter TEXT,                     -- JSON array of whitelisted tool names
-    auth_type TEXT NOT NULL DEFAULT 'public', -- auth type: 'public', 'header', 'oauth-pre-registered'
+    auth_type TEXT NOT NULL DEFAULT 'public', -- auth type: 'public', 'header', 'oauth'
     auth_uuid TEXT,                        -- FK to auth config table (resolved by auth_type)
     created_at INTEGER NOT NULL,           -- Unix timestamp
     updated_at INTEGER NOT NULL,           -- Unix timestamp

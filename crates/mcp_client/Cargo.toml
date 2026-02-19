@@ -9,7 +9,7 @@ async-trait = { workspace = true }
 mockall = { workspace = true, optional = true }
 objs = { workspace = true }
 reqwest = { workspace = true }
-rmcp = { version = "0.14", features = [
+rmcp = { workspace = true, features = [
   "client",
   "transport-streamable-http-client",
   "transport-streamable-http-client-reqwest",

@@ -19,7 +19,7 @@ constant_time_eq = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true, features = ["form"] }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["indexmap"] }
@@ -41,7 +41,7 @@ dotenv = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true, features = ["json", "form"] }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full"] }

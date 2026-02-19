@@ -55,6 +55,7 @@ impl DefaultMcpClient {
       client_info: Implementation {
         name: "bodhi-mcp-client".to_string(),
         title: None,
+        description: None,
         version: env!("CARGO_PKG_VERSION").to_string(),
         website_url: None,
         icons: None,

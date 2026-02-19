@@ -1,20 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Loader2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, KeyRound, Loader2, Unplug } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
 import AppInitializer from '@/components/AppInitializer';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PasswordInput } from '@/components/ui/password-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -22,47 +22,46 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import {
-  useAuthHeader,
-  useCreateAuthHeader,
   useCreateMcp,
+  useDeleteOAuthToken,
   useFetchMcpTools,
+  useGetOAuthToken,
+  useListAuthConfigs,
   useMcp,
   useMcpServers,
-  useUpdateAuthHeader,
+  useOAuthLogin,
   useUpdateMcp,
+  type McpAuthConfigResponse,
   type McpServerResponse,
-  type McpTool,
 } from '@/hooks/useMcps';
 import { useUser } from '@/hooks/useUsers';
 import { isAdminRole } from '@/lib/roles';
+import { authConfigTypeLabel } from '@/lib/mcpUtils';
 import McpServerSelector from '@/app/ui/mcps/new/McpServerSelector';
 import ToolSelection from '@/app/ui/mcps/new/ToolSelection';
+import { useMcpFormStore } from '@/stores/mcpFormStore';
+import type { McpAuthType } from '@bodhiapp/ts-client';
 
-const createMcpSchema = z
-  .object({
-    mcp_server_id: z.string().min(1, 'Please select an MCP server'),
-    name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
-    slug: z
-      .string()
-      .min(1, 'Slug is required')
-      .max(24, 'Slug must be 24 characters or less')
-      .regex(/^[a-zA-Z0-9-]+$/, 'Slug can only contain letters, numbers, and hyphens'),
-    description: z.string().max(255).optional(),
-    enabled: z.boolean().default(true),
-    auth_type: z.enum(['public', 'header']).default('public'),
-    auth_header_key: z.string().optional(),
-    auth_header_value: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.auth_type === 'header') {
-        return !!data.auth_header_key && data.auth_header_key.length > 0;
-      }
-      return true;
-    },
-    { message: 'Header name is required', path: ['auth_header_key'] }
-  );
-const HEADER_SUGGESTIONS = ['Authorization', 'X-API-Key', 'Api-Key'];
+const safeOrigin = (urlStr: string): string => {
+  try {
+    return new URL(urlStr).origin;
+  } catch {
+    return urlStr;
+  }
+};
+
+const createMcpSchema = z.object({
+  mcp_server_id: z.string().min(1, 'Please select an MCP server'),
+  name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
+  slug: z
+    .string()
+    .min(1, 'Slug is required')
+    .max(24, 'Slug must be 24 characters or less')
+    .regex(/^[a-zA-Z0-9-]+$/, 'Slug can only contain letters, numbers, and hyphens'),
+  description: z.string().max(255).optional(),
+  enabled: z.boolean().default(true),
+  auth_type: z.enum(['public', 'header', 'oauth']).default('public'),
+});
 
 type CreateMcpFormData = z.infer<typeof createMcpSchema>;
 
@@ -79,6 +78,69 @@ const extractSlugFromUrl = (url: string): string => {
   }
 };
 
+type AuthConfigOption = {
+  id: string;
+  name: string;
+  type: 'header' | 'oauth';
+  config: McpAuthConfigResponse;
+};
+
+function OAuthConnectedCard({
+  config,
+  onDisconnect,
+  isDisconnecting,
+}: {
+  config: McpAuthConfigResponse | null;
+  onDisconnect: () => void;
+  isDisconnecting: boolean;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-4 space-y-3"
+      data-testid="oauth-connected-card"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <Badge
+            variant="outline"
+            className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700"
+            data-testid="oauth-connected-badge"
+          >
+            Connected
+          </Badge>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onDisconnect}
+          disabled={isDisconnecting}
+          data-testid="oauth-disconnect-button"
+        >
+          {isDisconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unplug className="mr-2 h-4 w-4" />}
+          Disconnect
+        </Button>
+      </div>
+      {config && config.type !== 'header' && (
+        <div className="text-sm text-muted-foreground space-y-1" data-testid="oauth-connected-info">
+          <p>
+            <span className="font-medium">Client ID:</span> {config.client_id}
+          </p>
+          <p>
+            <span className="font-medium">Auth Server:</span> {safeOrigin(config.authorization_endpoint)}
+          </p>
+          {config.scopes && (
+            <p>
+              <span className="font-medium">Scopes:</span> {config.scopes}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NewMcpPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -86,15 +148,13 @@ function NewMcpPageContent() {
   const { data: userInfo } = useUser();
   const isAdmin = userInfo?.auth_status === 'logged_in' && userInfo.role ? isAdminRole(userInfo.role) : false;
 
+  const store = useMcpFormStore();
+
   const {
     data: existingMcp,
     isLoading: loadingExisting,
     error: existingError,
   } = useMcp(editId || '', { enabled: !!editId });
-
-  const { data: existingAuthHeader } = useAuthHeader(existingMcp?.auth_uuid || '', {
-    enabled: !!existingMcp?.auth_uuid,
-  });
 
   const { data: serversData, isLoading: loadingServers } = useMcpServers({ enabled: true }, { enabled: !editId });
 
@@ -102,16 +162,49 @@ function NewMcpPageContent() {
 
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<McpServerResponse | null>(null);
-  const [fetchedTools, setFetchedTools] = useState<McpTool[]>([]);
-  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
-  const [toolsFetched, setToolsFetched] = useState(false);
+  const [showNewAuthRedirect, setShowNewAuthRedirect] = useState(false);
+  const [pendingDeleteTokenId, setPendingDeleteTokenId] = useState<string | null>(null);
 
-  const createAuthHeaderMutation = useCreateAuthHeader();
-  const updateAuthHeaderMutation = useUpdateAuthHeader();
+  const { data: authConfigsData } = useListAuthConfigs(selectedServer?.id || '', {
+    enabled: !!selectedServer?.id,
+  });
+
+  const authConfigOptions = useMemo<AuthConfigOption[]>(() => {
+    const configs = authConfigsData?.auth_configs ?? [];
+    return configs.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      config: c,
+    }));
+  }, [authConfigsData]);
+
+  const selectedAuthOption = useMemo(
+    () => authConfigOptions.find((o) => o.id === store.selectedAuthConfigId) || null,
+    [authConfigOptions, store.selectedAuthConfigId]
+  );
+
+  // For edit mode with OAuth: fetch the token to find the corresponding config
+  const { data: existingOAuthToken } = useGetOAuthToken(existingMcp?.auth_uuid || '', {
+    enabled: !!existingMcp?.auth_uuid && existingMcp?.auth_type === 'oauth',
+  });
+
+  const oauthLoginMutation = useOAuthLogin();
+  const deleteOAuthTokenMutation = useDeleteOAuthToken({
+    onSuccess: () => {
+      store.disconnect();
+      toast({ title: 'OAuth connection removed' });
+    },
+    onError: (message) => {
+      store.disconnect();
+      toast({ title: 'Failed to disconnect', description: message, variant: 'destructive' });
+    },
+  });
 
   const createMutation = useCreateMcp({
     onSuccess: () => {
       toast({ title: 'MCP created successfully' });
+      store.reset();
       router.push('/ui/mcps');
     },
     onError: (message) => {
@@ -122,6 +215,7 @@ function NewMcpPageContent() {
   const updateMutation = useUpdateMcp({
     onSuccess: () => {
       toast({ title: 'MCP updated successfully' });
+      store.reset();
       router.push('/ui/mcps');
     },
     onError: (message) => {
@@ -132,9 +226,9 @@ function NewMcpPageContent() {
   const fetchToolsMutation = useFetchMcpTools({
     onSuccess: (response) => {
       const tools = response.tools || [];
-      setFetchedTools(tools);
-      setSelectedTools(new Set(tools.map((t) => t.name)));
-      setToolsFetched(true);
+      store.setFetchedTools(tools);
+      store.setSelectedTools(new Set(tools.map((t) => t.name)));
+      store.setToolsFetched(true);
       toast({ title: `Fetched ${tools.length} tool${tools.length !== 1 ? 's' : ''}` });
     },
     onError: (message) => {
@@ -151,26 +245,60 @@ function NewMcpPageContent() {
       description: '',
       enabled: true,
       auth_type: 'public',
-      auth_header_key: '',
-      auth_header_value: '',
     },
   });
 
-  const authType = form.watch('auth_type');
-  const authHeaderKey = form.watch('auth_header_key');
-  const authHeaderValue = form.watch('auth_header_value');
+  const sessionRestoredRef = useRef(false);
 
   useEffect(() => {
-    if (existingMcp && editId) {
+    if (!sessionRestoredRef.current) {
+      const sessionState = store.restoreFromSession();
+      if (sessionState) {
+        sessionRestoredRef.current = true;
+        form.reset({
+          mcp_server_id: (sessionState.mcp_server_id as string) || '',
+          name: (sessionState.name as string) || '',
+          slug: (sessionState.slug as string) || '',
+          description: (sessionState.description as string) || '',
+          enabled: (sessionState.enabled as boolean) ?? true,
+          auth_type: (sessionState.auth_type as McpAuthType) || 'public',
+        });
+        if (sessionState.tools_cache) {
+          store.setFetchedTools(sessionState.tools_cache as typeof store.fetchedTools);
+          store.setSelectedTools(new Set((sessionState.tools_filter as string[]) || []));
+          store.setToolsFetched(true);
+        }
+        if (sessionState.oauth_token_id) {
+          store.completeOAuthFlow(sessionState.oauth_token_id as string);
+        }
+        if (sessionState.selected_auth_config_id) {
+          store.setSelectedAuthConfig(
+            sessionState.selected_auth_config_id as string,
+            (sessionState.selected_auth_config_type as string) || null
+          );
+        }
+        if (sessionState.mcp_server_id && sessionState.server_url && sessionState.server_name) {
+          setSelectedServer({
+            id: sessionState.mcp_server_id as string,
+            url: sessionState.server_url as string,
+            name: sessionState.server_name as string,
+            enabled: true,
+          } as McpServerResponse);
+        }
+        return;
+      }
+    }
+
+    if (sessionRestoredRef.current) return;
+
+    if (editId && existingMcp) {
       form.reset({
         mcp_server_id: existingMcp.mcp_server.id,
         name: existingMcp.name,
         slug: existingMcp.slug,
         description: existingMcp.description || '',
         enabled: existingMcp.enabled,
-        auth_type: (existingMcp.auth_type as 'public' | 'header') || 'public',
-        auth_header_key: '',
-        auth_header_value: '',
+        auth_type: existingMcp.auth_type || 'public',
       });
       setSelectedServer({
         id: existingMcp.mcp_server.id,
@@ -179,18 +307,40 @@ function NewMcpPageContent() {
         enabled: existingMcp.mcp_server.enabled,
       } as McpServerResponse);
       if (existingMcp.tools_cache) {
-        setFetchedTools(existingMcp.tools_cache);
-        setSelectedTools(new Set(existingMcp.tools_filter || []));
-        setToolsFetched(true);
+        store.setFetchedTools(existingMcp.tools_cache);
+        store.setSelectedTools(new Set(existingMcp.tools_filter || []));
+        store.setToolsFetched(true);
+      }
+      if (existingMcp.auth_type === 'header' && existingMcp.auth_uuid) {
+        store.setSelectedAuthConfig(existingMcp.auth_uuid, 'header');
+      }
+      if (existingMcp.auth_type === 'oauth' && existingMcp.auth_uuid) {
+        store.completeOAuthFlow(existingMcp.auth_uuid);
       }
     }
-  }, [existingMcp, editId, form]);
+  }, [existingMcp, editId, form]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Set the selected auth config for OAuth MCPs once the token data loads (reveals the config ID)
   useEffect(() => {
-    if (existingAuthHeader && editId) {
-      form.setValue('auth_header_key', existingAuthHeader.header_key);
+    if (existingOAuthToken && editId && existingMcp) {
+      store.setSelectedAuthConfig(existingOAuthToken.mcp_oauth_config_id, existingMcp.auth_type);
     }
-  }, [existingAuthHeader, editId, form]);
+  }, [existingOAuthToken, editId, existingMcp]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select first auth config when configs load for a newly selected server (create mode only)
+  useEffect(() => {
+    if (
+      !editId &&
+      !sessionRestoredRef.current &&
+      selectedServer &&
+      authConfigOptions.length > 0 &&
+      !store.selectedAuthConfigId
+    ) {
+      const first = authConfigOptions[0];
+      store.setSelectedAuthConfig(first.id, first.type);
+      form.setValue('auth_type', first.type as McpAuthType);
+    }
+  }, [authConfigOptions, selectedServer, editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleServerSelect = useCallback(
     (server: McpServerResponse) => {
@@ -209,173 +359,147 @@ function NewMcpPageContent() {
         form.setValue('slug', slug);
       }
 
-      setFetchedTools([]);
-      setSelectedTools(new Set());
-      setToolsFetched(false);
+      store.setFetchedTools([]);
+      store.setSelectedTools(new Set());
+      store.setToolsFetched(false);
+      store.disconnect();
+      store.setSelectedAuthConfig(null, null);
+      form.setValue('auth_type', 'public');
+      setShowNewAuthRedirect(false);
       setComboboxOpen(false);
     },
-    [form]
+    [form, store]
   );
 
-  const handleToolToggle = (toolName: string) => {
-    setSelectedTools((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolName)) {
-        next.delete(toolName);
-      } else {
-        next.add(toolName);
+  const handleAuthConfigChange = (val: string) => {
+    setShowNewAuthRedirect(false);
+    if (val === '__public__') {
+      store.setSelectedAuthConfig(null, null);
+      form.setValue('auth_type', 'public');
+      store.disconnect();
+    } else if (val === '__new__') {
+      setShowNewAuthRedirect(true);
+    } else {
+      const opt = authConfigOptions.find((o) => o.id === val);
+      if (opt) {
+        store.setSelectedAuthConfig(opt.id, opt.type);
+        form.setValue('auth_type', opt.type as McpAuthType);
+        store.disconnect();
       }
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    setSelectedTools(new Set(fetchedTools.map((t) => t.name)));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedTools(new Set());
+    }
   };
 
   const handleFetchTools = () => {
     const serverId = form.getValues('mcp_server_id');
-    if (serverId) {
-      const currentAuthType = form.getValues('auth_type');
-      if (currentAuthType === 'header') {
-        fetchToolsMutation.mutate({
-          mcp_server_id: serverId,
-          auth: {
-            type: 'header',
-            header_key: form.getValues('auth_header_key') || '',
-            header_value: form.getValues('auth_header_value') || '',
-          },
-        });
-      } else {
-        fetchToolsMutation.mutate({ mcp_server_id: serverId });
+    if (!serverId) return;
+
+    const authType = store.selectedAuthConfigType;
+    if (authType === 'header' && store.selectedAuthConfigId) {
+      fetchToolsMutation.mutate({
+        mcp_server_id: serverId,
+        auth_uuid: store.selectedAuthConfigId,
+      });
+    } else if (authType === 'oauth' && (store.oauthTokenId || existingMcp?.auth_uuid)) {
+      fetchToolsMutation.mutate({
+        mcp_server_id: serverId,
+        auth_uuid: store.oauthTokenId || existingMcp?.auth_uuid || undefined,
+      });
+    } else {
+      fetchToolsMutation.mutate({ mcp_server_id: serverId });
+    }
+  };
+
+  const handleOAuthConnect = async () => {
+    const serverId = selectedServer?.id;
+    const configId = store.selectedAuthConfigId;
+    if (!serverId || !configId) {
+      toast({ title: 'Please select an OAuth configuration', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      await deletePendingToken();
+      store.saveToSession(
+        form.getValues(),
+        selectedServer ? { url: selectedServer.url, name: selectedServer.name } : undefined
+      );
+      const redirectUri = `${window.location.origin}/ui/mcps/oauth/callback`;
+      const loginResponse = await oauthLoginMutation.mutateAsync({
+        id: configId,
+        redirect_uri: redirectUri,
+      });
+      window.location.href = loginResponse.data.authorization_url;
+    } catch {
+      // Errors surfaced via React Query mutation state
+    }
+  };
+
+  const handleDisconnect = () => {
+    const tokenToDelete = store.oauthTokenId || existingMcp?.auth_uuid;
+    if (tokenToDelete) {
+      setPendingDeleteTokenId(tokenToDelete);
+    }
+    store.disconnect();
+  };
+
+  const deletePendingToken = async () => {
+    if (pendingDeleteTokenId) {
+      try {
+        await deleteOAuthTokenMutation.mutateAsync({ tokenId: pendingDeleteTokenId });
+      } catch {
+        // Best effort
       }
+      setPendingDeleteTokenId(null);
     }
   };
 
   const onSubmit = async (data: CreateMcpFormData) => {
-    if (!editId && data.auth_type === 'header' && !data.auth_header_value) {
-      form.setError('auth_header_value', { message: 'Header value is required' });
+    const authType = data.auth_type;
+
+    if (authType === 'oauth' && !store.isConnected && !existingMcp?.auth_uuid) {
+      toast({ title: 'Please complete OAuth authorization first', variant: 'destructive' });
       return;
     }
 
+    const basePayload = {
+      name: data.name,
+      slug: data.slug,
+      mcp_server_id: data.mcp_server_id,
+      description: data.description || undefined,
+      enabled: data.enabled,
+      tools_cache: store.fetchedTools.length > 0 ? store.fetchedTools : undefined,
+      tools_filter: Array.from(store.selectedTools),
+    };
+
+    let authPayload: { auth_type?: McpAuthType; auth_uuid?: string } = {};
+
+    if (authType === 'header' && store.selectedAuthConfigId) {
+      authPayload = { auth_type: 'header', auth_uuid: store.selectedAuthConfigId };
+    } else if (authType === 'oauth') {
+      if (editId && !store.isConnected && pendingDeleteTokenId) {
+        await deletePendingToken();
+        authPayload = { auth_type: 'oauth' };
+      } else {
+        const tokenId = store.oauthTokenId || existingMcp?.auth_uuid;
+        authPayload = { auth_type: 'oauth', auth_uuid: tokenId || undefined };
+      }
+    } else {
+      authPayload = { auth_type: 'public' };
+    }
+
+    const payload = { ...basePayload, ...authPayload };
+
     if (editId) {
-      await handleEditSubmit(data);
+      updateMutation.mutate({ id: editId, ...payload });
     } else {
-      await handleCreateSubmit(data);
+      createMutation.mutate(payload);
     }
   };
 
-  const handleCreateSubmit = async (data: CreateMcpFormData) => {
-    if (data.auth_type === 'header') {
-      try {
-        const authResponse = await createAuthHeaderMutation.mutateAsync({
-          header_key: data.auth_header_key || '',
-          header_value: data.auth_header_value || '',
-        });
-        createMutation.mutate({
-          mcp_server_id: data.mcp_server_id,
-          name: data.name,
-          slug: data.slug,
-          description: data.description || undefined,
-          enabled: data.enabled,
-          tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-          tools_filter: Array.from(selectedTools),
-          auth_type: 'header',
-          auth_uuid: authResponse.data.id,
-        });
-      } catch {
-        toast({ title: 'Failed to create auth header config', variant: 'destructive' });
-      }
-    } else {
-      createMutation.mutate({
-        mcp_server_id: data.mcp_server_id,
-        name: data.name,
-        slug: data.slug,
-        description: data.description || undefined,
-        enabled: data.enabled,
-        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-        tools_filter: Array.from(selectedTools),
-      });
-    }
-  };
+  const isSubmitting = createMutation.isLoading || updateMutation.isLoading || oauthLoginMutation.isLoading;
+  const canCreate = store.toolsFetched && !isSubmitting;
 
-  const handleEditSubmit = async (data: CreateMcpFormData) => {
-    const existingAuthType = existingMcp?.auth_type || 'public';
-    const existingAuthUuid = existingMcp?.auth_uuid;
-
-    if (data.auth_type === 'header' && data.auth_header_value) {
-      try {
-        if (existingAuthUuid && existingAuthType === 'header') {
-          await updateAuthHeaderMutation.mutateAsync({
-            id: existingAuthUuid,
-            header_key: data.auth_header_key || '',
-            header_value: data.auth_header_value,
-          });
-          updateMutation.mutate({
-            id: editId!,
-            name: data.name,
-            slug: data.slug,
-            description: data.description || undefined,
-            enabled: data.enabled,
-            tools_filter: Array.from(selectedTools),
-            tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-            auth_type: 'header',
-            auth_uuid: existingAuthUuid,
-          });
-        } else {
-          const authResponse = await createAuthHeaderMutation.mutateAsync({
-            header_key: data.auth_header_key || '',
-            header_value: data.auth_header_value,
-          });
-          updateMutation.mutate({
-            id: editId!,
-            name: data.name,
-            slug: data.slug,
-            description: data.description || undefined,
-            enabled: data.enabled,
-            tools_filter: Array.from(selectedTools),
-            tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-            auth_type: 'header',
-            auth_uuid: authResponse.data.id,
-          });
-        }
-      } catch {
-        toast({ title: 'Failed to save auth header config', variant: 'destructive' });
-      }
-    } else if (data.auth_type === 'public' && existingAuthType === 'header') {
-      updateMutation.mutate({
-        id: editId!,
-        name: data.name,
-        slug: data.slug,
-        description: data.description || undefined,
-        enabled: data.enabled,
-        tools_filter: Array.from(selectedTools),
-        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-        auth_type: 'public',
-      });
-    } else {
-      updateMutation.mutate({
-        id: editId!,
-        name: data.name,
-        slug: data.slug,
-        description: data.description || undefined,
-        enabled: data.enabled,
-        tools_filter: Array.from(selectedTools),
-        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-      });
-    }
-  };
-
-  const isSubmitting =
-    createMutation.isLoading ||
-    updateMutation.isLoading ||
-    createAuthHeaderMutation.isLoading ||
-    updateAuthHeaderMutation.isLoading;
-  const canCreate = toolsFetched && !isSubmitting;
+  const dropdownValue = showNewAuthRedirect ? '__new__' : store.selectedAuthConfigId || '__public__';
 
   if (editId && existingError) {
     const errorMessage = existingError.response?.data?.error?.message || existingError.message || 'Failed to load MCP';
@@ -500,118 +624,131 @@ function NewMcpPageContent() {
                   <h3 className="text-base font-semibold">Authentication</h3>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="auth_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Auth Type</FormLabel>
-                      <Select
-                        key={field.value}
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isSubmitting}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="mcp-auth-type-select" data-test-state={field.value}>
-                            <SelectValue placeholder="Select auth type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="public" data-testid="mcp-auth-type-public">
-                            Public
-                          </SelectItem>
-                          <SelectItem value="header" data-testid="mcp-auth-type-header">
-                            Header
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        {authType === 'header'
-                          ? 'A custom header will be sent with every request to this MCP server.'
-                          : 'No authentication required for this MCP server.'}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                <div className="space-y-2">
+                  <FormLabel>Auth Configuration</FormLabel>
+                  <Select
+                    value={dropdownValue}
+                    onValueChange={handleAuthConfigChange}
+                    disabled={isSubmitting || !selectedServer}
+                  >
+                    <SelectTrigger data-testid="auth-config-select" data-test-state={form.watch('auth_type')}>
+                      <SelectValue placeholder="Select authentication configuration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__public__" data-testid="auth-config-option-public">
+                        Public (No Auth)
+                      </SelectItem>
+                      {authConfigOptions.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id} data-testid={`auth-config-option-${opt.id}`}>
+                          {opt.name} [{authConfigTypeLabel(opt.type)}]
+                        </SelectItem>
+                      ))}
+                      {isAdmin && (
+                        <SelectItem value="__new__" data-testid="auth-config-option-new">
+                          + New Auth Config
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {store.selectedAuthConfigType === 'header'
+                      ? 'A pre-configured header will be sent with every request to this MCP server.'
+                      : store.selectedAuthConfigType === 'oauth'
+                        ? 'OAuth authentication is required. Click Connect to authorize.'
+                        : 'No authentication required for this MCP server.'}
+                  </FormDescription>
+                </div>
+
+                {store.selectedAuthConfigType === 'header' &&
+                  selectedAuthOption &&
+                  selectedAuthOption.config.type === 'header' && (
+                    <div
+                      className="rounded-lg border p-3 text-sm space-y-1 bg-muted/50"
+                      data-testid="auth-config-header-summary"
+                    >
+                      <p>
+                        <span className="font-medium">Config:</span> {selectedAuthOption.name}
+                      </p>
+                      <p>
+                        <span className="font-medium">Header:</span> {selectedAuthOption.config.header_key}
+                      </p>
+                      <p>
+                        <span className="font-medium">Value:</span>{' '}
+                        {selectedAuthOption.config.has_header_value ? 'Configured' : 'Not configured'}
+                      </p>
+                    </div>
                   )}
-                />
 
-                {authType === 'header' && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="auth_header_key"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Header Name</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                {...field}
-                                placeholder="e.g. Authorization"
-                                disabled={isSubmitting}
-                                list="header-suggestions"
-                                data-testid="mcp-auth-header-key"
-                              />
-                              <datalist id="header-suggestions">
-                                {HEADER_SUGGESTIONS.map((s) => (
-                                  <option key={s} value={s} />
-                                ))}
-                              </datalist>
-                            </div>
-                          </FormControl>
-                          <FormDescription>Common: Authorization, X-API-Key, Api-Key</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                {store.selectedAuthConfigType === 'oauth' && store.isConnected && (
+                  <OAuthConnectedCard
+                    config={selectedAuthOption?.config ?? null}
+                    onDisconnect={handleDisconnect}
+                    isDisconnecting={deleteOAuthTokenMutation.isLoading}
+                  />
+                )}
 
-                    <FormField
-                      control={form.control}
-                      name="auth_header_value"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Header Value</FormLabel>
-                          <FormControl>
-                            <PasswordInput
-                              {...field}
-                              placeholder={
-                                editId && existingMcp?.auth_uuid ? 'Leave empty to keep existing' : 'e.g. Bearer sk-...'
-                              }
-                              disabled={isSubmitting}
-                              data-testid="mcp-auth-header-value"
-                            />
-                          </FormControl>
-                          {editId && existingMcp?.auth_uuid && (
-                            <FormDescription>An auth header value is currently configured.</FormDescription>
-                          )}
-                          {authHeaderKey === 'Authorization' &&
-                            authHeaderValue &&
-                            !authHeaderValue.startsWith('Bearer ') && (
-                              <p
-                                className="text-sm text-yellow-600 dark:text-yellow-500"
-                                data-testid="mcp-auth-bearer-warning"
-                              >
-                                Header value does not start with &apos;Bearer &apos;
-                              </p>
-                            )}
-                          <FormMessage />
-                        </FormItem>
+                {store.selectedAuthConfigType === 'oauth' && !store.isConnected && selectedAuthOption && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border p-3 text-sm space-y-1 bg-muted/50">
+                      <p>
+                        <span className="font-medium">Config:</span> {selectedAuthOption.name}
+                      </p>
+                      <p>
+                        <span className="font-medium">Type:</span>{' '}
+                        <Badge variant="secondary">{authConfigTypeLabel(selectedAuthOption.type)}</Badge>
+                      </p>
+                      <p>
+                        <span className="font-medium">Auth Server:</span>{' '}
+                        {selectedAuthOption.config.type !== 'header' &&
+                          safeOrigin(selectedAuthOption.config.authorization_endpoint)}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOAuthConnect}
+                      disabled={oauthLoginMutation.isLoading}
+                      data-testid="auth-config-oauth-connect"
+                    >
+                      {oauthLoginMutation.isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ExternalLink className="mr-2 h-4 w-4" />
                       )}
-                    />
-                  </>
+                      Connect
+                    </Button>
+                  </div>
+                )}
+
+                {showNewAuthRedirect && selectedServer && (
+                  <div
+                    className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 space-y-3"
+                    data-testid="auth-config-new-redirect"
+                  >
+                    <p className="text-sm">You&apos;ll be redirected to create an auth config for this server.</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/ui/mcp-servers/view?id=${selectedServer.id}`)}
+                      data-testid="auth-config-new-redirect-button"
+                    >
+                      Go to Server Settings
+                    </Button>
+                  </div>
                 )}
               </div>
 
               <ToolSelection
                 selectedServer={selectedServer}
                 isFetchingTools={fetchToolsMutation.isLoading}
-                toolsFetched={toolsFetched}
-                fetchedTools={fetchedTools}
-                selectedTools={selectedTools}
-                onToolToggle={handleToolToggle}
-                onSelectAll={handleSelectAll}
-                onDeselectAll={handleDeselectAll}
+                toolsFetched={store.toolsFetched}
+                fetchedTools={store.fetchedTools}
+                selectedTools={store.selectedTools}
+                onToolToggle={(name) => store.toggleTool(name)}
+                onSelectAll={() => store.selectAllTools()}
+                onDeselectAll={() => store.deselectAllTools()}
                 onFetchTools={handleFetchTools}
               />
 

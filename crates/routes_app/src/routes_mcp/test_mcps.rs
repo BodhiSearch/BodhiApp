@@ -1,45 +1,23 @@
-use crate::{
-  create_auth_header_handler, create_mcp_handler, create_mcp_server_handler,
-  delete_auth_header_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  fetch_mcp_tools_handler, get_auth_header_handler, get_mcp_handler, get_mcp_server_handler,
-  list_mcp_servers_handler, list_mcp_tools_handler, list_mcps_handler, refresh_mcp_tools_handler,
-  update_auth_header_handler, update_mcp_handler, update_mcp_server_handler, AuthHeaderResponse,
-  CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, McpAuth,
-  McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse,
-  UpdateMcpRequest,
+use crate::routes_mcp::{
+  create_mcp_handler, delete_mcp_handler, execute_mcp_tool_handler, fetch_mcp_tools_handler,
+  get_mcp_handler, list_mcp_tools_handler, list_mcps_handler, refresh_mcp_tools_handler,
+  update_mcp_handler, CreateMcpRequest, FetchMcpToolsRequest, McpAuth, McpExecuteRequest,
+  McpExecuteResponse, McpResponse, McpToolsResponse, UpdateMcpRequest,
 };
+use crate::test_utils::{build_mcp_test_state, fixed_dt};
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post, put};
 use axum::Router;
-use chrono::Utc;
-use objs::{Mcp, McpAuthHeader, McpServer, McpServerInfo};
+use objs::{Mcp, McpAuthType, McpServerInfo};
 use objs::{McpExecutionResponse, McpTool, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};
-use server_core::{
-  test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
-};
-use services::{test_utils::AppServiceStubBuilder, McpServerError, MockMcpService};
-use std::sync::Arc;
+use server_core::test_utils::ResponseTestExt;
+use services::MockMcpService;
 use tower::ServiceExt;
-
-fn test_mcp_server() -> McpServer {
-  let now = Utc::now();
-  McpServer {
-    id: "server-uuid-1".to_string(),
-    url: "https://mcp.deepwiki.com/mcp".to_string(),
-    name: "DeepWiki".to_string(),
-    description: Some("DeepWiki MCP server".to_string()),
-    enabled: true,
-    created_by: "admin-user".to_string(),
-    updated_by: "admin-user".to_string(),
-    created_at: now,
-    updated_at: now,
-  }
-}
 
 fn test_server_info() -> McpServerInfo {
   McpServerInfo {
@@ -52,7 +30,7 @@ fn test_server_info() -> McpServerInfo {
 
 #[fixture]
 fn test_mcp_instance() -> Mcp {
-  let now = Utc::now();
+  let now = fixed_dt();
   Mcp {
     id: "mcp-uuid-1".to_string(),
     mcp_server: test_server_info(),
@@ -62,7 +40,7 @@ fn test_mcp_instance() -> Mcp {
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "public".to_string(),
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
     created_at: now,
     updated_at: now,
@@ -70,29 +48,12 @@ fn test_mcp_instance() -> Mcp {
 }
 
 async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Result<Router> {
-  let mcp_svc: Arc<dyn services::McpService> = Arc::new(mock_mcp_service);
-  let app_service = AppServiceStubBuilder::default()
-    .mcp_service(mcp_svc)
-    .build()
-    .await?;
-
-  let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-    Arc::new(MockSharedContext::new()),
-    Arc::new(app_service),
-  ));
-
+  let state = build_mcp_test_state(mock_mcp_service).await?;
   Ok(
     Router::new()
       .route("/mcps", get(list_mcps_handler))
       .route("/mcps", post(create_mcp_handler))
       .route("/mcps/fetch-tools", post(fetch_mcp_tools_handler))
-      .route("/mcps/auth-headers", post(create_auth_header_handler))
-      .route("/mcps/auth-headers/{id}", get(get_auth_header_handler))
-      .route("/mcps/auth-headers/{id}", put(update_auth_header_handler))
-      .route(
-        "/mcps/auth-headers/{id}",
-        delete(delete_auth_header_handler),
-      )
       .route("/mcps/{id}", get(get_mcp_handler))
       .route("/mcps/{id}", put(update_mcp_handler))
       .route("/mcps/{id}", delete(delete_mcp_handler))
@@ -102,112 +63,8 @@ async fn test_router_for_crud(mock_mcp_service: MockMcpService) -> anyhow::Resul
         "/mcps/{id}/tools/{tool_name}/execute",
         post(execute_mcp_tool_handler),
       )
-      .route("/mcp_servers", get(list_mcp_servers_handler))
-      .route("/mcp_servers", post(create_mcp_server_handler))
-      .route("/mcp_servers/{id}", get(get_mcp_server_handler))
-      .route("/mcp_servers/{id}", put(update_mcp_server_handler))
       .with_state(state),
   )
-}
-
-// ============================================================================
-// POST /mcp_servers - Create MCP server
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_mcp_server_success() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-  let server = test_mcp_server();
-
-  mock
-    .expect_create_mcp_server()
-    .withf(|name, url, _, enabled, created_by| {
-      name == "DeepWiki"
-        && url == "https://mcp.deepwiki.com/mcp"
-        && *enabled
-        && created_by == "admin-user"
-    })
-    .times(1)
-    .returning(move |_, _, _, _, _| Ok(server.clone()));
-
-  mock
-    .expect_count_mcps_for_server()
-    .returning(|_| Ok((0, 0)));
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&CreateMcpServerRequest {
-    url: "https://mcp.deepwiki.com/mcp".to_string(),
-    name: "DeepWiki".to_string(),
-    description: Some("DeepWiki MCP server".to_string()),
-    enabled: true,
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcp_servers")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-
-  let request = request.with_auth_context(AuthContext::test_session(
-    "admin-user",
-    "admin",
-    ResourceRole::Admin,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::CREATED, response.status());
-
-  let body: McpServerResponse = response.json().await?;
-  assert_eq!("server-uuid-1", body.id);
-  assert_eq!("DeepWiki", body.name);
-  assert_eq!("https://mcp.deepwiki.com/mcp", body.url);
-  assert_eq!(0, body.enabled_mcp_count);
-  assert_eq!(0, body.disabled_mcp_count);
-  Ok(())
-}
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_mcp_server_duplicate_url_returns_409() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_create_mcp_server()
-    .times(1)
-    .returning(|_, _, _, _, _| {
-      Err(McpServerError::UrlAlreadyExists(
-        "https://mcp.deepwiki.com/mcp".to_string(),
-      ))
-    });
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&CreateMcpServerRequest {
-    url: "https://mcp.deepwiki.com/mcp".to_string(),
-    name: "DeepWiki".to_string(),
-    description: None,
-    enabled: true,
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcp_servers")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-
-  let request = request.with_auth_context(AuthContext::test_session(
-    "admin-user",
-    "admin",
-    ResourceRole::Admin,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::CONFLICT, response.status());
-  Ok(())
 }
 
 // ============================================================================
@@ -229,7 +86,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
           && name == "DeepWiki MCP"
           && slug == "deepwiki"
           && mcp_server_id == "server-uuid-1"
-          && auth_type == "public"
+          && *auth_type == McpAuthType::Public
       },
     )
     .times(1)
@@ -245,7 +102,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "public".to_string(),
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
   })?;
 
@@ -267,7 +124,7 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
   let body: McpResponse = response.json().await?;
   assert_eq!("mcp-uuid-1", body.id);
   assert_eq!("deepwiki", body.slug);
-  assert_eq!("public", body.auth_type);
+  assert_eq!(McpAuthType::Public, body.auth_type);
   assert_eq!(None, body.auth_uuid);
   Ok(())
 }
@@ -278,13 +135,13 @@ async fn test_create_mcp_success(test_mcp_instance: Mcp) -> anyhow::Result<()> {
 async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Result<()> {
   let mut mock = MockMcpService::new();
   let mut instance = test_mcp_instance.clone();
-  instance.auth_type = "header".to_string();
+  instance.auth_type = McpAuthType::Header;
   instance.auth_uuid = Some("auth-uuid-1".to_string());
 
   mock
     .expect_create()
     .withf(|_, _, _, _, _, _, _, _, auth_type, auth_uuid| {
-      auth_type == "header" && auth_uuid.as_deref() == Some("auth-uuid-1")
+      *auth_type == McpAuthType::Header && auth_uuid.as_deref() == Some("auth-uuid-1")
     })
     .times(1)
     .returning(move |_, _, _, _, _, _, _, _, _, _| Ok(instance.clone()));
@@ -299,7 +156,7 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "header".to_string(),
+    auth_type: McpAuthType::Header,
     auth_uuid: Some("auth-uuid-1".to_string()),
   })?;
 
@@ -317,7 +174,7 @@ async fn test_create_mcp_with_auth_uuid(test_mcp_instance: Mcp) -> anyhow::Resul
 
   assert_eq!(StatusCode::CREATED, response.status());
   let body: McpResponse = response.json().await?;
-  assert_eq!("header", body.auth_type);
+  assert_eq!(McpAuthType::Header, body.auth_type);
   assert_eq!(Some("auth-uuid-1".to_string()), body.auth_uuid);
   Ok(())
 }
@@ -553,112 +410,14 @@ async fn test_execute_mcp_tool_success() -> anyhow::Result<()> {
 }
 
 // ============================================================================
-// Auth Header CRUD handlers
-// ============================================================================
-
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_create_auth_header_success() -> anyhow::Result<()> {
-  let mut mock = MockMcpService::new();
-
-  mock
-    .expect_create_auth_header()
-    .withf(|user_id, key, value| {
-      user_id == "user123" && key == "Authorization" && value == "Bearer secret"
-    })
-    .times(1)
-    .returning(|_, _, _| {
-      Ok(McpAuthHeader {
-        id: "ah-uuid-1".to_string(),
-        header_key: "Authorization".to_string(),
-        has_header_value: true,
-        created_by: "user123".to_string(),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-      })
-    });
-
-  let app = test_router_for_crud(mock).await?;
-
-  let body = serde_json::to_string(&CreateAuthHeaderRequest {
-    header_key: "Authorization".to_string(),
-    header_value: "Bearer secret".to_string(),
-  })?;
-
-  let request = Request::builder()
-    .method("POST")
-    .uri("/mcps/auth-headers")
-    .header("content-type", "application/json")
-    .body(Body::from(body))?;
-  let request = request.with_auth_context(AuthContext::test_session(
-    "user123",
-    "testuser",
-    ResourceRole::User,
-  ));
-  let response = app.oneshot(request).await?;
-
-  assert_eq!(StatusCode::CREATED, response.status());
-  let body: AuthHeaderResponse = response.json().await?;
-  assert_eq!("ah-uuid-1", body.id);
-  assert_eq!("Authorization", body.header_key);
-  assert!(body.has_header_value);
-  Ok(())
-}
-
-// ============================================================================
 // Integration tests (real DB)
 // ============================================================================
 
 use crate::test_utils::{
-  build_test_router, create_authenticated_session, session_request_with_body,
+  build_test_router, create_authenticated_session, create_header_auth_config_in_db,
+  session_request, session_request_with_body, setup_mcp_server_in_db,
 };
 use serde_json::{json, Value};
-
-async fn setup_mcp_server_in_db(router: &Router, admin_cookie: &str) -> anyhow::Result<String> {
-  let body = json!({
-    "name": "Test MCP Server",
-    "url": "https://mcp.example.com/mcp",
-    "description": "Integration test server",
-    "enabled": true
-  });
-  let response = router
-    .clone()
-    .oneshot(session_request_with_body(
-      "POST",
-      "/bodhi/v1/mcp_servers",
-      admin_cookie,
-      Body::from(serde_json::to_string(&body)?),
-    ))
-    .await?;
-  assert_eq!(StatusCode::CREATED, response.status());
-  let server: Value = response.json().await?;
-  Ok(server["id"].as_str().unwrap().to_string())
-}
-
-async fn create_auth_header_in_db(
-  router: &Router,
-  user_cookie: &str,
-  header_key: &str,
-  header_value: &str,
-) -> anyhow::Result<String> {
-  let body = json!({
-    "header_key": header_key,
-    "header_value": header_value
-  });
-  let response = router
-    .clone()
-    .oneshot(session_request_with_body(
-      "POST",
-      "/bodhi/v1/mcps/auth-headers",
-      user_cookie,
-      Body::from(serde_json::to_string(&body)?),
-    ))
-    .await?;
-  assert_eq!(StatusCode::CREATED, response.status());
-  let auth: Value = response.json().await?;
-  Ok(auth["id"].as_str().unwrap().to_string())
-}
 
 #[rstest]
 #[tokio::test]
@@ -674,9 +433,10 @@ async fn test_integration_create_mcp_with_header_auth() -> anyhow::Result<()> {
       .await?;
 
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
-  let auth_id = create_auth_header_in_db(
+  let auth_id = create_header_auth_config_in_db(
     &router,
     &user_cookie,
+    &server_id,
     "Authorization",
     "Bearer sk-test-secret",
   )
@@ -780,7 +540,9 @@ async fn test_integration_update_mcp_switch_auth_type() -> anyhow::Result<()> {
   let created: Value = create_resp.json().await?;
   let mcp_id = created["id"].as_str().unwrap();
 
-  let auth_id = create_auth_header_in_db(&router, &user_cookie, "X-Api-Key", "key-123").await?;
+  let auth_id =
+    create_header_auth_config_in_db(&router, &user_cookie, &server_id, "X-Api-Key", "key-123")
+      .await?;
 
   let update_body = json!({
     "name": "My MCP",
@@ -820,8 +582,14 @@ async fn test_integration_update_mcp_keep_existing_auth() -> anyhow::Result<()> 
       .await?;
 
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
-  let auth_id =
-    create_auth_header_in_db(&router, &user_cookie, "Authorization", "Bearer keep-me").await?;
+  let auth_id = create_header_auth_config_in_db(
+    &router,
+    &user_cookie,
+    &server_id,
+    "Authorization",
+    "Bearer keep-me",
+  )
+  .await?;
 
   let create_body = json!({
     "name": "Keep Auth MCP",
@@ -880,7 +648,9 @@ async fn test_integration_list_mcps_shows_auth_info() -> anyhow::Result<()> {
       .await?;
 
   let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
-  let auth_id = create_auth_header_in_db(&router, &user_cookie, "X-Api-Key", "secret-val").await?;
+  let auth_id =
+    create_header_auth_config_in_db(&router, &user_cookie, &server_id, "X-Api-Key", "secret-val")
+      .await?;
 
   let public_body = json!({
     "name": "Public One",
@@ -917,7 +687,6 @@ async fn test_integration_list_mcps_shows_auth_info() -> anyhow::Result<()> {
     ))
     .await?;
 
-  use crate::test_utils::session_request;
   let list_resp = router
     .clone()
     .oneshot(session_request("GET", "/bodhi/v1/mcps", &user_cookie))

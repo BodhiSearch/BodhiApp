@@ -1,6 +1,6 @@
 use crate::db::{
-  encryption::decrypt_api_key, DbError, McpAuthHeaderRow, McpRepository, McpRow, McpServerRow,
-  McpWithServerRow, SqliteDbService,
+  encryption::decrypt_api_key, DbError, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow,
+  McpRepository, McpRow, McpServerRow, McpWithServerRow, SqliteDbService,
 };
 
 #[async_trait::async_trait]
@@ -418,12 +418,14 @@ impl McpRepository for SqliteDbService {
   ) -> Result<McpAuthHeaderRow, DbError> {
     sqlx::query(
       r#"
-      INSERT INTO mcp_auth_headers (id, header_key, encrypted_header_value, header_value_salt, header_value_nonce,
+      INSERT INTO mcp_auth_headers (id, name, mcp_server_id, header_key, encrypted_header_value, header_value_salt, header_value_nonce,
                                      created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&row.id)
+    .bind(&row.name)
+    .bind(&row.mcp_server_id)
     .bind(&row.header_key)
     .bind(&row.encrypted_header_value)
     .bind(&row.header_value_salt)
@@ -438,8 +440,8 @@ impl McpRepository for SqliteDbService {
   }
 
   async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, String, String, String, String, i64, i64)>(
-      "SELECT id, header_key, encrypted_header_value, header_value_salt, header_value_nonce, created_by, created_at, updated_at FROM mcp_auth_headers WHERE id = ?",
+    let result = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i64, i64)>(
+      "SELECT id, name, mcp_server_id, header_key, encrypted_header_value, header_value_salt, header_value_nonce, created_by, created_at, updated_at FROM mcp_auth_headers WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
@@ -448,6 +450,8 @@ impl McpRepository for SqliteDbService {
     Ok(result.map(
       |(
         id,
+        name,
+        mcp_server_id,
         header_key,
         encrypted_header_value,
         header_value_salt,
@@ -458,6 +462,8 @@ impl McpRepository for SqliteDbService {
       )| {
         McpAuthHeaderRow {
           id,
+          name,
+          mcp_server_id,
           header_key,
           encrypted_header_value,
           header_value_salt,
@@ -477,18 +483,18 @@ impl McpRepository for SqliteDbService {
     sqlx::query(
       r#"
       UPDATE mcp_auth_headers
-      SET header_key = ?, encrypted_header_value = ?, header_value_salt = ?, header_value_nonce = ?,
+      SET name = ?, header_key = ?, encrypted_header_value = ?, header_value_salt = ?, header_value_nonce = ?,
           updated_at = ?
-      WHERE id = ? AND created_by = ?
+      WHERE id = ?
       "#,
     )
+    .bind(&row.name)
     .bind(&row.header_key)
     .bind(&row.encrypted_header_value)
     .bind(&row.header_value_salt)
     .bind(&row.header_value_nonce)
     .bind(row.updated_at)
     .bind(&row.id)
-    .bind(&row.created_by)
     .execute(&self.pool)
     .await?;
 
@@ -504,18 +510,466 @@ impl McpRepository for SqliteDbService {
     Ok(())
   }
 
+  async fn list_mcp_auth_headers_by_server(
+    &self,
+    mcp_server_id: &str,
+  ) -> Result<Vec<McpAuthHeaderRow>, DbError> {
+    let results = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i64, i64)>(
+      "SELECT id, name, mcp_server_id, header_key, encrypted_header_value, header_value_salt, header_value_nonce, created_by, created_at, updated_at FROM mcp_auth_headers WHERE mcp_server_id = ? ORDER BY created_at DESC",
+    )
+    .bind(mcp_server_id)
+    .fetch_all(&self.pool)
+    .await?;
+
+    Ok(
+      results
+        .into_iter()
+        .map(
+          |(
+            id,
+            name,
+            mcp_server_id,
+            header_key,
+            encrypted_header_value,
+            header_value_salt,
+            header_value_nonce,
+            created_by,
+            created_at,
+            updated_at,
+          )| {
+            McpAuthHeaderRow {
+              id,
+              name,
+              mcp_server_id,
+              header_key,
+              encrypted_header_value,
+              header_value_salt,
+              header_value_nonce,
+              created_by,
+              created_at,
+              updated_at,
+            }
+          },
+        )
+        .collect(),
+    )
+  }
+
   async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
-    let row = self.get_mcp_auth_header(id).await?;
+    let result = sqlx::query_as::<_, (String, String, String, String)>(
+      "SELECT header_key, encrypted_header_value, header_value_salt, header_value_nonce FROM mcp_auth_headers WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((header_key, encrypted, salt, nonce)) => {
+        let value = decrypt_api_key(&self.encryption_key, &encrypted, &salt, &nonce)
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        Ok(Some((header_key, value)))
+      }
+      None => Ok(None),
+    }
+  }
+
+  // ---- MCP OAuth Config operations ----
+
+  async fn create_mcp_oauth_config(
+    &self,
+    row: &McpOAuthConfigRow,
+  ) -> Result<McpOAuthConfigRow, DbError> {
+    sqlx::query(
+      r#"
+      INSERT INTO mcp_oauth_configs (id, name, mcp_server_id, registration_type, client_id,
+                                      encrypted_client_secret, client_secret_salt, client_secret_nonce,
+                                      authorization_endpoint, token_endpoint,
+                                      registration_endpoint,
+                                      encrypted_registration_access_token, registration_access_token_salt, registration_access_token_nonce,
+                                      client_id_issued_at, token_endpoint_auth_method,
+                                      scopes, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&row.id)
+    .bind(&row.name)
+    .bind(&row.mcp_server_id)
+    .bind(&row.registration_type)
+    .bind(&row.client_id)
+    .bind(&row.encrypted_client_secret)
+    .bind(&row.client_secret_salt)
+    .bind(&row.client_secret_nonce)
+    .bind(&row.authorization_endpoint)
+    .bind(&row.token_endpoint)
+    .bind(&row.registration_endpoint)
+    .bind(&row.encrypted_registration_access_token)
+    .bind(&row.registration_access_token_salt)
+    .bind(&row.registration_access_token_nonce)
+    .bind(row.client_id_issued_at)
+    .bind(&row.token_endpoint_auth_method)
+    .bind(&row.scopes)
+    .bind(&row.created_by)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError> {
+    let row = sqlx::query(
+      r#"SELECT id, name, mcp_server_id, registration_type, client_id,
+              encrypted_client_secret, client_secret_salt, client_secret_nonce,
+              authorization_endpoint, token_endpoint,
+              registration_endpoint,
+              encrypted_registration_access_token, registration_access_token_salt, registration_access_token_nonce,
+              client_id_issued_at, token_endpoint_auth_method,
+              scopes, created_by, created_at, updated_at
+       FROM mcp_oauth_configs WHERE id = ?"#,
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    use sqlx::Row;
+    Ok(row.map(|r| McpOAuthConfigRow {
+      id: r.get("id"),
+      name: r.get("name"),
+      mcp_server_id: r.get("mcp_server_id"),
+      registration_type: r.get("registration_type"),
+      client_id: r.get("client_id"),
+      encrypted_client_secret: r.get("encrypted_client_secret"),
+      client_secret_salt: r.get("client_secret_salt"),
+      client_secret_nonce: r.get("client_secret_nonce"),
+      authorization_endpoint: r.get("authorization_endpoint"),
+      token_endpoint: r.get("token_endpoint"),
+      registration_endpoint: r.get("registration_endpoint"),
+      encrypted_registration_access_token: r.get("encrypted_registration_access_token"),
+      registration_access_token_salt: r.get("registration_access_token_salt"),
+      registration_access_token_nonce: r.get("registration_access_token_nonce"),
+      client_id_issued_at: r.get("client_id_issued_at"),
+      token_endpoint_auth_method: r.get("token_endpoint_auth_method"),
+      scopes: r.get("scopes"),
+      created_by: r.get("created_by"),
+      created_at: r.get("created_at"),
+      updated_at: r.get("updated_at"),
+    }))
+  }
+
+  async fn list_mcp_oauth_configs_by_server(
+    &self,
+    mcp_server_id: &str,
+  ) -> Result<Vec<McpOAuthConfigRow>, DbError> {
+    let rows = sqlx::query(
+      r#"SELECT id, name, mcp_server_id, registration_type, client_id,
+              encrypted_client_secret, client_secret_salt, client_secret_nonce,
+              authorization_endpoint, token_endpoint,
+              registration_endpoint,
+              encrypted_registration_access_token, registration_access_token_salt, registration_access_token_nonce,
+              client_id_issued_at, token_endpoint_auth_method,
+              scopes, created_by, created_at, updated_at
+       FROM mcp_oauth_configs WHERE mcp_server_id = ? ORDER BY created_at DESC"#,
+    )
+    .bind(mcp_server_id)
+    .fetch_all(&self.pool)
+    .await?;
+
+    use sqlx::Row;
+    Ok(
+      rows
+        .into_iter()
+        .map(|r| McpOAuthConfigRow {
+          id: r.get("id"),
+          name: r.get("name"),
+          mcp_server_id: r.get("mcp_server_id"),
+          registration_type: r.get("registration_type"),
+          client_id: r.get("client_id"),
+          encrypted_client_secret: r.get("encrypted_client_secret"),
+          client_secret_salt: r.get("client_secret_salt"),
+          client_secret_nonce: r.get("client_secret_nonce"),
+          authorization_endpoint: r.get("authorization_endpoint"),
+          token_endpoint: r.get("token_endpoint"),
+          registration_endpoint: r.get("registration_endpoint"),
+          encrypted_registration_access_token: r.get("encrypted_registration_access_token"),
+          registration_access_token_salt: r.get("registration_access_token_salt"),
+          registration_access_token_nonce: r.get("registration_access_token_nonce"),
+          client_id_issued_at: r.get("client_id_issued_at"),
+          token_endpoint_auth_method: r.get("token_endpoint_auth_method"),
+          scopes: r.get("scopes"),
+          created_by: r.get("created_by"),
+          created_at: r.get("created_at"),
+          updated_at: r.get("updated_at"),
+        })
+        .collect(),
+    )
+  }
+
+  async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM mcp_oauth_configs WHERE id = ?")
+      .bind(id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn delete_oauth_config_cascade(&self, config_id: &str) -> Result<(), DbError> {
+    let mut tx = self.pool.begin().await?;
+
+    sqlx::query("DELETE FROM mcp_oauth_tokens WHERE mcp_oauth_config_id = ?")
+      .bind(config_id)
+      .execute(&mut *tx)
+      .await?;
+
+    sqlx::query("DELETE FROM mcp_oauth_configs WHERE id = ?")
+      .bind(config_id)
+      .execute(&mut *tx)
+      .await?;
+
+    tx.commit().await?;
+    Ok(())
+  }
+
+  async fn get_decrypted_client_secret(
+    &self,
+    id: &str,
+  ) -> Result<Option<(String, String)>, DbError> {
+    let row = self.get_mcp_oauth_config(id).await?;
     match row {
       Some(r) => {
-        let value = decrypt_api_key(
-          &self.encryption_key,
-          &r.encrypted_header_value,
-          &r.header_value_salt,
-          &r.header_value_nonce,
-        )
-        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
-        Ok(Some((r.header_key, value)))
+        if let (Some(ref enc), Some(ref salt), Some(ref nonce)) = (
+          &r.encrypted_client_secret,
+          &r.client_secret_salt,
+          &r.client_secret_nonce,
+        ) {
+          let secret = decrypt_api_key(&self.encryption_key, enc, salt, nonce)
+            .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+          Ok(Some((r.client_id, secret)))
+        } else {
+          // Config exists but has no client secret stored
+          Ok(None)
+        }
+      }
+      // Config not found - return error instead of None to disambiguate
+      None => Err(DbError::ItemNotFound {
+        id: id.to_string(),
+        item_type: "mcp_oauth_config".to_string(),
+      }),
+    }
+  }
+
+  // ---- MCP OAuth Token operations ----
+
+  async fn create_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError> {
+    sqlx::query(
+      r#"
+      INSERT INTO mcp_oauth_tokens (id, mcp_oauth_config_id,
+                                     encrypted_access_token, access_token_salt, access_token_nonce,
+                                     encrypted_refresh_token, refresh_token_salt, refresh_token_nonce,
+                                     scopes_granted, expires_at,
+                                     created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&row.id)
+    .bind(&row.mcp_oauth_config_id)
+    .bind(&row.encrypted_access_token)
+    .bind(&row.access_token_salt)
+    .bind(&row.access_token_nonce)
+    .bind(&row.encrypted_refresh_token)
+    .bind(&row.refresh_token_salt)
+    .bind(&row.refresh_token_nonce)
+    .bind(&row.scopes_granted)
+    .bind(row.expires_at)
+    .bind(&row.created_by)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn get_mcp_oauth_token(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<i64>, String, i64, i64)>(
+      "SELECT id, mcp_oauth_config_id, encrypted_access_token, access_token_salt, access_token_nonce, encrypted_refresh_token, refresh_token_salt, refresh_token_nonce, scopes_granted, expires_at, created_by, created_at, updated_at FROM mcp_oauth_tokens WHERE id = ? AND created_by = ?",
+    )
+    .bind(id)
+    .bind(user_id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(
+        id,
+        mcp_oauth_config_id,
+        encrypted_access_token,
+        access_token_salt,
+        access_token_nonce,
+        encrypted_refresh_token,
+        refresh_token_salt,
+        refresh_token_nonce,
+        scopes_granted,
+        expires_at,
+        created_by,
+        created_at,
+        updated_at,
+      )| {
+        McpOAuthTokenRow {
+          id,
+          mcp_oauth_config_id,
+          encrypted_access_token,
+          access_token_salt,
+          access_token_nonce,
+          encrypted_refresh_token,
+          refresh_token_salt,
+          refresh_token_nonce,
+          scopes_granted,
+          expires_at,
+          created_by,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn get_latest_oauth_token_by_config(
+    &self,
+    config_id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<i64>, String, i64, i64)>(
+      "SELECT id, mcp_oauth_config_id, encrypted_access_token, access_token_salt, access_token_nonce, encrypted_refresh_token, refresh_token_salt, refresh_token_nonce, scopes_granted, expires_at, created_by, created_at, updated_at FROM mcp_oauth_tokens WHERE mcp_oauth_config_id = ? ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(config_id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    Ok(result.map(
+      |(
+        id,
+        mcp_oauth_config_id,
+        encrypted_access_token,
+        access_token_salt,
+        access_token_nonce,
+        encrypted_refresh_token,
+        refresh_token_salt,
+        refresh_token_nonce,
+        scopes_granted,
+        expires_at,
+        created_by,
+        created_at,
+        updated_at,
+      )| {
+        McpOAuthTokenRow {
+          id,
+          mcp_oauth_config_id,
+          encrypted_access_token,
+          access_token_salt,
+          access_token_nonce,
+          encrypted_refresh_token,
+          refresh_token_salt,
+          refresh_token_nonce,
+          scopes_granted,
+          expires_at,
+          created_by,
+          created_at,
+          updated_at,
+        }
+      },
+    ))
+  }
+
+  async fn update_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError> {
+    sqlx::query(
+      r#"
+      UPDATE mcp_oauth_tokens
+      SET encrypted_access_token = ?, access_token_salt = ?, access_token_nonce = ?,
+          encrypted_refresh_token = ?, refresh_token_salt = ?, refresh_token_nonce = ?,
+          scopes_granted = ?, expires_at = ?,
+          updated_at = ?
+      WHERE id = ?
+      "#,
+    )
+    .bind(&row.encrypted_access_token)
+    .bind(&row.access_token_salt)
+    .bind(&row.access_token_nonce)
+    .bind(&row.encrypted_refresh_token)
+    .bind(&row.refresh_token_salt)
+    .bind(&row.refresh_token_nonce)
+    .bind(&row.scopes_granted)
+    .bind(row.expires_at)
+    .bind(row.updated_at)
+    .bind(&row.id)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM mcp_oauth_tokens WHERE id = ? AND created_by = ?")
+      .bind(id)
+      .bind(user_id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM mcp_oauth_tokens WHERE mcp_oauth_config_id = ?")
+      .bind(config_id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn delete_oauth_tokens_by_config_and_user(
+    &self,
+    config_id: &str,
+    user_id: &str,
+  ) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM mcp_oauth_tokens WHERE mcp_oauth_config_id = ? AND created_by = ?")
+      .bind(config_id)
+      .bind(user_id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn get_decrypted_oauth_bearer(
+    &self,
+    id: &str,
+  ) -> Result<Option<(String, String)>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String)>(
+      "SELECT encrypted_access_token, access_token_salt, access_token_nonce FROM mcp_oauth_tokens WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((encrypted, salt, nonce)) => {
+        let token = decrypt_api_key(&self.encryption_key, &encrypted, &salt, &nonce)
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        Ok(Some((
+          "Authorization".to_string(),
+          format!("Bearer {}", token),
+        )))
       }
       None => Ok(None),
     }

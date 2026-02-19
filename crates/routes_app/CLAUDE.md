@@ -28,7 +28,7 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - `MetadataError` -- Model metadata operations (InvalidRepoFormat, ListAliasesFailed, AliasNotFound, ExtractionFailed, EnqueueFailed)
 - `ModelError` -- Model listing (MetadataFetchFailed)
 - `ToolsetValidationError` -- Toolset CRUD validation
-- `McpValidationError` -- MCP CRUD validation
+- `McpValidationError` -- MCP CRUD validation: `Validation(String)` (generic catch-all), `CsrfStateMismatch` (OAuth state param doesn't match session, BadRequest), `CsrfStateExpired` (OAuth state older than 10 min, BadRequest), `SessionDataMissing` (OAuth session data not found, BadRequest), `TokenExchangeFailed(String)` (token exchange HTTP error, InternalServer), `InvalidUrl(String)` (URL validation failure, BadRequest), `InvalidRedirectUri(String)` (redirect_uri validation failure, BadRequest)
 - `AppAccessRequestError` -- App access request workflow (review, approve, deny)
 - `SettingsError` -- Settings management (NotFound, BodhiHome, Unsupported)
 - `CreateAliasError` -- Model alias creation
@@ -142,11 +142,23 @@ Toolset routes use a dual-auth model based on `AuthContext` variant:
 - The handler matches on the `AuthContext` variant to distinguish these two auth modes
 
 ### MCP Server Management
-MCP routes (`routes_mcps/`) provide full CRUD for MCP server instances plus tool discovery and execution:
-- Instance CRUD: list, create, get, update, delete (`/bodhi/v1/mcps`)
-- Tool operations: list tools, refresh tools, execute tool (`/bodhi/v1/mcps/{id}/tools`)
-- Server allowlist: list, enable, disable MCP server URLs (`/bodhi/v1/mcp_servers`)
+All MCP routes are unified under the `/bodhi/v1/mcps/` prefix in the `routes_mcp/` module:
+- **Instance CRUD**: list, create, get, update, delete (`/bodhi/v1/mcps`)
+- **Tool operations**: fetch tools, refresh tools, execute tool (`/bodhi/v1/mcps/{id}/tools`)
+- **Server allowlist**: list, create, get, update MCP server URLs (`/bodhi/v1/mcps/servers`)
+- **Unified auth configs**: `POST /bodhi/v1/mcps/auth-configs` creates header or OAuth configs via `CreateAuthConfigBody` (discriminated union with `type` field + `mcp_server_id`). `GET /bodhi/v1/mcps/auth-configs?mcp_server_id=xxx` lists configs by server. `GET/DELETE /bodhi/v1/mcps/auth-configs/{id}` for single config operations.
+- **OAuth login/token**: `POST /bodhi/v1/mcps/auth-configs/{id}/login` and `/token` for OAuth flows
+- **OAuth discovery**: `POST /bodhi/v1/mcps/oauth/discover-as`, `POST /bodhi/v1/mcps/oauth/discover-mcp`
+- **Standalone DCR**: `POST /bodhi/v1/mcps/oauth/dynamic-register` for Dynamic Client Registration
+- **OAuth tokens**: `GET/DELETE /bodhi/v1/mcps/oauth-tokens/{id}`
 - Auth: session-only for CRUD and tool ops; server enable/disable is admin-only
+- OAuth token exchange validates CSRF `state` parameter from session
+- Authorization URL uses proper URL encoding via `url::Url` (not string concatenation)
+- Auth header and OAuth token handlers enforce ownership via `user_id`
+- API types use `McpAuthType` enum (`Public`, `Header`, `Oauth`) — OAuth pre-registered vs dynamic is distinguished by `registration_type` field, not separate enum variants
+- `OAuthTokenExchangeRequest` includes `state: String` for CSRF
+
+**Test organization**: MCP tests are organized per-feature in `routes_mcp/` module (e.g., `test_mcps.rs`, `test_auth_configs.rs`, `test_oauth_utils.rs`, `test_servers.rs`).
 
 ### App Access Request Workflow
 App access request routes (`routes_apps/`) handle external application resource access:
@@ -205,6 +217,87 @@ Multi-turn workflows requiring multiple API calls belong in `server_app` tests, 
 - ✅ `server_app`: Multi-turn tool calling - request tool call, extract tool_call_id, send tool result, assert final answer
 
 This distinction keeps `routes_app` tests fast (no TCP listener overhead), focused (route handler logic only), and easy to debug (single request-response cycle).
+
+### Service Mocking Strategy in Route Tests
+
+**Default: prefer `build_test_router()` with real services.** Only mock at external-system boundaries where a real implementation requires hardware, network access, or hard-to-control external state.
+
+#### What `build_test_router()` provides
+Real implementations wired automatically:
+- **SQLite DB** (`DbService`) -- in-memory via tempfile; records persist within the test
+- **SessionService** -- real SQL-backed session store; `create_authenticated_session()` inserts a JWT-bearing session
+- **DataService** -- file-based alias storage in the temp home dir
+- **SecretService** -- real secret persistence
+- **HubService** -- HuggingFace cache scanning (reads `~/.cache/huggingface/hub`)
+
+Stubbed/mocked because they cross external boundaries:
+- `MockSharedContext` -- no LLM; requires a real llama.cpp binary and downloaded model
+- `StubNetworkService` -- returns a fixed IP instead of querying the network
+- `StubQueue` -- no-op task queue instead of a real background worker
+
+Test setup pattern:
+```rust
+let (router, app_service, _temp) = build_test_router().await?;
+let admin_cookie = create_authenticated_session(
+  app_service.session_service().as_ref(), &["resource_admin"],
+).await?;
+// Use setup helpers to create prerequisite DB rows via the API:
+let server_id = setup_mcp_server_in_db(&router, &admin_cookie).await?;
+```
+
+#### When to use service mocks (`MockMcpService`, `MockToolService`, …)
+Use a service-level mock **instead of** `build_test_router()` only when:
+
+1. **The service makes external HTTP calls** that would hit real servers in a test -- e.g., `McpService::discover_oauth_metadata()`, `McpService::fetch_tools_for_server()`, `McpService::dynamic_register_client()`. These call external URLs that tests cannot control.
+2. **You need a specific error path** that is impractical to reproduce via real DB state -- e.g., `McpServerError::UrlAlreadyExists` (simpler to return from a mock than to insert a duplicate row through the API).
+3. **Testing a single handler in complete isolation** from all infrastructure -- useful when the test value is entirely in verifying the mapping between service output and HTTP response shape.
+
+Build a minimal router with just the routes under test:
+```rust
+async fn test_router_for_crud(mock: MockMcpService) -> anyhow::Result<Router> {
+  let state = build_mcp_test_state(mock).await?;
+  Ok(Router::new()
+    .route("/mcps", post(create_mcp_handler))
+    // ... only routes being tested
+    .with_state(state))
+}
+```
+Inject auth via `RequestAuthContextExt::with_auth_context()` (bypasses the session layer entirely):
+```rust
+let request = Request::builder()
+  .method("POST").uri("/mcps").body(Body::from(body))?
+  .with_auth_context(AuthContext::test_session("user123", "testuser", ResourceRole::User));
+```
+
+**Do not mock** the DB service, session service, or any other service that has a real, fast in-memory implementation -- using the real implementation gives higher confidence and simpler tests.
+
+#### OAuth flow tests with a real session layer
+When two API calls must share session state (e.g., OAuth login → token exchange), build a custom router that includes the session layer but still mocks the external MCP service:
+```rust
+let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+let app_service = AppServiceStubBuilder::default()
+  .mcp_service(Arc::new(mock_mcp_service))
+  .with_sqlite_session_service(session_service.clone())
+  .build().await?;
+let router = Router::new()
+  .route("/mcps/auth-configs/{id}/login", post(oauth_login_handler))
+  .route("/mcps/auth-configs/{id}/token", post(oauth_token_exchange_handler))
+  .layer(app_service.session_service().session_layer())  // required for session persistence
+  .with_state(state);
+```
+Return `session_service` alongside the router so tests can inspect or pre-populate session records directly via `session_service.session_store.create(&mut record).await?`.
+
+#### Summary decision table
+
+| What you are testing | Pattern |
+|---|---|
+| CRUD workflow persisted in DB | `build_test_router()` |
+| Single handler, service has no external calls | `build_test_router()` (preferred) or mock |
+| Single handler, service calls external HTTP | Mock the service (`MockMcpService`, etc.) |
+| Specific service error path (hard to trigger via DB) | Mock the service |
+| LLM inference / streaming responses | `MockSharedContext.expect_forward_request()` |
+| OAuth login → token exchange (two-call flow) | Custom router with real `SqliteSessionService` |
+| Full LLM stack (real llama.cpp) | `build_live_test_router()` |
 
 ## Extension Patterns
 

@@ -36,7 +36,7 @@ mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
 once_cell = { workspace = true, optional = true }
 pbkdf2 = { workspace = true, features = ["password-hash", "sha2"] }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["form"] }
 rand = { workspace = true }
 rsa = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }

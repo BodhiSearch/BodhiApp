@@ -1,4 +1,7 @@
-use crate::db::{DbError, McpAuthHeaderRow, McpRow, McpServerRow, McpWithServerRow};
+use crate::db::{
+  DbError, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRow, McpServerRow,
+  McpWithServerRow,
+};
 
 #[async_trait::async_trait]
 pub trait McpRepository: Send + Sync {
@@ -47,6 +50,74 @@ pub trait McpRepository: Send + Sync {
 
   async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
 
+  async fn list_mcp_auth_headers_by_server(
+    &self,
+    mcp_server_id: &str,
+  ) -> Result<Vec<McpAuthHeaderRow>, DbError>;
+
   /// Get the decrypted auth header (key, value) for an MCP auth header config.
   async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+
+  // MCP OAuth config operations
+  async fn create_mcp_oauth_config(
+    &self,
+    row: &McpOAuthConfigRow,
+  ) -> Result<McpOAuthConfigRow, DbError>;
+
+  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError>;
+
+  async fn list_mcp_oauth_configs_by_server(
+    &self,
+    mcp_server_id: &str,
+  ) -> Result<Vec<McpOAuthConfigRow>, DbError>;
+
+  async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError>;
+
+  /// Delete an OAuth config and all its associated tokens in a single transaction.
+  async fn delete_oauth_config_cascade(&self, config_id: &str) -> Result<(), DbError>;
+
+  /// Get (client_id, decrypted_client_secret) for an OAuth config.
+  async fn get_decrypted_client_secret(
+    &self,
+    id: &str,
+  ) -> Result<Option<(String, String)>, DbError>;
+
+  // MCP OAuth token operations
+  async fn create_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError>;
+
+  async fn get_mcp_oauth_token(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError>;
+
+  async fn get_latest_oauth_token_by_config(
+    &self,
+    config_id: &str,
+  ) -> Result<Option<McpOAuthTokenRow>, DbError>;
+
+  async fn update_mcp_oauth_token(
+    &self,
+    row: &McpOAuthTokenRow,
+  ) -> Result<McpOAuthTokenRow, DbError>;
+
+  async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+
+  async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError>;
+
+  /// Delete existing tokens for a specific (config_id, user_id) pair.
+  /// Used before inserting a new token to prevent orphaned rows.
+  async fn delete_oauth_tokens_by_config_and_user(
+    &self,
+    config_id: &str,
+    user_id: &str,
+  ) -> Result<(), DbError>;
+
+  /// Get decrypted OAuth bearer header (Authorization, Bearer <token>) by token ID.
+  /// Not user-scoped; used for admin preview flows.
+  async fn get_decrypted_oauth_bearer(&self, id: &str)
+    -> Result<Option<(String, String)>, DbError>;
 }

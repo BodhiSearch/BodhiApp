@@ -100,6 +100,26 @@ pub enum McpError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
 
+  #[error("OAuth token not found for config '{0}'.")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  OAuthTokenNotFound(String),
+
+  #[error("OAuth token expired and no refresh token available for config '{0}'.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  OAuthTokenExpired(String),
+
+  #[error("OAuth token refresh failed: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  OAuthRefreshFailed(String),
+
+  #[error("OAuth token exchange failed: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  OAuthTokenExchangeFailed(String),
+
+  #[error("OAuth discovery failed: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  OAuthDiscoveryFailed(String),
+
   #[error(transparent)]
   DbError(#[from] DbError),
 }

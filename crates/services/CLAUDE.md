@@ -185,11 +185,18 @@ The `McpService` (module: `mcp_service/`) manages Model Context Protocol server 
 **McpService Design**:
 - CRUD operations for MCP server instances with slug-based identification
 - Server allowlist management: `is_url_enabled`, `set_mcp_server_enabled`, `list_mcp_servers`, `get_mcp_server_by_url`
+- Auth config management: `list_auth_headers_by_server(mcp_server_id)` returns auth headers for a given server. Auth header creation requires `name` and `mcp_server_id`; OAuth config creation requires `name`. Auth configs are admin-managed per server; users select from existing configs when creating MCP instances.
+- Auth header preservation: When an MCP instance switches auth type away from `Header`, the auth header is **not** deleted. Auth headers are admin-managed resources that can be reused by other instances. OAuth tokens **are** cleaned up on type switch since they are per-user.
 - Tool discovery via `fetch_tools` and execution via `execute` delegating to `mcp_client` crate
 - Admin enable flow: new MCP URLs require explicit admin approval before tools can be fetched
 - Error types: `McpError` with variants for not-found, URL not allowed, disabled, tool-specific errors, connection/execution failures
+- OAuth token refresh has per-key concurrency guard (Mutex-based, keyed by `oauth_refresh:{config_id}`)
+- Ownership checks: `get_mcp_auth_header`, `delete_mcp_auth_header`, `get_mcp_oauth_token`, `delete_mcp_oauth_token` require `user_id`
+- `DefaultMcpService` shares a single `reqwest::Client` instance
 
 **Dependencies**: `mcp_client` crate for MCP protocol communication, `DbService` for persistence, `TimeService` for timestamps
+
+**Migration 0012**: Indexes on `mcp_oauth_configs(mcp_server_id)` and `mcp_oauth_tokens(mcp_oauth_config_id)`
 
 ### Access Request Management Architecture
 

@@ -40,6 +40,7 @@ tracing = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 utoipa = { workspace = true, features = ["axum_extras"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
+url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 # Optional deps for test-utils feature
@@ -47,6 +48,7 @@ anyhow = { workspace = true, optional = true }
 maplit = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 time = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["json", "form"] }
 
 [dev-dependencies]
 routes_app = { path = ".", features = ["test-utils"] }
@@ -72,7 +74,6 @@ tempfile = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
-url = { workspace = true }
 
 [features]
 test-utils = [

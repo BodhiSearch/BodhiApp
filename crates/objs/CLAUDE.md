@@ -60,6 +60,15 @@ Comprehensive configuration architecture for multi-environment deployments:
 - **Setting System**: Hierarchical configuration with source tracking (System > CommandLine > Environment > User)
 - **SettingMetadata**: Configuration mutation tracking and validation requirements
 
+### MCP Domain Types
+- **McpAuthType enum**: `Public`, `Header`, `Oauth` with kebab-case serialization (`public`, `header`, `oauth`)
+- Implements `Default` (Public), `FromStr`, `Display`, `as_str()`
+- Used by `Mcp.auth_type` field
+- **RegistrationType enum**: `PreRegistered` | `DynamicRegistration`, serializes to `"pre-registered"` / `"dynamic-registration"`. Implements `Default` (PreRegistered), `FromStr`, `Display`, `as_str()`. Used by the `Oauth` variant of `CreateMcpAuthConfigRequest` to distinguish OAuth flavors without separate enum variants.
+- **CreateMcpAuthConfigRequest enum**: Discriminated union (`Header`, `Oauth`) tagged by `type` field, flattened into `CreateAuthConfigBody` with `mcp_server_id`
+- `Oauth` variant carries a `registration_type: RegistrationType` field (`PreRegistered` or `DynamicRegistration`, serializes to `"pre-registered"` / `"dynamic-registration"`) to distinguish OAuth flavors
+- **`validate_oauth_endpoint_url(url, field_name)`**: Shared validator for OAuth endpoint URLs (authorization, token, discovery endpoints). Rejects empty strings, non-HTTPS URLs (except `http://localhost`), and URLs exceeding `MAX_MCP_AUTH_CONFIG_URL_LEN`. Used in both `objs` validation and `routes_app` request handlers.
+
 ### API Organization and Documentation System
 Structured API surface management for OpenAPI generation:
 - **API Tags**: Centralized tag constants ensuring consistent OpenAPI documentation grouping

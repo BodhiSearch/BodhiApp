@@ -297,15 +297,6 @@ export type AuthCallbackRequest = {
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
 };
 
-export type AuthHeaderResponse = {
-    id: string;
-    header_key: string;
-    has_header_value: boolean;
-    created_by: string;
-    created_at: string;
-    updated_at: string;
-};
-
 /**
  * Change user role request
  */
@@ -921,9 +912,11 @@ export type CreateApiTokenRequest = {
     scope: TokenScope;
 };
 
-export type CreateAuthHeaderRequest = {
-    header_key: string;
-    header_value: string;
+/**
+ * Wrapper for creating auth configs with server_id in body instead of path
+ */
+export type CreateAuthConfigBody = CreateMcpAuthConfigRequest & {
+    mcp_server_id: string;
 };
 
 export type CreateChatCompletionRequest = {
@@ -1223,6 +1216,33 @@ export type CreateEmbeddingResponse = {
     usage: EmbeddingUsage;
 };
 
+/**
+ * Discriminated union for creating any type of MCP auth config.
+ * The JSON `"type"` field determines the variant: `"header"` or `"oauth"`.
+ */
+export type CreateMcpAuthConfigRequest = {
+    name: string;
+    header_key: string;
+    header_value: string;
+    type: 'header';
+} | {
+    name: string;
+    client_id: string;
+    authorization_endpoint: string;
+    token_endpoint: string;
+    client_secret?: string | null;
+    scopes?: string | null;
+    /**
+     * `"pre-registered"` (default) or `"dynamic-registration"`
+     */
+    registration_type?: RegistrationType;
+    registration_access_token?: string | null;
+    registration_endpoint?: string | null;
+    token_endpoint_auth_method?: string | null;
+    client_id_issued_at?: number | null;
+    type: 'oauth';
+};
+
 export type CreateMcpRequest = {
     name: string;
     slug: string;
@@ -1231,7 +1251,7 @@ export type CreateMcpRequest = {
     enabled: boolean;
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
-    auth_type?: string;
+    auth_type?: McpAuthType;
     auth_uuid?: string | null;
 };
 
@@ -1240,6 +1260,7 @@ export type CreateMcpServerRequest = {
     name: string;
     description?: string | null;
     enabled: boolean;
+    auth_config?: null | CreateMcpAuthConfigRequest;
 };
 
 /**
@@ -1339,6 +1360,20 @@ export type DownloadRequest = {
 export type DownloadStatus = 'pending' | 'completed' | 'error';
 
 export type Duration = string;
+
+export type DynamicRegisterRequest = {
+    registration_endpoint: string;
+    redirect_uri: string;
+    scopes?: string | null;
+};
+
+export type DynamicRegisterResponse = {
+    client_id: string;
+    client_secret?: string | null;
+    client_id_issued_at?: number | null;
+    token_endpoint_auth_method?: string | null;
+    registration_access_token?: string | null;
+};
 
 /**
  * Represents an embedding vector returned by embedding endpoint.
@@ -1633,10 +1668,7 @@ export type Mcp = {
      * Whitelisted tool names (empty = block all)
      */
     tools_filter?: Array<string> | null;
-    /**
-     * Authentication type: "public", "header", "oauth-pre-registered"
-     */
-    auth_type: string;
+    auth_type: McpAuthType;
     /**
      * Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
      */
@@ -1665,6 +1697,49 @@ export type McpAuth = {
     type: 'header';
 };
 
+/**
+ * Discriminated union response for any type of MCP auth config.
+ * The JSON `"type"` field determines the variant: `"header"` or `"oauth"`.
+ */
+export type McpAuthConfigResponse = {
+    id: string;
+    name: string;
+    mcp_server_id: string;
+    header_key: string;
+    has_header_value: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+    type: 'header';
+} | {
+    id: string;
+    name: string;
+    mcp_server_id: string;
+    registration_type: RegistrationType;
+    client_id: string;
+    authorization_endpoint: string;
+    token_endpoint: string;
+    registration_endpoint?: string | null;
+    scopes?: string | null;
+    client_id_issued_at?: number | null;
+    token_endpoint_auth_method?: string | null;
+    has_client_secret: boolean;
+    has_registration_access_token: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+    type: 'oauth';
+};
+
+/**
+ * List wrapper for unified auth config responses.
+ */
+export type McpAuthConfigsListResponse = {
+    auth_configs: Array<McpAuthConfigResponse>;
+};
+
+export type McpAuthType = 'public' | 'header' | 'oauth';
+
 export type McpExecuteRequest = {
     params: unknown;
 };
@@ -1687,7 +1762,7 @@ export type McpResponse = {
     enabled: boolean;
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
-    auth_type: string;
+    auth_type: McpAuthType;
     auth_uuid?: string | null;
     created_at: string;
     updated_at: string;
@@ -1762,6 +1837,7 @@ export type McpServerResponse = {
     disabled_mcp_count: number;
     created_at: string;
     updated_at: string;
+    auth_config?: null | McpAuthConfigResponse;
 };
 
 export type McpServerReviewInfo = {
@@ -1914,6 +1990,55 @@ export type OaiRequestParams = {
     temperature?: number | null;
     top_p?: number | null;
     user?: string | null;
+};
+
+export type OAuthDiscoverAsRequest = {
+    url: string;
+};
+
+export type OAuthDiscoverAsResponse = {
+    authorization_endpoint: string;
+    token_endpoint: string;
+    scopes_supported?: Array<string> | null;
+};
+
+export type OAuthDiscoverMcpRequest = {
+    mcp_server_url: string;
+};
+
+export type OAuthDiscoverMcpResponse = {
+    authorization_endpoint?: string | null;
+    token_endpoint?: string | null;
+    registration_endpoint?: string | null;
+    scopes_supported?: Array<string> | null;
+    resource?: string | null;
+    authorization_server_url?: string | null;
+};
+
+export type OAuthLoginRequest = {
+    redirect_uri: string;
+};
+
+export type OAuthLoginResponse = {
+    authorization_url: string;
+};
+
+export type OAuthTokenExchangeRequest = {
+    code: string;
+    redirect_uri: string;
+    state: string;
+};
+
+export type OAuthTokenResponse = {
+    id: string;
+    mcp_oauth_config_id: string;
+    scopes_granted?: string | null;
+    expires_at?: number | null;
+    has_access_token: boolean;
+    has_refresh_token: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
 };
 
 export type OllamaError = {
@@ -2156,6 +2281,11 @@ export type RefreshResponse = {
  * Source type discriminator for refresh requests
  */
 export type RefreshSource = 'all' | 'model';
+
+/**
+ * OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).
+ */
+export type RegistrationType = 'pre-registered' | 'dynamic-registration';
 
 export type RequestedResources = {
     toolset_types?: Array<ToolsetTypeRequest>;
@@ -2574,11 +2704,6 @@ export type UpdateApiTokenRequest = {
     status: TokenStatus;
 };
 
-export type UpdateAuthHeaderRequest = {
-    header_key: string;
-    header_value: string;
-};
-
 export type UpdateMcpRequest = {
     name: string;
     slug: string;
@@ -2586,7 +2711,7 @@ export type UpdateMcpRequest = {
     enabled: boolean;
     tools_filter?: Array<string> | null;
     tools_cache?: Array<McpTool> | null;
-    auth_type?: string | null;
+    auth_type?: null | McpAuthType;
     auth_uuid?: string | null;
 };
 
@@ -3917,185 +4042,6 @@ export type LogoutUserResponses = {
 
 export type LogoutUserResponse = LogoutUserResponses[keyof LogoutUserResponses];
 
-export type ListMcpServersData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Filter by enabled status
-         */
-        enabled?: boolean;
-    };
-    url: '/bodhi/v1/mcp_servers';
-};
-
-export type ListMcpServersErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListMcpServersError = ListMcpServersErrors[keyof ListMcpServersErrors];
-
-export type ListMcpServersResponses = {
-    /**
-     * List of MCP servers
-     */
-    200: ListMcpServersResponse;
-};
-
-export type ListMcpServersResponse2 = ListMcpServersResponses[keyof ListMcpServersResponses];
-
-export type CreateMcpServerData = {
-    body: CreateMcpServerRequest;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/mcp_servers';
-};
-
-export type CreateMcpServerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * URL already exists
-     */
-    409: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type CreateMcpServerError = CreateMcpServerErrors[keyof CreateMcpServerErrors];
-
-export type CreateMcpServerResponses = {
-    /**
-     * MCP server created
-     */
-    201: McpServerResponse;
-};
-
-export type CreateMcpServerResponse = CreateMcpServerResponses[keyof CreateMcpServerResponses];
-
-export type GetMcpServerData = {
-    body?: never;
-    path: {
-        /**
-         * MCP server UUID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/mcp_servers/{id}';
-};
-
-export type GetMcpServerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Not found
-     */
-    404: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type GetMcpServerError = GetMcpServerErrors[keyof GetMcpServerErrors];
-
-export type GetMcpServerResponses = {
-    /**
-     * MCP server
-     */
-    200: McpServerResponse;
-};
-
-export type GetMcpServerResponse = GetMcpServerResponses[keyof GetMcpServerResponses];
-
-export type UpdateMcpServerData = {
-    body: UpdateMcpServerRequest;
-    path: {
-        /**
-         * MCP server UUID
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/bodhi/v1/mcp_servers/{id}';
-};
-
-export type UpdateMcpServerErrors = {
-    /**
-     * Invalid request parameters
-     */
-    400: OpenAiApiError;
-    /**
-     * Not authenticated
-     */
-    401: OpenAiApiError;
-    /**
-     * Insufficient permissions
-     */
-    403: OpenAiApiError;
-    /**
-     * Not found
-     */
-    404: unknown;
-    /**
-     * URL already exists
-     */
-    409: unknown;
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type UpdateMcpServerError = UpdateMcpServerErrors[keyof UpdateMcpServerErrors];
-
-export type UpdateMcpServerResponses = {
-    /**
-     * MCP server updated
-     */
-    200: McpServerResponse;
-};
-
-export type UpdateMcpServerResponse = UpdateMcpServerResponses[keyof UpdateMcpServerResponses];
-
 export type ListMcpsData = {
     body?: never;
     path?: never;
@@ -4170,14 +4116,16 @@ export type CreateMcpResponses = {
 
 export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
 
-export type CreateMcpAuthHeaderData = {
-    body: CreateAuthHeaderRequest;
+export type ListMcpAuthConfigsData = {
+    body?: never;
     path?: never;
-    query?: never;
-    url: '/bodhi/v1/mcps/auth-headers';
+    query: {
+        mcp_server_id: string;
+    };
+    url: '/bodhi/v1/mcps/auth-configs';
 };
 
-export type CreateMcpAuthHeaderErrors = {
+export type ListMcpAuthConfigsErrors = {
     /**
      * Invalid request parameters
      */
@@ -4196,30 +4144,67 @@ export type CreateMcpAuthHeaderErrors = {
     500: OpenAiApiError;
 };
 
-export type CreateMcpAuthHeaderError = CreateMcpAuthHeaderErrors[keyof CreateMcpAuthHeaderErrors];
+export type ListMcpAuthConfigsError = ListMcpAuthConfigsErrors[keyof ListMcpAuthConfigsErrors];
 
-export type CreateMcpAuthHeaderResponses = {
+export type ListMcpAuthConfigsResponses = {
     /**
-     * Auth header config created
+     * List of auth configs
      */
-    201: AuthHeaderResponse;
+    200: McpAuthConfigsListResponse;
 };
 
-export type CreateMcpAuthHeaderResponse = CreateMcpAuthHeaderResponses[keyof CreateMcpAuthHeaderResponses];
+export type ListMcpAuthConfigsResponse = ListMcpAuthConfigsResponses[keyof ListMcpAuthConfigsResponses];
 
-export type DeleteMcpAuthHeaderData = {
+export type CreateMcpAuthConfigData = {
+    body: CreateAuthConfigBody;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-configs';
+};
+
+export type CreateMcpAuthConfigErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateMcpAuthConfigError = CreateMcpAuthConfigErrors[keyof CreateMcpAuthConfigErrors];
+
+export type CreateMcpAuthConfigResponses = {
+    /**
+     * Auth config created
+     */
+    201: McpAuthConfigResponse;
+};
+
+export type CreateMcpAuthConfigResponse = CreateMcpAuthConfigResponses[keyof CreateMcpAuthConfigResponses];
+
+export type DeleteMcpAuthConfigData = {
     body?: never;
     path: {
         /**
-         * Auth header config UUID
+         * Auth config UUID
          */
         id: string;
     };
     query?: never;
-    url: '/bodhi/v1/mcps/auth-headers/{id}';
+    url: '/bodhi/v1/mcps/auth-configs/{id}';
 };
 
-export type DeleteMcpAuthHeaderErrors = {
+export type DeleteMcpAuthConfigErrors = {
     /**
      * Invalid request parameters
      */
@@ -4242,30 +4227,30 @@ export type DeleteMcpAuthHeaderErrors = {
     500: OpenAiApiError;
 };
 
-export type DeleteMcpAuthHeaderError = DeleteMcpAuthHeaderErrors[keyof DeleteMcpAuthHeaderErrors];
+export type DeleteMcpAuthConfigError = DeleteMcpAuthConfigErrors[keyof DeleteMcpAuthConfigErrors];
 
-export type DeleteMcpAuthHeaderResponses = {
+export type DeleteMcpAuthConfigResponses = {
     /**
-     * Auth header config deleted
+     * Auth config deleted
      */
     204: void;
 };
 
-export type DeleteMcpAuthHeaderResponse = DeleteMcpAuthHeaderResponses[keyof DeleteMcpAuthHeaderResponses];
+export type DeleteMcpAuthConfigResponse = DeleteMcpAuthConfigResponses[keyof DeleteMcpAuthConfigResponses];
 
-export type GetMcpAuthHeaderData = {
+export type GetMcpAuthConfigData = {
     body?: never;
     path: {
         /**
-         * Auth header config UUID
+         * Auth config UUID
          */
         id: string;
     };
     query?: never;
-    url: '/bodhi/v1/mcps/auth-headers/{id}';
+    url: '/bodhi/v1/mcps/auth-configs/{id}';
 };
 
-export type GetMcpAuthHeaderErrors = {
+export type GetMcpAuthConfigErrors = {
     /**
      * Invalid request parameters
      */
@@ -4288,30 +4273,30 @@ export type GetMcpAuthHeaderErrors = {
     500: OpenAiApiError;
 };
 
-export type GetMcpAuthHeaderError = GetMcpAuthHeaderErrors[keyof GetMcpAuthHeaderErrors];
+export type GetMcpAuthConfigError = GetMcpAuthConfigErrors[keyof GetMcpAuthConfigErrors];
 
-export type GetMcpAuthHeaderResponses = {
+export type GetMcpAuthConfigResponses = {
     /**
-     * Auth header config
+     * Auth config
      */
-    200: AuthHeaderResponse;
+    200: McpAuthConfigResponse;
 };
 
-export type GetMcpAuthHeaderResponse = GetMcpAuthHeaderResponses[keyof GetMcpAuthHeaderResponses];
+export type GetMcpAuthConfigResponse = GetMcpAuthConfigResponses[keyof GetMcpAuthConfigResponses];
 
-export type UpdateMcpAuthHeaderData = {
-    body: UpdateAuthHeaderRequest;
+export type McpOAuthLoginData = {
+    body: OAuthLoginRequest;
     path: {
         /**
-         * Auth header config UUID
+         * Auth config UUID
          */
         id: string;
     };
     query?: never;
-    url: '/bodhi/v1/mcps/auth-headers/{id}';
+    url: '/bodhi/v1/mcps/auth-configs/{id}/login';
 };
 
-export type UpdateMcpAuthHeaderErrors = {
+export type McpOAuthLoginErrors = {
     /**
      * Invalid request parameters
      */
@@ -4325,7 +4310,7 @@ export type UpdateMcpAuthHeaderErrors = {
      */
     403: OpenAiApiError;
     /**
-     * Not found
+     * Auth config not found
      */
     404: unknown;
     /**
@@ -4334,16 +4319,62 @@ export type UpdateMcpAuthHeaderErrors = {
     500: OpenAiApiError;
 };
 
-export type UpdateMcpAuthHeaderError = UpdateMcpAuthHeaderErrors[keyof UpdateMcpAuthHeaderErrors];
+export type McpOAuthLoginError = McpOAuthLoginErrors[keyof McpOAuthLoginErrors];
 
-export type UpdateMcpAuthHeaderResponses = {
+export type McpOAuthLoginResponses = {
     /**
-     * Auth header config updated
+     * Authorization URL
      */
-    200: AuthHeaderResponse;
+    200: OAuthLoginResponse;
 };
 
-export type UpdateMcpAuthHeaderResponse = UpdateMcpAuthHeaderResponses[keyof UpdateMcpAuthHeaderResponses];
+export type McpOAuthLoginResponse = McpOAuthLoginResponses[keyof McpOAuthLoginResponses];
+
+export type McpOAuthTokenExchangeData = {
+    body: OAuthTokenExchangeRequest;
+    path: {
+        /**
+         * Auth config UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-configs/{id}/token';
+};
+
+export type McpOAuthTokenExchangeErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Auth config not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type McpOAuthTokenExchangeError = McpOAuthTokenExchangeErrors[keyof McpOAuthTokenExchangeErrors];
+
+export type McpOAuthTokenExchangeResponses = {
+    /**
+     * Token stored
+     */
+    200: OAuthTokenResponse;
+};
+
+export type McpOAuthTokenExchangeResponse = McpOAuthTokenExchangeResponses[keyof McpOAuthTokenExchangeResponses];
 
 export type FetchMcpToolsData = {
     body: FetchMcpToolsRequest;
@@ -4385,6 +4416,388 @@ export type FetchMcpToolsResponses = {
 };
 
 export type FetchMcpToolsResponse = FetchMcpToolsResponses[keyof FetchMcpToolsResponses];
+
+export type DeleteMcpOAuthTokenData = {
+    body?: never;
+    path: {
+        /**
+         * OAuth token UUID
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/oauth-tokens/{token_id}';
+};
+
+export type DeleteMcpOAuthTokenErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteMcpOAuthTokenError = DeleteMcpOAuthTokenErrors[keyof DeleteMcpOAuthTokenErrors];
+
+export type DeleteMcpOAuthTokenResponses = {
+    /**
+     * OAuth token deleted
+     */
+    204: void;
+};
+
+export type DeleteMcpOAuthTokenResponse = DeleteMcpOAuthTokenResponses[keyof DeleteMcpOAuthTokenResponses];
+
+export type GetMcpOAuthTokenData = {
+    body?: never;
+    path: {
+        /**
+         * OAuth token UUID
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/oauth-tokens/{token_id}';
+};
+
+export type GetMcpOAuthTokenErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetMcpOAuthTokenError = GetMcpOAuthTokenErrors[keyof GetMcpOAuthTokenErrors];
+
+export type GetMcpOAuthTokenResponses = {
+    /**
+     * OAuth token
+     */
+    200: OAuthTokenResponse;
+};
+
+export type GetMcpOAuthTokenResponse = GetMcpOAuthTokenResponses[keyof GetMcpOAuthTokenResponses];
+
+export type McpOAuthDiscoverAsData = {
+    body: OAuthDiscoverAsRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/oauth/discover-as';
+};
+
+export type McpOAuthDiscoverAsErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type McpOAuthDiscoverAsError = McpOAuthDiscoverAsErrors[keyof McpOAuthDiscoverAsErrors];
+
+export type McpOAuthDiscoverAsResponses = {
+    /**
+     * OAuth discovery metadata
+     */
+    200: OAuthDiscoverAsResponse;
+};
+
+export type McpOAuthDiscoverAsResponse = McpOAuthDiscoverAsResponses[keyof McpOAuthDiscoverAsResponses];
+
+export type McpOAuthDiscoverMcpData = {
+    body: OAuthDiscoverMcpRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/oauth/discover-mcp';
+};
+
+export type McpOAuthDiscoverMcpErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type McpOAuthDiscoverMcpError = McpOAuthDiscoverMcpErrors[keyof McpOAuthDiscoverMcpErrors];
+
+export type McpOAuthDiscoverMcpResponses = {
+    /**
+     * MCP OAuth discovery metadata
+     */
+    200: OAuthDiscoverMcpResponse;
+};
+
+export type McpOAuthDiscoverMcpResponse = McpOAuthDiscoverMcpResponses[keyof McpOAuthDiscoverMcpResponses];
+
+export type McpOAuthDynamicRegisterStandaloneData = {
+    body: DynamicRegisterRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/oauth/dynamic-register';
+};
+
+export type McpOAuthDynamicRegisterStandaloneErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type McpOAuthDynamicRegisterStandaloneError = McpOAuthDynamicRegisterStandaloneErrors[keyof McpOAuthDynamicRegisterStandaloneErrors];
+
+export type McpOAuthDynamicRegisterStandaloneResponses = {
+    /**
+     * Dynamic client registration result
+     */
+    200: DynamicRegisterResponse;
+};
+
+export type McpOAuthDynamicRegisterStandaloneResponse = McpOAuthDynamicRegisterStandaloneResponses[keyof McpOAuthDynamicRegisterStandaloneResponses];
+
+export type ListMcpServersData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter by enabled status
+         */
+        enabled?: boolean;
+    };
+    url: '/bodhi/v1/mcps/servers';
+};
+
+export type ListMcpServersErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListMcpServersError = ListMcpServersErrors[keyof ListMcpServersErrors];
+
+export type ListMcpServersResponses = {
+    /**
+     * List of MCP servers
+     */
+    200: ListMcpServersResponse;
+};
+
+export type ListMcpServersResponse2 = ListMcpServersResponses[keyof ListMcpServersResponses];
+
+export type CreateMcpServerData = {
+    body: CreateMcpServerRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/servers';
+};
+
+export type CreateMcpServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * URL already exists
+     */
+    409: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateMcpServerError = CreateMcpServerErrors[keyof CreateMcpServerErrors];
+
+export type CreateMcpServerResponses = {
+    /**
+     * MCP server created
+     */
+    201: McpServerResponse;
+};
+
+export type CreateMcpServerResponse = CreateMcpServerResponses[keyof CreateMcpServerResponses];
+
+export type GetMcpServerData = {
+    body?: never;
+    path: {
+        /**
+         * MCP server UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/servers/{id}';
+};
+
+export type GetMcpServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetMcpServerError = GetMcpServerErrors[keyof GetMcpServerErrors];
+
+export type GetMcpServerResponses = {
+    /**
+     * MCP server
+     */
+    200: McpServerResponse;
+};
+
+export type GetMcpServerResponse = GetMcpServerResponses[keyof GetMcpServerResponses];
+
+export type UpdateMcpServerData = {
+    body: UpdateMcpServerRequest;
+    path: {
+        /**
+         * MCP server UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/servers/{id}';
+};
+
+export type UpdateMcpServerErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * URL already exists
+     */
+    409: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateMcpServerError = UpdateMcpServerErrors[keyof UpdateMcpServerErrors];
+
+export type UpdateMcpServerResponses = {
+    /**
+     * MCP server updated
+     */
+    200: McpServerResponse;
+};
+
+export type UpdateMcpServerResponse = UpdateMcpServerResponses[keyof UpdateMcpServerResponses];
 
 export type DeleteMcpData = {
     body?: never;

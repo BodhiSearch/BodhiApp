@@ -84,6 +84,8 @@ impl DbCore for SqliteDbService {
       "DELETE FROM app_access_requests;
        DELETE FROM toolsets;
        DELETE FROM mcps;
+       DELETE FROM mcp_oauth_tokens;
+       DELETE FROM mcp_oauth_configs;
        DELETE FROM mcp_auth_headers;
        DELETE FROM mcp_servers;
        DELETE FROM app_toolset_configs;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Pencil, Plus } from 'lucide-react';
+import { Eye, Pencil, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -26,9 +26,40 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { useMcpServers, useUpdateMcpServer, type McpServerResponse } from '@/hooks/useMcps';
+import {
+  useListAuthConfigs,
+  useMcpServers,
+  useUpdateMcpServer,
+  type McpAuthConfigResponse,
+  type McpServerResponse,
+} from '@/hooks/useMcps';
 import { useUser } from '@/hooks/useUsers';
 import { isAdminRole } from '@/lib/roles';
+import { authConfigTypeBadge } from '@/lib/mcpUtils';
+
+function ServerAuthConfigsSummary({ serverId }: { serverId: string }) {
+  const { data: authConfigsData } = useListAuthConfigs(serverId);
+
+  const items = authConfigsData?.auth_configs ?? [];
+
+  if (items.length === 0) return null;
+
+  return (
+    <div
+      className="pl-6 py-1 space-y-1 bg-muted/30 border-l-2 border-muted"
+      data-testid={`server-auth-configs-${serverId}`}
+    >
+      {items.map((config) => (
+        <div key={config.id} className="flex items-center gap-2 text-sm py-0.5">
+          <span className="text-muted-foreground">{config.name}</span>
+          <Badge variant="outline" className="text-xs">
+            {authConfigTypeBadge(config)}
+          </Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -103,20 +134,37 @@ function McpServersPageContent() {
         <span className="text-muted-foreground">{totalMcps}</span>
       </TableCell>,
       <TableCell key="actions" data-testid={`server-actions-${server.id}`}>
-        {isAdmin && (
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/ui/mcp-servers/edit?id=${server.id}`)}
-            title={`Edit ${server.name}`}
+            asChild
             className="h-8 w-8 p-0"
-            data-testid={`server-edit-button-${server.id}`}
+            data-testid={`server-view-button-${server.id}`}
           >
-            <Pencil className="h-4 w-4" />
+            <Link href={`/ui/mcp-servers/view?id=${server.id}`} title={`View ${server.name}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
           </Button>
-        )}
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/ui/mcp-servers/edit?id=${server.id}`)}
+              title={`Edit ${server.name}`}
+              className="h-8 w-8 p-0"
+              data-testid={`server-edit-button-${server.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </TableCell>,
     ];
+  };
+
+  const renderExpandedRow = (server: McpServerResponse) => {
+    return <ServerAuthConfigsSummary serverId={server.id} />;
   };
 
   if (error) {
@@ -160,6 +208,7 @@ function McpServersPageContent() {
           columns={columns}
           loading={isLoading}
           renderRow={renderRow}
+          renderExpandedRow={renderExpandedRow}
           getItemId={(s) => s.id}
           sort={{ column: 'name', direction: 'asc' }}
           onSortChange={() => {}}

@@ -11,6 +11,13 @@ import {
 import { expect, test } from '@/fixtures.mjs';
 import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
+// TODO(I19): All 3 tests in this describe block depend on the external Tavily API
+// (https://mcp.tavily.com/mcp/) and require INTEG_TEST_TAVILY_API_KEY to be set.
+// This makes them flaky in CI when Tavily is unavailable or the key is missing.
+// To make these tests fully self-contained, replace Tavily with a local mock MCP server
+// (similar to the OAuth test MCP on port 55174) that accepts a configurable header key/value
+// and exposes a simple tool. The mock server should be started as a webServer entry in
+// playwright.config.mjs alongside the existing test MCP servers.
 test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
   let authServerConfig;
   let testCredentials;
@@ -25,6 +32,8 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
     const serverData = McpFixtures.createTavilyServerData();
     const instanceData = McpFixtures.createTavilyInstanceData();
+    let serverId;
+    let authConfigId;
 
     await test.step('Login', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
@@ -36,15 +45,27 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
       await expect(row).toBeVisible();
     });
 
-    await test.step('Create MCP instance with header auth', async () => {
-      await mcpsPage.createMcpInstanceWithAuth(
-        serverData.name,
-        instanceData.name,
-        instanceData.slug,
-        'Authorization',
-        `Bearer ${McpFixtures.TAVILY_API_KEY}`,
-        instanceData.description
-      );
+    await test.step('Create auth header config via API', async () => {
+      serverId = await mcpsPage.getServerUuidByName(serverData.name);
+      expect(serverId).toBeTruthy();
+
+      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
+        name: 'Tavily Auth',
+        headerKey: 'Authorization',
+        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
+      });
+      expect(authHeader.id).toBeTruthy();
+      authConfigId = authHeader.id;
+    });
+
+    await test.step('Create MCP instance with header auth from dropdown', async () => {
+      await mcpsPage.createMcpInstanceWithHeaderAuth({
+        serverName: serverData.name,
+        name: instanceData.name,
+        slug: instanceData.slug,
+        authConfigId,
+        description: instanceData.description,
+      });
       await mcpsPage.expectMcpsListPage();
       const row = await mcpsPage.getMcpRowByName(instanceData.name);
       await expect(row).toBeVisible();
@@ -70,17 +91,27 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
     const serverData = McpFixtures.createTavilyServerData();
     const instanceData = McpFixtures.createTavilyInstanceData();
+    let serverId;
+    let authConfigId;
 
-    await test.step('Login and create MCP server + instance with auth', async () => {
+    await test.step('Login, create server, create auth header, create MCP', async () => {
       await loginPage.performOAuthLogin('/ui/chat/');
       await mcpsPage.createMcpServer(serverData.url, serverData.name);
-      await mcpsPage.createMcpInstanceWithAuth(
-        serverData.name,
-        instanceData.name,
-        instanceData.slug,
-        'Authorization',
-        `Bearer ${McpFixtures.TAVILY_API_KEY}`
-      );
+
+      serverId = await mcpsPage.getServerUuidByName(serverData.name);
+      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
+        name: 'Tavily Auth',
+        headerKey: 'Authorization',
+        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
+      });
+      authConfigId = authHeader.id;
+
+      await mcpsPage.createMcpInstanceWithHeaderAuth({
+        serverName: serverData.name,
+        name: instanceData.name,
+        slug: instanceData.slug,
+        authConfigId,
+      });
     });
 
     await test.step('Edit MCP: switch to public auth', async () => {
@@ -90,28 +121,28 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
       await mcpsPage.clickEditById(mcpId);
       await mcpsPage.expectNewMcpPage();
 
-      await mcpsPage.expectAuthTypeState('header');
-      await mcpsPage.expectAuthHeaderFields();
-      await mcpsPage.expectAuthHeaderKeyValue('Authorization');
+      await mcpsPage.expectAuthConfigState('header');
+      await mcpsPage.expectAuthConfigHeaderSummary();
 
-      await mcpsPage.selectAuthType('public');
-      await mcpsPage.expectNoAuthHeaderFields();
+      await mcpsPage.selectAuthConfigPublic();
       await mcpsPage.clickUpdate();
       await mcpsPage.expectMcpsListPage();
     });
 
     await test.step('Edit MCP: switch back to header auth', async () => {
       const mcpId = await mcpsPage.getMcpUuidByName(instanceData.name);
+      // Set up listener BEFORE navigation so we catch the auth-configs API response
+      const authConfigsLoaded = mcpsPage.page.waitForResponse(
+        (resp) => resp.url().includes('/auth-configs') && resp.status() === 200
+      );
       await mcpsPage.clickEditById(mcpId);
       await mcpsPage.expectNewMcpPage();
 
-      await mcpsPage.expectAuthTypeState('public');
-      await mcpsPage.expectNoAuthHeaderFields();
+      await mcpsPage.expectAuthConfigState('public');
+      await authConfigsLoaded;
 
-      await mcpsPage.selectAuthType('header');
-      await mcpsPage.expectAuthHeaderFields();
-      await mcpsPage.fillAuthHeaderKey('Authorization');
-      await mcpsPage.fillAuthHeaderValue(`Bearer ${McpFixtures.TAVILY_API_KEY}`);
+      await mcpsPage.selectAuthConfigById(authConfigId);
+      await mcpsPage.expectAuthConfigHeaderSummary();
       await mcpsPage.clickUpdate();
       await mcpsPage.expectMcpsListPage();
     });
@@ -132,6 +163,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     page,
   }) => {
     let mcpInstanceId;
+    let serverId;
     const serverData = McpFixtures.createTavilyServerData();
     const instanceData = McpFixtures.createTavilyInstanceData();
 
@@ -141,14 +173,21 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
 
       const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
       await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
-      await mcpsPage.createMcpInstanceWithAuth(
-        serverData.name,
-        instanceData.name,
-        instanceData.slug,
-        'Authorization',
-        `Bearer ${McpFixtures.TAVILY_API_KEY}`,
-        instanceData.description
-      );
+
+      serverId = await mcpsPage.getServerUuidByName(serverData.name);
+      const authHeader = await mcpsPage.createAuthHeaderViaApi(serverId, {
+        name: 'Tavily Auth',
+        headerKey: 'Authorization',
+        headerValue: `Bearer ${McpFixtures.TAVILY_API_KEY}`,
+      });
+
+      await mcpsPage.createMcpInstanceWithHeaderAuth({
+        serverName: serverData.name,
+        name: instanceData.name,
+        slug: instanceData.slug,
+        authConfigId: authHeader.id,
+        description: instanceData.description,
+      });
 
       await mcpsPage.navigateToMcpsList();
       mcpInstanceId = await mcpsPage.getMcpUuidByName(instanceData.name);

@@ -105,6 +105,9 @@ run.native: ## Run native app in development mode
 app.clear: ## Clear the app data folders
 	rm -rf ~/.cache/bodhi-dev-makefile
 
+app.clean-run:
+	cd crates/bodhi && npm run build && cd ../../ && $(MAKE) app.run
+
 app.run: ## Run the BodhiApp
 	BODHI_ENCRYPTION_KEY=dummy-key \
 		BODHI_LOG_LEVEL=info \

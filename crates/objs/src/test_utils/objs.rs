@@ -309,3 +309,8 @@ impl UserAlias {
 }
 
 // ChatTemplateType implementations removed since llama.cpp now handles chat templates
+
+/// Fixed deterministic timestamp matching `FrozenTimeService` default (2025-01-01T00:00:00Z).
+pub fn fixed_dt() -> DateTime<Utc> {
+  chrono::TimeZone::with_ymd_and_hms(&Utc, 2025, 1, 1, 0, 0, 0).unwrap()
+}

@@ -26,12 +26,13 @@ Follow this TDD-style process:
 
 Reference these specs as models for different test scenarios:
 
-| Scenario | Spec File | Pattern |
-|---|---|---|
-| Shared-server journey | `specs/tokens/api-tokens.spec.mjs` | Single login, full lifecycle (create/verify/use/deactivate/reactivate) |
-| Multi-phase with `test.step` | `specs/toolsets/toolsets-auth-restrictions.spec.mjs` | Phases for login, OAuth config, access request, API verification |
-| Dedicated server + custom config | `specs/models/model-metadata.spec.mjs` | Custom HF_HOME, `createServerManager`, `test.step` per model |
-| Multi-user with browser contexts | `specs/request-access/multi-user-request-approval-flow.spec.mjs` | Separate browser contexts per user, `try/finally` cleanup |
+| Scenario                         | Spec File                                                        | Pattern                                                                |
+| -------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Shared-server journey            | `specs/tokens/api-tokens.spec.mjs`                               | Single login, full lifecycle (create/verify/use/deactivate/reactivate) |
+| Multi-phase with `test.step`     | `specs/toolsets/toolsets-auth-restrictions.spec.mjs`             | Phases for login, OAuth config, access request, API verification       |
+| Dedicated server + custom config | `specs/models/model-metadata.spec.mjs`                           | Custom HF_HOME, `createServerManager`, `test.step` per model           |
+| Multi-user with browser contexts | `specs/request-access/multi-user-request-approval-flow.spec.mjs` | Separate browser contexts per user, `try/finally` cleanup              |
+| Multi-step OAuth MCP flow        | `specs/mcps/mcps-oauth-auth.spec.mjs`                            | OAuth MCP creation, 3rd-party access request, REST API verification    |
 
 ## Test Structure Standards
 
@@ -83,12 +84,58 @@ Importing from `@/fixtures.mjs` gives you the `autoResetDb` fixture that calls `
 
 ### Setup and Teardown
 
-| Hook | Use For |
-|---|---|
-| `beforeAll` | Auth config (`getAuthServerConfig()`, `getTestCredentials()`), dedicated server startup |
-| `beforeEach` | Page object creation (MUST be per-test -- Playwright's `page` is per-test) |
-| `afterAll` | Dedicated server cleanup (`serverManager.stopServer()`) |
-| `try/finally` | Browser context cleanup in multi-user tests |
+| Hook          | Use For                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `beforeAll`   | Auth config (`getAuthServerConfig()`, `getTestCredentials()`), dedicated server startup |
+| `beforeEach`  | Page object creation (MUST be per-test -- Playwright's `page` is per-test)              |
+| `afterAll`    | Dedicated server cleanup (`serverManager.stopServer()`)                                 |
+| `try/finally` | Browser context cleanup in multi-user tests                                             |
+
+## Strict Black-Box Testing
+
+E2E tests are **black-box** tests. They must interact with the application exclusively through the UI.
+
+**Rule**: Never call APIs directly via `page.evaluate()` + `fetch()` as the primary test interaction. All test assertions must observe results through UI components (visible elements, navigation, `data-testid` attributes).
+
+**Exception -- setup-only helpers**: When a backend operation has no UI equivalent (e.g., creating an auth config, discovering OAuth endpoints, DCR registration), `page.evaluate()` fetch helpers in McpsPage are acceptable *for test setup only*. They must always include `if (!resp.ok) throw new Error(...)` so failures are surfaced clearly. The assertions that follow must still use UI interactions.
+
+**Anti-pattern** (do not do this):
+```js
+// WRONG: Using fetch to assert results instead of UI
+const resp = await page.evaluate(async ({ baseUrl }) => {
+  const r = await fetch(`${baseUrl}/bodhi/v1/mcps`);
+  return r.json();
+}, { baseUrl });
+expect(resp.mcps.length).toBe(1); // asserting via API, not UI
+```
+
+**Correct pattern** (verify through UI):
+```js
+// RIGHT: Navigate to list and verify via UI element
+await mcpsPage.navigateToMcpsList();
+const row = await mcpsPage.getMcpRowByName(instanceName);
+await expect(row).toBeVisible();
+```
+
+## step() Naming Convention
+
+Use `test.step()` for all major phases. Step names must describe the **user goal** or **phase outcome**, not the implementation:
+
+| Good step name                                  | Bad step name                                |
+| ----------------------------------------------- | -------------------------------------------- |
+| `'Login and verify empty list'`                 | `'Call performOAuthLogin'`                   |
+| `'Create MCP server with auth header'`          | `'POST to /bodhi/v1/mcps/auth-configs'`      |
+| `'Verify auth works via playground execution'`  | `'Click execute button and check response'`  |
+| `'Phase 2: Configure external app OAuth form'`  | `'Fill form fields'`                         |
+
+For multi-phase tests (e.g., OAuth access request flows), prefix with `'Phase N:'` to indicate sequence:
+
+```js
+await test.step('Phase 1: Login and create MCP instance', async () => { ... });
+await test.step('Phase 2: Configure external app OAuth form', async () => { ... });
+await test.step('Phase 3: Submit access request and approve', async () => { ... });
+await test.step('Phase 4: Verify MCP access via REST API', async () => { ... });
+```
 
 ## Anti-Patterns
 
@@ -99,25 +146,26 @@ The following shows common anti-patterns (previously present in `specs/mcps/mcps
 ```js
 // ANTI-PATTERN: 6 fragmented tests with repeated login
 test('displays MCP servers list page (empty)', async () => {
-  await loginPage.performOAuthLogin('/ui/chat/');  // login #1
+  await loginPage.performOAuthLogin('/ui/chat/'); // login #1
   await mcpsPage.navigateToMcpsList();
   await mcpsPage.expectEmptyState();
 });
 
 test('shows Add MCP Server button on list page', async () => {
-  await loginPage.performOAuthLogin('/ui/chat/');  // login #2
+  await loginPage.performOAuthLogin('/ui/chat/'); // login #2
   await mcpsPage.navigateToMcpsList();
   await expect(mcpsPage.page.locator(mcpsPage.selectors.newButton)).toBeVisible();
 });
 
 test('navigates to new MCP page', async () => {
-  await loginPage.performOAuthLogin('/ui/chat/');  // login #3
+  await loginPage.performOAuthLogin('/ui/chat/'); // login #3
   // ... same navigation repeated
 });
 // ... 3 more tests, each logging in again
 ```
 
 **Problems**:
+
 - **Fragmented tests**: 6 small tests that should be 1-2 journeys
 - **Repeated login**: `performOAuthLogin()` called 6 times instead of once per journey
 - **No `test.step()`**: Flat test bodies without phase markers
@@ -159,9 +207,7 @@ test.describe('MCP Server Management', () => {
     await test.step('Create MCP server with admin enable flow', async () => {
       await mcpsPage.clickNewMcp();
       await mcpsPage.expectNewMcpPage();
-      await mcpsPage.createMcpWithAdminEnable(
-        testData.url, testData.name, testData.slug, testData.description
-      );
+      await mcpsPage.createMcpWithAdminEnable(testData.url, testData.name, testData.slug, testData.description);
       await mcpsPage.expectToolsSection();
     });
 
@@ -209,6 +255,7 @@ test.describe('MCP Server Management', () => {
 ### Inheritance and Construction
 
 All page objects extend `BasePage` from `@/pages/BasePage.mjs`, which provides:
+
 - `navigate(path)`, `waitForSPAReady()`, `clickTestId(testId)`, `fillTestId(testId, value)`
 - `waitForToast(message)`, `waitForToastOptional(message)`, `waitForToastAndExtractId(pattern)`
 - `expectCurrentPath(path)`, `getCurrentPath()`, `takeScreenshot(name)`
@@ -223,8 +270,8 @@ Define selectors in a `selectors = {}` property using `data-testid` attributes, 
 selectors = {
   pageContainer: '[data-testid="mcps-page"]',
   newButton: '[data-testid="mcp-new-button"]',
-  mcpRow: (id) => `[data-testid="mcp-row-${id}"]`,
-  mcpRowByName: (name) => `[data-test-mcp-name="${name}"]`,
+  mcpRow: id => `[data-testid="mcp-row-${id}"]`,
+  mcpRowByName: name => `[data-test-mcp-name="${name}"]`,
 };
 ```
 
@@ -232,14 +279,14 @@ Use dynamic selector functions for elements with IDs or names.
 
 ### Method Naming
 
-| Prefix | Purpose | Example |
-|---|---|---|
-| `navigateTo*` | Navigate to a page | `navigateToMcpsList()` |
-| `expect*` | Assert visibility/state | `expectEmptyState()` |
-| `click*` | Click an element | `clickNewMcp()` |
-| `fill*` | Fill an input | `fillUrl(url)` |
-| `waitFor*` | Wait for a condition | `waitForFormReady()` |
-| `get*` | Extract data from the page | `getMcpUuidByName(name)` |
+| Prefix        | Purpose                    | Example                  |
+| ------------- | -------------------------- | ------------------------ |
+| `navigateTo*` | Navigate to a page         | `navigateToMcpsList()`   |
+| `expect*`     | Assert visibility/state    | `expectEmptyState()`     |
+| `click*`      | Click an element           | `clickNewMcp()`          |
+| `fill*`       | Fill an input              | `fillUrl(url)`           |
+| `waitFor*`    | Wait for a condition       | `waitForFormReady()`     |
+| `get*`        | Extract data from the page | `getMcpUuidByName(name)` |
 
 ### Composite Page Objects
 
@@ -317,7 +364,7 @@ Otherwise:
 import { createAuthServerTestClient, getAuthServerConfig } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { randomPort } from '@/test-helpers.mjs';
-import { expect, test } from '@playwright/test';  // NOT @/fixtures.mjs
+import { expect, test } from '@playwright/test'; // NOT @/fixtures.mjs
 
 test.describe('Feature Needing Custom Server', () => {
   let serverManager;
@@ -330,9 +377,7 @@ test.describe('Feature Needing Custom Server', () => {
 
     const authClient = createAuthServerTestClient(authServerConfig);
     const resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(
-      resourceClient.clientId, resourceClient.clientSecret, testCredentials.userId
-    );
+    await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.userId);
 
     serverManager = createServerManager({
       appStatus: 'ready',
@@ -350,7 +395,9 @@ test.describe('Feature Needing Custom Server', () => {
     if (serverManager) await serverManager.stopServer();
   });
 
-  test('...', async ({ page }) => { /* use baseUrl */ });
+  test('...', async ({ page }) => {
+    /* use baseUrl */
+  });
 });
 ```
 
@@ -394,10 +441,10 @@ After any navigation, call `waitForSPAReady()` before interacting with elements.
 
 ## Utility Reference
 
-| Utility | Purpose |
-|---|---|
-| `auth-server-client.mjs` | `getAuthServerConfig()`, `getTestCredentials()`, `getPreConfiguredResourceClient()`, `getPreConfiguredAppClient()`, `AuthServerTestClient` for dynamic client creation and role assignment |
-| `bodhi-app-server.mjs` | `createServerManager()` for dedicated-server lifecycle (start/stop) |
-| `browser-with-extension.mjs` | `BrowserWithExtension` for Chromium with Bodhi extension loaded |
-| `mock-openai-server.mjs` | `MockOpenAIServer` for API model tests without real API keys |
-| `test-helpers.mjs` | `SHARED_SERVER_URL`, `SHARED_STATIC_SERVER_URL`, `loadBindings()`, `createTestServer()`, `resetDatabase()`, `randomPort()`, `sleep()`, `waitForServer()` |
+| Utility                      | Purpose                                                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `auth-server-client.mjs`     | `getAuthServerConfig()`, `getTestCredentials()`, `getPreConfiguredResourceClient()`, `getPreConfiguredAppClient()`, `AuthServerTestClient` for dynamic client creation and role assignment |
+| `bodhi-app-server.mjs`       | `createServerManager()` for dedicated-server lifecycle (start/stop)                                                                                                                        |
+| `browser-with-extension.mjs` | `BrowserWithExtension` for Chromium with Bodhi extension loaded                                                                                                                            |
+| `mock-openai-server.mjs`     | `MockOpenAIServer` for API model tests without real API keys                                                                                                                               |
+| `test-helpers.mjs`           | `SHARED_SERVER_URL`, `SHARED_STATIC_SERVER_URL`, `loadBindings()`, `createTestServer()`, `resetDatabase()`, `randomPort()`, `sleep()`, `waitForServer()`                                   |

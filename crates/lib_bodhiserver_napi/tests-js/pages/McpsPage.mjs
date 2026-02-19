@@ -18,6 +18,7 @@ export class McpsPage extends BasePage {
     serverRowByName: (name) => `[data-test-server-name="${name}"]`,
     serverToggle: (id) => `[data-testid="server-toggle-${id}"]`,
     serverEditButton: (id) => `[data-testid="server-edit-button-${id}"]`,
+    serverViewButton: (id) => `[data-testid="server-view-button-${id}"]`,
 
     // MCP Server new/edit page
     newServerPage: '[data-testid="new-mcp-server-page"]',
@@ -55,13 +56,21 @@ export class McpsPage extends BasePage {
     doneButton: '[data-testid="mcp-done-button"]',
     backButton: '[data-testid="mcp-back-button"]',
 
-    // Auth section
+    // Auth config dropdown (replaces old inline auth forms)
     authSection: '[data-testid="mcp-auth-section"]',
-    authTypeSelect: '[data-testid="mcp-auth-type-select"]',
-    authTypePublic: '[data-testid="mcp-auth-type-public"]',
-    authTypeHeader: '[data-testid="mcp-auth-type-header"]',
-    authHeaderKey: '[data-testid="mcp-auth-header-key"]',
-    authHeaderValue: '[data-testid="mcp-auth-header-value"]',
+    authConfigSelect: '[data-testid="auth-config-select"]',
+    authConfigOptionPublic: '[data-testid="auth-config-option-public"]',
+    authConfigOption: (id) => `[data-testid="auth-config-option-${id}"]`,
+    authConfigOptionNew: '[data-testid="auth-config-option-new"]',
+    authConfigHeaderSummary: '[data-testid="auth-config-header-summary"]',
+    authConfigOAuthConnect: '[data-testid="auth-config-oauth-connect"]',
+    authConfigNewRedirect: '[data-testid="auth-config-new-redirect"]',
+
+    // OAuth connected state (unchanged)
+    oauthConnectedCard: '[data-testid="oauth-connected-card"]',
+    oauthConnectedBadge: '[data-testid="oauth-connected-badge"]',
+    oauthDisconnectButton: '[data-testid="oauth-disconnect-button"]',
+    oauthConnectedInfo: '[data-testid="oauth-connected-info"]',
 
     // Tools section
     toolsSection: '[data-testid="mcp-tools-section"]',
@@ -107,9 +116,8 @@ export class McpsPage extends BasePage {
   }
 
   async expectServersListPage() {
-    await expect(this.page.locator(this.selectors.serversPage)).toBeVisible({
-      timeout: 15000,
-    });
+    await this.page.waitForURL(/\/ui\/mcp-servers/);
+    await this.waitForSPAReady();
   }
 
   async clickNewServer() {
@@ -145,13 +153,95 @@ export class McpsPage extends BasePage {
     await this.expectServersListPage();
     await this.clickNewServer();
     await this.expectNewServerPage();
-    await this.fillServerUrl(url);
     await this.fillServerName(name);
+    await this.fillServerUrl(url);
     if (description) {
       await this.fillServerDescription(description);
     }
     await this.clickServerSave();
     await this.expectServersListPage();
+  }
+
+  async getServerUuidByName(name) {
+    const row = this.page.locator(this.selectors.serverRowByName(name)).first();
+    const testId = await row.getAttribute('data-testid');
+    return testId?.replace('server-row-', '');
+  }
+
+  // ========== API Helpers (auth config creation via fetch) ==========
+
+  async createAuthHeaderViaApi(serverId, { name, headerKey, headerValue }) {
+    return await this.page.evaluate(
+      async ({ baseUrl, serverId, name, headerKey, headerValue }) => {
+        const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/auth-configs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            type: 'header',
+            name: name || 'Header',
+            mcp_server_id: serverId,
+            header_key: headerKey,
+            header_value: headerValue,
+          }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        return await resp.json();
+      },
+      { baseUrl: this.baseUrl, serverId, name, headerKey, headerValue }
+    );
+  }
+
+  async createOAuthConfigViaApi(serverId, config) {
+    return await this.page.evaluate(
+      async ({ baseUrl, serverId, config }) => {
+        const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/auth-configs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ...config, type: 'oauth', mcp_server_id: serverId }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        return await resp.json();
+      },
+      { baseUrl: this.baseUrl, serverId, config }
+    );
+  }
+
+  async discoverMcpEndpointsViaApi(mcpServerUrl) {
+    return await this.page.evaluate(
+      async ({ baseUrl, mcpServerUrl }) => {
+        const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/oauth/discover-mcp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ mcp_server_url: mcpServerUrl }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        return await resp.json();
+      },
+      { baseUrl: this.baseUrl, mcpServerUrl }
+    );
+  }
+
+  async dynamicRegisterViaApi({ registrationEndpoint, redirectUri, scopes }) {
+    return await this.page.evaluate(
+      async ({ baseUrl, registrationEndpoint, redirectUri, scopes }) => {
+        const resp = await fetch(`${baseUrl}/bodhi/v1/mcps/oauth/dynamic-register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            registration_endpoint: registrationEndpoint,
+            redirect_uri: redirectUri,
+            scopes: scopes || undefined,
+          }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        return await resp.json();
+      },
+      { baseUrl: this.baseUrl, registrationEndpoint, redirectUri, scopes }
+    );
   }
 
   // ========== MCPs List Page Methods ==========
@@ -162,9 +252,8 @@ export class McpsPage extends BasePage {
   }
 
   async expectMcpsListPage() {
-    await expect(this.page.locator(this.selectors.pageContainer)).toBeVisible({
-      timeout: 15000,
-    });
+    await this.page.waitForURL(/\/ui\/mcps(?:\/)?$/);
+    await this.waitForSPAReady();
   }
 
   async clickNewMcp() {
@@ -199,7 +288,8 @@ export class McpsPage extends BasePage {
   // ========== New/Edit MCP Instance Methods ==========
 
   async expectNewMcpPage() {
-    await expect(this.page.locator(this.selectors.newPageContainer)).toBeVisible();
+    await this.page.waitForURL(/\/ui\/mcps\/new/);
+    await this.waitForSPAReady();
   }
 
   async selectServerFromCombobox(serverName) {
@@ -236,10 +326,6 @@ export class McpsPage extends BasePage {
     await this.waitForSPAReady();
   }
 
-  /**
-   * Single-step flow: select server, fill details, fetch tools, create MCP instance.
-   * Redirects to the MCPs list after creation.
-   */
   async createMcpInstance(serverName, name, slug, description = '') {
     await this.navigateToMcpsList();
     await this.expectMcpsListPage();
@@ -257,74 +343,108 @@ export class McpsPage extends BasePage {
     await this.clickCreate();
   }
 
-  /**
-   * Single-step flow: create instance with all tools selected.
-   * Equivalent to createMcpInstance since all tools are selected by default.
-   */
   async createMcpInstanceWithAllTools(serverName, name, slug, description = '') {
     await this.createMcpInstance(serverName, name, slug, description);
   }
 
-  // ========== Auth Section Methods ==========
+  // ========== Auth Config Dropdown Methods ==========
 
-  async selectAuthType(type) {
-    await this.page.click(this.selectors.authTypeSelect);
-    const option =
-      type === 'header' ? this.selectors.authTypeHeader : this.selectors.authTypePublic;
-    await expect(this.page.locator(option)).toBeVisible();
-    await this.page.click(option);
+  async selectAuthConfigPublic() {
+    await this.page.click(this.selectors.authConfigSelect);
+    await expect(this.page.locator(this.selectors.authConfigOptionPublic)).toBeVisible();
+    await this.page.click(this.selectors.authConfigOptionPublic);
   }
 
-  async fillAuthHeaderKey(key) {
-    await this.page.fill(this.selectors.authHeaderKey, key);
+  async selectAuthConfigById(configId) {
+    await this.page.click(this.selectors.authConfigSelect);
+    await expect(this.page.locator(this.selectors.authConfigOption(configId))).toBeVisible();
+    await this.page.click(this.selectors.authConfigOption(configId));
   }
 
-  async fillAuthHeaderValue(value) {
-    await this.page.fill(this.selectors.authHeaderValue, value);
-  }
-
-  async expectAuthHeaderFields() {
-    await expect(this.page.locator(this.selectors.authHeaderKey)).toBeVisible();
-    await expect(this.page.locator(this.selectors.authHeaderValue)).toBeVisible();
-  }
-
-  async expectNoAuthHeaderFields() {
-    await expect(this.page.locator(this.selectors.authHeaderKey)).not.toBeVisible();
-    await expect(this.page.locator(this.selectors.authHeaderValue)).not.toBeVisible();
-  }
-
-  async expectAuthTypeState(type) {
-    const trigger = this.page.locator(this.selectors.authTypeSelect);
+  async expectAuthConfigState(type) {
+    const trigger = this.page.locator(this.selectors.authConfigSelect);
     await expect(trigger).toHaveAttribute('data-test-state', type);
   }
 
-  async expectAuthHeaderKeyValue(key) {
-    const input = this.page.locator(this.selectors.authHeaderKey);
-    await expect(input).toHaveValue(key);
+  async expectAuthConfigHeaderSummary() {
+    await expect(this.page.locator(this.selectors.authConfigHeaderSummary)).toBeVisible();
   }
 
-  async createMcpInstanceWithAuth(
+  async clickOAuthConnect() {
+    await this.page.click(this.selectors.authConfigOAuthConnect);
+  }
+
+  async expectOAuthConnected() {
+    await expect(this.page.locator(this.selectors.oauthConnectedBadge)).toBeVisible();
+  }
+
+  async expectOAuthDisconnected() {
+    await expect(this.page.locator(this.selectors.oauthConnectedCard)).not.toBeVisible();
+  }
+
+  async clickDisconnect() {
+    await this.page.click(this.selectors.oauthDisconnectButton);
+  }
+
+  async expectAuthConfigDropdownHasOption(configId) {
+    await this.page.click(this.selectors.authConfigSelect);
+    await expect(this.page.locator(this.selectors.authConfigOption(configId))).toBeVisible();
+    await this.page.keyboard.press('Escape');
+  }
+
+  // ========== Composite Auth Methods ==========
+
+  async createMcpInstanceWithHeaderAuth({
     serverName,
     name,
     slug,
-    headerKey,
-    headerValue,
-    description = ''
-  ) {
+    authConfigId,
+    description = '',
+  }) {
     await this.navigateToMcpsList();
     await this.expectMcpsListPage();
     await this.clickNewMcp();
     await this.expectNewMcpPage();
 
     await this.selectServerFromCombobox(serverName);
+
     if (name) await this.fillName(name);
     await this.fillSlug(slug);
     if (description) await this.fillDescription(description);
 
-    await this.selectAuthType('header');
-    await this.fillAuthHeaderKey(headerKey);
-    await this.fillAuthHeaderValue(headerValue);
+    await this.selectAuthConfigById(authConfigId);
+    await this.expectAuthConfigHeaderSummary();
 
+    await this.clickFetchTools();
+    await this.expectToolsList();
+    await this.clickCreate();
+  }
+
+  async createMcpInstanceWithOAuth({
+    serverName,
+    name,
+    slug,
+    authConfigId,
+    approveSelector = '[data-testid="approve-btn"]',
+  }) {
+    await this.navigateToMcpsList();
+    await this.expectMcpsListPage();
+    await this.clickNewMcp();
+    await this.expectNewMcpPage();
+
+    await this.selectServerFromCombobox(serverName);
+    await this.selectAuthConfigById(authConfigId);
+    await this.clickOAuthConnect();
+
+    await this.page.waitForURL(/\/authorize/);
+    await this.page.click(approveSelector);
+
+    await this.page.waitForURL(/\/ui\/mcps\/new/);
+    await this.waitForSPAReady();
+    await this.expectOAuthConnected();
+
+    await this.fillName(name);
+    await this.fillSlug(slug);
     await this.clickFetchTools();
     await this.expectToolsList();
     await this.clickCreate();
@@ -341,9 +461,7 @@ export class McpsPage extends BasePage {
   }
 
   async expectToolsList() {
-    await expect(this.page.locator(this.selectors.toolsList)).toBeVisible({
-      timeout: 30000,
-    });
+    await expect(this.page.locator(this.selectors.toolsList)).toBeVisible();
   }
 
   async expectToolItem(toolName) {
@@ -367,9 +485,7 @@ export class McpsPage extends BasePage {
   }
 
   async expectPlaygroundPage() {
-    await expect(this.page.locator(this.selectors.playgroundPage)).toBeVisible({
-      timeout: 15000,
-    });
+    await expect(this.page.locator(this.selectors.playgroundPage)).toBeVisible();
   }
 
   async selectPlaygroundTool(name) {
@@ -423,13 +539,13 @@ export class McpsPage extends BasePage {
 
   async expectPlaygroundResultSuccess() {
     const status = this.page.locator(this.selectors.playgroundResultStatus);
-    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toBeVisible();
     await expect(status).toHaveAttribute('data-test-state', 'success');
   }
 
   async expectPlaygroundResultError() {
     const status = this.page.locator(this.selectors.playgroundResultStatus);
-    await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).toBeVisible();
     await expect(status).toHaveAttribute('data-test-state', 'error');
   }
 

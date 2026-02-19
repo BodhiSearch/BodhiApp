@@ -303,10 +303,61 @@ pub struct McpRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct McpAuthHeaderRow {
   pub id: String,
+  pub name: String,
+  pub mcp_server_id: String,
   pub header_key: String,
   pub encrypted_header_value: String,
   pub header_value_salt: String,
   pub header_value_nonce: String,
+  pub created_by: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
+
+// ============================================================================
+// McpOAuthConfigRow - Database row for OAuth 2.1 client configs (pre-registered or dynamic)
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpOAuthConfigRow {
+  pub id: String,
+  pub name: String,
+  pub mcp_server_id: String,
+  pub registration_type: String,
+  pub client_id: String,
+  pub encrypted_client_secret: Option<String>,
+  pub client_secret_salt: Option<String>,
+  pub client_secret_nonce: Option<String>,
+  pub authorization_endpoint: String,
+  pub token_endpoint: String,
+  pub registration_endpoint: Option<String>,
+  pub encrypted_registration_access_token: Option<String>,
+  pub registration_access_token_salt: Option<String>,
+  pub registration_access_token_nonce: Option<String>,
+  pub client_id_issued_at: Option<i64>,
+  pub token_endpoint_auth_method: Option<String>,
+  pub scopes: Option<String>,
+  pub created_by: String,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
+
+// ============================================================================
+// McpOAuthTokenRow - Database row for OAuth 2.1 stored tokens
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpOAuthTokenRow {
+  pub id: String,
+  pub mcp_oauth_config_id: String,
+  pub encrypted_access_token: String,
+  pub access_token_salt: String,
+  pub access_token_nonce: String,
+  pub encrypted_refresh_token: Option<String>,
+  pub refresh_token_salt: Option<String>,
+  pub refresh_token_nonce: Option<String>,
+  pub scopes_granted: Option<String>,
+  pub expires_at: Option<i64>,
   pub created_by: String,
   pub created_at: i64,
   pub updated_at: i64,
