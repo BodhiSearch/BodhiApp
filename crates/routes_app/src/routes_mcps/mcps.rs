@@ -1,8 +1,9 @@
 use crate::{
-  CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, ListMcpServersResponse,
-  ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerQuery,
-  McpServerResponse, McpToolsResponse, McpValidationError, UpdateMcpRequest,
-  UpdateMcpServerRequest, ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
+  AuthHeaderResponse, CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest,
+  FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest,
+  McpExecuteResponse, McpResponse, McpServerQuery, McpServerResponse, McpToolsResponse,
+  McpValidationError, UpdateAuthHeaderRequest, UpdateMcpRequest, UpdateMcpServerRequest,
+  ENDPOINT_MCPS, ENDPOINT_MCPS_AUTH_HEADERS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
 };
 use auth_middleware::AuthContext;
 use axum::{
@@ -313,14 +314,6 @@ pub async fn create_mcp_handler(
 
   let mcp_service = state.app_service().mcp_service();
 
-  let (auth_header_key, auth_header_value) = match request.auth {
-    McpAuth::Header {
-      header_key,
-      header_value,
-    } => (Some(header_key), Some(header_value)),
-    McpAuth::Public => (None, None),
-  };
-
   let mcp = mcp_service
     .create(
       user_id,
@@ -331,8 +324,8 @@ pub async fn create_mcp_handler(
       request.enabled,
       request.tools_cache,
       request.tools_filter,
-      auth_header_key,
-      auth_header_value,
+      &request.auth_type,
+      request.auth_uuid,
     )
     .await?;
 
@@ -404,15 +397,6 @@ pub async fn update_mcp_handler(
 
   let mcp_service = state.app_service().mcp_service();
 
-  let (auth_header_key, auth_header_value, auth_keep) = match request.auth {
-    Some(McpAuth::Header {
-      header_key,
-      header_value,
-    }) => (Some(header_key), Some(header_value), false),
-    Some(McpAuth::Public) => (None, None, false),
-    None => (None, None, true),
-  };
-
   let mcp = mcp_service
     .update(
       user_id,
@@ -423,9 +407,8 @@ pub async fn update_mcp_handler(
       request.enabled,
       request.tools_filter,
       request.tools_cache,
-      auth_header_key,
-      auth_header_value,
-      auth_keep,
+      request.auth_type,
+      request.auth_uuid,
     )
     .await?;
 
@@ -489,15 +472,20 @@ pub async fn fetch_mcp_tools_handler(
   let mcp_service = state.app_service().mcp_service();
 
   let (auth_header_key, auth_header_value) = match request.auth {
-    McpAuth::Header {
+    Some(McpAuth::Header {
       header_key,
       header_value,
-    } => (Some(header_key), Some(header_value)),
-    McpAuth::Public => (None, None),
+    }) => (Some(header_key), Some(header_value)),
+    _ => (None, None),
   };
 
   let tools = mcp_service
-    .fetch_tools_for_server(&request.mcp_server_id, auth_header_key, auth_header_value)
+    .fetch_tools_for_server(
+      &request.mcp_server_id,
+      auth_header_key,
+      auth_header_value,
+      request.auth_uuid,
+    )
     .await?;
 
   Ok(Json(McpToolsResponse { tools }))
@@ -605,4 +593,143 @@ pub async fn execute_mcp_tool_handler(
     result: exec_response.result,
     error: exec_response.error,
   }))
+}
+
+// ============================================================================
+// MCP Auth Header CRUD Handlers
+// ============================================================================
+
+/// Create a new auth header config
+#[utoipa::path(
+  post,
+  path = ENDPOINT_MCPS_AUTH_HEADERS,
+  tag = API_TAG_MCPS,
+  operation_id = "createMcpAuthHeader",
+  request_body = CreateAuthHeaderRequest,
+  responses(
+    (status = 201, description = "Auth header config created", body = AuthHeaderResponse),
+    (status = 400, description = "Validation error"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn create_auth_header_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Json(request): Json<CreateAuthHeaderRequest>,
+) -> Result<(StatusCode, Json<AuthHeaderResponse>), ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+
+  if request.header_key.is_empty() {
+    return Err(McpValidationError::Validation("header_key is required".to_string()).into());
+  }
+  if request.header_value.is_empty() {
+    return Err(McpValidationError::Validation("header_value is required".to_string()).into());
+  }
+
+  let mcp_service = state.app_service().mcp_service();
+
+  let auth_header = mcp_service
+    .create_auth_header(user_id, &request.header_key, &request.header_value)
+    .await?;
+
+  Ok((
+    StatusCode::CREATED,
+    Json(AuthHeaderResponse::from(auth_header)),
+  ))
+}
+
+/// Get an auth header config by ID
+#[utoipa::path(
+  get,
+  path = ENDPOINT_MCPS_AUTH_HEADERS.to_owned() + "/{id}",
+  tag = API_TAG_MCPS,
+  operation_id = "getMcpAuthHeader",
+  params(
+    ("id" = String, Path, description = "Auth header config UUID")
+  ),
+  responses(
+    (status = 200, description = "Auth header config", body = AuthHeaderResponse),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn get_auth_header_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<Json<AuthHeaderResponse>, ApiError> {
+  let mcp_service = state.app_service().mcp_service();
+
+  let auth_header = mcp_service
+    .get_auth_header(&id)
+    .await?
+    .ok_or_else(|| objs::EntityError::NotFound("Auth header config".to_string()))?;
+
+  Ok(Json(AuthHeaderResponse::from(auth_header)))
+}
+
+/// Update an auth header config
+#[utoipa::path(
+  put,
+  path = ENDPOINT_MCPS_AUTH_HEADERS.to_owned() + "/{id}",
+  tag = API_TAG_MCPS,
+  operation_id = "updateMcpAuthHeader",
+  params(
+    ("id" = String, Path, description = "Auth header config UUID")
+  ),
+  request_body = UpdateAuthHeaderRequest,
+  responses(
+    (status = 200, description = "Auth header config updated", body = AuthHeaderResponse),
+    (status = 400, description = "Validation error"),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn update_auth_header_handler(
+  Extension(auth_context): Extension<AuthContext>,
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+  Json(request): Json<UpdateAuthHeaderRequest>,
+) -> Result<Json<AuthHeaderResponse>, ApiError> {
+  let user_id = auth_context.user_id().expect("requires auth middleware");
+
+  if request.header_key.is_empty() {
+    return Err(McpValidationError::Validation("header_key is required".to_string()).into());
+  }
+  if request.header_value.is_empty() {
+    return Err(McpValidationError::Validation("header_value is required".to_string()).into());
+  }
+
+  let mcp_service = state.app_service().mcp_service();
+
+  let auth_header = mcp_service
+    .update_auth_header(user_id, &id, &request.header_key, &request.header_value)
+    .await?;
+
+  Ok(Json(AuthHeaderResponse::from(auth_header)))
+}
+
+/// Delete an auth header config
+#[utoipa::path(
+  delete,
+  path = ENDPOINT_MCPS_AUTH_HEADERS.to_owned() + "/{id}",
+  tag = API_TAG_MCPS,
+  operation_id = "deleteMcpAuthHeader",
+  params(
+    ("id" = String, Path, description = "Auth header config UUID")
+  ),
+  responses(
+    (status = 204, description = "Auth header config deleted"),
+    (status = 404, description = "Not found"),
+  ),
+  security(("bearer" = []))
+)]
+pub async fn delete_auth_header_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+  let mcp_service = state.app_service().mcp_service();
+
+  mcp_service.delete_auth_header(&id).await?;
+
+  Ok(StatusCode::NO_CONTENT)
 }

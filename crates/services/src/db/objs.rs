@@ -257,7 +257,7 @@ pub struct McpServerRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct McpWithServerRow {
   pub id: String,
-  pub user_id: String,
+  pub created_by: String,
   pub mcp_server_id: String,
   pub name: String,
   pub slug: String,
@@ -266,8 +266,7 @@ pub struct McpWithServerRow {
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
   pub auth_type: String,
-  pub auth_header_key: Option<String>,
-  pub has_auth_header_value: bool,
+  pub auth_uuid: Option<String>,
   pub created_at: i64,
   pub updated_at: i64,
   // Server info from JOIN
@@ -283,7 +282,7 @@ pub struct McpWithServerRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct McpRow {
   pub id: String,
-  pub user_id: String,
+  pub created_by: String,
   pub mcp_server_id: String,
   pub name: String,
   pub slug: String,
@@ -292,10 +291,23 @@ pub struct McpRow {
   pub tools_cache: Option<String>,
   pub tools_filter: Option<String>,
   pub auth_type: String,
-  pub auth_header_key: Option<String>,
-  pub encrypted_auth_header_value: Option<String>,
-  pub auth_header_salt: Option<String>,
-  pub auth_header_nonce: Option<String>,
+  pub auth_uuid: Option<String>,
+  pub created_at: i64,
+  pub updated_at: i64,
+}
+
+// ============================================================================
+// McpAuthHeaderRow - Database row for header-based MCP authentication configs
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct McpAuthHeaderRow {
+  pub id: String,
+  pub header_key: String,
+  pub encrypted_header_value: String,
+  pub header_value_salt: String,
+  pub header_value_nonce: String,
+  pub created_by: String,
   pub created_at: i64,
   pub updated_at: i64,
 }

@@ -1,4 +1,4 @@
-use objs::{McpServerInfo, McpTool};
+use objs::{McpAuthHeader, McpServerInfo, McpTool};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -64,7 +64,10 @@ pub enum McpAuth {
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct FetchMcpToolsRequest {
   pub mcp_server_id: String,
-  pub auth: McpAuth,
+  #[serde(default)]
+  pub auth: Option<McpAuth>,
+  #[serde(default)]
+  pub auth_uuid: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -79,7 +82,14 @@ pub struct CreateMcpRequest {
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(default)]
   pub tools_filter: Option<Vec<String>>,
-  pub auth: McpAuth,
+  #[serde(default = "default_auth_type")]
+  pub auth_type: String,
+  #[serde(default)]
+  pub auth_uuid: Option<String>,
+}
+
+fn default_auth_type() -> String {
+  "public".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -94,7 +104,48 @@ pub struct UpdateMcpRequest {
   #[serde(default)]
   pub tools_cache: Option<Vec<McpTool>>,
   #[serde(default)]
-  pub auth: Option<McpAuth>,
+  pub auth_type: Option<String>,
+  #[serde(default)]
+  pub auth_uuid: Option<String>,
+}
+
+// ============================================================================
+// Auth Header Config DTOs
+// ============================================================================
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct CreateAuthHeaderRequest {
+  pub header_key: String,
+  pub header_value: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+pub struct UpdateAuthHeaderRequest {
+  pub header_key: String,
+  pub header_value: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AuthHeaderResponse {
+  pub id: String,
+  pub header_key: String,
+  pub has_header_value: bool,
+  pub created_by: String,
+  pub created_at: String,
+  pub updated_at: String,
+}
+
+impl From<McpAuthHeader> for AuthHeaderResponse {
+  fn from(h: McpAuthHeader) -> Self {
+    AuthHeaderResponse {
+      id: h.id,
+      header_key: h.header_key,
+      has_header_value: h.has_header_value,
+      created_by: h.created_by,
+      created_at: h.created_at.to_rfc3339(),
+      updated_at: h.updated_at.to_rfc3339(),
+    }
+  }
 }
 
 // ============================================================================
@@ -116,8 +167,7 @@ pub struct McpResponse {
   pub tools_filter: Option<Vec<String>>,
   pub auth_type: String,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub auth_header_key: Option<String>,
-  pub has_auth_header_value: bool,
+  pub auth_uuid: Option<String>,
   pub created_at: String,
   pub updated_at: String,
 }
@@ -162,8 +212,7 @@ impl From<objs::Mcp> for McpResponse {
       tools_cache: mcp.tools_cache,
       tools_filter: mcp.tools_filter,
       auth_type: mcp.auth_type,
-      auth_header_key: mcp.auth_header_key,
-      has_auth_header_value: mcp.has_auth_header_value,
+      auth_uuid: mcp.auth_uuid,
       created_at: mcp.created_at.to_rfc3339(),
       updated_at: mcp.updated_at.to_rfc3339(),
     }

@@ -1,10 +1,13 @@
 use super::{McpError, McpServerError};
 use crate::db::{
-  encryption::encrypt_api_key, DbService, McpRow, McpServerRow, McpWithServerRow, TimeService,
+  encryption::encrypt_api_key, DbService, McpAuthHeaderRow, McpRow, McpServerRow, McpWithServerRow,
+  TimeService,
 };
 use chrono::DateTime;
 use mcp_client::McpClient;
-use objs::{Mcp, McpExecutionRequest, McpExecutionResponse, McpServer, McpServerInfo, McpTool};
+use objs::{
+  Mcp, McpAuthHeader, McpExecutionRequest, McpExecutionResponse, McpServer, McpServerInfo, McpTool,
+};
 use std::fmt::Debug;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -56,8 +59,8 @@ pub trait McpService: Debug + Send + Sync {
     enabled: bool,
     tools_cache: Option<Vec<McpTool>>,
     tools_filter: Option<Vec<String>>,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
+    auth_type: &str,
+    auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError>;
 
   async fn update(
@@ -70,9 +73,8 @@ pub trait McpService: Debug + Send + Sync {
     enabled: bool,
     tools_filter: Option<Vec<String>>,
     tools_cache: Option<Vec<McpTool>>,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
-    auth_keep: bool,
+    auth_type: Option<String>,
+    auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError>;
 
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), McpError>;
@@ -84,6 +86,7 @@ pub trait McpService: Debug + Send + Sync {
     server_id: &str,
     auth_header_key: Option<String>,
     auth_header_value: Option<String>,
+    auth_uuid: Option<String>,
   ) -> Result<Vec<McpTool>, McpError>;
 
   async fn execute(
@@ -93,6 +96,27 @@ pub trait McpService: Debug + Send + Sync {
     tool_name: &str,
     request: McpExecutionRequest,
   ) -> Result<McpExecutionResponse, McpError>;
+
+  // ---- MCP auth header config operations ----
+
+  async fn create_auth_header(
+    &self,
+    user_id: &str,
+    header_key: &str,
+    header_value: &str,
+  ) -> Result<McpAuthHeader, McpError>;
+
+  async fn get_auth_header(&self, id: &str) -> Result<Option<McpAuthHeader>, McpError>;
+
+  async fn update_auth_header(
+    &self,
+    user_id: &str,
+    id: &str,
+    header_key: &str,
+    header_value: &str,
+  ) -> Result<McpAuthHeader, McpError>;
+
+  async fn delete_auth_header(&self, id: &str) -> Result<(), McpError>;
 }
 
 #[derive(Debug)]
@@ -154,8 +178,7 @@ impl DefaultMcpService {
       tools_cache,
       tools_filter,
       auth_type: row.auth_type,
-      auth_header_key: row.auth_header_key,
-      has_auth_header_value: row.has_auth_header_value,
+      auth_uuid: row.auth_uuid,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
@@ -170,7 +193,6 @@ impl DefaultMcpService {
       .tools_filter
       .as_ref()
       .and_then(|tf| serde_json::from_str(tf).ok());
-    let has_auth_header_value = row.encrypted_auth_header_value.is_some();
 
     Mcp {
       id: row.id,
@@ -187,8 +209,18 @@ impl DefaultMcpService {
       tools_cache,
       tools_filter,
       auth_type: row.auth_type,
-      auth_header_key: row.auth_header_key,
-      has_auth_header_value,
+      auth_uuid: row.auth_uuid,
+      created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
+      updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+    }
+  }
+
+  fn auth_header_row_to_model(&self, row: McpAuthHeaderRow) -> McpAuthHeader {
+    McpAuthHeader {
+      id: row.id,
+      header_key: row.header_key,
+      has_header_value: true,
+      created_by: row.created_by,
       created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
       updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
     }
@@ -213,6 +245,18 @@ impl DefaultMcpService {
       }
       None => Ok(None),
     }
+  }
+
+  async fn resolve_auth_header_for_mcp(
+    &self,
+    mcp_row: &McpRow,
+  ) -> Result<Option<(String, String)>, McpError> {
+    if mcp_row.auth_type == "header" {
+      if let Some(ref auth_uuid) = mcp_row.auth_uuid {
+        return Ok(self.db_service.get_decrypted_auth_header(auth_uuid).await?);
+      }
+    }
+    Ok(None)
   }
 }
 
@@ -314,14 +358,12 @@ impl McpService for DefaultMcpService {
       .await?
       .ok_or_else(|| McpServerError::McpServerNotFound(id.to_string()))?;
 
-    // Check URL uniqueness excluding current server (case-insensitive)
     if let Some(dup) = self.db_service.get_mcp_server_by_url(trimmed_url).await? {
       if dup.id != existing.id {
         return Err(McpServerError::UrlAlreadyExists(dup.url));
       }
     }
 
-    // If URL changed, cascade: clear tools_cache and tools_filter on linked MCPs
     let url_changed = existing.url.to_lowercase() != trimmed_url.to_lowercase();
     if url_changed {
       self.db_service.clear_mcp_tools_by_server_id(id).await?;
@@ -395,8 +437,8 @@ impl McpService for DefaultMcpService {
     enabled: bool,
     tools_cache: Option<Vec<McpTool>>,
     tools_filter: Option<Vec<String>>,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
+    auth_type: &str,
+    auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError> {
     if name.is_empty() {
       return Err(McpError::NameRequired);
@@ -434,24 +476,10 @@ impl McpService for DefaultMcpService {
       .as_ref()
       .map(|tf| serde_json::to_string(tf).expect("Vec<String> serialization cannot fail"));
 
-    let (auth_type, enc_key, enc_value, enc_salt, enc_nonce) =
-      if let (Some(key), Some(value)) = (auth_header_key, auth_header_value) {
-        let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), &value)?;
-        (
-          "header".to_string(),
-          Some(key),
-          Some(encrypted),
-          Some(salt),
-          Some(nonce),
-        )
-      } else {
-        ("public".to_string(), None, None, None, None)
-      };
-
     let now = self.time_service.utc_now().timestamp();
     let row = McpRow {
       id: Uuid::new_v4().to_string(),
-      user_id: user_id.to_string(),
+      created_by: user_id.to_string(),
       mcp_server_id: mcp_server.id.clone(),
       name: name.to_string(),
       slug: slug.to_string(),
@@ -459,11 +487,8 @@ impl McpService for DefaultMcpService {
       enabled,
       tools_cache: tools_cache_json,
       tools_filter: tools_filter_json,
-      auth_type,
-      auth_header_key: enc_key,
-      encrypted_auth_header_value: enc_value,
-      auth_header_salt: enc_salt,
-      auth_header_nonce: enc_nonce,
+      auth_type: auth_type.to_string(),
+      auth_uuid,
       created_at: now,
       updated_at: now,
     };
@@ -482,9 +507,8 @@ impl McpService for DefaultMcpService {
     enabled: bool,
     tools_filter: Option<Vec<String>>,
     tools_cache: Option<Vec<McpTool>>,
-    auth_header_key: Option<String>,
-    auth_header_value: Option<String>,
-    auth_keep: bool,
+    auth_type: Option<String>,
+    auth_uuid: Option<String>,
   ) -> Result<Mcp, McpError> {
     if name.is_empty() {
       return Err(McpError::NameRequired);
@@ -523,31 +547,27 @@ impl McpService for DefaultMcpService {
       existing.tools_cache
     };
 
-    let (auth_type, enc_key, enc_value, enc_salt, enc_nonce) = if auth_keep {
-      (
-        existing.auth_type,
-        existing.auth_header_key,
-        existing.encrypted_auth_header_value,
-        existing.auth_header_salt,
-        existing.auth_header_nonce,
-      )
-    } else if let (Some(key), Some(value)) = (auth_header_key, auth_header_value) {
-      let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), &value)?;
-      (
-        "header".to_string(),
-        Some(key),
-        Some(encrypted),
-        Some(salt),
-        Some(nonce),
-      )
+    let (resolved_auth_type, resolved_auth_uuid) = if let Some(new_auth_type) = auth_type {
+      // Auth type is being changed - clean up orphaned config if switching away
+      if existing.auth_type != new_auth_type {
+        if let Some(ref old_uuid) = existing.auth_uuid {
+          match existing.auth_type.as_str() {
+            "header" => {
+              let _ = self.db_service.delete_mcp_auth_header(old_uuid).await;
+            }
+            _ => {}
+          }
+        }
+      }
+      (new_auth_type, auth_uuid)
     } else {
-      ("public".to_string(), None, None, None, None)
+      (existing.auth_type, existing.auth_uuid)
     };
 
     let now = self.time_service.utc_now().timestamp();
     let row = McpRow {
       id: id.to_string(),
-      user_id: user_id.to_string(),
+      created_by: user_id.to_string(),
       mcp_server_id: existing.mcp_server_id,
       name: name.to_string(),
       slug: slug.to_string(),
@@ -555,11 +575,8 @@ impl McpService for DefaultMcpService {
       enabled,
       tools_cache: resolved_cache,
       tools_filter: resolved_filter,
-      auth_type,
-      auth_header_key: enc_key,
-      encrypted_auth_header_value: enc_value,
-      auth_header_salt: enc_salt,
-      auth_header_nonce: enc_nonce,
+      auth_type: resolved_auth_type,
+      auth_uuid: resolved_auth_uuid,
       created_at: existing.created_at,
       updated_at: now,
     };
@@ -569,10 +586,20 @@ impl McpService for DefaultMcpService {
   }
 
   async fn delete(&self, user_id: &str, id: &str) -> Result<(), McpError> {
-    let _ = self
+    let (existing, _) = self
       .get_mcp_with_server(user_id, id)
       .await?
       .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
+
+    // Clean up orphaned auth config
+    if let Some(ref auth_uuid) = existing.auth_uuid {
+      match existing.auth_type.as_str() {
+        "header" => {
+          let _ = self.db_service.delete_mcp_auth_header(auth_uuid).await;
+        }
+        _ => {}
+      }
+    }
 
     self.db_service.delete_mcp(user_id, id).await?;
     Ok(())
@@ -588,7 +615,7 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    let auth_header = self.db_service.get_mcp_auth_header(&existing.id).await?;
+    let auth_header = self.resolve_auth_header_for_mcp(&existing).await?;
     let tools = self
       .mcp_client
       .fetch_tools(&server.url, auth_header)
@@ -620,6 +647,7 @@ impl McpService for DefaultMcpService {
     server_id: &str,
     auth_header_key: Option<String>,
     auth_header_value: Option<String>,
+    auth_uuid: Option<String>,
   ) -> Result<Vec<McpTool>, McpError> {
     let server = self
       .db_service
@@ -631,10 +659,15 @@ impl McpService for DefaultMcpService {
       return Err(McpError::McpDisabled);
     }
 
-    let auth_header = match (auth_header_key, auth_header_value) {
-      (Some(key), Some(value)) => Some((key, value)),
-      _ => None,
+    let auth_header = if let Some(uuid) = auth_uuid {
+      self.db_service.get_decrypted_auth_header(&uuid).await?
+    } else {
+      match (auth_header_key, auth_header_value) {
+        (Some(key), Some(value)) => Some((key, value)),
+        _ => None,
+      }
     };
+
     let tools = self
       .mcp_client
       .fetch_tools(&server.url, auth_header)
@@ -672,7 +705,7 @@ impl McpService for DefaultMcpService {
       return Err(McpError::ToolNotAllowed(tool_name.to_string()));
     }
 
-    let auth_header = self.db_service.get_mcp_auth_header(&existing.id).await?;
+    let auth_header = self.resolve_auth_header_for_mcp(&existing).await?;
     match self
       .mcp_client
       .call_tool(&server.url, tool_name, request.params, auth_header)
@@ -687,5 +720,72 @@ impl McpService for DefaultMcpService {
         error: Some(e.to_string()),
       }),
     }
+  }
+
+  // ---- MCP auth header config operations ----
+
+  async fn create_auth_header(
+    &self,
+    user_id: &str,
+    header_key: &str,
+    header_value: &str,
+  ) -> Result<McpAuthHeader, McpError> {
+    let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
+
+    let now = self.time_service.utc_now().timestamp();
+    let row = McpAuthHeaderRow {
+      id: Uuid::new_v4().to_string(),
+      header_key: header_key.to_string(),
+      encrypted_header_value: encrypted,
+      header_value_salt: salt,
+      header_value_nonce: nonce,
+      created_by: user_id.to_string(),
+      created_at: now,
+      updated_at: now,
+    };
+
+    let result = self.db_service.create_mcp_auth_header(&row).await?;
+    Ok(self.auth_header_row_to_model(result))
+  }
+
+  async fn get_auth_header(&self, id: &str) -> Result<Option<McpAuthHeader>, McpError> {
+    let row = self.db_service.get_mcp_auth_header(id).await?;
+    Ok(row.map(|r| self.auth_header_row_to_model(r)))
+  }
+
+  async fn update_auth_header(
+    &self,
+    user_id: &str,
+    id: &str,
+    header_key: &str,
+    header_value: &str,
+  ) -> Result<McpAuthHeader, McpError> {
+    let existing = self
+      .db_service
+      .get_mcp_auth_header(id)
+      .await?
+      .ok_or_else(|| McpError::McpNotFound(id.to_string()))?;
+
+    let (encrypted, salt, nonce) = encrypt_api_key(self.db_service.encryption_key(), header_value)?;
+
+    let now = self.time_service.utc_now().timestamp();
+    let row = McpAuthHeaderRow {
+      id: existing.id,
+      header_key: header_key.to_string(),
+      encrypted_header_value: encrypted,
+      header_value_salt: salt,
+      header_value_nonce: nonce,
+      created_by: user_id.to_string(),
+      created_at: existing.created_at,
+      updated_at: now,
+    };
+
+    let result = self.db_service.update_mcp_auth_header(&row).await?;
+    Ok(self.auth_header_row_to_model(result))
+  }
+
+  async fn delete_auth_header(&self, id: &str) -> Result<(), McpError> {
+    self.db_service.delete_mcp_auth_header(id).await?;
+    Ok(())
   }
 }

@@ -201,7 +201,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
       const approvedMcp = listData.mcps.find((m) => m.id === mcpInstanceId);
       expect(approvedMcp).toBeTruthy();
       expect(approvedMcp.auth_type).toBe('header');
-      expect(approvedMcp.has_auth_header_value).toBe(true);
+      expect(approvedMcp.auth_uuid).toBeTruthy();
 
       await app.rest.sendRequest({
         method: 'GET',

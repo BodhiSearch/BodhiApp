@@ -297,6 +297,15 @@ export type AuthCallbackRequest = {
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
 };
 
+export type AuthHeaderResponse = {
+    id: string;
+    header_key: string;
+    has_header_value: boolean;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+};
+
 /**
  * Change user role request
  */
@@ -912,6 +921,11 @@ export type CreateApiTokenRequest = {
     scope: TokenScope;
 };
 
+export type CreateAuthHeaderRequest = {
+    header_key: string;
+    header_value: string;
+};
+
 export type CreateChatCompletionRequest = {
     /**
      * A list of messages comprising the conversation so far. Depending on the
@@ -1217,7 +1231,8 @@ export type CreateMcpRequest = {
     enabled: boolean;
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
-    auth: McpAuth;
+    auth_type?: string;
+    auth_uuid?: string | null;
 };
 
 export type CreateMcpServerRequest = {
@@ -1392,7 +1407,8 @@ export type ExecuteToolsetRequest = {
 
 export type FetchMcpToolsRequest = {
     mcp_server_id: string;
-    auth: McpAuth;
+    auth?: null | McpAuth;
+    auth_uuid?: string | null;
 };
 
 /**
@@ -1618,17 +1634,13 @@ export type Mcp = {
      */
     tools_filter?: Array<string> | null;
     /**
-     * Authentication type: "public" or "header"
+     * Authentication type: "public", "header", "oauth-pre-registered"
      */
     auth_type: string;
     /**
-     * Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key")
+     * Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
      */
-    auth_header_key?: string | null;
-    /**
-     * Whether an encrypted auth header value is configured
-     */
-    has_auth_header_value: boolean;
+    auth_uuid?: string | null;
     /**
      * When this instance was created
      */
@@ -1676,8 +1688,7 @@ export type McpResponse = {
     tools_cache?: Array<McpTool> | null;
     tools_filter?: Array<string> | null;
     auth_type: string;
-    auth_header_key?: string | null;
-    has_auth_header_value: boolean;
+    auth_uuid?: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -2563,6 +2574,11 @@ export type UpdateApiTokenRequest = {
     status: TokenStatus;
 };
 
+export type UpdateAuthHeaderRequest = {
+    header_key: string;
+    header_value: string;
+};
+
 export type UpdateMcpRequest = {
     name: string;
     slug: string;
@@ -2570,7 +2586,8 @@ export type UpdateMcpRequest = {
     enabled: boolean;
     tools_filter?: Array<string> | null;
     tools_cache?: Array<McpTool> | null;
-    auth?: null | McpAuth;
+    auth_type?: string | null;
+    auth_uuid?: string | null;
 };
 
 export type UpdateMcpServerRequest = {
@@ -4152,6 +4169,181 @@ export type CreateMcpResponses = {
 };
 
 export type CreateMcpResponse = CreateMcpResponses[keyof CreateMcpResponses];
+
+export type CreateMcpAuthHeaderData = {
+    body: CreateAuthHeaderRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-headers';
+};
+
+export type CreateMcpAuthHeaderErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateMcpAuthHeaderError = CreateMcpAuthHeaderErrors[keyof CreateMcpAuthHeaderErrors];
+
+export type CreateMcpAuthHeaderResponses = {
+    /**
+     * Auth header config created
+     */
+    201: AuthHeaderResponse;
+};
+
+export type CreateMcpAuthHeaderResponse = CreateMcpAuthHeaderResponses[keyof CreateMcpAuthHeaderResponses];
+
+export type DeleteMcpAuthHeaderData = {
+    body?: never;
+    path: {
+        /**
+         * Auth header config UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-headers/{id}';
+};
+
+export type DeleteMcpAuthHeaderErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteMcpAuthHeaderError = DeleteMcpAuthHeaderErrors[keyof DeleteMcpAuthHeaderErrors];
+
+export type DeleteMcpAuthHeaderResponses = {
+    /**
+     * Auth header config deleted
+     */
+    204: void;
+};
+
+export type DeleteMcpAuthHeaderResponse = DeleteMcpAuthHeaderResponses[keyof DeleteMcpAuthHeaderResponses];
+
+export type GetMcpAuthHeaderData = {
+    body?: never;
+    path: {
+        /**
+         * Auth header config UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-headers/{id}';
+};
+
+export type GetMcpAuthHeaderErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetMcpAuthHeaderError = GetMcpAuthHeaderErrors[keyof GetMcpAuthHeaderErrors];
+
+export type GetMcpAuthHeaderResponses = {
+    /**
+     * Auth header config
+     */
+    200: AuthHeaderResponse;
+};
+
+export type GetMcpAuthHeaderResponse = GetMcpAuthHeaderResponses[keyof GetMcpAuthHeaderResponses];
+
+export type UpdateMcpAuthHeaderData = {
+    body: UpdateAuthHeaderRequest;
+    path: {
+        /**
+         * Auth header config UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/mcps/auth-headers/{id}';
+};
+
+export type UpdateMcpAuthHeaderErrors = {
+    /**
+     * Invalid request parameters
+     */
+    400: OpenAiApiError;
+    /**
+     * Not authenticated
+     */
+    401: OpenAiApiError;
+    /**
+     * Insufficient permissions
+     */
+    403: OpenAiApiError;
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateMcpAuthHeaderError = UpdateMcpAuthHeaderErrors[keyof UpdateMcpAuthHeaderErrors];
+
+export type UpdateMcpAuthHeaderResponses = {
+    /**
+     * Auth header config updated
+     */
+    200: AuthHeaderResponse;
+};
+
+export type UpdateMcpAuthHeaderResponse = UpdateMcpAuthHeaderResponses[keyof UpdateMcpAuthHeaderResponses];
 
 export type FetchMcpToolsData = {
     body: FetchMcpToolsRequest;

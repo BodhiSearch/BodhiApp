@@ -72,17 +72,38 @@ pub struct Mcp {
   /// Whitelisted tool names (empty = block all)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools_filter: Option<Vec<String>>,
-  /// Authentication type: "public" or "header"
+  /// Authentication type: "public", "header", "oauth-pre-registered"
   pub auth_type: String,
-  /// Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key")
+  /// Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub auth_header_key: Option<String>,
-  /// Whether an encrypted auth header value is configured
-  pub has_auth_header_value: bool,
+  pub auth_uuid: Option<String>,
   /// When this instance was created
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
   /// When this instance was last updated
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub updated_at: DateTime<Utc>,
+}
+
+// ============================================================================
+// McpAuthHeader - Public API model for header-based auth config
+// ============================================================================
+
+/// Header-based authentication configuration (secrets masked).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
+pub struct McpAuthHeader {
+  /// Unique identifier (UUID)
+  pub id: String,
+  /// HTTP header name (e.g. "Authorization", "X-API-Key")
+  pub header_key: String,
+  /// Whether an encrypted header value is stored
+  pub has_header_value: bool,
+  /// User who created this config
+  pub created_by: String,
+  /// When this config was created
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub created_at: DateTime<Utc>,
+  /// When this config was last updated
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }

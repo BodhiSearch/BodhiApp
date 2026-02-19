@@ -22,12 +22,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import {
+  useAuthHeader,
+  useCreateAuthHeader,
   useCreateMcp,
   useFetchMcpTools,
   useMcp,
   useMcpServers,
+  useUpdateAuthHeader,
   useUpdateMcp,
-  type McpAuth,
   type McpServerResponse,
   type McpTool,
 } from '@/hooks/useMcps';
@@ -90,6 +92,10 @@ function NewMcpPageContent() {
     error: existingError,
   } = useMcp(editId || '', { enabled: !!editId });
 
+  const { data: existingAuthHeader } = useAuthHeader(existingMcp?.auth_uuid || '', {
+    enabled: !!existingMcp?.auth_uuid,
+  });
+
   const { data: serversData, isLoading: loadingServers } = useMcpServers({ enabled: true }, { enabled: !editId });
 
   const enabledServers = useMemo(() => serversData?.mcp_servers || [], [serversData]);
@@ -99,6 +105,9 @@ function NewMcpPageContent() {
   const [fetchedTools, setFetchedTools] = useState<McpTool[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
   const [toolsFetched, setToolsFetched] = useState(false);
+
+  const createAuthHeaderMutation = useCreateAuthHeader();
+  const updateAuthHeaderMutation = useUpdateAuthHeader();
 
   const createMutation = useCreateMcp({
     onSuccess: () => {
@@ -160,7 +169,7 @@ function NewMcpPageContent() {
         description: existingMcp.description || '',
         enabled: existingMcp.enabled,
         auth_type: (existingMcp.auth_type as 'public' | 'header') || 'public',
-        auth_header_key: existingMcp.auth_header_key || '',
+        auth_header_key: '',
         auth_header_value: '',
       });
       setSelectedServer({
@@ -176,6 +185,12 @@ function NewMcpPageContent() {
       }
     }
   }, [existingMcp, editId, form]);
+
+  useEffect(() => {
+    if (existingAuthHeader && editId) {
+      form.setValue('auth_header_key', existingAuthHeader.header_key);
+    }
+  }, [existingAuthHeader, editId, form]);
 
   const handleServerSelect = useCallback(
     (server: McpServerResponse) => {
@@ -236,55 +251,130 @@ function NewMcpPageContent() {
           },
         });
       } else {
-        fetchToolsMutation.mutate({ mcp_server_id: serverId, auth: { type: 'public' } });
+        fetchToolsMutation.mutate({ mcp_server_id: serverId });
       }
     }
   };
 
-  const onSubmit = (data: CreateMcpFormData) => {
+  const onSubmit = async (data: CreateMcpFormData) => {
     if (!editId && data.auth_type === 'header' && !data.auth_header_value) {
       form.setError('auth_header_value', { message: 'Header value is required' });
       return;
     }
 
-    const authObj: McpAuth =
-      data.auth_type === 'header'
-        ? { type: 'header', header_key: data.auth_header_key || '', header_value: data.auth_header_value || '' }
-        : { type: 'public' };
-
     if (editId) {
-      let updateAuth: McpAuth | undefined;
-      if (data.auth_type === 'header' && data.auth_header_value) {
-        updateAuth = { type: 'header', header_key: data.auth_header_key || '', header_value: data.auth_header_value };
-      } else if (data.auth_type === 'public' && existingMcp?.auth_type === 'header') {
-        updateAuth = { type: 'public' };
+      await handleEditSubmit(data);
+    } else {
+      await handleCreateSubmit(data);
+    }
+  };
+
+  const handleCreateSubmit = async (data: CreateMcpFormData) => {
+    if (data.auth_type === 'header') {
+      try {
+        const authResponse = await createAuthHeaderMutation.mutateAsync({
+          header_key: data.auth_header_key || '',
+          header_value: data.auth_header_value || '',
+        });
+        createMutation.mutate({
+          mcp_server_id: data.mcp_server_id,
+          name: data.name,
+          slug: data.slug,
+          description: data.description || undefined,
+          enabled: data.enabled,
+          tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+          tools_filter: Array.from(selectedTools),
+          auth_type: 'header',
+          auth_uuid: authResponse.data.id,
+        });
+      } catch {
+        toast({ title: 'Failed to create auth header config', variant: 'destructive' });
       }
+    } else {
+      createMutation.mutate({
+        mcp_server_id: data.mcp_server_id,
+        name: data.name,
+        slug: data.slug,
+        description: data.description || undefined,
+        enabled: data.enabled,
+        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+        tools_filter: Array.from(selectedTools),
+      });
+    }
+  };
+
+  const handleEditSubmit = async (data: CreateMcpFormData) => {
+    const existingAuthType = existingMcp?.auth_type || 'public';
+    const existingAuthUuid = existingMcp?.auth_uuid;
+
+    if (data.auth_type === 'header' && data.auth_header_value) {
+      try {
+        if (existingAuthUuid && existingAuthType === 'header') {
+          await updateAuthHeaderMutation.mutateAsync({
+            id: existingAuthUuid,
+            header_key: data.auth_header_key || '',
+            header_value: data.auth_header_value,
+          });
+          updateMutation.mutate({
+            id: editId!,
+            name: data.name,
+            slug: data.slug,
+            description: data.description || undefined,
+            enabled: data.enabled,
+            tools_filter: Array.from(selectedTools),
+            tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+            auth_type: 'header',
+            auth_uuid: existingAuthUuid,
+          });
+        } else {
+          const authResponse = await createAuthHeaderMutation.mutateAsync({
+            header_key: data.auth_header_key || '',
+            header_value: data.auth_header_value,
+          });
+          updateMutation.mutate({
+            id: editId!,
+            name: data.name,
+            slug: data.slug,
+            description: data.description || undefined,
+            enabled: data.enabled,
+            tools_filter: Array.from(selectedTools),
+            tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+            auth_type: 'header',
+            auth_uuid: authResponse.data.id,
+          });
+        }
+      } catch {
+        toast({ title: 'Failed to save auth header config', variant: 'destructive' });
+      }
+    } else if (data.auth_type === 'public' && existingAuthType === 'header') {
       updateMutation.mutate({
-        id: editId,
+        id: editId!,
         name: data.name,
         slug: data.slug,
         description: data.description || undefined,
         enabled: data.enabled,
         tools_filter: Array.from(selectedTools),
         tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-        auth: updateAuth,
+        auth_type: 'public',
       });
-      return;
+    } else {
+      updateMutation.mutate({
+        id: editId!,
+        name: data.name,
+        slug: data.slug,
+        description: data.description || undefined,
+        enabled: data.enabled,
+        tools_filter: Array.from(selectedTools),
+        tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
+      });
     }
-
-    createMutation.mutate({
-      mcp_server_id: data.mcp_server_id,
-      name: data.name,
-      slug: data.slug,
-      description: data.description || undefined,
-      enabled: data.enabled,
-      tools_cache: fetchedTools.length > 0 ? fetchedTools : undefined,
-      tools_filter: Array.from(selectedTools),
-      auth: authObj,
-    });
   };
 
-  const isSubmitting = createMutation.isLoading || updateMutation.isLoading;
+  const isSubmitting =
+    createMutation.isLoading ||
+    updateMutation.isLoading ||
+    createAuthHeaderMutation.isLoading ||
+    updateAuthHeaderMutation.isLoading;
   const canCreate = toolsFetched && !isSubmitting;
 
   if (editId && existingError) {
@@ -486,15 +576,13 @@ function NewMcpPageContent() {
                             <PasswordInput
                               {...field}
                               placeholder={
-                                editId && existingMcp?.has_auth_header_value
-                                  ? 'Leave empty to keep existing'
-                                  : 'e.g. Bearer sk-...'
+                                editId && existingMcp?.auth_uuid ? 'Leave empty to keep existing' : 'e.g. Bearer sk-...'
                               }
                               disabled={isSubmitting}
                               data-testid="mcp-auth-header-value"
                             />
                           </FormControl>
-                          {editId && existingMcp?.has_auth_header_value && (
+                          {editId && existingMcp?.auth_uuid && (
                             <FormDescription>An auth header value is currently configured.</FormDescription>
                           )}
                           {authHeaderKey === 'Authorization' &&

@@ -1,4 +1,6 @@
 import {
+  AuthHeaderResponse,
+  CreateAuthHeaderRequest,
   McpServerInfo,
   McpServerResponse,
   CreateMcpServerRequest,
@@ -15,6 +17,7 @@ import {
   McpExecuteRequest,
   McpExecuteResponse,
   OpenAiApiError,
+  UpdateAuthHeaderRequest,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 
@@ -22,6 +25,8 @@ import { BODHI_API_BASE, useMutationQuery, useQuery, useQueryClient } from '@/ho
 import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 
 export type {
+  AuthHeaderResponse,
+  CreateAuthHeaderRequest,
   McpServerInfo,
   McpServerResponse,
   CreateMcpServerRequest,
@@ -37,6 +42,7 @@ export type {
   McpToolsResponse,
   McpExecuteRequest,
   McpExecuteResponse,
+  UpdateAuthHeaderRequest,
 };
 
 type ErrorResponse = OpenAiApiError;
@@ -47,6 +53,7 @@ type ErrorResponse = OpenAiApiError;
 
 export const MCPS_ENDPOINT = `${BODHI_API_BASE}/mcps`;
 export const MCPS_FETCH_TOOLS_ENDPOINT = `${BODHI_API_BASE}/mcps/fetch-tools`;
+export const MCPS_AUTH_HEADERS_ENDPOINT = `${BODHI_API_BASE}/mcps/auth-headers`;
 export const MCP_SERVERS_ENDPOINT = `${BODHI_API_BASE}/mcp_servers`;
 
 // ============================================================================
@@ -62,6 +69,17 @@ export function useMcp(
   options?: { enabled?: boolean }
 ): UseQueryResult<McpResponse, AxiosError<ErrorResponse>> {
   return useQuery<McpResponse>(['mcps', id], `${MCPS_ENDPOINT}/${id}`, undefined, options);
+}
+
+// ============================================================================
+// Query Hooks - Auth Headers
+// ============================================================================
+
+export function useAuthHeader(
+  id: string,
+  options?: { enabled?: boolean }
+): UseQueryResult<AuthHeaderResponse, AxiosError<ErrorResponse>> {
+  return useQuery<AuthHeaderResponse>(['auth-headers', id], `${MCPS_AUTH_HEADERS_ENDPOINT}/${id}`, undefined, options);
 }
 
 // ============================================================================
@@ -151,6 +169,55 @@ export function useDeleteMcp(options?: {
       },
     },
     { noBody: true }
+  );
+}
+
+// ============================================================================
+// Mutation Hooks - Auth Headers CRUD
+// ============================================================================
+
+export function useCreateAuthHeader(options?: {
+  onSuccess?: (header: AuthHeaderResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<AxiosResponse<AuthHeaderResponse>, AxiosError<ErrorResponse>, CreateAuthHeaderRequest> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<AuthHeaderResponse, CreateAuthHeaderRequest>(() => MCPS_AUTH_HEADERS_ENDPOINT, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(['auth-headers']);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to create auth header';
+      options?.onError?.(message);
+    },
+  });
+}
+
+export function useUpdateAuthHeader(options?: {
+  onSuccess?: (header: AuthHeaderResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<AuthHeaderResponse>,
+  AxiosError<ErrorResponse>,
+  UpdateAuthHeaderRequest & { id: string }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<AuthHeaderResponse, UpdateAuthHeaderRequest & { id: string }>(
+    ({ id }) => `${MCPS_AUTH_HEADERS_ENDPOINT}/${id}`,
+    'put',
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['auth-headers']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to update auth header';
+        options?.onError?.(message);
+      },
+    },
+    { transformBody: ({ id: _id, ...body }) => body }
   );
 }
 

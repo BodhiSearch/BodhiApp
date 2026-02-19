@@ -46,6 +46,10 @@ async fn test_mcp_service_create_with_header_auth(
   let mock_client = MockMcpClient::new();
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer sk-secret-123")
+    .await?;
+
   let mcp = service
     .create(
       "user-1",
@@ -56,22 +60,21 @@ async fn test_mcp_service_create_with_header_auth(
       true,
       None,
       None,
-      Some("Authorization".to_string()),
-      Some("Bearer sk-secret-123".to_string()),
+      "header",
+      Some(auth_header.id.clone()),
     )
     .await?;
 
   assert_eq!("header", mcp.auth_type);
-  assert_eq!(Some("Authorization".to_string()), mcp.auth_header_key);
-  assert_eq!(true, mcp.has_auth_header_value);
+  assert_eq!(Some(auth_header.id.clone()), mcp.auth_uuid);
 
-  let auth = db.get_mcp_auth_header(&mcp.id).await?;
+  let decrypted = db.get_decrypted_auth_header(&auth_header.id).await?;
   assert_eq!(
     Some((
       "Authorization".to_string(),
       "Bearer sk-secret-123".to_string()
     )),
-    auth
+    decrypted
   );
   Ok(())
 }
@@ -101,17 +104,13 @@ async fn test_mcp_service_create_with_public_auth(
       true,
       None,
       None,
-      None,
+      "public",
       None,
     )
     .await?;
 
   assert_eq!("public", mcp.auth_type);
-  assert_eq!(None, mcp.auth_header_key);
-  assert_eq!(false, mcp.has_auth_header_value);
-
-  let auth = db.get_mcp_auth_header(&mcp.id).await?;
-  assert_eq!(None, auth);
+  assert_eq!(None, mcp.auth_uuid);
   Ok(())
 }
 
@@ -132,10 +131,14 @@ async fn test_mcp_service_update_switch_public_to_header(
 
   let mcp = service
     .create(
-      "user-1", "My MCP", "my-mcp", "server-1", None, true, None, None, None, None,
+      "user-1", "My MCP", "my-mcp", "server-1", None, true, None, None, "public", None,
     )
     .await?;
   assert_eq!("public", mcp.auth_type);
+
+  let auth_header = service
+    .create_auth_header("user-1", "X-Api-Key", "key-abc-123")
+    .await?;
 
   let updated = service
     .update(
@@ -147,20 +150,18 @@ async fn test_mcp_service_update_switch_public_to_header(
       true,
       None,
       None,
-      Some("X-Api-Key".to_string()),
-      Some("key-abc-123".to_string()),
-      false,
+      Some("header".to_string()),
+      Some(auth_header.id.clone()),
     )
     .await?;
 
   assert_eq!("header", updated.auth_type);
-  assert_eq!(Some("X-Api-Key".to_string()), updated.auth_header_key);
-  assert_eq!(true, updated.has_auth_header_value);
+  assert_eq!(Some(auth_header.id.clone()), updated.auth_uuid);
 
-  let auth = db.get_mcp_auth_header(&updated.id).await?;
+  let decrypted = db.get_decrypted_auth_header(&auth_header.id).await?;
   assert_eq!(
     Some(("X-Api-Key".to_string(), "key-abc-123".to_string())),
-    auth
+    decrypted
   );
   Ok(())
 }
@@ -169,7 +170,7 @@ async fn test_mcp_service_update_switch_public_to_header(
 #[awt]
 #[tokio::test]
 #[anyhow_trace]
-async fn test_mcp_service_update_switch_header_to_public(
+async fn test_mcp_service_update_switch_header_to_public_orphan_cleanup(
   #[future]
   #[from(test_db_service)]
   db: TestDbService,
@@ -179,6 +180,11 @@ async fn test_mcp_service_update_switch_header_to_public(
 
   let mock_client = MockMcpClient::new();
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
+
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer token")
+    .await?;
+  let auth_id = auth_header.id.clone();
 
   let mcp = service
     .create(
@@ -190,24 +196,32 @@ async fn test_mcp_service_update_switch_header_to_public(
       true,
       None,
       None,
-      Some("Authorization".to_string()),
-      Some("Bearer token".to_string()),
+      "header",
+      Some(auth_id.clone()),
     )
     .await?;
   assert_eq!("header", mcp.auth_type);
 
   let updated = service
     .update(
-      "user-1", &mcp.id, "Auth MCP", "auth-mcp", None, true, None, None, None, None, false,
+      "user-1",
+      &mcp.id,
+      "Auth MCP",
+      "auth-mcp",
+      None,
+      true,
+      None,
+      None,
+      Some("public".to_string()),
+      None,
     )
     .await?;
 
   assert_eq!("public", updated.auth_type);
-  assert_eq!(None, updated.auth_header_key);
-  assert_eq!(false, updated.has_auth_header_value);
+  assert_eq!(None, updated.auth_uuid);
 
-  let auth = db.get_mcp_auth_header(&updated.id).await?;
-  assert_eq!(None, auth);
+  let orphaned = db.get_mcp_auth_header(&auth_id).await?;
+  assert!(orphaned.is_none(), "orphan auth header should be deleted");
   Ok(())
 }
 
@@ -226,6 +240,11 @@ async fn test_mcp_service_update_keep_existing_auth(
   let mock_client = MockMcpClient::new();
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer original-token")
+    .await?;
+  let auth_id = auth_header.id.clone();
+
   let mcp = service
     .create(
       "user-1",
@@ -236,8 +255,8 @@ async fn test_mcp_service_update_keep_existing_auth(
       true,
       None,
       None,
-      Some("Authorization".to_string()),
-      Some("Bearer original-token".to_string()),
+      "header",
+      Some(auth_id.clone()),
     )
     .await?;
 
@@ -251,24 +270,67 @@ async fn test_mcp_service_update_keep_existing_auth(
       true,
       None,
       None,
+      None, // auth_type = None means keep existing
       None,
-      None,
-      true, // auth_keep = true
     )
     .await?;
 
   assert_eq!("Renamed MCP", updated.name);
   assert_eq!("header", updated.auth_type);
-  assert_eq!(Some("Authorization".to_string()), updated.auth_header_key);
-  assert_eq!(true, updated.has_auth_header_value);
+  assert_eq!(Some(auth_id.clone()), updated.auth_uuid);
 
-  let auth = db.get_mcp_auth_header(&updated.id).await?;
+  let decrypted = db.get_decrypted_auth_header(&auth_id).await?;
   assert_eq!(
     Some((
       "Authorization".to_string(),
       "Bearer original-token".to_string()
     )),
-    auth
+    decrypted
+  );
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_mcp_service_delete_orphan_cleanup(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let db: Arc<dyn DbService> = Arc::new(db);
+  setup_server(db.as_ref()).await;
+
+  let mock_client = MockMcpClient::new();
+  let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
+
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer token")
+    .await?;
+  let auth_id = auth_header.id.clone();
+
+  let mcp = service
+    .create(
+      "user-1",
+      "Delete Me",
+      "delete-me",
+      "server-1",
+      None,
+      true,
+      None,
+      None,
+      "header",
+      Some(auth_id.clone()),
+    )
+    .await?;
+
+  service.delete("user-1", &mcp.id).await?;
+
+  let orphaned = db.get_mcp_auth_header(&auth_id).await?;
+  assert!(
+    orphaned.is_none(),
+    "auth header should be deleted on MCP delete"
   );
   Ok(())
 }
@@ -305,6 +367,10 @@ async fn test_mcp_service_fetch_tools_passes_auth_header(
 
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer sk-secret")
+    .await?;
+
   let mcp = service
     .create(
       "user-1",
@@ -315,8 +381,8 @@ async fn test_mcp_service_fetch_tools_passes_auth_header(
       true,
       None,
       None,
-      Some("Authorization".to_string()),
-      Some("Bearer sk-secret".to_string()),
+      "header",
+      Some(auth_header.id.clone()),
     )
     .await?;
 
@@ -357,6 +423,7 @@ async fn test_mcp_service_fetch_tools_for_server_passes_inline_auth(
       "server-1",
       Some("X-Api-Key".to_string()),
       Some("inline-key-value".to_string()),
+      None,
     )
     .await?;
   assert_eq!(0, tools.len());
@@ -398,6 +465,10 @@ async fn test_mcp_service_execute_passes_auth_header(
 
   let service = DefaultMcpService::new(db.clone(), Arc::new(mock_client), default_time_service());
 
+  let auth_header = service
+    .create_auth_header("user-1", "Authorization", "Bearer exec-token")
+    .await?;
+
   let mcp = service
     .create(
       "user-1",
@@ -408,8 +479,8 @@ async fn test_mcp_service_execute_passes_auth_header(
       true,
       None,
       None,
-      Some("Authorization".to_string()),
-      Some("Bearer exec-token".to_string()),
+      "header",
+      Some(auth_header.id.clone()),
     )
     .await?;
 

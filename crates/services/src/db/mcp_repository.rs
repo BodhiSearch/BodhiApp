@@ -1,4 +1,4 @@
-use crate::db::{DbError, McpRow, McpServerRow, McpWithServerRow};
+use crate::db::{DbError, McpAuthHeaderRow, McpRow, McpServerRow, McpWithServerRow};
 
 #[async_trait::async_trait]
 pub trait McpRepository: Send + Sync {
@@ -32,7 +32,21 @@ pub trait McpRepository: Send + Sync {
 
   async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
 
-  /// Get the decrypted auth header for an MCP instance.
-  /// Returns Some((header_key, header_value)) if auth_type is "header", None otherwise.
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+  // MCP auth header configs
+  async fn create_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError>;
+
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
+
+  async fn update_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError>;
+
+  async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
+
+  /// Get the decrypted auth header (key, value) for an MCP auth header config.
+  async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
 }

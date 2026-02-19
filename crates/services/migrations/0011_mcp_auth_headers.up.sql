@@ -1,8 +1,13 @@
--- Migration 0011: Add header-based authentication columns to MCP instances
--- Supports per-instance auth with encrypted header values (AES-256-GCM)
+-- Migration 0011: Create mcp_auth_headers table for header-based MCP authentication
+-- Stores encrypted header key/value pairs referenced by mcps.auth_uuid when auth_type = 'header'
 
-ALTER TABLE mcps ADD COLUMN auth_type TEXT NOT NULL DEFAULT 'public';
-ALTER TABLE mcps ADD COLUMN auth_header_key TEXT;
-ALTER TABLE mcps ADD COLUMN encrypted_auth_header_value TEXT;
-ALTER TABLE mcps ADD COLUMN auth_header_salt TEXT;
-ALTER TABLE mcps ADD COLUMN auth_header_nonce TEXT;
+CREATE TABLE IF NOT EXISTS mcp_auth_headers (
+    id TEXT PRIMARY KEY,                       -- UUID as TEXT
+    header_key TEXT NOT NULL,                  -- HTTP header name (e.g. 'Authorization', 'X-API-Key')
+    encrypted_header_value TEXT NOT NULL,       -- AES-256-GCM encrypted header value
+    header_value_salt TEXT NOT NULL,            -- Salt for key derivation
+    header_value_nonce TEXT NOT NULL,           -- Nonce for AES-256-GCM
+    created_by TEXT NOT NULL,                  -- user_id who created this config
+    created_at INTEGER NOT NULL,               -- Unix timestamp
+    updated_at INTEGER NOT NULL                -- Unix timestamp
+);

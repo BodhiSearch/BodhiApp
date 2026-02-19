@@ -479,6 +479,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bodhi/v1/mcps/auth-headers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new auth header config */
+        post: operations["createMcpAuthHeader"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/mcps/auth-headers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an auth header config by ID */
+        get: operations["getMcpAuthHeader"];
+        /** Update an auth header config */
+        put: operations["updateMcpAuthHeader"];
+        post?: never;
+        /** Delete an auth header config */
+        delete: operations["deleteMcpAuthHeader"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bodhi/v1/mcps/fetch-tools": {
         parameters: {
             query?: never;
@@ -1478,6 +1514,14 @@ export interface components {
         } & {
             [key: string]: string;
         };
+        AuthHeaderResponse: {
+            id: string;
+            header_key: string;
+            has_header_value: boolean;
+            created_by: string;
+            created_at: string;
+            updated_at: string;
+        };
         /** @description Change user role request */
         ChangeRoleRequest: {
             /**
@@ -1974,6 +2018,10 @@ export interface components {
             /** @description Token scope defining access level */
             scope: components["schemas"]["TokenScope"];
         };
+        CreateAuthHeaderRequest: {
+            header_key: string;
+            header_value: string;
+        };
         CreateChatCompletionRequest: {
             /** @description A list of messages comprising the conversation so far. Depending on the
              *     [model](https://platform.openai.com/docs/models) you use, different message types (modalities)
@@ -2232,7 +2280,8 @@ export interface components {
             enabled: boolean;
             tools_cache?: components["schemas"]["McpTool"][] | null;
             tools_filter?: string[] | null;
-            auth: components["schemas"]["McpAuth"];
+            auth_type?: string;
+            auth_uuid?: string | null;
         };
         CreateMcpServerRequest: {
             url: string;
@@ -2388,7 +2437,8 @@ export interface components {
         };
         FetchMcpToolsRequest: {
             mcp_server_id: string;
-            auth: components["schemas"]["McpAuth"];
+            auth?: null | components["schemas"]["McpAuth"];
+            auth_uuid?: string | null;
         };
         /**
          * @description Request to fetch available models from provider
@@ -2552,12 +2602,10 @@ export interface components {
             tools_cache?: components["schemas"]["McpTool"][] | null;
             /** @description Whitelisted tool names (empty = block all) */
             tools_filter?: string[] | null;
-            /** @description Authentication type: "public" or "header" */
+            /** @description Authentication type: "public", "header", "oauth-pre-registered" */
             auth_type: string;
-            /** @description Header name when auth_type is "header" (e.g. "Authorization", "X-API-Key") */
-            auth_header_key?: string | null;
-            /** @description Whether an encrypted auth header value is configured */
-            has_auth_header_value: boolean;
+            /** @description Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id) */
+            auth_uuid?: string | null;
             /**
              * Format: date-time
              * @description When this instance was created
@@ -2605,8 +2653,7 @@ export interface components {
             tools_cache?: components["schemas"]["McpTool"][] | null;
             tools_filter?: string[] | null;
             auth_type: string;
-            auth_header_key?: string | null;
-            has_auth_header_value: boolean;
+            auth_uuid?: string | null;
             created_at: string;
             updated_at: string;
         };
@@ -3388,6 +3435,10 @@ export interface components {
             /** @description New status for the token (active/inactive) */
             status: components["schemas"]["TokenStatus"];
         };
+        UpdateAuthHeaderRequest: {
+            header_key: string;
+            header_value: string;
+        };
         UpdateMcpRequest: {
             name: string;
             slug: string;
@@ -3395,7 +3446,8 @@ export interface components {
             enabled: boolean;
             tools_filter?: string[] | null;
             tools_cache?: components["schemas"]["McpTool"][] | null;
-            auth?: null | components["schemas"]["McpAuth"];
+            auth_type?: string | null;
+            auth_uuid?: string | null;
         };
         UpdateMcpServerRequest: {
             url: string;
@@ -5810,6 +5862,266 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
                 };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createMcpAuthHeader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAuthHeaderRequest"];
+            };
+        };
+        responses: {
+            /** @description Auth header config created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthHeaderResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    getMcpAuthHeader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Auth header config UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Auth header config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthHeaderResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateMcpAuthHeader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Auth header config UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAuthHeaderRequest"];
+            };
+        };
+        responses: {
+            /** @description Auth header config updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthHeaderResponse"];
+                };
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    deleteMcpAuthHeader: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Auth header config UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Auth header config deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not authenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Internal server error */
             500: {

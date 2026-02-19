@@ -1,6 +1,6 @@
 use crate::db::{
-  encryption::decrypt_api_key, DbError, McpRepository, McpRow, McpServerRow, McpWithServerRow,
-  SqliteDbService,
+  encryption::decrypt_api_key, DbError, McpAuthHeaderRow, McpRepository, McpRow, McpServerRow,
+  McpWithServerRow, SqliteDbService,
 };
 
 #[async_trait::async_trait]
@@ -215,14 +215,14 @@ impl McpRepository for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO mcps (id, user_id, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter,
-                         auth_type, auth_header_key, encrypted_auth_header_value, auth_header_salt, auth_header_nonce,
+      INSERT INTO mcps (id, created_by, mcp_server_id, name, slug, description, enabled,
+                         tools_cache, tools_filter, auth_type, auth_uuid,
                          created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&row.id)
-    .bind(&row.user_id)
+    .bind(&row.created_by)
     .bind(&row.mcp_server_id)
     .bind(&row.name)
     .bind(&row.slug)
@@ -231,10 +231,7 @@ impl McpRepository for SqliteDbService {
     .bind(&row.tools_cache)
     .bind(&row.tools_filter)
     .bind(&row.auth_type)
-    .bind(&row.auth_header_key)
-    .bind(&row.encrypted_auth_header_value)
-    .bind(&row.auth_header_salt)
-    .bind(&row.auth_header_nonce)
+    .bind(&row.auth_uuid)
     .bind(row.created_at)
     .bind(row.updated_at)
     .execute(&self.pool)
@@ -244,8 +241,8 @@ impl McpRepository for SqliteDbService {
   }
 
   async fn get_mcp(&self, user_id: &str, id: &str) -> Result<Option<McpRow>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, i64, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter, auth_type, auth_header_key, encrypted_auth_header_value, auth_header_salt, auth_header_nonce, created_at, updated_at FROM mcps WHERE user_id = ? AND id = ?",
+    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, i64, Option<String>, Option<String>, String, Option<String>, i64, i64)>(
+      "SELECT id, created_by, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter, auth_type, auth_uuid, created_at, updated_at FROM mcps WHERE created_by = ? AND id = ?",
     )
     .bind(user_id)
     .bind(id)
@@ -255,7 +252,7 @@ impl McpRepository for SqliteDbService {
     Ok(result.map(
       |(
         id,
-        user_id,
+        created_by,
         mcp_server_id,
         name,
         slug,
@@ -264,16 +261,13 @@ impl McpRepository for SqliteDbService {
         tools_cache,
         tools_filter,
         auth_type,
-        auth_header_key,
-        encrypted_auth_header_value,
-        auth_header_salt,
-        auth_header_nonce,
+        auth_uuid,
         created_at,
         updated_at,
       )| {
         McpRow {
           id,
-          user_id,
+          created_by,
           mcp_server_id,
           name,
           slug,
@@ -282,10 +276,7 @@ impl McpRepository for SqliteDbService {
           tools_cache,
           tools_filter,
           auth_type,
-          auth_header_key,
-          encrypted_auth_header_value,
-          auth_header_salt,
-          auth_header_nonce,
+          auth_uuid,
           created_at,
           updated_at,
         }
@@ -294,8 +285,8 @@ impl McpRepository for SqliteDbService {
   }
 
   async fn get_mcp_by_slug(&self, user_id: &str, slug: &str) -> Result<Option<McpRow>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, i64, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64)>(
-      "SELECT id, user_id, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter, auth_type, auth_header_key, encrypted_auth_header_value, auth_header_salt, auth_header_nonce, created_at, updated_at FROM mcps WHERE user_id = ? AND slug = ? COLLATE NOCASE",
+    let result = sqlx::query_as::<_, (String, String, String, String, String, Option<String>, i64, Option<String>, Option<String>, String, Option<String>, i64, i64)>(
+      "SELECT id, created_by, mcp_server_id, name, slug, description, enabled, tools_cache, tools_filter, auth_type, auth_uuid, created_at, updated_at FROM mcps WHERE created_by = ? AND slug = ? COLLATE NOCASE",
     )
     .bind(user_id)
     .bind(slug)
@@ -305,7 +296,7 @@ impl McpRepository for SqliteDbService {
     Ok(result.map(
       |(
         id,
-        user_id,
+        created_by,
         mcp_server_id,
         name,
         slug,
@@ -314,16 +305,13 @@ impl McpRepository for SqliteDbService {
         tools_cache,
         tools_filter,
         auth_type,
-        auth_header_key,
-        encrypted_auth_header_value,
-        auth_header_salt,
-        auth_header_nonce,
+        auth_uuid,
         created_at,
         updated_at,
       )| {
         McpRow {
           id,
-          user_id,
+          created_by,
           mcp_server_id,
           name,
           slug,
@@ -332,10 +320,7 @@ impl McpRepository for SqliteDbService {
           tools_cache,
           tools_filter,
           auth_type,
-          auth_header_key,
-          encrypted_auth_header_value,
-          auth_header_salt,
-          auth_header_nonce,
+          auth_uuid,
           created_at,
           updated_at,
         }
@@ -346,15 +331,14 @@ impl McpRepository for SqliteDbService {
   async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError> {
     let rows = sqlx::query(
       r#"
-      SELECT m.id, m.user_id, m.mcp_server_id, m.name, m.slug, m.description, m.enabled,
+      SELECT m.id, m.created_by, m.mcp_server_id, m.name, m.slug, m.description, m.enabled,
              m.tools_cache, m.tools_filter,
-             m.auth_type, m.auth_header_key,
-             CASE WHEN m.encrypted_auth_header_value IS NOT NULL THEN 1 ELSE 0 END AS has_auth_header_value,
+             m.auth_type, m.auth_uuid,
              m.created_at, m.updated_at,
              s.url AS server_url, s.name AS server_name, s.enabled AS server_enabled
       FROM mcps m
       INNER JOIN mcp_servers s ON m.mcp_server_id = s.id
-      WHERE m.user_id = ?
+      WHERE m.created_by = ?
       "#,
     )
     .bind(user_id)
@@ -367,7 +351,7 @@ impl McpRepository for SqliteDbService {
         .into_iter()
         .map(|row| McpWithServerRow {
           id: row.get("id"),
-          user_id: row.get("user_id"),
+          created_by: row.get("created_by"),
           mcp_server_id: row.get("mcp_server_id"),
           name: row.get("name"),
           slug: row.get("slug"),
@@ -376,8 +360,7 @@ impl McpRepository for SqliteDbService {
           tools_cache: row.get("tools_cache"),
           tools_filter: row.get("tools_filter"),
           auth_type: row.get("auth_type"),
-          auth_header_key: row.get("auth_header_key"),
-          has_auth_header_value: row.get::<i64, _>("has_auth_header_value") != 0,
+          auth_uuid: row.get("auth_uuid"),
           created_at: row.get("created_at"),
           updated_at: row.get("updated_at"),
           server_url: row.get("server_url"),
@@ -395,9 +378,9 @@ impl McpRepository for SqliteDbService {
       r#"
       UPDATE mcps
       SET name = ?, slug = ?, description = ?, enabled = ?, tools_cache = ?, tools_filter = ?,
-          auth_type = ?, auth_header_key = ?, encrypted_auth_header_value = ?, auth_header_salt = ?, auth_header_nonce = ?,
+          auth_type = ?, auth_uuid = ?,
           updated_at = ?
-      WHERE user_id = ? AND id = ?
+      WHERE created_by = ? AND id = ?
       "#,
     )
     .bind(&row.name)
@@ -407,12 +390,9 @@ impl McpRepository for SqliteDbService {
     .bind(&row.tools_cache)
     .bind(&row.tools_filter)
     .bind(&row.auth_type)
-    .bind(&row.auth_header_key)
-    .bind(&row.encrypted_auth_header_value)
-    .bind(&row.auth_header_salt)
-    .bind(&row.auth_header_nonce)
+    .bind(&row.auth_uuid)
     .bind(row.updated_at)
-    .bind(&row.user_id)
+    .bind(&row.created_by)
     .bind(&row.id)
     .execute(&self.pool)
     .await?;
@@ -421,7 +401,7 @@ impl McpRepository for SqliteDbService {
   }
 
   async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError> {
-    sqlx::query("DELETE FROM mcps WHERE user_id = ? AND id = ?")
+    sqlx::query("DELETE FROM mcps WHERE created_by = ? AND id = ?")
       .bind(user_id)
       .bind(id)
       .execute(&self.pool)
@@ -430,25 +410,114 @@ impl McpRepository for SqliteDbService {
     Ok(())
   }
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
-    let result = sqlx::query_as::<_, (String, Option<String>, Option<String>, Option<String>, Option<String>)>(
-      "SELECT auth_type, auth_header_key, encrypted_auth_header_value, auth_header_salt, auth_header_nonce FROM mcps WHERE id = ?",
+  // ---- MCP Auth Header operations ----
+
+  async fn create_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError> {
+    sqlx::query(
+      r#"
+      INSERT INTO mcp_auth_headers (id, header_key, encrypted_header_value, header_value_salt, header_value_nonce,
+                                     created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&row.id)
+    .bind(&row.header_key)
+    .bind(&row.encrypted_header_value)
+    .bind(&row.header_value_salt)
+    .bind(&row.header_value_nonce)
+    .bind(&row.created_by)
+    .bind(row.created_at)
+    .bind(row.updated_at)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, String, String, i64, i64)>(
+      "SELECT id, header_key, encrypted_header_value, header_value_salt, header_value_nonce, created_by, created_at, updated_at FROM mcp_auth_headers WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
-    if let Some((auth_type, auth_header_key, encrypted, salt, nonce)) = result {
-      if auth_type == "header" {
-        if let (Some(key), Some(enc), Some(s), Some(n)) = (auth_header_key, encrypted, salt, nonce)
-        {
-          let value = decrypt_api_key(&self.encryption_key, &enc, &s, &n)
-            .map_err(|e| DbError::EncryptionError(e.to_string()))?;
-          return Ok(Some((key, value)));
+    Ok(result.map(
+      |(
+        id,
+        header_key,
+        encrypted_header_value,
+        header_value_salt,
+        header_value_nonce,
+        created_by,
+        created_at,
+        updated_at,
+      )| {
+        McpAuthHeaderRow {
+          id,
+          header_key,
+          encrypted_header_value,
+          header_value_salt,
+          header_value_nonce,
+          created_by,
+          created_at,
+          updated_at,
         }
-      }
-    }
+      },
+    ))
+  }
 
-    Ok(None)
+  async fn update_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError> {
+    sqlx::query(
+      r#"
+      UPDATE mcp_auth_headers
+      SET header_key = ?, encrypted_header_value = ?, header_value_salt = ?, header_value_nonce = ?,
+          updated_at = ?
+      WHERE id = ? AND created_by = ?
+      "#,
+    )
+    .bind(&row.header_key)
+    .bind(&row.encrypted_header_value)
+    .bind(&row.header_value_salt)
+    .bind(&row.header_value_nonce)
+    .bind(row.updated_at)
+    .bind(&row.id)
+    .bind(&row.created_by)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(row.clone())
+  }
+
+  async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM mcp_auth_headers WHERE id = ?")
+      .bind(id)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
+    let row = self.get_mcp_auth_header(id).await?;
+    match row {
+      Some(r) => {
+        let value = decrypt_api_key(
+          &self.encryption_key,
+          &r.encrypted_header_value,
+          &r.header_value_salt,
+          &r.header_value_nonce,
+        )
+        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        Ok(Some((r.header_key, value)))
+      }
+      None => Ok(None),
+    }
   }
 }

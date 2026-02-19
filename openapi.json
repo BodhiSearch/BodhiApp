@@ -2951,6 +2951,321 @@
         ]
       }
     },
+    "/bodhi/v1/mcps/auth-headers": {
+      "post": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Create a new auth header config",
+        "operationId": "createMcpAuthHeader",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthHeaderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Auth header config created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthHeaderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/mcps/auth-headers/{id}": {
+      "get": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Get an auth header config by ID",
+        "operationId": "getMcpAuthHeader",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth header config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth header config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthHeaderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Update an auth header config",
+        "operationId": "updateMcpAuthHeader",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth header config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthHeaderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Auth header config updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthHeaderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "mcps"
+        ],
+        "summary": "Delete an auth header config",
+        "operationId": "deleteMcpAuthHeader",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth header config UUID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Auth header config deleted"
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/mcps/fetch-tools": {
       "post": {
         "tags": [
@@ -8108,6 +8423,37 @@
           "state": "random_state_456"
         }
       },
+      "AuthHeaderResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "header_key",
+          "has_header_value",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "header_key": {
+            "type": "string"
+          },
+          "has_header_value": {
+            "type": "boolean"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
       "ChangeRoleRequest": {
         "type": "object",
         "description": "Change user role request",
@@ -9996,6 +10342,21 @@
           "scope": "scope_token_user"
         }
       },
+      "CreateAuthHeaderRequest": {
+        "type": "object",
+        "required": [
+          "header_key",
+          "header_value"
+        ],
+        "properties": {
+          "header_key": {
+            "type": "string"
+          },
+          "header_value": {
+            "type": "string"
+          }
+        }
+      },
       "CreateChatCompletionRequest": {
         "type": "object",
         "required": [
@@ -10545,8 +10906,7 @@
           "name",
           "slug",
           "mcp_server_id",
-          "enabled",
-          "auth"
+          "enabled"
         ],
         "properties": {
           "name": {
@@ -10585,8 +10945,14 @@
               "type": "string"
             }
           },
-          "auth": {
-            "$ref": "#/components/schemas/McpAuth"
+          "auth_type": {
+            "type": "string"
+          },
+          "auth_uuid": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -10996,15 +11362,27 @@
       "FetchMcpToolsRequest": {
         "type": "object",
         "required": [
-          "mcp_server_id",
-          "auth"
+          "mcp_server_id"
         ],
         "properties": {
           "mcp_server_id": {
             "type": "string"
           },
           "auth": {
-            "$ref": "#/components/schemas/McpAuth"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/McpAuth"
+              }
+            ]
+          },
+          "auth_uuid": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -11421,7 +11799,6 @@
           "name",
           "enabled",
           "auth_type",
-          "has_auth_header_value",
           "created_at",
           "updated_at"
         ],
@@ -11475,18 +11852,14 @@
           },
           "auth_type": {
             "type": "string",
-            "description": "Authentication type: \"public\" or \"header\""
+            "description": "Authentication type: \"public\", \"header\", \"oauth-pre-registered\""
           },
-          "auth_header_key": {
+          "auth_uuid": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Header name when auth_type is \"header\" (e.g. \"Authorization\", \"X-API-Key\")"
-          },
-          "has_auth_header_value": {
-            "type": "boolean",
-            "description": "Whether an encrypted auth header value is configured"
+            "description": "Reference to the auth config (mcp_auth_headers.id or mcp_oauth_configs.id)"
           },
           "created_at": {
             "type": "string",
@@ -11608,7 +11981,6 @@
           "name",
           "enabled",
           "auth_type",
-          "has_auth_header_value",
           "created_at",
           "updated_at"
         ],
@@ -11655,14 +12027,11 @@
           "auth_type": {
             "type": "string"
           },
-          "auth_header_key": {
+          "auth_uuid": {
             "type": [
               "string",
               "null"
             ]
-          },
-          "has_auth_header_value": {
-            "type": "boolean"
           },
           "created_at": {
             "type": "string"
@@ -13884,6 +14253,21 @@
           "status": "inactive"
         }
       },
+      "UpdateAuthHeaderRequest": {
+        "type": "object",
+        "required": [
+          "header_key",
+          "header_value"
+        ],
+        "properties": {
+          "header_key": {
+            "type": "string"
+          },
+          "header_value": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateMcpRequest": {
         "type": "object",
         "required": [
@@ -13925,14 +14309,16 @@
               "$ref": "#/components/schemas/McpTool"
             }
           },
-          "auth": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/McpAuth"
-              }
+          "auth_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "auth_uuid": {
+            "type": [
+              "string",
+              "null"
             ]
           }
         }

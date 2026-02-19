@@ -3,7 +3,14 @@
  */
 import { http, HttpResponse } from 'msw';
 
-import type { McpExecuteResponse, McpResponse, McpServerInfo, McpServerResponse, McpTool } from '@/hooks/useMcps';
+import type {
+  AuthHeaderResponse,
+  McpExecuteResponse,
+  McpResponse,
+  McpServerInfo,
+  McpServerResponse,
+  McpTool,
+} from '@/hooks/useMcps';
 import { BODHI_API_BASE } from '@/hooks/useQuery';
 
 // ============================================================================
@@ -53,7 +60,15 @@ export const mockMcp: McpResponse = {
   tools_cache: [mockMcpTool],
   tools_filter: ['read_wiki_structure'],
   auth_type: 'public',
-  has_auth_header_value: false,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+};
+
+export const mockAuthHeader: AuthHeaderResponse = {
+  id: 'auth-header-uuid-1',
+  header_key: 'Authorization',
+  has_header_value: true,
+  created_by: 'test-user',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
 };
@@ -64,12 +79,11 @@ export const mockMcpWithHeaderAuth: McpResponse = {
   slug: 'header-mcp',
   name: 'Header Auth MCP',
   auth_type: 'header',
-  auth_header_key: 'Authorization',
-  has_auth_header_value: true,
+  auth_uuid: 'auth-header-uuid-1',
 };
 
 // ============================================================================
-// Handler Factories
+// Handler Factories - MCP Instance CRUD
 // ============================================================================
 
 export function mockListMcps(mcps: McpResponse[] = [mockMcp]) {
@@ -92,6 +106,10 @@ export function mockDeleteMcp() {
   return http.delete(`${BODHI_API_BASE}/mcps/:id`, () => new HttpResponse(null, { status: 204 }));
 }
 
+// ============================================================================
+// Handler Factories - MCP Servers
+// ============================================================================
+
 export function mockListMcpServers(servers: McpServerResponse[] = [mockMcpServerResponse]) {
   return http.get(`${BODHI_API_BASE}/mcp_servers`, () => HttpResponse.json({ mcp_servers: servers }));
 }
@@ -107,6 +125,36 @@ export function mockCreateMcpServer(response: McpServerResponse = mockMcpServerR
 export function mockUpdateMcpServer(response: McpServerResponse = mockMcpServerResponse) {
   return http.put(`${BODHI_API_BASE}/mcp_servers/:id`, () => HttpResponse.json(response));
 }
+
+// ============================================================================
+// Handler Factories - Auth Headers CRUD
+// ============================================================================
+
+export function mockCreateAuthHeader(response: AuthHeaderResponse = mockAuthHeader) {
+  return http.post(`${BODHI_API_BASE}/mcps/auth-headers`, () => HttpResponse.json(response, { status: 201 }));
+}
+
+export function mockGetAuthHeader(response: AuthHeaderResponse = mockAuthHeader) {
+  return http.get(`${BODHI_API_BASE}/mcps/auth-headers/:id`, () => HttpResponse.json(response));
+}
+
+export function mockUpdateAuthHeader(response: AuthHeaderResponse = mockAuthHeader) {
+  return http.put(`${BODHI_API_BASE}/mcps/auth-headers/:id`, () => HttpResponse.json(response));
+}
+
+export function mockDeleteAuthHeader() {
+  return http.delete(`${BODHI_API_BASE}/mcps/auth-headers/:id`, () => new HttpResponse(null, { status: 204 }));
+}
+
+export function mockGetAuthHeaderNotFound() {
+  return http.get(`${BODHI_API_BASE}/mcps/auth-headers/:id`, () =>
+    HttpResponse.json({ error: { message: 'Not found', code: 'not_found', type: 'not_found' } }, { status: 404 })
+  );
+}
+
+// ============================================================================
+// Handler Factories - Tools
+// ============================================================================
 
 export function mockFetchMcpTools(tools: McpTool[] = [mockMcpTool]) {
   return http.post(`${BODHI_API_BASE}/mcps/fetch-tools`, () => HttpResponse.json({ tools }));
@@ -178,6 +226,10 @@ export const mcpsHandlers = [
   mockGetMcpServer(),
   mockCreateMcpServer(),
   mockUpdateMcpServer(),
+  mockCreateAuthHeader(),
+  mockGetAuthHeader(),
+  mockUpdateAuthHeader(),
+  mockDeleteAuthHeader(),
   mockFetchMcpTools(),
   mockRefreshMcpTools(),
   mockExecuteMcpTool(),

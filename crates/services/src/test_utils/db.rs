@@ -1,7 +1,7 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpRepository, McpRow, McpServerRow,
-  McpWithServerRow, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
+  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpAuthHeaderRow, McpRepository, McpRow,
+  McpServerRow, McpWithServerRow, ModelMetadataRow, ModelRepository, SqliteDbService, TimeService,
   TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
   UserAliasRepository,
 };
@@ -633,12 +633,50 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("delete_mcp"))
   }
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError> {
     self
       .inner
       .get_mcp_auth_header(id)
       .await
       .tap(|_| self.notify("get_mcp_auth_header"))
+  }
+
+  async fn create_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError> {
+    self
+      .inner
+      .create_mcp_auth_header(row)
+      .await
+      .tap(|_| self.notify("create_mcp_auth_header"))
+  }
+
+  async fn update_mcp_auth_header(
+    &self,
+    row: &McpAuthHeaderRow,
+  ) -> Result<McpAuthHeaderRow, DbError> {
+    self
+      .inner
+      .update_mcp_auth_header(row)
+      .await
+      .tap(|_| self.notify("update_mcp_auth_header"))
+  }
+
+  async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_mcp_auth_header(id)
+      .await
+      .tap(|_| self.notify("delete_mcp_auth_header"))
+  }
+
+  async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError> {
+    self
+      .inner
+      .get_decrypted_auth_header(id)
+      .await
+      .tap(|_| self.notify("get_decrypted_auth_header"))
   }
 }
 
@@ -854,7 +892,11 @@ mockall::mock! {
     async fn list_mcps_with_server(&self, user_id: &str) -> Result<Vec<McpWithServerRow>, DbError>;
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
-    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn create_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
+    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
+    async fn update_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
+    async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
+    async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
   }
 
   #[async_trait::async_trait]

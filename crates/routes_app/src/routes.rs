@@ -32,10 +32,12 @@ use crate::{
   ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_EMBEDDINGS, ENDPOINT_OAI_MODELS,
 };
 use crate::{
-  create_mcp_handler, create_mcp_server_handler, delete_mcp_handler, execute_mcp_tool_handler,
-  fetch_mcp_tools_handler, get_mcp_handler, get_mcp_server_handler, list_mcp_servers_handler,
-  list_mcps_handler, refresh_mcp_tools_handler, update_mcp_handler, update_mcp_server_handler,
-  ENDPOINT_MCPS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
+  create_auth_header_handler, create_mcp_handler, create_mcp_server_handler,
+  delete_auth_header_handler, delete_mcp_handler, execute_mcp_tool_handler,
+  fetch_mcp_tools_handler, get_auth_header_handler, get_mcp_handler, get_mcp_server_handler,
+  list_mcp_servers_handler, list_mcps_handler, refresh_mcp_tools_handler,
+  update_auth_header_handler, update_mcp_handler, update_mcp_server_handler, ENDPOINT_MCPS,
+  ENDPOINT_MCPS_AUTH_HEADERS, ENDPOINT_MCPS_FETCH_TOOLS, ENDPOINT_MCP_SERVERS,
 };
 use crate::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
@@ -172,6 +174,20 @@ pub fn build_routes(
     .route(
       &format!("{ENDPOINT_MCPS}/{{id}}"),
       delete(delete_mcp_handler),
+    )
+    // MCP auth header configs (session-only)
+    .route(ENDPOINT_MCPS_AUTH_HEADERS, post(create_auth_header_handler))
+    .route(
+      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
+      get(get_auth_header_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
+      put(update_auth_header_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_MCPS_AUTH_HEADERS}/{{id}}"),
+      delete(delete_auth_header_handler),
     )
     // MCP servers (read for all users)
     .route(ENDPOINT_MCP_SERVERS, get(list_mcp_servers_handler))

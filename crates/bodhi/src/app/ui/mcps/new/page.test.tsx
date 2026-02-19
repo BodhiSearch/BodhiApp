@@ -1,22 +1,25 @@
 import NewMcpPage from '@/app/ui/mcps/new/page';
 import { mockAppInfo } from '@/test-utils/msw-v2/handlers/info';
 import {
+  mockAuthHeader,
+  mockCreateAuthHeader,
   mockCreateMcp,
-  mockCreateMcpError,
   mockFetchMcpTools,
   mockFetchMcpToolsError,
+  mockGetAuthHeader,
   mockGetMcp,
   mockListMcpServers,
   mockMcp,
   mockMcpServerResponse,
   mockMcpTool,
   mockMcpWithHeaderAuth,
+  mockUpdateAuthHeader,
   mockUpdateMcp,
 } from '@/test-utils/msw-v2/handlers/mcps';
 import { mockUserLoggedIn } from '@/test-utils/msw-v2/handlers/user';
 import { server, setupMswV2 } from '@/test-utils/msw-v2/setup';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,6 +54,7 @@ describe('NewMcpPage - Create flow', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockFetchMcpTools([mockMcpTool]),
+      mockCreateAuthHeader(mockAuthHeader),
       mockCreateMcp(mockMcp)
     );
   });
@@ -135,7 +139,6 @@ describe('NewMcpPage - Create flow', () => {
   it('creates MCP with tools data in single POST', async () => {
     const user = userEvent.setup();
 
-    let capturedBody: Record<string, unknown> | null = null;
     server.use(
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
@@ -248,6 +251,7 @@ describe('NewMcpPage - Auth type selector', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockFetchMcpTools([mockMcpTool]),
+      mockCreateAuthHeader(mockAuthHeader),
       mockCreateMcp(mockMcp)
     );
   });
@@ -328,6 +332,7 @@ describe('NewMcpPage - Bearer warning', () => {
       ...mockUserLoggedIn({}, { stub: true }),
       mockListMcpServers([mockMcpServerResponse]),
       mockFetchMcpTools([mockMcpTool]),
+      mockCreateAuthHeader(mockAuthHeader),
       mockCreateMcp(mockMcp)
     );
   });
@@ -423,12 +428,14 @@ describe('NewMcpPage - Edit with header auth', () => {
       ...mockAppInfo({ status: 'ready' }, { stub: true }),
       ...mockUserLoggedIn({}, { stub: true }),
       mockGetMcp(mockMcpWithHeaderAuth),
+      mockGetAuthHeader(mockAuthHeader),
+      mockUpdateAuthHeader(mockAuthHeader),
       mockFetchMcpTools([mockMcpTool]),
       mockUpdateMcp(mockMcpWithHeaderAuth)
     );
   });
 
-  it('loads existing header auth and shows auth fields', async () => {
+  it('loads existing header auth and shows auth fields with header key from config', async () => {
     await act(async () => {
       render(<NewMcpPage />, { wrapper: createWrapper() });
     });
@@ -437,7 +444,9 @@ describe('NewMcpPage - Edit with header auth', () => {
       expect(screen.getByTestId('mcp-name-input')).toHaveValue('Header Auth MCP');
     });
 
-    expect(screen.getByTestId('mcp-auth-header-key')).toHaveValue('Authorization');
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-auth-header-key')).toHaveValue('Authorization');
+    });
     expect(screen.getByTestId('mcp-auth-header-value')).toHaveValue('');
   });
 

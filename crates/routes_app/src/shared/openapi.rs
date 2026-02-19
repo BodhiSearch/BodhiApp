@@ -49,13 +49,15 @@ use crate::{
 };
 // MCP DTOs and handlers
 use crate::{
-  CreateMcpRequest, CreateMcpServerRequest, FetchMcpToolsRequest, ListMcpServersResponse,
-  ListMcpsResponse, McpAuth, McpExecuteRequest, McpExecuteResponse, McpResponse, McpServerResponse,
-  McpToolsResponse, UpdateMcpRequest, UpdateMcpServerRequest, __path_create_mcp_handler,
-  __path_create_mcp_server_handler, __path_delete_mcp_handler, __path_execute_mcp_tool_handler,
-  __path_fetch_mcp_tools_handler, __path_get_mcp_handler, __path_get_mcp_server_handler,
+  AuthHeaderResponse, CreateAuthHeaderRequest, CreateMcpRequest, CreateMcpServerRequest,
+  FetchMcpToolsRequest, ListMcpServersResponse, ListMcpsResponse, McpAuth, McpExecuteRequest,
+  McpExecuteResponse, McpResponse, McpServerResponse, McpToolsResponse, UpdateAuthHeaderRequest,
+  UpdateMcpRequest, UpdateMcpServerRequest, __path_create_auth_header_handler,
+  __path_create_mcp_handler, __path_create_mcp_server_handler, __path_delete_auth_header_handler,
+  __path_delete_mcp_handler, __path_execute_mcp_tool_handler, __path_fetch_mcp_tools_handler,
+  __path_get_auth_header_handler, __path_get_mcp_handler, __path_get_mcp_server_handler,
   __path_list_mcp_servers_handler, __path_list_mcps_handler, __path_refresh_mcp_tools_handler,
-  __path_update_mcp_handler, __path_update_mcp_server_handler,
+  __path_update_auth_header_handler, __path_update_mcp_handler, __path_update_mcp_server_handler,
 };
 use async_openai::types::{
   chat::{
@@ -125,6 +127,7 @@ make_ui_endpoint!(ENDPOINT_TOOLSETS, "toolsets");
 make_ui_endpoint!(ENDPOINT_TOOLSET_TYPES, "toolset_types");
 make_ui_endpoint!(ENDPOINT_MCPS, "mcps");
 make_ui_endpoint!(ENDPOINT_MCPS_FETCH_TOOLS, "mcps/fetch-tools");
+make_ui_endpoint!(ENDPOINT_MCPS_AUTH_HEADERS, "mcps/auth-headers");
 make_ui_endpoint!(ENDPOINT_MCP_SERVERS, "mcp_servers");
 
 // dev-only debugging info endpoint
@@ -388,6 +391,10 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             McpToolsResponse,
             McpExecuteRequest,
             McpExecuteResponse,
+            // mcp auth headers
+            CreateAuthHeaderRequest,
+            UpdateAuthHeaderRequest,
+            AuthHeaderResponse,
         ),
         responses( ),
     ),
@@ -496,7 +503,12 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
         list_mcp_servers_handler,
         get_mcp_server_handler,
         create_mcp_server_handler,
-        update_mcp_server_handler
+        update_mcp_server_handler,
+        // MCP auth header endpoints
+        create_auth_header_handler,
+        get_auth_header_handler,
+        update_auth_header_handler,
+        delete_auth_header_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;
