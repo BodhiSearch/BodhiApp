@@ -158,7 +158,11 @@ All MCP routes are unified under the `/bodhi/v1/mcps/` prefix in the `routes_mcp
 - API types use `McpAuthType` enum (`Public`, `Header`, `Oauth`) — OAuth pre-registered vs dynamic is distinguished by `registration_type` field, not separate enum variants
 - `OAuthTokenExchangeRequest` includes `state: String` for CSRF
 
-**Test organization**: MCP tests are organized per-feature in `routes_mcp/` module (e.g., `test_mcps.rs`, `test_auth_configs.rs`, `test_oauth_utils.rs`, `test_servers.rs`).
+**Test organization**: All route modules use `test_*.rs` sibling files (not `tests/` subdirectories). Reference implementation: `routes_mcp/` module. Convention:
+- Each handler file declares `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;` (Pattern A)
+- Auth tier tests are declared from `mod.rs` as `test_<module>_auth.rs` (Pattern B)
+- Large test files are split by concern: `test_<handler>_crud.rs`, `test_<handler>_validation.rs`, `test_<handler>_auth.rs`
+- Shared test infrastructure lives in `test_utils/` (router builders, auth helpers, assertions)
 
 ### App Access Request Workflow
 App access request routes (`routes_apps/`) handle external application resource access:

@@ -293,3 +293,7 @@ async fn execute_pull_by_repo_file(
   }
   Ok(())
 }
+
+#[cfg(test)]
+#[path = "test_pull.rs"]
+mod test_pull;

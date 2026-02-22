@@ -202,3 +202,7 @@ fn api_model_to_oai_model(model_id: String, api_alias: &ApiAlias) -> Model {
     owned_by: api_alias.base_url.clone(),
   }
 }
+
+#[cfg(test)]
+#[path = "test_models.rs"]
+mod test_models;

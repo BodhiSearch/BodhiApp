@@ -595,3 +595,19 @@ fn spawn_cache_refresh(app_service: Arc<dyn services::AppService>, alias_id: Str
     }
   });
 }
+
+#[cfg(test)]
+#[path = "test_api_models_crud.rs"]
+mod test_api_models_crud;
+
+#[cfg(test)]
+#[path = "test_api_models_validation.rs"]
+mod test_api_models_validation;
+
+#[cfg(test)]
+#[path = "test_api_models_prefix.rs"]
+mod test_api_models_prefix;
+
+#[cfg(test)]
+#[path = "test_api_models_sync.rs"]
+mod test_api_models_sync;

@@ -340,3 +340,11 @@ pub async fn list_tokens_handler(
   };
   Ok(Json(paginated))
 }
+
+#[cfg(test)]
+#[path = "test_api_token_crud.rs"]
+mod test_api_token_crud;
+
+#[cfg(test)]
+#[path = "test_api_token_security.rs"]
+mod test_api_token_security;

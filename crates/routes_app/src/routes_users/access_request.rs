@@ -336,3 +336,15 @@ pub async fn reject_request_handler(
   );
   Ok(StatusCode::OK)
 }
+
+#[cfg(test)]
+#[path = "test_access_request_dto.rs"]
+mod test_access_request_dto;
+
+#[cfg(test)]
+#[path = "test_access_request_user.rs"]
+mod test_access_request_user;
+
+#[cfg(test)]
+#[path = "test_access_request_admin.rs"]
+mod test_access_request_admin;

@@ -5,7 +5,8 @@ mod pull;
 mod types;
 
 #[cfg(test)]
-mod tests;
+#[path = "test_aliases_auth.rs"]
+mod test_aliases_auth;
 
 pub use aliases::*;
 pub use error::*;

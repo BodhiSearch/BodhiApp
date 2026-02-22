@@ -295,6 +295,10 @@ HTTP sessions use specific security settings:
 
 All tests in the services crate follow a standardized canonical pattern. For comprehensive reference with code examples, see the `.claude/skills/test-services/` skill directory.
 
+### Test File Organization
+
+For files where combined source + tests exceed ~500 lines, tests are extracted to `test_*.rs` sibling files using `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;`. Example: `queue_service.rs` declares `test_queue_service`. Inline `#[cfg(test)] mod tests {}` is used for smaller files.
+
 ### Canonical Test Pattern
 
 - **Async tests**: `#[rstest]` + `#[tokio::test]` + `#[anyhow_trace]`, return `-> anyhow::Result<()>`

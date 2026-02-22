@@ -242,3 +242,7 @@ pub async fn delete_setting_handler(
 
   Ok(Json(updated))
 }
+
+#[cfg(test)]
+#[path = "test_settings.rs"]
+mod test_settings;

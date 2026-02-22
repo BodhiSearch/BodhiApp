@@ -383,3 +383,11 @@ async fn toolset_to_response(
     updated_at: toolset.updated_at,
   })
 }
+
+#[cfg(test)]
+#[path = "test_toolsets_crud.rs"]
+mod test_toolsets_crud;
+
+#[cfg(test)]
+#[path = "test_toolsets_types.rs"]
+mod test_toolsets_types;

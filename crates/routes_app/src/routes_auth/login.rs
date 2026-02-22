@@ -343,3 +343,19 @@ pub async fn logout_handler(
   let ui_login = format!("{}/ui/login", setting_service.public_server_url());
   Ok(Json(RedirectResponse { location: ui_login }))
 }
+
+#[cfg(test)]
+#[path = "test_login_initiate.rs"]
+mod test_login_initiate;
+
+#[cfg(test)]
+#[path = "test_login_callback.rs"]
+mod test_login_callback;
+
+#[cfg(test)]
+#[path = "test_login_logout.rs"]
+mod test_login_logout;
+
+#[cfg(test)]
+#[path = "test_login_resource_admin.rs"]
+mod test_login_resource_admin;

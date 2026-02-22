@@ -161,3 +161,7 @@ pub async fn remove_user_handler(
   );
   Ok(StatusCode::OK)
 }
+
+#[cfg(test)]
+#[path = "test_management_crud.rs"]
+mod test_management_crud;

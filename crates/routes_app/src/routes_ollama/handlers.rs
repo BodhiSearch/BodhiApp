@@ -384,3 +384,7 @@ pub async fn ollama_model_chat_handler(
     })
   })
 }
+
+#[cfg(test)]
+#[path = "test_handlers.rs"]
+mod test_handlers;

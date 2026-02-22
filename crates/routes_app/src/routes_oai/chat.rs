@@ -198,3 +198,11 @@ pub async fn embeddings_handler(
   let body = Body::from_stream(stream);
   Ok(response_builder.body(body).map_err(OAIRouteError::Http)?)
 }
+
+#[cfg(test)]
+#[path = "test_chat.rs"]
+mod test_chat;
+
+#[cfg(test)]
+#[path = "test_live_chat.rs"]
+mod test_live_chat;

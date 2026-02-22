@@ -204,3 +204,7 @@ pub async fn setup_handler(
     status: AppStatus::ResourceAdmin,
   })
 }
+
+#[cfg(test)]
+#[path = "test_setup.rs"]
+mod test_setup;

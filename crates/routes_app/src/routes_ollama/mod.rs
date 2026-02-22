@@ -1,9 +1,6 @@
 mod handlers;
 mod types;
 
-#[cfg(test)]
-mod tests;
-
 pub use handlers::*;
 pub use types::*;
 

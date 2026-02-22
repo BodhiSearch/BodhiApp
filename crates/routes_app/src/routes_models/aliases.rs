@@ -598,3 +598,7 @@ async fn execute_create_alias(
   debug!("model alias: '{}' saved to database", user_alias.alias);
   Ok(user_alias)
 }
+
+#[cfg(test)]
+#[path = "test_aliases_crud.rs"]
+mod test_aliases_crud;

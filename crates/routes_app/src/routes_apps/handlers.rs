@@ -427,3 +427,7 @@ pub async fn deny_access_request_handler(
     redirect_url: updated.redirect_uri,
   }))
 }
+
+#[cfg(test)]
+#[path = "test_access_request.rs"]
+mod test_access_request;

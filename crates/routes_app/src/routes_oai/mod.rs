@@ -3,7 +3,8 @@ mod error;
 mod models;
 
 #[cfg(test)]
-mod tests;
+#[path = "test_live_utils.rs"]
+mod test_live_utils;
 
 pub use chat::*;
 pub use error::*;

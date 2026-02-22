@@ -167,3 +167,7 @@ pub async fn queue_status_handler(
   let status = state.app_service().queue_status();
   Ok(Json(QueueStatusResponse { status }))
 }
+
+#[cfg(test)]
+#[path = "test_metadata.rs"]
+mod test_metadata;

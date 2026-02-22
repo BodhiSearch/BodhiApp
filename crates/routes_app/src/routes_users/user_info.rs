@@ -78,3 +78,7 @@ pub async fn user_info_handler(
     }
   }
 }
+
+#[cfg(test)]
+#[path = "test_user_info.rs"]
+mod test_user_info;

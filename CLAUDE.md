@@ -245,6 +245,14 @@ Local AI model management integrates multiple services and external systems:
   - `#[values]` for combinatorial testing: generate test cases from all combinations of input values
   - `#[fixture]` for shared test setup: extract common setup into reusable fixtures with dependency injection
   - Prefer parameterized tests over multiple assert statements in a single test or duplicated test functions with minor variations
+- **Test file organization** - prefer `test_*.rs` sibling files over inline `#[cfg(test)] mod tests {}` or `tests/` subdirectories:
+  - Use `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;` in the source file (Pattern A, default)
+  - Use mod.rs declarations for cross-handler test files (auth tier tests, shared concerns) (Pattern B)
+  - Split large test files by thematic concern: `test_<handler>_<feature>.rs`
+  - For CRUD routes: `test_<handler>_crud.rs`, `test_<handler>_auth.rs`, `test_<handler>_<feature>.rs`
+  - Auth tier tests always in dedicated `test_<module>_auth.rs` declared from mod.rs
+  - Inline `#[cfg(test)] mod tests {}` is acceptable for small files under 500 lines
+  - Reference implementation: `crates/routes_app/src/routes_mcp/` module
 
 ## Critical UI Development Workflow
 

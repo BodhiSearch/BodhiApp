@@ -194,6 +194,9 @@ The `test_utils` module provides a comprehensive testing infrastructure supporti
 
 ### Testing Strategy and Patterns
 
+#### Test File Organization
+For files with tests exceeding ~500 lines combined, tests are extracted to `test_*.rs` sibling files using `#[cfg(test)] #[path = "test_<name>.rs"] mod test_<name>;`. Example: `mcp.rs` declares `test_mcp_validation` and `test_mcp_types` modules for its validation and type tests respectively.
+
 #### Rstest-Based Fixture Architecture
 BodhiApp's test utilities leverage `rstest` fixtures for dependency injection and test isolation:
 - **Deterministic Environment Setup**: Fixtures provide consistent test environments across all crates
