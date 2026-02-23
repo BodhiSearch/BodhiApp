@@ -1,92 +1,61 @@
 use crate::{AppServiceBuilderError, AppStateOption};
-use objs::{ApiError, ErrorMessage};
+use objs::{ApiError, EnvType, ErrorMessage, IoError};
 use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AccessRequestService, AiApiService, AppService, AuthService, CacheService, DataService,
-  DefaultAccessRequestService, DefaultAiApiService, DefaultAppService, DefaultExaService,
-  DefaultMcpService, DefaultNetworkService, DefaultSecretService, DefaultToolService, ExaService,
-  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
-  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, NetworkService,
-  QueueConsumer, QueueProducer, RefreshWorker, SecretService, SecretServiceExt, SessionService,
-  SettingService, SqliteSessionService, SystemKeyringStore, ToolService, HF_TOKEN,
+  hash_key, AccessRequestService, AiApiService, AppService, AuthService, BootstrapParts,
+  CacheService, DataService, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
+  DefaultExaService, DefaultMcpService, DefaultNetworkService, DefaultSecretService,
+  DefaultSettingService, DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue,
+  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, McpService,
+  MokaCacheService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SecretService,
+  SecretServiceExt, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
+  ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
+use std::path::PathBuf;
 use std::sync::Arc;
 
 const SECRET_KEY: &str = "secret_key";
 
-/// A comprehensive service builder that handles dependency injection and automatic dependency resolution.
-/// Services can be provided externally or built automatically from settings.
-/// Prevents duplicate builds and provides clear error messages for dependency issues.
-#[derive(Debug)]
 pub struct AppServiceBuilder {
-  setting_service: Arc<dyn SettingService>,
-
-  // Core services
-  hub_service: Option<Arc<dyn HubService>>,
-  data_service: Option<Arc<dyn DataService>>,
+  bootstrap_parts: Option<BootstrapParts>,
+  // Externally injectable services (for testing).
+  // To add injection for a new service, follow the cache_service pattern.
   time_service: Option<Arc<dyn TimeService>>,
-
-  // Database services
-  db_service: Option<Arc<dyn DbService>>,
-  session_service: Option<Arc<dyn SessionService>>,
-
-  // Other services
   secret_service: Option<Arc<dyn SecretService>>,
   cache_service: Option<Arc<dyn CacheService>>,
-  auth_service: Option<Arc<dyn AuthService>>,
-  ai_api_service: Option<Arc<dyn AiApiService>>,
-  access_request_service: Option<Arc<dyn AccessRequestService>>,
-  network_service: Option<Arc<dyn NetworkService>>,
-  encryption_key: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for AppServiceBuilder {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("AppServiceBuilder")
+      .field(
+        "bootstrap_parts",
+        &self.bootstrap_parts.as_ref().map(|_| "<BootstrapParts>"),
+      )
+      .field(
+        "time_service",
+        &self.time_service.as_ref().map(|_| "<TimeService>"),
+      )
+      .field(
+        "secret_service",
+        &self.secret_service.as_ref().map(|_| "<SecretService>"),
+      )
+      .field(
+        "cache_service",
+        &self.cache_service.as_ref().map(|_| "<CacheService>"),
+      )
+      .finish()
+  }
 }
 
 impl AppServiceBuilder {
-  /// Creates a new builder with the given settings service.
-  pub fn new(setting_service: Arc<dyn SettingService>) -> Self {
+  pub fn new(bootstrap_parts: BootstrapParts) -> Self {
     Self {
-      setting_service,
-      hub_service: None,
-      data_service: None,
+      bootstrap_parts: Some(bootstrap_parts),
       time_service: None,
-      db_service: None,
-      session_service: None,
       secret_service: None,
       cache_service: None,
-      auth_service: None,
-      ai_api_service: None,
-      access_request_service: None,
-      network_service: None,
-      encryption_key: None,
     }
-  }
-
-  /// Sets the hub service. If data service depends on hub service and is not set,
-  /// it will be built automatically when needed.
-  pub fn hub_service(
-    mut self,
-    service: Arc<dyn HubService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.hub_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "hub_service".to_string(),
-      ));
-    }
-    self.hub_service = Some(service);
-    Ok(self)
-  }
-
-  /// Sets the data service.
-  pub fn data_service(
-    mut self,
-    service: Arc<dyn DataService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.data_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "data_service".to_string(),
-      ));
-    }
-    self.data_service = Some(service);
-    Ok(self)
   }
 
   /// Sets the time service.
@@ -100,31 +69,6 @@ impl AppServiceBuilder {
       ));
     }
     self.time_service = Some(service);
-    Ok(self)
-  }
-
-  /// Sets the database service.
-  pub fn db_service(mut self, service: Arc<dyn DbService>) -> Result<Self, AppServiceBuilderError> {
-    if self.db_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "db_service".to_string(),
-      ));
-    }
-    self.db_service = Some(service);
-    Ok(self)
-  }
-
-  /// Sets the session service.
-  pub fn session_service(
-    mut self,
-    service: Arc<dyn SessionService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.session_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "session_service".to_string(),
-      ));
-    }
-    self.session_service = Some(service);
     Ok(self)
   }
 
@@ -156,59 +100,51 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
-  /// Sets the auth service.
-  pub fn auth_service(
-    mut self,
-    service: Arc<dyn AuthService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.auth_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "auth_service".to_string(),
-      ));
-    }
-    self.auth_service = Some(service);
-    Ok(self)
-  }
-
-  /// Sets the AI API service.
-  pub fn ai_api_service(
-    mut self,
-    service: Arc<dyn AiApiService>,
-  ) -> Result<Self, AppServiceBuilderError> {
-    if self.ai_api_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
-        "ai_api_service".to_string(),
-      ));
-    }
-    self.ai_api_service = Some(service);
-    Ok(self)
-  }
-
-  /// Builds the complete DefaultAppService, resolving all dependencies automatically.
   pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
-    // Build services in dependency order
-    let hub_service = self.get_or_build_hub_service();
     let time_service = self.get_or_build_time_service();
-    let encryption_key = self.get_or_build_encryption_key()?;
-    let secret_service = self.get_or_build_secret_service(encryption_key.clone())?;
-    let db_service = self
-      .get_or_build_db_service(time_service.clone(), encryption_key)
+
+    let parts = self
+      .bootstrap_parts
+      .take()
+      .expect("build() requires BootstrapParts");
+
+    let is_production = parts.system_settings.iter().any(|s| {
+      s.key == BODHI_ENV_TYPE && s.value.as_str() == Some(&EnvType::Production.to_string())
+    });
+    let encryption_key_value = parts.env_wrapper.var(BODHI_ENCRYPTION_KEY).ok();
+    let encryption_key = build_encryption_key(is_production, encryption_key_value).await?;
+
+    let db_service = Self::build_db_service(
+      parts.bodhi_home.join(PROD_DB),
+      time_service.clone(),
+      encryption_key.clone(),
+    )
+    .await?;
+
+    let setting_service: Arc<dyn SettingService> =
+      Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
+
+    let hub_service = Self::build_hub_service(&setting_service).await?;
+    let secret_service = self
+      .get_or_build_secret_service(&setting_service, encryption_key.clone())
       .await?;
-    let data_service = self.get_or_build_data_service(hub_service.clone(), db_service.clone());
-    let session_service = self.get_or_build_session_service().await?;
+    let data_service = Self::build_data_service(hub_service.clone(), db_service.clone());
+    let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
-    let auth_service = self.get_or_build_auth_service();
-    let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
-    let concurrency_service = self.get_or_build_concurrency_service();
-    let tool_service = self.get_or_build_tool_service(db_service.clone(), time_service.clone());
-    let access_request_service = self.get_or_build_access_request_service(
+    let auth_service = Self::build_auth_service(&setting_service).await;
+    let ai_api_service = Self::build_ai_api_service(db_service.clone());
+    let concurrency_service = Self::build_concurrency_service();
+    let tool_service = Self::build_tool_service(db_service.clone(), time_service.clone());
+    let access_request_service = Self::build_access_request_service(
+      &setting_service,
       db_service.clone(),
       auth_service.clone(),
       secret_service.clone(),
       time_service.clone(),
-    );
-    let network_service = self.get_or_build_network_service();
-    let mcp_service = self.get_or_build_mcp_service(db_service.clone(), time_service.clone());
+    )
+    .await;
+    let network_service = Self::build_network_service();
+    let mcp_service = Self::build_mcp_service(db_service.clone(), time_service.clone());
 
     // Create queue and spawn refresh worker
     let queue = Arc::new(InMemoryQueue::new());
@@ -230,7 +166,7 @@ impl AppServiceBuilder {
 
     // Build and return the complete app service
     let app_service = DefaultAppService::new(
-      self.setting_service,
+      setting_service,
       hub_service,
       data_service,
       auth_service,
@@ -250,27 +186,22 @@ impl AppServiceBuilder {
     Ok(app_service)
   }
 
-  /// Gets or builds the hub service.
-  fn get_or_build_hub_service(&mut self) -> Arc<dyn HubService> {
-    if let Some(service) = self.hub_service.take() {
-      return service;
-    }
-
-    let hf_cache = self.setting_service.hf_cache();
-    let hf_token = self.setting_service.get_env(HF_TOKEN);
-    Arc::new(HfHubService::new_from_hf_cache(hf_cache, hf_token, true))
+  /// Builds the hub service.
+  async fn build_hub_service(
+    setting_service: &Arc<dyn SettingService>,
+  ) -> Result<Arc<dyn HubService>, ApiError> {
+    let hf_cache = setting_service.hf_cache().await;
+    let hf_token = setting_service.get_env(HF_TOKEN).await;
+    let hub_service = HfHubService::new_from_hf_cache(hf_cache, hf_token, true)
+      .map_err(|err| ApiError::from(IoError::from(err)))?;
+    Ok(Arc::new(hub_service))
   }
 
-  /// Gets or builds the data service, ensuring hub service and db service dependencies are resolved.
-  fn get_or_build_data_service(
-    &mut self,
+  /// Builds the data service.
+  fn build_data_service(
     hub_service: Arc<dyn HubService>,
     db_service: Arc<dyn DbService>,
   ) -> Arc<dyn DataService> {
-    if let Some(service) = self.data_service.take() {
-      return service;
-    }
-
     Arc::new(LocalDataService::new(hub_service, db_service))
   }
 
@@ -283,35 +214,25 @@ impl AppServiceBuilder {
     Arc::new(DefaultTimeService)
   }
 
-  /// Gets or builds the database service, ensuring time service dependency is resolved.
-  async fn get_or_build_db_service(
-    &mut self,
+  /// Builds the database service using a direct db_path.
+  async fn build_db_service(
+    db_path: PathBuf,
     time_service: Arc<dyn TimeService>,
     encryption_key: Vec<u8>,
   ) -> Result<Arc<dyn DbService>, ApiError> {
-    if let Some(service) = self.db_service.take() {
-      return Ok(service);
-    }
-
-    let app_db_pool = DbPool::connect(&format!(
-      "sqlite:{}",
-      self.setting_service.app_db_path().display()
-    ))
-    .await?;
+    let app_db_pool = DbPool::connect(&format!("sqlite:{}", db_path.display())).await?;
     let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }
 
-  /// Gets or builds the session service.
-  async fn get_or_build_session_service(&mut self) -> Result<Arc<dyn SessionService>, ApiError> {
-    if let Some(service) = self.session_service.take() {
-      return Ok(service);
-    }
-
+  /// Builds the session service.
+  async fn build_session_service(
+    setting_service: &Arc<dyn SettingService>,
+  ) -> Result<Arc<dyn SessionService>, ApiError> {
     let session_db_pool = DbPool::connect(&format!(
       "sqlite:{}",
-      self.setting_service.session_db_path().display()
+      setting_service.session_db_path().await.display()
     ))
     .await?;
     let session_service = SqliteSessionService::new(session_db_pool);
@@ -321,49 +242,17 @@ impl AppServiceBuilder {
 
   /// Gets or builds the secret service.
   #[allow(clippy::result_large_err)]
-  fn get_or_build_secret_service(
+  async fn get_or_build_secret_service(
     &mut self,
+    setting_service: &Arc<dyn SettingService>,
     encryption_key: Vec<u8>,
   ) -> Result<Arc<dyn SecretService>, ApiError> {
     if let Some(service) = self.secret_service.take() {
       return Ok(service);
     }
-    let secrets_path = self.setting_service.secrets_path();
+    let secrets_path = setting_service.secrets_path().await;
     let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
     Ok(Arc::new(secret_service))
-  }
-
-  fn get_app_name(&mut self) -> String {
-    let app_suffix = if self.setting_service.is_production() {
-      ""
-    } else {
-      " - Dev"
-    };
-    let app_name = format!("Bodhi App{app_suffix}");
-    app_name
-  }
-
-  fn get_or_build_encryption_key(&mut self) -> Result<Vec<u8>, ApiError> {
-    match self.encryption_key.as_ref() {
-      Some(encryption_key) => Ok(encryption_key.clone()),
-      None => {
-        let app_name = self.get_app_name();
-        let encryption_key = self.setting_service.encryption_key();
-
-        // Validate encryption key is not a placeholder value
-        if let Some(ref key) = encryption_key {
-          if key == "your-strong-encryption-key-here" {
-            return Err(AppServiceBuilderError::PlaceholderValue(key.to_string()))?;
-          }
-        }
-
-        let encryption_key = encryption_key
-          .map(|key| Ok(hash_key(&key)))
-          .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
-        self.encryption_key = Some(encryption_key);
-        Ok(self.encryption_key.as_ref().unwrap().clone())
-      }
-    }
   }
 
   /// Gets or builds the cache service.
@@ -375,48 +264,33 @@ impl AppServiceBuilder {
     Arc::new(MokaCacheService::default())
   }
 
-  /// Gets or builds the auth service.
-  fn get_or_build_auth_service(&mut self) -> Arc<dyn AuthService> {
-    if let Some(service) = self.auth_service.take() {
-      return service;
-    }
-
-    let auth_url = self.setting_service.auth_url();
-    let auth_realm = self.setting_service.auth_realm();
+  /// Builds the auth service.
+  async fn build_auth_service(setting_service: &Arc<dyn SettingService>) -> Arc<dyn AuthService> {
+    let auth_url = setting_service.auth_url().await;
+    let auth_realm = setting_service.auth_realm().await;
     Arc::new(KeycloakAuthService::new(
-      &self.setting_service.version(),
+      &setting_service.version().await,
       auth_url,
       auth_realm,
     ))
   }
 
-  /// Gets or builds the AI API service.
-  fn get_or_build_ai_api_service(
-    &mut self,
-    db_service: Arc<dyn DbService>,
-  ) -> Arc<dyn AiApiService> {
-    if let Some(service) = self.ai_api_service.take() {
-      return service;
-    }
-
+  /// Builds the AI API service.
+  fn build_ai_api_service(db_service: Arc<dyn DbService>) -> Arc<dyn AiApiService> {
     Arc::new(DefaultAiApiService::with_db_service(db_service))
   }
 
-  /// Gets or builds the concurrency service.
-  fn get_or_build_concurrency_service(&mut self) -> Arc<dyn services::ConcurrencyService> {
+  /// Builds the concurrency service.
+  fn build_concurrency_service() -> Arc<dyn services::ConcurrencyService> {
     Arc::new(LocalConcurrencyService::new())
   }
 
-  /// Gets or builds the tool service.
-  fn get_or_build_tool_service(
-    &mut self,
+  /// Builds the tool service.
+  fn build_tool_service(
     db_service: Arc<dyn DbService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn ToolService> {
-    // Create Exa service
     let exa_service: Arc<dyn ExaService> = Arc::new(DefaultExaService::new());
-
-    // Create tool service with dependencies
     Arc::new(DefaultToolService::new(
       db_service,
       exa_service,
@@ -424,21 +298,15 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Gets or builds the access request service.
-  fn get_or_build_access_request_service(
-    &mut self,
+  /// Builds the access request service.
+  async fn build_access_request_service(
+    setting_service: &Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
     secret_service: Arc<dyn SecretService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn AccessRequestService> {
-    if let Some(service) = self.access_request_service.take() {
-      return service;
-    }
-
-    // Get frontend URL from settings
-    let frontend_url = self.setting_service.public_server_url();
-
+    let frontend_url = setting_service.public_server_url().await;
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
@@ -448,18 +316,13 @@ impl AppServiceBuilder {
     ))
   }
 
-  /// Gets or builds the network service.
-  fn get_or_build_network_service(&mut self) -> Arc<dyn NetworkService> {
-    if let Some(service) = self.network_service.take() {
-      return service;
-    }
-
+  /// Builds the network service.
+  fn build_network_service() -> Arc<dyn NetworkService> {
     Arc::new(DefaultNetworkService)
   }
 
-  /// Gets or builds the MCP service.
-  fn get_or_build_mcp_service(
-    &mut self,
+  /// Builds the MCP service.
+  fn build_mcp_service(
     db_service: Arc<dyn DbService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn McpService> {
@@ -468,10 +331,28 @@ impl AppServiceBuilder {
   }
 }
 
+/// Builds the encryption key given production flag and optional env-provided key value.
+async fn build_encryption_key(
+  is_production: bool,
+  encryption_key_value: Option<String>,
+) -> Result<Vec<u8>, ApiError> {
+  let app_suffix = if is_production { "" } else { " - Dev" };
+  let app_name = format!("Bodhi App{app_suffix}");
+  if let Some(ref key) = encryption_key_value {
+    if key == "your-strong-encryption-key-here" {
+      return Err(AppServiceBuilderError::PlaceholderValue(key.to_string()))?;
+    }
+  }
+  let encryption_key = encryption_key_value
+    .map(|key| Ok(hash_key(&key)))
+    .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
+  Ok(encryption_key)
+}
+
 pub async fn build_app_service(
-  setting_service: Arc<dyn SettingService>,
+  bootstrap_parts: BootstrapParts,
 ) -> Result<DefaultAppService, ErrorMessage> {
-  AppServiceBuilder::new(setting_service).build().await
+  AppServiceBuilder::new(bootstrap_parts).build().await
 }
 
 pub fn update_with_option(

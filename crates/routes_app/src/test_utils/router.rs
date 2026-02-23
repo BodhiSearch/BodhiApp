@@ -50,7 +50,7 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .expect("temp_home should be set by builder");
   let app_service: Arc<dyn AppService> = Arc::new(app_service_stub);
   let ctx: Arc<dyn SharedContext> = Arc::new(MockSharedContext::default());
-  let router = build_routes(ctx, app_service.clone(), None);
+  let router = build_routes(ctx, app_service.clone(), None).await;
   Ok((router, app_service, temp_home))
 }
 
@@ -196,9 +196,10 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     ip: Some("192.168.1.100".to_string()),
   });
   builder
-    .with_live_services() // real HF cache + real binary path
+    .with_live_services()
+    .await
     .with_data_service()
-    .await // LocalDataService using live hub (discovers Qwen3)
+    .await
     .with_db_service()
     .await
     .with_session_service()
@@ -218,8 +219,8 @@ pub async fn build_live_test_router() -> anyhow::Result<(
 
   // DefaultSharedContext::new uses DefaultServerFactory (spawns real llama.cpp)
   let ctx: Arc<dyn SharedContext> =
-    Arc::new(DefaultSharedContext::new(hub_service, setting_service));
-  let router = build_routes(ctx.clone(), app_service.clone(), None);
+    Arc::new(DefaultSharedContext::new(hub_service, setting_service).await);
+  let router = build_routes(ctx.clone(), app_service.clone(), None).await;
   Ok((router, app_service, ctx, temp_home))
 }
 

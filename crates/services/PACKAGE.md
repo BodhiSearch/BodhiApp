@@ -55,7 +55,10 @@
 - `src/db/user_alias_repository.rs` - User alias persistence
 
 ### Configuration and Environment
-- `src/setting_service.rs` - Application configuration management with `SettingsChangeListener` notification
+- `src/setting_service/` - Application configuration management module
+  - `bootstrap_parts.rs` - `BootstrapParts` data carrier (env_wrapper, settings_file, system_settings, file_defaults, app_settings, app_command, bodhi_home); `BootstrapService` lives in `lib_bodhiserver`
+  - `default_service.rs` - `DefaultSettingService`, `DefaultSettingService::from_parts(BootstrapParts, ...)` implementation
+  - `error.rs` - `SettingServiceError` enum, `Result<T>` alias
 - `src/env_wrapper.rs` - Environment variable abstraction
 - `src/progress_tracking.rs` - Download progress monitoring
 - `src/objs.rs` - Service-specific domain objects (`AppRegInfo`, `AppStatus`)
@@ -124,6 +127,9 @@ fs::remove_file(&filename)
 fs::create_dir_all(parent)
   .map_err(|err| IoError::dir_create(err, parent.display().to_string()))?;
 ```
+
+### Database Upsert Return Value Pattern
+`SettingsRepository::upsert_setting` constructs a `DbSetting` return value from the input and the computed `now` timestamp. On update (ON CONFLICT path), the returned struct's `created_at` field is set to `now` even though the database preserves the original `created_at` (it is excluded from the UPDATE SET clause). This is analogous to setting `id: 0` on a struct before insert — the database assigns the real value but the returned struct carries a placeholder. Callers needing the actual `created_at` should query the database. See `src/db/service_settings.rs`.
 
 ### Alias Resolution Priority
 ```rust

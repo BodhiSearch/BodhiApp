@@ -31,25 +31,24 @@ async fn test_live_shared_rw_reload(
     None,
   ));
 
+  let exec_path = lookup_path
+    .join(llama_server_proc::BUILD_TARGET)
+    .join(llama_server_proc::DEFAULT_VARIANT)
+    .join(llama_server_proc::EXEC_NAME);
   let mut mock_setting_service = MockSettingService::new();
   mock_setting_service
     .expect_exec_path_from()
-    .returning(move || {
-      lookup_path
-        .clone()
-        .join(llama_server_proc::BUILD_TARGET)
-        .join(llama_server_proc::DEFAULT_VARIANT)
-        .join(llama_server_proc::EXEC_NAME)
-    });
+    .return_const(exec_path);
   mock_setting_service
     .expect_exec_variant()
-    .returning(move || llama_server_proc::DEFAULT_VARIANT.to_string());
+    .return_const(llama_server_proc::DEFAULT_VARIANT.to_string());
 
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Arc::new(mock_setting_service),
     Box::new(DefaultServerFactory),
-  );
+  )
+  .await;
   let result = shared_rw.reload(None).await;
   shared_rw.stop().await?;
   assert!(
@@ -73,25 +72,24 @@ async fn test_live_shared_rw_reload_with_model_as_symlink(
     None,
   ));
 
+  let exec_path = lookup_path
+    .join(llama_server_proc::BUILD_TARGET)
+    .join(llama_server_proc::DEFAULT_VARIANT)
+    .join(llama_server_proc::EXEC_NAME);
   let mut mock_setting_service = MockSettingService::new();
   mock_setting_service
     .expect_exec_path_from()
-    .returning(move || {
-      lookup_path
-        .clone()
-        .join(llama_server_proc::BUILD_TARGET)
-        .join(llama_server_proc::DEFAULT_VARIANT)
-        .join(llama_server_proc::EXEC_NAME)
-    });
+    .return_const(exec_path);
   mock_setting_service
     .expect_exec_variant()
-    .returning(move || llama_server_proc::DEFAULT_VARIANT.to_string());
+    .return_const(llama_server_proc::DEFAULT_VARIANT.to_string());
 
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Arc::new(mock_setting_service),
     Box::new(DefaultServerFactory),
-  );
+  )
+  .await;
   let server_args = LlamaServerArgsBuilder::default()
     .alias("testalias")
     .model(llama_68m)
@@ -118,25 +116,24 @@ async fn test_live_shared_rw_reload_with_actual_file(
     None,
   ));
 
+  let exec_path = lookup_path
+    .join(llama_server_proc::BUILD_TARGET)
+    .join(llama_server_proc::DEFAULT_VARIANT)
+    .join(llama_server_proc::EXEC_NAME);
   let mut mock_setting_service = MockSettingService::new();
   mock_setting_service
     .expect_exec_path_from()
-    .returning(move || {
-      lookup_path
-        .clone()
-        .join(llama_server_proc::BUILD_TARGET)
-        .join(llama_server_proc::DEFAULT_VARIANT)
-        .join(llama_server_proc::EXEC_NAME)
-    });
+    .return_const(exec_path);
   mock_setting_service
     .expect_exec_variant()
-    .returning(move || llama_server_proc::DEFAULT_VARIANT.to_string());
+    .return_const(llama_server_proc::DEFAULT_VARIANT.to_string());
 
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Arc::new(mock_setting_service),
     Box::new(DefaultServerFactory),
-  );
+  )
+  .await;
   let server_params = LlamaServerArgsBuilder::default()
     .alias("testalias")
     .model(tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836"))

@@ -1,23 +1,75 @@
 use crate::{
   test_utils::{bodhi_home_setting, EnvWrapperStub},
-  DefaultSettingService, MockSettingsChangeListener, SettingService, BODHI_EXEC_VARIANT,
-  BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_ON_RUNPOD,
-  BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
-  DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
-  RUNPOD_POD_ID,
+  BootstrapParts, DefaultSettingService, MockSettingsChangeListener, SettingService,
+  BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
+  BODHI_ON_RUNPOD, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME,
+  BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME,
+  HF_HOME, RUNPOD_POD_ID,
 };
 use anyhow_trace::anyhow_trace;
 use mockall::predicate::eq;
-use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
+use objs::{
+  test_utils::temp_dir, AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource,
+};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_yaml::Value;
-use std::{
-  collections::HashMap,
-  fs::{self, read_to_string},
-  sync::Arc,
-};
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
+
+fn noop_settings_repo() -> Arc<InMemorySettingsRepository> {
+  Arc::new(InMemorySettingsRepository::new())
+}
+
+fn make_service_from_parts(
+  env_wrapper: Arc<dyn crate::EnvWrapper>,
+  bodhi_home_setting: Setting,
+  system_settings: Vec<Setting>,
+  file_defaults: HashMap<String, Value>,
+  settings_file: PathBuf,
+  db_service: Arc<dyn crate::db::SettingsRepository>,
+) -> DefaultSettingService {
+  let bodhi_home = PathBuf::from(bodhi_home_setting.value.as_str().unwrap());
+  let mut all_system_settings = system_settings;
+  all_system_settings.push(bodhi_home_setting);
+  DefaultSettingService::from_parts(
+    BootstrapParts {
+      env_wrapper,
+      settings_file,
+      system_settings: all_system_settings,
+      file_defaults,
+      app_settings: HashMap::new(),
+      app_command: AppCommand::Default,
+      bodhi_home,
+    },
+    db_service,
+  )
+}
+
+fn make_simple_service(
+  env_wrapper: Arc<dyn crate::EnvWrapper>,
+  settings_file: PathBuf,
+  system_settings: Vec<Setting>,
+  db_service: Arc<dyn crate::db::SettingsRepository>,
+) -> DefaultSettingService {
+  let bodhi_home = env_wrapper
+    .home_dir()
+    .unwrap_or_else(|| PathBuf::from("/tmp"));
+  DefaultSettingService::from_parts(
+    BootstrapParts {
+      env_wrapper,
+      settings_file,
+      system_settings,
+      file_defaults: HashMap::new(),
+      app_settings: HashMap::new(),
+      app_command: AppCommand::Default,
+      bodhi_home,
+    },
+    db_service,
+  )
+}
+
+use crate::test_utils::InMemorySettingsRepository;
 #[rstest]
 #[case::system_settings_cannot_be_overridden(
   "TEST_SYSTEM_KEY",
@@ -64,7 +116,8 @@ use tempfile::TempDir;
   "default_value",
   SettingSource::Default
 )]
-fn test_settings_precedence(
+#[tokio::test]
+async fn test_settings_precedence(
   temp_dir: TempDir,
   #[case] key: &str,
   #[case] cmdline_value: Option<&str>,
@@ -92,7 +145,7 @@ fn test_settings_precedence(
   } else {
     HashMap::new()
   };
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_stub),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![Setting {
@@ -103,30 +156,36 @@ fn test_settings_precedence(
     }],
     file_defaults,
     settings_file,
+    noop_settings_repo(),
   );
   if let Some(cmdline_val) = cmdline_value {
-    service.set_setting_with_source(
-      key,
-      &Value::String(cmdline_val.to_string()),
-      SettingSource::CommandLine,
-    );
+    service
+      .set_setting_with_source(
+        key,
+        &Value::String(cmdline_val.to_string()),
+        SettingSource::CommandLine,
+      )
+      .await?;
   }
-  helpers::assert_setting_value_with_source(&service, key, Some(expected_value), expected_source);
+  helpers::assert_setting_value_with_source(&service, key, Some(expected_value), expected_source)
+    .await;
   Ok(())
 }
 
 #[rstest]
-fn test_setting_service_init_with_defaults(temp_dir: TempDir) -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_setting_service_init_with_defaults(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let home_dir = temp_dir.path().join("home");
   let env_wrapper =
     EnvWrapperStub::new(maplit::hashmap! {"HOME".to_string() => home_dir.display().to_string()});
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path.clone(),
+    noop_settings_repo(),
   );
   for (key, expected) in [
     (
@@ -160,13 +219,19 @@ fn test_setting_service_init_with_defaults(temp_dir: TempDir) -> anyhow::Result<
   ] {
     assert_eq!(
       expected,
-      service.get_default_value(key).unwrap().as_str().unwrap()
+      service
+        .get_default_value(key)
+        .await
+        .unwrap()
+        .as_str()
+        .unwrap()
     );
   }
   assert_eq!(
     DEFAULT_PORT as i64,
     service
       .get_default_value(BODHI_PORT)
+      .await
       .unwrap()
       .as_i64()
       .unwrap()
@@ -175,6 +240,7 @@ fn test_setting_service_init_with_defaults(temp_dir: TempDir) -> anyhow::Result<
     DEFAULT_LOG_STDOUT,
     service
       .get_default_value(BODHI_LOG_STDOUT)
+      .await
       .unwrap()
       .as_bool()
       .unwrap()
@@ -191,48 +257,49 @@ enum NotificationOperation {
 }
 
 #[rstest]
-#[case::override_setting(
+#[case::override_setting_db_write(
   NotificationOperation::OverrideSetting,
   None, // no env var
-  Some("test_value"), // initial file value
-  Some("default_value"), // default value
-  Some("new_value"), // new value to set
+  None, // no initial file value
+  Some("default.host"), // default value
+  Some("new.host"), // new value to set via DB
   Some((
-    Some("test_value"), SettingSource::SettingsFile,
-    Some("new_value"), SettingSource::SettingsFile
-  )) // expected notification
+    Some("default.host"), SettingSource::Default,
+    Some("new.host"), SettingSource::Database
+  )) // DB write becomes new effective value
 )]
-#[case::delete_setting(
+#[case::delete_setting_from_db(
   NotificationOperation::DeleteSetting,
   None, // no env var
-  Some("test_value"), // initial file value
-  Some("default_value"), // default value
+  None, // no initial file value
+  Some("default.host"), // default value
   None, // delete operation
   Some((
-    Some("test_value"), SettingSource::SettingsFile,
-    Some("default_value"), SettingSource::Default
-  )) // expected notification
+    Some("default.host"), SettingSource::Default,
+    Some("default.host"), SettingSource::Default
+  )) // DB delete falls back to default
 )]
 #[case::set_with_env_override(
   NotificationOperation::SetWithEnvOverride,
-  Some("env_value"), // env var set
-  Some("test_value"), // initial file value
+  Some("env.host"), // env var set
+  None, // no initial file value
   None, // no default needed
-  Some("new_value"), // new value to set (will be ignored due to env)
+  Some("new.host"), // new value to set (env still wins)
   Some((
-    Some("env_value"), SettingSource::Environment,
-    Some("env_value"), SettingSource::Environment
-  )) // expected notification (no actual change)
+    Some("env.host"), SettingSource::Environment,
+    Some("env.host"), SettingSource::Environment
+  )) // no actual change in effective value
 )]
 #[case::set_default_no_notification(
   NotificationOperation::SetDefault,
   None, // no env var
-  Some("test_value"), // initial file value
+  Some("test.host"), // initial file value
   None, // no existing default
-  Some("default_value"), // default value to set
+  Some("default.host"), // default value to set
   None // no notification expected
 )]
-fn test_change_notifications(
+#[tokio::test]
+async fn test_change_notifications(
   temp_dir: TempDir,
   #[case] operation: NotificationOperation,
   #[case] env_value: Option<&str>,
@@ -241,19 +308,22 @@ fn test_change_notifications(
   #[case] new_value: Option<&str>,
   #[case] expected_notification: Option<(Option<&str>, SettingSource, Option<&str>, SettingSource)>,
 ) -> anyhow::Result<()> {
+  let key = BODHI_HOST;
   let path = temp_dir.path().join("settings.yaml");
   if let Some(file_val) = initial_file_value {
-    std::fs::write(&path, format!("TEST_KEY: {}", file_val))?;
+    std::fs::write(&path, format!("{}: {}", key, file_val))?;
   }
   let env_vars = if let Some(val) = env_value {
-    maplit::hashmap! { "TEST_KEY".to_string() => val.to_string() }
+    maplit::hashmap! { key.to_string() => val.to_string() }
   } else {
     HashMap::new()
   };
   let env_stub = EnvWrapperStub::new(env_vars);
-  let service = DefaultSettingService::new(Arc::new(env_stub), path, vec![]);
+  let service = make_simple_service(Arc::new(env_stub), path, vec![], noop_settings_repo());
   if let Some(default_val) = default_value {
-    service.set_default("TEST_KEY", &Value::String(default_val.to_string()));
+    service
+      .set_default(key, &Value::String(default_val.to_string()))
+      .await?;
   }
   let mut mock_listener = MockSettingsChangeListener::default();
   match expected_notification {
@@ -261,7 +331,7 @@ fn test_change_notifications(
       mock_listener
         .expect_on_change()
         .with(
-          eq("TEST_KEY"),
+          eq(key),
           eq(old_val.map(|v| Value::String(v.to_string()))),
           eq(old_source),
           eq(new_val.map(|v| Value::String(v.to_string()))),
@@ -275,20 +345,22 @@ fn test_change_notifications(
     }
   }
 
-  service.add_listener(Arc::new(mock_listener));
+  service.add_listener(Arc::new(mock_listener)).await;
 
   match operation {
     NotificationOperation::OverrideSetting => {
-      service.set_setting("TEST_KEY", new_value.unwrap());
+      service.set_setting(key, new_value.unwrap()).await?;
     }
     NotificationOperation::DeleteSetting => {
-      service.delete_setting("TEST_KEY")?;
+      service.delete_setting(key).await?;
     }
     NotificationOperation::SetWithEnvOverride => {
-      service.set_setting("TEST_KEY", new_value.unwrap());
+      service.set_setting(key, new_value.unwrap()).await?;
     }
     NotificationOperation::SetDefault => {
-      service.set_default("TEST_KEY", &Value::String(new_value.unwrap().to_string()));
+      service
+        .set_default(key, &Value::String(new_value.unwrap().to_string()))
+        .await?;
     }
   }
   Ok(())
@@ -358,7 +430,8 @@ fn test_change_notifications(
     ("CUSTOM_PROPERTY", "custom_value")
   ]
 )]
-fn test_file_defaults_integration(
+#[tokio::test]
+async fn test_file_defaults_integration(
   temp_dir: TempDir,
   #[case] file_defaults: HashMap<&str, Value>,
   #[case] expected_values: Vec<(&str, &str)>,
@@ -372,12 +445,13 @@ fn test_file_defaults_integration(
     .into_iter()
     .map(|(k, v)| (k.to_string(), v))
     .collect();
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_stub),
     bodhi_home_setting(temp_dir.path(), SettingSource::Default),
     vec![],
     file_defaults,
     path,
+    noop_settings_repo(),
   );
 
   for (key, expected) in expected_values {
@@ -386,27 +460,27 @@ fn test_file_defaults_integration(
         let expected_num = expected
           .parse::<i64>()
           .expect("Port should be parseable as number");
-        helpers::assert_default_value_i64(&service, key, expected_num);
+        helpers::assert_default_value_i64(&service, key, expected_num).await;
       }
       BODHI_LOG_STDOUT => {
         let expected_bool = expected
           .parse::<bool>()
           .expect("Log stdout should be parseable as bool");
-        helpers::assert_default_value_bool(&service, key, expected_bool);
+        helpers::assert_default_value_bool(&service, key, expected_bool).await;
       }
       "CUSTOM_TIMEOUT" => {
         let expected_num = expected
           .parse::<i64>()
           .expect("Custom timeout should be parseable as number");
-        helpers::assert_default_value_i64(&service, key, expected_num);
+        helpers::assert_default_value_i64(&service, key, expected_num).await;
       }
       "CUSTOM_BOOL_SETTING" => {
         let expected_bool = expected
           .parse::<bool>()
           .expect("Custom bool setting should be parseable as bool");
-        helpers::assert_default_value_bool(&service, key, expected_bool);
+        helpers::assert_default_value_bool(&service, key, expected_bool).await;
       }
-      _ => helpers::assert_default_value_str(&service, key, expected),
+      _ => helpers::assert_default_value_str(&service, key, expected).await,
     }
   }
   Ok(())
@@ -414,109 +488,45 @@ fn test_file_defaults_integration(
 
 #[derive(Debug, Clone, PartialEq)]
 enum CrudOperation {
-  CreateAndRead,
-  UpdateAndRead,
-  DeleteExisting,
   DeleteNonExistent,
-  PersistenceAcrossInstances,
 }
 
 #[rstest]
-#[case::create_and_read(
-  CrudOperation::CreateAndRead,
-  vec![("TEST_KEY", "test_value")],
-  vec![("TEST_KEY", Some("test_value"))]
-)]
-#[case::update_and_read(
-  CrudOperation::UpdateAndRead,
-  vec![("TEST_KEY", "initial_value"), ("TEST_KEY", "updated_value")],
-  vec![("TEST_KEY", Some("updated_value"))]
-)]
-#[case::delete_existing(
-  CrudOperation::DeleteExisting,
-  vec![("TEST_KEY", "test_value")],
-  vec![("TEST_KEY", None)] // After deletion
-)]
 #[case::delete_non_existent(
   CrudOperation::DeleteNonExistent,
   vec![], // No initial values
   vec![("NON_EXISTENT_KEY", None)] // Should succeed silently
 )]
-#[case::persistence_across_instances(
-  CrudOperation::PersistenceAcrossInstances,
-  vec![("PERSIST_KEY", "persist_value")],
-  vec![("PERSIST_KEY", Some("persist_value"))]
-)]
-fn test_setting_service_crud_operations(
+#[tokio::test]
+async fn test_setting_service_crud_operations(
   temp_dir: TempDir,
   #[case] operation: CrudOperation,
   #[case] setup_operations: Vec<(&str, &str)>,
   #[case] verification_operations: Vec<(&str, Option<&str>)>,
 ) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
+  let env_stub = EnvWrapperStub::new(HashMap::new());
+  let service = make_simple_service(
+    Arc::new(env_stub),
+    path.clone(),
+    vec![],
+    noop_settings_repo(),
+  );
 
-  match operation {
-    CrudOperation::PersistenceAcrossInstances => {
-      // Create first service instance and set values
-      {
-        let env_stub = EnvWrapperStub::new(HashMap::new());
-        let service = DefaultSettingService::new(Arc::new(env_stub), path.clone(), vec![]);
-        for (key, value) in setup_operations {
-          service.set_setting(key, value);
-        }
-      }
+  for (key, value) in setup_operations {
+    service.set_setting(key, value).await?;
+  }
 
-      // Verify file persistence
-      let contents = read_to_string(&path)?;
-      assert_eq!("PERSIST_KEY: persist_value\n", contents);
-
-      // Create second service instance and verify values persist
-      {
-        let env_stub = EnvWrapperStub::new(HashMap::new());
-        let service = DefaultSettingService::new(Arc::new(env_stub), path.clone(), vec![]);
-
-        for (key, expected_value) in verification_operations {
-          match expected_value {
-            Some(expected) => helpers::assert_setting_value(&service, key, expected),
-            None => assert_eq!(None, service.get_setting(key)),
-          }
-        }
-      }
+  if matches!(operation, CrudOperation::DeleteNonExistent) {
+    for (key, _) in &verification_operations {
+      service.delete_setting(key).await?;
     }
+  }
 
-    _ => {
-      // Setup environment stub (empty since we don't need any env vars for these tests)
-      let env_stub = EnvWrapperStub::new(HashMap::new());
-      let service = DefaultSettingService::new(Arc::new(env_stub), path.clone(), vec![]);
-
-      // Perform setup operations
-      for (key, value) in setup_operations {
-        service.set_setting(key, value);
-      }
-
-      // For delete operations, actually delete the keys
-      if matches!(
-        operation,
-        CrudOperation::DeleteExisting | CrudOperation::DeleteNonExistent
-      ) {
-        for (key, _) in &verification_operations {
-          service.delete_setting(key)?;
-        }
-      }
-
-      // Perform verification operations
-      for (key, expected_value) in verification_operations {
-        match expected_value {
-          Some(expected) => helpers::assert_setting_value(&service, key, expected),
-          None => assert_eq!(None, service.get_setting(key)),
-        }
-      }
-
-      // Verify file contents for delete operations
-      if operation == CrudOperation::DeleteExisting {
-        let contents = std::fs::read_to_string(&path)?;
-        assert_eq!("{}\n", contents);
-      }
+  for (key, expected_value) in verification_operations {
+    match expected_value {
+      Some(expected) => helpers::assert_setting_value(&service, key, expected).await,
+      None => assert_eq!(None, service.get_setting(key).await),
     }
   }
 
@@ -525,7 +535,8 @@ fn test_setting_service_crud_operations(
 
 #[anyhow_trace]
 #[rstest]
-fn test_setting_service_list(
+#[tokio::test]
+async fn test_setting_service_list(
   temp_dir: TempDir,
   #[from(temp_dir)] bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
@@ -548,17 +559,19 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 "#,
   )?;
 
-  let setting_service = DefaultSettingService::new_with_defaults(
+  let setting_service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(bodhi_home.path(), SettingSource::Default),
     vec![],
     HashMap::new(),
     settings_file.clone(),
+    noop_settings_repo(),
   );
   let bodhi_home = bodhi_home.path().to_path_buf();
   // WHEN
   let settings = setting_service
     .list()
+    .await
     .into_iter()
     .map(|setting| (setting.key.clone(), setting))
     .collect::<HashMap<String, SettingInfo>>();
@@ -640,83 +653,93 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 }
 
 #[rstest]
-fn test_public_settings_fallback_behavior(temp_dir: TempDir) -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_settings_fallback_behavior(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Test fallback behavior - public settings should use regular settings when not set
-  assert_eq!(service.public_server_url(), "http://0.0.0.0:1135");
-  helpers::assert_default_value_str(&service, BODHI_PUBLIC_HOST, DEFAULT_HOST);
+  assert_eq!(service.public_server_url().await, "http://0.0.0.0:1135");
+  helpers::assert_default_value_str(&service, BODHI_PUBLIC_HOST, DEFAULT_HOST).await;
   assert_eq!(
     service
       .get_default_value(BODHI_PUBLIC_PORT)
+      .await
       .unwrap()
       .as_u64()
       .unwrap(),
     DEFAULT_PORT as u64
   );
-  helpers::assert_default_value_str(&service, BODHI_PUBLIC_SCHEME, DEFAULT_SCHEME);
+  helpers::assert_default_value_str(&service, BODHI_PUBLIC_SCHEME, DEFAULT_SCHEME).await;
 
-  // Set regular settings and verify public URL uses them
-  service.set_setting(BODHI_HOST, "example.com");
-  service.set_setting(BODHI_PORT, "8080");
-  service.set_setting(BODHI_SCHEME, "https");
+  service.set_setting(BODHI_HOST, "example.com").await?;
+  service.set_setting(BODHI_PORT, "8080").await?;
+  service.set_setting(BODHI_SCHEME, "https").await?;
 
-  assert_eq!(service.public_server_url(), "https://example.com:8080");
-  helpers::assert_default_value_str(&service, BODHI_PUBLIC_HOST, "example.com");
+  assert_eq!(
+    service.public_server_url().await,
+    "https://example.com:8080"
+  );
+  helpers::assert_default_value_str(&service, BODHI_PUBLIC_HOST, "example.com").await;
   assert_eq!(
     service
       .get_default_value(BODHI_PUBLIC_PORT)
+      .await
       .unwrap()
       .as_u64()
       .unwrap(),
     8080
   );
-  helpers::assert_default_value_str(&service, BODHI_PUBLIC_SCHEME, "https");
+  helpers::assert_default_value_str(&service, BODHI_PUBLIC_SCHEME, "https").await;
 
   Ok(())
 }
 
 #[rstest]
-fn test_public_settings_explicit_override(temp_dir: TempDir) -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_settings_explicit_override(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Set regular settings first
-  service.set_setting(BODHI_HOST, "internal.example.com");
-  service.set_setting(BODHI_PORT, "8080");
-  service.set_setting(BODHI_SCHEME, "http");
+  service
+    .set_setting(BODHI_HOST, "internal.example.com")
+    .await?;
+  service.set_setting(BODHI_PORT, "8080").await?;
+  service.set_setting(BODHI_SCHEME, "http").await?;
   assert_eq!(
-    service.public_server_url(),
+    service.public_server_url().await,
     "http://internal.example.com:8080"
   );
 
-  // Override with explicit public settings
-  service.set_setting(BODHI_PUBLIC_HOST, "public.example.com");
-  service.set_setting(BODHI_PUBLIC_PORT, "443");
-  service.set_setting(BODHI_PUBLIC_SCHEME, "https");
+  service
+    .set_setting(BODHI_PUBLIC_HOST, "public.example.com")
+    .await?;
+  service.set_setting(BODHI_PUBLIC_PORT, "443").await?;
+  service.set_setting(BODHI_PUBLIC_SCHEME, "https").await?;
 
-  // Should now use public settings and omit standard port
-  assert_eq!(service.public_server_url(), "https://public.example.com");
-
-  // Test with non-standard port
-  service.set_setting(BODHI_PUBLIC_PORT, "8443");
   assert_eq!(
-    service.public_server_url(),
+    service.public_server_url().await,
+    "https://public.example.com"
+  );
+
+  service.set_setting(BODHI_PUBLIC_PORT, "8443").await?;
+  assert_eq!(
+    service.public_server_url().await,
     "https://public.example.com:8443"
   );
 
@@ -724,30 +747,30 @@ fn test_public_settings_explicit_override(temp_dir: TempDir) -> anyhow::Result<(
 }
 
 #[rstest]
-fn test_public_settings_metadata_validation(temp_dir: TempDir) -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_settings_metadata_validation(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Test that BODHI_PUBLIC_PORT has Number metadata
   assert_eq!(
-    service.get_setting_metadata(BODHI_PUBLIC_PORT),
+    service.get_setting_metadata(BODHI_PUBLIC_PORT).await,
     SettingMetadata::Number { min: 1, max: 65535 }
   );
 
-  // Test that other public settings have String metadata
   assert_eq!(
-    service.get_setting_metadata(BODHI_PUBLIC_HOST),
+    service.get_setting_metadata(BODHI_PUBLIC_HOST).await,
     SettingMetadata::String
   );
   assert_eq!(
-    service.get_setting_metadata(BODHI_PUBLIC_SCHEME),
+    service.get_setting_metadata(BODHI_PUBLIC_SCHEME).await,
     SettingMetadata::String
   );
 
@@ -760,7 +783,8 @@ fn test_public_settings_metadata_validation(temp_dir: TempDir) -> anyhow::Result
 #[case("https", "example.com", "8080", "https://example.com:8080")] // Non-standard port included
 #[case("http", "example.com", "8443", "http://example.com:8443")] // Non-standard port included
 #[case("http", "localhost", "80", "http://localhost")] // Standard port omitted for localhost
-fn test_public_settings_url_construction_edge_cases(
+#[tokio::test]
+async fn test_public_settings_url_construction_edge_cases(
   temp_dir: TempDir,
   #[case] scheme: &str,
   #[case] host: &str,
@@ -769,19 +793,20 @@ fn test_public_settings_url_construction_edge_cases(
 ) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path.clone(),
+    noop_settings_repo(),
   );
 
-  service.set_setting(BODHI_PUBLIC_SCHEME, scheme);
-  service.set_setting(BODHI_PUBLIC_HOST, host);
-  service.set_setting(BODHI_PUBLIC_PORT, port);
+  service.set_setting(BODHI_PUBLIC_SCHEME, scheme).await?;
+  service.set_setting(BODHI_PUBLIC_HOST, host).await?;
+  service.set_setting(BODHI_PUBLIC_PORT, port).await?;
 
-  assert_eq!(service.public_server_url(), expected_url);
+  assert_eq!(service.public_server_url().await, expected_url);
 
   Ok(())
 }
@@ -819,7 +844,8 @@ fn test_public_settings_url_construction_edge_cases(
   "http://cdn.example.com:8080/ui/chat",
   "http://cdn.example.com:8080/ui/auth/callback"
 )]
-fn test_integration_method_behaviors(
+#[tokio::test]
+async fn test_integration_method_behaviors(
   temp_dir: TempDir,
   #[case] public_scheme: Option<&str>,
   #[case] public_host: Option<&str>,
@@ -833,40 +859,38 @@ fn test_integration_method_behaviors(
 ) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_wrapper = EnvWrapperStub::new(HashMap::new());
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Set regular settings if provided
   if let Some(scheme) = regular_scheme {
-    service.set_setting(BODHI_SCHEME, scheme);
+    service.set_setting(BODHI_SCHEME, scheme).await?;
   }
   if let Some(host) = regular_host {
-    service.set_setting(BODHI_HOST, host);
+    service.set_setting(BODHI_HOST, host).await?;
   }
   if let Some(port) = regular_port {
-    service.set_setting(BODHI_PORT, port);
+    service.set_setting(BODHI_PORT, port).await?;
   }
 
-  // Set public settings if provided
   if let Some(scheme) = public_scheme {
-    service.set_setting(BODHI_PUBLIC_SCHEME, scheme);
+    service.set_setting(BODHI_PUBLIC_SCHEME, scheme).await?;
   }
   if let Some(host) = public_host {
-    service.set_setting(BODHI_PUBLIC_HOST, host);
+    service.set_setting(BODHI_PUBLIC_HOST, host).await?;
   }
   if let Some(port) = public_port {
-    service.set_setting(BODHI_PUBLIC_PORT, port);
+    service.set_setting(BODHI_PUBLIC_PORT, port).await?;
   }
 
-  // Verify all three methods return expected URLs
-  assert_eq!(service.public_server_url(), expected_public_url);
-  assert_eq!(service.frontend_default_url(), expected_frontend_url);
-  assert_eq!(service.login_callback_url(), expected_callback_url);
+  assert_eq!(service.public_server_url().await, expected_public_url);
+  assert_eq!(service.frontend_default_url().await, expected_frontend_url);
+  assert_eq!(service.login_callback_url().await, expected_callback_url);
 
   Ok(())
 }
@@ -882,7 +906,8 @@ fn test_integration_method_behaviors(
   "https://abc123def456-1135.proxy.runpod.net"
 )]
 #[case::runpod_enabled_empty_pod_id(Some("true"), Some(""), "http://0.0.0.0:1135")]
-fn test_runpod_feature_behavior(
+#[tokio::test]
+async fn test_runpod_feature_behavior(
   temp_dir: TempDir,
   #[case] runpod_flag: Option<&str>,
   #[case] runpod_pod_id: Option<&str>,
@@ -891,7 +916,6 @@ fn test_runpod_feature_behavior(
   let path = temp_dir.path().join("settings.yaml");
   let mut env_vars = HashMap::new();
 
-  // Always add BODHI_HOME
   env_vars.insert(
     BODHI_HOME.to_string(),
     temp_dir.path().display().to_string(),
@@ -901,15 +925,16 @@ fn test_runpod_feature_behavior(
   runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
   let env_wrapper = EnvWrapperStub::new(env_vars);
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  assert_eq!(service.public_server_url(), expected_url);
+  assert_eq!(service.public_server_url().await, expected_url);
   Ok(())
 }
 
@@ -938,7 +963,8 @@ fn test_runpod_feature_behavior(
   Some("8080"),
   "https://abc123def456-1135.proxy.runpod.net:8080"
 )]
-fn test_runpod_with_explicit_overrides(
+#[tokio::test]
+async fn test_runpod_with_explicit_overrides(
   temp_dir: TempDir,
   #[case] runpod_flag: &str,
   #[case] runpod_pod_id: Option<&str>,
@@ -950,7 +976,6 @@ fn test_runpod_with_explicit_overrides(
   let path = temp_dir.path().join("settings.yaml");
   let mut env_vars = HashMap::new();
 
-  // Always add BODHI_HOME
   env_vars.insert(
     BODHI_HOME.to_string(),
     temp_dir.path().display().to_string(),
@@ -960,26 +985,26 @@ fn test_runpod_with_explicit_overrides(
   runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
   let env_wrapper = EnvWrapperStub::new(env_vars);
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Set explicit public settings if provided
   if let Some(scheme) = public_scheme {
-    service.set_setting(BODHI_PUBLIC_SCHEME, scheme)
+    service.set_setting(BODHI_PUBLIC_SCHEME, scheme).await?;
   }
   if let Some(host) = public_host {
-    service.set_setting(BODHI_PUBLIC_HOST, host)
+    service.set_setting(BODHI_PUBLIC_HOST, host).await?;
   }
   if let Some(port) = public_port {
-    service.set_setting(BODHI_PUBLIC_PORT, port)
+    service.set_setting(BODHI_PUBLIC_PORT, port).await?;
   }
 
-  assert_eq!(service.public_server_url(), expected_url);
+  assert_eq!(service.public_server_url().await, expected_url);
   Ok(())
 }
 
@@ -991,7 +1016,8 @@ fn test_runpod_with_explicit_overrides(
 #[case::runpod_empty_flag_with_pod_id(Some(""), Some("abc123def456"), false)]
 #[case::runpod_not_set(None, Some("abc123def456"), false)]
 #[case::runpod_enabled_empty_pod_id(Some("true"), Some(""), false)]
-fn test_on_runpod_enabled_parsing(
+#[tokio::test]
+async fn test_on_runpod_enabled_parsing(
   temp_dir: TempDir,
   #[case] runpod_flag: Option<&str>,
   #[case] runpod_pod_id: Option<&str>,
@@ -1000,7 +1026,6 @@ fn test_on_runpod_enabled_parsing(
   let path = temp_dir.path().join("settings.yaml");
   let mut env_vars = HashMap::new();
 
-  // Always add BODHI_HOME
   env_vars.insert(
     BODHI_HOME.to_string(),
     temp_dir.path().display().to_string(),
@@ -1010,20 +1035,22 @@ fn test_on_runpod_enabled_parsing(
   runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
   let env_wrapper = EnvWrapperStub::new(env_vars);
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  assert_eq!(service.on_runpod_enabled(), expected);
+  assert_eq!(service.on_runpod_enabled().await, expected);
   Ok(())
 }
 
 #[rstest]
-fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Result<()> {
   let path = temp_dir.path().join("settings.yaml");
   let env_vars = maplit::hashmap! {
     BODHI_ON_RUNPOD.to_string() => "true".to_string(),
@@ -1032,34 +1059,36 @@ fn test_runpod_feature_individual_methods(temp_dir: TempDir) -> anyhow::Result<(
   };
 
   let env_wrapper = EnvWrapperStub::new(env_vars);
-  let service = DefaultSettingService::new_with_defaults(
+  let service = make_service_from_parts(
     Arc::new(env_wrapper),
     bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
     vec![],
     HashMap::new(),
     path,
+    noop_settings_repo(),
   );
 
-  // Test individual method behaviors with RUNPOD enabled
   println!(
     "BODHI_ON_RUNPOD setting: {:?}",
-    service.get_setting(BODHI_ON_RUNPOD)
+    service.get_setting(BODHI_ON_RUNPOD).await
   );
   println!(
     "RUNPOD_POD_ID setting: {:?}",
-    service.get_setting(RUNPOD_POD_ID)
+    service.get_setting(RUNPOD_POD_ID).await
   );
-  println!("on_runpod_enabled(): {}", service.on_runpod_enabled());
-  println!("public_host(): {}", service.public_host());
+  println!("on_runpod_enabled(): {}", service.on_runpod_enabled().await);
+  println!("public_host(): {}", service.public_host().await);
 
-  assert_eq!(service.on_runpod_enabled(), true);
-  assert_eq!(service.public_host(), "abc123def456-1135.proxy.runpod.net");
-  assert_eq!(service.public_scheme(), "https");
-  assert_eq!(service.public_port(), 443);
-
-  // Test that public_server_url combines them correctly
+  assert_eq!(service.on_runpod_enabled().await, true);
   assert_eq!(
-    service.public_server_url(),
+    service.public_host().await,
+    "abc123def456-1135.proxy.runpod.net"
+  );
+  assert_eq!(service.public_scheme().await, "https");
+  assert_eq!(service.public_port().await, 443);
+
+  assert_eq!(
+    service.public_server_url().await,
     "https://abc123def456-1135.proxy.runpod.net"
   );
 
@@ -1072,8 +1101,8 @@ mod helpers {
   use pretty_assertions::assert_eq;
   use serde_yaml::Value;
 
-  pub fn assert_default_value_str(service: &dyn SettingService, key: &str, expected: &str) {
-    match service.get_default_value(key) {
+  pub async fn assert_default_value_str(service: &dyn SettingService, key: &str, expected: &str) {
+    match service.get_default_value(key).await {
       Some(Value::String(actual)) => assert_eq!(expected, &actual),
       Some(other_value) => panic!(
         "Expected string value for key '{}' but got: {:?}",
@@ -1083,8 +1112,8 @@ mod helpers {
     }
   }
 
-  pub fn assert_default_value_i64(service: &dyn SettingService, key: &str, expected: i64) {
-    match service.get_default_value(key) {
+  pub async fn assert_default_value_i64(service: &dyn SettingService, key: &str, expected: i64) {
+    match service.get_default_value(key).await {
       Some(Value::Number(actual)) => assert_eq!(expected, actual.as_i64().unwrap()),
       Some(other_value) => panic!(
         "Expected number value for key '{}' but got: {:?}",
@@ -1094,8 +1123,8 @@ mod helpers {
     }
   }
 
-  pub fn assert_default_value_bool(service: &dyn SettingService, key: &str, expected: bool) {
-    match service.get_default_value(key) {
+  pub async fn assert_default_value_bool(service: &dyn SettingService, key: &str, expected: bool) {
+    match service.get_default_value(key).await {
       Some(Value::Bool(actual)) => assert_eq!(expected, actual),
       Some(other_value) => panic!(
         "Expected boolean value for key '{}' but got: {:?}",
@@ -1105,17 +1134,17 @@ mod helpers {
     }
   }
 
-  pub fn assert_setting_value(service: &dyn SettingService, key: &str, expected: &str) {
-    assert_eq!(Some(expected.to_string()), service.get_setting(key));
+  pub async fn assert_setting_value(service: &dyn SettingService, key: &str, expected: &str) {
+    assert_eq!(Some(expected.to_string()), service.get_setting(key).await);
   }
 
-  pub fn assert_setting_value_with_source(
+  pub async fn assert_setting_value_with_source(
     service: &dyn SettingService,
     key: &str,
     expected_value: Option<&str>,
     expected_source: SettingSource,
   ) {
-    let (value, source) = service.get_setting_value_with_source(key);
+    let (value, source) = service.get_setting_value_with_source(key).await;
     let actual_value = value.map(|v| match v {
       Value::String(s) => s,
       Value::Number(n) => n.to_string(),

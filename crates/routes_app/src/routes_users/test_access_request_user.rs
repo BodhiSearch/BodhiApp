@@ -6,7 +6,7 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{
   body::Body,
-  http::{Request, StatusCode},
+  http::Request,
   routing::{get, post},
   Router,
 };

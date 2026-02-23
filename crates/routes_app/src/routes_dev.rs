@@ -54,6 +54,7 @@ pub async fn envs_handler(State(state): State<Arc<dyn RouterState>>) -> Result<R
     .app_service()
     .setting_service()
     .list()
+    .await
     .into_iter()
     .collect::<Vec<_>>();
   Ok((StatusCode::OK, Json(envs)).into_response())

@@ -99,22 +99,24 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let exec_path = service.setting_service().exec_path_from();
+    let exec_path = service.setting_service().exec_path_from().await;
     if !exec_path.exists() {
       error!("exec not found at {}", exec_path.to_string_lossy());
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
       ))?;
     }
-    let ctx = DefaultSharedContext::new(service.hub_service(), service.setting_service());
+    let ctx = DefaultSharedContext::new(service.hub_service(), service.setting_service()).await;
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
-    setting_service.add_listener(Arc::new(VariantChangeListener::new(ctx.clone())));
+    setting_service
+      .add_listener(Arc::new(VariantChangeListener::new(ctx.clone())))
+      .await;
 
     let keep_alive = Arc::new(ServerKeepAlive::new(
       ctx.clone(),
-      setting_service.keep_alive(),
+      setting_service.keep_alive().await,
     ));
-    setting_service.add_listener(keep_alive.clone());
+    setting_service.add_listener(keep_alive.clone()).await;
     ctx.add_state_listener(keep_alive).await;
 
     // Create static router from directory if provided
@@ -123,10 +125,10 @@ impl ServeCommand {
       Router::new().fallback_service(static_service)
     });
 
-    let app = build_routes(ctx.clone(), service, static_router);
-    let scheme = setting_service.scheme();
+    let app = build_routes(ctx.clone(), service, static_router).await;
+    let scheme = setting_service.scheme().await;
     let server_url = format!("{scheme}://{host}:{port}");
-    let public_url = setting_service.public_server_url();
+    let public_url = setting_service.public_server_url().await;
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
       let callback = Box::new(ShutdownContextCallback { ctx });

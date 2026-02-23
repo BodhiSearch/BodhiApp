@@ -17,9 +17,10 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
+  db::{DbSetting, MockSettingsRepository},
   test_utils::{bodhi_home_setting, AppServiceStubBuilder, EnvWrapperStub},
-  DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST, BODHI_LOG_LEVEL,
-  BODHI_PORT,
+  BootstrapParts, DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST,
+  BODHI_LOG_LEVEL, BODHI_PORT,
 };
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tempfile::TempDir;
@@ -34,21 +35,56 @@ async fn app(app_service: Arc<dyn services::AppService>) -> Router {
     .with_state(Arc::new(router_state))
 }
 
-fn test_setting_service(
+fn noop_settings_repo() -> Arc<MockSettingsRepository> {
+  let mut mock = MockSettingsRepository::new();
+  let store: Arc<std::sync::RwLock<HashMap<String, DbSetting>>> =
+    Arc::new(std::sync::RwLock::new(HashMap::new()));
+  let store_get = store.clone();
+  let store_upsert = store.clone();
+  let store_delete = store.clone();
+  let store_list = store;
+  mock
+    .expect_get_setting()
+    .returning(move |key| Ok(store_get.read().unwrap().get(key).cloned()));
+  mock.expect_upsert_setting().returning(move |setting| {
+    store_upsert
+      .write()
+      .unwrap()
+      .insert(setting.key.clone(), setting.clone());
+    Ok(setting.clone())
+  });
+  mock.expect_delete_setting().returning(move |key| {
+    store_delete.write().unwrap().remove(key);
+    Ok(())
+  });
+  mock
+    .expect_list_settings()
+    .returning(move || Ok(store_list.read().unwrap().values().cloned().collect()));
+  Arc::new(mock)
+}
+
+async fn test_setting_service(
   temp_dir: &TempDir,
   envs: HashMap<String, String>,
   settings: HashMap<String, serde_yaml::Value>,
 ) -> Result<DefaultSettingService, anyhow::Error> {
   let settings_yaml = temp_dir.path().join("settings.yaml");
-  let setting_service = DefaultSettingService::new_with_defaults(
-    Arc::new(EnvWrapperStub::new(envs)),
-    bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
-    vec![],
-    HashMap::new(),
-    settings_yaml,
+  let bodhi_home = temp_dir.path().to_path_buf();
+  let bodhi_home_s = bodhi_home_setting(temp_dir.path(), SettingSource::Environment);
+  let setting_service = DefaultSettingService::from_parts(
+    BootstrapParts {
+      env_wrapper: Arc::new(EnvWrapperStub::new(envs)),
+      settings_file: settings_yaml,
+      system_settings: vec![bodhi_home_s],
+      file_defaults: HashMap::new(),
+      app_settings: HashMap::new(),
+      app_command: objs::AppCommand::Default,
+      bodhi_home,
+    },
+    noop_settings_repo(),
   );
   for (key, value) in settings {
-    setting_service.set_setting_value(&key, &value);
+    setting_service.set_setting_value(&key, &value).await?;
   }
   Ok(setting_service)
 }
@@ -67,7 +103,8 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     maplit::hashmap! {
       BODHI_PORT.to_string() => serde_yaml::Value::Number(serde_yaml::Number::from_str("8080")?),
     },
-  )?;
+  )
+  .await?;
 
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
@@ -113,7 +150,7 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
     key: "BODHI_PORT".to_string(),
     current_value: serde_yaml::Value::Number(serde_yaml::Number::from(8080)),
     default_value: serde_yaml::Value::Number(serde_yaml::Number::from(1135)),
-    source: SettingSource::SettingsFile,
+    source: SettingSource::Database,
     metadata: SettingMetadata::Number { min: 1, max: 65535 },
   };
   assert_eq!(
@@ -129,7 +166,8 @@ async fn test_routes_settings_list(temp_dir: TempDir) -> anyhow::Result<()> {
 #[tokio::test]
 #[anyhow_trace]
 async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -164,7 +202,8 @@ async fn test_routes_setting_update_success(temp_dir: TempDir) -> anyhow::Result
 #[tokio::test]
 #[anyhow_trace]
 async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -194,11 +233,45 @@ async fn test_routes_setting_update_invalid_key(temp_dir: TempDir) -> anyhow::Re
 }
 
 #[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_routes_setting_update_unsupported_key(temp_dir: TempDir) -> anyhow::Result<()> {
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
+  let app_service = AppServiceStubBuilder::default()
+    .setting_service(Arc::new(setting_service))
+    .build()
+    .await?;
+  let app = app(Arc::new(app_service)).await;
+
+  // WHEN updating a setting that exists but is not editable
+  let response = app
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/v1/bodhi/settings/BODHI_PORT")
+        .json(json! {{ "value": 8080 }})?,
+    )
+    .await?;
+
+  // THEN it fails with unsupported
+  assert_eq!(StatusCode::BAD_REQUEST, response.status());
+  let error = response.json::<serde_json::Value>().await?;
+  assert_eq!(
+    Some("settings_error-unsupported"),
+    error["error"]["code"].as_str()
+  );
+
+  Ok(())
+}
+
+#[rstest]
 #[ignore = "enable when supporting editing other settings"]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::Result<()> {
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -232,7 +305,8 @@ async fn test_routes_setting_update_invalid_value(temp_dir: TempDir) -> anyhow::
 async fn test_routes_setting_update_invalid_value_out_of_range(
   temp_dir: TempDir,
 ) -> anyhow::Result<()> {
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -270,7 +344,8 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
     maplit::hashmap! {
       BODHI_EXEC_VARIANT.to_string() => serde_yaml::Value::String("metal".to_string()),
     },
-  )?;
+  )
+  .await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -307,7 +382,8 @@ async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
 #[anyhow_trace]
 async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -348,7 +424,7 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
     maplit::hashmap! {
       BODHI_EXEC_VARIANT.to_string() => serde_yaml::Value::String("aarch64-unknown-linux-gnu/cuda/llama-server".to_string()),
     },
-  )?;
+  ).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()
@@ -385,7 +461,8 @@ async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Res
 #[anyhow_trace]
 async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()> {
   // GIVEN an app with no custom settings
-  let setting_service = test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+  let setting_service =
+    test_setting_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {}).await?;
   let app_service = AppServiceStubBuilder::default()
     .setting_service(Arc::new(setting_service))
     .build()

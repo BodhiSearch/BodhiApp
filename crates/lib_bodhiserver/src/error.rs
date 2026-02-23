@@ -22,13 +22,10 @@ impl From<AppOptionsError> for ErrorMessage {
 }
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum AppDirsBuilderError {
+pub enum BootstrapError {
   #[error("failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
-  BodhiHomeNotFound,
-  #[error("failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  HfHomeNotFound,
+  BodhiHomeNotResolved,
   #[error("io_error: failed to create directory {path}, error: {source}")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   DirCreate {
@@ -36,20 +33,13 @@ pub enum AppDirsBuilderError {
     source: io::Error,
     path: String,
   },
-  #[error("io_error: failed to update the file {path}, error: {source}")]
+  #[error("BODHI_HOME value must be set")]
   #[error_meta(error_type = ErrorType::InternalServer)]
-  IoFileWrite {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("setting_error: failed to update the setting, check $BODHI_HOME/settings.yaml has write permission")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  SettingServiceError,
+  BodhiHomeNotSet,
 }
 
-impl From<AppDirsBuilderError> for ErrorMessage {
-  fn from(value: AppDirsBuilderError) -> Self {
+impl From<BootstrapError> for ErrorMessage {
+  fn from(value: BootstrapError) -> Self {
     ErrorMessage::new(value.code(), value.error_type(), value.to_string())
   }
 }
@@ -73,16 +63,18 @@ pub enum AppServiceBuilderError {
 
 #[cfg(test)]
 mod tests {
-  use crate::AppDirsBuilderError;
+  use crate::BootstrapError;
   use rstest::rstest;
 
   #[rstest]
-  #[case(AppDirsBuilderError::BodhiHomeNotFound,
+  #[case(BootstrapError::BodhiHomeNotResolved,
     "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  #[case(AppDirsBuilderError::HfHomeNotFound,
-    "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
+  #[case(
+    BootstrapError::BodhiHomeNotSet,
+    "BODHI_HOME value must be set"
+  )]
   fn test_app_dirs_builder_error_messages(
-    #[case] error: AppDirsBuilderError,
+    #[case] error: BootstrapError,
     #[case] message: String,
   ) {
     assert_eq!(message, error.to_string());

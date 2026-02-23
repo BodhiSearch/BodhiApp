@@ -69,7 +69,7 @@ use tracing::{debug, info, Level};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-pub fn build_routes(
+pub async fn build_routes(
   ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
@@ -105,7 +105,7 @@ pub fn build_routes(
     .route(ENDPOINT_USER_REQUEST_STATUS, get(request_status_handler));
 
   // Dev-only routes with optional auth
-  if !app_service.setting_service().is_production() {
+  if !app_service.setting_service().is_production().await {
     let dev_apis = Router::new()
       .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
       .route(ENDPOINT_DEV_ENVS, get(envs_handler))
@@ -483,7 +483,9 @@ pub fn build_routes(
     .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
   let mut openapi = BodhiOpenAPIDoc::openapi();
-  OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);
+  OpenAPIEnvModifier::new(app_service.setting_service())
+    .modify(&mut openapi)
+    .await;
   GlobalErrorResponses.modify(&mut openapi);
 
   // Build final router
@@ -507,7 +509,8 @@ pub fn build_routes(
     router,
     static_router,
     proxy_router("http://localhost:3000".to_string()),
-  );
+  )
+  .await;
   router
     .layer(app_service.session_service().session_layer())
     .layer(from_fn_with_state(
@@ -517,7 +520,7 @@ pub fn build_routes(
     .layer(info_trace)
 }
 
-fn apply_ui_router(
+async fn apply_ui_router(
   setting_service: &Arc<dyn SettingService>,
   router: Router,
   static_router: Option<Router>,
@@ -525,10 +528,11 @@ fn apply_ui_router(
 ) -> Router {
   let proxy_ui = setting_service
     .get_dev_env(BODHI_DEV_PROXY_UI)
+    .await
     .map(|val| val.parse::<bool>().unwrap_or_default())
     .unwrap_or_default();
 
-  match setting_service.is_production() {
+  match setting_service.is_production().await {
     true => {
       if let Some(static_router) = static_router {
         debug!("serving ui from embedded assets");

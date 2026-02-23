@@ -64,17 +64,14 @@ pub async fn ollama_models_handler(
       })
     })?;
 
-  let models = aliases
-    .into_iter()
-    .filter_map(|alias| {
-      // Only include User and Model aliases for Ollama
-      match alias {
-        Alias::User(user) => Some(user_alias_to_ollama_model(state.clone(), user)),
-        Alias::Model(model) => Some(model_alias_to_ollama_model(state.clone(), model)),
-        Alias::Api(_) => None, // Skip API aliases for Ollama
-      }
-    })
-    .collect::<Vec<_>>();
+  let mut models = Vec::new();
+  for alias in aliases {
+    match alias {
+      Alias::User(user) => models.push(user_alias_to_ollama_model(state.clone(), user)),
+      Alias::Model(model) => models.push(model_alias_to_ollama_model(state.clone(), model).await),
+      Alias::Api(_) => {}
+    }
+  }
 
   Ok(Json(ModelsResponse { models }))
 }
@@ -96,9 +93,9 @@ pub fn user_alias_to_ollama_model(_state: Arc<dyn RouterState>, alias: UserAlias
   }
 }
 
-pub fn model_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
+pub async fn model_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
   // Construct path from HF cache structure
-  let hf_cache = state.app_service().setting_service().hf_cache();
+  let hf_cache = state.app_service().setting_service().hf_cache().await;
   let path = hf_cache
     .join(alias.repo.path())
     .join("snapshots")
@@ -184,11 +181,11 @@ pub async fn ollama_model_show_handler(
         error: "model not found".to_string(),
       })
     })?;
-  let model = alias_to_ollama_model_show(state, alias);
+  let model = alias_to_ollama_model_show(state, alias).await;
   Ok(Json(model))
 }
 
-pub fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
+pub async fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
   match alias {
     Alias::User(user_alias) => {
       let request_params = serde_yaml::to_string(&user_alias.request_params).unwrap_or_default();
@@ -209,7 +206,7 @@ pub fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> 
     }
     Alias::Model(model_alias) => {
       // Create a minimal ShowResponse for auto-discovered models
-      let model = model_alias_to_ollama_model(state, model_alias.clone());
+      let model = model_alias_to_ollama_model(state, model_alias.clone()).await;
       ShowResponse {
         details: model.details,
         license: "".to_string(),

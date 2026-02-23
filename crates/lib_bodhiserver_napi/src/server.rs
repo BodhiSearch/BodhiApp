@@ -3,12 +3,13 @@ use crate::{
   BODHI_HOST, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
 };
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, update_with_option, ApiError, AppService, OpenAIApiError,
-  ServeCommand, ServerShutdownHandle, SettingService, BODHI_LOG_STDOUT, DEFAULT_HOST, DEFAULT_PORT,
-  DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
+  build_app_service, setup_app_dirs, setup_bootstrap_service, update_with_option, ApiError,
+  AppCommand, AppService, BootstrapService, OpenAIApiError, ServeCommand, ServerShutdownHandle,
+  DEFAULT_HOST, DEFAULT_PORT, DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
+use std::fs;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::Mutex;
@@ -137,28 +138,44 @@ impl BodhiServer {
     })?;
 
     // Setup app directories and settings
-    let setting_service = Arc::new(setup_app_dirs(&app_options).map_err(|e| {
+    let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options).map_err(|e| {
       Error::new(
         Status::GenericFailure,
         format!("Failed to setup app dirs: {}", e),
       )
-    })?);
+    })?;
+    let bootstrap = setup_bootstrap_service(
+      &app_options,
+      bodhi_home,
+      source,
+      file_defaults,
+      AppCommand::Default,
+    )
+    .map_err(|e| {
+      Error::new(
+        Status::GenericFailure,
+        format!("Failed to setup bootstrap service: {}", e),
+      )
+    })?;
 
     // Setup logging
-    let log_guard = setup_logs(&setting_service);
+    let log_guard = setup_logs(&bootstrap).map_err(|e| {
+      Error::new(
+        Status::GenericFailure,
+        format!("Failed to setup logs: {}", e),
+      )
+    })?;
     self.log_guard = Some(log_guard);
+    let parts = bootstrap.into_parts();
 
     // Build the app service
-    let app_service: Arc<dyn AppService> = Arc::new(
-      build_app_service(setting_service.clone())
-        .await
-        .map_err(|e| {
-          Error::new(
-            Status::GenericFailure,
-            format!("Failed to build app service: {}", e),
-          )
-        })?,
-    );
+    let app_service: Arc<dyn AppService> =
+      Arc::new(build_app_service(parts).await.map_err(|e| {
+        Error::new(
+          Status::GenericFailure,
+          format!("Failed to build app service: {}", e),
+        )
+      })?);
     update_with_option(&app_service, (&app_options).into())
       .map_err(|err| Error::new(Status::GenericFailure, err))?;
     // Create and start the server
@@ -248,15 +265,17 @@ impl BodhiServer {
   }
 }
 
-fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> WorkerGuard {
+fn setup_logs(
+  setting_service: &BootstrapService,
+) -> std::result::Result<WorkerGuard, std::io::Error> {
   let logs_dir = setting_service.logs_dir();
+  fs::create_dir_all(&logs_dir)?;
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
   let log_level: LevelFilter = setting_service.log_level().into();
   let log_level = log_level.to_string();
   let filter = EnvFilter::new(&log_level);
   let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
-  // Reduce verbose middleware logging noise
   let filter = filter.add_directive("tower_sessions=warn".parse().expect("is a valid directive"));
   let filter = filter.add_directive("tower_http=warn".parse().expect("is a valid directive"));
   let filter = filter.add_directive(
@@ -265,12 +284,7 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
       .expect("is a valid directive"),
   );
 
-  // Check if we should output to stdout
-  let enable_stdout = cfg!(debug_assertions)
-    || setting_service
-      .get_setting(BODHI_LOG_STDOUT)
-      .map(|v| v == "1" || v.to_lowercase() == "true")
-      .unwrap_or(false);
+  let enable_stdout = cfg!(debug_assertions) || setting_service.log_stdout();
 
   let subscriber = tracing_subscriber::registry().with(filter);
 
@@ -299,7 +313,6 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
       )
       .try_init()
   };
-  // Handle the case where subscriber is already set (e.g., in tests)
   if result.is_err() {
     #[cfg(debug_assertions)]
     {
@@ -314,13 +327,11 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
       );
     }
   }
-  guard
+  Ok(guard)
 }
 
 impl Drop for BodhiServer {
   fn drop(&mut self) {
-    // We can't use async in Drop, but we can at least handle cleanup
-    // The server shutdown should happen explicitly via stop()
     if let Some(_temp_dir) = self.temp_dir.take() {
       // temp_dir will be automatically cleaned up when dropped
     }

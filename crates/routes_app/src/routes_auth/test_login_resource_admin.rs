@@ -18,7 +18,7 @@ use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedCont
 use services::{
   test_utils::{
     test_auth_service, token, AppServiceStub, AppServiceStubBuilder, SecretServiceStub,
-    SessionTestExt, SettingServiceStub,
+    SettingServiceStub,
   },
   AppRegInfo, AppService, AppStatus, SecretServiceExt, SqliteSessionService, BODHI_AUTH_URL,
 };
@@ -81,12 +81,14 @@ async fn setup_app_service_resource_admin(
   let secret_service = Arc::new(secret_service);
   let auth_service = Arc::new(test_auth_service(auth_server_url));
   let setting_service = Arc::new(
-    SettingServiceStub::default().append_settings(HashMap::from([
-      (BODHI_SCHEME.to_string(), "http".to_string()),
-      (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
-      (BODHI_PORT.to_string(), "3000".to_string()),
-      (BODHI_AUTH_URL.to_string(), auth_server_url.to_string()),
-    ])),
+    SettingServiceStub::default()
+      .append_settings(HashMap::from([
+        (BODHI_SCHEME.to_string(), "http".to_string()),
+        (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+        (BODHI_PORT.to_string(), "3000".to_string()),
+        (BODHI_AUTH_URL.to_string(), auth_server_url.to_string()),
+      ]))
+      .await,
   );
   let app_service = AppServiceStubBuilder::default()
     .secret_service(secret_service)

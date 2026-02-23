@@ -116,27 +116,48 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     },
   ];
 
+  // Create SQLite databases early (before setting_service, which needs db_service)
+  let app_db_path = bodhi_home.join("bodhi.sqlite");
+  fs::File::create_new(&app_db_path)?;
+  let session_db_path = bodhi_home.join("session.sqlite");
+  fs::File::create_new(&session_db_path)?;
+
+  // Build time service first (no dependencies)
+  let time_service = Arc::new(DefaultTimeService);
+
+  // Build DB service with pool (needed by setting_service)
+  let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
+  let encryption_key = hash_key(&encryption_key_raw);
+  let app_db_url = format!("sqlite:{}", app_db_path.display());
+  let app_pool = SqlitePool::connect(&app_db_url).await?;
+  let db_service = Arc::new(SqliteDbService::new(
+    app_pool,
+    time_service.clone(),
+    encryption_key.clone(),
+  ));
+  db_service.migrate().await?;
+
   // Build settings service directly
   let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let setting_service = DefaultSettingService::new_with_defaults(
-    env_wrapper.clone(),
-    Setting {
-      key: BODHI_HOME.to_string(),
-      value: YamlValue::String(bodhi_home.display().to_string()),
-      source: SettingSource::Environment,
-      metadata: SettingMetadata::String,
+  let mut system_settings = app_settings;
+  system_settings.push(Setting {
+    key: BODHI_HOME.to_string(),
+    value: YamlValue::String(bodhi_home.display().to_string()),
+    source: SettingSource::Environment,
+    metadata: SettingMetadata::String,
+  });
+  let setting_service = DefaultSettingService::from_parts(
+    services::BootstrapParts {
+      env_wrapper: env_wrapper.clone(),
+      settings_file,
+      system_settings,
+      file_defaults: HashMap::new(),
+      app_settings: HashMap::new(),
+      app_command: objs::AppCommand::Default,
+      bodhi_home: bodhi_home.clone(),
     },
-    app_settings,
-    HashMap::new(), // empty file_defaults
-    settings_file,
+    db_service.clone(),
   );
-  setting_service.load_default_env();
-
-  // Create SQLite databases
-  let app_db_path = setting_service.app_db_path();
-  fs::File::create_new(&app_db_path)?;
-  let session_db_path = setting_service.session_db_path();
-  fs::File::create_new(&session_db_path)?;
 
   // Setup OAuth resource client from pre-configured env vars
   let resource_client_id = std::env::var("INTEG_TEST_RESOURCE_CLIENT_ID")
@@ -147,9 +168,8 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SCOPE not set"))?;
 
   // Create secret service with app registration
-  let encryption_key = setting_service.encryption_key().unwrap();
-  let encryption_key = hash_key(&encryption_key);
-  let secret_service = DefaultSecretService::new(&encryption_key, &setting_service.secrets_path())?;
+  let secret_service =
+    DefaultSecretService::new(&encryption_key, &setting_service.secrets_path().await)?;
   let app_reg_info = AppRegInfoBuilder::default()
     .client_id(resource_client_id)
     .client_secret(resource_client_secret)
@@ -157,20 +177,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .build()?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::Ready)?;
-
-  // Build time service first (no dependencies)
-  let time_service = Arc::new(DefaultTimeService);
-
-  // Build DB service with pool
-  let app_db_url = format!("sqlite:{}", app_db_path.display());
-  let app_pool = SqlitePool::connect(&app_db_url).await?;
-  let encryption_key = hash_key(&setting_service.encryption_key().unwrap());
-  let db_service = Arc::new(SqliteDbService::new(
-    app_pool,
-    time_service.clone(),
-    encryption_key,
-  ));
-  db_service.migrate().await?;
 
   // Build session service with pool and run migrations
   let session_db_url = format!("sqlite:{}", session_db_path.display());
@@ -183,7 +189,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let setting_service = Arc::new(setting_service);
 
   // Build hub service (offline wrapper around real HfHubService)
-  let hf_cache = setting_service.hf_cache();
+  let hf_cache = setting_service.hf_cache().await;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
@@ -224,7 +230,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     auth_service.clone(),
     secret_service.clone(),
     time_service.clone(),
-    setting_service.public_server_url(),
+    setting_service.public_server_url().await,
   ));
 
   // Build network service (need to provide ip field for struct)
@@ -304,8 +310,8 @@ pub struct TestServerHandle {
 
 pub async fn get_oauth_tokens(app_service: &dyn AppService) -> anyhow::Result<(String, String)> {
   let setting_service = app_service.setting_service();
-  let auth_url = setting_service.auth_url();
-  let realm = setting_service.auth_realm();
+  let auth_url = setting_service.auth_url().await;
+  let realm = setting_service.auth_realm().await;
   let app_reg_info = app_service
     .secret_service()
     .app_reg_info()?
@@ -468,32 +474,52 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     },
   ];
 
-  // Build settings service directly
-  let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let setting_service = DefaultSettingService::new_with_defaults(
-    env_wrapper.clone(),
-    Setting {
-      key: BODHI_HOME.to_string(),
-      value: YamlValue::String(bodhi_home.display().to_string()),
-      source: SettingSource::Environment,
-      metadata: SettingMetadata::String,
-    },
-    app_settings,
-    HashMap::new(),
-    settings_file,
-  );
-  setting_service.load_default_env();
-
-  // Create SQLite databases
-  let app_db_path = setting_service.app_db_path();
+  // Create SQLite databases early (before setting_service, which needs db_service)
+  let app_db_path = bodhi_home.join("bodhi.sqlite");
   fs::File::create_new(&app_db_path)?;
-  let session_db_path = setting_service.session_db_path();
+  let session_db_path = bodhi_home.join("session.sqlite");
   fs::File::create_new(&session_db_path)?;
 
+  // Build time service first (no dependencies)
+  let time_service = Arc::new(DefaultTimeService);
+
+  // Build DB service with pool (needed by setting_service)
+  let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
+  let encryption_key = hash_key(&encryption_key_raw);
+  let app_db_url = format!("sqlite:{}", app_db_path.display());
+  let app_pool = SqlitePool::connect(&app_db_url).await?;
+  let db_service = Arc::new(SqliteDbService::new(
+    app_pool,
+    time_service.clone(),
+    encryption_key.clone(),
+  ));
+  db_service.migrate().await?;
+
+  // Build settings service directly
+  let settings_file = bodhi_home.join(SETTINGS_YAML);
+  let mut system_settings = app_settings;
+  system_settings.push(Setting {
+    key: BODHI_HOME.to_string(),
+    value: YamlValue::String(bodhi_home.display().to_string()),
+    source: SettingSource::Environment,
+    metadata: SettingMetadata::String,
+  });
+  let setting_service = DefaultSettingService::from_parts(
+    services::BootstrapParts {
+      env_wrapper: env_wrapper.clone(),
+      settings_file,
+      system_settings,
+      file_defaults: HashMap::new(),
+      app_settings: HashMap::new(),
+      app_command: objs::AppCommand::Default,
+      bodhi_home: bodhi_home.clone(),
+    },
+    db_service.clone(),
+  );
+
   // Create secret service with test app registration (no real Keycloak client)
-  let encryption_key = setting_service.encryption_key().unwrap();
-  let encryption_key = hash_key(&encryption_key);
-  let secret_service = DefaultSecretService::new(&encryption_key, &setting_service.secrets_path())?;
+  let secret_service =
+    DefaultSecretService::new(&encryption_key, &setting_service.secrets_path().await)?;
   let app_reg_info = AppRegInfoBuilder::default()
     .client_id("test-resource-client".to_string())
     .client_secret("test-resource-secret".to_string())
@@ -501,20 +527,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     .build()?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::Ready)?;
-
-  // Build time service first (no dependencies)
-  let time_service = Arc::new(DefaultTimeService);
-
-  // Build DB service with pool
-  let app_db_url = format!("sqlite:{}", app_db_path.display());
-  let app_pool = SqlitePool::connect(&app_db_url).await?;
-  let encryption_key = hash_key(&setting_service.encryption_key().unwrap());
-  let db_service = Arc::new(SqliteDbService::new(
-    app_pool,
-    time_service.clone(),
-    encryption_key,
-  ));
-  db_service.migrate().await?;
 
   // Build session service with pool and run migrations
   let session_db_url = format!("sqlite:{}", session_db_path.display());
@@ -526,7 +538,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   let setting_service = Arc::new(setting_service);
 
   // Build hub service (offline wrapper around real HfHubService)
-  let hf_cache = setting_service.hf_cache();
+  let hf_cache = setting_service.hf_cache().await;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
@@ -554,7 +566,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     auth_service.clone(),
     secret_service.clone(),
     time_service.clone(),
-    setting_service.public_server_url(),
+    setting_service.public_server_url().await,
   ));
   let network_service = Arc::new(StubNetworkService {
     ip: Some("127.0.0.1".to_string()),

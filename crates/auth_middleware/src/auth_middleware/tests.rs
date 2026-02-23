@@ -158,6 +158,7 @@ async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or
       BODHI_HOST => "bodhi.app",
       BODHI_PORT => "443",
     })
+    .await
     .build()
     .await?;
   let app_service = Arc::new(app_service);

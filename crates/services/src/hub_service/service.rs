@@ -404,14 +404,15 @@ impl HfHubService {
     hf_cache: PathBuf,
     hf_env_token: Option<String>,
     progress_bar: bool,
-  ) -> Self {
+  ) -> std::result::Result<Self, std::io::Error> {
+    fs::create_dir_all(&hf_cache)?;
     let cache = Cache::new(hf_cache);
     let token = hf_env_token.or_else(|| cache.token());
-    Self {
+    Ok(Self {
       cache,
       progress_bar,
       token,
-    }
+    })
   }
 
   pub fn progress_bar(&mut self, progress_bar: bool) {

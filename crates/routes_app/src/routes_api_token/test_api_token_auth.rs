@@ -2,7 +2,6 @@ use anyhow_trace::anyhow_trace;
 use hyper::StatusCode;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use services::AppService;
 use tower::ServiceExt;
 
 #[anyhow_trace]

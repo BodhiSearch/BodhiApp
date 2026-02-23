@@ -23,7 +23,7 @@ use services::{
     build_token, AppServiceStub, AppServiceStubBuilder, SecretServiceStub, SessionTestExt,
     SettingServiceStub,
   },
-  AppRegInfo, AppService, AuthServiceError, MockAuthService, SecretServiceExt,
+  AppRegInfo, AppService, AuthServiceError, MockAuthService,
   SqliteSessionService,
 };
 use services::{AppStatus, BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
@@ -77,11 +77,13 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
       ))
     });
 
-  let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
-    (BODHI_SCHEME.to_string(), "http".to_string()),
-    (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
-    (BODHI_PORT.to_string(), "3000".to_string()),
-  ]));
+  let setting_service = SettingServiceStub::default()
+    .append_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+      (BODHI_PORT.to_string(), "3000".to_string()),
+    ]))
+    .await;
 
   let secret_service = SecretServiceStub::new()
     .with_app_reg_info(&AppRegInfo {
@@ -233,11 +235,13 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     });
 
   // Configure with 0.0.0.0 (loopback)
-  let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
-    (BODHI_SCHEME.to_string(), "http".to_string()),
-    (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
-    (BODHI_PORT.to_string(), "1135".to_string()),
-  ]));
+  let setting_service = SettingServiceStub::default()
+    .append_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (BODHI_PORT.to_string(), "1135".to_string()),
+    ]))
+    .await;
 
   let secret_service = SecretServiceStub::new()
     .with_app_reg_info(&AppRegInfo {

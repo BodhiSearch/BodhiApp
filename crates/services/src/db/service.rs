@@ -1,9 +1,8 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, DbCore, DbError, McpRepository, ModelRepository,
-  TimeService, TokenRepository, ToolsetRepository, UserAliasRepository,
+  SettingsRepository, TimeService, TokenRepository, ToolsetRepository, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
-use derive_new::new;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 
@@ -18,6 +17,7 @@ pub trait DbService:
   + ToolsetRepository
   + McpRepository
   + UserAliasRepository
+  + SettingsRepository
   + DbCore
   + Send
   + Sync
@@ -33,6 +33,7 @@ impl<T> DbService for T where
     + ToolsetRepository
     + McpRepository
     + UserAliasRepository
+    + SettingsRepository
     + DbCore
     + Send
     + Sync
@@ -40,13 +41,27 @@ impl<T> DbService for T where
 {
 }
 
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone)]
 pub struct SqliteDbService {
   pub(crate) pool: SqlitePool,
   pub(crate) time_service: Arc<dyn TimeService>,
   pub(crate) encryption_key: Vec<u8>,
 }
 
+impl SqliteDbService {
+  #[doc = "Constructs a new `SqliteDbService`."]
+  pub fn new(
+    pool: SqlitePool,
+    time_service: Arc<dyn TimeService>,
+    encryption_key: Vec<u8>,
+  ) -> Self {
+    SqliteDbService {
+      pool,
+      time_service,
+      encryption_key,
+    }
+  }
+}
 impl SqliteDbService {
   async fn seed_toolset_configs(&self) -> Result<(), DbError> {
     sqlx::query(
@@ -81,7 +96,8 @@ impl DbCore for SqliteDbService {
   async fn reset_all_tables(&self) -> Result<(), DbError> {
     // Delete in order to respect any future FK constraints
     sqlx::query(
-      "DELETE FROM app_access_requests;
+      "DELETE FROM settings;
+       DELETE FROM app_access_requests;
        DELETE FROM toolsets;
        DELETE FROM mcps;
        DELETE FROM mcp_oauth_tokens;

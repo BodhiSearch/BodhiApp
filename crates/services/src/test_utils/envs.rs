@@ -35,12 +35,21 @@ pub fn test_setting_service(
   SettingServiceStub::with_settings(envs)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SettingServiceStub {
   settings: Arc<RwLock<HashMap<String, serde_yaml::Value>>>,
   envs: HashMap<String, String>,
-  #[allow(unused)]
   temp_dir: Arc<TempDir>,
+}
+
+impl std::fmt::Debug for SettingServiceStub {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("SettingServiceStub")
+      .field("settings", &self.settings)
+      .field("envs", &self.envs)
+      .field("temp_dir", &self.temp_dir)
+      .finish()
+  }
 }
 
 impl SettingServiceStub {
@@ -78,10 +87,13 @@ impl SettingServiceStub {
     }
   }
 
-  pub fn append_settings(self, settings: HashMap<String, String>) -> Self {
+  pub async fn append_settings(self, settings: HashMap<String, String>) -> Self {
     let settings = Self::to_settings_value(settings);
     for (key, value) in settings {
-      self.set_setting_with_source(key.as_str(), &value, SettingSource::SettingsFile);
+      self
+        .set_setting_with_source(key.as_str(), &value, SettingSource::Database)
+        .await
+        .unwrap();
     }
     self
   }
@@ -156,12 +168,11 @@ impl Default for SettingServiceStub {
   }
 }
 
+#[async_trait::async_trait]
 impl SettingService for SettingServiceStub {
-  fn load(&self, _path: &Path) {}
+  async fn load(&self, _path: &Path) {}
 
-  fn load_default_env(&self) {}
-
-  fn home_dir(&self) -> Option<PathBuf> {
+  async fn home_dir(&self) -> Option<PathBuf> {
     self
       .settings
       .read()
@@ -170,7 +181,7 @@ impl SettingService for SettingServiceStub {
       .map(|home| PathBuf::from(home.as_str().unwrap()))
   }
 
-  fn list(&self) -> Vec<SettingInfo> {
+  async fn list(&self) -> Vec<SettingInfo> {
     self
       .settings
       .read()
@@ -181,27 +192,31 @@ impl SettingService for SettingServiceStub {
         current_value: value.clone(),
         default_value: serde_yaml::Value::Null,
         source: SettingSource::Environment,
-        metadata: self.get_setting_metadata(key),
+        metadata: get_metadata(key),
       })
       .collect()
   }
 
-  fn get_default_value(&self, _key: &str) -> Option<serde_yaml::Value> {
+  async fn get_default_value(&self, _key: &str) -> Option<serde_yaml::Value> {
     None
   }
 
-  fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
+  async fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
     get_metadata(key)
   }
 
-  fn get_env(&self, key: &str) -> Option<String> {
+  async fn get_env(&self, key: &str) -> Option<String> {
     self.envs.get(key).cloned()
   }
 
-  fn get_setting_value_with_source(&self, key: &str) -> (Option<serde_yaml::Value>, SettingSource) {
+  // Returns Database source for all found settings; stub does not distinguish source layers
+  async fn get_setting_value_with_source(
+    &self,
+    key: &str,
+  ) -> (Option<serde_yaml::Value>, SettingSource) {
     let lock = self.settings.read().unwrap();
     match lock.get(key).cloned() {
-      Some(value) => (Some(value), SettingSource::SettingsFile),
+      Some(value) => (Some(value), SettingSource::Database),
       None if key.starts_with("BODHI_PUBLIC_") => (
         Some(
           lock
@@ -215,18 +230,24 @@ impl SettingService for SettingServiceStub {
     }
   }
 
-  fn set_setting_with_source(&self, key: &str, value: &serde_yaml::Value, _source: SettingSource) {
+  async fn set_setting_with_source(
+    &self,
+    key: &str,
+    value: &serde_yaml::Value,
+    _source: SettingSource,
+  ) -> Result<(), SettingServiceError> {
     let mut lock = self.settings.write().unwrap();
     lock.insert(key.to_string(), value.clone());
+    Ok(())
   }
 
-  fn delete_setting(&self, key: &str) -> Result<(), SettingServiceError> {
+  async fn delete_setting(&self, key: &str) -> Result<(), SettingServiceError> {
     let mut lock = self.settings.write().unwrap();
     lock.remove(key);
     Ok(())
   }
 
-  fn add_listener(&self, _listener: Arc<dyn SettingsChangeListener>) {}
+  async fn add_listener(&self, _listener: Arc<dyn SettingsChangeListener>) {}
 }
 
 fn get_metadata(key: &str) -> SettingMetadata {

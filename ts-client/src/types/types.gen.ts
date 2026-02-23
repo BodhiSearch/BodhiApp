@@ -2362,7 +2362,7 @@ export type SettingMetadata = {
     type: 'option';
 };
 
-export type SettingSource = 'system' | 'command_line' | 'environment' | 'settings_file' | 'default';
+export type SettingSource = 'system' | 'command_line' | 'environment' | 'settings_file' | 'database' | 'default';
 
 /**
  * Request to setup the application in authenticated mode

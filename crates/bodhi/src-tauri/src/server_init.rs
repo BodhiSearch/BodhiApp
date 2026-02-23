@@ -1,23 +1,21 @@
 use crate::app::AppCommand;
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, AppType, ErrorMessage, ErrorType, ServeCommand,
-  SettingService, BODHI_HOST, BODHI_LOG_STDOUT, BODHI_PORT,
+  build_app_service, setup_app_dirs, setup_bootstrap_service, AppService, AppType,
+  BootstrapService, ErrorMessage, ErrorType, ServeCommand,
 };
-use objs::SettingSource;
-use serde_yaml::{Number, Value};
+use std::fs;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-// Server-specific constants
 #[cfg(feature = "production")]
 mod env_config {
-  use lib_bodhiserver::{DefaultSettingService, ErrorMessage};
+  use lib_bodhiserver::{ErrorMessage, SettingService};
 
-  pub fn set_feature_settings(
-    _setting_service: &DefaultSettingService,
+  pub async fn set_feature_settings(
+    _setting_service: &dyn SettingService,
   ) -> Result<(), ErrorMessage> {
     Ok(())
   }
@@ -25,20 +23,30 @@ mod env_config {
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use lib_bodhiserver::{
-    DefaultSettingService, ErrorMessage, SettingService, BODHI_EXEC_LOOKUP_PATH,
-  };
+  use lib_bodhiserver::{ErrorMessage, ErrorType, SettingService, BODHI_EXEC_LOOKUP_PATH};
 
   #[allow(clippy::result_large_err)]
-  pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ErrorMessage> {
+  pub async fn set_feature_settings(
+    setting_service: &dyn SettingService,
+  ) -> Result<(), ErrorMessage> {
     if setting_service
       .get_setting(BODHI_EXEC_LOOKUP_PATH)
+      .await
       .is_none()
     {
-      setting_service.set_default(
-        BODHI_EXEC_LOOKUP_PATH,
-        &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
-      );
+      setting_service
+        .set_default(
+          BODHI_EXEC_LOOKUP_PATH,
+          &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
+        )
+        .await
+        .map_err(|e| {
+          ErrorMessage::new(
+            "setting_service_error".to_string(),
+            ErrorType::InternalServer.to_string(),
+            e.to_string(),
+          )
+        })?;
     }
     Ok(())
   }
@@ -51,46 +59,23 @@ const APP_TYPE: AppType = AppType::Container;
 
 pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
   let app_options = build_app_options(APP_TYPE)?;
-  let setting_service = setup_app_dirs(&app_options)?;
-  set_feature_settings(&setting_service)?;
-  if let AppCommand::Server(host, port) = command {
-    if let Some(host) = host {
-      SettingService::set_setting_with_source(
-        &setting_service,
-        BODHI_HOST,
-        &Value::String(host),
-        SettingSource::CommandLine,
-      );
-    }
-    if let Some(port) = port {
-      SettingService::set_setting_with_source(
-        &setting_service,
-        BODHI_PORT,
-        &Value::Number(Number::from(port)),
-        SettingSource::CommandLine,
-      );
-    }
-  }
+  let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options)?;
+  let bootstrap =
+    setup_bootstrap_service(&app_options, bodhi_home, source, file_defaults, command)?;
 
-  // Server mode uses file-based logging
-  let _guard = setup_logs(&setting_service);
+  let _guard = setup_logs(&bootstrap).map_err(crate::error::AppSetupError::from)?;
+  let parts = bootstrap.into_parts();
 
-  let result = aexecute(Arc::new(setting_service));
-
-  drop(_guard);
-  result
-}
-
-fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage> {
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
     .map_err(crate::error::AppSetupError::from)?;
   let result: Result<(), ErrorMessage> = runtime.block_on(async move {
-    let host = setting_service.host();
-    let port = setting_service.port();
+    let app_service = Arc::new(build_app_service(parts).await?);
+    set_feature_settings(app_service.setting_service().as_ref()).await?;
+    let host = app_service.setting_service().host().await;
+    let port = app_service.setting_service().port().await;
     let command = ServeCommand::ByParams { host, port };
-    let app_service = Arc::new(build_app_service(setting_service).await?);
     command
       .aexecute(app_service, Some(&crate::ui::ASSETS))
       .await
@@ -107,15 +92,15 @@ fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage
   result
 }
 
-fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> WorkerGuard {
-  let logs_dir = setting_service.logs_dir();
+fn setup_logs(bootstrap_service: &BootstrapService) -> Result<WorkerGuard, std::io::Error> {
+  let logs_dir = bootstrap_service.logs_dir();
+  fs::create_dir_all(&logs_dir)?;
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-  let log_level: LevelFilter = setting_service.log_level().into();
+  let log_level: LevelFilter = bootstrap_service.log_level().into();
   let log_level = log_level.to_string();
   let filter = EnvFilter::new(&log_level);
   let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
-  // Reduce verbose middleware logging noise
   let filter = filter.add_directive("tower_sessions=warn".parse().expect("is a valid directive"));
   let filter = filter.add_directive("tower_http=warn".parse().expect("is a valid directive"));
   let filter = filter.add_directive(
@@ -124,12 +109,7 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
       .expect("is a valid directive"),
   );
 
-  // Check if we should output to stdout
-  let enable_stdout = cfg!(debug_assertions)
-    || setting_service
-      .get_setting(BODHI_LOG_STDOUT)
-      .map(|v| v == "1" || v.to_lowercase() == "true")
-      .unwrap_or(false);
+  let enable_stdout = cfg!(debug_assertions) || bootstrap_service.log_stdout();
 
   let subscriber = tracing_subscriber::registry().with(filter);
 
@@ -165,5 +145,5 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
       enable_stdout, log_level
     );
   }
-  guard
+  Ok(guard)
 }

@@ -6,6 +6,7 @@ pub mod test_utils;
 mod app_dirs_builder;
 mod app_options;
 mod app_service_builder;
+mod bootstrap_service;
 mod error;
 mod ui_assets;
 
@@ -18,13 +19,16 @@ pub const BUILD_COMMIT_SHA: &str = match option_env!("BODHI_BUILD_COMMIT_SHA") {
 pub use app_dirs_builder::*;
 pub use app_options::*;
 pub use app_service_builder::*;
+pub use bootstrap_service::BootstrapService;
 pub use error::*;
+pub use services::BootstrapParts;
 pub use ui_assets::EMBEDDED_UI_ASSETS;
 
 // Re-exports for crates/bodhi dependency isolation
 // Domain objects from objs crate
 pub use objs::{
-  ApiError, AppError, AppType, EnvType, ErrorMessage, ErrorType, LogLevel, OpenAIApiError,
+  ApiError, AppCommand, AppError, AppType, EnvType, ErrorMessage, ErrorType, LogLevel,
+  OpenAIApiError,
 };
 
 // Service interfaces and implementations from services crate

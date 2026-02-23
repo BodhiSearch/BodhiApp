@@ -165,9 +165,9 @@ mod tests {
     keep_alive.on_change(
       BODHI_KEEP_ALIVE_SECS,
       &Some(Value::Number(from.into())),
-      &SettingSource::SettingsFile,
+      &SettingSource::Database,
       &Some(Value::Number(to.into())),
-      &SettingSource::SettingsFile,
+      &SettingSource::Database,
     );
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(*keep_alive.keep_alive.read().unwrap(), to);
@@ -194,9 +194,9 @@ mod tests {
     keep_alive.on_change(
       BODHI_KEEP_ALIVE_SECS,
       &Some(Value::Number(from.into())),
-      &SettingSource::SettingsFile,
+      &SettingSource::Database,
       &Some(Value::Number(to.into())),
-      &SettingSource::SettingsFile,
+      &SettingSource::Database,
     );
 
     tokio::time::sleep(Duration::from_millis(100)).await;

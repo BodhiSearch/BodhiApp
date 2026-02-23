@@ -69,7 +69,7 @@ pub async fn oai_models_handler(
       }
       Alias::Model(model_alias) => {
         if seen_models.insert(model_alias.alias.clone()) {
-          models.push(model_alias_to_oai_model(state.clone(), model_alias));
+          models.push(model_alias_to_oai_model(state.clone(), model_alias).await);
         }
       }
       Alias::Api(api_alias) => {
@@ -155,7 +155,7 @@ pub async fn oai_model_handler(
   if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
     match alias {
       Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(state, user_alias))),
-      Alias::Model(model_alias) => Ok(Json(model_alias_to_oai_model(state, model_alias))),
+      Alias::Model(model_alias) => Ok(Json(model_alias_to_oai_model(state, model_alias).await)),
       Alias::Api(api_alias) => {
         // DataService.find_alias() already verified model exists via matchable_models()
         Ok(Json(api_model_to_oai_model(id, &api_alias)))
@@ -175,10 +175,10 @@ fn user_alias_to_oai_model(_state: Arc<dyn RouterState>, alias: UserAlias) -> Mo
   }
 }
 
-fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
+async fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
   // For auto-discovered models, construct path from HF cache structure
   // Path structure: hf_cache/models--owner--repo/snapshots/snapshot/filename
-  let hf_cache = state.app_service().setting_service().hf_cache();
+  let hf_cache = state.app_service().setting_service().hf_cache().await;
   let path = hf_cache
     .join(alias.repo.path())
     .join("snapshots")

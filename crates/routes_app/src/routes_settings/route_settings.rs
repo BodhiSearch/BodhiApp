@@ -85,7 +85,7 @@ pub async fn list_settings_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<Vec<SettingInfo>>, ApiError> {
   let app_service = state.app_service();
-  let settings = app_service.setting_service().list();
+  let settings = app_service.setting_service().list().await;
   Ok(Json(settings))
 }
 
@@ -99,7 +99,7 @@ pub async fn list_settings_handler(
     tag = API_TAG_SETTINGS,
     operation_id = "updateSetting",
     summary = "Update Application Setting",
-    description = "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
+    description = "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the application database.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
     params(
         ("key" = String, Path,
          description = "Setting key identifier (e.g., BODHI_LOG_LEVEL, BODHI_PORT)",
@@ -116,7 +116,7 @@ pub async fn list_settings_handler(
              "key": "BODHI_LOG_LEVEL",
              "current_value": "debug",
              "default_value": "warn",
-             "source": "settings_file",
+             "source": "database",
              "metadata": {
                  "type": "option",
                  "options": ["error", "warn", "info", "debug", "trace"]
@@ -143,31 +143,30 @@ pub async fn update_setting_handler(
 ) -> Result<Json<SettingInfo>, ApiError> {
   let setting_service = state.app_service().setting_service();
 
-  // Validate setting exists
   if BODHI_HOME == key {
     return Err(SettingsError::BodhiHome)?;
   }
-  let settings = setting_service.list();
-  let setting = settings
-    .iter()
-    .find(|s| s.key == key)
-    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
-
+  let (current_value, _source) = setting_service.get_setting_value_with_source(&key).await;
+  if current_value.is_none() {
+    return Err(SettingsError::NotFound(key))?;
+  }
   if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
     return Err(SettingsError::Unsupported(key))?;
   }
-  // Validate new value against metadata
-  let value = setting.metadata.convert(payload.value)?;
-  setting_service.set_setting_value(&key, &value);
+  let metadata = setting_service.get_setting_metadata(&key).await;
+  let value = metadata.convert(payload.value)?;
+  setting_service.set_setting_value(&key, &value).await?;
 
-  // Get updated setting
-  let settings = setting_service.list();
-  let updated = settings
-    .into_iter()
-    .find(|s| s.key == key)
-    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
-
-  Ok(Json(updated))
+  let (updated_value, source) = setting_service.get_setting_value_with_source(&key).await;
+  let default_value = setting_service.get_default_value(&key).await;
+  let metadata = setting_service.get_setting_metadata(&key).await;
+  Ok(Json(SettingInfo {
+    key,
+    current_value: updated_value.unwrap_or(serde_yaml::Value::Null),
+    default_value: default_value.unwrap_or(serde_yaml::Value::Null),
+    source,
+    metadata,
+  }))
 }
 
 /// Reset a setting to its default value
@@ -220,27 +219,25 @@ pub async fn delete_setting_handler(
   if BODHI_HOME == key {
     return Err(SettingsError::BodhiHome)?;
   }
-  // Validate setting exists
-  let settings = setting_service.list();
-  let _ = settings
-    .iter()
-    .find(|s| s.key == key)
-    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
-
+  let (current_value, _source) = setting_service.get_setting_value_with_source(&key).await;
+  if current_value.is_none() {
+    return Err(SettingsError::NotFound(key))?;
+  }
   if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
     return Err(SettingsError::Unsupported(key))?;
   }
-  // Delete setting (reset to default)
-  setting_service.delete_setting(&key)?;
+  setting_service.delete_setting(&key).await?;
 
-  // Get updated setting info
-  let settings = setting_service.list();
-  let updated = settings
-    .into_iter()
-    .find(|s| s.key == key)
-    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
-
-  Ok(Json(updated))
+  let (updated_value, source) = setting_service.get_setting_value_with_source(&key).await;
+  let default_value = setting_service.get_default_value(&key).await;
+  let metadata = setting_service.get_setting_metadata(&key).await;
+  Ok(Json(SettingInfo {
+    key,
+    current_value: updated_value.unwrap_or(serde_yaml::Value::Null),
+    default_value: default_value.unwrap_or(serde_yaml::Value::Null),
+    source,
+    metadata,
+  }))
 }
 
 #[cfg(test)]

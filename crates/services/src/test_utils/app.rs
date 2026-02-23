@@ -217,10 +217,10 @@ impl AppServiceStubBuilder {
     }
   }
 
-  pub fn with_settings(&mut self, settings: HashMap<&str, &str>) -> &mut Self {
+  pub async fn with_settings(&mut self, settings: HashMap<&str, &str>) -> &mut Self {
     if let Some(Some(setting_service)) = &self.setting_service {
       for (key, value) in settings {
-        setting_service.set_setting(key, value);
+        let _ = setting_service.set_setting(key, value).await;
       }
     } else {
       let setting_service = if let Some(Some(temp_home)) = &self.temp_home {
@@ -229,7 +229,7 @@ impl AppServiceStubBuilder {
         SettingServiceStub::default()
       };
       for (key, value) in settings {
-        setting_service.set_setting(key, value);
+        let _ = setting_service.set_setting(key, value).await;
       }
       self.setting_service = Some(Some(Arc::new(setting_service)));
     }
@@ -324,19 +324,19 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_live_services(&mut self) -> &mut Self {
+  pub async fn with_live_services(&mut self) -> &mut Self {
     let _temp_home = self.setup_temp_home();
 
-    // Override exec lookup to real binary at crates/llama_server_proc/bin/
     let exec_lookup_path =
       PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../llama_server_proc/bin");
     let exec_lookup_str = exec_lookup_path.display().to_string();
-    self.with_settings(HashMap::from([(
-      BODHI_EXEC_LOOKUP_PATH,
-      exec_lookup_str.as_str(),
-    )]));
+    self
+      .with_settings(HashMap::from([(
+        BODHI_EXEC_LOOKUP_PATH,
+        exec_lookup_str.as_str(),
+      )]))
+      .await;
 
-    // Real HF cache with OfflineHubService (panics on download, allows local reads)
     let hf_cache = dirs::home_dir()
       .expect("home dir should exist")
       .join(".cache/huggingface/hub");

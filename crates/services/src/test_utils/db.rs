@@ -1,9 +1,10 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow,
-  McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow, ModelMetadataRow,
-  ModelRepository, SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow,
-  UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
+  AppToolsetConfigRow, DbCore, DbError, DbSetting, DownloadRequest, McpAuthHeaderRow,
+  McpOAuthConfigRow, McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow,
+  ModelMetadataRow, ModelRepository, SettingsRepository, SqliteDbService, TimeService,
+  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
+  UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -884,6 +885,41 @@ impl UserAliasRepository for TestDbService {
 }
 
 #[async_trait::async_trait]
+impl SettingsRepository for TestDbService {
+  async fn get_setting(&self, key: &str) -> Result<Option<DbSetting>, DbError> {
+    self
+      .inner
+      .get_setting(key)
+      .await
+      .tap(|_| self.notify("get_setting"))
+  }
+
+  async fn upsert_setting(&self, setting: &DbSetting) -> Result<DbSetting, DbError> {
+    self
+      .inner
+      .upsert_setting(setting)
+      .await
+      .tap(|_| self.notify("upsert_setting"))
+  }
+
+  async fn delete_setting(&self, key: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_setting(key)
+      .await
+      .tap(|_| self.notify("delete_setting"))
+  }
+
+  async fn list_settings(&self) -> Result<Vec<DbSetting>, DbError> {
+    self
+      .inner
+      .list_settings()
+      .await
+      .tap(|_| self.notify("list_settings"))
+  }
+}
+
+#[async_trait::async_trait]
 impl AccessRequestRepository for TestDbService {
   async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError> {
     self
@@ -1067,6 +1103,14 @@ mockall::mock! {
   }
 
   #[async_trait::async_trait]
+  impl SettingsRepository for DbService {
+    async fn get_setting(&self, key: &str) -> Result<Option<DbSetting>, DbError>;
+    async fn upsert_setting(&self, setting: &DbSetting) -> Result<DbSetting, DbError>;
+    async fn delete_setting(&self, key: &str) -> Result<(), DbError>;
+    async fn list_settings(&self) -> Result<Vec<DbSetting>, DbError>;
+  }
+
+  #[async_trait::async_trait]
   impl AccessRequestRepository for DbService {
     async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError>;
     async fn get(&self, id: &str) -> Result<Option<AppAccessRequestRow>, DbError>;
@@ -1084,5 +1128,40 @@ mockall::mock! {
       &self,
       scope: &str,
     ) -> Result<Option<AppAccessRequestRow>, DbError>;
+  }
+}
+
+#[derive(Debug)]
+pub struct InMemorySettingsRepository {
+  store: std::sync::RwLock<std::collections::HashMap<String, DbSetting>>,
+}
+
+impl InMemorySettingsRepository {
+  pub fn new() -> Self {
+    Self {
+      store: std::sync::RwLock::new(std::collections::HashMap::new()),
+    }
+  }
+}
+
+#[async_trait::async_trait]
+impl SettingsRepository for InMemorySettingsRepository {
+  async fn get_setting(&self, key: &str) -> Result<Option<DbSetting>, DbError> {
+    Ok(self.store.read().unwrap().get(key).cloned())
+  }
+
+  async fn upsert_setting(&self, setting: &DbSetting) -> Result<DbSetting, DbError> {
+    let mut store = self.store.write().unwrap();
+    store.insert(setting.key.clone(), setting.clone());
+    Ok(setting.clone())
+  }
+
+  async fn delete_setting(&self, key: &str) -> Result<(), DbError> {
+    self.store.write().unwrap().remove(key);
+    Ok(())
+  }
+
+  async fn list_settings(&self) -> Result<Vec<DbSetting>, DbError> {
+    Ok(self.store.read().unwrap().values().cloned().collect())
   }
 }

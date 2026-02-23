@@ -64,7 +64,7 @@ pub async fn auth_initiate_handler(
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],
       Json(RedirectResponse {
-        location: setting_service.frontend_default_url(),
+        location: setting_service.frontend_default_url().await,
       }),
     ));
   }
@@ -75,23 +75,23 @@ pub async fn auth_initiate_handler(
     .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
   // Determine callback URL based on whether public host is explicitly configured
-  let callback_url = if setting_service.get_public_host_explicit().is_some() {
+  let callback_url = if setting_service.get_public_host_explicit().await.is_some() {
     // Explicit configuration (including RunPod) - use configured callback URL
-    setting_service.login_callback_url()
+    setting_service.login_callback_url().await
   } else {
     // Local/network installation mode - use request host or fallback
     if let Some(request_host) = extract_request_host(&headers) {
       // Use the actual request host for the callback URL
       format!(
         "{}://{}:{}{}",
-        setting_service.public_scheme(),
+        setting_service.public_scheme().await,
         request_host,
-        setting_service.public_port(),
+        setting_service.public_port().await,
         services::LOGIN_CALLBACK_PATH
       )
     } else {
       // Fallback to configured URL if host extraction fails
-      setting_service.login_callback_url()
+      setting_service.login_callback_url().await
     }
   };
   let client_id = app_reg_info.client_id;
@@ -119,7 +119,7 @@ pub async fn auth_initiate_handler(
   let scope = ["openid", "email", "profile", "roles"].join("%20");
   let login_url = format!(
     "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope={}",
-    setting_service.login_url(), client_id, callback_url, state, code_challenge, scope
+    setting_service.login_url().await, client_id, callback_url, state, code_challenge, scope
   );
 
   Ok((
@@ -297,7 +297,7 @@ pub async fn auth_callback_handler(
     new_url.set_query(None);
     new_url.to_string()
   } else {
-    setting_service.frontend_default_url()
+    setting_service.frontend_default_url().await
   };
 
   // Clean up callback URL from session
@@ -340,7 +340,7 @@ pub async fn logout_handler(
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let setting_service = state.app_service().setting_service();
   session.delete().await.map_err(LoginError::SessionDelete)?;
-  let ui_login = format!("{}/ui/login", setting_service.public_server_url());
+  let ui_login = format!("{}/ui/login", setting_service.public_server_url().await);
   Ok(Json(RedirectResponse { location: ui_login }))
 }
 

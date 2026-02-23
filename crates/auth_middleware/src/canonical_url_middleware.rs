@@ -27,13 +27,13 @@ pub async fn canonical_url_middleware(
   next: Next,
 ) -> Response {
   // Skip redirect if canonical redirect is disabled
-  if !setting_service.canonical_redirect_enabled() {
+  if !setting_service.canonical_redirect_enabled().await {
     debug!("Canonical redirect is disabled, skipping redirect");
     return next.run(request).await;
   }
 
   // Skip redirect if public_host is not explicitly set
-  if setting_service.get_public_host_explicit().is_none() {
+  if setting_service.get_public_host_explicit().await.is_none() {
     debug!("Public host is not explicitly set, skipping redirect");
     return next.run(request).await;
   }
@@ -69,8 +69,8 @@ pub async fn canonical_url_middleware(
   };
 
   // Check if redirect is needed by comparing with canonical URL
-  if should_redirect_to_canonical(setting_service.as_ref(), &request_scheme, request_host) {
-    let canonical_url = setting_service.public_server_url();
+  if should_redirect_to_canonical(setting_service.as_ref(), &request_scheme, request_host).await {
+    let canonical_url = setting_service.public_server_url().await;
     let full_canonical_url = build_canonical_url(&canonical_url, uri);
     debug!(
       "Redirecting {}://{}{} to {}",
@@ -123,14 +123,14 @@ fn is_exempt_path(path: &str) -> bool {
 }
 
 /// Check if a request should be redirected to the canonical URL
-fn should_redirect_to_canonical(
+async fn should_redirect_to_canonical(
   setting_service: &dyn SettingService,
   request_scheme: &str,
   request_host: &str,
 ) -> bool {
-  let canonical_scheme = setting_service.public_scheme();
-  let canonical_host = setting_service.public_host();
-  let canonical_port = setting_service.public_port();
+  let canonical_scheme = setting_service.public_scheme().await;
+  let canonical_host = setting_service.public_host().await;
+  let canonical_port = setting_service.public_port().await;
 
   // Parse request host to handle host:port format
   let (req_host, req_port) = if let Some((host, port_str)) = request_host.rsplit_once(':') {
@@ -202,22 +202,28 @@ mod tests {
     canonical_disabled: bool, // When true, disable canonical redirect setting
   }
 
-  fn create_setting_service(scheme: &str, host: &str, port: u16) -> Arc<dyn SettingService> {
+  async fn create_setting_service(scheme: &str, host: &str, port: u16) -> Arc<dyn SettingService> {
     let mut settings = HashMap::new();
     settings.insert("BODHI_PUBLIC_SCHEME".to_string(), scheme.to_string());
     settings.insert("BODHI_PUBLIC_HOST".to_string(), host.to_string());
     settings.insert("BODHI_PUBLIC_PORT".to_string(), port.to_string());
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
-    Arc::new(SettingServiceStub::default().append_settings(settings))
+    let stub = SettingServiceStub::default()
+      .append_settings(settings)
+      .await;
+    Arc::new(stub)
   }
 
-  fn create_setting_service_no_public_host() -> Arc<dyn SettingService> {
+  async fn create_setting_service_no_public_host() -> Arc<dyn SettingService> {
     let mut settings = HashMap::new();
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
-    Arc::new(SettingServiceStub::default().append_settings(settings))
+    let stub = SettingServiceStub::default()
+      .append_settings(settings)
+      .await;
+    Arc::new(stub)
   }
 
-  fn create_setting_service_canonical_disabled() -> Arc<dyn SettingService> {
+  async fn create_setting_service_canonical_disabled() -> Arc<dyn SettingService> {
     let mut settings = HashMap::new();
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "false".to_string());
     settings.insert("BODHI_PUBLIC_SCHEME".to_string(), "https".to_string());
@@ -226,7 +232,10 @@ mod tests {
       "bodhi.example.com".to_string(),
     );
     settings.insert("BODHI_PUBLIC_PORT".to_string(), "443".to_string());
-    Arc::new(SettingServiceStub::default().append_settings(settings))
+    let stub = SettingServiceStub::default()
+      .append_settings(settings)
+      .await;
+    Arc::new(stub)
   }
 
   async fn test_handler() -> &'static str {
@@ -447,15 +456,16 @@ mod tests {
   #[tokio::test]
   async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario) {
     let setting_service = if scenario.canonical_disabled {
-      create_setting_service_canonical_disabled()
+      create_setting_service_canonical_disabled().await
     } else if scenario.skip_public_host {
-      create_setting_service_no_public_host()
+      create_setting_service_no_public_host().await
     } else {
       create_setting_service(
         scenario.public_scheme,
         scenario.public_host,
         scenario.public_port,
       )
+      .await
     };
 
     // Create router with middleware and appropriate route

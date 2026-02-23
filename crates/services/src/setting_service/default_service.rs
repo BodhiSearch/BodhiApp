@@ -1,6 +1,15 @@
-use super::{Result, *};
+use super::{
+  BootstrapParts, Result, SettingService, SettingServiceError, SettingsChangeListener,
+  BODHI_CANONICAL_REDIRECT, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
+  BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS, BODHI_LLAMACPP_ARGS,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT,
+  BODHI_PUBLIC_SCHEME, BODHI_SCHEME, DEFAULT_CANONICAL_REDIRECT, DEFAULT_HOST,
+  DEFAULT_KEEP_ALIVE_SECS, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME,
+  HF_HOME, LOGS_DIR, SETTING_VARS,
+};
+use crate::db::{DbSetting, SettingsRepository};
 use crate::{asref_impl, EnvWrapper};
-use objs::{Setting, SettingInfo, SettingMetadata, SettingSource};
+use objs::{AppCommand, Setting, SettingInfo, SettingMetadata, SettingSource};
 use serde_yaml::Value;
 use std::{
   collections::HashMap,
@@ -9,167 +18,94 @@ use std::{
   sync::{Arc, RwLock},
 };
 
-#[derive(Debug)]
 pub struct DefaultSettingService {
   env_wrapper: Arc<dyn EnvWrapper>,
-  settings_file: PathBuf,
   system_settings: Vec<Setting>,
-  settings_lock: RwLock<()>,
+  cmd_lines: RwLock<HashMap<String, Value>>,
+  settings_file_values: RwLock<HashMap<String, Value>>,
   defaults: RwLock<HashMap<String, Value>>,
   listeners: RwLock<Vec<Arc<dyn SettingsChangeListener>>>,
-  cmd_lines: RwLock<HashMap<String, Value>>,
+  db_service: Arc<dyn SettingsRepository>,
+}
+
+impl std::fmt::Debug for DefaultSettingService {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("DefaultSettingService")
+      .field("system_settings", &self.system_settings)
+      .finish_non_exhaustive()
+  }
 }
 
 impl DefaultSettingService {
-  pub(crate) fn new(
-    env_wrapper: Arc<dyn EnvWrapper>,
-    settings_file: PathBuf,
-    system_settings: Vec<Setting>,
-  ) -> DefaultSettingService {
+  fn setting_metadata_static(key: &str) -> SettingMetadata {
+    match key {
+      BODHI_PORT | BODHI_PUBLIC_PORT => SettingMetadata::Number { min: 1, max: 65535 },
+      BODHI_LOG_LEVEL => SettingMetadata::option(
+        ["error", "warn", "info", "debug", "trace"]
+          .iter()
+          .map(|s| s.to_string())
+          .collect(),
+      ),
+      BODHI_LOG_STDOUT => SettingMetadata::Boolean,
+      BODHI_EXEC_VARIANT => SettingMetadata::String,
+      BODHI_EXEC_TARGET => SettingMetadata::String,
+      BODHI_EXEC_NAME => SettingMetadata::String,
+      BODHI_EXEC_VARIANTS => SettingMetadata::String,
+      BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
+        min: 300,
+        max: 86400,
+      },
+      BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
+      BODHI_LLAMACPP_ARGS => SettingMetadata::String,
+      key if key.starts_with("BODHI_LLAMACPP_ARGS_") => SettingMetadata::String,
+      _ => SettingMetadata::String,
+    }
+  }
+
+  pub fn from_parts(parts: BootstrapParts, db_service: Arc<dyn SettingsRepository>) -> Self {
+    // 1. Load .env from bodhi_home/.env (mutates process env)
+    let env_file = parts.bodhi_home.join(".env");
+    if env_file.exists() {
+      parts.env_wrapper.load(&env_file);
+    }
+
+    // 2. Load settings.yaml once into memory
+    let mut settings_file_values = load_settings_yaml(&parts.settings_file);
+
+    // 3. Overlay NAPI app_settings onto settings_file_values (app_settings wins)
+    for (key, value_str) in &parts.app_settings {
+      let metadata = Self::setting_metadata_static(key);
+      let parsed = metadata.parse(Value::String(value_str.clone()));
+      settings_file_values.insert(key.clone(), parsed);
+    }
+
+    // 4. Extract cmd_lines from AppCommand
+    let mut cmd_lines = HashMap::new();
+    if let AppCommand::Serve { ref host, ref port } = parts.app_command {
+      if let Some(h) = host {
+        cmd_lines.insert(BODHI_HOST.to_string(), Value::String(h.clone()));
+      }
+      if let Some(p) = port {
+        cmd_lines.insert(BODHI_PORT.to_string(), Value::Number((*p).into()));
+      }
+    }
+
+    // 5. Build all defaults from file_defaults + hardcoded
+    let defaults = build_all_defaults(parts.env_wrapper.as_ref(), &parts.file_defaults);
+
     Self {
-      env_wrapper,
-      settings_file,
-      system_settings,
-      settings_lock: RwLock::new(()),
-      defaults: RwLock::new(HashMap::new()),
+      env_wrapper: parts.env_wrapper,
+      system_settings: parts.system_settings,
+      cmd_lines: RwLock::new(cmd_lines),
+      settings_file_values: RwLock::new(settings_file_values),
+      defaults: RwLock::new(defaults),
       listeners: RwLock::new(Vec::new()),
-      cmd_lines: RwLock::new(HashMap::new()),
+      db_service,
     }
   }
 
-  pub fn new_with_defaults(
-    env_wrapper: Arc<dyn EnvWrapper>,
-    bodhi_home: Setting,
-    mut system_settings: Vec<Setting>,
-    file_defaults: HashMap<String, Value>,
-    settings_file: PathBuf,
-  ) -> Self {
-    system_settings.push(bodhi_home.clone());
-    let service = Self::new(env_wrapper, settings_file, system_settings);
-    service.init_defaults(bodhi_home, file_defaults);
-    service
-  }
-
-  fn init_defaults(&self, bodhi_home: Setting, file_defaults: HashMap<String, Value>) {
-    self.with_defaults_write_lock(|defaults| {
-      if bodhi_home.source == SettingSource::Default {
-        defaults.insert(BODHI_HOME.to_string(), bodhi_home.value.clone());
-        defaults.insert(
-          BODHI_LOGS.to_string(),
-          Value::String(
-            PathBuf::from(bodhi_home.value.as_str().unwrap())
-              .join(LOGS_DIR)
-              .display()
-              .to_string(),
-          ),
-        );
-      } else if let Some(home_dir) = self.home_dir() {
-        let default_bodhi_home = home_dir.join(".cache").join("bodhi");
-        defaults.insert(
-          BODHI_HOME.to_string(),
-          Value::String(default_bodhi_home.display().to_string()),
-        );
-        defaults.insert(
-          BODHI_LOGS.to_string(),
-          Value::String(default_bodhi_home.join("logs").display().to_string()),
-        );
-      }
-      if let Some(home_dir) = self.home_dir() {
-        defaults.insert(
-          HF_HOME.to_string(),
-          Value::String(
-            home_dir
-              .join(".cache")
-              .join("huggingface")
-              .display()
-              .to_string(),
-          ),
-        );
-      }
-      macro_rules! set_default {
-        ($key:expr, $hardcoded_value:expr) => {
-          defaults.insert(
-            $key.to_string(),
-            file_defaults.get($key).cloned().unwrap_or($hardcoded_value),
-          );
-        };
-      }
-      set_default!(BODHI_SCHEME, Value::String(DEFAULT_SCHEME.to_string()));
-      set_default!(BODHI_HOST, Value::String(DEFAULT_HOST.to_string()));
-      set_default!(BODHI_PORT, Value::Number(DEFAULT_PORT.into()));
-      set_default!(
-        BODHI_LOG_LEVEL,
-        Value::String(DEFAULT_LOG_LEVEL.to_string())
-      );
-      set_default!(BODHI_LOG_STDOUT, Value::Bool(DEFAULT_LOG_STDOUT));
-      set_default!(
-        BODHI_EXEC_TARGET,
-        Value::String(llama_server_proc::BUILD_TARGET.to_string())
-      );
-      set_default!(
-        BODHI_EXEC_VARIANTS,
-        Value::String(
-          llama_server_proc::BUILD_VARIANTS
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
-            .join(","),
-        )
-      );
-      set_default!(
-        BODHI_EXEC_VARIANT,
-        Value::String(llama_server_proc::DEFAULT_VARIANT.to_string())
-      );
-      set_default!(
-        BODHI_EXEC_NAME,
-        Value::String(llama_server_proc::EXEC_NAME.to_string())
-      );
-      set_default!(
-        BODHI_LLAMACPP_ARGS,
-        Value::String("--jinja --no-webui".to_string())
-      );
-      set_default!(
-        BODHI_KEEP_ALIVE_SECS,
-        Value::Number(DEFAULT_KEEP_ALIVE_SECS.into())
-      );
-      set_default!(
-        BODHI_CANONICAL_REDIRECT,
-        Value::Bool(DEFAULT_CANONICAL_REDIRECT)
-      );
-      for (key, value) in file_defaults {
-        defaults.insert(key, value);
-      }
-    });
-  }
-
-  pub fn with_settings_read_lock<F, R>(&self, f: F) -> R
-  where
-    F: FnOnce(&serde_yaml::Mapping) -> R,
-  {
-    let _guard = self.settings_lock.read().unwrap();
-    if !self.settings_file.exists() {
-      return f(&serde_yaml::Mapping::new());
-    }
-    let contents = fs::read_to_string(&self.settings_file).unwrap_or_else(|_| String::new());
-    let settings: serde_yaml::Mapping =
-      serde_yaml::from_str(&contents).unwrap_or_else(|_| serde_yaml::Mapping::new());
-    f(&settings)
-  }
-
-  pub fn with_settings_write_lock<F>(&self, f: F)
-  where
-    F: FnOnce(&mut serde_yaml::Mapping),
-  {
-    let _guard = self.settings_lock.write().unwrap();
-    let mut settings = if !self.settings_file.exists() {
-      serde_yaml::Mapping::new()
-    } else {
-      let contents = fs::read_to_string(&self.settings_file).unwrap_or_else(|_| String::new());
-      serde_yaml::from_str(&contents).unwrap_or_else(|_| serde_yaml::Mapping::new())
-    };
-    f(&mut settings);
-    let contents = serde_yaml::to_string(&settings).unwrap();
-    fs::write(&self.settings_file, contents).unwrap();
+  fn is_valid_db_key(&self, key: &str) -> bool {
+    SETTING_VARS.contains(&key) || key.starts_with("BODHI_LLAMACPP_ARGS_")
   }
 
   pub fn with_defaults_read_lock<F, R>(&self, f: F) -> R
@@ -219,64 +155,181 @@ impl DefaultSettingService {
   }
 }
 
+fn load_settings_yaml(path: &PathBuf) -> HashMap<String, Value> {
+  if !path.exists() {
+    return HashMap::new();
+  }
+  let contents = fs::read_to_string(path).unwrap_or_default();
+  let mapping: serde_yaml::Mapping =
+    serde_yaml::from_str(&contents).unwrap_or_else(|_| serde_yaml::Mapping::new());
+  mapping
+    .into_iter()
+    .filter_map(|(k, v)| k.as_str().map(|s| (s.to_string(), v)))
+    .collect()
+}
+
+fn build_all_defaults(
+  env_wrapper: &dyn EnvWrapper,
+  file_defaults: &HashMap<String, Value>,
+) -> HashMap<String, Value> {
+  let mut defaults = HashMap::new();
+
+  // Start with file_defaults as the base
+  for (key, value) in file_defaults {
+    defaults.insert(key.clone(), value.clone());
+  }
+
+  macro_rules! ensure_default {
+    ($key:expr, $value:expr) => {
+      defaults.entry($key.to_string()).or_insert($value);
+    };
+  }
+
+  // BODHI_HOME and BODHI_LOGS are set from system_settings, not here
+  ensure_default!(
+    BODHI_LOG_LEVEL,
+    Value::String(DEFAULT_LOG_LEVEL.to_string())
+  );
+  ensure_default!(BODHI_LOG_STDOUT, Value::Bool(DEFAULT_LOG_STDOUT));
+  ensure_default!(BODHI_SCHEME, Value::String(DEFAULT_SCHEME.to_string()));
+  ensure_default!(BODHI_HOST, Value::String(DEFAULT_HOST.to_string()));
+  ensure_default!(BODHI_PORT, Value::Number(DEFAULT_PORT.into()));
+  ensure_default!(
+    BODHI_EXEC_TARGET,
+    Value::String(llama_server_proc::BUILD_TARGET.to_string())
+  );
+  ensure_default!(
+    BODHI_EXEC_VARIANTS,
+    Value::String(
+      llama_server_proc::BUILD_VARIANTS
+        .iter()
+        .map(|s| s.as_str())
+        .collect::<Vec<_>>()
+        .join(","),
+    )
+  );
+  ensure_default!(
+    BODHI_EXEC_VARIANT,
+    Value::String(llama_server_proc::DEFAULT_VARIANT.to_string())
+  );
+  ensure_default!(
+    BODHI_EXEC_NAME,
+    Value::String(llama_server_proc::EXEC_NAME.to_string())
+  );
+  ensure_default!(
+    BODHI_LLAMACPP_ARGS,
+    Value::String("--jinja --no-webui".to_string())
+  );
+  ensure_default!(
+    BODHI_KEEP_ALIVE_SECS,
+    Value::Number(DEFAULT_KEEP_ALIVE_SECS.into())
+  );
+  ensure_default!(
+    BODHI_CANONICAL_REDIRECT,
+    Value::Bool(DEFAULT_CANONICAL_REDIRECT)
+  );
+  if let Some(home_dir) = env_wrapper.home_dir() {
+    defaults.entry(HF_HOME.to_string()).or_insert_with(|| {
+      Value::String(
+        home_dir
+          .join(".cache")
+          .join("huggingface")
+          .display()
+          .to_string(),
+      )
+    });
+  }
+
+  defaults
+}
+
+#[async_trait::async_trait]
 impl SettingService for DefaultSettingService {
-  fn load(&self, path: &Path) {
+  async fn load(&self, path: &Path) {
     self.env_wrapper.load(path);
   }
 
-  fn home_dir(&self) -> Option<PathBuf> {
+  async fn home_dir(&self) -> Option<PathBuf> {
     self.env_wrapper.home_dir()
   }
 
-  fn get_env(&self, key: &str) -> Option<String> {
+  async fn get_env(&self, key: &str) -> Option<String> {
     self.env_wrapper.var(key).ok()
   }
 
-  fn set_setting_with_source(&self, key: &str, value: &Value, source: SettingSource) {
-    let (prev_value, prev_source) = self.get_setting_value_with_source(key);
+  async fn set_setting_with_source(
+    &self,
+    key: &str,
+    value: &Value,
+    source: SettingSource,
+  ) -> Result<()> {
+    let (prev_value, prev_source) = self.get_setting_value_with_source(key).await;
     match source {
       SettingSource::CommandLine => {
         self.with_cmd_lines_write_lock(|cmd_lines| {
           cmd_lines.insert(key.to_string(), value.clone());
         });
+        Ok(())
       }
-      SettingSource::Environment => {
-        tracing::error!("SettingSource::Environment is not supported for override");
+      SettingSource::Environment | SettingSource::SettingsFile | SettingSource::System => {
+        Err(SettingServiceError::InvalidSource)
       }
-      SettingSource::SettingsFile => {
-        self.with_settings_write_lock(|settings| {
-          settings.insert(key.into(), value.clone());
-        });
-        let (cur_value, cur_source) = self.get_setting_value_with_source(key);
+      SettingSource::Database => {
+        if !self.is_valid_db_key(key) {
+          tracing::error!("key '{}' is not a valid database setting key", key);
+          return Err(SettingServiceError::InvalidKey(key.to_string()));
+        }
+        let value_str = match value {
+          Value::String(s) => s.clone(),
+          Value::Number(n) => n.to_string(),
+          Value::Bool(b) => b.to_string(),
+          _ => serde_yaml::to_string(value)
+            .unwrap_or_default()
+            .trim()
+            .to_string(),
+        };
+        let metadata = self.get_setting_metadata(key).await;
+        let value_type = match metadata {
+          SettingMetadata::String => "string",
+          SettingMetadata::Number { .. } => "number",
+          SettingMetadata::Boolean => "boolean",
+          SettingMetadata::Option { .. } => "option",
+        };
+        let db_setting = DbSetting {
+          key: key.to_string(),
+          value: value_str,
+          value_type: value_type.to_string(),
+          created_at: 0,
+          updated_at: 0,
+        };
+        self.db_service.upsert_setting(&db_setting).await?;
+        let (cur_value, cur_source) = self.get_setting_value_with_source(key).await;
         self.notify_listeners(key, &prev_value, &prev_source, &cur_value, &cur_source);
+        Ok(())
       }
       SettingSource::Default => {
         self.with_defaults_write_lock(|defaults| {
           defaults.insert(key.to_string(), value.clone());
         });
-      }
-      SettingSource::System => {
-        tracing::error!("SettingSource::System is not supported for override");
+        Ok(())
       }
     }
   }
 
-  fn delete_setting(&self, key: &str) -> Result<()> {
-    let (prev_value, prev_source) = self.get_setting_value_with_source(key);
-    self.with_settings_write_lock(|settings| {
-      settings.remove(key);
-    });
-    let (cur_value, cur_source) = self.get_setting_value_with_source(key);
+  async fn delete_setting(&self, key: &str) -> Result<()> {
+    let (prev_value, prev_source) = self.get_setting_value_with_source(key).await;
+    self.db_service.delete_setting(key).await?;
+    let (cur_value, cur_source) = self.get_setting_value_with_source(key).await;
     self.notify_listeners(key, &prev_value, &prev_source, &cur_value, &cur_source);
     Ok(())
   }
 
-  fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource) {
+  async fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource) {
     if let Some(setting) = self.system_settings.iter().find(|s| s.key == key) {
       return (Some(setting.value.clone()), SettingSource::System);
     }
 
-    let metadata = self.get_setting_metadata(key);
+    let metadata = self.get_setting_metadata(key).await;
     let result = self.with_cmd_lines_read_lock(|cmd_lines| cmd_lines.get(key).cloned());
     if let Some(value) = result {
       return (Some(value), SettingSource::CommandLine);
@@ -285,53 +338,57 @@ impl SettingService for DefaultSettingService {
       let value = metadata.parse(Value::String(value));
       return (Some(value), SettingSource::Environment);
     }
-    let result = self.with_settings_read_lock(|settings| settings.get(key).cloned());
-    result
-      .map(|value| (Some(metadata.parse(value)), SettingSource::SettingsFile))
-      .unwrap_or((self.get_default_value(key), SettingSource::Default))
+    if let Ok(Some(db_setting)) = self.db_service.get_setting(key).await {
+      let value = metadata.parse(Value::String(db_setting.value));
+      return (Some(value), SettingSource::Database);
+    }
+    let result = self.settings_file_values.read().unwrap().get(key).cloned();
+    if let Some(value) = result {
+      return (Some(metadata.parse(value)), SettingSource::SettingsFile);
+    }
+    (self.get_default_value(key).await, SettingSource::Default)
   }
 
-  fn list(&self) -> Vec<SettingInfo> {
-    let mut system_settings = self
-      .system_settings
-      .iter()
-      .map(|s| SettingInfo {
+  async fn list(&self) -> Vec<SettingInfo> {
+    let mut system_settings = Vec::new();
+    for s in &self.system_settings {
+      system_settings.push(SettingInfo {
         key: s.key.clone(),
         current_value: s.value.clone(),
         default_value: s.value.clone(),
         source: s.source.clone(),
-        metadata: self.get_setting_metadata(&s.key),
-      })
-      .collect::<Vec<SettingInfo>>();
-    let mut app_settings = SETTING_VARS
-      .iter()
-      .map(|key| {
-        let (current_value, source) = self.get_setting_value_with_source(key);
-        let metadata = self.get_setting_metadata(key);
-        let current_value = current_value.map(|value| metadata.parse(value));
+        metadata: self.get_setting_metadata(&s.key).await,
+      });
+    }
+    let mut app_settings = Vec::new();
+    for key in SETTING_VARS {
+      let (current_value, source) = self.get_setting_value_with_source(key).await;
+      let metadata = self.get_setting_metadata(key).await;
+      let current_value = current_value.map(|value| metadata.parse(value));
 
-        SettingInfo {
-          key: key.to_string(),
-          current_value: current_value.unwrap_or(Value::Null),
-          default_value: self.get_default_value(key).unwrap_or(Value::Null),
-          source,
-          metadata,
-        }
-      })
-      .collect::<Vec<SettingInfo>>();
+      app_settings.push(SettingInfo {
+        key: key.to_string(),
+        current_value: current_value.unwrap_or(Value::Null),
+        default_value: self.get_default_value(key).await.unwrap_or(Value::Null),
+        source,
+        metadata,
+      });
+    }
 
-    // Add variant-specific server args settings
-    let variants = self.exec_variants();
+    let variants = self.exec_variants().await;
     for variant in variants {
       let variant_key = format!("BODHI_LLAMACPP_ARGS_{}", variant.to_uppercase());
-      let (current_value, source) = self.get_setting_value_with_source(&variant_key);
-      let metadata = self.get_setting_metadata(&variant_key);
+      let (current_value, source) = self.get_setting_value_with_source(&variant_key).await;
+      let metadata = self.get_setting_metadata(&variant_key).await;
       let current_value = current_value.map(|value| metadata.parse(value));
 
       app_settings.push(SettingInfo {
         key: variant_key.clone(),
         current_value: current_value.unwrap_or(Value::Null),
-        default_value: self.get_default_value(&variant_key).unwrap_or(Value::Null),
+        default_value: self
+          .get_default_value(&variant_key)
+          .await
+          .unwrap_or(Value::Null),
         source,
         metadata,
       });
@@ -341,54 +398,53 @@ impl SettingService for DefaultSettingService {
     system_settings
   }
 
-  fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
-    match key {
-      BODHI_PORT | BODHI_PUBLIC_PORT => SettingMetadata::Number { min: 1, max: 65535 },
-      BODHI_LOG_LEVEL => SettingMetadata::option(
-        ["error", "warn", "info", "debug", "trace"]
-          .iter()
-          .map(|s| s.to_string())
-          .collect(),
-      ),
-      BODHI_LOG_STDOUT => SettingMetadata::Boolean,
-      BODHI_EXEC_VARIANT => {
-        let variants = self.exec_variants();
-        SettingMetadata::option(variants)
-      }
-      BODHI_EXEC_TARGET => SettingMetadata::String,
-      BODHI_EXEC_NAME => SettingMetadata::String,
-      BODHI_EXEC_VARIANTS => SettingMetadata::String,
-      BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
-        min: 300,
-        max: 86400,
-      },
-      BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
-      BODHI_LLAMACPP_ARGS => SettingMetadata::String,
-      key if key.starts_with("BODHI_LLAMACPP_ARGS_") => SettingMetadata::String,
-      _ => SettingMetadata::String,
+  async fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
+    if key == BODHI_EXEC_VARIANT {
+      let variants = self.exec_variants().await;
+      return SettingMetadata::option(variants);
     }
+    Self::setting_metadata_static(key)
   }
 
-  fn get_default_value(&self, key: &str) -> Option<Value> {
+  async fn get_default_value(&self, key: &str) -> Option<Value> {
+    match key {
+      BODHI_PUBLIC_HOST => return self.get_setting_value(BODHI_HOST).await,
+      BODHI_PUBLIC_SCHEME => return self.get_setting_value(BODHI_SCHEME).await,
+      BODHI_PUBLIC_PORT => return self.get_setting_value(BODHI_PORT).await,
+      _ => {}
+    }
     self.with_defaults_read_lock(|defaults| match key {
       BODHI_HOME => match defaults.get(BODHI_HOME).cloned() {
         Some(value) => Some(value),
+        None => self
+          .env_wrapper
+          .home_dir()
+          .map(|home_dir| home_dir.join(".cache").join("bodhi"))
+          .map(|path| Value::String(path.display().to_string())),
+      },
+      BODHI_LOGS => match defaults.get(BODHI_LOGS).cloned() {
+        Some(value) => Some(value),
         None => {
-          let result = self
-            .home_dir()
-            .map(|home_dir| home_dir.join(".cache").join("bodhi"))
-            .map(|path| Value::String(path.display().to_string()));
-          result
+          let bodhi_home = defaults.get(BODHI_HOME).cloned().or_else(|| {
+            self
+              .env_wrapper
+              .home_dir()
+              .map(|home_dir| home_dir.join(".cache").join("bodhi"))
+              .map(|path| Value::String(path.display().to_string()))
+          });
+          bodhi_home.map(|bh| {
+            let home = PathBuf::from(bh.as_str().unwrap_or_default());
+            Value::String(home.join(LOGS_DIR).display().to_string())
+          })
         }
       },
-      BODHI_PUBLIC_HOST => self.get_setting_value(BODHI_HOST),
-      BODHI_PUBLIC_SCHEME => self.get_setting_value(BODHI_SCHEME),
-      BODHI_PUBLIC_PORT => self.get_setting_value(BODHI_PORT),
       _ => defaults.get(key).cloned(),
     })
   }
 
-  fn add_listener(&self, listener: Arc<dyn SettingsChangeListener>) {
+  /// Deduplication is based on Arc pointer equality. Separately allocated Arc
+  /// instances wrapping equivalent implementations will not be deduplicated.
+  async fn add_listener(&self, listener: Arc<dyn SettingsChangeListener>) {
     let mut listeners = self.listeners.write().unwrap();
     if !listeners
       .iter()

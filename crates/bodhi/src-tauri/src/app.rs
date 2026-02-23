@@ -7,12 +7,7 @@ pub use crate::server_init::initialize_and_execute;
 
 use clap::{Parser, Subcommand};
 
-// Command enum for delegation to feature-specific initialization
-#[derive(Debug, Clone)]
-pub enum AppCommand {
-  Server(Option<String>, Option<u16>), // host, port
-  Default,
-}
+pub use objs::AppCommand;
 
 #[derive(Parser, Debug)]
 #[command(name = "bodhi")]
@@ -42,7 +37,7 @@ pub fn main(args: &[String]) {
   let cli = Cli::parse_from(args);
   let command = match cli.command {
     #[cfg(not(feature = "native"))]
-    Some(Commands::Serve { host, port }) => AppCommand::Server(host, port),
+    Some(Commands::Serve { host, port }) => AppCommand::Serve { host, port },
     None => AppCommand::Default,
     #[allow(unreachable_patterns)]
     Some(_) => AppCommand::Default,

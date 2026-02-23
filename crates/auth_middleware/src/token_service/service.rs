@@ -188,7 +188,7 @@ impl DefaultTokenService {
     let original_azp = claims.azp.clone();
 
     // Validate that it's from the same issuer
-    if claims.iss != self.setting_service.auth_issuer() {
+    if claims.iss != self.setting_service.auth_issuer().await {
       return Err(TokenError::InvalidIssuer(claims.iss))?;
     }
 

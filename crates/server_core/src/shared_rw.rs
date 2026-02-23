@@ -80,16 +80,19 @@ pub struct DefaultSharedContext {
 }
 
 impl DefaultSharedContext {
-  pub fn new(hub_service: Arc<dyn HubService>, setting_service: Arc<dyn SettingService>) -> Self {
-    Self::with_args(hub_service, setting_service, Box::new(DefaultServerFactory))
+  pub async fn new(
+    hub_service: Arc<dyn HubService>,
+    setting_service: Arc<dyn SettingService>,
+  ) -> Self {
+    Self::with_args(hub_service, setting_service, Box::new(DefaultServerFactory)).await
   }
 
-  pub fn with_args(
+  pub async fn with_args(
     hub_service: Arc<dyn HubService>,
     setting_service: Arc<dyn SettingService>,
     factory: Box<dyn ServerFactory>,
   ) -> Self {
-    let exec_variant = setting_service.exec_variant();
+    let exec_variant = setting_service.exec_variant().await;
     Self {
       hub_service,
       setting_service,
@@ -105,20 +108,22 @@ impl DefaultSharedContext {
     lock.as_ref().map(|server| server.get_server_args())
   }
 
-  fn get_setting_args(&self) -> Vec<String> {
+  async fn get_setting_args(&self) -> Vec<String> {
     self
       .setting_service
       .get_server_args_common()
+      .await
       .unwrap_or_default()
       .split_whitespace()
       .map(String::from)
       .collect()
   }
 
-  fn get_setting_variant_args(&self, variant: &str) -> Vec<String> {
+  async fn get_setting_variant_args(&self, variant: &str) -> Vec<String> {
     self
       .setting_service
       .get_server_args_variant(variant)
+      .await
       .unwrap_or_default()
       .split_whitespace()
       .map(String::from)
@@ -150,7 +155,7 @@ impl SharedContext for DefaultSharedContext {
     let Some(server_args) = server_args else {
       return Ok(());
     };
-    let exec_path = self.setting_service.exec_path_from();
+    let exec_path = self.setting_service.exec_path_from().await;
     if !exec_path.exists() {
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
@@ -220,7 +225,7 @@ impl SharedContext for DefaultSharedContext {
     }
 
     let input_value = request;
-    let setting_args = self.get_setting_args();
+    let setting_args = self.get_setting_args().await;
     let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
         let server = server
@@ -234,7 +239,7 @@ impl SharedContext for DefaultSharedContext {
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
         let variant = self.exec_variant.get().await;
-        let setting_variant_args = self.get_setting_variant_args(&variant);
+        let setting_variant_args = self.get_setting_variant_args(&variant).await;
         let merged_args = merge_server_args(&setting_args, &setting_variant_args, context_params);
         let server_args = LlamaServerArgsBuilder::default()
           .alias(alias_name.clone())
@@ -254,7 +259,7 @@ impl SharedContext for DefaultSharedContext {
       }
       ModelLoadStrategy::Load => {
         let variant = self.exec_variant.get().await;
-        let setting_variant_args = self.get_setting_variant_args(&variant);
+        let setting_variant_args = self.get_setting_variant_args(&variant).await;
         let merged_args = merge_server_args(&setting_args, &setting_variant_args, context_params);
         let server_args = LlamaServerArgsBuilder::default()
           .alias(alias_name.clone())

@@ -5722,7 +5722,7 @@
           "settings"
         ],
         "summary": "Update Application Setting",
-        "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
+        "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the application database.\n\n**Security Note:** Admin session authentication required for system configuration changes.",
         "operationId": "updateSetting",
         "parameters": [
           {
@@ -5784,7 +5784,7 @@
                     ],
                     "type": "option"
                   },
-                  "source": "settings_file"
+                  "source": "database"
                 }
               }
             }
@@ -14606,6 +14606,7 @@
           "command_line",
           "environment",
           "settings_file",
+          "database",
           "default"
         ]
       },

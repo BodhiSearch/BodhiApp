@@ -1,9 +1,9 @@
 use crate::app::AppCommand;
 use crate::common::build_app_options;
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, AppError, AppService, AppType, ErrorMessage, ErrorType,
-  LogLevel, ServeCommand, ServeError, ServerShutdownHandle, SettingService, BODHI_EXEC_LOOKUP_PATH,
-  BODHI_LOGS, BODHI_LOG_STDOUT,
+  build_app_service, setup_app_dirs, setup_bootstrap_service, AppError, AppService, AppType,
+  ErrorMessage, ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
 };
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -50,19 +50,22 @@ impl NativeCommand {
     let setting_service = self.service.setting_service();
     let ui = self.ui;
 
-    let log_level: LogLevel = setting_service.log_level();
+    // Native mode reads log config from async SettingService (can access DB), unlike
+    // server/NAPI modes which read from BootstrapService (env + yaml only). This is
+    // intentional: tauri configures logging inside the async context.
+    let log_level: LogLevel = setting_service.log_level().await;
     let mut log_plugin = tauri_plugin_log::Builder::default()
       .level(log_level)
       .max_file_size(50_000)
       .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll);
-    let setting_service = self.service.setting_service();
-    if let Some(serde_yaml::Value::Bool(true)) = setting_service.get_setting_value(BODHI_LOG_STDOUT)
+    if let Some(serde_yaml::Value::Bool(true)) =
+      setting_service.get_setting_value(BODHI_LOG_STDOUT).await
     {
       log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
         tauri_plugin_log::TargetKind::Stdout,
       ));
     }
-    if let Some(bodhi_logs) = setting_service.get_setting(BODHI_LOGS) {
+    if let Some(bodhi_logs) = setting_service.get_setting(BODHI_LOGS).await {
       log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
         tauri_plugin_log::TargetKind::Folder {
           path: std::path::PathBuf::from(bodhi_logs),
@@ -71,6 +74,12 @@ impl NativeCommand {
       ));
     }
     let log_plugin = log_plugin.build();
+
+    let host = setting_service.host().await;
+    let port = setting_service.port().await;
+    let addr = setting_service.public_server_url().await;
+    let browser_url = addr.clone();
+
     tauri::Builder::default()
       .plugin(log_plugin)
       .setup(move |app| {
@@ -78,20 +87,26 @@ impl NativeCommand {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
         let bodhi_exec_lookup_path = app.path().resolve("bin", BaseDirectory::Resource)?;
-        setting_service.set_default(
-          BODHI_EXEC_LOOKUP_PATH,
-          &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string())
-        );
-        let host = setting_service.host();
-        let port = setting_service.port();
+        // block_in_place requires a multi-threaded tokio runtime (created in initialize_and_execute)
+        tokio::task::block_in_place(|| {
+          tokio::runtime::Handle::current().block_on(async {
+            setting_service
+              .set_default(
+                BODHI_EXEC_LOOKUP_PATH,
+                &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string()),
+              )
+              .await
+          })
+        })?;
         let cmd = ServeCommand::ByParams { host, port };
-        let shared_server_handle: Arc<Mutex<Option<ServerShutdownHandle>>> = Arc::new(Mutex::new(None));
+        let shared_server_handle: Arc<Mutex<Option<ServerShutdownHandle>>> =
+          Arc::new(Mutex::new(None));
         app.manage(shared_server_handle.clone());
         tokio::spawn(async move {
-          match cmd
-          .get_server_handle(app_service, static_dir)
-          .await {
-            Ok(server_handle) => {shared_server_handle.lock().unwrap().replace(server_handle);},
+          match cmd.get_server_handle(app_service, static_dir).await {
+            Ok(server_handle) => {
+              shared_server_handle.lock().unwrap().replace(server_handle);
+            }
             Err(err) => {
               tracing::error!(?err, "failed to start the backend server");
             }
@@ -100,7 +115,6 @@ impl NativeCommand {
         let homepage = MenuItem::with_id(app, "homepage", "Open Homepage", true, None::<&str>)?;
         let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&homepage, &quit])?;
-        let addr = setting_service.public_server_url();
         TrayIconBuilder::new()
           .menu(&menu)
           .show_menu_on_left_click(true)
@@ -110,22 +124,15 @@ impl NativeCommand {
           })
           .build(app)?;
 
-        // Attempt to open the default web browser
         if ui {
-          if let Err(err) = webbrowser::open(setting_service.public_server_url().as_str()) {
+          if let Err(err) = webbrowser::open(browser_url.as_str()) {
             tracing::info!(?err, "failed to open browser");
           }
         }
         Ok(())
       })
       .on_window_event(on_window_event)
-      .run(tauri::generate_context!())?
-      // .run(|_app_handle, event| {
-      //   if let RunEvent::ExitRequested { api, .. } = event {
-      //     api.prevent_exit();
-      //   }
-      // })
-      ;
+      .run(tauri::generate_context!())?;
     Ok(())
   }
 }
@@ -178,32 +185,30 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
 }
 
 pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), ErrorMessage> {
-  // Construct AppOptions explicitly for production code clarity
   let app_options = build_app_options(APP_TYPE)?;
+  let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options)?;
+  let bootstrap = setup_bootstrap_service(
+    &app_options,
+    bodhi_home,
+    source,
+    file_defaults,
+    AppCommand::Default,
+  )?;
+  let parts = bootstrap.into_parts();
 
-  let setting_service = setup_app_dirs(&app_options)?;
-  // Native mode doesn't use file-based logging - Tauri handles logging
-  let result = aexecute(Arc::new(setting_service));
-  result
-}
-
-fn aexecute(setting_service: Arc<dyn SettingService>) -> std::result::Result<(), ErrorMessage> {
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
     .map_err(crate::error::AppSetupError::from)?;
   let result: std::result::Result<(), ErrorMessage> = runtime.block_on(async move {
-    // Build the complete app service using the lib_bodhiserver function
-    let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
+    let app_service = Arc::new(build_app_service(parts).await?);
 
-    // Launch native app with UI
     match NativeCommand::new(app_service, true)
       .aexecute(Some(&crate::ui::ASSETS))
       .await
     {
       Err(err) => {
         tracing::warn!(?err, "application exited with error");
-        // Convert NativeError to ErrorMessage directly
         let err_msg = ErrorMessage::new(
           "native_error".to_string(),
           ErrorType::InternalServer.to_string(),

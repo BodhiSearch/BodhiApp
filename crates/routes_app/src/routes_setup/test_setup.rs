@@ -204,11 +204,13 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
     });
 
   // Configure with default settings (no explicit public host)
-  let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
-    (services::BODHI_SCHEME.to_string(), "http".to_string()),
-    (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
-    (services::BODHI_PORT.to_string(), "1135".to_string()),
-  ]));
+  let setting_service = SettingServiceStub::default()
+    .append_settings(HashMap::from([
+      (services::BODHI_SCHEME.to_string(), "http".to_string()),
+      (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (services::BODHI_PORT.to_string(), "1135".to_string()),
+    ]))
+    .await;
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
@@ -275,11 +277,13 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
     });
 
   // Configure with default settings (no explicit public host)
-  let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
-    (services::BODHI_SCHEME.to_string(), "http".to_string()),
-    (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
-    (services::BODHI_PORT.to_string(), "1135".to_string()),
-  ]));
+  let setting_service = SettingServiceStub::default()
+    .append_settings(HashMap::from([
+      (services::BODHI_SCHEME.to_string(), "http".to_string()),
+      (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (services::BODHI_PORT.to_string(), "1135".to_string()),
+    ]))
+    .await;
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
@@ -343,17 +347,19 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
     });
 
   // Configure with explicit public host
-  let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
-    (
-      services::BODHI_PUBLIC_SCHEME.to_string(),
-      "https".to_string(),
-    ),
-    (
-      services::BODHI_PUBLIC_HOST.to_string(),
-      "my-bodhi.example.com".to_string(),
-    ),
-    (services::BODHI_PUBLIC_PORT.to_string(), "8443".to_string()),
-  ]));
+  let setting_service = SettingServiceStub::default()
+    .append_settings(HashMap::from([
+      (
+        services::BODHI_PUBLIC_SCHEME.to_string(),
+        "https".to_string(),
+      ),
+      (
+        services::BODHI_PUBLIC_HOST.to_string(),
+        "my-bodhi.example.com".to_string(),
+      ),
+      (services::BODHI_PUBLIC_PORT.to_string(), "8443".to_string()),
+    ]))
+    .await;
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()

@@ -14,16 +14,13 @@ use rstest::rstest;
 use serde_json::{json, Value};
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext, RouterState};
 use services::{
-  test_utils::{
-    expired_token, token, AppServiceStubBuilder, SecretServiceStub, SessionTestExt,
-    SettingServiceStub,
-  },
-  AppRegInfo, AppService, SecretServiceExt, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  test_utils::{expired_token, token, AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
+  AppRegInfo, AppService, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
 use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
 use tempfile::TempDir;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use tower::ServiceExt;
 use tower_sessions::{
   session::{Id, Record},
@@ -301,13 +298,15 @@ async fn auth_initiate_handler_with_token_response(
   let record = set_token_in_session(&session_service, &token).await?;
   let app_service = AppServiceStubBuilder::default()
     .with_temp_home_as(temp_bodhi_home)
-    .setting_service(Arc::new(SettingServiceStub::default().append_settings(
-      HashMap::from([
-        (BODHI_SCHEME.to_string(), "http".to_string()),
-        (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
-        (BODHI_PORT.to_string(), "3000".to_string()),
-      ]),
-    )))
+    .setting_service(Arc::new(
+      SettingServiceStub::default()
+        .append_settings(HashMap::from([
+          (BODHI_SCHEME.to_string(), "http".to_string()),
+          (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+          (BODHI_PORT.to_string(), "3000".to_string()),
+        ]))
+        .await,
+    ))
     .with_sqlite_session_service(Arc::new(session_service))
     .with_secret_service()
     .with_db_service()

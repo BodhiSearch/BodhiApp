@@ -76,8 +76,8 @@ pub async fn app_info_handler(
   let status = app_status_or_default(secret_service);
   let setting_service = &state.app_service().setting_service();
   Ok(Json(AppInfo {
-    version: setting_service.version(),
-    commit_sha: setting_service.commit_sha(),
+    version: setting_service.version().await,
+    commit_sha: setting_service.commit_sha().await,
     status,
   }))
 }
@@ -153,13 +153,13 @@ pub async fn setup_handler(
     return Err(AppServiceError::ServerNameTooShort)?;
   }
   let setting_service = &state.app_service().setting_service();
-  let redirect_uris = if setting_service.get_public_host_explicit().is_some() {
+  let redirect_uris = if setting_service.get_public_host_explicit().await.is_some() {
     // Explicit configuration (including RunPod) - use only configured callback URL
-    vec![setting_service.login_callback_url()]
+    vec![setting_service.login_callback_url().await]
   } else {
     // Local/network installation mode - build comprehensive redirect URI list
-    let scheme = setting_service.public_scheme();
-    let port = setting_service.public_port();
+    let scheme = setting_service.public_scheme().await;
+    let port = setting_service.public_port().await;
     let mut redirect_uris = Vec::new();
 
     // Always add all loopback hosts for local development

@@ -34,6 +34,7 @@ mod toolsets;
 mod mcp;
 
 // -- Configuration & environment
+mod app_command;
 mod envs;
 pub mod log;
 
@@ -72,6 +73,7 @@ pub use toolsets::*;
 pub use mcp::*;
 
 // -- Re-exports: configuration & environment
+pub use app_command::*;
 pub use envs::*;
 
 // -- Re-exports: API organization

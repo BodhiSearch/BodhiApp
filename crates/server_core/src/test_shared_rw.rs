@@ -59,6 +59,7 @@ async fn test_chat_completions_continue_strategy(
         bin_path.path().display().to_string().as_str(),
       ),
     ]))
+    .await
     .build()
     .await
     .unwrap();
@@ -94,7 +95,8 @@ async fn test_chat_completions_continue_strategy(
     app_service_stub.hub_service(),
     app_service_stub.setting_service(),
     Box::new(server_factory),
-  );
+  )
+  .await;
   shared_ctx.reload(Some(server_args)).await?;
   let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
     "model": "testalias:instruct",
@@ -134,6 +136,7 @@ async fn test_chat_completions_load_strategy(
       ),
       (BODHI_LLAMACPP_ARGS, "--verbose"),
     ]))
+    .await
     .build()
     .await
     .unwrap();
@@ -152,7 +155,8 @@ async fn test_chat_completions_load_strategy(
     app_service_stub.hub_service(),
     app_service_stub.setting_service(),
     Box::new(bodhi_server_factory),
-  );
+  )
+  .await;
   let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
     "model": "testalias:instruct",
     "messages": [{"role": "user", "content": "What day comes after Monday?"}]
@@ -192,6 +196,7 @@ async fn test_chat_completions_drop_and_load_strategy(
       ),
       (BODHI_LLAMACPP_ARGS, "--verbose"),
     ]))
+    .await
     .build()
     .await
     .unwrap();
@@ -238,7 +243,8 @@ async fn test_chat_completions_drop_and_load_strategy(
     app_service_stub.hub_service(),
     app_service_stub.setting_service(),
     Box::new(server_factory),
-  );
+  )
+  .await;
   shared_ctx.reload(Some(loaded_params)).await?;
   let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
     "model": "fakemodel:instruct",

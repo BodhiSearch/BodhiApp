@@ -540,17 +540,61 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
 )]
 pub struct BodhiOpenAPIDoc;
 
+fn apply_security_schemes(components: &mut utoipa::openapi::Components) {
+  components.security_schemes.insert(
+    "bearer_api_token".to_string(),
+    SecurityScheme::Http(
+      HttpBuilder::new()
+        .scheme(HttpAuthScheme::Bearer)
+        .bearer_format("bodhiapp_<token>")
+        .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
+        .build()
+    ),
+  );
+
+  components.security_schemes.insert(
+    "bearer_oauth_token".to_string(),
+    SecurityScheme::Http(
+      HttpBuilder::new()
+        .scheme(HttpAuthScheme::Bearer)
+        .bearer_format("JWT")
+        .description(Some("OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"))
+        .build()
+    ),
+  );
+
+  components.security_schemes.insert(
+    "session_auth".to_string(),
+    SecurityScheme::OAuth2(
+      OAuth2::with_description(
+        [Flow::AuthorizationCode(
+          AuthorizationCode::new(
+            "/bodhi/v1/auth/initiate".to_string(),
+            "/bodhi/v1/auth/callback".to_string(),
+            Scopes::from_iter([
+              ("resource_user".to_string(), "Basic authenticated user access via browser session".to_string()),
+              ("resource_power_user".to_string(), "Power user operations via browser session".to_string()),
+              ("resource_manager".to_string(), "Manager operations via browser session (session-only)".to_string()),
+              ("resource_admin".to_string(), "Admin operations via browser session (session-only)".to_string()),
+            ]),
+          ),
+        )],
+        "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only.",
+      )
+    ),
+  );
+}
+
 /// Modifies OpenAPI documentation with environment-specific settings
 #[derive(Debug, derive_new::new)]
 pub struct OpenAPIEnvModifier {
   setting_service: Arc<dyn SettingService>,
 }
 
-impl Modify for OpenAPIEnvModifier {
-  fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-    // Add environment-specific server
-    let server_url = self.setting_service.public_server_url();
-    let desc = if self.setting_service.is_production() {
+impl OpenAPIEnvModifier {
+  pub async fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    let server_url = self.setting_service.public_server_url().await;
+    let desc = if self.setting_service.is_production().await {
       ""
     } else {
       " - Development"
@@ -562,51 +606,7 @@ impl Modify for OpenAPIEnvModifier {
     openapi.servers = Some(vec![server]);
 
     if let Some(components) = &mut openapi.components {
-      // 1. API Token Authentication (Database-stored tokens with TokenScope)
-      components.security_schemes.insert(
-        "bearer_api_token".to_string(),
-        SecurityScheme::Http(
-          HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("bodhiapp_<token>")
-            .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
-            .build()
-        ),
-      );
-
-      // 2. OAuth 2.1 Token Exchange (External tokens with UserScope)
-      components.security_schemes.insert(
-        "bearer_oauth_token".to_string(),
-        SecurityScheme::Http(
-          HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("JWT")
-            .description(Some("OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"))
-            .build()
-        ),
-      );
-
-      // 3. Session Cookie Authentication (Browser sessions with ResourceRole)
-      components.security_schemes.insert(
-        "session_auth".to_string(),
-        SecurityScheme::OAuth2(
-          OAuth2::with_description(
-            [Flow::AuthorizationCode(
-              AuthorizationCode::new(
-                "/bodhi/v1/auth/initiate".to_string(),
-                "/bodhi/v1/auth/callback".to_string(),
-                Scopes::from_iter([
-                  ("resource_user".to_string(), "Basic authenticated user access via browser session".to_string()),
-                  ("resource_power_user".to_string(), "Power user operations via browser session".to_string()),
-                  ("resource_manager".to_string(), "Manager operations via browser session (session-only)".to_string()),
-                  ("resource_admin".to_string(), "Admin operations via browser session (session-only)".to_string()),
-                ]),
-              ),
-            )],
-            "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only.",
-          )
-        ),
-      );
+      apply_security_schemes(components);
     }
   }
 }
@@ -622,51 +622,7 @@ impl Modify for SecurityModifier {
     }
 
     if let Some(components) = &mut openapi.components {
-      // 1. API Token Authentication (Database-stored tokens with TokenScope)
-      components.security_schemes.insert(
-        "bearer_api_token".to_string(),
-        SecurityScheme::Http(
-          HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("bodhiapp_<token>")
-            .description(Some("API token authentication. Create tokens via web interface at Menu > Settings > API Tokens. Format: 'bodhiapp_<random>'. Use as: Authorization: Bearer <token>\n\nScopes:\n- scope_token_user: Basic API access - read operations\n- scope_token_power_user: Advanced operations - create/update models, downloads\n- scope_token_manager: User management operations\n- scope_token_admin: Full administrative access"))
-            .build()
-        ),
-      );
-
-      // 2. OAuth 2.1 Token Exchange (External tokens with UserScope)
-      components.security_schemes.insert(
-        "bearer_oauth_token".to_string(),
-        SecurityScheme::Http(
-          HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("JWT")
-            .description(Some("OAuth 2.1 token exchange authentication. External OAuth providers can exchange tokens with UserScope claims for access to Bodhi resources. Use as: Authorization: Bearer <oauth_exchanged_token>\n\nScopes:\n- scope_user_user: Basic user access via OAuth 2.1 token exchange\n- scope_user_power_user: Advanced user operations via OAuth 2.1 token exchange\n- scope_user_manager: Manager operations via OAuth 2.1 token exchange\n- scope_user_admin: Admin operations via OAuth 2.1 token exchange"))
-            .build()
-        ),
-      );
-
-      // 3. Session Cookie Authentication (Browser sessions with ResourceRole)
-      components.security_schemes.insert(
-        "session_auth".to_string(),
-        SecurityScheme::OAuth2(
-          OAuth2::with_description(
-            [Flow::AuthorizationCode(
-              AuthorizationCode::new(
-                "/bodhi/v1/auth/initiate".to_string(),
-                "/bodhi/v1/auth/callback".to_string(),
-                Scopes::from_iter([
-                  ("resource_user".to_string(), "Basic authenticated user access via browser session".to_string()),
-                  ("resource_power_user".to_string(), "Power user operations via browser session".to_string()),
-                  ("resource_manager".to_string(), "Manager operations via browser session (session-only)".to_string()),
-                  ("resource_admin".to_string(), "Admin operations via browser session (session-only)".to_string()),
-                ]),
-              ),
-            )],
-            "Browser session authentication. Login via /bodhi/v1/auth/initiate. Some operations (token management, settings, user management) require session authentication only.",
-          )
-        ),
-      );
+      apply_security_schemes(components);
     }
   }
 }

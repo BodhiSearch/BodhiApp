@@ -92,13 +92,13 @@ mod tests {
 
   #[rstest]
   #[case::key_does_not_match("some_other_key", None, SettingSource::Default, Some(serde_yaml::Value::String("new_variant".to_string())), SettingSource::Default)]
-  #[case::no_change_in_value(BODHI_EXEC_VARIANT, Some(serde_yaml::Value::String("cpu".to_string())), SettingSource::Default, Some(serde_yaml::Value::String("cpu".to_string())), SettingSource::SettingsFile)]
+  #[case::no_change_in_value(BODHI_EXEC_VARIANT, Some(serde_yaml::Value::String("cpu".to_string())), SettingSource::Default, Some(serde_yaml::Value::String("cpu".to_string())), SettingSource::Database)]
   #[case::invalid_value(
     BODHI_EXEC_VARIANT,
     None,
     SettingSource::Default,
     Some(serde_yaml::Value::Null),
-    SettingSource::SettingsFile
+    SettingSource::Database
   )]
   #[tokio::test]
   async fn test_variant_change_listener_noop(

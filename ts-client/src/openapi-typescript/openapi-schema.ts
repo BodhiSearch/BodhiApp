@@ -890,7 +890,7 @@ export interface paths {
         get?: never;
         /**
          * Update Application Setting
-         * @description Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.
+         * @description Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the application database.
          *
          *     **Security Note:** Admin session authentication required for system configuration changes.
          */
@@ -3386,7 +3386,7 @@ export interface components {
             type: "option";
         };
         /** @enum {string} */
-        SettingSource: "system" | "command_line" | "environment" | "settings_file" | "default";
+        SettingSource: "system" | "command_line" | "environment" | "settings_file" | "database" | "default";
         /**
          * @description Request to setup the application in authenticated mode
          * @example {
@@ -8244,7 +8244,7 @@ export interface operations {
                      *         ],
                      *         "type": "option"
                      *       },
-                     *       "source": "settings_file"
+                     *       "source": "database"
                      *     } */
                     "application/json": components["schemas"]["SettingInfo"];
                 };

@@ -143,7 +143,8 @@ async fn test_ui_router_scenarios(
     base_router(),
     static_router,
     proxy_router(),
-  );
+  )
+  .await;
 
   for (path, should_exist) in test_paths {
     let (status, body) = test_request(router.clone(), path).await;
