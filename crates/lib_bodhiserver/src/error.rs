@@ -1,31 +1,15 @@
-use objs::{AppError, ErrorMessage, ErrorType};
+use objs::{AppError, ErrorType, IoError};
+use services::{db::DbError, KeyringError, SecretServiceError, SessionServiceError};
 use std::io;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum AppOptionsError {
-  #[error("validation_error: required property '{0}' is not set")]
-  #[error_meta(code = "app_options_error-validation_error", error_type = ErrorType::BadRequest)]
-  ValidationError(String),
-  #[error(transparent)]
-  #[error_meta(code = "app_options_error-parse_error", error_type = ErrorType::BadRequest, args_delegate = false)]
-  Parse(#[from] strum::ParseError),
-  #[error("unknown_system_setting: {0}")]
-  #[error_meta(code = "app_options_error-unknown_system_setting", error_type = ErrorType::BadRequest)]
-  UnknownSystemSetting(String),
-}
-
-impl From<AppOptionsError> for ErrorMessage {
-  fn from(value: AppOptionsError) -> Self {
-    ErrorMessage::new(value.code(), value.error_type(), value.to_string())
-  }
-}
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
 pub enum BootstrapError {
+  // --- existing BootstrapError variants ---
   #[error("failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   BodhiHomeNotResolved,
+
   #[error("io_error: failed to create directory {path}, error: {source}")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   DirCreate {
@@ -33,32 +17,58 @@ pub enum BootstrapError {
     source: io::Error,
     path: String,
   },
+
   #[error("BODHI_HOME value must be set")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   BodhiHomeNotSet,
-}
 
-impl From<BootstrapError> for ErrorMessage {
-  fn from(value: BootstrapError) -> Self {
-    ErrorMessage::new(value.code(), value.error_type(), value.to_string())
-  }
-}
+  // --- absorbed from AppOptionsError ---
+  #[error("validation_error: required property '{0}' is not set")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  ValidationError(String),
 
-impl From<AppServiceBuilderError> for ErrorMessage {
-  fn from(value: AppServiceBuilderError) -> Self {
-    ErrorMessage::new(value.code(), value.error_type(), value.to_string())
-  }
-}
+  #[error(transparent)]
+  #[error_meta(code = "bootstrap_error-parse", error_type = ErrorType::BadRequest, args_delegate = false)]
+  Parse(#[from] strum::ParseError),
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum AppServiceBuilderError {
+  #[error("unknown_system_setting: {0}")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  UnknownSystemSetting(String),
+
+  // --- absorbed from AppServiceBuilderError ---
   #[error("{0}")]
-  #[error_meta(error_type=ErrorType::InternalServer)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   ServiceAlreadySet(String),
+
   #[error("Encryption key not properly configured.")]
-  #[error_meta(error_type=ErrorType::BadRequest)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   PlaceholderValue(String),
+
+  // --- replace .expect() panic ---
+  #[error("AppServiceBuilder::build() called without BootstrapParts.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  MissingBootstrapParts,
+
+  // --- transparent service error variants ---
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Db(#[from] DbError),
+
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  SecretService(#[from] SecretServiceError),
+
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  SessionService(#[from] SessionServiceError),
+
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Keyring(#[from] KeyringError),
+
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
+  Io(#[from] IoError),
 }
 
 #[cfg(test)]

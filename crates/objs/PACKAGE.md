@@ -47,7 +47,7 @@ The error system coordinates across all BodhiApp layers through these key files:
 
 - **Error Definition**: `src/error/objs.rs` - Domain error types: `EntityError`, `ObjValidationError`, `IoError`, `BuilderError`, `SerdeJsonError`, `SerdeYamlError`, `ReqwestError`, `JsonRejectionError`, `RwLockReadError`, `AppRegInfoMissingError`
 - **API Conversion**: `src/error/error_api.rs` - `ApiError` envelope converting any `AppError` to OpenAI-compatible JSON responses. Tests use a test-only `TestError` enum to verify the conversion pipeline.
-- **Error Trait & Types**: `src/error/common.rs` - `ErrorType` enum (HTTP status mapping), `AppError` trait, `ErrorMessage` struct
+- **Error Trait & Types**: `src/error/common.rs` - `ErrorType` enum (HTTP status mapping), `AppError` trait
 - **OpenAI Format**: `src/error/error_oai.rs` - `OpenAIApiError` and `ErrorBody` for OpenAI-compatible error responses with utoipa schema annotations
 **Important**: Generic HTTP wrapper structs (`BadRequestError`, `NotFoundError`, `InternalServerError`, `UnauthorizedError`, `ConflictError`, `UnprocessableEntityError`, `ServiceUnavailableError`) have been removed. Use domain-specific error enums with `#[error_meta(error_type = ErrorType::...)]` instead.
 

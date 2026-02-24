@@ -3,9 +3,9 @@ use crate::{
   BODHI_HOST, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
 };
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, setup_bootstrap_service, update_with_option, ApiError,
-  AppCommand, AppService, BootstrapService, OpenAIApiError, ServeCommand, ServerShutdownHandle,
-  DEFAULT_HOST, DEFAULT_PORT, DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
+  build_app_service, setup_app_dirs, setup_bootstrap_service, update_with_option, AppCommand,
+  AppService, BootstrapService, ServeCommand, ServerShutdownHandle, DEFAULT_HOST, DEFAULT_PORT,
+  DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -177,7 +177,7 @@ impl BodhiServer {
         )
       })?);
     update_with_option(&app_service, (&app_options).into())
-      .map_err(|err| Error::new(Status::GenericFailure, err))?;
+      .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
     // Create and start the server
     let serve_command = ServeCommand::ByParams {
       host: self.host(),
@@ -188,11 +188,9 @@ impl BodhiServer {
       .get_server_handle(app_service, Some(&EMBEDDED_UI_ASSETS))
       .await
       .map_err(|e| {
-        let err: ApiError = e.into();
-        let err: OpenAIApiError = err.into();
         Error::new(
           Status::GenericFailure,
-          format!("Failed to start server: {}", err),
+          format!("Failed to start server: {}", e),
         )
       })?;
 

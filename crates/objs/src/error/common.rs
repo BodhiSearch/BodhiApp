@@ -1,20 +1,5 @@
 use axum::http::StatusCode;
-use serde::Serialize;
 use std::{collections::HashMap, str::FromStr};
-
-#[derive(Debug, thiserror::Error, Serialize, derive_new::new, PartialEq)]
-pub struct ErrorMessage {
-  code: String,
-  r#type: String,
-  message: String,
-}
-
-impl std::fmt::Display for ErrorMessage {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let msg = serde_json::to_string(self).unwrap_or_else(|err| format!("{:?}", err));
-    write!(f, "{msg}")
-  }
-}
 
 // https://help.openai.com/en/articles/6897213-openai-library-error-types-guidance
 #[derive(Debug, strum::Display, strum::AsRefStr, strum::EnumString, Default)]

@@ -1,7 +1,7 @@
 use crate::env::{AUTH_REALM, AUTH_URL, ENV_TYPE};
-use lib_bodhiserver::{AppOptions, AppOptionsBuilder, AppType, ErrorMessage};
+use lib_bodhiserver::{AppOptions, AppOptionsBuilder, AppType, BootstrapError};
 
-pub fn build_app_options(app_type: AppType) -> Result<AppOptions, ErrorMessage> {
+pub fn build_app_options(app_type: AppType) -> Result<AppOptions, BootstrapError> {
   Ok(
     AppOptionsBuilder::default()
       .env_type(ENV_TYPE.clone())

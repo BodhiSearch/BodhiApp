@@ -12,14 +12,13 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance and design rationale.
 - `src/common.rs` - `build_app_options(app_type)` shared by both modes
 - `src/env.rs` - `ENV_TYPE`, `AUTH_URL`, `AUTH_REALM` constants switched by `production` feature
 - `src/ui.rs` - Re-exports `lib_bodhiserver::EMBEDDED_UI_ASSETS as ASSETS`
-- `src/error.rs` - `AppSetupError` (async runtime), `impl From<AppSetupError> for ErrorMessage`
-- `src/error_test.rs` - Unit tests for error conversions
+- `src/error.rs` - `AppSetupError` (`Bootstrap`, `AsyncRuntime`, `Serve`, `SettingService` variants)
 
 ## Key Implementation Patterns
 
 ### Dual-Mode via Feature Flag
 
-The `native` feature flag selects the initialization module at compile time (`src/lib.rs`). Both modes expose `initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage>` with the same signature. The `AppCommand` enum has two variants: `Serve { host: Option<String>, port: Option<u16> }` and `Default`. See `src/app.rs`.
+The `native` feature flag selects the initialization module at compile time (`src/lib.rs`). Both modes expose `initialize_and_execute(command: AppCommand) -> Result<(), AppSetupError>` with the same signature. The `AppCommand` enum has two variants: `Serve { host: Option<String>, port: Option<u16> }` and `Default`. See `src/app.rs`.
 
 ### CLI Interface
 
@@ -31,7 +30,7 @@ Defined in `src/app.rs` using clap with derive macros. The `serve` subcommand ac
 
 ### Container/Server Mode (`src/server_init.rs`)
 
-`initialize_and_execute` spins up a `tokio` runtime via `tokio::runtime::Builder`. The flow: build `AppOptions` → `setup_app_dirs` → configure logging → apply command-line host/port overrides via `SettingService::set_setting_with_source(..., CommandLine)` → `build_app_service` → `set_feature_settings` → run `ServeCommand`. Logging uses `tracing_appender` with daily-rotating file output; log level is read from `BootstrapService` (env + YAML only, no DB access at this stage). `set_feature_settings` uses `ErrorType::InternalServer.to_string()` for the error type field in `ErrorMessage`.
+`initialize_and_execute` spins up a `tokio` runtime via `tokio::runtime::Builder`. The flow: build `AppOptions` → `setup_app_dirs` → configure logging → apply command-line host/port overrides via `SettingService::set_setting_with_source(..., CommandLine)` → `build_app_service` → `set_feature_settings` → run `ServeCommand`. Logging uses `tracing_appender` with daily-rotating file output; log level is read from `BootstrapService` (env + YAML only, no DB access at this stage). `set_feature_settings` returns `Result<(), AppSetupError>`; `SettingServiceError` auto-converts via `AppSetupError::SettingService`.
 
 ### Configuration
 
@@ -42,9 +41,9 @@ Defined in `src/app.rs` using clap with derive macros. The `serve` subcommand ac
 | Enum            | Variants                                   | Notes                                                    |
 | --------------- | ------------------------------------------ | -------------------------------------------------------- |
 | `NativeError`   | `Tauri(tauri::Error)`, `Serve(ServeError)` | `src/native_init.rs`; code = `"tauri"` for Tauri variant |
-| `AppSetupError` | `AsyncRuntime(io::Error)`                  | `src/error.rs`; async runtime spawn failure              |
+| `AppSetupError` | `Bootstrap(BootstrapError)`, `AsyncRuntime(io::Error)`, `Serve(ServeError)`, `SettingService(SettingServiceError)` | `src/error.rs`; all variants use `#[from]` for auto-conversion |
 
-Both implement `AppError` via `errmeta_derive::ErrorMeta`. `AppSetupError` also has `impl From<AppSetupError> for ErrorMessage`.
+Both implement `AppError` via `errmeta_derive::ErrorMeta`.
 
 ## Feature Flags
 

@@ -1,4 +1,3 @@
-use crate::ErrorMessage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
@@ -55,16 +54,6 @@ impl std::fmt::Display for OpenAIApiError {
       "status: {}, {}",
       self.status,
       serde_json::to_string(self).unwrap()
-    )
-  }
-}
-
-impl From<OpenAIApiError> for ErrorMessage {
-  fn from(value: OpenAIApiError) -> Self {
-    Self::new(
-      value.error.code.unwrap_or("unknown".to_string()),
-      value.error.r#type,
-      value.error.message,
     )
   }
 }

@@ -1,7 +1,8 @@
 use crate::app::AppCommand;
+use crate::error::AppSetupError;
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, setup_bootstrap_service, AppService, AppType,
-  BootstrapService, ErrorMessage, ErrorType, ServeCommand,
+  BootstrapService, ServeCommand,
 };
 use std::fs;
 use std::sync::Arc;
@@ -12,23 +13,25 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 #[cfg(feature = "production")]
 mod env_config {
-  use lib_bodhiserver::{ErrorMessage, SettingService};
+  use crate::error::AppSetupError;
+  use lib_bodhiserver::SettingService;
 
   pub async fn set_feature_settings(
     _setting_service: &dyn SettingService,
-  ) -> Result<(), ErrorMessage> {
+  ) -> Result<(), AppSetupError> {
     Ok(())
   }
 }
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use lib_bodhiserver::{ErrorMessage, ErrorType, SettingService, BODHI_EXEC_LOOKUP_PATH};
+  use crate::error::AppSetupError;
+  use lib_bodhiserver::{SettingService, BODHI_EXEC_LOOKUP_PATH};
 
   #[allow(clippy::result_large_err)]
   pub async fn set_feature_settings(
     setting_service: &dyn SettingService,
-  ) -> Result<(), ErrorMessage> {
+  ) -> Result<(), AppSetupError> {
     if setting_service
       .get_setting(BODHI_EXEC_LOOKUP_PATH)
       .await
@@ -39,14 +42,7 @@ mod env_config {
           BODHI_EXEC_LOOKUP_PATH,
           &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
         )
-        .await
-        .map_err(|e| {
-          ErrorMessage::new(
-            "setting_service_error".to_string(),
-            ErrorType::InternalServer.to_string(),
-            e.to_string(),
-          )
-        })?;
+        .await?;
     }
     Ok(())
   }
@@ -57,20 +53,20 @@ use env_config::*;
 
 const APP_TYPE: AppType = AppType::Container;
 
-pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
+pub fn initialize_and_execute(command: AppCommand) -> Result<(), AppSetupError> {
   let app_options = build_app_options(APP_TYPE)?;
   let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options)?;
   let bootstrap =
     setup_bootstrap_service(&app_options, bodhi_home, source, file_defaults, command)?;
 
-  let _guard = setup_logs(&bootstrap).map_err(crate::error::AppSetupError::from)?;
+  let _guard = setup_logs(&bootstrap).map_err(AppSetupError::AsyncRuntime)?;
   let parts = bootstrap.into_parts();
 
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
-    .map_err(crate::error::AppSetupError::from)?;
-  let result: Result<(), ErrorMessage> = runtime.block_on(async move {
+    .map_err(AppSetupError::AsyncRuntime)?;
+  let result: Result<(), AppSetupError> = runtime.block_on(async move {
     let app_service = Arc::new(build_app_service(parts).await?);
     set_feature_settings(app_service.setting_service().as_ref()).await?;
     let host = app_service.setting_service().host().await;
@@ -78,14 +74,7 @@ pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
     let command = ServeCommand::ByParams { host, port };
     command
       .aexecute(app_service, Some(&crate::ui::ASSETS))
-      .await
-      .map_err(|err| {
-        ErrorMessage::new(
-          "serve_error".to_string(),
-          ErrorType::InternalServer.to_string(),
-          err.to_string(),
-        )
-      })?;
+      .await?;
     tracing::info!("application exited with success");
     Ok(())
   });

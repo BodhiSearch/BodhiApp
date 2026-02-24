@@ -1,4 +1,4 @@
-use crate::{AppError, ErrorBody, ErrorMessage, JsonRejectionError, OpenAIApiError};
+use crate::{AppError, ErrorBody, JsonRejectionError, OpenAIApiError};
 use axum::{
   body::Body,
   extract::rejection::JsonRejection,
@@ -52,18 +52,6 @@ impl<T: AppError + 'static> From<T> for ApiError {
       code: value.code(),
       args: value.args(),
     }
-  }
-}
-
-impl From<ApiError> for ErrorMessage {
-  fn from(value: ApiError) -> Self {
-    let ApiError {
-      name,
-      error_type,
-      code,
-      ..
-    } = value;
-    Self::new(code, error_type, name)
   }
 }
 

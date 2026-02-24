@@ -9,7 +9,7 @@ See [CLAUDE.md](CLAUDE.md) for architectural guidance and design rationale.
 - `src/app_service_builder.rs` - `AppServiceBuilder`, `build_app_service()`, `update_with_option()`
 - `src/app_dirs_builder.rs` - `setup_app_dirs()`, `create_bodhi_home()`, `setup_bootstrap_service()`
 - `src/app_options.rs` - `AppOptions`, `AppOptionsBuilder` (builder pattern with derive-new)
-- `src/error.rs` - `AppOptionsError`, `AppDirsBuilderError`, `AppServiceBuilderError`
+- `src/error.rs` - `BootstrapError` (unified enum), `AppDirsBuilderError`
 - `src/ui_assets.rs` - `EMBEDDED_UI_ASSETS` (compile-time Next.js embed via `include_dir!`)
 - `src/test_utils/` - `AppOptionsBuilder::development()`, `AppOptionsBuilder::with_bodhi_home()`
 
@@ -47,17 +47,16 @@ Test helpers in `src/test_utils/` provide `AppOptionsBuilder::development()` (de
 
 ### Re-exports
 
-`src/lib.rs` re-exports a curated surface from `services`, `objs`, and `server_app` so downstream crates (`bodhi/src-tauri`, `lib_bodhiserver_napi`) only need to depend on `lib_bodhiserver`. `BootstrapService` is defined in this crate (`src/bootstrap_service.rs`) and re-exported directly. Key re-exported groups: all `BODHI_*` / `DEFAULT_*` / `HF_*` constants, `DefaultSettingService`, `DefaultAppService`, `AppService`, `SettingService`, `ServeCommand`, `ServeError`, `ServerShutdownHandle`, `ApiError`, `ErrorMessage`, `ErrorType`, `AppType`, `EnvType`.
+`src/lib.rs` re-exports a curated surface from `services`, `objs`, and `server_app` so downstream crates (`bodhi/src-tauri`, `lib_bodhiserver_napi`) only need to depend on `lib_bodhiserver`. `BootstrapService` is defined in this crate (`src/bootstrap_service.rs`) and re-exported directly. Key re-exported groups: all `BODHI_*` / `DEFAULT_*` / `HF_*` constants, `DefaultSettingService`, `DefaultAppService`, `AppService`, `SettingService`, `ServeCommand`, `ServeError`, `ServerShutdownHandle`, `ApiError`, `ErrorType`, `AppType`, `EnvType`.
 
 ## Error Types
 
-All error enums derive `thiserror::Error` + `errmeta_derive::ErrorMeta` and implement `AppError`. Each also has `impl From<XError> for ErrorMessage` for conversion to the wire format. See `src/error.rs`.
+All error enums derive `thiserror::Error` + `errmeta_derive::ErrorMeta` and implement `AppError`. See `src/error.rs`.
 
 | Enum | Variants | ErrorType |
 |------|----------|-----------|
-| `AppOptionsError` | `ValidationError(String)`, `Parse(strum::ParseError)`, `UnknownSystemSetting(String)` | BadRequest |
+| `BootstrapError` | `BodhiHomeNotResolved`, `DirCreate { source, path }`, `BodhiHomeNotSet`, `ValidationError(String)`, `Parse(strum::ParseError)`, `UnknownSystemSetting(String)`, `ServiceAlreadySet(String)`, `PlaceholderValue(String)`, `MissingBootstrapParts`, `Db(DbError)`, `SecretService(SecretServiceError)`, `SessionService(SessionServiceError)`, `Keyring(KeyringError)`, `Io(IoError)` | InternalServer / BadRequest |
 | `AppDirsBuilderError` | `BodhiHomeNotFound`, `DirCreate { source, path }`, `IoFileWrite { source, path }`, `SettingServiceError`, `BootstrapBodhiHomeNotFound` | InternalServer |
-| `AppServiceBuilderError` | `ServiceAlreadySet(String)`, `PlaceholderValue(String)` | InternalServer / BadRequest |
 
 ## Commands
 

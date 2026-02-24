@@ -27,8 +27,7 @@ pub use ui_assets::EMBEDDED_UI_ASSETS;
 // Re-exports for crates/bodhi dependency isolation
 // Domain objects from objs crate
 pub use objs::{
-  ApiError, AppCommand, AppError, AppType, EnvType, ErrorMessage, ErrorType, LogLevel,
-  OpenAIApiError,
+  ApiError, AppCommand, AppError, AppType, EnvType, ErrorType, LogLevel, OpenAIApiError,
 };
 
 // Service interfaces and implementations from services crate

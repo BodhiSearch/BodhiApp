@@ -1,4 +1,4 @@
-use crate::{AppOptionsError, DefaultEnvWrapper};
+use crate::{BootstrapError, DefaultEnvWrapper};
 use objs::{AppType, EnvType};
 use services::{
   AppRegInfo, AppStatus, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
@@ -86,7 +86,7 @@ impl AppOptionsBuilder {
   }
 
   /// Sets a system setting (immutable)
-  pub fn set_system_setting(self, key: &str, value: &str) -> Result<Self, AppOptionsError> {
+  pub fn set_system_setting(self, key: &str, value: &str) -> Result<Self, BootstrapError> {
     // Validate and set system settings
     match key {
       BODHI_ENV_TYPE => {
@@ -101,7 +101,7 @@ impl AppOptionsBuilder {
       BODHI_COMMIT_SHA => Ok(self.app_commit_sha(value)),
       BODHI_AUTH_URL => Ok(self.auth_url(value)),
       BODHI_AUTH_REALM => Ok(self.auth_realm(value)),
-      key => Err(AppOptionsError::UnknownSystemSetting(key.to_string())),
+      key => Err(BootstrapError::UnknownSystemSetting(key.to_string())),
     }
   }
 
@@ -152,30 +152,30 @@ impl AppOptionsBuilder {
   }
 
   /// Builds the AppOptions with validation and environment wrapper setup
-  pub fn build(self) -> Result<AppOptions, AppOptionsError> {
+  pub fn build(self) -> Result<AppOptions, BootstrapError> {
     // Always build environment wrapper, even if no environment variables were set
-    let env_wrapper = self.build_env_wrapper_from_vars()?;
+    let env_wrapper = self.build_env_wrapper_from_vars();
 
     Ok(AppOptions {
       env_wrapper,
       env_type: self
         .env_type
-        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_ENV_TYPE.to_string()))?,
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_ENV_TYPE.to_string()))?,
       app_type: self
         .app_type
-        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_APP_TYPE.to_string()))?,
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_APP_TYPE.to_string()))?,
       app_version: self
         .app_version
-        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_VERSION.to_string()))?,
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_VERSION.to_string()))?,
       app_commit_sha: self
         .app_commit_sha
         .unwrap_or_else(|| crate::BUILD_COMMIT_SHA.to_string()),
       auth_url: self
         .auth_url
-        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_URL.to_string()))?,
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_AUTH_URL.to_string()))?,
       auth_realm: self
         .auth_realm
-        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
+        .ok_or_else(|| BootstrapError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
       app_settings: self.app_settings,
       app_reg_info: self.app_reg_info,
       app_status: self.app_status,
@@ -183,11 +183,11 @@ impl AppOptionsBuilder {
   }
 
   /// Builds an environment wrapper with collected environment variables
-  fn build_env_wrapper_from_vars(&self) -> Result<Arc<dyn EnvWrapper>, AppOptionsError> {
+  fn build_env_wrapper_from_vars(&self) -> Arc<dyn EnvWrapper> {
     let mut env_wrapper = DefaultEnvWrapper::default();
     for (key, value) in &self.environment_vars {
       env_wrapper.set_var(key, value);
     }
-    Ok(Arc::new(env_wrapper))
+    Arc::new(env_wrapper)
   }
 }

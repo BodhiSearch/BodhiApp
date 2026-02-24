@@ -1,5 +1,5 @@
-use crate::{AppServiceBuilderError, AppStateOption};
-use objs::{ApiError, EnvType, ErrorMessage, IoError};
+use crate::{AppStateOption, BootstrapError};
+use objs::{EnvType, IoError};
 use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AccessRequestService, AiApiService, AppService, AuthService, BootstrapParts,
@@ -8,8 +8,8 @@ use services::{
   DefaultSettingService, DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue,
   KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, McpService,
   MokaCacheService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SecretService,
-  SecretServiceExt, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
-  ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
+  SecretServiceExt, SessionService, SettingService, SqliteSessionService,
+  SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -62,9 +62,9 @@ impl AppServiceBuilder {
   pub fn time_service(
     mut self,
     service: Arc<dyn TimeService>,
-  ) -> Result<Self, AppServiceBuilderError> {
+  ) -> Result<Self, BootstrapError> {
     if self.time_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
+      return Err(BootstrapError::ServiceAlreadySet(
         "time_service".to_string(),
       ));
     }
@@ -76,9 +76,9 @@ impl AppServiceBuilder {
   pub fn secret_service(
     mut self,
     service: Arc<dyn SecretService>,
-  ) -> Result<Self, AppServiceBuilderError> {
+  ) -> Result<Self, BootstrapError> {
     if self.secret_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
+      return Err(BootstrapError::ServiceAlreadySet(
         "secret_service".to_string(),
       ));
     }
@@ -90,9 +90,9 @@ impl AppServiceBuilder {
   pub fn cache_service(
     mut self,
     service: Arc<dyn CacheService>,
-  ) -> Result<Self, AppServiceBuilderError> {
+  ) -> Result<Self, BootstrapError> {
     if self.cache_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet(
+      return Err(BootstrapError::ServiceAlreadySet(
         "cache_service".to_string(),
       ));
     }
@@ -100,13 +100,13 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
-  pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
+  pub async fn build(mut self) -> Result<DefaultAppService, BootstrapError> {
     let time_service = self.get_or_build_time_service();
 
     let parts = self
       .bootstrap_parts
       .take()
-      .expect("build() requires BootstrapParts");
+      .ok_or(BootstrapError::MissingBootstrapParts)?;
 
     let is_production = parts.system_settings.iter().any(|s| {
       s.key == BODHI_ENV_TYPE && s.value.as_str() == Some(&EnvType::Production.to_string())
@@ -189,11 +189,11 @@ impl AppServiceBuilder {
   /// Builds the hub service.
   async fn build_hub_service(
     setting_service: &Arc<dyn SettingService>,
-  ) -> Result<Arc<dyn HubService>, ApiError> {
+  ) -> Result<Arc<dyn HubService>, BootstrapError> {
     let hf_cache = setting_service.hf_cache().await;
     let hf_token = setting_service.get_env(HF_TOKEN).await;
     let hub_service = HfHubService::new_from_hf_cache(hf_cache, hf_token, true)
-      .map_err(|err| ApiError::from(IoError::from(err)))?;
+      .map_err(|err| BootstrapError::Io(IoError::from(err)))?;
     Ok(Arc::new(hub_service))
   }
 
@@ -219,7 +219,7 @@ impl AppServiceBuilder {
     db_path: PathBuf,
     time_service: Arc<dyn TimeService>,
     encryption_key: Vec<u8>,
-  ) -> Result<Arc<dyn DbService>, ApiError> {
+  ) -> Result<Arc<dyn DbService>, BootstrapError> {
     let app_db_pool = DbPool::connect(&format!("sqlite:{}", db_path.display())).await?;
     let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
     db_service.migrate().await?;
@@ -229,7 +229,7 @@ impl AppServiceBuilder {
   /// Builds the session service.
   async fn build_session_service(
     setting_service: &Arc<dyn SettingService>,
-  ) -> Result<Arc<dyn SessionService>, ApiError> {
+  ) -> Result<Arc<dyn SessionService>, BootstrapError> {
     let session_db_pool = DbPool::connect(&format!(
       "sqlite:{}",
       setting_service.session_db_path().await.display()
@@ -241,12 +241,11 @@ impl AppServiceBuilder {
   }
 
   /// Gets or builds the secret service.
-  #[allow(clippy::result_large_err)]
   async fn get_or_build_secret_service(
     &mut self,
     setting_service: &Arc<dyn SettingService>,
     encryption_key: Vec<u8>,
-  ) -> Result<Arc<dyn SecretService>, ApiError> {
+  ) -> Result<Arc<dyn SecretService>, BootstrapError> {
     if let Some(service) = self.secret_service.take() {
       return Ok(service);
     }
@@ -335,55 +334,45 @@ impl AppServiceBuilder {
 async fn build_encryption_key(
   is_production: bool,
   encryption_key_value: Option<String>,
-) -> Result<Vec<u8>, ApiError> {
+) -> Result<Vec<u8>, BootstrapError> {
   let app_suffix = if is_production { "" } else { " - Dev" };
   let app_name = format!("Bodhi App{app_suffix}");
   if let Some(ref key) = encryption_key_value {
     if key == "your-strong-encryption-key-here" {
-      return Err(AppServiceBuilderError::PlaceholderValue(key.to_string()))?;
+      return Err(BootstrapError::PlaceholderValue(key.to_string()));
     }
   }
   let encryption_key = encryption_key_value
     .map(|key| Ok(hash_key(&key)))
-    .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
+    .unwrap_or_else(|| {
+      SystemKeyringStore::new(&app_name)
+        .get_or_generate(SECRET_KEY)
+        .map_err(BootstrapError::from)
+    })?;
   Ok(encryption_key)
 }
 
 pub async fn build_app_service(
   bootstrap_parts: BootstrapParts,
-) -> Result<DefaultAppService, ErrorMessage> {
+) -> Result<DefaultAppService, BootstrapError> {
   AppServiceBuilder::new(bootstrap_parts).build().await
 }
 
 pub fn update_with_option(
   service: &Arc<dyn AppService>,
   option: AppStateOption,
-) -> Result<(), ErrorMessage> {
+) -> Result<(), BootstrapError> {
   // Set app registration info if provided
   if let Some(app_reg_info) = option.app_reg_info {
     service
       .secret_service()
-      .set_app_reg_info(&app_reg_info)
-      .map_err(|e| {
-        ErrorMessage::new(
-          "secret_service_error".to_string(),
-          "internal_server_error".to_string(),
-          e.to_string(),
-        )
-      })?;
+      .set_app_reg_info(&app_reg_info)?;
   }
   // Set app status if provided
   if let Some(app_status) = option.app_status {
     service
       .secret_service()
-      .set_app_status(&app_status)
-      .map_err(|e| {
-        ErrorMessage::new(
-          "secret_service_error".to_string(),
-          "internal_server_error".to_string(),
-          e.to_string(),
-        )
-      })?;
+      .set_app_status(&app_status)?;
   }
   Ok(())
 }

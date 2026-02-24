@@ -1,8 +1,9 @@
 use crate::app::AppCommand;
 use crate::common::build_app_options;
+use crate::error::AppSetupError;
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, setup_bootstrap_service, AppError, AppService, AppType,
-  ErrorMessage, ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
+  ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
   BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
 };
 use std::sync::{Arc, Mutex};
@@ -184,7 +185,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
   }
 }
 
-pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), ErrorMessage> {
+pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), AppSetupError> {
   let app_options = build_app_options(APP_TYPE)?;
   let (bodhi_home, source, file_defaults) = setup_app_dirs(&app_options)?;
   let bootstrap = setup_bootstrap_service(
@@ -199,28 +200,19 @@ pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), E
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
-    .map_err(crate::error::AppSetupError::from)?;
-  let result: std::result::Result<(), ErrorMessage> = runtime.block_on(async move {
+    .map_err(AppSetupError::AsyncRuntime)?;
+  let result: std::result::Result<(), AppSetupError> = runtime.block_on(async move {
     let app_service = Arc::new(build_app_service(parts).await?);
 
-    match NativeCommand::new(app_service, true)
+    NativeCommand::new(app_service, true)
       .aexecute(Some(&crate::ui::ASSETS))
       .await
-    {
-      Err(err) => {
-        tracing::warn!(?err, "application exited with error");
-        let err_msg = ErrorMessage::new(
-          "native_error".to_string(),
-          ErrorType::InternalServer.to_string(),
-          err.to_string(),
-        );
-        Err(err_msg)
-      }
-      Ok(_) => {
-        tracing::info!("application exited with success");
-        Ok(())
-      }
-    }
+      .map_err(|err| match err {
+        NativeError::Serve(e) => AppSetupError::Serve(e),
+        other => AppSetupError::AsyncRuntime(std::io::Error::other(other.to_string())),
+      })?;
+    tracing::info!("application exited with success");
+    Ok(())
   });
   result
 }

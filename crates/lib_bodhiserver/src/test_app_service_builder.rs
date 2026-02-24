@@ -1,5 +1,5 @@
-use super::{AppServiceBuilder, AppServiceBuilderError};
-use crate::{setup_app_dirs, setup_bootstrap_service, AppOptionsBuilder};
+use super::AppServiceBuilder;
+use crate::{setup_app_dirs, setup_bootstrap_service, AppOptionsBuilder, BootstrapError};
 use objs::test_utils::empty_bodhi_home;
 use objs::AppCommand;
 use rstest::rstest;
@@ -8,8 +8,8 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 #[rstest]
-#[case(&AppServiceBuilderError::ServiceAlreadySet("test_service".to_string()), "test_service")]
-fn test_error_messages_objs(#[case] error: &AppServiceBuilderError, #[case] expected: &str) {
+#[case(&BootstrapError::ServiceAlreadySet("test_service".to_string()), "test_service")]
+fn test_error_messages_objs(#[case] error: &BootstrapError, #[case] expected: &str) {
   assert_eq!(expected, error.to_string());
 }
 
@@ -111,7 +111,7 @@ fn test_service_already_set_errors(empty_bodhi_home: TempDir) -> anyhow::Result<
   assert!(result.is_err());
   assert!(matches!(
     result.unwrap_err(),
-    AppServiceBuilderError::ServiceAlreadySet(service) if service == *"secret_service"));
+    BootstrapError::ServiceAlreadySet(service) if service == *"secret_service"));
 
   Ok(())
 }

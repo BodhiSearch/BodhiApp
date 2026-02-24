@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppOptionsBuilder, AppOptionsError, AppStatus};
+use lib_bodhiserver::{AppOptionsBuilder, AppStatus, BootstrapError};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -90,7 +90,7 @@ pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Resul
 /// Internal function to build AppOptions (not exposed to NAPI)
 pub fn try_build_app_options_internal(
   config: NapiAppOptions,
-) -> Result<AppOptionsBuilder, AppOptionsError> {
+) -> Result<AppOptionsBuilder, BootstrapError> {
   let mut builder = AppOptionsBuilder::default();
 
   // Set environment variables
@@ -116,7 +116,7 @@ pub fn try_build_app_options_internal(
   // Set app status if provided
   if let Some(status_str) = config.app_status {
     let status = status_str.parse::<AppStatus>().map_err(|_| {
-      AppOptionsError::ValidationError(format!("Invalid app status: {}", status_str))
+      BootstrapError::ValidationError(format!("Invalid app status: {}", status_str))
     })?;
     builder = builder.set_app_status(status);
   }
