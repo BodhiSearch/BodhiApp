@@ -12,7 +12,8 @@ include Makefile.website.mk
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	format format.all \
 	run run.native app.clear app.run app.run.pg \
-	test.extension-download test.model-download
+	test.extension-download test.model-download \
+	setup.worktree
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -150,3 +151,28 @@ test.model-download: ## Download test model for integration tests (Qwen3-1.7B Q8
 	@hf download --revision daeb8e2d528a760970442092f6bf1e55c3b659eb ggml-org/Qwen3-1.7B-GGUF Qwen3-1.7B-Q8_0.gguf
 	@hf download --revision 4bcbc666d2f0d2b04d06f046d6baccdab79eac61 afrideva/Llama-68M-Chat-v1-GGUF llama-68m-chat-v1.q8_0.gguf
 	@echo "✓ Test model downloaded successfully"
+
+setup.worktree: ## Setup git worktree in working state
+	@echo "==> Initializing git submodules"
+	git submodule update --init --recursive
+	@echo "✓ Submodules initialized"
+	@echo "==> Copying .env.test files from main project"
+	cp ../../BodhiApp/crates/auth_middleware/tests/.env.test crates/auth_middleware/tests/.env.test
+	cp ../../BodhiApp/crates/server_app/tests/resources/.env.test crates/server_app/tests/resources/.env.test
+	cp ../../BodhiApp/crates/lib_bodhiserver_napi/tests-js/.env.test crates/lib_bodhiserver_napi/tests-js/.env.test
+	cp ../../BodhiApp/crates/services/.env.test crates/services/.env.test
+	@echo "✓ .env.test files copied"
+	@echo "==> Installing Python dependencies for objs tests"
+	pip install -r crates/objs/tests/scripts/requirements.txt
+	@echo "✓ Python dependencies installed"
+	@echo "==> Installing npm dependencies for test-oauth-app"
+	cd crates/lib_bodhiserver_napi/test-oauth-app && npm install
+	@echo "✓ test-oauth-app dependencies installed"
+	@echo "==> Downloading test models for integration tests"
+	@command -v hf >/dev/null 2>&1 || { echo "Error: 'hf' command not found. Install with: pip install -U huggingface_hub[cli]"; exit 1; }
+	@hf download --revision daeb8e2d528a760970442092f6bf1e55c3b659eb ggml-org/Qwen3-1.7B-GGUF Qwen3-1.7B-Q8_0.gguf
+	@hf download --revision 4bcbc666d2f0d2b04d06f046d6baccdab79eac61 afrideva/Llama-68M-Chat-v1-GGUF llama-68m-chat-v1.q8_0.gguf
+	@echo "✓ Test models downloaded"
+	@echo "==> Rebuilding NAPI bindings with latest code"
+	cd crates/lib_bodhiserver_napi && npm run build
+	@echo "✓ NAPI bindings rebuilt"
