@@ -20,10 +20,8 @@ use server_core::{
 };
 use services::{
   db::{AccessRepository, UserAccessRequestStatus},
-  test_utils::{
-    build_token_with_exp, test_db_service_with_temp_dir, AppServiceStubBuilder, SecretServiceStub,
-  },
-  AppRegInfo, MockAuthService, SessionService, SqliteSessionService,
+  test_utils::{build_token_with_exp, test_db_service_with_temp_dir, AppServiceStubBuilder},
+  MockAuthService, SessionService, SqliteSessionService,
 };
 use std::{collections::HashMap, fs::File, sync::Arc};
 use tempfile::TempDir;
@@ -98,19 +96,25 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     .withf(|_token, uid, role| uid == "test-user-123" && role == "resource_user")
     .return_once(|_, _, _| Ok(()));
 
-  // 7. Setup secret service with app registration info
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&AppRegInfo {
-    client_id: "test_client_id".to_string(),
-    client_secret: "test_secret".to_string(),
-    scope: "scope_test_client_id".to_string(),
-  });
+  // 7. Setup app instance service with client registration info
+  let db_arc: Arc<dyn services::db::DbService> = Arc::new(db_service);
 
   // 8. Build complete app service
-  let app_service = AppServiceStubBuilder::default()
-    .db_service(Arc::new(db_service))
+  let mut builder = AppServiceStubBuilder::default();
+  builder.db_service(db_arc);
+  builder
+    .with_app_instance(services::AppInstance {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
+      status: services::AppStatus::Ready,
+      created_at: chrono::Utc::now(),
+      updated_at: chrono::Utc::now(),
+    })
+    .await;
+  let app_service = builder
     .with_sqlite_session_service(session_service.clone())
     .auth_service(Arc::new(mock_auth))
-    .secret_service(Arc::new(secret_service))
     .build()
     .await?;
 

@@ -1,6 +1,8 @@
 use std::io;
 
-use lib_bodhiserver::{services::SettingServiceError, AppError, BootstrapError, ErrorType, ServeError};
+use lib_bodhiserver::{
+  services::SettingServiceError, AppError, BootstrapError, ErrorType, ServeError,
+};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]

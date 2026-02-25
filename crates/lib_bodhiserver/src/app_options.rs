@@ -1,8 +1,8 @@
 use crate::{BootstrapError, DefaultEnvWrapper};
 use objs::{AppType, EnvType};
 use services::{
-  AppRegInfo, AppStatus, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
-  BODHI_COMMIT_SHA, BODHI_ENV_TYPE, BODHI_VERSION,
+  AppInstance, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_COMMIT_SHA,
+  BODHI_ENV_TYPE, BODHI_VERSION,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -27,27 +27,8 @@ pub struct AppOptions {
   pub auth_realm: String,
   /// App settings (configurable via settings.yaml)
   pub app_settings: HashMap<String, String>,
-  /// OAuth client credentials (optional)
-  pub app_reg_info: Option<AppRegInfo>,
-  /// App initialization status (optional)
-  pub app_status: Option<AppStatus>,
-}
-
-#[derive(Debug, Clone, derive_new::new)]
-pub struct AppStateOption {
-  /// OAuth client credentials (optional)
-  pub app_reg_info: Option<AppRegInfo>,
-  /// App initialization status (optional)
-  pub app_status: Option<AppStatus>,
-}
-
-impl From<&AppOptions> for AppStateOption {
-  fn from(options: &AppOptions) -> Self {
-    Self {
-      app_reg_info: options.app_reg_info.clone(),
-      app_status: options.app_status.clone(),
-    }
-  }
+  /// App instance with OAuth credentials and status (optional)
+  pub app_instance: Option<AppInstance>,
 }
 
 /// Custom builder for AppOptions that handles internal state management
@@ -66,8 +47,7 @@ pub struct AppOptionsBuilder {
 
   // Configuration fields
   app_settings: HashMap<String, String>,
-  app_reg_info: Option<AppRegInfo>,
-  app_status: Option<AppStatus>,
+  app_instance: Option<AppInstance>,
 }
 
 impl AppOptionsBuilder {
@@ -135,19 +115,9 @@ impl AppOptionsBuilder {
     self
   }
 
-  /// Sets OAuth client credentials
-  pub fn set_app_reg_info(mut self, client_id: &str, client_secret: &str) -> Self {
-    self.app_reg_info = Some(AppRegInfo {
-      client_id: client_id.to_string(),
-      client_secret: client_secret.to_string(),
-      scope: format!("scope_{}", client_id),
-    });
-    self
-  }
-
-  /// Sets app initialization status
-  pub fn set_app_status(mut self, status: AppStatus) -> Self {
-    self.app_status = Some(status);
+  /// Sets app instance with OAuth credentials and status
+  pub fn set_app_instance(mut self, instance: AppInstance) -> Self {
+    self.app_instance = Some(instance);
     self
   }
 
@@ -177,8 +147,7 @@ impl AppOptionsBuilder {
         .auth_realm
         .ok_or_else(|| BootstrapError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
       app_settings: self.app_settings,
-      app_reg_info: self.app_reg_info,
-      app_status: self.app_status,
+      app_instance: self.app_instance,
     })
   }
 

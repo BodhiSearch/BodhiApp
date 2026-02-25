@@ -19,7 +19,7 @@ The crate has deliberately moved away from generic HTTP error wrappers (such as 
 - Support downstream error handling by API clients that need to distinguish between different failure modes
 
 **Domain error enums defined in this crate:**
-- `LoginError` -- OAuth flow failures (AppRegInfoNotFound, SessionInfoNotFound, OAuthError, StateDigestMismatch, MissingState, MissingCode)
+- `LoginError` -- OAuth flow failures (AppInstanceNotFound, SessionInfoNotFound, OAuthError, StateDigestMismatch, MissingState, MissingCode)
 - `LogoutError` -- Session destruction failures
 - `AccessRequestError` -- Access request workflow (AlreadyPending, AlreadyHasAccess, PendingRequestNotFound, InsufficientPrivileges)
 - `UserRouteError` -- Admin user operations (ListFailed, RoleChangeFailed, RemoveFailed)
@@ -98,7 +98,7 @@ All route handlers access business logic through `RouterState`, which provides `
 - `hub_service()` -- HuggingFace cache scanning, model file listing
 - `db_service()` -- SQLite persistence for tokens, access requests, metadata, download tracking
 - `auth_service()` -- OAuth2 code exchange, role assignment, user management, client registration
-- `secret_service()` -- App registration info, app status lifecycle
+- `app_instance_service()` -- App registration info (OAuth client credentials) and app status lifecycle
 - `setting_service()` -- Configuration management, environment detection
 - `session_service()` -- Session clearing for role changes
 - `tool_service()` -- Toolset CRUD, type management, execution
@@ -231,7 +231,7 @@ Real implementations wired automatically:
 - **SQLite DB** (`DbService`) -- in-memory via tempfile; records persist within the test
 - **SessionService** -- real SQL-backed session store; `create_authenticated_session()` inserts a JWT-bearing session
 - **DataService** -- file-based alias storage in the temp home dir
-- **SecretService** -- real secret persistence
+- **AppInstanceService** -- real SQLite-backed app instance persistence (OAuth client credentials, app status)
 - **HubService** -- HuggingFace cache scanning (reads `~/.cache/huggingface/hub`)
 
 Stubbed/mocked because they cross external boundaries:

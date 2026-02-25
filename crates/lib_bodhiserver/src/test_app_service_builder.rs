@@ -3,7 +3,7 @@ use crate::{setup_app_dirs, setup_bootstrap_service, AppOptionsBuilder, Bootstra
 use objs::test_utils::empty_bodhi_home;
 use objs::AppCommand;
 use rstest::rstest;
-use services::{test_utils::FrozenTimeService, AppService, MockCacheService, MockSecretService};
+use services::{test_utils::FrozenTimeService, AppService, MockCacheService};
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -41,18 +41,9 @@ async fn test_app_service_builder_with_custom_services(
   let bootstrap =
     setup_bootstrap_service(&options, home, source, file_defaults, AppCommand::Default)?;
 
-  let mut mock_secret_service = MockSecretService::new();
-  mock_secret_service
-    .expect_set_secret_string()
-    .returning(|_, _| Ok(()));
-  mock_secret_service
-    .expect_get_secret_string()
-    .returning(|_| Ok(Some("test_value".to_string())));
-
   let time_service = Arc::new(FrozenTimeService::default());
 
   let app_service = AppServiceBuilder::new(bootstrap.into_parts())
-    .secret_service(Arc::new(mock_secret_service))?
     .time_service(time_service.clone())?
     .build()
     .await?;
@@ -75,16 +66,8 @@ async fn test_app_service_builder_with_multiple_services(
   let bootstrap =
     setup_bootstrap_service(&options, home, source, file_defaults, AppCommand::Default)?;
 
-  let mut mock_secret_service = MockSecretService::new();
-  mock_secret_service
-    .expect_set_secret_string()
-    .returning(|_, _| Ok(()));
-  mock_secret_service
-    .expect_get_secret_string()
-    .returning(|_| Ok(Some("test_value".to_string())));
-
   let app_service = AppServiceBuilder::new(bootstrap.into_parts())
-    .secret_service(Arc::new(mock_secret_service))?
+    .time_service(Arc::new(FrozenTimeService::default()))?
     .cache_service(Arc::new(MockCacheService::new()))?
     .build()
     .await?;
@@ -101,17 +84,17 @@ fn test_service_already_set_errors(empty_bodhi_home: TempDir) -> anyhow::Result<
   let (home, source, file_defaults) = setup_app_dirs(&options)?;
   let bootstrap =
     setup_bootstrap_service(&options, home, source, file_defaults, AppCommand::Default)?;
-  let mock_secret_service = Arc::new(MockSecretService::new());
+  let time_service = Arc::new(FrozenTimeService::default());
 
   let builder =
-    AppServiceBuilder::new(bootstrap.into_parts()).secret_service(mock_secret_service.clone())?;
+    AppServiceBuilder::new(bootstrap.into_parts()).time_service(time_service.clone())?;
 
-  let result = builder.secret_service(mock_secret_service);
+  let result = builder.time_service(time_service);
 
   assert!(result.is_err());
   assert!(matches!(
     result.unwrap_err(),
-    BootstrapError::ServiceAlreadySet(service) if service == *"secret_service"));
+    BootstrapError::ServiceAlreadySet(service) if service == *"time_service"));
 
   Ok(())
 }

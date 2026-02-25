@@ -19,7 +19,6 @@ export class SetupFixtures {
 
   static getServerManagerConfig(authServerConfig, port, host = 'localhost') {
     return {
-      appStatus: 'setup',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
       host,
@@ -30,7 +29,6 @@ export class SetupFixtures {
 
   static getNetworkIPServerConfig(authServerConfig, port, host = '0.0.0.0') {
     return {
-      appStatus: 'setup',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
       host, // Bind to all interfaces for network IP access

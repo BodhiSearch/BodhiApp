@@ -11,7 +11,7 @@ use rstest::fixture;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{AppRegInfoBuilder, KeycloakAuthService};
+use crate::{ClientRegistrationResponseBuilder, KeycloakAuthService};
 
 pub const TEST_CLIENT_ID: &str = "test-client";
 pub const TEST_CLIENT_SECRET: &str = "test-client-secret";
@@ -60,7 +60,7 @@ pub static OTHER_PRIVATE_KEY: Lazy<RsaPrivateKey> = Lazy::new(|| {
   .expect("Failed to parse private key")
 });
 
-impl AppRegInfoBuilder {
+impl ClientRegistrationResponseBuilder {
   pub fn test_default() -> Self {
     Self::default()
       .client_id(TEST_CLIENT_ID.to_string())

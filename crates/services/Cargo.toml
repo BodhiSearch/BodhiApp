@@ -26,7 +26,6 @@ chrono = { workspace = true, features = ["serde"] }
 derive_builder = { workspace = true }
 dirs = { workspace = true }
 dotenv = { workspace = true }
-fs2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true, features = ["tokio"] }
 include_dir = { workspace = true }
@@ -67,8 +66,6 @@ mcp_client = { workspace = true, features = ["test-utils"] }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
-fs2 = { workspace = true }
-
 maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }

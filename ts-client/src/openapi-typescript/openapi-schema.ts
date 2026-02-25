@@ -3386,7 +3386,7 @@ export interface components {
             type: "option";
         };
         /** @enum {string} */
-        SettingSource: "system" | "command_line" | "environment" | "settings_file" | "database" | "default";
+        SettingSource: "system" | "command_line" | "environment" | "database" | "settings_file" | "default";
         /**
          * @description Request to setup the application in authenticated mode
          * @example {

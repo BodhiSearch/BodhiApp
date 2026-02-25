@@ -1,4 +1,3 @@
-use crate::AppRegInfo;
 use async_trait::async_trait;
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
@@ -10,6 +9,13 @@ use objs::{
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder)]
+pub struct ClientRegistrationResponse {
+  pub client_id: String,
+  pub client_secret: String,
+  pub scope: String,
+}
 
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
 pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
@@ -48,7 +54,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     name: String,
     description: String,
     redirect_uris: Vec<String>,
-  ) -> Result<AppRegInfo>;
+  ) -> Result<ClientRegistrationResponse>;
 
   async fn exchange_auth_code(
     &self,
@@ -309,7 +315,7 @@ impl AuthService for KeycloakAuthService {
     name: String,
     description: String,
     redirect_uris: Vec<String>,
-  ) -> Result<AppRegInfo> {
+  ) -> Result<ClientRegistrationResponse> {
     let client_endpoint = format!("{}/resources", self.auth_api_url());
     log::log_http_request("POST", &client_endpoint, "auth_service", None);
 
@@ -328,7 +334,7 @@ impl AuthService for KeycloakAuthService {
       .await?;
 
     if response.status().is_success() {
-      Ok(response.json::<AppRegInfo>().await?)
+      Ok(response.json::<ClientRegistrationResponse>().await?)
     } else {
       let response_text = response.text().await?;
       log::log_http_error("POST", &client_endpoint, "auth_service", &response_text);

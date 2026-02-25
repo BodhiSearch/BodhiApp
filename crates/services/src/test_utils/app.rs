@@ -1,15 +1,13 @@
 use crate::{
   db::{DbService, TimeService},
   queue_service::{MockQueueProducer, QueueProducer},
-  test_utils::{
-    test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
-    TestDbService,
-  },
-  AccessRequestService, AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService,
-  ConcurrencyService, DataService, DefaultMcpService, DefaultToolService, HfHubService, HubService,
-  LocalConcurrencyService, LocalDataService, McpService, MockAccessRequestService, MockAuthService,
-  MockExaService, MockHubService, MokaCacheService, NetworkService, SecretService, SessionService,
-  SettingService, SqliteSessionService, ToolService, BODHI_EXEC_LOOKUP_PATH,
+  test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
+  AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService, AuthService,
+  CacheService, ConcurrencyService, DataService, DefaultAppInstanceService, DefaultMcpService,
+  DefaultToolService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
+  McpService, MockAccessRequestService, MockAuthService, MockExaService, MockHubService,
+  MokaCacheService, NetworkService, SessionService, SettingService, SqliteSessionService,
+  ToolService, BODHI_EXEC_LOOKUP_PATH,
 };
 
 use crate::network_service::StubNetworkService;
@@ -35,14 +33,12 @@ pub async fn app_service_stub_builder(
   #[future] test_db_service: TestDbService,
 ) -> AppServiceStubBuilder {
   AppServiceStubBuilder::default()
-    // .with_temp_home()
     .with_hub_service()
     .with_data_service()
     .await
     .db_service(Arc::new(test_db_service))
     .with_session_service()
     .await
-    .with_secret_service()
     .to_owned()
 }
 
@@ -63,8 +59,7 @@ pub struct AppServiceStub {
   pub setting_service: Option<Arc<dyn SettingService>>,
   pub db_service: Option<Arc<dyn DbService>>,
   pub session_service: Option<Arc<dyn SessionService>>,
-  #[builder(default = "self.default_secret_service()")]
-  pub secret_service: Option<Arc<dyn SecretService>>,
+  pub app_instance_service: Option<Arc<dyn AppInstanceService>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
 
@@ -92,13 +87,16 @@ pub struct AppServiceStub {
 }
 
 impl AppServiceStubBuilder {
-  /// Async build that auto-initializes db_service and session_service if not explicitly set.
+  /// Async build that auto-initializes db_service, session_service, and app_instance_service if not explicitly set.
   pub async fn build(&mut self) -> Result<AppServiceStub, AppServiceStubBuilderError> {
     if !matches!(&self.db_service, Some(Some(_))) {
       self.with_db_service().await;
     }
     if !matches!(&self.session_service, Some(Some(_))) {
       self.with_session_service().await;
+    }
+    if !matches!(&self.app_instance_service, Some(Some(_))) {
+      self.with_app_instance_service().await;
     }
     self.fallback_build()
   }
@@ -123,10 +121,6 @@ impl AppServiceStubBuilder {
 
   fn default_hub_service(&self) -> Option<Arc<dyn HubService>> {
     Some(Arc::new(MockHubService::default()))
-  }
-
-  fn default_secret_service(&self) -> Option<Arc<dyn SecretService>> {
-    Some(Arc::new(SecretServiceStub::default()))
   }
 
   fn default_time_service(&self) -> Option<Arc<dyn TimeService>> {
@@ -312,10 +306,28 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_secret_service(&mut self) -> &mut Self {
-    let secret_service = SecretServiceStub::default()
-      .with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
-    self.secret_service = Some(Some(Arc::new(secret_service)));
+  /// Creates DefaultAppInstanceService with empty DB (no app instance row)
+  pub async fn with_app_instance_service(&mut self) -> &mut Self {
+    let db_service = self.get_db_service().await;
+    let svc = DefaultAppInstanceService::new(db_service);
+    self.app_instance_service = Some(Some(Arc::new(svc)));
+    self
+  }
+
+  /// Creates DefaultAppInstanceService and persists the given AppInstance to DB
+  pub async fn with_app_instance(&mut self, instance: AppInstance) -> &mut Self {
+    let db_service = self.get_db_service().await;
+    let svc = DefaultAppInstanceService::new(db_service);
+    svc
+      .create_instance(
+        &instance.client_id,
+        &instance.client_secret,
+        &instance.scope,
+        instance.status,
+      )
+      .await
+      .unwrap();
+    self.app_instance_service = Some(Some(Arc::new(svc)));
     self
   }
 
@@ -380,8 +392,8 @@ impl AppService for AppServiceStub {
     self.session_service.clone().unwrap()
   }
 
-  fn secret_service(&self) -> Arc<dyn SecretService> {
-    self.secret_service.clone().unwrap()
+  fn app_instance_service(&self) -> Arc<dyn AppInstanceService> {
+    self.app_instance_service.clone().unwrap()
   }
 
   fn cache_service(&self) -> Arc<dyn CacheService> {

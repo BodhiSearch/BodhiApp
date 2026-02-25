@@ -32,15 +32,13 @@ pub use objs::{
 
 // Service interfaces and implementations from services crate
 pub use services::{
-  AppRegInfo,
+  AppInstance,
   AppService,
   AppStatus,
   DefaultAppService,
   DefaultEnvWrapper,
-  DefaultSecretService,
   DefaultSettingService,
   EnvWrapper,
-  SecretServiceExt,
   SettingService,
   BODHI_APP_TYPE,
   BODHI_AUTH_REALM,
@@ -72,7 +70,7 @@ pub use services::{
 // Re-export services module for external access
 pub use services;
 
-// External dependencies needed for AppRegInfo
+// External dependencies needed for JWT
 pub use jsonwebtoken;
 
 // Server management from server_app crate

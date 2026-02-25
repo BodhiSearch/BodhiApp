@@ -46,6 +46,8 @@ async fn test_router(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(mock_db_service))
+    .with_app_instance_service()
+    .await
     .build()
     .await
     .unwrap();
@@ -416,6 +418,8 @@ async fn test_mcp_router(
 
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(mock_db_service))
+    .with_app_instance_service()
+    .await
     .build()
     .await
     .unwrap();

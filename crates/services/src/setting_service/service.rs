@@ -394,10 +394,6 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     format!("{}{}", self.public_server_url().await, LOGIN_CALLBACK_PATH)
   }
 
-  async fn secrets_path(&self) -> PathBuf {
-    self.bodhi_home().await.join("secrets.yaml")
-  }
-
   async fn encryption_key(&self) -> Option<String> {
     SettingService::get_env(self, BODHI_ENCRYPTION_KEY).await
   }

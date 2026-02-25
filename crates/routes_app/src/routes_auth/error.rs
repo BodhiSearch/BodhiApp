@@ -1,18 +1,18 @@
 use oauth2::url::ParseError;
 use objs::{AppError, ErrorType};
-use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
+use services::{AppInstanceError, AppStatus, AuthServiceError, TokenError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum LoginError {
-  #[error("Application is not registered. Please register the application first.")]
+  #[error("Application instance not found.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
-  AppRegInfoNotFound,
+  AppInstanceNotFound,
   #[error("Application status is invalid for this operation. Current status: {0}.")]
   #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppStatusInvalid(AppStatus),
   #[error(transparent)]
-  SecretServiceError(#[from] SecretServiceError),
+  AppInstanceError(#[from] AppInstanceError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "login_error-session_error", args_delegate = false)]
   SessionError(#[from] tower_sessions::session::Error),

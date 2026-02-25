@@ -3370,6 +3370,7 @@ name = "lib_bodhiserver_napi"
 version = "0.0.46-dev"
 dependencies = [
  "anyhow",
+ "chrono",
  "dirs",
  "lib_bodhiserver",
  "log",
@@ -6298,7 +6299,6 @@ dependencies = [
  "dirs",
  "dotenv",
  "errmeta_derive",
- "fs2",
  "hf-hub",
  "include_dir",
  "jsonwebtoken",

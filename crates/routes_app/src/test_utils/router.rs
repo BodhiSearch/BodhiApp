@@ -7,7 +7,7 @@ use services::{
   test_utils::{
     access_token_claims, build_token, AppServiceStubBuilder, StubQueue, TEST_CLIENT_ID,
   },
-  AppService, SessionService, StubNetworkService,
+  AppInstance, AppService, SessionService, StubNetworkService,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -40,7 +40,8 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
     .await
     .with_session_service()
     .await
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .queue_producer(stub_queue)
     .network_service(stub_network);
   let app_service_stub = builder.build().await?;
@@ -204,7 +205,8 @@ pub async fn build_live_test_router() -> anyhow::Result<(
     .await
     .with_session_service()
     .await
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .queue_producer(stub_queue)
     .network_service(stub_network);
   let app_service_stub = builder.build().await?;

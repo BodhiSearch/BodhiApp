@@ -137,7 +137,6 @@ async fn test_list_api_models_handler(
   // Create app service with the seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -222,7 +221,6 @@ async fn test_create_api_model_handler_success(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -279,7 +277,6 @@ async fn test_create_api_model_handler_generates_uuid(
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -324,7 +321,6 @@ async fn test_get_api_model_handler_success(
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -368,7 +364,6 @@ async fn test_get_api_model_handler_not_found(
   // Create app service with clean database (no seeded data)
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -413,7 +408,6 @@ async fn test_update_api_model_handler_success(
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -466,7 +460,6 @@ async fn test_update_api_model_handler_not_found(
   // Create app service with clean database (no seeded data)
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -514,7 +507,6 @@ async fn test_delete_api_model_handler_success(
   // Create app service with seeded database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -546,7 +538,6 @@ async fn test_delete_api_model_handler_not_found(
   // Create app service with clean database (no seeded data)
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 

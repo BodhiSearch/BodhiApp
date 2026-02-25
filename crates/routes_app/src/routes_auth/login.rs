@@ -18,7 +18,7 @@ use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, OpenAIApiError, API_TAG_AUTH};
 use server_core::RouterState;
-use services::{extract_claims, AppStatus, Claims, SecretServiceExt, CHAT_PATH};
+use services::{extract_claims, AppStatus, Claims, CHAT_PATH};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -70,10 +70,11 @@ pub async fn auth_initiate_handler(
   }
 
   // User not authenticated, generate auth URL
-  let secret_service = app_service.secret_service();
-  let app_reg_info = secret_service
-    .app_reg_info()?
-    .ok_or(LoginError::AppRegInfoNotFound)?;
+  let app_instance_service = app_service.app_instance_service();
+  let instance = app_instance_service
+    .get_instance()
+    .await?
+    .ok_or(LoginError::AppInstanceNotFound)?;
   // Determine callback URL based on whether public host is explicitly configured
   let callback_url = if setting_service.get_public_host_explicit().await.is_some() {
     // Explicit configuration (including RunPod) - use configured callback URL
@@ -94,7 +95,7 @@ pub async fn auth_initiate_handler(
       setting_service.login_callback_url().await
     }
   };
-  let client_id = app_reg_info.client_id;
+  let client_id = instance.client_id;
 
   // Generate simple random state for CSRF protection
   let state = generate_random_string(32);
@@ -175,10 +176,10 @@ pub async fn auth_callback_handler(
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let app_service = state.app_service();
   let setting_service = app_service.setting_service();
-  let secret_service = app_service.secret_service();
+  let app_instance_service = app_service.app_instance_service();
   let auth_service = app_service.auth_service();
 
-  let app_status = app_status_or_default(&secret_service);
+  let app_status = app_status_or_default(&app_instance_service).await;
   if app_status == AppStatus::Setup {
     return Err(LoginError::AppStatusInvalid(app_status))?;
   }
@@ -222,16 +223,17 @@ pub async fn auth_callback_handler(
     .map_err(LoginError::from)?
     .ok_or(LoginError::SessionInfoNotFound)?;
 
-  let app_reg_info = secret_service
-    .app_reg_info()?
-    .ok_or(LoginError::AppRegInfoNotFound)?;
+  let instance = app_instance_service
+    .get_instance()
+    .await?
+    .ok_or(LoginError::AppInstanceNotFound)?;
 
   // Exchange code for tokens
   let token_response = auth_service
     .exchange_auth_code(
       AuthorizationCode::new(code.to_string()),
-      ClientId::new(app_reg_info.client_id.clone()),
-      ClientSecret::new(app_reg_info.client_secret.clone()),
+      ClientId::new(instance.client_id.clone()),
+      ClientSecret::new(instance.client_secret.clone()),
       RedirectUrl::new(callback_url.clone()).map_err(LoginError::from)?,
       PkceCodeVerifier::new(pkce_verifier),
     )
@@ -257,19 +259,13 @@ pub async fn auth_callback_handler(
 
   if status_resource_admin {
     auth_service
-      .make_resource_admin(
-        &app_reg_info.client_id,
-        &app_reg_info.client_secret,
-        &user_id,
-      )
+      .make_resource_admin(&instance.client_id, &instance.client_secret, &user_id)
       .await?;
-    secret_service.set_app_status(&AppStatus::Ready)?;
+    app_instance_service
+      .update_status(&AppStatus::Ready)
+      .await?;
     let (new_access_token, new_refresh_token) = auth_service
-      .refresh_token(
-        &app_reg_info.client_id,
-        &app_reg_info.client_secret,
-        &refresh_token,
-      )
+      .refresh_token(&instance.client_id, &instance.client_secret, &refresh_token)
       .await?;
     access_token = new_access_token;
     refresh_token =

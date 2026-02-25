@@ -24,10 +24,10 @@ use server_core::{
 use services::{
   db::{ApiToken, TokenStatus},
   test_utils::{
-    access_token_claims, build_token, expired_token, AppServiceStubBuilder, SecretServiceStub,
-    TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+    access_token_claims, build_token, expired_token, AppServiceStubBuilder, TEST_CLIENT_ID,
+    TEST_CLIENT_SECRET,
   },
-  AppRegInfoBuilder, AppService, AuthServiceError, MockAuthService, SqliteSessionService,
+  AppInstance, AppService, AppStatus, AuthServiceError, MockAuthService, SqliteSessionService,
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME,
 };
 use sha2::{Digest, Sha256};
@@ -140,15 +140,16 @@ async fn assert_optional_auth_passthrough(router: &Router) -> anyhow::Result<()>
 }
 
 #[rstest]
-#[case::authz_setup(SecretServiceStub::new().with_app_status_setup())]
-#[case::authz_missing(SecretServiceStub::new())]
+#[case::authz_setup(AppStatus::Setup)]
+#[case::authz_missing(AppStatus::Setup)]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or_missing(
-  #[case] secret_service: SecretServiceStub,
+  #[case] status: AppStatus,
 ) -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .secret_service(Arc::new(secret_service))
+    .with_app_instance(AppInstance::test_with_status(status))
+    .await
     .with_session_service()
     .await
     .with_db_service()
@@ -224,7 +225,8 @@ async fn test_auth_middleware_with_valid_session_token(
   };
   session_service.session_store.create(&mut record).await?;
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .session_service(session_service.clone())
     .with_db_service()
     .await
@@ -306,7 +308,8 @@ async fn test_auth_middleware_with_expired_session_token(
 
   // Setup app service with mocks
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
     .with_db_service()
@@ -396,7 +399,8 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
     .return_once(|_, _, _| Ok((new_access_token_cl, Some("new_refresh_token".to_string()))));
 
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
     .with_db_service()
@@ -478,21 +482,19 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
       )))
     });
 
-  // Setup app service with mocks
-  let secret_service = SecretServiceStub::default().with_app_reg_info(
-    &AppRegInfoBuilder::test_default()
-      .client_id("test_client_id".to_string())
-      .client_secret("test_client_secret".to_string())
-      .scope("scope_test_client_id".to_string())
-      .build()?,
-  );
-
+  let instance = AppInstance {
+    client_id: "test_client_id".to_string(),
+    client_secret: "test_client_secret".to_string(),
+    scope: "scope_test_client_id".to_string(),
+    status: AppStatus::Ready,
+    created_at: chrono::Utc::now(),
+    updated_at: chrono::Utc::now(),
+  };
   let app_service = AppServiceStubBuilder::default()
-    .secret_service(Arc::new(secret_service))
+    .with_app_instance(instance)
+    .await
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
-    .with_db_service()
-    .await
     .build()
     .await?;
   let app_service = Arc::new(app_service);
@@ -567,7 +569,8 @@ async fn test_auth_middleware_returns_invalid_access_when_no_token_in_session(
   let dbfile = temp_bodhi_home.path().join("test.db");
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
   let app_service = AppServiceStubBuilder::default()
-    .secret_service(Arc::new(SecretServiceStub::default()))
+    .with_app_instance(AppInstance::test_default())
+    .await
     .session_service(session_service.clone())
     .with_db_service()
     .await
@@ -601,7 +604,8 @@ async fn test_auth_middleware_returns_invalid_access_when_no_token_in_session(
 #[tokio::test]
 async fn test_auth_middleware_removes_internal_token_headers() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .with_session_service()
     .await
     .with_db_service()
@@ -648,7 +652,8 @@ async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyho
   session_service.session_store.create(&mut record).await?;
 
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .session_service(session_service.clone())
     .with_db_service()
     .await
@@ -679,7 +684,8 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
   #[case] scope_str: &str,
 ) -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .with_session_service()
     .await
     .with_db_service()
@@ -747,7 +753,8 @@ async fn test_auth_middleware_bodhiapp_token_scope_variations(
 #[tokio::test]
 async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .with_session_service()
     .await
     .with_db_service()
@@ -814,7 +821,8 @@ async fn test_auth_middleware_bodhiapp_token_success() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .with_session_service()
     .await
     .with_db_service()
@@ -884,7 +892,8 @@ async fn test_auth_middleware_bodhiapp_token_inactive() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_auth_middleware_bodhiapp_token_invalid_hash() -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .with_secret_service()
+    .with_app_instance(AppInstance::test_default())
+    .await
     .with_session_service()
     .await
     .with_db_service()

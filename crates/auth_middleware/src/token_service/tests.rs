@@ -8,17 +8,17 @@ use serde_json::json;
 use services::{
   db::{ApiToken, TokenRepository, TokenStatus},
   test_utils::{
-    build_token, test_db_service, SecretServiceStub, SettingServiceStub, TestDbService, ISSUER,
+    build_token, test_db_service, AppServiceStubBuilder, SettingServiceStub, TestDbService, ISSUER,
     TEST_CLIENT_ID, TEST_CLIENT_SECRET,
   },
-  AppRegInfoBuilder, AuthServiceError, CacheService, LocalConcurrencyService, MockAuthService,
-  MockSecretService, MockSettingService, MokaCacheService, TOKEN_TYPE_OFFLINE,
+  AppInstance, AppInstanceService, AppService, AuthServiceError, CacheService,
+  LocalConcurrencyService, MockAuthService, MockSettingService, MokaCacheService,
+  TOKEN_TYPE_OFFLINE,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
-// Helper function for tests that need token digest (external client token tests)
 fn create_token_digest(bearer_token: &str) -> String {
   let mut hasher = Sha256::new();
   hasher.update(bearer_token.as_bytes());
@@ -61,9 +61,15 @@ async fn test_validate_bodhiapp_token_scope_variations(
   test_db_service.create_api_token(&mut api_token).await?;
 
   // Create token service
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance_service()
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(MockSecretService::default()),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
@@ -112,9 +118,15 @@ async fn test_validate_bodhiapp_token_success(
   test_db_service.create_api_token(&mut api_token).await?;
 
   // Create token service
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance_service()
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(MockSecretService::default()),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
@@ -165,9 +177,15 @@ async fn test_validate_bodhiapp_token_inactive(
   test_db_service.create_api_token(&mut api_token).await?;
 
   // Create token service
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance_service()
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(MockSecretService::default()),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
@@ -216,9 +234,15 @@ async fn test_validate_bodhiapp_token_invalid_hash(
   test_db_service.create_api_token(&mut api_token).await?;
 
   // Create token service
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance_service()
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(MockSecretService::default()),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
@@ -246,9 +270,15 @@ async fn test_validate_bearer_token_header_errors(
   #[case] header: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance_service()
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let token_service = Arc::new(DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(MockSecretService::default()),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
@@ -291,8 +321,12 @@ async fn test_validate_external_client_token_success(
   )?;
   let exchanged_token_cl = exchanged_token.clone();
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
 
   // Expect token exchange to be called
@@ -318,7 +352,7 @@ async fn test_validate_external_client_token_success(
 
   let token_service = Arc::new(DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -384,8 +418,12 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
     json! {{ "iss": ISSUER, "azp": TEST_CLIENT_ID, "jti": "legitimate-jti", "sub": sub, "exp": Utc::now().timestamp() + 3600, "scope": "scope_user_user"}},
   )?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
   let cache_service = Arc::new(MokaCacheService::default());
 
@@ -440,7 +478,7 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
 
   let token_service = Arc::new(DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     cache_service.clone(),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -516,8 +554,12 @@ async fn test_validate_bearer_token_scope_not_found(
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut setting_service = MockSettingService::default();
   setting_service
     .expect_auth_issuer()
@@ -525,7 +567,7 @@ async fn test_validate_bearer_token_scope_not_found(
 
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -592,8 +634,12 @@ async fn test_validate_bearer_token_scope_not_approved(
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut setting_service = MockSettingService::default();
   setting_service
     .expect_auth_issuer()
@@ -601,7 +647,7 @@ async fn test_validate_bearer_token_scope_not_approved(
 
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -667,8 +713,12 @@ async fn test_validate_bearer_token_app_client_mismatch(
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut setting_service = MockSettingService::default();
   setting_service
     .expect_auth_issuer()
@@ -676,7 +726,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
 
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -741,8 +791,12 @@ async fn test_validate_bearer_token_user_mismatch(
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut setting_service = MockSettingService::default();
   setting_service
     .expect_auth_issuer()
@@ -750,7 +804,7 @@ async fn test_validate_bearer_token_user_mismatch(
 
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -819,8 +873,12 @@ async fn test_validate_bearer_token_invalid_status(
   });
   let (external_token, _) = build_token(external_token_claims)?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut setting_service = MockSettingService::default();
   setting_service
     .expect_auth_issuer()
@@ -828,7 +886,7 @@ async fn test_validate_bearer_token_invalid_status(
 
   let token_service = DefaultTokenService::new(
     Arc::new(MockAuthService::default()),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -905,8 +963,12 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     "access_request_id": "wrong-id" // Different from record.id
   }))?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
   mock_auth
     .expect_exchange_app_token()
@@ -919,7 +981,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
 
   let token_service = DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -995,8 +1057,12 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     // NO access_request_id claim
   }))?;
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
   mock_auth
     .expect_exchange_app_token()
@@ -1009,7 +1075,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
 
   let token_service = DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -1087,8 +1153,12 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
   }))?;
   let exchanged_token_cl = exchanged_token.clone();
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
   mock_auth
     .expect_exchange_app_token()
@@ -1101,7 +1171,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 
   let token_service = DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),
@@ -1154,8 +1224,12 @@ async fn test_validate_bearer_token_without_access_request_scope(
   }))?;
   let exchanged_token_cl = exchanged_token.clone();
 
-  let app_reg_info = AppRegInfoBuilder::test_default().build()?;
-  let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+  let app_instance_svc = AppServiceStubBuilder::default()
+    .with_app_instance(AppInstance::test_default())
+    .await
+    .build()
+    .await?
+    .app_instance_service();
   let mut mock_auth = MockAuthService::new();
   mock_auth
     .expect_exchange_app_token()
@@ -1168,7 +1242,7 @@ async fn test_validate_bearer_token_without_access_request_scope(
 
   let token_service = DefaultTokenService::new(
     Arc::new(mock_auth),
-    Arc::new(secret_service),
+    app_instance_svc,
     Arc::new(MokaCacheService::default()),
     Arc::new(test_db_service),
     Arc::new(setting_service),

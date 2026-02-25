@@ -1,13 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder)]
-pub struct AppRegInfo {
-  pub client_id: String,
-  pub client_secret: String,
-  #[serde(default)]
-  pub scope: String,
-}
 
 #[derive(
   Debug,
@@ -34,6 +27,16 @@ pub enum AppStatus {
   /// Admin setup required
   #[schema(rename = "resource-admin")]
   ResourceAdmin,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AppInstance {
+  pub client_id: String,
+  pub client_secret: String,
+  pub scope: String,
+  pub status: AppStatus,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
 }
 
 // ============================================================================

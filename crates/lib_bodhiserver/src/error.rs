@@ -1,5 +1,5 @@
 use objs::{AppError, ErrorType, IoError};
-use services::{db::DbError, KeyringError, SecretServiceError, SessionServiceError};
+use services::{db::DbError, AppInstanceError, KeyringError, SessionServiceError};
 use std::io;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -56,7 +56,7 @@ pub enum BootstrapError {
 
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
-  SecretService(#[from] SecretServiceError),
+  AppInstance(#[from] AppInstanceError),
 
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
@@ -79,14 +79,8 @@ mod tests {
   #[rstest]
   #[case(BootstrapError::BodhiHomeNotResolved,
     "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  #[case(
-    BootstrapError::BodhiHomeNotSet,
-    "BODHI_HOME value must be set"
-  )]
-  fn test_app_dirs_builder_error_messages(
-    #[case] error: BootstrapError,
-    #[case] message: String,
-  ) {
+  #[case(BootstrapError::BodhiHomeNotSet, "BODHI_HOME value must be set")]
+  fn test_app_dirs_builder_error_messages(#[case] error: BootstrapError, #[case] message: String) {
     assert_eq!(message, error.to_string());
   }
 }

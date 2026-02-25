@@ -11,9 +11,7 @@ use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{
-  AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt, LOGIN_CALLBACK_PATH,
-};
+use services::{AppInstanceError, AppStatus, AuthServiceError, LOGIN_CALLBACK_PATH};
 use std::sync::Arc;
 use utoipa::ToSchema;
 
@@ -29,7 +27,7 @@ pub enum AppServiceError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ServerNameTooShort,
   #[error(transparent)]
-  SecretServiceError(#[from] SecretServiceError),
+  AppInstanceError(#[from] AppInstanceError),
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
 }
@@ -72,8 +70,8 @@ pub struct AppInfo {
 pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<AppInfo>, ApiError> {
-  let secret_service = &state.app_service().secret_service();
-  let status = app_status_or_default(secret_service);
+  let app_instance_service = state.app_service().app_instance_service();
+  let status = app_status_or_default(&app_instance_service).await;
   let setting_service = &state.app_service().setting_service();
   Ok(Json(AppInfo {
     version: setting_service.version().await,
@@ -141,9 +139,9 @@ pub async fn setup_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,
 ) -> Result<SetupResponse, ApiError> {
-  let secret_service = &state.app_service().secret_service();
+  let app_instance_service = state.app_service().app_instance_service();
   let auth_service = &state.app_service().auth_service();
-  let status = app_status_or_default(secret_service);
+  let status = app_status_or_default(&app_instance_service).await;
   if status != AppStatus::Setup {
     return Err(AppServiceError::AlreadySetup)?;
   }
@@ -191,15 +189,21 @@ pub async fn setup_handler(
 
     redirect_uris
   };
-  let app_reg_info = auth_service
+  let client_reg = auth_service
     .register_client(
       request.name,
       request.description.unwrap_or_default(),
       redirect_uris,
     )
     .await?;
-  secret_service.set_app_reg_info(&app_reg_info)?;
-  secret_service.set_app_status(&AppStatus::ResourceAdmin)?;
+  app_instance_service
+    .create_instance(
+      &client_reg.client_id,
+      &client_reg.client_secret,
+      &client_reg.scope,
+      AppStatus::ResourceAdmin,
+    )
+    .await?;
   Ok(SetupResponse {
     status: AppStatus::ResourceAdmin,
   })

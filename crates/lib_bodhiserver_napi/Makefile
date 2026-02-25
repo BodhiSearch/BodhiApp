@@ -46,7 +46,7 @@ test-js-live: build-debug install-js ## Run JavaScript live server tests
 	npm run test:live
 
 test-playwright: build-debug install-js ## Run Playwright browser tests
-	npm run test:playwright -- --reporter=line
+	npm run test:playwright
 
 test-playwright-ui: build-debug install-js ## Run Playwright tests with UI mode
 	npm run test:playwright:ui -- --reporter=line

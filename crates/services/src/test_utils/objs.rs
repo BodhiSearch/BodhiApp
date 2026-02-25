@@ -1,15 +1,34 @@
-use crate::{db::ModelMetadataRowBuilder, AppRegInfo};
+use crate::db::ModelMetadataRowBuilder;
+use crate::{AppInstance, AppStatus};
 use chrono::{DateTime, Utc};
 use objs::{ApiAlias, ApiAliasBuilder, UserAlias};
 use rstest::fixture;
 
-#[fixture]
-pub fn app_reg_info() -> AppRegInfo {
-  AppRegInfo {
-    client_id: "test-client".to_string(),
-    client_secret: "test-secret".to_string(),
-    scope: "scope_test-client".to_string(),
+use super::{TEST_CLIENT_ID, TEST_CLIENT_SECRET};
+
+impl AppInstance {
+  pub fn test_default() -> Self {
+    Self {
+      client_id: TEST_CLIENT_ID.to_string(),
+      client_secret: TEST_CLIENT_SECRET.to_string(),
+      scope: format!("scope_{}", TEST_CLIENT_ID),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    }
   }
+
+  pub fn test_with_status(status: AppStatus) -> Self {
+    Self {
+      status,
+      ..Self::test_default()
+    }
+  }
+}
+
+#[fixture]
+pub fn app_instance() -> AppInstance {
+  AppInstance::test_default()
 }
 
 /// Create a test ApiModelAlias with incrementing timestamps for sorting tests

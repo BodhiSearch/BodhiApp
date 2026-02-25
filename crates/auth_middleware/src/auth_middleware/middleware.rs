@@ -6,12 +6,10 @@ use axum::{
   response::Response,
 };
 
-use objs::{
-  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError, UserScopeError,
-};
+use objs::{ApiError, AppError, ErrorType, RoleError, TokenScopeError, UserScopeError};
 use server_core::RouterState;
 use services::{
-  db::DbError, extract_claims, AppStatus, AuthServiceError, ScopeClaims, SecretServiceError,
+  db::DbError, extract_claims, AppInstanceError, AppStatus, AuthServiceError, ScopeClaims,
   TokenError, UserIdClaims,
 };
 use std::sync::Arc;
@@ -140,14 +138,12 @@ pub enum AuthError {
   #[error(transparent)]
   AuthService(#[from] AuthServiceError),
   #[error(transparent)]
-  AppRegInfoMissing(#[from] AppRegInfoMissingError),
+  AppInstance(#[from] AppInstanceError),
   #[error(transparent)]
   DbError(#[from] DbError),
   #[error("Session expired. Please log out and log in again.")]
   #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
-  #[error(transparent)]
-  SecretService(#[from] SecretServiceError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
@@ -168,17 +164,17 @@ pub async fn auth_middleware(
   remove_app_headers(&mut req);
 
   let app_service = state.app_service();
-  let secret_service = app_service.secret_service();
+  let app_instance_service = app_service.app_instance_service();
   let token_service = DefaultTokenService::new(
     app_service.auth_service(),
-    secret_service.clone(),
+    app_instance_service.clone(),
     app_service.cache_service(),
     app_service.db_service(),
     app_service.setting_service(),
     app_service.concurrency_service(),
   );
 
-  if app_status_or_default(&secret_service) == AppStatus::Setup {
+  if app_status_or_default(&app_instance_service).await == AppStatus::Setup {
     return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
   }
 
@@ -253,10 +249,10 @@ pub async fn optional_auth_middleware(
 ) -> Result<Response, ApiError> {
   remove_app_headers(&mut req);
   let app_service = state.app_service();
-  let secret_service = app_service.secret_service();
+  let app_instance_service = app_service.app_instance_service();
   let token_service = DefaultTokenService::new(
     app_service.auth_service(),
-    secret_service.clone(),
+    app_instance_service.clone(),
     app_service.cache_service(),
     app_service.db_service(),
     app_service.setting_service(),
@@ -264,7 +260,7 @@ pub async fn optional_auth_middleware(
   );
 
   // Check app status
-  if app_status_or_default(&secret_service) == AppStatus::Setup {
+  if app_status_or_default(&app_instance_service).await == AppStatus::Setup {
     req.extensions_mut().insert(AuthContext::Anonymous);
     return Ok(next.run(req).await);
   }

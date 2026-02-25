@@ -54,6 +54,9 @@ pub enum DbError {
   #[error("Item '{id}' of type '{item_type}' not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
   ItemNotFound { id: String, item_type: String },
+  #[error("Multiple application instances found, expected at most one.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  MultipleAppInstance,
 }
 
 impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);

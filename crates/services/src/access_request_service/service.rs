@@ -4,9 +4,10 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::access_request_service::error::{AccessRequestError, Result};
+use crate::app_instance_service::AppInstanceError;
 use crate::auth_service::AuthService;
 use crate::db::{AppAccessRequestRow, DbService, TimeService};
-use crate::{SecretService, SecretServiceExt};
+use crate::AppInstanceService;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -45,7 +46,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
 pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
-  secret_service: Arc<dyn SecretService>,
+  app_instance_service: Arc<dyn AppInstanceService>,
   time_service: Arc<dyn TimeService>,
   frontend_url: String,
 }
@@ -54,14 +55,14 @@ impl DefaultAccessRequestService {
   pub fn new(
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    secret_service: Arc<dyn SecretService>,
+    app_instance_service: Arc<dyn AppInstanceService>,
     time_service: Arc<dyn TimeService>,
     frontend_url: String,
   ) -> Self {
     Self {
       db_service,
       auth_service,
-      secret_service,
+      app_instance_service,
       time_service,
       frontend_url,
     }
@@ -129,22 +130,14 @@ impl AccessRequestService for DefaultAccessRequestService {
     if is_auto_approve {
       // Auto-approve flow: call auth server to register resource access
       // This adds the resource's scope as an optional scope to the app client
-      let app_reg_info = self
-        .secret_service
-        .app_reg_info()
-        .map_err(|e| {
-          AccessRequestError::InvalidStatus(format!("Failed to get app reg info: {}", e))
-        })?
-        .ok_or_else(|| {
-          AccessRequestError::InvalidStatus("App registration info not found".to_string())
-        })?;
+      let instance = self
+        .app_instance_service
+        .get_instance()
+        .await?
+        .ok_or(AppInstanceError::NotFound)?;
       let register_response = self
         .auth_service
-        .register_resource_access(
-          &app_reg_info.client_id,
-          &app_reg_info.client_secret,
-          &app_client_id,
-        )
+        .register_resource_access(&instance.client_id, &instance.client_secret, &app_client_id)
         .await?;
       let resource_scope = register_response.scope;
 

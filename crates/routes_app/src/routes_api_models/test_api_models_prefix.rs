@@ -238,7 +238,6 @@ async fn test_api_model_prefix_lifecycle(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .with_secret_service()
       .build()
       .await?,
   );
@@ -299,7 +298,6 @@ async fn test_create_api_model_forward_all_requires_prefix(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .with_secret_service()
       .build()
       .await?,
   );
@@ -344,7 +342,6 @@ async fn test_create_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .with_secret_service()
       .build()
       .await?,
   );
@@ -401,7 +398,6 @@ async fn test_update_api_model_duplicate_prefix_error(
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
-      .with_secret_service()
       .build()
       .await?,
   );

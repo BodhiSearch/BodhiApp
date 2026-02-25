@@ -20,11 +20,9 @@ use server_core::{
 };
 use services::{
   test_utils::{
-    build_token, AppServiceStub, AppServiceStubBuilder, SecretServiceStub, SessionTestExt,
-    SettingServiceStub,
+    build_token, AppServiceStub, AppServiceStubBuilder, SessionTestExt, SettingServiceStub,
   },
-  AppRegInfo, AppService, AuthServiceError, MockAuthService,
-  SqliteSessionService,
+  AppService, AuthServiceError, MockAuthService, SqliteSessionService,
 };
 use services::{AppStatus, BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
@@ -85,21 +83,23 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     ]))
     .await;
 
-  let secret_service = SecretServiceStub::new()
-    .with_app_reg_info(&AppRegInfo {
+  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .auth_service(Arc::new(mock_auth_service))
+    .setting_service(Arc::new(setting_service))
+    .with_sqlite_session_service(session_service.clone());
+  builder
+    .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
       scope: "scope_test_client_id".to_string(),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
     })
-    .with_app_status(&AppStatus::Ready);
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-  let app_service = AppServiceStubBuilder::default()
-    .auth_service(Arc::new(mock_auth_service))
-    .setting_service(Arc::new(setting_service))
-    .secret_service(Arc::new(secret_service))
-    .with_sqlite_session_service(session_service.clone())
-    .build()
-    .await?;
+    .await;
+  let app_service = builder.build().await?;
 
   let app_service = Arc::new(app_service);
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -163,14 +163,21 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
 async fn test_auth_callback_handler_state_not_in_session(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
-  let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready);
-  let secret_service = Arc::new(secret_service);
-  let app_service: AppServiceStub = AppServiceStubBuilder::default()
-    .secret_service(secret_service)
+  let mut builder = AppServiceStubBuilder::default();
+  builder
     .build_session_service(temp_bodhi_home.path().join("test.db"))
-    .await
-    .build()
-    .await?;
+    .await;
+  builder
+    .with_app_instance(services::AppInstance {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    })
+    .await;
+  let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
   let state = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -243,21 +250,23 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     ]))
     .await;
 
-  let secret_service = SecretServiceStub::new()
-    .with_app_reg_info(&AppRegInfo {
+  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let mut builder = AppServiceStubBuilder::default();
+  builder
+    .auth_service(Arc::new(mock_auth_service))
+    .setting_service(Arc::new(setting_service))
+    .with_sqlite_session_service(session_service.clone());
+  builder
+    .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
       scope: "scope_test_client_id".to_string(),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
     })
-    .with_app_status(&AppStatus::Ready);
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-  let app_service = AppServiceStubBuilder::default()
-    .auth_service(Arc::new(mock_auth_service))
-    .setting_service(Arc::new(setting_service))
-    .secret_service(Arc::new(secret_service))
-    .with_sqlite_session_service(session_service.clone())
-    .build()
-    .await?;
+    .await;
+  let app_service = builder.build().await?;
 
   let app_service = Arc::new(app_service);
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -325,19 +334,20 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
 #[anyhow_trace]
 async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let secret_service = SecretServiceStub::new()
-    .with_app_reg_info(&AppRegInfo {
+  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let mut builder = AppServiceStubBuilder::default();
+  builder.with_sqlite_session_service(session_service.clone());
+  builder
+    .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
       scope: "scope_test_client_id".to_string(),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
     })
-    .with_app_status(&AppStatus::Ready);
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-  let app_service: AppServiceStub = AppServiceStubBuilder::default()
-    .secret_service(Arc::new(secret_service))
-    .with_sqlite_session_service(session_service.clone())
-    .build()
-    .await?;
+    .await;
+  let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),
@@ -386,13 +396,6 @@ async fn test_auth_callback_handler_auth_service_error(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let secret_service = SecretServiceStub::new()
-    .with_app_reg_info(&AppRegInfo {
-      client_id: "test_client_id".to_string(),
-      client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
-    })
-    .with_app_status(&AppStatus::Ready);
   let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
   let mut mock_auth_service = MockAuthService::new();
   mock_auth_service
@@ -404,12 +407,21 @@ async fn test_auth_callback_handler_auth_service_error(
         body: "network error".to_string(),
       })
     });
-  let app_service: AppServiceStub = AppServiceStubBuilder::default()
+  let mut builder = AppServiceStubBuilder::default();
+  builder
     .auth_service(Arc::new(mock_auth_service))
-    .secret_service(Arc::new(secret_service))
-    .with_sqlite_session_service(session_service.clone())
-    .build()
-    .await?;
+    .with_sqlite_session_service(session_service.clone());
+  builder
+    .with_app_instance(services::AppInstance {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
+      status: AppStatus::Ready,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    })
+    .await;
+  let app_service: AppServiceStub = builder.build().await?;
   let app_service = Arc::new(app_service);
   let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
     Arc::new(MockSharedContext::default()),

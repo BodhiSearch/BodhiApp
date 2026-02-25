@@ -17,10 +17,9 @@ use serde_json::{json, Value};
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext};
 use services::{
   test_utils::{
-    test_auth_service, token, AppServiceStub, AppServiceStubBuilder, SecretServiceStub,
-    SettingServiceStub,
+    test_auth_service, token, AppServiceStub, AppServiceStubBuilder, SettingServiceStub,
   },
-  AppRegInfo, AppService, AppStatus, SecretServiceExt, SqliteSessionService, BODHI_AUTH_URL,
+  AppService, AppStatus, SqliteSessionService, BODHI_AUTH_URL,
 };
 use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
@@ -71,14 +70,6 @@ async fn setup_app_service_resource_admin(
   };
   session_service.session_store.create(&mut record).await?;
   let session_service = Arc::new(session_service);
-  let secret_service = SecretServiceStub::new()
-    .with_app_reg_info(&AppRegInfo {
-      client_id: "test_client_id".to_string(),
-      client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
-    })
-    .with_app_status(&AppStatus::ResourceAdmin);
-  let secret_service = Arc::new(secret_service);
   let auth_service = Arc::new(test_auth_service(auth_server_url));
   let setting_service = Arc::new(
     SettingServiceStub::default()
@@ -90,13 +81,22 @@ async fn setup_app_service_resource_admin(
       ]))
       .await,
   );
-  let app_service = AppServiceStubBuilder::default()
-    .secret_service(secret_service)
+  let mut builder = AppServiceStubBuilder::default();
+  builder
     .auth_service(auth_service)
     .setting_service(setting_service)
-    .with_sqlite_session_service(session_service)
-    .build()
-    .await?;
+    .with_sqlite_session_service(session_service);
+  builder
+    .with_app_instance(services::AppInstance {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+      scope: "scope_test_client_id".to_string(),
+      status: AppStatus::ResourceAdmin,
+      created_at: chrono::Utc::now(),
+      updated_at: chrono::Utc::now(),
+    })
+    .await;
+  let app_service = builder.build().await?;
   Ok(Arc::new(app_service))
 }
 
@@ -217,8 +217,8 @@ async fn assert_login_callback_result_resource_admin(
   let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
   let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
   assert_eq!("http://frontend.localhost:3000/ui/chat", body.location);
-  let secret_service = app_service.secret_service();
-  let updated_status = secret_service.app_status()?;
+  let app_instance_service = app_service.app_instance_service();
+  let updated_status = app_instance_service.get_status().await?;
   assert_eq!(AppStatus::Ready, updated_status);
   Ok(())
 }

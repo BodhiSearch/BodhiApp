@@ -1,6 +1,7 @@
 use crate::db::{
-  AccessRepository, AccessRequestRepository, DbCore, DbError, McpRepository, ModelRepository,
-  SettingsRepository, TimeService, TokenRepository, ToolsetRepository, UserAliasRepository,
+  AccessRepository, AccessRequestRepository, AppInstanceRepository, DbCore, DbError, McpRepository,
+  ModelRepository, SettingsRepository, TimeService, TokenRepository, ToolsetRepository,
+  UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
@@ -13,6 +14,7 @@ pub trait DbService:
   ModelRepository
   + AccessRepository
   + AccessRequestRepository
+  + AppInstanceRepository
   + TokenRepository
   + ToolsetRepository
   + McpRepository
@@ -29,6 +31,7 @@ impl<T> DbService for T where
   T: ModelRepository
     + AccessRepository
     + AccessRequestRepository
+    + AppInstanceRepository
     + TokenRepository
     + ToolsetRepository
     + McpRepository

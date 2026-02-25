@@ -19,8 +19,9 @@ use server_core::{
 };
 use services::{
   extract_claims,
-  test_utils::{test_db_service, AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
-  AppRegInfoBuilder, Claims, KeycloakAuthService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  test_utils::{test_db_service, AppServiceStubBuilder, SettingServiceStub},
+  AppInstanceService, AppStatus, Claims, DefaultAppInstanceService, KeycloakAuthService,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
 use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
@@ -67,7 +68,6 @@ fn auth_client(auth_server_config: &AuthServerConfig) -> AuthServerTestClient {
   AuthServerTestClient::new(auth_server_config.clone())
 }
 
-// Helper function to create test state with specific client configuration
 async fn create_test_state(
   config: &AuthServerConfig,
   resource_client_id: &str,
@@ -86,22 +86,25 @@ async fn create_test_state(
 
   let temp_dir = TempDir::new()?;
   let session_db_path = temp_dir.path().join("session.db");
-  let secret_service = SecretServiceStub::default().with_app_reg_info(
-    &AppRegInfoBuilder::default()
-      .client_id(resource_client_id.to_string())
-      .client_secret(resource_client_secret.to_string())
-      .scope(format!("scope_{}", resource_client_id))
-      .build()
-      .unwrap(),
-  );
 
   let mut app_service_builder = AppServiceStubBuilder::default();
-  let test_db_service = test_db_service(temp_dir).await;
+  let test_db = test_db_service(temp_dir).await;
+  let db_svc: Arc<dyn services::db::DbService> = Arc::new(test_db);
+  let app_instance_svc = DefaultAppInstanceService::new(db_svc.clone());
+  app_instance_svc
+    .create_instance(
+      resource_client_id,
+      resource_client_secret,
+      &format!("scope_{}", resource_client_id),
+      AppStatus::Ready,
+    )
+    .await?;
+
   app_service_builder
-    .secret_service(Arc::new(secret_service))
+    .app_instance_service(Arc::new(app_instance_svc) as Arc<dyn AppInstanceService>)
     .setting_service(Arc::new(setting_service))
     .auth_service(auth_service)
-    .db_service(Arc::new(test_db_service))
+    .db_service(db_svc)
     .cache_service(Arc::new(services::MokaCacheService::default()))
     .build_session_service(session_db_path)
     .await;

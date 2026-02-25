@@ -1,3 +1,4 @@
+use crate::app_instance_service::AppInstanceError;
 use crate::auth_service::AuthServiceError;
 use crate::db::DbError;
 use crate::tool_service::ToolsetError;
@@ -46,6 +47,9 @@ pub enum AccessRequestError {
 
   #[error(transparent)]
   ToolError(#[from] ToolsetError),
+
+  #[error(transparent)]
+  AppInstance(#[from] AppInstanceError),
 }
 
 pub type Result<T> = std::result::Result<T, AccessRequestError>;

@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppOptionsBuilder, AppStatus, BootstrapError};
+use lib_bodhiserver::{AppInstance, AppOptionsBuilder, AppStatus, BootstrapError};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -108,17 +108,26 @@ pub fn try_build_app_options_internal(
     builder = builder.set_system_setting(&key, &value)?;
   }
 
-  // Set OAuth client credentials if both are provided
+  // Build AppInstance when both client credentials are provided
   if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
-    builder = builder.set_app_reg_info(&client_id, &client_secret);
-  }
-
-  // Set app status if provided
-  if let Some(status_str) = config.app_status {
-    let status = status_str.parse::<AppStatus>().map_err(|_| {
-      BootstrapError::ValidationError(format!("Invalid app status: {}", status_str))
-    })?;
-    builder = builder.set_app_status(status);
+    let status = if let Some(status_str) = config.app_status {
+      status_str.parse::<AppStatus>().map_err(|_| {
+        BootstrapError::ValidationError(format!("Invalid app status: {}", status_str))
+      })?
+    } else {
+      AppStatus::Ready
+    };
+    let scope = format!("scope_{}", client_id);
+    let now = chrono::Utc::now();
+    let instance = AppInstance {
+      client_id,
+      client_secret,
+      scope,
+      status,
+      created_at: now,
+      updated_at: now,
+    };
+    builder = builder.set_app_instance(instance);
   }
   Ok(builder)
 }
@@ -332,8 +341,7 @@ mod tests {
     assert_eq!(app_options.app_version, "1.0.0");
     assert_eq!(app_options.auth_url, "http://localhost:8080");
     assert_eq!(app_options.auth_realm, "bodhi");
-    assert!(app_options.app_reg_info.is_some());
-    assert!(app_options.app_status.is_some());
+    assert!(app_options.app_instance.is_some());
     Ok(())
   }
 }

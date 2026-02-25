@@ -1,10 +1,10 @@
 use crate::db::{
   AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppToolsetConfigRow, DbCore, DbError, DbSetting, DownloadRequest, McpAuthHeaderRow,
-  McpOAuthConfigRow, McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow,
-  ModelMetadataRow, ModelRepository, SettingsRepository, SqliteDbService, TimeService,
-  TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest, UserAccessRequestStatus,
-  UserAliasRepository,
+  AppInstanceRepository, AppInstanceRow, AppToolsetConfigRow, DbCore, DbError, DbSetting,
+  DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRepository, McpRow,
+  McpServerRow, McpWithServerRow, ModelMetadataRow, ModelRepository, SettingsRepository,
+  SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
+  UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
@@ -885,6 +885,47 @@ impl UserAliasRepository for TestDbService {
 }
 
 #[async_trait::async_trait]
+impl AppInstanceRepository for TestDbService {
+  async fn get_app_instance(&self) -> Result<Option<AppInstanceRow>, DbError> {
+    self
+      .inner
+      .get_app_instance()
+      .await
+      .tap(|_| self.notify("get_app_instance"))
+  }
+
+  async fn upsert_app_instance(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    scope: &str,
+    status: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .upsert_app_instance(client_id, client_secret, scope, status)
+      .await
+      .tap(|_| self.notify("upsert_app_instance"))
+  }
+
+  async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .update_app_instance_status(client_id, status)
+      .await
+      .tap(|_| self.notify("update_app_instance_status"))
+  }
+
+  async fn delete_app_instance(&self, client_id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_app_instance(client_id)
+      .await
+      .tap(|_| self.notify("delete_app_instance"))
+  }
+}
+
+#[async_trait::async_trait]
 impl SettingsRepository for TestDbService {
   async fn get_setting(&self, key: &str) -> Result<Option<DbSetting>, DbError> {
     self
@@ -1029,6 +1070,20 @@ mockall::mock! {
     async fn list_all_requests(&self, page: u32, per_page: u32) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
     async fn update_request_status(&self, id: i64, status: UserAccessRequestStatus, reviewer: String) -> Result<(), DbError>;
     async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError>;
+  }
+
+  #[async_trait::async_trait]
+  impl AppInstanceRepository for DbService {
+    async fn get_app_instance(&self) -> Result<Option<AppInstanceRow>, DbError>;
+    async fn upsert_app_instance(
+      &self,
+      client_id: &str,
+      client_secret: &str,
+      scope: &str,
+      status: &str,
+    ) -> Result<(), DbError>;
+    async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError>;
+    async fn delete_app_instance(&self, client_id: &str) -> Result<(), DbError>;
   }
 
   #[async_trait::async_trait]

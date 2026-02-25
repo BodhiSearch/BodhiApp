@@ -18,8 +18,9 @@ use server_core::{
   DefaultRouterState, MockSharedContext,
 };
 use services::{
-  test_utils::{AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
-  AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService, SecretServiceExt,
+  test_utils::{AppServiceStubBuilder, SettingServiceStub},
+  AppInstance, AppService, AppStatus, AuthServiceError, ClientRegistrationResponse,
+  MockAuthService,
 };
 use std::{collections::HashMap, sync::Arc};
 use tower::ServiceExt;
@@ -27,15 +28,7 @@ use tower::ServiceExt;
 #[anyhow_trace]
 #[rstest]
 #[case(
-  SecretServiceStub::new(),
-  AppInfo {
-    version: "0.0.0".to_string(),
-    commit_sha: "test-sha".to_string(),
-    status: AppStatus::Setup,
-  }
-)]
-#[case(
-  SecretServiceStub::new().with_app_status(&AppStatus::Setup),
+  AppStatus::Setup,
   AppInfo {
     version: "0.0.0".to_string(),
     commit_sha: "test-sha".to_string(),
@@ -44,11 +37,12 @@ use tower::ServiceExt;
 )]
 #[tokio::test]
 async fn test_app_info_handler(
-  #[case] secret_service: SecretServiceStub,
+  #[case] status: AppStatus,
   #[case] expected: AppInfo,
 ) -> anyhow::Result<()> {
   let app_service = AppServiceStubBuilder::default()
-    .secret_service(Arc::new(secret_service))
+    .with_app_instance(AppInstance::test_with_status(status))
+    .await
     .build()
     .await?;
   let state = Arc::new(DefaultRouterState::new(
@@ -69,21 +63,16 @@ async fn test_app_info_handler(
 
 #[anyhow_trace]
 #[rstest]
-#[case(
-    SecretServiceStub::new().with_app_status(&AppStatus::Ready),
-    SetupRequest {
-      name: "Test Server Name".to_string(),
-      description: Some("Test description".to_string()),
-    },
-)]
 #[tokio::test]
-async fn test_setup_handler_error(
-  #[case] secret_service: SecretServiceStub,
-  #[case] payload: SetupRequest,
-) -> anyhow::Result<()> {
+async fn test_setup_handler_error() -> anyhow::Result<()> {
+  let payload = SetupRequest {
+    name: "Test Server Name".to_string(),
+    description: Some("Test description".to_string()),
+  };
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance(AppInstance::test_default())
+      .await
       .auth_service(Arc::new(MockAuthService::new()))
       .build()
       .await?,
@@ -108,43 +97,26 @@ async fn test_setup_handler_error(
     body["error"]["code"].as_str().unwrap()
   );
 
-  let secret_service = app_service.secret_service();
-  assert_eq!(AppStatus::Ready, secret_service.app_status()?);
-  let app_reg_info = secret_service.app_reg_info()?;
-  assert!(app_reg_info.is_none());
+  let app_instance_service = app_service.app_instance_service();
+  assert_eq!(AppStatus::Ready, app_instance_service.get_status().await?);
   Ok(())
 }
 
 #[anyhow_trace]
 #[rstest]
-#[case(
-    SecretServiceStub::new(),
-    SetupRequest {
-      name: "Test Server Name".to_string(),
-      description: Some("Test description".to_string()),
-    },
-    AppStatus::ResourceAdmin,
-)]
-#[case(
-    SecretServiceStub::new().with_app_status(&AppStatus::Setup),
-    SetupRequest {
-      name: "Test Server Name".to_string(),
-      description: Some("Test description".to_string()),
-    },
-    AppStatus::ResourceAdmin,
-)]
 #[tokio::test]
-async fn test_setup_handler_success(
-  #[case] secret_service: SecretServiceStub,
-  #[case] request: SetupRequest,
-  #[case] expected_status: AppStatus,
-) -> anyhow::Result<()> {
+async fn test_setup_handler_success() -> anyhow::Result<()> {
+  let request = SetupRequest {
+    name: "Test Server Name".to_string(),
+    description: Some("Test description".to_string()),
+  };
+  let expected_status = AppStatus::ResourceAdmin;
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_register_client()
     .times(1)
     .return_once(|_name, _description, _redirect_uris| {
-      Ok(AppRegInfo {
+      Ok(ClientRegistrationResponse {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
         scope: "scope_client_id".to_string(),
@@ -152,7 +124,8 @@ async fn test_setup_handler_success(
     });
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,
@@ -170,10 +143,10 @@ async fn test_setup_handler_success(
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let secret_service = app_service.secret_service();
-  assert_eq!(expected_status, secret_service.app_status()?);
-  let app_reg_info = secret_service.app_reg_info()?;
-  assert!(app_reg_info.is_some());
+  let app_instance_service = app_service.app_instance_service();
+  assert_eq!(expected_status, app_instance_service.get_status().await?);
+  let instance = app_instance_service.get_instance().await?;
+  assert!(instance.is_some());
   Ok(())
 }
 
@@ -181,8 +154,6 @@ async fn test_setup_handler_success(
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
-  let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
-
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_register_client()
@@ -196,7 +167,7 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
         && redirect_uris.contains(&"http://0.0.0.0:1135/ui/auth/callback".to_string())
     })
     .return_once(|_name, _description, _redirect_uris| {
-      Ok(AppRegInfo {
+      Ok(ClientRegistrationResponse {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
         scope: "scope_client_id".to_string(),
@@ -214,7 +185,8 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
@@ -243,10 +215,13 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let secret_service = app_service.secret_service();
-  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
-  let app_reg_info = secret_service.app_reg_info()?;
-  assert!(app_reg_info.is_some());
+  let app_instance_service = app_service.app_instance_service();
+  assert_eq!(
+    AppStatus::ResourceAdmin,
+    app_instance_service.get_status().await?
+  );
+  let instance = app_instance_service.get_instance().await?;
+  assert!(instance.is_some());
   Ok(())
 }
 
@@ -254,8 +229,6 @@ async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
-  let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
-
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_register_client()
@@ -269,7 +242,7 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
         && redirect_uris.contains(&"http://192.168.1.100:1135/ui/auth/callback".to_string())
     })
     .return_once(|_name, _description, _redirect_uris| {
-      Ok(AppRegInfo {
+      Ok(ClientRegistrationResponse {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
         scope: "scope_client_id".to_string(),
@@ -287,7 +260,8 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
@@ -316,10 +290,13 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let secret_service = app_service.secret_service();
-  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
-  let app_reg_info = secret_service.app_reg_info()?;
-  assert!(app_reg_info.is_some());
+  let app_instance_service = app_service.app_instance_service();
+  assert_eq!(
+    AppStatus::ResourceAdmin,
+    app_instance_service.get_status().await?
+  );
+  let instance = app_instance_service.get_instance().await?;
+  assert!(instance.is_some());
   Ok(())
 }
 
@@ -327,8 +304,6 @@ async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow::Result<()> {
-  let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
-
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_register_client()
@@ -339,7 +314,7 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
         && redirect_uris.contains(&"https://my-bodhi.example.com:8443/ui/auth/callback".to_string())
     })
     .return_once(|_name, _description, _redirect_uris| {
-      Ok(AppRegInfo {
+      Ok(ClientRegistrationResponse {
         client_id: "client_id".to_string(),
         client_secret: "client_secret".to_string(),
         scope: "scope_client_id".to_string(),
@@ -363,7 +338,8 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .setting_service(Arc::new(setting_service))
       .build()
@@ -392,10 +368,13 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
     .await?;
 
   assert_eq!(StatusCode::OK, response.status());
-  let secret_service = app_service.secret_service();
-  assert_eq!(AppStatus::ResourceAdmin, secret_service.app_status()?);
-  let app_reg_info = secret_service.app_reg_info()?;
-  assert!(app_reg_info.is_some());
+  let app_instance_service = app_service.app_instance_service();
+  assert_eq!(
+    AppStatus::ResourceAdmin,
+    app_instance_service.get_status().await?
+  );
+  let instance = app_instance_service.get_instance().await?;
+  assert!(instance.is_some());
   Ok(())
 }
 
@@ -403,7 +382,6 @@ async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow
 #[rstest]
 #[tokio::test]
 async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
-  let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
     .expect_register_client()
@@ -415,7 +393,8 @@ async fn test_setup_handler_register_resource_error() -> anyhow::Result<()> {
     });
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,
@@ -476,7 +455,8 @@ async fn test_setup_handler_validation_error() -> anyhow::Result<()> {
 
   let app_service = Arc::new(
     AppServiceStubBuilder::default()
-      .secret_service(Arc::new(SecretServiceStub::new()))
+      .with_app_instance_service()
+      .await
       .auth_service(Arc::new(mock_auth_service))
       .build()
       .await?,

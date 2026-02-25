@@ -6,8 +6,7 @@ use axum::http::{Request, StatusCode};
 use axum::Router;
 use chrono::Utc;
 use objs::{
-  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset,
-  ToolsetExecutionResponse, UserScope,
+  AppToolsetConfig, ResourceRole, ToolDefinition, Toolset, ToolsetExecutionResponse, UserScope,
 };
 use pretty_assertions::assert_eq;
 use rstest::{fixture, rstest};

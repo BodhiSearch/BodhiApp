@@ -71,7 +71,6 @@ fn test_find_bodhi_home_fails_when_not_found() -> anyhow::Result<()> {
     "bodhi".to_string(),
     HashMap::new(),
     None,
-    None,
   );
   let file_defaults = HashMap::new();
   let result = super::find_bodhi_home(

@@ -1,11 +1,11 @@
 use crate::{AuthError, ResourceScope, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::Utc;
-use objs::{AppRegInfoMissingError, ResourceRole, TokenScope, UserScope};
+use objs::{ResourceRole, TokenScope, UserScope};
 use serde::{Deserialize, Serialize};
 use services::{
   db::{DbService, TokenStatus},
-  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ConcurrencyService, ExpClaims,
-  ScopeClaims, SecretService, SecretServiceExt, SettingService, TokenError,
+  extract_claims, AppInstanceError, AppInstanceService, AuthService, CacheService, Claims,
+  ConcurrencyService, ExpClaims, ScopeClaims, SettingService, TokenError,
 };
 use sha2::{Digest, Sha256};
 use std::{str::FromStr, sync::Arc};
@@ -24,7 +24,7 @@ pub struct CachedExchangeResult {
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
-  secret_service: Arc<dyn SecretService>,
+  app_instance_service: Arc<dyn AppInstanceService>,
   cache_service: Arc<dyn CacheService>,
   db_service: Arc<dyn DbService>,
   setting_service: Arc<dyn SettingService>,
@@ -34,7 +34,7 @@ pub struct DefaultTokenService {
 impl DefaultTokenService {
   pub fn new(
     auth_service: Arc<dyn AuthService>,
-    secret_service: Arc<dyn SecretService>,
+    app_instance_service: Arc<dyn AppInstanceService>,
     cache_service: Arc<dyn CacheService>,
     db_service: Arc<dyn DbService>,
     setting_service: Arc<dyn SettingService>,
@@ -42,7 +42,7 @@ impl DefaultTokenService {
   ) -> Self {
     Self {
       auth_service,
-      secret_service,
+      app_instance_service,
       cache_service,
       db_service,
       setting_service,
@@ -177,11 +177,11 @@ impl DefaultTokenService {
     &self,
     external_token: &str,
   ) -> Result<(String, ResourceScope, String), AuthError> {
-    // Get app registration info
-    let app_reg_info: AppRegInfo = self
-      .secret_service
-      .app_reg_info()?
-      .ok_or(AppRegInfoMissingError)?;
+    let instance = self
+      .app_instance_service
+      .get_instance()
+      .await?
+      .ok_or(AppInstanceError::NotFound)?;
 
     // Parse token claims to validate issuer and extract azp BEFORE exchange
     let claims = extract_claims::<ScopeClaims>(external_token)?;
@@ -194,7 +194,7 @@ impl DefaultTokenService {
 
     // Validate that current client is in the audience
     if let Some(aud) = &claims.aud {
-      if aud != &app_reg_info.client_id {
+      if aud != &instance.client_id {
         return Err(TokenError::InvalidAudience(aud.clone()))?;
       }
     } else {
@@ -291,8 +291,8 @@ impl DefaultTokenService {
     let (access_token, _) = self
       .auth_service
       .exchange_app_token(
-        &app_reg_info.client_id,
-        &app_reg_info.client_secret,
+        &instance.client_id,
+        &instance.client_secret,
         external_token,
         scopes.iter().map(|s| s.to_string()).collect(),
       )
@@ -358,9 +358,10 @@ impl DefaultTokenService {
     if now < claims.exp as i64 {
       // Token still valid, return immediately
       let client_id = self
-        .secret_service
-        .app_reg_info()?
-        .ok_or(AppRegInfoMissingError)?
+        .app_instance_service
+        .get_instance()
+        .await?
+        .ok_or(AppInstanceError::NotFound)?
         .client_id;
       let role = claims
         .resource_access
@@ -382,7 +383,7 @@ impl DefaultTokenService {
 
     // Clone Arc references for use in the closure
     let auth_service = Arc::clone(&self.auth_service);
-    let secret_service = Arc::clone(&self.secret_service);
+    let app_instance_service = Arc::clone(&self.app_instance_service);
     let session_clone = session.clone();
 
     // Execute refresh logic with distributed lock
@@ -418,9 +419,10 @@ impl DefaultTokenService {
                   "Token already refreshed by concurrent request for user: {}",
                   user_id
                 );
-                let client_id = secret_service
-                  .app_reg_info()?
-                  .ok_or(AppRegInfoMissingError)?
+                let client_id = app_instance_service
+                  .get_instance()
+                  .await?
+                  .ok_or(AppInstanceError::NotFound)?
                   .client_id;
                 let role = current_claims
                   .resource_access
@@ -445,18 +447,14 @@ impl DefaultTokenService {
                 user_id
               );
 
-              // Get app registration info
-              let app_reg_info: AppRegInfo = secret_service
-                .app_reg_info()?
-                .ok_or(AppRegInfoMissingError)?;
+              let instance = app_instance_service
+                .get_instance()
+                .await?
+                .ok_or(AppInstanceError::NotFound)?;
 
               // Attempt token refresh with retry logic in auth_service
               let (new_access_token, new_refresh_token) = match auth_service
-                .refresh_token(
-                  &app_reg_info.client_id,
-                  &app_reg_info.client_secret,
-                  &refresh_token,
-                )
+                .refresh_token(&instance.client_id, &instance.client_secret, &refresh_token)
                 .await
               {
                 Ok(tokens) => {
@@ -507,9 +505,10 @@ impl DefaultTokenService {
                 user_id
               );
 
-              let client_id = secret_service
-                .app_reg_info()?
-                .ok_or(AppRegInfoMissingError)?
+              let client_id = app_instance_service
+                .get_instance()
+                .await?
+                .ok_or(AppInstanceError::NotFound)?
                 .client_id;
               let role = new_claims
                 .resource_access

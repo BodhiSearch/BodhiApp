@@ -89,7 +89,6 @@ async fn test_sync_models_handler_success(
     AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .ai_api_service(Arc::new(mock_ai))
-      .with_secret_service()
       .build()
       .await?,
   );

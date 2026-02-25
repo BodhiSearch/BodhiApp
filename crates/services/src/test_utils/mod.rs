@@ -6,7 +6,6 @@ mod envs;
 mod hf;
 mod objs;
 mod queue;
-mod secret;
 mod session;
 mod settings;
 
@@ -18,6 +17,5 @@ pub use envs::*;
 pub use hf::*;
 pub use objs::*;
 pub use queue::*;
-pub use secret::*;
 pub use session::*;
 pub use settings::*;

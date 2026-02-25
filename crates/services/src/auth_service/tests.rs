@@ -1,4 +1,4 @@
-use crate::{test_utils::test_auth_service, AppRegInfo, AuthService};
+use crate::{auth_service::ClientRegistrationResponse, test_utils::test_auth_service, AuthService};
 use anyhow_trace::anyhow_trace;
 use mockito::{Matcher, Server};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
@@ -28,7 +28,7 @@ async fn test_auth_service_register_client_success() -> anyhow::Result<()> {
     .create();
 
   let service = test_auth_service(&url);
-  let app_reg_info = service
+  let client_reg = service
     .register_client(
       "Test Resource Server Name".to_string(),
       "Test resource client description".to_string(),
@@ -36,12 +36,12 @@ async fn test_auth_service_register_client_success() -> anyhow::Result<()> {
     )
     .await?;
   assert_eq!(
-    AppRegInfo {
+    ClientRegistrationResponse {
       client_id: "test-client".to_string(),
       client_secret: "test-secret".to_string(),
       scope: "scope_test-client".to_string(),
     },
-    app_reg_info
+    client_reg
   );
   mock_server.assert();
   Ok(())

@@ -44,7 +44,7 @@ async fn test_setup_with_valid_body_no_auth_required() -> anyhow::Result<()> {
   use axum::http::Request;
   let (router, _app_service, _temp) = build_test_router().await?;
 
-  // SecretServiceStub from build_test_router() defaults to AppStatus::Setup
+  // AppInstanceService from build_test_router() defaults to AppStatus::Ready
   let body = serde_json::json!({
     "name": "Test Server Name",
     "description": "Test description"

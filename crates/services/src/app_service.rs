@@ -1,8 +1,8 @@
 use crate::{
   db::{DbService, TimeService},
-  AccessRequestService, AiApiService, AuthService, CacheService, ConcurrencyService, DataService,
-  HubService, McpService, NetworkService, QueueProducer, SecretService, SessionService,
-  SettingService, ToolService,
+  AccessRequestService, AiApiService, AppInstanceService, AuthService, CacheService,
+  ConcurrencyService, DataService, HubService, McpService, NetworkService, QueueProducer,
+  SessionService, SettingService, ToolService,
 };
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn session_service(&self) -> Arc<dyn SessionService>;
 
-  fn secret_service(&self) -> Arc<dyn SecretService>;
+  fn app_instance_service(&self) -> Arc<dyn AppInstanceService>;
 
   fn cache_service(&self) -> Arc<dyn CacheService>;
 
@@ -54,7 +54,7 @@ pub struct DefaultAppService {
   auth_service: Arc<dyn AuthService>,
   db_service: Arc<dyn DbService>,
   session_service: Arc<dyn SessionService>,
-  secret_service: Arc<dyn SecretService>,
+  app_instance_service: Arc<dyn AppInstanceService>,
   cache_service: Arc<dyn CacheService>,
   time_service: Arc<dyn TimeService>,
   ai_api_service: Arc<dyn AiApiService>,
@@ -91,8 +91,8 @@ impl AppService for DefaultAppService {
     self.session_service.clone()
   }
 
-  fn secret_service(&self) -> Arc<dyn SecretService> {
-    self.secret_service.clone()
+  fn app_instance_service(&self) -> Arc<dyn AppInstanceService> {
+    self.app_instance_service.clone()
   }
 
   fn cache_service(&self) -> Arc<dyn CacheService> {

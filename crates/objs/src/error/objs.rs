@@ -19,11 +19,6 @@ pub enum EntityError {
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("Application registration information is missing.")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
-pub struct AppRegInfoMissingError;
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ObjValidationError {
   #[error("{0}")]

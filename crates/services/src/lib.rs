@@ -11,9 +11,9 @@ mod macros;
 
 // -- Authentication & security
 mod access_request_service;
+mod app_instance_service;
 mod auth_service;
 mod keyring_service;
-mod secret_service;
 mod session_service;
 mod token;
 
@@ -44,7 +44,6 @@ mod queue_service;
 
 // -- Domain object extensions
 mod objs;
-mod service_ext;
 
 // -- Re-exports: core service infrastructure
 pub use app_service::*;
@@ -52,9 +51,9 @@ pub use env_wrapper::*;
 
 // -- Re-exports: authentication & security
 pub use access_request_service::*;
+pub use app_instance_service::*;
 pub use auth_service::*;
 pub use keyring_service::*;
-pub use secret_service::*;
 pub use session_service::*;
 pub use token::*;
 
@@ -82,4 +81,3 @@ pub use queue_service::*;
 
 // -- Re-exports: domain object extensions
 pub use objs::*;
-pub use service_ext::*;

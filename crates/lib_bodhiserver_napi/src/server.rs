@@ -176,7 +176,8 @@ impl BodhiServer {
           format!("Failed to build app service: {}", e),
         )
       })?);
-    update_with_option(&app_service, (&app_options).into())
+    update_with_option(&app_service, app_options.app_instance.as_ref())
+      .await
       .map_err(|err| Error::new(Status::GenericFailure, err.to_string()))?;
     // Create and start the server
     let serve_command = ServeCommand::ByParams {

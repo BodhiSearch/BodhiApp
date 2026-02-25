@@ -9,14 +9,14 @@ use axum::{
 use objs::{ApiError, AppError, SerdeJsonError};
 use serde_json::json;
 use server_core::RouterState;
-use services::{db::DbError, SecretServiceError, SecretServiceExt, SessionServiceError};
+use services::{db::DbError, AppInstanceError, SessionServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DevError {
   #[error(transparent)]
-  SecretServiceError(#[from] SecretServiceError),
+  AppInstanceError(#[from] AppInstanceError),
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
@@ -29,18 +29,15 @@ pub async fn dev_secrets_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, ApiError> {
-  let secret_service = state.app_service().secret_service();
+  let app_instance_service = state.app_service().app_instance_service();
+  let status = app_instance_service.get_status().await.unwrap_or_default();
+  let instance = app_instance_service.get_instance().await.ok().flatten();
 
-  #[allow(unused_mut)]
-  let mut value = json! {{
-    "status": secret_service.app_status()?,
-    "app_info": secret_service.app_reg_info()?,
+  let value = json! {{
+    "status": status,
+    "app_info": instance,
     "auth_context": auth_context,
   }};
-  #[cfg(debug_assertions)]
-  {
-    value["dump"] = serde_json::Value::String(secret_service.dump()?);
-  }
   Ok(
     Response::builder()
       .header("Content-Type", "application/json")

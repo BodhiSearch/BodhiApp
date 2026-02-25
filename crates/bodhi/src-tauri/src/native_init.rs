@@ -3,8 +3,8 @@ use crate::common::build_app_options;
 use crate::error::AppSetupError;
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, setup_bootstrap_service, AppError, AppService, AppType,
-  ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
+  ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle, BODHI_EXEC_LOOKUP_PATH,
+  BODHI_LOGS, BODHI_LOG_STDOUT,
 };
 use std::sync::{Arc, Mutex};
 use tauri::{

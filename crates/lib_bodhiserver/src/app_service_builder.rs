@@ -1,15 +1,16 @@
-use crate::{AppStateOption, BootstrapError};
+use crate::BootstrapError;
 use objs::{EnvType, IoError};
 use services::{
   db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AccessRequestService, AiApiService, AppService, AuthService, BootstrapParts,
-  CacheService, DataService, DefaultAccessRequestService, DefaultAiApiService, DefaultAppService,
-  DefaultExaService, DefaultMcpService, DefaultNetworkService, DefaultSecretService,
-  DefaultSettingService, DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue,
-  KeycloakAuthService, KeyringStore, LocalConcurrencyService, LocalDataService, McpService,
-  MokaCacheService, NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SecretService,
-  SecretServiceExt, SessionService, SettingService, SqliteSessionService,
-  SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
+  hash_key, AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService,
+  AuthService, BootstrapParts, CacheService, DataService, DefaultAccessRequestService,
+  DefaultAiApiService, DefaultAppInstanceService, DefaultAppService, DefaultExaService,
+  DefaultMcpService, DefaultNetworkService, DefaultSettingService, DefaultToolService, ExaService,
+  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
+  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, NetworkService,
+  QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
+  SqliteSessionService, SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  HF_TOKEN, PROD_DB,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,7 +22,6 @@ pub struct AppServiceBuilder {
   // Externally injectable services (for testing).
   // To add injection for a new service, follow the cache_service pattern.
   time_service: Option<Arc<dyn TimeService>>,
-  secret_service: Option<Arc<dyn SecretService>>,
   cache_service: Option<Arc<dyn CacheService>>,
 }
 
@@ -37,10 +37,6 @@ impl std::fmt::Debug for AppServiceBuilder {
         &self.time_service.as_ref().map(|_| "<TimeService>"),
       )
       .field(
-        "secret_service",
-        &self.secret_service.as_ref().map(|_| "<SecretService>"),
-      )
-      .field(
         "cache_service",
         &self.cache_service.as_ref().map(|_| "<CacheService>"),
       )
@@ -53,16 +49,12 @@ impl AppServiceBuilder {
     Self {
       bootstrap_parts: Some(bootstrap_parts),
       time_service: None,
-      secret_service: None,
       cache_service: None,
     }
   }
 
   /// Sets the time service.
-  pub fn time_service(
-    mut self,
-    service: Arc<dyn TimeService>,
-  ) -> Result<Self, BootstrapError> {
+  pub fn time_service(mut self, service: Arc<dyn TimeService>) -> Result<Self, BootstrapError> {
     if self.time_service.is_some() {
       return Err(BootstrapError::ServiceAlreadySet(
         "time_service".to_string(),
@@ -72,25 +64,8 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
-  /// Sets the secret service.
-  pub fn secret_service(
-    mut self,
-    service: Arc<dyn SecretService>,
-  ) -> Result<Self, BootstrapError> {
-    if self.secret_service.is_some() {
-      return Err(BootstrapError::ServiceAlreadySet(
-        "secret_service".to_string(),
-      ));
-    }
-    self.secret_service = Some(service);
-    Ok(self)
-  }
-
   /// Sets the cache service.
-  pub fn cache_service(
-    mut self,
-    service: Arc<dyn CacheService>,
-  ) -> Result<Self, BootstrapError> {
+  pub fn cache_service(mut self, service: Arc<dyn CacheService>) -> Result<Self, BootstrapError> {
     if self.cache_service.is_some() {
       return Err(BootstrapError::ServiceAlreadySet(
         "cache_service".to_string(),
@@ -125,9 +100,8 @@ impl AppServiceBuilder {
       Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
 
     let hub_service = Self::build_hub_service(&setting_service).await?;
-    let secret_service = self
-      .get_or_build_secret_service(&setting_service, encryption_key.clone())
-      .await?;
+    let app_instance_service: Arc<dyn AppInstanceService> =
+      Arc::new(DefaultAppInstanceService::new(db_service.clone()));
     let data_service = Self::build_data_service(hub_service.clone(), db_service.clone());
     let session_service = Self::build_session_service(&setting_service).await?;
     let cache_service = self.get_or_build_cache_service();
@@ -139,7 +113,7 @@ impl AppServiceBuilder {
       &setting_service,
       db_service.clone(),
       auth_service.clone(),
-      secret_service.clone(),
+      app_instance_service.clone(),
       time_service.clone(),
     )
     .await;
@@ -172,7 +146,7 @@ impl AppServiceBuilder {
       auth_service,
       db_service,
       session_service,
-      secret_service,
+      app_instance_service,
       cache_service,
       time_service,
       ai_api_service,
@@ -240,20 +214,6 @@ impl AppServiceBuilder {
     Ok(Arc::new(session_service))
   }
 
-  /// Gets or builds the secret service.
-  async fn get_or_build_secret_service(
-    &mut self,
-    setting_service: &Arc<dyn SettingService>,
-    encryption_key: Vec<u8>,
-  ) -> Result<Arc<dyn SecretService>, BootstrapError> {
-    if let Some(service) = self.secret_service.take() {
-      return Ok(service);
-    }
-    let secrets_path = setting_service.secrets_path().await;
-    let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
-    Ok(Arc::new(secret_service))
-  }
-
   /// Gets or builds the cache service.
   fn get_or_build_cache_service(&mut self) -> Arc<dyn CacheService> {
     if let Some(service) = self.cache_service.take() {
@@ -302,14 +262,14 @@ impl AppServiceBuilder {
     setting_service: &Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    secret_service: Arc<dyn SecretService>,
+    app_instance_service: Arc<dyn AppInstanceService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn AccessRequestService> {
     let frontend_url = setting_service.public_server_url().await;
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
-      secret_service,
+      app_instance_service,
       time_service,
       frontend_url,
     ))
@@ -358,21 +318,20 @@ pub async fn build_app_service(
   AppServiceBuilder::new(bootstrap_parts).build().await
 }
 
-pub fn update_with_option(
+pub async fn update_with_option(
   service: &Arc<dyn AppService>,
-  option: AppStateOption,
+  instance: Option<&AppInstance>,
 ) -> Result<(), BootstrapError> {
-  // Set app registration info if provided
-  if let Some(app_reg_info) = option.app_reg_info {
+  if let Some(instance) = instance {
     service
-      .secret_service()
-      .set_app_reg_info(&app_reg_info)?;
-  }
-  // Set app status if provided
-  if let Some(app_status) = option.app_status {
-    service
-      .secret_service()
-      .set_app_status(&app_status)?;
+      .app_instance_service()
+      .create_instance(
+        &instance.client_id,
+        &instance.client_secret,
+        &instance.scope,
+        instance.status.clone(),
+      )
+      .await?;
   }
   Ok(())
 }

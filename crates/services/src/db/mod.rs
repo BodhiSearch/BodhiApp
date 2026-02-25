@@ -1,11 +1,13 @@
 mod access_repository;
 mod access_request_repository;
+mod app_instance_repository;
 mod db_core;
 pub mod encryption;
 mod error;
 mod mcp_repository;
 mod model_repository;
 mod objs;
+mod repository_app_instance;
 mod service;
 mod service_access;
 mod service_access_request;
@@ -34,6 +36,7 @@ mod user_alias_repository;
 
 pub use access_repository::*;
 pub use access_request_repository::*;
+pub use app_instance_repository::*;
 pub use db_core::*;
 pub use error::*;
 pub use mcp_repository::*;

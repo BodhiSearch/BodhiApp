@@ -12,13 +12,13 @@ use services::{
   db::{DbCore, DefaultTimeService, SqliteDbService},
   hash_key,
   test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
-  AppRegInfoBuilder, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
-  DefaultAppService, DefaultEnvWrapper, DefaultExaService, DefaultMcpService, DefaultSecretService,
-  DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService, LocalConcurrencyService,
-  LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
-  StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
-  SETTINGS_YAML,
+  AppInstanceService, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
+  DefaultAppInstanceService, DefaultAppService, DefaultEnvWrapper, DefaultExaService,
+  DefaultMcpService, DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService,
+  LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService,
+  SqliteSessionService, StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY,
+  BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT,
+  BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
@@ -167,16 +167,16 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let resource_client_scope = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SCOPE")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SCOPE not set"))?;
 
-  // Create secret service with app registration
-  let secret_service =
-    DefaultSecretService::new(&encryption_key, &setting_service.secrets_path().await)?;
-  let app_reg_info = AppRegInfoBuilder::default()
-    .client_id(resource_client_id)
-    .client_secret(resource_client_secret)
-    .scope(resource_client_scope)
-    .build()?;
-  secret_service.set_app_reg_info(&app_reg_info)?;
-  secret_service.set_app_status(&AppStatus::Ready)?;
+  // Create app instance service with registration
+  let app_instance_service = DefaultAppInstanceService::new(db_service.clone());
+  app_instance_service
+    .create_instance(
+      &resource_client_id,
+      &resource_client_secret,
+      &resource_client_scope,
+      AppStatus::Ready,
+    )
+    .await?;
 
   // Build session service with pool and run migrations
   let session_db_url = format!("sqlite:{}", session_db_path.display());
@@ -224,11 +224,11 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     exa_service,
     time_service.clone(),
   ));
-  let secret_service = Arc::new(secret_service);
+  let app_instance_service = Arc::new(app_instance_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
-    secret_service.clone(),
+    app_instance_service.clone(),
     time_service.clone(),
     setting_service.public_server_url().await,
   ));
@@ -254,7 +254,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     auth_service,
     db_service,
     session_service,
-    secret_service,
+    app_instance_service,
     cache_service,
     time_service,
     ai_api_service,
@@ -312,12 +312,13 @@ pub async fn get_oauth_tokens(app_service: &dyn AppService) -> anyhow::Result<(S
   let setting_service = app_service.setting_service();
   let auth_url = setting_service.auth_url().await;
   let realm = setting_service.auth_realm().await;
-  let app_reg_info = app_service
-    .secret_service()
-    .app_reg_info()?
-    .expect("AppRegInfo is not set");
-  let client_id = app_reg_info.client_id;
-  let client_secret = app_reg_info.client_secret;
+  let instance = app_service
+    .app_instance_service()
+    .get_instance()
+    .await?
+    .expect("AppInstance is not set");
+  let client_id = instance.client_id;
+  let client_secret = instance.client_secret;
   let username = std::env::var("INTEG_TEST_USERNAME")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_USERNAME not set"))?;
   let password = std::env::var("INTEG_TEST_PASSWORD")
@@ -517,16 +518,16 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     db_service.clone(),
   );
 
-  // Create secret service with test app registration (no real Keycloak client)
-  let secret_service =
-    DefaultSecretService::new(&encryption_key, &setting_service.secrets_path().await)?;
-  let app_reg_info = AppRegInfoBuilder::default()
-    .client_id("test-resource-client".to_string())
-    .client_secret("test-resource-secret".to_string())
-    .scope("openid profile email".to_string())
-    .build()?;
-  secret_service.set_app_reg_info(&app_reg_info)?;
-  secret_service.set_app_status(&AppStatus::Ready)?;
+  // Create app instance service with test app registration (no real Keycloak client)
+  let app_instance_service = DefaultAppInstanceService::new(db_service.clone());
+  app_instance_service
+    .create_instance(
+      "test-resource-client",
+      "test-resource-secret",
+      "openid profile email",
+      AppStatus::Ready,
+    )
+    .await?;
 
   // Build session service with pool and run migrations
   let session_db_url = format!("sqlite:{}", session_db_path.display());
@@ -560,11 +561,11 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     exa_service,
     time_service.clone(),
   ));
-  let secret_service = Arc::new(secret_service);
+  let app_instance_service = Arc::new(app_instance_service);
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
-    secret_service.clone(),
+    app_instance_service.clone(),
     time_service.clone(),
     setting_service.public_server_url().await,
   ));
@@ -587,7 +588,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     auth_service,
     db_service,
     session_service,
-    secret_service,
+    app_instance_service,
     cache_service,
     time_service,
     ai_api_service,
@@ -653,11 +654,12 @@ pub async fn create_test_session_for_live_server(
   claims["resource_access"][TEST_CLIENT_ID]["roles"] = serde_json::json!(roles);
 
   // Also set roles under the actual client_id used by setup_test_app_service,
-  // since the token service resolves client_id from secret_service.app_reg_info()
+  // since the token service resolves client_id from app_instance_service.get_instance()
   let actual_client_id = app_service
-    .secret_service()
-    .app_reg_info()?
-    .map(|info| info.client_id)
+    .app_instance_service()
+    .get_instance()
+    .await?
+    .map(|inst| inst.client_id)
     .unwrap_or_else(|| TEST_CLIENT_ID.to_string());
   if actual_client_id != TEST_CLIENT_ID {
     claims["resource_access"][&actual_client_id]["roles"] = serde_json::json!(roles);

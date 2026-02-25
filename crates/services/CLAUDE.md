@@ -37,7 +37,7 @@ BodhiApp chose a trait-based service registry pattern over traditional dependenc
 
 The authentication system spans multiple services rather than a monolithic auth module because:
 
-1. **Separation of Concerns**: Each service handles a specific aspect - OAuth2 flows (AuthService), credential encryption (SecretService), session management (SessionService), and persistent storage (KeyringService)
+1. **Separation of Concerns**: Each service handles a specific aspect - OAuth2 flows (AuthService), app registration persistence (AppInstanceService), session management (SessionService), and platform credential storage (KeyringService)
 2. **Platform Abstraction**: KeyringService abstracts OS-specific credential storage (Keychain, Secret Service, Windows Credential Manager) behind a unified interface
 3. **Security Defense in Depth**: Multiple layers ensure credentials are never exposed - encrypted in database, protected by platform keyring, and transmitted via secure sessions
 4. **Token Lifecycle Management**: Complex JWT refresh logic, token exchange protocols, and session coordination require specialized handling across service boundaries
@@ -60,7 +60,7 @@ Model management is split between HubService and DataService rather than a singl
 The services crate uses the unified `IoError` enum from `objs` for all IO-related error handling. This represents a deliberate consolidation from the previous approach of 6 separate IO error structs (`IoError` struct, `IoWithPathError`, `IoDirCreateError`, `IoFileReadError`, `IoFileWriteError`, `IoFileDeleteError`) into a single enum with 6 variants:
 
 **Why a Single IoError Enum**:
-- **Simplified Error Propagation**: Service error enums (e.g., `DataServiceError`, `HubServiceError`, `SecretServiceError`, `SettingServiceError`) previously needed multiple IO-related variants for each struct. Now each has a single `Io(#[from] IoError)` or `IoError(#[from] IoError)` variant
+- **Simplified Error Propagation**: Service error enums (e.g., `DataServiceError`, `HubServiceError`, `SettingServiceError`) previously needed multiple IO-related variants for each struct. Now each has a single `Io(#[from] IoError)` or `IoError(#[from] IoError)` variant
 - **Ergonomic Construction**: Convenience constructors like `IoError::file_read(err, path)`, `IoError::file_write(err, path)`, `IoError::dir_create(err, path)`, and `IoError::file_delete(err, path)` provide clear, context-specific error creation without separate struct constructors
 - **Consistent Pattern Matching**: Consumers can match on a single enum rather than checking multiple error types
 - **Preserved Context**: Each variant captures the `std::io::Error` source and relevant path, maintaining full diagnostic information
@@ -73,7 +73,6 @@ The services crate uses the unified `IoError` enum from `objs` for all IO-relate
 **Service Error Enums Using IoError**:
 - `DataServiceError::Io(IoError)` - file read/write/delete operations for alias and model management
 - `HubServiceError::IoError(IoError)` - filesystem operations during model cache operations
-- `SecretServiceError::IoError(IoError)` - file operations for encrypted secret storage
 - `SettingServiceError::Io(IoError)` - configuration file read/write operations
 
 ### Error Translation Chain
@@ -157,9 +156,9 @@ BodhiApp implements a sophisticated OAuth2 flow with runtime client registration
 **Registration Sequence**:
 1. AuthService detects missing client configuration
 2. Registers new OAuth client with Keycloak using Bodhi API
-3. Stores encrypted client credentials via SecretService
-4. Persists registration metadata in platform keyring
-5. Subsequent requests use cached credentials
+3. Stores client credentials (encrypted at rest) via AppInstanceService into the `apps` SQLite table
+4. Persists platform keyring entry via KeyringService if required
+5. Subsequent requests use AppInstanceService to retrieve cached credentials
 
 ### Toolset and External API Integration Architecture
 
@@ -273,14 +272,16 @@ Each external service has an offline stub implementation:
 
 ## Security Architecture Decisions
 
-### Why PBKDF2 with 1000 Iterations
+### AppInstanceService and Credential Encryption
 
-The SecretService uses PBKDF2 for key derivation with specific parameters:
+App registration info (OAuth client credentials) is stored in the `apps` SQLite table via `AppInstanceService`. The repository layer (`repository_app_instance.rs`) handles AES-GCM encryption transparently:
 
-- 1000 iterations balances security with performance for interactive operations
-- Random salt per encryption prevents rainbow table attacks
-- AES-GCM provides authenticated encryption detecting tampering
-- Base64 encoding enables safe storage in text-based formats
+- Client secrets are encrypted before INSERT and decrypted after SELECT — callers never handle ciphertext
+- Random salt and nonce per-encryption prevents replay attacks
+- `AppInstanceRow.client_secret` always holds plaintext after repository operations
+- `AppInstanceError` variants: `NotFound`, `InvalidStatus(String)`, `InvalidTimestamp(i64)`, `Db(DbError)`
+- `AppStatus` parsing from DB strings is a hard error (returns `InvalidStatus`) — no silent fallback to `Setup`
+- `DbError::MultipleAppInstance` propagates as `AppInstanceError::Db(DbError::MultipleAppInstance)` (error code: `db_error-multiple_app_instance`)
 
 ### Session Security Configuration
 
@@ -377,8 +378,8 @@ When integrating new external services:
 Services must initialize in dependency order:
 1. TimeService (no dependencies)
 2. DbService (depends on TimeService)
-3. SecretService (depends on file-based storage)
-4. SettingService (depends on SecretService, environment)
+3. AppInstanceService (depends on DbService — holds OAuth client credentials)
+4. SettingService (depends on environment and DB-backed settings)
 5. AuthService (depends on above)
 6. SessionService (depends on SQLite pool)
 7. HubService, DataService, CacheService (depend on configuration)

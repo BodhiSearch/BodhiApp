@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 lib_bodhiserver = { workspace = true }
 objs = { workspace = true, optional = true }
 
+chrono = { workspace = true }
 dirs = { workspace = true }
 log = { workspace = true }
 napi = { workspace = true, features = ["async", "serde-json"] }

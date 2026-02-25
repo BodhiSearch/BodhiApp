@@ -67,7 +67,6 @@ async fn test_create_api_model_handler_validation_error_empty_api_key(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -106,7 +105,6 @@ async fn test_create_api_model_handler_validation_error_invalid_url(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -146,7 +144,6 @@ async fn test_create_api_model_handler_validation_error_empty_models(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -186,7 +183,6 @@ async fn test_create_api_model_handler_forward_all_with_prefix_success(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 
@@ -227,7 +223,6 @@ async fn test_create_api_model_handler_forward_all_without_prefix_fails(
   // Create app service with clean database
   let app_service = AppServiceStubBuilder::default()
     .db_service(Arc::new(db_service))
-    .with_secret_service()
     .build()
     .await?;
 

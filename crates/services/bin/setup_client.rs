@@ -47,7 +47,7 @@ async fn internal_main() -> Result<(), ApiError> {
   ];
 
   println!("Registering client with auth server...");
-  let app_reg_info = auth_service
+  let client_reg = auth_service
     .register_client(
       "CLI Setup Client".to_string(),
       "Client created via CLI setup tool".to_string(),
@@ -56,15 +56,15 @@ async fn internal_main() -> Result<(), ApiError> {
     .await?;
 
   println!("Client registered successfully!");
-  println!("Client ID: {}", app_reg_info.client_id);
-  println!("Client Secret: {}", app_reg_info.client_secret);
+  println!("Client ID: {}", client_reg.client_id);
+  println!("Client Secret: {}", client_reg.client_secret);
 
   // Make the user a resource admin
   println!("Making user '{}' a resource admin...", cli.username);
   auth_service
     .make_resource_admin(
-      &app_reg_info.client_id,
-      &app_reg_info.client_secret,
+      &client_reg.client_id,
+      &client_reg.client_secret,
       &cli.username,
     )
     .await?;
@@ -72,8 +72,8 @@ async fn internal_main() -> Result<(), ApiError> {
   println!("User '{}' is now a resource admin!", cli.username);
   println!();
   println!("=== CLIENT CREDENTIALS ===");
-  println!("Client ID: {}", app_reg_info.client_id);
-  println!("Client Secret: {}", app_reg_info.client_secret);
+  println!("Client ID: {}", client_reg.client_id);
+  println!("Client Secret: {}", client_reg.client_secret);
   println!("===========================");
 
   Ok(())

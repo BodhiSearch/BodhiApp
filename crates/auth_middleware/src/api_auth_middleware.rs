@@ -9,14 +9,11 @@ use objs::{
   UserScopeError,
 };
 use server_core::RouterState;
-use services::SecretServiceError;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ApiAuthError {
-  #[error(transparent)]
-  SecretService(#[from] SecretServiceError),
   #[error("Insufficient permissions for this resource.")]
   #[error_meta(error_type = ErrorType::Forbidden)]
   Forbidden,
@@ -153,11 +150,7 @@ mod tests {
     required_token_scope: Option<TokenScope>,
     auth_context: AuthContext,
   ) -> Router {
-    let app_service = AppServiceStubBuilder::default()
-      .with_secret_service()
-      .build()
-      .await
-      .unwrap();
+    let app_service = AppServiceStubBuilder::default().build().await.unwrap();
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
       Arc::new(app_service),
@@ -184,11 +177,7 @@ mod tests {
     required_user_scope: Option<UserScope>,
     auth_context: AuthContext,
   ) -> Router {
-    let app_service = AppServiceStubBuilder::default()
-      .with_secret_service()
-      .build()
-      .await
-      .unwrap();
+    let app_service = AppServiceStubBuilder::default().build().await.unwrap();
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::new()),
       Arc::new(app_service),

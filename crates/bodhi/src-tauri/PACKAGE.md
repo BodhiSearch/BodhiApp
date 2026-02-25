@@ -38,9 +38,9 @@ Defined in `src/app.rs` using clap with derive macros. The `serve` subcommand ac
 
 ## Error Types
 
-| Enum            | Variants                                   | Notes                                                    |
-| --------------- | ------------------------------------------ | -------------------------------------------------------- |
-| `NativeError`   | `Tauri(tauri::Error)`, `Serve(ServeError)` | `src/native_init.rs`; code = `"tauri"` for Tauri variant |
+| Enum            | Variants                                                                                                           | Notes                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `NativeError`   | `Tauri(tauri::Error)`, `Serve(ServeError)`                                                                         | `src/native_init.rs`; code = `"tauri"` for Tauri variant       |
 | `AppSetupError` | `Bootstrap(BootstrapError)`, `AsyncRuntime(io::Error)`, `Serve(ServeError)`, `SettingService(SettingServiceError)` | `src/error.rs`; all variants use `#[from]` for auto-conversion |
 
 Both implement `AppError` via `errmeta_derive::ErrorMeta`.
