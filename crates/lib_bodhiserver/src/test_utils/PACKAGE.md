@@ -65,7 +65,7 @@ async fn test_app_service_builder_with_custom_services(
   // Verify all services are properly initialized
   assert_eq!(app_service.setting_service().bodhi_home(), bodhi_home);
   assert!(setting_service.app_db_path().exists());
-  assert!(setting_service.session_db_path().exists());
+  assert!(setting_service.session_db_url().exists());
   
   Ok(())
 }
@@ -273,7 +273,7 @@ async fn test_complete_app_service_composition(
   // Verify complete service composition
   assert_eq!(app_service.setting_service().bodhi_home(), bodhi_home);
   assert!(setting_service.app_db_path().exists());
-  assert!(setting_service.session_db_path().exists());
+  assert!(setting_service.session_db_url().exists());
   
   // Test service interactions
   let data_service = app_service.data_service();

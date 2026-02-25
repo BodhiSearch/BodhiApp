@@ -54,6 +54,10 @@ pub const LOGS_DIR: &str = "logs";
 pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 
+// Deployment settings
+pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
+pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
+
 // RunPod settings
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";
 pub const RUNPOD_POD_ID: &str = "RUNPOD_POD_ID";
@@ -77,4 +81,6 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_EXEC_VARIANTS,
   BODHI_KEEP_ALIVE_SECS,
   BODHI_LLAMACPP_ARGS,
+  BODHI_SESSION_DB_URL,
+  BODHI_DEPLOYMENT,
 ];

@@ -14,11 +14,11 @@ use services::{
   test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
   AppInstanceService, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
   DefaultAppInstanceService, DefaultAppService, DefaultEnvWrapper, DefaultExaService,
-  DefaultMcpService, DefaultSettingService, DefaultToolService, EnvWrapper, HfHubService,
-  LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService,
-  SqliteSessionService, StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY,
-  BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT,
-  BODHI_VERSION, HF_HOME, SETTINGS_YAML,
+  DefaultMcpService, DefaultSessionService, DefaultSettingService, DefaultToolService, EnvWrapper,
+  HfHubService, LocalConcurrencyService, LocalDataService, MokaCacheService, SettingService,
+  StubNetworkService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
+  SETTINGS_YAML,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
@@ -178,11 +178,9 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     )
     .await?;
 
-  // Build session service with pool and run migrations
+  // Build session service using DefaultSessionService (auto-detects backend from URL)
   let session_db_url = format!("sqlite:{}", session_db_path.display());
-  let session_pool = SqlitePool::connect(&session_db_url).await?;
-  let session_service = SqliteSessionService::new(session_pool);
-  session_service.migrate().await?;
+  let session_service = DefaultSessionService::connect(&session_db_url).await?;
   let session_service = Arc::new(session_service);
 
   // Store setting service in Arc for sharing
@@ -529,11 +527,9 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     )
     .await?;
 
-  // Build session service with pool and run migrations
+  // Build session service using DefaultSessionService (auto-detects backend from URL)
   let session_db_url = format!("sqlite:{}", session_db_path.display());
-  let session_pool = SqlitePool::connect(&session_db_url).await?;
-  let session_service = SqliteSessionService::new(session_pool);
-  session_service.migrate().await?;
+  let session_service = DefaultSessionService::connect(&session_db_url).await?;
   let session_service = Arc::new(session_service);
 
   let setting_service = Arc::new(setting_service);

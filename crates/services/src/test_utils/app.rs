@@ -4,10 +4,10 @@ use crate::{
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
   AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService, AuthService,
   CacheService, ConcurrencyService, DataService, DefaultAppInstanceService, DefaultMcpService,
-  DefaultToolService, HfHubService, HubService, LocalConcurrencyService, LocalDataService,
-  McpService, MockAccessRequestService, MockAuthService, MockExaService, MockHubService,
-  MokaCacheService, NetworkService, SessionService, SettingService, SqliteSessionService,
-  ToolService, BODHI_EXEC_LOOKUP_PATH,
+  DefaultSessionService, DefaultToolService, HfHubService, HubService, LocalConcurrencyService,
+  LocalDataService, McpService, MockAccessRequestService, MockAuthService, MockExaService,
+  MockHubService, MokaCacheService, NetworkService, SessionService, SettingService, ToolService,
+  BODHI_EXEC_LOOKUP_PATH,
 };
 
 use crate::network_service::StubNetworkService;
@@ -292,15 +292,15 @@ impl AppServiceStubBuilder {
   }
 
   pub async fn build_session_service(&mut self, dbfile: PathBuf) -> &mut Self {
-    let session_service = SqliteSessionService::build_session_service(dbfile).await;
+    let session_service = DefaultSessionService::build_session_service(dbfile).await;
     let session_service: Arc<dyn SessionService + Send + Sync> = Arc::new(session_service);
     self.session_service = Some(Some(session_service));
     self
   }
 
-  pub fn with_sqlite_session_service(
+  pub fn with_default_session_service(
     &mut self,
-    session_service: Arc<SqliteSessionService>,
+    session_service: Arc<DefaultSessionService>,
   ) -> &mut Self {
     self.session_service = Some(Some(session_service));
     self

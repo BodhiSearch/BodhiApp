@@ -5,12 +5,11 @@ use services::{
   hash_key, AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService,
   AuthService, BootstrapParts, CacheService, DataService, DefaultAccessRequestService,
   DefaultAiApiService, DefaultAppInstanceService, DefaultAppService, DefaultExaService,
-  DefaultMcpService, DefaultNetworkService, DefaultSettingService, DefaultToolService, ExaService,
-  HfHubService, HubService, InMemoryQueue, KeycloakAuthService, KeyringStore,
-  LocalConcurrencyService, LocalDataService, McpService, MokaCacheService, NetworkService,
-  QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
-  SqliteSessionService, SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  HF_TOKEN, PROD_DB,
+  DefaultMcpService, DefaultNetworkService, DefaultSessionService, DefaultSettingService,
+  DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
+  KeyringStore, LocalConcurrencyService, LocalDataService, McpService, MokaCacheService,
+  NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
+  SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -200,17 +199,13 @@ impl AppServiceBuilder {
     Ok(Arc::new(db_service))
   }
 
-  /// Builds the session service.
+  /// Builds the session service from the session DB URL.
+  /// Detects backend from URL scheme (sqlite:// or postgres://).
   async fn build_session_service(
     setting_service: &Arc<dyn SettingService>,
   ) -> Result<Arc<dyn SessionService>, BootstrapError> {
-    let session_db_pool = DbPool::connect(&format!(
-      "sqlite:{}",
-      setting_service.session_db_path().await.display()
-    ))
-    .await?;
-    let session_service = SqliteSessionService::new(session_db_pool);
-    session_service.migrate().await?;
+    let url = setting_service.session_db_url().await;
+    let session_service = DefaultSessionService::connect(&url).await?;
     Ok(Arc::new(session_service))
   }
 

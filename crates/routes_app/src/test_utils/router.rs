@@ -60,7 +60,7 @@ pub async fn build_test_router() -> anyhow::Result<(Router, Arc<dyn AppService>,
 /// This function:
 /// 1. Builds a JWT with the specified roles in `resource_access` for the test client
 /// 2. Creates a session `Record` with `access_token` set to the JWT
-/// 3. Saves the record to the `AppSessionStore`
+/// 3. Saves the record to the `SessionStoreBackend`
 /// 4. Returns a cookie string suitable for use in request headers
 ///
 /// # Arguments
@@ -95,7 +95,7 @@ pub async fn create_authenticated_session(
   let store = session_service.get_session_store();
   store.save(&record).await?;
 
-  // Return the cookie string matching the session cookie name used by SqliteSessionService
+  // Return the cookie string matching the session cookie name used by DefaultSessionService
   Ok(format!("bodhiapp_session_id={}", session_id))
 }
 

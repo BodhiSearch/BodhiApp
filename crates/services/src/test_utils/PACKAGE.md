@@ -369,7 +369,7 @@ pub trait SessionTestExt {
 }
 
 #[async_trait::async_trait]
-impl SessionTestExt for SqliteSessionService {
+impl SessionTestExt for DefaultSessionService {
   async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value> {
     let record = self.get_session_record(session_id).await.unwrap();
     record.data.get(key).cloned()
@@ -377,14 +377,13 @@ impl SessionTestExt for SqliteSessionService {
 }
 
 // Session service builder (see crates/services/src/test_utils/session.rs:10-22)
-impl SqliteSessionService {
-  pub async fn build_session_service(dbfile: PathBuf) -> SqliteSessionService {
+impl DefaultSessionService {
+  pub async fn build_session_service(dbfile: PathBuf) -> DefaultSessionService {
     if !dbfile.exists() {
       File::create(&dbfile).expect("Failed to create database file");
     }
-    let pool = SqlitePool::connect(&format!("sqlite:{}", dbfile.display())).await.unwrap();
-    let session_service = SqliteSessionService::new(pool);
-    session_service.migrate().await.unwrap();
+    let url = format!("sqlite:{}", dbfile.display());
+    let session_service = DefaultSessionService::connect_sqlite(&url).await.unwrap();
     session_service
   }
 }

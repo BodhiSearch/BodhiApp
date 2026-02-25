@@ -9,7 +9,7 @@ use serde_json::json;
 use server_core::{DefaultRouterState, MockSharedContext};
 use services::{
   test_utils::{AppServiceStubBuilder, SessionTestExt},
-  AppService, SqliteSessionService,
+  AppService, DefaultSessionService,
 };
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -25,10 +25,11 @@ pub async fn create_test_session_handler(session: Session) -> impl IntoResponse 
 #[anyhow_trace]
 async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile.clone()).await);
+  let session_service =
+    Arc::new(DefaultSessionService::build_session_service(dbfile.clone()).await);
   let app_service: Arc<dyn AppService> = Arc::new(
     AppServiceStubBuilder::default()
-      .with_sqlite_session_service(session_service.clone())
+      .with_default_session_service(session_service.clone())
       .build()
       .await?,
   );

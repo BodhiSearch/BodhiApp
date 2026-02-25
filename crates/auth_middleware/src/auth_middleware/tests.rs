@@ -27,8 +27,8 @@ use services::{
     access_token_claims, build_token, expired_token, AppServiceStubBuilder, TEST_CLIENT_ID,
     TEST_CLIENT_SECRET,
   },
-  AppInstance, AppService, AppStatus, AuthServiceError, MockAuthService, SqliteSessionService,
-  BODHI_HOST, BODHI_PORT, BODHI_SCHEME,
+  AppInstance, AppService, AppStatus, AuthServiceError, DefaultSessionService, MockAuthService,
+  SessionService, BODHI_HOST, BODHI_PORT, BODHI_SCHEME,
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -214,7 +214,7 @@ async fn test_auth_middleware_with_valid_session_token(
     Value::Array(roles.iter().map(|r| Value::String(r.to_string())).collect());
   let (token, _) = build_token(claims)?;
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let id = Id::default();
   let mut record = Record {
     id,
@@ -223,7 +223,10 @@ async fn test_auth_middleware_with_valid_session_token(
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(AppInstance::test_default())
     .await
@@ -283,7 +286,7 @@ async fn test_auth_middleware_with_expired_session_token(
   let (exchanged_token, _) = build_token(access_token_claims)?;
   let exchanged_token_cl = exchanged_token.clone();
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let id = Id::default();
   let mut record = Record {
     id,
@@ -293,7 +296,10 @@ async fn test_auth_middleware_with_expired_session_token(
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
   // Create mock auth service
   let mut mock_auth_service = MockAuthService::default();
   mock_auth_service
@@ -337,7 +343,11 @@ async fn test_auth_middleware_with_expired_session_token(
   assert_eq!(true, body.is_authenticated);
 
   // Verify that the session was updated with the new tokens
-  let updated_record = session_service.session_store.load(&id).await?.unwrap();
+  let updated_record = session_service
+    .get_session_store()
+    .load(&id)
+    .await?
+    .unwrap();
   assert_eq!(
     exchanged_token,
     updated_record
@@ -374,7 +384,7 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   let new_access_token_cl = new_access_token.clone();
 
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let id = Id::default();
   let mut record = Record {
     id,
@@ -384,7 +394,10 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   // Create mock auth service that succeeds refresh
   let mut mock_auth_service = MockAuthService::default();
@@ -424,7 +437,11 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   assert_eq!(StatusCode::IM_A_TEAPOT, response1.status());
 
   // Verify session was updated with new tokens
-  let updated_record = session_service.session_store.load(&id).await?.unwrap();
+  let updated_record = session_service
+    .get_session_store()
+    .load(&id)
+    .await?
+    .unwrap();
   assert_eq!(
     new_access_token,
     updated_record
@@ -464,7 +481,7 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
 ) -> anyhow::Result<()> {
   let (expired_token, _) = expired_token;
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
 
   // Create mock auth service that fails to refresh the token
   let mut mock_auth_service = MockAuthService::default();
@@ -512,7 +529,10 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   let req = Request::get("/with_auth")
     .header("Cookie", format!("bodhiapp_session_id={}", id))
@@ -537,7 +557,11 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     actual
   );
   // Verify that the session was not updated
-  let updated_record = session_service.session_store.load(&id).await?.unwrap();
+  let updated_record = session_service
+    .get_session_store()
+    .load(&id)
+    .await?
+    .unwrap();
   assert_eq!(
     expired_token,
     updated_record
@@ -567,7 +591,7 @@ async fn test_auth_middleware_returns_invalid_access_when_no_token_in_session(
   temp_bodhi_home: TempDir,
 ) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(AppInstance::test_default())
     .await
@@ -639,7 +663,7 @@ async fn test_auth_middleware_removes_internal_token_headers() -> anyhow::Result
 #[tokio::test]
 async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   // create dummy session record
   let id = tower_sessions::session::Id::default();
   let mut record = tower_sessions::session::Record {
@@ -649,7 +673,10 @@ async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyho
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(AppInstance::test_default())

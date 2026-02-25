@@ -21,7 +21,7 @@ use server_core::{
 use services::{
   db::{AccessRepository, UserAccessRequestStatus},
   test_utils::{build_token_with_exp, test_db_service_with_temp_dir, AppServiceStubBuilder},
-  MockAuthService, SessionService, SqliteSessionService,
+  DefaultSessionService, MockAuthService, SessionService,
 };
 use std::{collections::HashMap, fs::File, sync::Arc};
 use tempfile::TempDir;
@@ -44,7 +44,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
 
   let db_service = test_db_service_with_temp_dir(Arc::new(temp_bodhi_home)).await;
   let session_service =
-    Arc::new(SqliteSessionService::build_session_service(session_db.clone()).await);
+    Arc::new(DefaultSessionService::build_session_service(session_db.clone()).await);
 
   // 3. Create a pending access request for a user
   let user_id = "test-user-123";
@@ -77,14 +77,11 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
       expiry_date: OffsetDateTime::now_utc() + time::Duration::hours(1),
     };
 
-    SessionStore::save(&session_service.session_store, &record).await?;
+    SessionStore::save(session_service.get_session_store(), &record).await?;
   }
 
   // 5. Verify sessions exist before approval
-  let count_before = session_service
-    .session_store
-    .count_sessions_for_user(user_id)
-    .await?;
+  let count_before = session_service.count_sessions_for_user(user_id).await?;
 
   assert_eq!(3, count_before, "User should have 3 active sessions");
 
@@ -113,7 +110,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
     })
     .await;
   let app_service = builder
-    .with_sqlite_session_service(session_service.clone())
+    .with_default_session_service(session_service.clone())
     .auth_service(Arc::new(mock_auth))
     .build()
     .await?;
@@ -158,8 +155,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   );
 
   // 12. Verify all user sessions were cleared
-  let session_store = session_service.get_session_store();
-  let count_after = session_store.count_sessions_for_user(user_id).await?;
+  let count_after = session_service.count_sessions_for_user(user_id).await?;
 
   assert_eq!(
     0, count_after,

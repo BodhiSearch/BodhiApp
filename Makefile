@@ -7,6 +7,7 @@ include Makefile.website.mk
 .DEFAULT_GOAL := help
 
 .PHONY: help test test.backend test.ui test.napi test.coverage \
+	test.deps.up test.deps.down \
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	format format.all \
 	run run.native app.clear app.run \
@@ -44,7 +45,13 @@ help: ## Show this help message
 	@echo ''
 	@echo 'Run "make [target]" to execute a specific target'
 
-test.backend: ## Run Rust backend tests
+test.deps.up: ## Start test dependencies (PostgreSQL via docker-compose)
+	docker compose -f docker-compose-test-deps.yml up -d --wait
+
+test.deps.down: ## Stop test dependencies and remove volumes
+	docker compose -f docker-compose-test-deps.yml down -v
+
+test.backend: test.deps.up ## Run Rust backend tests (requires Docker for PostgreSQL)
 	cargo test
 	cargo test -p bodhi --features native
 

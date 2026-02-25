@@ -1,9 +1,10 @@
 use crate::{
   EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_COMMIT_SHA,
-  BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET,
-  BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_VERSION, HF_HOME,
+  BODHI_DEPLOYMENT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME,
+  BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST,
+  BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME,
+  BODHI_SESSION_DB_URL, BODHI_VERSION, HF_HOME,
 };
 use llama_server_proc::{BUILD_TARGET, BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
 use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
@@ -155,6 +156,11 @@ impl SettingServiceStub {
         BUILD_VARIANTS.join(",").to_string(),
       ),
       (BODHI_KEEP_ALIVE_SECS.to_string(), "300".to_string()),
+      (
+        BODHI_SESSION_DB_URL.to_string(),
+        format!("sqlite:{}", bodhi.join("session.sqlite").display()),
+      ),
+      (BODHI_DEPLOYMENT.to_string(), "standalone".to_string()),
     ]);
     settings
   }

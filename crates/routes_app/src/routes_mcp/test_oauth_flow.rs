@@ -16,7 +16,8 @@ use serde_json::{json, Value};
 use server_core::test_utils::ResponseTestExt;
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{
-  test_utils::AppServiceStubBuilder, AppService, McpError, MockMcpService, SqliteSessionService,
+  test_utils::AppServiceStubBuilder, AppService, DefaultSessionService, McpError, MockMcpService,
+  SessionService,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -62,18 +63,18 @@ fn test_mcp_server() -> McpServer {
 }
 
 /// Builds a router with session layer for OAuth flow tests.
-/// Returns (Router, Arc<SqliteSessionService>) for session inspection.
+/// Returns (Router, Arc<DefaultSessionService>) for session inspection.
 async fn build_oauth_flow_router(
   mock_mcp_service: MockMcpService,
-) -> anyhow::Result<(Router, Arc<SqliteSessionService>)> {
+) -> anyhow::Result<(Router, Arc<DefaultSessionService>)> {
   let temp_dir = tempfile::TempDir::new()?;
   let dbfile = temp_dir.path().join("test-session.sqlite");
-  let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+  let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
   let mcp_svc: Arc<dyn services::McpService> = Arc::new(mock_mcp_service);
   let app_service: Arc<dyn AppService> = Arc::new(
     AppServiceStubBuilder::default()
       .mcp_service(mcp_svc)
-      .with_sqlite_session_service(session_service.clone())
+      .with_default_session_service(session_service.clone())
       .build()
       .await?,
   );
@@ -258,7 +259,10 @@ async fn test_oauth_token_exchange_success() -> anyhow::Result<()> {
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   let body = serde_json::to_string(&OAuthTokenExchangeRequest {
     code: "auth-code-xyz".to_string(),
@@ -315,7 +319,10 @@ async fn test_oauth_token_exchange_state_mismatch() -> anyhow::Result<()> {
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   // Send request with a DIFFERENT state
   let body = serde_json::to_string(&OAuthTokenExchangeRequest {
@@ -421,7 +428,10 @@ async fn test_oauth_token_exchange_service_error() -> anyhow::Result<()> {
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
 
   let body = serde_json::to_string(&OAuthTokenExchangeRequest {
     code: "auth-code-xyz".to_string(),

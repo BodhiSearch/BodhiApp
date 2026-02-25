@@ -15,6 +15,9 @@ mod app_instance_service;
 mod auth_service;
 mod keyring_service;
 mod session_service;
+#[cfg(test)]
+#[path = "test_session_service.rs"]
+mod test_session_service;
 mod token;
 
 // -- AI & external API services

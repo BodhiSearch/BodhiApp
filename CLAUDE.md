@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing
 - `make test` - Run all tests (backend, UI, NAPI)
-- `make test.backend` - Run Rust backend tests (`cargo test` and `cargo test -p bodhi --features native`)
+- `make test.backend` - Run Rust backend tests (requires Docker for PostgreSQL test dependencies; runs `make test.deps.up` automatically; runs `cargo test` and `cargo test -p bodhi --features native`)
 - `make test.ui` - Run frontend tests (`cd crates/bodhi && npm install && npm test`)
 - `make test.napi` - Run NAPI bindings tests (`cd crates/lib_bodhiserver_napi && npm install && npm run test`)
 

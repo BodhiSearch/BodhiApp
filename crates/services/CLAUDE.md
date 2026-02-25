@@ -288,9 +288,23 @@ App registration info (OAuth client credentials) is stored in the `apps` SQLite 
 HTTP sessions use specific security settings:
 
 - SameSite::Strict prevents CSRF attacks
-- SQLite backend enables horizontal scaling
-- AppSessionStore wraps tower-sessions SqliteStore with user_id tracking
+- Supports both SQLite and PostgreSQL backends via `SessionStoreBackend`
+- `SessionStoreBackend` wraps typed tower-sessions stores (SqliteStore or PostgresStore) with AnyPool for custom `user_id` tracking queries
+- `AppSessionStoreExt` provides custom operations: `migrate_custom`, `clear_sessions_for_user`, `clear_all_sessions`, `count_sessions_for_user`, `get_session_ids_for_user`, `dump_all_sessions`
 - Session clearing by user_id enables targeted session invalidation
+
+#### Session Service Module Structure (`session_service/`)
+
+The module is split across multiple files following the shared convention in `crates/CLAUDE.md`:
+
+- `mod.rs` — declarations + `pub use` re-exports only
+- `error.rs` — `SessionServiceError` enum (variants: `SqlxError`, `SessionStoreError`, `DbSetup`), `SessionResult<T>` alias
+- `session_store.rs` — `SessionStoreBackend`, `InnerStoreShared`, `is_postgres_url()`
+- `session_service.rs` — `SessionService` trait, `AppSessionStoreExt` trait, `DefaultSessionService` impl
+- `postgres.rs` — `create_postgres_store()` returning `SessionResult<PostgresStore>`
+- `sqlite.rs` — `create_sqlite_store()`
+
+The backend URL is determined by `SettingService::session_db_url()` which reads `BODHI_SESSION_DB_URL`. A default of `sqlite:<bodhi_home>/session.sqlite` is established in `build_all_defaults()`. For PostgreSQL, set `BODHI_SESSION_DB_URL=postgres://...`.
 
 ## Testing Conventions
 

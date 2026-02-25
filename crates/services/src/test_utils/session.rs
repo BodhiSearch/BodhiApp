@@ -1,23 +1,22 @@
-use crate::SqliteSessionService;
+use crate::{DefaultSessionService, SessionService, SessionStoreBackend};
 use serde_json::Value;
-use sqlx::SqlitePool;
 use std::{fs::File, path::PathBuf, str::FromStr};
 use tower_sessions::{
   session::{Id, Record},
   SessionStore,
 };
 
-impl SqliteSessionService {
-  pub async fn build_session_service(dbfile: PathBuf) -> SqliteSessionService {
+impl DefaultSessionService {
+  pub async fn build_session_service(dbfile: PathBuf) -> DefaultSessionService {
     if !dbfile.exists() {
       File::create(&dbfile).expect("Failed to create database file");
     }
-    let pool = SqlitePool::connect(&format!("sqlite:{}", dbfile.display()))
-      .await
-      .unwrap();
-    let session_service = SqliteSessionService::new(pool);
-    session_service.migrate().await.unwrap();
-    session_service
+    let url = format!("sqlite:{}", dbfile.display());
+    DefaultSessionService::connect_sqlite(&url).await.unwrap()
+  }
+
+  pub async fn build_pg_session_service(url: &str) -> DefaultSessionService {
+    DefaultSessionService::connect_postgres(url).await.unwrap()
   }
 }
 
@@ -29,7 +28,7 @@ pub trait SessionTestExt {
 }
 
 #[async_trait::async_trait]
-impl SessionTestExt for SqliteSessionService {
+impl SessionTestExt for DefaultSessionService {
   async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value> {
     let record = self.get_session_record(session_id).await.unwrap();
     record.data.get(key).cloned()
@@ -37,9 +36,21 @@ impl SessionTestExt for SqliteSessionService {
 
   async fn get_session_record(&self, session_id: &str) -> Option<Record> {
     self
-      .session_store
+      .get_session_store()
       .load(&Id::from_str(session_id).unwrap())
       .await
       .unwrap()
+  }
+}
+
+#[async_trait::async_trait]
+impl SessionTestExt for SessionStoreBackend {
+  async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value> {
+    let record = self.get_session_record(session_id).await.unwrap();
+    record.data.get(key).cloned()
+  }
+
+  async fn get_session_record(&self, session_id: &str) -> Option<Record> {
+    self.load(&Id::from_str(session_id).unwrap()).await.unwrap()
   }
 }

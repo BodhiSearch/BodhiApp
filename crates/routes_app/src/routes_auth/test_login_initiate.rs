@@ -15,7 +15,7 @@ use serde_json::{json, Value};
 use server_core::{test_utils::RequestTestExt, DefaultRouterState, MockSharedContext, RouterState};
 use services::{
   test_utils::{expired_token, token, AppServiceStubBuilder, SettingServiceStub},
-  AppService, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  AppService, DefaultSessionService, SessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
 use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
@@ -299,7 +299,7 @@ async fn auth_initiate_handler_with_token_response(
   token: String,
 ) -> anyhow::Result<(StatusCode, RedirectResponse)> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = SqliteSessionService::build_session_service(dbfile).await;
+  let session_service = DefaultSessionService::build_session_service(dbfile).await;
   let record = set_token_in_session(&session_service, &token).await?;
   let mut builder = AppServiceStubBuilder::default();
   builder
@@ -313,7 +313,7 @@ async fn auth_initiate_handler_with_token_response(
         ]))
         .await,
     ))
-    .with_sqlite_session_service(Arc::new(session_service));
+    .with_default_session_service(Arc::new(session_service));
   builder.with_db_service().await;
   builder
     .with_app_instance(services::AppInstance::test_default())
@@ -344,7 +344,7 @@ async fn auth_initiate_handler_with_token_response(
 }
 
 async fn set_token_in_session(
-  session_service: &SqliteSessionService,
+  session_service: &DefaultSessionService,
   token: &str,
 ) -> Result<Record, anyhow::Error> {
   let id = Id::default();
@@ -355,6 +355,9 @@ async fn set_token_in_session(
     },
     expiry_date: OffsetDateTime::now_utc() + time::Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
   Ok(record)
 }

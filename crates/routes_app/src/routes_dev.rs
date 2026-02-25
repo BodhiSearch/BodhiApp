@@ -285,7 +285,10 @@ mod tests {
     );
 
     // Verify sessions cleared
-    assert_eq!(0, session_store.count_sessions_for_user("test-user").await?);
+    assert_eq!(
+      0,
+      session_service.count_sessions_for_user("test-user").await?
+    );
 
     // Verify app_toolset_configs re-seeded
     let config = db_service

@@ -278,10 +278,10 @@ let request = Request::builder()
 #### OAuth flow tests with a real session layer
 When two API calls must share session state (e.g., OAuth login → token exchange), build a custom router that includes the session layer but still mocks the external MCP service:
 ```rust
-let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+let session_service = Arc::new(DefaultSessionService::build_session_service(dbfile).await);
 let app_service = AppServiceStubBuilder::default()
   .mcp_service(Arc::new(mock_mcp_service))
-  .with_sqlite_session_service(session_service.clone())
+  .with_default_session_service(session_service.clone())
   .build().await?;
 let router = Router::new()
   .route("/mcps/auth-configs/{id}/login", post(oauth_login_handler))
@@ -289,7 +289,7 @@ let router = Router::new()
   .layer(app_service.session_service().session_layer())  // required for session persistence
   .with_state(state);
 ```
-Return `session_service` alongside the router so tests can inspect or pre-populate session records directly via `session_service.session_store.create(&mut record).await?`.
+Return `session_service` alongside the router so tests can inspect or pre-populate session records directly via `session_service.get_session_store().create(&mut record).await?`.
 
 #### Summary decision table
 
@@ -300,7 +300,7 @@ Return `session_service` alongside the router so tests can inspect or pre-popula
 | Single handler, service calls external HTTP | Mock the service (`MockMcpService`, etc.) |
 | Specific service error path (hard to trigger via DB) | Mock the service |
 | LLM inference / streaming responses | `MockSharedContext.expect_forward_request()` |
-| OAuth login → token exchange (two-call flow) | Custom router with real `SqliteSessionService` |
+| OAuth login → token exchange (two-call flow) | Custom router with real `DefaultSessionService` |
 | Full LLM stack (real llama.cpp) | `build_live_test_router()` |
 
 ## Extension Patterns

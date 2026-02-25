@@ -11,7 +11,7 @@ use services::{
     build_token, test_db_service, AppServiceStubBuilder, SettingServiceStub, TestDbService, ISSUER,
     TEST_CLIENT_ID, TEST_CLIENT_SECRET,
   },
-  AppInstance, AppInstanceService, AppService, AuthServiceError, CacheService,
+  AppInstance, AppService, AuthServiceError, CacheService,
   LocalConcurrencyService, MockAuthService, MockSettingService, MokaCacheService,
   TOKEN_TYPE_OFFLINE,
 };

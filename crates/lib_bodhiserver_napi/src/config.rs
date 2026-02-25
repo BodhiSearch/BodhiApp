@@ -194,6 +194,12 @@ pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
 pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
 
 #[napi]
+pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
+
+#[napi]
+pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
+
+#[napi]
 pub const HF_HOME: &str = "HF_HOME";
 
 #[napi]

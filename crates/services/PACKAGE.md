@@ -14,7 +14,7 @@
 - `src/auth_service.rs` - OAuth2 PKCE flows with Keycloak integration, token exchange, dynamic client registration
 - `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation for secret storage
 - `src/keyring_service.rs` - Platform-specific credential storage (Keychain, Secret Service, Windows Credential Manager)
-- `src/session_service.rs` - SQLite-backed HTTP session management with `AppSessionStore` wrapper
+- `src/session_service/` - Multi-backend HTTP session management (`DefaultSessionService` with `SessionStoreBackend` supporting SQLite and PostgreSQL)
 - `src/token.rs` - JWT token parsing, validation, and claims extraction
 - `src/concurrency_service.rs` - Distributed lock abstraction with `LocalConcurrencyService` for auth token refresh
 

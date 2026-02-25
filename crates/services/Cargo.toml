@@ -43,14 +43,14 @@ sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-sqlx = { workspace = true, features = ["chrono", "runtime-tokio", "sqlite"] }
+sqlx = { workspace = true, features = ["chrono", "runtime-tokio", "sqlite", "postgres"] }
 strum = { workspace = true }
 tap = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 time = { workspace = true }
 tower-sessions = { workspace = true }
-tower-sessions-sqlx-store = { workspace = true, features = ["sqlite"] }
+tower-sessions-sqlx-store = { workspace = true, features = ["sqlite", "postgres"] }
 tracing = { workspace = true, features = ["async-await", "log"] }
 uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
@@ -76,6 +76,7 @@ reqwest = { workspace = true }
 rstest = { workspace = true }
 rsa = { workspace = true }
 
+serial_test = { workspace = true }
 strfmt = { workspace = true }
 tap = { workspace = true }
 tempfile = { workspace = true }

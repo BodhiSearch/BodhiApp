@@ -19,7 +19,7 @@ use services::{
   test_utils::{
     test_auth_service, token, AppServiceStub, AppServiceStubBuilder, SettingServiceStub,
   },
-  AppService, AppStatus, SqliteSessionService, BODHI_AUTH_URL,
+  AppService, AppStatus, DefaultSessionService, SessionService, BODHI_AUTH_URL,
 };
 use services::{BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
 use std::{collections::HashMap, sync::Arc};
@@ -58,7 +58,7 @@ async fn setup_app_service_resource_admin(
   state: &str,
 ) -> anyhow::Result<Arc<AppServiceStub>> {
   let dbfile = temp_bodhi_home.path().join("test.db");
-  let session_service = SqliteSessionService::build_session_service(dbfile).await;
+  let session_service = DefaultSessionService::build_session_service(dbfile).await;
   let mut record = Record {
     id: *id,
     data: maplit::hashmap! {
@@ -68,7 +68,10 @@ async fn setup_app_service_resource_admin(
     },
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  session_service.session_store.create(&mut record).await?;
+  session_service
+    .get_session_store()
+    .create(&mut record)
+    .await?;
   let session_service = Arc::new(session_service);
   let auth_service = Arc::new(test_auth_service(auth_server_url));
   let setting_service = Arc::new(
@@ -85,7 +88,7 @@ async fn setup_app_service_resource_admin(
   builder
     .auth_service(auth_service)
     .setting_service(setting_service)
-    .with_sqlite_session_service(session_service);
+    .with_default_session_service(session_service);
   builder
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
