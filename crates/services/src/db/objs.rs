@@ -216,7 +216,7 @@ pub struct AppToolsetConfigRow {
 // AppAccessRequestRow - Database row for app access request consent tracking
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
 pub struct AppAccessRequestRow {
   pub id: String, // UUID (access_request_id)
   pub app_client_id: String,
@@ -228,8 +228,9 @@ pub struct AppAccessRequestRow {
   pub requested: String,        // JSON: {"toolset_types": [...], "mcp_servers": [...]}
   pub approved: Option<String>, // JSON: {"toolsets": [...], "mcps": [...]}
   pub user_id: Option<String>,
-  pub resource_scope: Option<String>,       // KC-returned scope
-  pub access_request_scope: Option<String>, // KC-returned scope (NULL for auto-approve)
+  pub requested_role: String,
+  pub approved_role: Option<String>,
+  pub access_request_scope: Option<String>, // KC-returned scope
   pub error_message: Option<String>,        // Error details for 'failed' status
   pub expires_at: i64,                      // Unix timestamp
   pub created_at: i64,

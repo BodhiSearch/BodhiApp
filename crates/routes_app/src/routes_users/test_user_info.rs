@@ -96,8 +96,6 @@ async fn test_user_info_handler_session_token_with_role(
 #[rstest]
 #[case::scope_token_user(TokenScope::User)]
 #[case::scope_token_power_user(TokenScope::PowerUser)]
-#[case::scope_token_manager(TokenScope::Manager)]
-#[case::scope_token_admin(TokenScope::Admin)]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_user_info_handler_api_token_with_token_scope(
@@ -129,8 +127,6 @@ async fn test_user_info_handler_api_token_with_token_scope(
 #[rstest]
 #[case::scope_user_user(UserScope::User)]
 #[case::scope_user_power_user(UserScope::PowerUser)]
-#[case::scope_user_manager(UserScope::Manager)]
-#[case::scope_user_admin(UserScope::Admin)]
 #[tokio::test]
 #[anyhow_trace]
 async fn test_user_info_handler_bearer_token_with_user_scope(

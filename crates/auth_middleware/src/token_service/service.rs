@@ -1,4 +1,4 @@
-use crate::{AuthError, ResourceScope, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
+use crate::{AuthContext, AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use chrono::Utc;
 use objs::{ResourceRole, TokenScope, UserScope};
 use serde::{Deserialize, Serialize};
@@ -14,12 +14,12 @@ use tower_sessions::Session;
 const BEARER_PREFIX: &str = "Bearer ";
 const BODHIAPP_TOKEN_PREFIX: &str = "bodhiapp_";
 
-/// Cached result from external token exchange.
-/// Used to avoid repeated token exchange calls to the identity provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedExchangeResult {
   pub token: String,
   pub app_client_id: String,
+  pub role: Option<String>,
+  pub access_request_id: Option<String>,
 }
 
 pub struct DefaultTokenService {
@@ -50,11 +50,7 @@ impl DefaultTokenService {
     }
   }
 
-  pub async fn validate_bearer_token(
-    &self,
-    header: &str,
-  ) -> Result<(String, ResourceScope, Option<String>), AuthError> {
-    // Extract token from header
+  pub async fn validate_bearer_token(&self, header: &str) -> Result<AuthContext, AuthError> {
     let bearer_token = header
       .strip_prefix(BEARER_PREFIX)
       .ok_or_else(|| TokenError::InvalidToken("authorization header is malformed".to_string()))?
@@ -65,18 +61,13 @@ impl DefaultTokenService {
       ))?;
     }
 
-    // Check if it's a database-backed token (starts with "bodhiapp_")
     if bearer_token.starts_with(BODHIAPP_TOKEN_PREFIX) {
-      // DATABASE TOKEN VALIDATION
-
-      // 1. Extract prefix (first 8 chars after "bodhiapp_")
       let prefix_end = BODHIAPP_TOKEN_PREFIX.len() + 8;
       if bearer_token.len() < prefix_end {
         return Err(TokenError::InvalidToken("Token too short".to_string()))?;
       }
       let token_prefix = &bearer_token[..prefix_end];
 
-      // 2. Lookup token in database by prefix
       let api_token = self
         .db_service
         .get_api_token_by_prefix(token_prefix)
@@ -87,17 +78,14 @@ impl DefaultTokenService {
         return Err(TokenError::InvalidToken("Token not found".to_string()))?;
       };
 
-      // 3. Check token status
       if api_token.status != TokenStatus::Active {
         return Err(AuthError::TokenInactive);
       }
 
-      // 4. Hash the provided token
       let mut hasher = Sha256::new();
       hasher.update(bearer_token.as_bytes());
       let provided_hash = format!("{:x}", hasher.finalize());
 
-      // 5. Constant-time comparison with stored hash
       if !constant_time_eq::constant_time_eq(
         provided_hash.as_bytes(),
         api_token.token_hash.as_bytes(),
@@ -105,32 +93,27 @@ impl DefaultTokenService {
         return Err(TokenError::InvalidToken("Invalid token".to_string()))?;
       }
 
-      // 6. Parse scopes string to TokenScope enum
       let token_scope = TokenScope::from_str(&api_token.scopes)
         .map_err(|e| TokenError::InvalidToken(format!("Invalid scope: {}", e)))?;
 
-      // 7. Return ResourceScope::Token with the bearer token itself as the access token
-      return Ok((
-        bearer_token.to_string(),
-        ResourceScope::Token(token_scope),
-        None,
-      ));
+      let user_id = api_token.user_id.clone();
+      return Ok(AuthContext::ApiToken {
+        user_id,
+        role: token_scope,
+        token: bearer_token.to_string(),
+      });
     }
 
-    // EXTERNAL CLIENT TOKEN VALIDATION (keep existing logic)
-    // Check if token has valid expiration first
     let bearer_claims = extract_claims::<ExpClaims>(bearer_token)?;
     if bearer_claims.exp < Utc::now().timestamp() as u64 {
       return Err(TokenError::Expired)?;
     }
 
-    // Create token digest for cache lookup
     let mut hasher = Sha256::new();
     hasher.update(bearer_token.as_bytes());
     let token_digest = format!("{:x}", hasher.finalize())[0..12].to_string();
 
-    // Check cache for exchanged token
-    let cached_token = if let Some(cached_json) = self
+    let cached_auth_context = if let Some(cached_json) = self
       .cache_service
       .get(&format!("exchanged_token:{}", &token_digest))
     {
@@ -139,12 +122,18 @@ impl DefaultTokenService {
         if scope_claims.exp < Utc::now().timestamp() as u64 {
           None
         } else {
-          let user_scope = UserScope::from_scope(&scope_claims.scope).ok();
-          Some((
-            cached_result.token,
-            ResourceScope::User(user_scope),
-            cached_result.app_client_id,
-          ))
+          let role = cached_result
+            .role
+            .as_ref()
+            .and_then(|r| r.parse::<UserScope>().ok());
+          Some(AuthContext::ExternalApp {
+            user_id: scope_claims.sub,
+            role,
+            token: cached_result.token,
+            external_app_token: bearer_token.to_string(),
+            app_client_id: cached_result.app_client_id,
+            access_request_id: cached_result.access_request_id,
+          })
         }
       } else {
         None
@@ -153,46 +142,36 @@ impl DefaultTokenService {
       None
     };
 
-    if let Some((access_token, resource_scope, app_client_id)) = cached_token {
-      return Ok((access_token, resource_scope, Some(app_client_id)));
+    if let Some(auth_context) = cached_auth_context {
+      return Ok(auth_context);
     }
 
-    // Exchange external client token
-    let (access_token, resource_scope, app_client_id) =
-      self.handle_external_client_token(bearer_token).await?;
-    let cached_result = CachedExchangeResult {
-      token: access_token.clone(),
-      app_client_id: app_client_id.clone(),
-    };
+    let (auth_context, cached_result) = self.handle_external_client_token(bearer_token).await?;
     if let Ok(cached_json) = serde_json::to_string(&cached_result) {
       self
         .cache_service
         .set(&format!("exchanged_token:{}", &token_digest), &cached_json);
     }
-    Ok((access_token, resource_scope, Some(app_client_id)))
+    Ok(auth_context)
   }
 
-  /// Handle external client token validation and exchange
   async fn handle_external_client_token(
     &self,
     external_token: &str,
-  ) -> Result<(String, ResourceScope, String), AuthError> {
+  ) -> Result<(AuthContext, CachedExchangeResult), AuthError> {
     let instance = self
       .app_instance_service
       .get_instance()
       .await?
       .ok_or(AppInstanceError::NotFound)?;
 
-    // Parse token claims to validate issuer and extract azp BEFORE exchange
     let claims = extract_claims::<ScopeClaims>(external_token)?;
     let original_azp = claims.azp.clone();
 
-    // Validate that it's from the same issuer
     if claims.iss != self.setting_service.auth_issuer().await {
       return Err(TokenError::InvalidIssuer(claims.iss))?;
     }
 
-    // Validate that current client is in the audience
     if let Some(aud) = &claims.aud {
       if aud != &instance.client_id {
         return Err(TokenError::InvalidAudience(aud.clone()))?;
@@ -203,25 +182,15 @@ impl DefaultTokenService {
       ))?;
     }
 
-    // Extract user scopes and access request scopes from the external token for exchange
-    // scope_user_* are user-level permissions
-    // scope_access_request_* are access request-based authorization scopes
-    let mut scopes: Vec<&str> = claims
+    let access_request_scopes: Vec<&str> = claims
       .scope
       .split_whitespace()
-      .filter(|s| s.starts_with("scope_user_") || s.starts_with("scope_access_request:"))
-      .collect();
-
-    // Pre-token-exchange validation: verify scope_access_request:* exists and is approved
-    // Only validate if scope_access_request:* is present in external token
-    let access_request_scopes: Vec<&str> = scopes
-      .iter()
       .filter(|s| s.starts_with("scope_access_request:"))
-      .copied()
       .collect();
 
-    let validated_record = if let Some(&access_request_scope) = access_request_scopes.first() {
-      // Look up access request by scope
+    let access_request_scope = access_request_scopes.first().copied();
+
+    let validated_record = if let Some(access_request_scope) = access_request_scope {
       let record = self
         .db_service
         .get_by_access_request_scope(access_request_scope)
@@ -235,7 +204,6 @@ impl DefaultTokenService {
           )
         })?;
 
-      // Validate status = approved
       if record.status != "approved" {
         return Err(
           TokenError::AccessRequestValidation(
@@ -248,7 +216,6 @@ impl DefaultTokenService {
         );
       }
 
-      // Validate app_client_id matches azp claim
       if record.app_client_id != original_azp {
         return Err(
           TokenError::AccessRequestValidation(
@@ -261,7 +228,6 @@ impl DefaultTokenService {
         );
       }
 
-      // Validate user_id matches sub claim (must be present for approved requests)
       let user_id = record.user_id.as_ref().ok_or_else(|| {
         TokenError::AccessRequestValidation(services::AccessRequestValidationError::NotApproved {
           id: record.id.clone(),
@@ -281,30 +247,31 @@ impl DefaultTokenService {
         );
       }
 
-      Some(record) // Store validated record for post-verification
+      Some(record)
     } else {
-      None // No scope_access_request:* in token, skip validation
+      None
     };
 
-    scopes.extend(["openid", "email", "profile", "roles"]);
-    // Exchange the external token for our client token
+    let mut exchange_scopes: Vec<&str> = access_request_scopes.clone();
+    for standard_scope in ["openid", "email", "profile", "roles"] {
+      if claims.scope.split_whitespace().any(|s| s == standard_scope) {
+        exchange_scopes.push(standard_scope);
+      }
+    }
     let (access_token, _) = self
       .auth_service
       .exchange_app_token(
         &instance.client_id,
         &instance.client_secret,
         external_token,
-        scopes.iter().map(|s| s.to_string()).collect(),
+        exchange_scopes.iter().map(|s| s.to_string()).collect(),
       )
       .await?;
 
-    // Extract scope from exchanged token
     let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
 
-    // Post-token-exchange verification: ensure access_request_id claim matches record.id
-    if let Some(validated_record) = validated_record {
+    if let Some(ref validated_record) = validated_record {
       if let Some(access_request_id) = &scope_claims.access_request_id {
-        // Verify claim matches DB record primary key
         if access_request_id != &validated_record.id {
           tracing::warn!(
             expected_id = %validated_record.id,
@@ -322,9 +289,8 @@ impl DefaultTokenService {
           );
         }
       } else {
-        // KC should have returned access_request_id claim for this scope
-        tracing::error!(
-          scope = %access_request_scopes[0],
+        tracing::warn!(
+          scope = access_request_scope.unwrap_or("unknown"),
           record_id = %validated_record.id,
           "KC did not return access_request_id claim despite valid scope"
         );
@@ -340,9 +306,62 @@ impl DefaultTokenService {
       }
     }
 
-    let user_scope = UserScope::from_scope(&scope_claims.scope).ok();
+    let role = if let Some(ref validated_record) = validated_record {
+      validated_record
+        .approved_role
+        .as_ref()
+        .and_then(|r| r.parse::<UserScope>().ok())
+    } else {
+      None
+    };
 
-    Ok((access_token, ResourceScope::User(user_scope), original_azp))
+    // Verify approved_role doesn't exceed user's resource role (prevent privilege escalation via DB tampering)
+    if let Some(approved_role) = role {
+      let user_resource_role = scope_claims
+        .resource_access
+        .get(&instance.client_id)
+        .and_then(|rc| ResourceRole::from_resource_role(&rc.roles).ok());
+      if let Some(resource_role) = user_resource_role {
+        let max_scope = resource_role.max_user_scope();
+        if !max_scope.has_access_to(&approved_role) {
+          tracing::warn!(
+            approved_role = %approved_role,
+            resource_role = %resource_role,
+            max_scope = %max_scope,
+            "DB approved_role exceeds user's resource role"
+          );
+          return Err(
+            TokenError::AccessRequestValidation(
+              services::AccessRequestValidationError::PrivilegeEscalation {
+                approved_role: approved_role.to_string(),
+                max_scope: max_scope.to_string(),
+              },
+            )
+            .into(),
+          );
+        }
+      }
+    }
+
+    let role_str = role.map(|r| r.to_string());
+
+    let cached_result = CachedExchangeResult {
+      token: access_token.clone(),
+      app_client_id: original_azp.clone(),
+      role: role_str,
+      access_request_id: scope_claims.access_request_id.clone(),
+    };
+
+    let auth_context = AuthContext::ExternalApp {
+      user_id: scope_claims.sub,
+      role,
+      token: access_token,
+      external_app_token: external_token.to_string(),
+      app_client_id: original_azp,
+      access_request_id: scope_claims.access_request_id,
+    };
+
+    Ok((auth_context, cached_result))
   }
 
   pub async fn get_valid_session_token(

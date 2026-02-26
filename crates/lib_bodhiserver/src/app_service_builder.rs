@@ -112,7 +112,6 @@ impl AppServiceBuilder {
       &setting_service,
       db_service.clone(),
       auth_service.clone(),
-      app_instance_service.clone(),
       time_service.clone(),
     )
     .await;
@@ -257,14 +256,12 @@ impl AppServiceBuilder {
     setting_service: &Arc<dyn SettingService>,
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    app_instance_service: Arc<dyn AppInstanceService>,
     time_service: Arc<dyn TimeService>,
   ) -> Arc<dyn AccessRequestService> {
     let frontend_url = setting_service.public_server_url().await;
     Arc::new(DefaultAccessRequestService::new(
       db_service,
       auth_service,
-      app_instance_service,
       time_service,
       frontend_url,
     ))
@@ -323,7 +320,6 @@ pub async fn update_with_option(
       .create_instance(
         &instance.client_id,
         &instance.client_secret,
-        &instance.scope,
         instance.status.clone(),
       )
       .await?;

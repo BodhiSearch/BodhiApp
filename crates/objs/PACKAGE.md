@@ -103,27 +103,36 @@ Model entities enable complex service interactions through these key implementat
 
 **Why This Architecture**: Ensures data integrity across model downloads while preventing security issues. The `is_default()` YAML optimization reduces configuration file size, and strict format validation maintains consistency across HubService, DataService, and CLI interactions.
 
-## OAuth2 Access Control Architecture
+## Access Control Architecture
 
-BodhiApp's comprehensive access control system coordinates with authentication services through hierarchical roles and scopes:
+BodhiApp's access control system coordinates with authentication services through hierarchical roles and two-tier scopes:
 
 ```rust
-// Role hierarchy pattern (see src/role.rs for complete implementation)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Role {
-  User = 0, PowerUser = 1, Manager = 2, Admin = 3,
+// ResourceRole hierarchy (see src/resource_role.rs)
+pub enum ResourceRole {
+  User, PowerUser, Manager, Admin,
+}
+
+// TokenScope and UserScope each have User/PowerUser only
+pub enum TokenScope { User, PowerUser }
+pub enum UserScope { User, PowerUser }
+
+// AppRole unifies all authentication contexts
+pub enum AppRole {
+  Session(ResourceRole),
+  ApiToken(TokenScope),
+  ExchangedToken(UserScope),
 }
 ```
 
-### **Cross-Service Authorization Integration**
-Access control types enable sophisticated service coordination through these implementations:
+### **Authorization Integration**
+Access control types enable service coordination through these implementations:
 
-- **Role System**: `src/role.rs` - Hierarchical authorization with `has_access_to()` comparisons
-- **Token Scopes**: `src/token_scope.rs` - OAuth2 scope parsing with "offline_access" validation
-- **User Scopes**: `src/user_scope.rs` - User-based authorization patterns
-- **Resource Scopes**: `src/resource_scope.rs` - Union type for token/user authorization contexts
+- **ResourceRole System**: `src/resource_role.rs` - Four-tier hierarchy (Admin > Manager > PowerUser > User) with `has_access_to()` comparisons, `from_resource_role()` for parsing role arrays, and `included_roles()` for hierarchical expansion. Also defines `AppRole` union type.
+- **Token Scopes**: `src/token_scope.rs` - Two-tier scope (`User`, `PowerUser`) for API token authorization. `from_scope()` extracts highest scope from whitespace-separated scope strings. Values: `scope_token_user`, `scope_token_power_user`.
+- **User Scopes**: `src/user_scope.rs` - Two-tier scope (`User`, `PowerUser`) for external app (exchanged token) authorization. Parsed via `FromStr`. Values: `scope_user_user`, `scope_user_power_user`.
 
-**Why This Architecture**: Role ordering enables hierarchical authorization decisions across all service boundaries. Case-sensitive scope parsing ensures OAuth2 standards compliance, while the ResourceScope union type seamlessly handles both token-based and user-based authorization contexts used by AuthService, middleware, and routes.
+**Why This Architecture**: ResourceRole ordering enables hierarchical authorization decisions for session-based access. TokenScope and UserScope provide a simpler two-tier model appropriate for API tokens and external app contexts. The AppRole union type enables consistent authorization handling regardless of authentication method.
 
 ## OpenAI API Compatibility Framework
 
@@ -195,7 +204,7 @@ Routes depend on objs for comprehensive request/response handling:
 
 - **Parameter Validation**: `OAIRequestParams` enforced across all OpenAI-compatible endpoints
 - **Error Response Generation**: `ApiError` provides OpenAI-compatible JSON responses for all service errors
-- **Authorization Middleware**: `Role` and `Scope` types enable fine-grained access control across route hierarchies
+- **Authorization Middleware**: `ResourceRole`, `TokenScope`, `UserScope`, and `AppRole` types enable fine-grained access control across route hierarchies
 - **User-Friendly Error Messages**: Error messages via thiserror templates delivered to web UI, CLI, and API clients
 
 ### Extension Guidelines for Cross-Crate Integration
@@ -250,10 +259,10 @@ pub enum MyDomainError {
 - **Binary Format Safety**: GGUF parsing bounds checking prevents crashes across service and CLI usage
 
 ### Authentication System Integration Requirements
-- **Role Hierarchy Consistency**: Authorization ordering maintained across all service and route contexts
-- **OAuth2 Standards Compliance**: Scope parsing ensures compatibility with external identity providers
-- **Cross-Service Security**: `TokenScope` and `ResourceScope` enable secure authorization across service boundaries
-- **Security Enforcement**: Case-sensitive parsing and "offline_access" requirements maintain security standards
+- **Role Hierarchy Consistency**: ResourceRole ordering (Admin > Manager > PowerUser > User) maintained across all session authorization contexts
+- **Scope Tier Consistency**: TokenScope and UserScope each provide `User` and `PowerUser` tiers for their respective authentication contexts
+- **AppRole Union**: Unifies Session, ApiToken, and ExchangedToken contexts for consistent authorization handling
+- **Security Enforcement**: Case-sensitive scope parsing maintains security standards
 
 ## Commands
 

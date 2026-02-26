@@ -1,0 +1,340 @@
+use crate::{
+  access_request_service::{AccessRequestService, DefaultAccessRequestService},
+  auth_service::MockAuthService,
+  db::{AccessRequestRepository, AppAccessRequestRow},
+  test_utils::{test_db_service, TestDbService},
+};
+use anyhow_trace::anyhow_trace;
+use objs::AppError;
+use pretty_assertions::assert_eq;
+use rstest::rstest;
+use std::sync::Arc;
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_draft_popup_valid(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .create_draft(
+      "app-client-1".to_string(),
+      "popup".to_string(),
+      None,
+      vec![objs::ToolsetTypeRequest {
+        toolset_type: "builtin-exa-search".to_string(),
+      }],
+      vec![],
+      "scope_user_user".to_string(),
+    )
+    .await?;
+
+  assert_eq!("draft", result.status);
+  assert_eq!("app-client-1", result.app_client_id);
+  assert_eq!("popup", result.flow_type);
+  assert_eq!(None, result.redirect_uri);
+  assert_eq!("scope_user_user", result.requested_role);
+  assert_eq!(None, result.approved_role);
+  assert_eq!(None, result.user_id);
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_draft_redirect_valid(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .create_draft(
+      "app-client-2".to_string(),
+      "redirect".to_string(),
+      Some("https://example.com/callback".to_string()),
+      vec![],
+      vec![],
+      "scope_user_power_user".to_string(),
+    )
+    .await?;
+
+  assert_eq!("draft", result.status);
+  assert_eq!("redirect", result.flow_type);
+  assert_eq!("scope_user_power_user", result.requested_role);
+  // redirect_uri should have ?id=<uuid> appended
+  let redirect = result.redirect_uri.unwrap();
+  assert!(redirect.starts_with("https://example.com/callback?id="));
+
+  Ok(())
+}
+
+#[rstest]
+#[case::invalid_flow("invalid_flow", None, "access_request_error-invalid_flow_type")]
+#[case::redirect_missing_uri("redirect", None, "access_request_error-missing_redirect_uri")]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_create_draft_validation_errors(
+  #[case] flow_type: &str,
+  #[case] redirect_uri: Option<String>,
+  #[case] expected_error_code: &str,
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .create_draft(
+      "app-client-1".to_string(),
+      flow_type.to_string(),
+      redirect_uri,
+      vec![],
+      vec![],
+      "scope_user_user".to_string(),
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!(expected_error_code, err.code());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_request_already_processed(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let now = db.now();
+  let expires_at = now + chrono::Duration::minutes(10);
+
+  // Insert a row that is already approved
+  let row = AppAccessRequestRow {
+    id: "ar-approved-001".to_string(),
+    app_client_id: "app-client-1".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: "popup".to_string(),
+    redirect_uri: None,
+    status: "approved".to_string(),
+    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    approved: Some(r#"{"toolsets":[],"mcps":[]}"#.to_string()),
+    user_id: Some("user-1".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
+    access_request_scope: Some("scope_access_request:ar-approved-001".to_string()),
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  db.create(&row).await?;
+
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .approve_request(
+      "ar-approved-001",
+      "user-2",
+      "fake-token",
+      vec![],
+      vec![],
+      "scope_user_user".to_string(),
+    )
+    .await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("access_request_error-already_processed", err.code());
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_request_threads_approved_role(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let now = db.now();
+  let expires_at = now + chrono::Duration::minutes(10);
+
+  // Insert a draft row
+  let row = AppAccessRequestRow {
+    id: "ar-draft-approve".to_string(),
+    app_client_id: "app-client-1".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: "popup".to_string(),
+    redirect_uri: None,
+    status: "draft".to_string(),
+    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  db.create(&row).await?;
+
+  let db = Arc::new(db);
+
+  let mut mock_auth = MockAuthService::new();
+  mock_auth
+    .expect_register_access_request_consent()
+    .returning(|_token, _client_id, id, _desc| {
+      Ok(crate::auth_service::RegisterAccessRequestConsentResponse {
+        access_request_id: id.to_string(),
+        access_request_scope: format!("scope_access_request:{}", id),
+      })
+    });
+  let mock_auth = Arc::new(mock_auth);
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service
+    .approve_request(
+      "ar-draft-approve",
+      "user-1",
+      "fake-token",
+      vec![objs::ToolsetApproval {
+        toolset_type: "builtin-exa-search".to_string(),
+        status: "approved".to_string(),
+        instance: None,
+      }],
+      vec![],
+      "scope_user_power_user".to_string(),
+    )
+    .await?;
+
+  assert_eq!("approved", result.status);
+  assert_eq!(Some("user-1".to_string()), result.user_id);
+  assert_eq!(
+    Some("scope_user_power_user".to_string()),
+    result.approved_role
+  );
+  assert_eq!(
+    Some("scope_access_request:ar-draft-approve".to_string()),
+    result.access_request_scope
+  );
+
+  Ok(())
+}
+
+#[rstest]
+#[awt]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_get_request_expired_draft(
+  #[future]
+  #[from(test_db_service)]
+  db: TestDbService,
+) -> anyhow::Result<()> {
+  let now = db.now();
+  // Set expires_at to 5 minutes in the past
+  let expires_at = now - chrono::Duration::minutes(5);
+
+  let row = AppAccessRequestRow {
+    id: "ar-expired-001".to_string(),
+    app_client_id: "app-client-1".to_string(),
+    app_name: None,
+    app_description: None,
+    flow_type: "popup".to_string(),
+    redirect_uri: None,
+    status: "draft".to_string(),
+    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at: expires_at.timestamp(),
+    created_at: now.timestamp(),
+    updated_at: now.timestamp(),
+  };
+  db.create(&row).await?;
+
+  let db = Arc::new(db);
+  let mock_auth = Arc::new(MockAuthService::new());
+  let time_service = Arc::new(crate::test_utils::FrozenTimeService::default());
+
+  let service = DefaultAccessRequestService::new(
+    db.clone() as Arc<dyn crate::db::DbService>,
+    mock_auth,
+    time_service.clone(),
+    "http://localhost:1135".to_string(),
+  );
+
+  let result = service.get_request("ar-expired-001").await;
+
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("access_request_error-expired", err.code());
+
+  Ok(())
+}

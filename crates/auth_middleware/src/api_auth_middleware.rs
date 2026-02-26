@@ -1,4 +1,4 @@
-use crate::{AuthContext, ResourceScopeError};
+use crate::AuthContext;
 use axum::{
   extract::{Request, State},
   middleware::Next,
@@ -29,9 +29,6 @@ pub enum ApiAuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidUserScope(#[from] UserScopeError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  InvalidResourceScope(#[from] ResourceScopeError),
 }
 
 pub async fn api_auth_middleware(
@@ -202,14 +199,7 @@ mod tests {
   #[rstest]
   #[case::user_accessing_user(ResourceRole::User, ResourceRole::User)]
   #[case::power_user_accessing_user(ResourceRole::PowerUser, ResourceRole::User)]
-  #[case::manager_accessing_user(ResourceRole::Manager, ResourceRole::User)]
-  #[case::admin_accessing_user(ResourceRole::Admin, ResourceRole::User)]
   #[case::power_user_accessing_power_user(ResourceRole::PowerUser, ResourceRole::PowerUser)]
-  #[case::manager_accessing_power_user(ResourceRole::Manager, ResourceRole::PowerUser)]
-  #[case::admin_accessing_power_user(ResourceRole::Admin, ResourceRole::PowerUser)]
-  #[case::manager_accessing_manager(ResourceRole::Manager, ResourceRole::Manager)]
-  #[case::admin_accessing_manager(ResourceRole::Admin, ResourceRole::Manager)]
-  #[case::admin_accessing_admin(ResourceRole::Admin, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_success(
     #[case] user_role: ResourceRole,
@@ -226,11 +216,6 @@ mod tests {
 
   #[rstest]
   #[case::user_accessing_power_user(ResourceRole::User, ResourceRole::PowerUser)]
-  #[case::user_accessing_manager(ResourceRole::User, ResourceRole::Manager)]
-  #[case::power_user_accessing_manager(ResourceRole::PowerUser, ResourceRole::Manager)]
-  #[case::user_accessing_admin(ResourceRole::User, ResourceRole::Admin)]
-  #[case::power_user_accessing_admin(ResourceRole::PowerUser, ResourceRole::Admin)]
-  #[case::manager_accessing_admin(ResourceRole::Manager, ResourceRole::Admin)]
   #[tokio::test]
   async fn test_api_auth_role_insufficient(
     #[case] user_role: ResourceRole,
@@ -248,8 +233,6 @@ mod tests {
   #[rstest]
   #[case::user_accessing_user(TokenScope::User, TokenScope::User)]
   #[case::power_user_accessing_user(TokenScope::PowerUser, TokenScope::User)]
-  #[case::manager_accessing_user(TokenScope::Manager, TokenScope::User)]
-  #[case::admin_accessing_user(TokenScope::Admin, TokenScope::User)]
   #[tokio::test]
   async fn test_api_auth_scope_success(
     #[case] user_scope: TokenScope,
@@ -266,8 +249,6 @@ mod tests {
 
   #[rstest]
   #[case::user_accessing_power_user(TokenScope::User, TokenScope::PowerUser)]
-  #[case::user_accessing_manager(TokenScope::User, TokenScope::Manager)]
-  #[case::power_user_accessing_manager(TokenScope::PowerUser, TokenScope::Manager)]
   #[tokio::test]
   async fn test_api_auth_scope_insufficient(
     #[case] user_scope: TokenScope,
@@ -285,8 +266,6 @@ mod tests {
   #[rstest]
   #[case::scope_not_allowed(TokenScope::User)]
   #[case::scope_not_allowed_power_user(TokenScope::PowerUser)]
-  #[case::scope_not_allowed_manager(TokenScope::Manager)]
-  #[case::scope_not_allowed_admin(TokenScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_scope_not_allowed(#[case] scope: TokenScope) -> anyhow::Result<()> {
     let ctx = AuthContext::test_api_token("user1", scope);
@@ -327,14 +306,7 @@ mod tests {
   #[rstest]
   #[case::user_accessing_user(UserScope::User, UserScope::User)]
   #[case::power_user_accessing_user(UserScope::PowerUser, UserScope::User)]
-  #[case::manager_accessing_user(UserScope::Manager, UserScope::User)]
-  #[case::admin_accessing_user(UserScope::Admin, UserScope::User)]
   #[case::power_user_accessing_power_user(UserScope::PowerUser, UserScope::PowerUser)]
-  #[case::manager_accessing_power_user(UserScope::Manager, UserScope::PowerUser)]
-  #[case::admin_accessing_power_user(UserScope::Admin, UserScope::PowerUser)]
-  #[case::manager_accessing_manager(UserScope::Manager, UserScope::Manager)]
-  #[case::admin_accessing_manager(UserScope::Admin, UserScope::Manager)]
-  #[case::admin_accessing_admin(UserScope::Admin, UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_success(
     #[case] user_scope: UserScope,
@@ -353,11 +325,6 @@ mod tests {
 
   #[rstest]
   #[case::user_accessing_power_user(UserScope::User, UserScope::PowerUser)]
-  #[case::user_accessing_manager(UserScope::User, UserScope::Manager)]
-  #[case::power_user_accessing_manager(UserScope::PowerUser, UserScope::Manager)]
-  #[case::user_accessing_admin(UserScope::User, UserScope::Admin)]
-  #[case::power_user_accessing_admin(UserScope::PowerUser, UserScope::Admin)]
-  #[case::manager_accessing_admin(UserScope::Manager, UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_insufficient(
     #[case] user_scope: UserScope,
@@ -377,8 +344,6 @@ mod tests {
   #[rstest]
   #[case::user_scope_not_allowed(UserScope::User)]
   #[case::power_user_scope_not_allowed(UserScope::PowerUser)]
-  #[case::manager_scope_not_allowed(UserScope::Manager)]
-  #[case::admin_scope_not_allowed(UserScope::Admin)]
   #[tokio::test]
   async fn test_api_auth_user_scope_not_allowed(
     #[case] user_scope: UserScope,

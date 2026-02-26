@@ -31,7 +31,6 @@ pub trait AppInstanceService: Send + Sync + std::fmt::Debug {
     &self,
     client_id: &str,
     client_secret: &str,
-    scope: &str,
     status: AppStatus,
   ) -> Result<AppInstance>;
   async fn update_status(&self, status: &AppStatus) -> Result<()>;
@@ -53,7 +52,6 @@ fn row_to_instance(row: AppInstanceRow) -> Result<AppInstance> {
   Ok(AppInstance {
     client_id: row.client_id,
     client_secret: row.client_secret,
-    scope: row.scope,
     status,
     created_at,
     updated_at,
@@ -87,12 +85,11 @@ impl AppInstanceService for DefaultAppInstanceService {
     &self,
     client_id: &str,
     client_secret: &str,
-    scope: &str,
     status: AppStatus,
   ) -> Result<AppInstance> {
     self
       .db_service
-      .upsert_app_instance(client_id, client_secret, scope, &status.to_string())
+      .upsert_app_instance(client_id, client_secret, &status.to_string())
       .await?;
     self.get_instance().await?.ok_or(AppInstanceError::NotFound)
   }

@@ -96,13 +96,12 @@ Each route module defines its own error enum. All use `errmeta_derive::ErrorMeta
 
 ## API Token Privilege Matrix
 
-Defined in `routes_api_token/`, the `create_token_handler` enforces:
+Defined in `routes_api_token/`, the `create_token_handler` enforces. `TokenScope` has two variants (`User`, `PowerUser`); the match is exhaustive:
 
 | User Role | Allowed Scopes |
 |-----------|---------------|
 | `User` | `scope_token_user` only |
-| `PowerUser`, `Manager`, `Admin` | `scope_token_user`, `scope_token_power_user` |
-| Any | Cannot create `scope_token_manager` or `scope_token_admin` |
+| `PowerUser` and higher | `scope_token_user`, `scope_token_power_user` |
 
 ## Toolset Dual-Auth Model
 

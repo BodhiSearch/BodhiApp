@@ -27,12 +27,6 @@ pub enum UserScope {
   #[strum(serialize = "scope_user_power_user")]
   #[serde(rename = "scope_user_power_user")]
   PowerUser,
-  #[strum(serialize = "scope_user_manager")]
-  #[serde(rename = "scope_user_manager")]
-  Manager,
-  #[strum(serialize = "scope_user_admin")]
-  #[serde(rename = "scope_user_admin")]
-  Admin,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, PartialEq)]
@@ -41,43 +35,19 @@ pub enum UserScopeError {
   #[error("invalid_user_scope")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidUserScope(String),
-
-  #[error("missing_user_scope")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  MissingUserScope,
 }
 
 impl UserScope {
-  /// Checks if this user scope has access to the required scope level
-  /// Higher scopes automatically have access to lower scope endpoints
   pub fn has_access_to(&self, required: &UserScope) -> bool {
     self >= required
   }
 
-  /// Get the scope token string for this scope
   pub fn scope_user(&self) -> String {
     self.to_string()
   }
 
-  /// Get all scopes that this scope has access to (including itself)
   pub fn included_scopes(&self) -> Vec<UserScope> {
-    UserScope::iter()
-      .filter(|s| s <= self)
-      .rev() // Highest first
-      .collect()
-  }
-
-  /// Parse the highest scope from a space-separated scope string.
-  /// Does NOT require `offline_access` to be present.
-  pub fn from_scope(scope: &str) -> Result<Self, UserScopeError> {
-    let scopes: Vec<&str> = scope.split_whitespace().collect();
-
-    // Find the highest scope by checking all possible scopes
-    let highest_scope = UserScope::iter()
-      .filter(|s| scopes.contains(&s.scope_user().as_str()))
-      .max();
-
-    highest_scope.ok_or(UserScopeError::MissingUserScope)
+    UserScope::iter().filter(|s| s <= self).rev().collect()
   }
 }
 
@@ -88,8 +58,6 @@ impl FromStr for UserScope {
     match s {
       "scope_user_user" => Ok(UserScope::User),
       "scope_user_power_user" => Ok(UserScope::PowerUser),
-      "scope_user_manager" => Ok(UserScope::Manager),
-      "scope_user_admin" => Ok(UserScope::Admin),
       _ => Err(UserScopeError::InvalidUserScope(s.to_string())),
     }
   }
@@ -100,21 +68,9 @@ mod tests {
   use super::*;
   use rstest::rstest;
 
-  // --- Ordering & comparison tests ---
   #[rstest]
-  #[case(UserScope::Admin, UserScope::Manager, true)]
-  #[case(UserScope::Admin, UserScope::PowerUser, true)]
-  #[case(UserScope::Admin, UserScope::User, true)]
-  #[case(UserScope::Manager, UserScope::Admin, false)]
-  #[case(UserScope::Manager, UserScope::Manager, false)]
-  #[case(UserScope::Manager, UserScope::PowerUser, true)]
-  #[case(UserScope::Manager, UserScope::User, true)]
-  #[case(UserScope::PowerUser, UserScope::Admin, false)]
-  #[case(UserScope::PowerUser, UserScope::Manager, false)]
-  #[case(UserScope::PowerUser, UserScope::PowerUser, false)]
   #[case(UserScope::PowerUser, UserScope::User, true)]
-  #[case(UserScope::User, UserScope::Admin, false)]
-  #[case(UserScope::User, UserScope::Manager, false)]
+  #[case(UserScope::PowerUser, UserScope::PowerUser, false)]
   #[case(UserScope::User, UserScope::PowerUser, false)]
   #[case(UserScope::User, UserScope::User, false)]
   fn test_user_scope_ordering_explicit(
@@ -128,39 +84,34 @@ mod tests {
     assert_eq!(left <= right, !is_greater || left == right);
   }
 
-  // --- Serialization / string tests ---
+  #[rstest]
+  #[case(UserScope::User)]
+  #[case(UserScope::PowerUser)]
+  fn test_user_scope_has_access_to_self(#[case] scope: UserScope) {
+    assert!(scope.has_access_to(&scope));
+  }
+
   #[rstest]
   #[case(UserScope::User, "scope_user_user")]
   #[case(UserScope::PowerUser, "scope_user_power_user")]
-  #[case(UserScope::Manager, "scope_user_manager")]
-  #[case(UserScope::Admin, "scope_user_admin")]
   fn test_user_scope_string_formats(#[case] scope: UserScope, #[case] as_str: &str) {
-    // Display
     assert_eq!(scope.to_string(), as_str);
-
-    // Custom helper
     assert_eq!(scope.scope_user(), as_str);
 
-    // Serde serialization
     let serialized = serde_json::to_string(&scope).unwrap();
     assert_eq!(serialized, format!("\"{}\"", as_str));
 
-    // Deserialization
     let deserialized: UserScope = serde_json::from_str(&serialized).unwrap();
     assert_eq!(deserialized, scope);
   }
 
-  // --- included_scopes tests ---
   #[rstest]
-  #[case(UserScope::Admin, vec![UserScope::Admin, UserScope::Manager, UserScope::PowerUser, UserScope::User])]
-  #[case(UserScope::Manager, vec![UserScope::Manager, UserScope::PowerUser, UserScope::User])]
   #[case(UserScope::PowerUser, vec![UserScope::PowerUser, UserScope::User])]
   #[case(UserScope::User, vec![UserScope::User])]
   fn test_included_scopes_explicit(#[case] scope: UserScope, #[case] expected: Vec<UserScope>) {
     let included = scope.included_scopes();
     assert_eq!(included, expected);
 
-    // Ordering properties
     if !included.is_empty() {
       assert_eq!(*included.first().unwrap(), scope);
       assert_eq!(*included.last().unwrap(), UserScope::User);
@@ -170,44 +121,9 @@ mod tests {
     }
   }
 
-  // --- from_scope parsing tests ---
-  #[rstest]
-  #[case("scope_user_user", Ok(UserScope::User))]
-  #[case("scope_user_power_user scope_user_user", Ok(UserScope::PowerUser))]
-  #[case(
-    "scope_user_manager scope_user_power_user scope_user_user",
-    Ok(UserScope::Manager)
-  )]
-  #[case(
-    "scope_user_admin scope_user_manager scope_user_power_user scope_user_user",
-    Ok(UserScope::Admin)
-  )]
-  #[case("scope_user_user openid email", Ok(UserScope::User))]
-  #[case("openid email", Err(UserScopeError::MissingUserScope))]
-  fn test_user_scope_from_scope(
-    #[case] scope: &str,
-    #[case] expected: Result<UserScope, UserScopeError>,
-  ) {
-    assert_eq!(UserScope::from_scope(scope), expected);
-  }
-
-  // --- Case sensitivity tests ---
-  #[rstest]
-  #[case("SCOPE_USER_ADMIN", Err(UserScopeError::MissingUserScope))]
-  #[case("scope_User_Power_User", Err(UserScopeError::MissingUserScope))]
-  fn test_user_scope_case_sensitivity(
-    #[case] scope: &str,
-    #[case] expected: Result<UserScope, UserScopeError>,
-  ) {
-    assert_eq!(UserScope::from_scope(scope), expected);
-  }
-
-  // --- FromStr parsing tests ---
   #[rstest]
   #[case("scope_user_user", Ok(UserScope::User))]
   #[case("scope_user_power_user", Ok(UserScope::PowerUser))]
-  #[case("scope_user_manager", Ok(UserScope::Manager))]
-  #[case("scope_user_admin", Ok(UserScope::Admin))]
   fn test_user_scope_parse_valid(
     #[case] input: &str,
     #[case] expected: Result<UserScope, UserScopeError>,
@@ -234,6 +150,8 @@ mod tests {
   #[case("_admin")]
   #[case("resource_unknown")]
   #[case("scope_user_unknown")]
+  #[case("scope_user_manager")]
+  #[case("scope_user_admin")]
   fn test_user_scope_parse_invalid(#[case] input: &str) {
     let result = input.parse::<UserScope>();
     assert!(result.is_err());
@@ -241,7 +159,6 @@ mod tests {
     assert_eq!(result.unwrap_err().to_string(), "invalid_user_scope");
   }
 
-  // --- Serde explicit tests ---
   #[test]
   fn test_user_scope_serialization() {
     assert_eq!(
@@ -251,14 +168,6 @@ mod tests {
     assert_eq!(
       serde_json::to_string(&UserScope::PowerUser).unwrap(),
       "\"scope_user_power_user\""
-    );
-    assert_eq!(
-      serde_json::to_string(&UserScope::Manager).unwrap(),
-      "\"scope_user_manager\""
-    );
-    assert_eq!(
-      serde_json::to_string(&UserScope::Admin).unwrap(),
-      "\"scope_user_admin\""
     );
   }
 
@@ -271,14 +180,6 @@ mod tests {
     assert_eq!(
       serde_json::from_str::<UserScope>("\"scope_user_power_user\"").unwrap(),
       UserScope::PowerUser
-    );
-    assert_eq!(
-      serde_json::from_str::<UserScope>("\"scope_user_manager\"").unwrap(),
-      UserScope::Manager
-    );
-    assert_eq!(
-      serde_json::from_str::<UserScope>("\"scope_user_admin\"").unwrap(),
-      UserScope::Admin
     );
   }
 }

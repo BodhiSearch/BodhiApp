@@ -37,11 +37,11 @@ Comprehensive model management spanning Hub integration to local storage:
   - **ApiAlias**: Remote API model endpoints with prefix-based routing
 - **RemoteFile**: Downloadable model specifications coordinated between services and routes
 
-### OAuth2-Based Access Control
+### Access Control System
 Role and scope system integrated with authentication services:
-- **Role hierarchy**: Admin > Manager > PowerUser > User ordering used throughout route authorization
-- **TokenScope/UserScope**: OAuth2-style scope parsing coordinated with AuthService and middleware
-- **ResourceScope**: Union type enabling flexible authorization across different service contexts
+- **ResourceRole hierarchy**: Admin > Manager > PowerUser > User ordering used for session-based route authorization
+- **TokenScope/UserScope**: Two-tier scope enums with `User` and `PowerUser` variants only, used for API token and external app authorization respectively
+- **AppRole**: Union type (`Session(ResourceRole)`, `ApiToken(TokenScope)`, `ExchangedToken(UserScope)`) enabling flexible authorization across different authentication contexts
 - **Cross-service coordination**: Access control decisions flow from AuthService through middleware to routes
 
 ### OpenAI API Compatibility Framework
@@ -85,7 +85,7 @@ The `objs` crate serves as BodhiApp's **architectural keystone** -- the foundati
 **Downstream consumers** (all workspace crates depend on this):
 - [`services`](../services/CLAUDE.md) -- domain types, error handling, `IoError`, `impl_error_from!` macro
 - [`server_core`](../server_core/CLAUDE.md) -- `RouterState`, `ApiError`, domain types
-- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- `AuthContext`, `ResourceRole`, `TokenScope`
+- [`auth_middleware`](../auth_middleware/CLAUDE.md) -- `AuthContext`, `ResourceRole`, `TokenScope`, `UserScope`, `AppRole`
 - [`routes_app`](../routes_app/CLAUDE.md) -- API tag constants, request/response types, error types
 - [`server_app`](../server_app/CLAUDE.md) -- `AppOptions`, configuration types
 - [`lib_bodhiserver`](../lib_bodhiserver/CLAUDE.md) -- configuration types, embedded UI assets
@@ -99,7 +99,7 @@ The objs crate enables sophisticated service coordination through comprehensive 
 - **Error Propagation**: Service errors implement AppError via errmeta_derive for consistent HTTP response generation
 - **Domain Validation**: Services use objs validation for request parameters, business rules, and cross-service data consistency
 - **Model Coordination**: HubService and DataService coordinate via shared Repo, HubFile, and Alias types with atomic file operations
-- **Authentication Integration**: AuthService uses Role and Scope types for authorization decisions with hierarchical access control
+- **Authentication Integration**: AuthService uses ResourceRole, TokenScope, and UserScope types for authorization decisions with hierarchical access control
 - **Database Integration**: DbService uses objs error types for transaction management and migration support
 - **Secret Management**: SecretService integrates with objs error system for encryption/decryption error handling
 - **Session Coordination**: SessionService uses objs types for HTTP session management with secure cookie configuration
@@ -108,8 +108,8 @@ The objs crate enables sophisticated service coordination through comprehensive 
 Routes depend on objs for request/response handling:
 - **Parameter Validation**: OAIRequestParams used across OpenAI-compatible endpoints with alias.request_params.update() pattern
 - **Error Response Generation**: ApiError converts service errors to OpenAI-compatible JSON via RouterStateError translation
-- **Authentication Middleware**: Role and Scope types enable fine-grained access control through auth_middleware with hierarchical authorization
-- **Authorization Headers**: ResourceScope union type supports both TokenScope and UserScope authorization contexts in HTTP middleware
+- **Authentication Middleware**: ResourceRole and Scope types enable fine-grained access control through auth_middleware with hierarchical authorization
+- **Authorization Context**: AppRole union type supports ResourceRole, TokenScope, and UserScope authorization contexts across different authentication methods
 - **User-Friendly Error Messages**: Error messages via thiserror templates for web UI and API clients through HTTP error responses with auth_middleware integration
 - **OpenAI API Compatibility**: Complete parameter system enables OpenAI API emulation through routes_oai with non-destructive parameter overlay
 - **Application API Integration**: routes_app uses domain objects for model management, authentication, and configuration with comprehensive validation
@@ -130,7 +130,7 @@ Domain objects flow throughout the application with comprehensive service integr
 - **Routes → Frontend**: Consistent error format and localized messages via ApiError with OpenAI compatibility
 - **Application API → Services**: routes_app coordinates model management, authentication, and configuration through objs domain objects
 - **Desktop ↔ Services**: Shared domain objects ensure consistency between web and desktop clients
-- **Service ↔ Service**: Cross-service coordination via shared domain objects (Repo, HubFile, Alias, Role, Scope)
+- **Service ↔ Service**: Cross-service coordination via shared domain objects (Repo, HubFile, Alias, ResourceRole, Scope)
 - **Database ↔ Services**: Domain objects provide consistent data validation and error handling across persistence boundaries
 - **Authentication Flow**: OAuth2 types flow from AuthService through SecretService to SessionService with comprehensive error propagation
 - **Model Management**: Model domain objects coordinate between HubService, DataService, and CacheService with validation and error recovery
@@ -167,11 +167,11 @@ Domain objects support multiple embedding contexts:
 - **Binary Safety**: GGUF parsing bounds checking prevents crashes across service and CLI usage
 
 ### Authentication System Integration
-- **Role Hierarchy Consistency**: Ordering must be maintained across all authorization contexts with auth_middleware enforcing hierarchical access control
-- **Scope Standard Compliance**: OAuth2-style scope parsing ensures compatibility with external identity providers and auth_middleware token exchange
-- **Cross-Service Authorization**: TokenScope and ResourceScope enable authorization decisions across service boundaries with middleware precedence rules
-- **Security Enforcement**: Case-sensitive parsing and "offline_access" requirements maintain security standards for JWT token validation
-- **Middleware Integration**: Role and scope types flow through auth_middleware for HTTP request authorization with consistent domain validation
+- **Role Hierarchy Consistency**: ResourceRole ordering (Admin > Manager > PowerUser > User) must be maintained across all session authorization contexts
+- **Scope Tier Consistency**: TokenScope and UserScope each provide `User` and `PowerUser` tiers for API token and external app contexts respectively
+- **AppRole Union**: AppRole unifies the three authorization contexts (Session, ApiToken, ExchangedToken) enabling consistent handling across authentication methods
+- **Security Enforcement**: Case-sensitive scope parsing maintains security standards for JWT token validation
+- **Middleware Integration**: ResourceRole, TokenScope, and UserScope flow through auth_middleware for HTTP request authorization with consistent domain validation
 
 ### API Compatibility Guarantees
 - **Parameter Range Enforcement**: OpenAI parameter validation ensures API compatibility across all endpoints

@@ -25,45 +25,44 @@ impl ExternalTokenSimulator {
   }
 
   /// Creates a fake external bearer token and seeds the cache so requests
-  /// with this token bypass Keycloak and resolve to the given scope.
+  /// with this token bypass Keycloak and resolve to the given role.
   ///
   /// # Arguments
-  /// * `scope` - The scope string for the exchange token (e.g., "scope_user_user offline_access")
+  /// * `role` - The approved role (e.g., Some("scope_user_user")) from the access request
   /// * `azp` - The authorized party / client ID (e.g., "test-external-app")
   ///
   /// # Returns
   /// The bearer token string to use in `Authorization: Bearer {token}` headers
-  pub fn create_token_with_scope(&self, scope: &str, azp: &str) -> anyhow::Result<String> {
+  pub fn create_token_with_role(&self, role: Option<&str>, azp: &str) -> anyhow::Result<String> {
     let future_exp = (Utc::now() + Duration::hours(1)).timestamp() as u64;
+    let access_request_id = role.map(|_| Uuid::new_v4().to_string());
 
-    // 1. Build a valid bearer JWT (the "external" token arriving in the request)
     let bearer_claims = serde_json::json!({
       "jti": Uuid::new_v4().to_string(),
       "sub": "test-external-user",
       "exp": future_exp,
-      "scope": scope,
+      "scope": "openid",
     });
     let (bearer_jwt, _) = build_token(bearer_claims)?;
 
-    // 2. Compute cache key: SHA-256 of bearer token, first 12 hex chars
     let mut hasher = Sha256::new();
     hasher.update(bearer_jwt.as_bytes());
     let token_digest = format!("{:x}", hasher.finalize())[0..12].to_string();
 
-    // 3. Build the exchange result JWT (what Keycloak would return after token exchange)
     let exchange_claims = serde_json::json!({
       "iss": "https://test-id.getbodhi.app/realms/bodhi",
       "sub": "test-external-user",
       "azp": azp,
       "exp": future_exp,
-      "scope": scope,
+      "scope": "openid",
     });
     let (exchange_jwt, _) = build_token(exchange_claims)?;
 
-    // 4. Seed the cache with the exchange result
     let cached = CachedExchangeResult {
       token: exchange_jwt,
       app_client_id: azp.to_string(),
+      role: role.map(|r| r.to_string()),
+      access_request_id,
     };
     let cached_json = serde_json::to_string(&cached)?;
     self

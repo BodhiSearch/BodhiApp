@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS app_access_requests (
     requested TEXT NOT NULL,                -- JSON: {"toolset_types": [{"tool_type": "builtin-exa-search"}]}
     approved TEXT,                          -- JSON: {"toolset_types": [{"tool_type":"...", "status":"approved", "instance_id":"..."}]}
     user_id TEXT,                           -- NULL until user approves/denies
-    resource_scope TEXT,                    -- KC-returned "scope_resource-xyz" (set after KC call)
-    access_request_scope TEXT,              -- KC-returned "scope_access_request:<uuid>" (set after user approval, NULL for auto-approve)
+    requested_role TEXT NOT NULL,
+    approved_role TEXT,
+    access_request_scope TEXT,              -- KC-returned "scope_access_request:<uuid>" (set after user approval)
     error_message TEXT,                     -- Error details when status='failed'
     expires_at INTEGER NOT NULL,            -- Unix timestamp, draft TTL = 10 minutes
     created_at INTEGER NOT NULL,
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS app_access_requests (
 CREATE INDEX idx_app_access_requests_status ON app_access_requests(status);
 CREATE INDEX idx_app_access_requests_app_client ON app_access_requests(app_client_id);
 
--- Unique constraint on access_request_scope (allows multiple NULLs for auto-approved requests)
+-- Unique constraint on access_request_scope
 CREATE UNIQUE INDEX IF NOT EXISTS idx_access_request_scope_unique
 ON app_access_requests(access_request_scope)
 WHERE access_request_scope IS NOT NULL;

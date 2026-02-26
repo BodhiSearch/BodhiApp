@@ -142,9 +142,7 @@ async fn test_session_service_load_and_delete(#[case] backend: &str) -> anyhow::
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_clear_sessions_for_user(
-  #[case] backend: &str,
-) -> anyhow::Result<()> {
+async fn test_session_service_clear_sessions_for_user(#[case] backend: &str) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
 
@@ -158,12 +156,10 @@ async fn test_session_service_clear_sessions_for_user(
   let cleared = AppSessionStoreExt::clear_sessions_for_user(&service, "user_clear").await?;
   assert_eq!(3, cleared);
 
-  let remaining =
-    AppSessionStoreExt::count_sessions_for_user(&service, "user_clear").await?;
+  let remaining = AppSessionStoreExt::count_sessions_for_user(&service, "user_clear").await?;
   assert_eq!(0, remaining);
 
-  let other_remaining =
-    AppSessionStoreExt::count_sessions_for_user(&service, "user_other").await?;
+  let other_remaining = AppSessionStoreExt::count_sessions_for_user(&service, "user_other").await?;
   assert_eq!(1, other_remaining);
   Ok(())
 }
@@ -211,8 +207,7 @@ async fn test_session_service_count_and_get_ids(#[case] backend: &str) -> anyhow
   let count = AppSessionStoreExt::count_sessions_for_user(&service, "user_ids").await?;
   assert_eq!(2, count);
 
-  let mut actual_ids =
-    AppSessionStoreExt::get_session_ids_for_user(&service, "user_ids").await?;
+  let mut actual_ids = AppSessionStoreExt::get_session_ids_for_user(&service, "user_ids").await?;
   actual_ids.sort();
   expected_ids.sort();
   assert_eq!(expected_ids, actual_ids);
@@ -234,15 +229,13 @@ async fn test_session_service_multi_user_isolation(#[case] backend: &str) -> any
     store.save(&record).await?;
   }
 
-  let alice_count =
-    AppSessionStoreExt::count_sessions_for_user(&service, "alice").await?;
+  let alice_count = AppSessionStoreExt::count_sessions_for_user(&service, "alice").await?;
   let bob_count = AppSessionStoreExt::count_sessions_for_user(&service, "bob").await?;
   assert_eq!(2, alice_count);
   assert_eq!(1, bob_count);
 
   AppSessionStoreExt::clear_sessions_for_user(&service, "alice").await?;
-  let alice_after =
-    AppSessionStoreExt::count_sessions_for_user(&service, "alice").await?;
+  let alice_after = AppSessionStoreExt::count_sessions_for_user(&service, "alice").await?;
   let bob_after = AppSessionStoreExt::count_sessions_for_user(&service, "bob").await?;
   assert_eq!(0, alice_after);
   assert_eq!(1, bob_after);

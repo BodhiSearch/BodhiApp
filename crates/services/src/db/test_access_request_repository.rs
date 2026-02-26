@@ -30,7 +30,8 @@ async fn test_create_draft_request(
     requested: r#"[{"toolset_type":"builtin-exa-search"}]"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -81,7 +82,8 @@ async fn test_get_request(
     requested: r#"[{"toolset_type":"builtin-exa-search"}]"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -141,7 +143,8 @@ async fn test_update_approval(
     requested: r#"[{"toolset_type":"builtin-exa-search"}]"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -158,18 +161,15 @@ async fn test_update_approval(
       &row.id,
       "user-uuid",
       tools_approved_json,
-      "scope_resource-xyz",
-      Some("scope_access_request:550e8400-e29b-41d4-a716-446655440002".to_string()),
+      "scope_user_user",
+      "scope_access_request:550e8400-e29b-41d4-a716-446655440002",
     )
     .await?;
 
   assert_eq!(result.status, "approved");
   assert_eq!(result.user_id, Some("user-uuid".to_string()));
   assert_eq!(result.approved, Some(tools_approved_json.to_string()));
-  assert_eq!(
-    result.resource_scope,
-    Some("scope_resource-xyz".to_string())
-  );
+  assert_eq!(result.approved_role, Some("scope_user_user".to_string()));
   assert_eq!(
     result.access_request_scope,
     Some("scope_access_request:550e8400-e29b-41d4-a716-446655440002".to_string())
@@ -201,7 +201,8 @@ async fn test_update_denial(
     requested: r#"[{"toolset_type":"builtin-exa-search"}]"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -243,7 +244,8 @@ async fn test_update_failure(
     requested: r#"[{"toolset_type":"builtin-exa-search"}]"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -274,7 +276,6 @@ async fn test_get_by_access_request_scope_found(
   let now = service.now();
   let expires_at = now + chrono::Duration::hours(1);
 
-  // Create access request with access_request_scope
   let scope = "scope_access_request:test-uuid";
   let row = AppAccessRequestRow {
     id: "ar-test-001".to_string(),
@@ -290,7 +291,8 @@ async fn test_get_by_access_request_scope_found(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -299,10 +301,8 @@ async fn test_get_by_access_request_scope_found(
   };
   service.create(&row).await?;
 
-  // Lookup by scope
   let result = service.get_by_access_request_scope(scope).await?;
 
-  // Verify found
   assert!(result.is_some());
   let found = result.unwrap();
   assert_eq!(found.id, row.id);
@@ -321,12 +321,10 @@ async fn test_get_by_access_request_scope_not_found(
   #[from(test_db_service)]
   service: TestDbService,
 ) -> anyhow::Result<()> {
-  // Lookup non-existent scope
   let result = service
     .get_by_access_request_scope("scope_access_request:nonexistent")
     .await?;
 
-  // Verify not found
   assert!(result.is_none());
 
   Ok(())
@@ -344,7 +342,6 @@ async fn test_get_by_access_request_scope_null(
   let now = service.now();
   let expires_at = now + chrono::Duration::hours(1);
 
-  // Create access request with NULL scope
   let row = AppAccessRequestRow {
     id: "ar-null-001".to_string(),
     app_client_id: "test-client".to_string(),
@@ -359,7 +356,8 @@ async fn test_get_by_access_request_scope_null(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -368,12 +366,10 @@ async fn test_get_by_access_request_scope_null(
   };
   service.create(&row).await?;
 
-  // Lookup by any scope - should not match NULL
   let result = service
     .get_by_access_request_scope("scope_access_request:anything")
     .await?;
 
-  // Verify not found (NULL doesn't match any scope)
   assert!(result.is_none());
 
   Ok(())
@@ -393,7 +389,6 @@ async fn test_access_request_scope_unique_constraint(
 
   let scope = "scope_access_request:duplicate-test";
 
-  // Create first access request with scope
   let row1 = AppAccessRequestRow {
     id: "ar-dup-1".to_string(),
     app_client_id: "test-client".to_string(),
@@ -408,7 +403,8 @@ async fn test_access_request_scope_unique_constraint(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -417,7 +413,6 @@ async fn test_access_request_scope_unique_constraint(
   };
   service.create(&row1).await?;
 
-  // Attempt to create second with same scope
   let row2 = AppAccessRequestRow {
     id: "ar-dup-2".to_string(),
     app_client_id: "test-client".to_string(),
@@ -432,7 +427,8 @@ async fn test_access_request_scope_unique_constraint(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -441,11 +437,9 @@ async fn test_access_request_scope_unique_constraint(
   };
   let result = service.create(&row2).await;
 
-  // Verify constraint violation
   assert!(result.is_err());
   let err = result.unwrap_err();
-  // Check for unique constraint error code
-  assert_eq!(err.code(), "sqlx_error"); // SQLx wraps SQLite constraint error
+  assert_eq!(err.code(), "sqlx_error");
 
   Ok(())
 }
@@ -462,7 +456,6 @@ async fn test_access_request_scope_multiple_nulls_allowed(
   let now = service.now();
   let expires_at = now + chrono::Duration::hours(1);
 
-  // Create first access request with NULL scope
   let row1 = AppAccessRequestRow {
     id: "ar-null-1".to_string(),
     app_client_id: "test-client".to_string(),
@@ -477,7 +470,8 @@ async fn test_access_request_scope_multiple_nulls_allowed(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -486,7 +480,6 @@ async fn test_access_request_scope_multiple_nulls_allowed(
   };
   service.create(&row1).await?;
 
-  // Create second with NULL scope
   let row2 = AppAccessRequestRow {
     id: "ar-null-2".to_string(),
     app_client_id: "test-client".to_string(),
@@ -501,7 +494,8 @@ async fn test_access_request_scope_multiple_nulls_allowed(
         .to_string(),
     ),
     user_id: Some("user-001".to_string()),
-    resource_scope: Some("scope_resource-xyz".to_string()),
+    requested_role: "scope_user_user".to_string(),
+    approved_role: Some("scope_user_user".to_string()),
     access_request_scope: None,
     error_message: None,
     expires_at: expires_at.timestamp(),
@@ -510,7 +504,6 @@ async fn test_access_request_scope_multiple_nulls_allowed(
   };
   let result = service.create(&row2).await;
 
-  // Verify multiple NULLs allowed
   assert!(result.is_ok());
 
   Ok(())

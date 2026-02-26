@@ -63,7 +63,7 @@ test.ui: ## Run frontend and UI integration tests
 	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
 test.napi: ## Run NAPI bindings tests
-	cd crates/lib_bodhiserver_napi && npm install && npm run test:all
+	cd crates/lib_bodhiserver_napi && npm install && npm run test:playwright
 
 test: test.backend test.ui test.napi ## Run all tests (backend, UI, NAPI)
 

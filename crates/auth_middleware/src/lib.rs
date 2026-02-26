@@ -8,7 +8,6 @@ mod api_auth_middleware;
 mod auth_context;
 mod auth_middleware;
 mod canonical_url_middleware;
-mod resource_scope;
 mod token_service;
 mod utils;
 
@@ -20,6 +19,5 @@ pub use api_auth_middleware::api_auth_middleware;
 pub use auth_context::AuthContext;
 pub use auth_middleware::*;
 pub use canonical_url_middleware::canonical_url_middleware;
-pub use resource_scope::*;
 pub use token_service::{CachedExchangeResult, DefaultTokenService};
 pub use utils::*;

@@ -1,3 +1,5 @@
+import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import {
   getAuthServerConfig,
@@ -25,11 +27,16 @@ test.describe('OAuth Chat Streaming', () => {
   });
 
   test('3rd-party app: OAuth token → streaming chat completion', async ({ page }) => {
+    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
     const appClient = getPreConfiguredAppClient();
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
-    await test.step('Complete OAuth flow (auto-approved, no toolsets)', async () => {
+    await test.step('Login to Bodhi server', async () => {
+      await loginPage.performOAuthLogin('/ui/chat/');
+    });
+
+    await test.step('Complete OAuth flow (draft → review → approve)', async () => {
       await app.navigate();
 
       await app.config.configureOAuthForm({
@@ -38,16 +45,20 @@ test.describe('OAuth Chat Streaming', () => {
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: null,
       });
 
       await app.config.submitAccessRequest();
-      await app.config.waitForLoginReady();
-      await app.config.clickLogin();
+      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
 
-      await app.oauth.waitForAuthServerRedirect(authServerConfig.authUrl);
-      await app.oauth.handleLogin(testCredentials.username, testCredentials.password);
+      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      await reviewPage.approve();
+
+      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+      await app.accessCallback.waitForLoaded();
+      await app.accessCallback.clickLogin();
+
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 

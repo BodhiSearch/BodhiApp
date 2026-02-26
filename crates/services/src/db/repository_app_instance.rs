@@ -18,16 +18,16 @@ impl AppInstanceRepository for SqliteDbService {
       return Ok(None);
     }
 
-    let result = sqlx::query_as::<_, (String, String, String, String, String, String, i64, i64)>(
+    let result = sqlx::query_as::<_, (String, String, String, String, String, i64, i64)>(
       "SELECT client_id, encrypted_client_secret, salt_client_secret, nonce_client_secret,
-              scope, app_status, created_at, updated_at
+              app_status, created_at, updated_at
        FROM apps",
     )
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((client_id, encrypted, salt, nonce, scope, app_status, created_at, updated_at)) => {
+      Some((client_id, encrypted, salt, nonce, app_status, created_at, updated_at)) => {
         let client_secret = decrypt_api_key(&self.encryption_key, &encrypted, &salt, &nonce)
           .map_err(|e| DbError::EncryptionError(e.to_string()))?;
         Ok(Some(AppInstanceRow {
@@ -35,7 +35,6 @@ impl AppInstanceRepository for SqliteDbService {
           client_secret,
           salt_client_secret: salt,
           nonce_client_secret: nonce,
-          scope,
           app_status,
           created_at,
           updated_at,
@@ -49,7 +48,6 @@ impl AppInstanceRepository for SqliteDbService {
     &self,
     client_id: &str,
     client_secret: &str,
-    scope: &str,
     status: &str,
   ) -> Result<(), DbError> {
     let now = self.time_service.utc_now().timestamp();
@@ -59,13 +57,12 @@ impl AppInstanceRepository for SqliteDbService {
 
     sqlx::query(
       "INSERT INTO apps (client_id, encrypted_client_secret, salt_client_secret, nonce_client_secret,
-                         scope, app_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                         app_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(client_id) DO UPDATE SET
          encrypted_client_secret = excluded.encrypted_client_secret,
          salt_client_secret = excluded.salt_client_secret,
          nonce_client_secret = excluded.nonce_client_secret,
-         scope = excluded.scope,
          app_status = excluded.app_status,
          updated_at = excluded.updated_at",
     )
@@ -73,7 +70,6 @@ impl AppInstanceRepository for SqliteDbService {
     .bind(&encrypted_secret)
     .bind(&salt_secret)
     .bind(&nonce_secret)
-    .bind(scope)
     .bind(status)
     .bind(now)
     .bind(now)

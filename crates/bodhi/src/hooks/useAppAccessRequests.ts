@@ -30,6 +30,7 @@ export interface McpApprovalItem {
 }
 
 export interface ApproveAccessRequestBody {
+  approved_role: string;
   approved: {
     toolsets: ToolApprovalItem[];
     mcps: McpApprovalItem[];

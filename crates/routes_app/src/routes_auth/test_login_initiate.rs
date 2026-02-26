@@ -55,7 +55,7 @@ async fn test_auth_initiate_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: services::AppStatus::Ready,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
@@ -144,7 +144,7 @@ async fn test_auth_initiate_handler_loopback_host_detection(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: services::AppStatus::Ready,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),
@@ -215,7 +215,7 @@ async fn test_auth_initiate_handler_network_host_usage(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: services::AppStatus::Ready,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),

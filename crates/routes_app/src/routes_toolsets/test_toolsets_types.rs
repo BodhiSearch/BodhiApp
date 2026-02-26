@@ -81,7 +81,7 @@ async fn test_list_toolset_types(
   } else {
     request.with_auth_context(AuthContext::test_external_app(
       "user123",
-      UserScope::Admin,
+      UserScope::PowerUser,
       "test-app",
       None,
     ))

@@ -20,8 +20,7 @@ async fn test_auth_service_register_client_success() -> anyhow::Result<()> {
     .with_body(
       json!({
           "client_id": "test-client",
-          "client_secret": "test-secret",
-          "scope": "scope_test-client"
+          "client_secret": "test-secret"
       })
       .to_string(),
     )
@@ -39,7 +38,6 @@ async fn test_auth_service_register_client_success() -> anyhow::Result<()> {
     ClientRegistrationResponse {
       client_id: "test-client".to_string(),
       client_secret: "test-secret".to_string(),
-      scope: "scope_test-client".to_string(),
     },
     client_reg
   );
@@ -312,7 +310,6 @@ async fn test_make_resource_admin_api_failure(
   Ok(())
 }
 
-#[rstest]
 #[rstest]
 #[tokio::test]
 #[anyhow_trace]

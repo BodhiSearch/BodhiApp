@@ -117,12 +117,10 @@ pub fn try_build_app_options_internal(
     } else {
       AppStatus::Ready
     };
-    let scope = format!("scope_{}", client_id);
     let now = chrono::Utc::now();
     let instance = AppInstance {
       client_id,
       client_secret,
-      scope,
       status,
       created_at: now,
       updated_at: now,

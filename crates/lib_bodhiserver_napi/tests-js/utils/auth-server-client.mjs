@@ -330,39 +330,6 @@ export class AuthServerTestClient {
     return data.access_token;
   }
 
-  /**
-   * Request audience access for resource client (dynamic audience management)
-   * @param {string} resourceToken - Resource client service account token
-   * @param {string} appClientId - App client ID to request access for
-   * @returns {Promise<string>} Resource scope name
-   */
-  async requestAudienceAccess(resourceToken, appClientId) {
-    const requestAccessUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/request-access`;
-
-    const response = await fetch(requestAccessUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resourceToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        app_client_id: appClientId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('Request audience access failed:', response.status, response.statusText);
-      console.log('Error response body:', errorText);
-      throw new Error(
-        `Failed to request audience access: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    return data.scope;
-  }
-
   async makeResourceAdmin(resourceClientId, resourceClientSecret, userId) {
     const resourceAdminUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/make-resource-admin`;
     const resourceToken = await this.getResourceServiceAccountToken(
@@ -460,7 +427,7 @@ export class AuthServerTestClient {
 
     const params = new URLSearchParams({
       subject_token: subjectToken,
-      scope: 'openid email profile roles scope_user_user',
+      scope: 'openid email profile roles',
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
@@ -624,7 +591,6 @@ export function getPreConfiguredResourceClient() {
   const client = {
     clientId: process.env.INTEG_TEST_RESOURCE_CLIENT_ID,
     clientSecret: process.env.INTEG_TEST_RESOURCE_CLIENT_SECRET,
-    scope: process.env.INTEG_TEST_RESOURCE_CLIENT_SCOPE,
   };
   for (const [key, value] of Object.entries(client)) {
     if (!value) throw new Error(`Required env var missing: ${key}`);

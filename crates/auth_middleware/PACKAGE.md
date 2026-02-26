@@ -1,26 +1,25 @@
 # PACKAGE.md - auth_middleware
 
-This document provides detailed technical information for the `auth_middleware` crate, focusing on BodhiApp's HTTP authentication and authorization middleware architecture, type-safe header extraction, sophisticated JWT token management, and multi-layered security implementation patterns.
+This document provides detailed technical information for the `auth_middleware` crate, focusing on BodhiApp's HTTP authentication and authorization middleware architecture, extension-based auth context propagation, JWT token management, and multi-layered security implementation patterns.
 
 ## Module Structure
 
 The crate is organized into these modules (see `crates/auth_middleware/src/lib.rs`):
 
-- `auth_middleware` - Core authentication middleware, header constants, session handling, same-origin validation
-- `api_auth_middleware` - Role and scope-based API authorization middleware
-- `access_request_auth_middleware` - Generic access request validation middleware with `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`, `AccessRequestAuthError`
-- `toolset_auth_middleware` - Specialized authorization for toolset execution endpoints
-- `auth_context` - `AuthContext` enum definition, convenience methods, test factory methods
-- `token_service` - JWT token validation, refresh, exchange, and caching via `DefaultTokenService`
+- `auth_middleware/` - Core authentication middleware, header constants, session handling, same-origin validation (`middleware.rs`, `tests.rs`)
+- `api_auth_middleware` - Role-based API authorization middleware
+- `access_request_auth_middleware/` - Generic access request validation middleware with `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`, `AccessRequestAuthError` (`middleware.rs`, `tests.rs`)
+- `auth_context` - `AuthContext` enum definition, convenience methods
+- `token_service/` - JWT token validation, refresh, exchange, and caching via `DefaultTokenService` (`service.rs`, `tests.rs`)
 - `canonical_url_middleware` - SEO and security canonical URL redirection
 - `utils` - Utility functions (app status, random string generation, error response types)
-- `test_utils` - OAuth2 test client and integration test infrastructure (behind `test-utils` feature)
+- `test_utils/` - OAuth2 test client and integration test infrastructure (behind `test-utils` feature): `auth_context.rs`, `auth_server_test_client.rs`
 
 All modules are re-exported publicly from `lib.rs`.
 
 ## AuthContext Extension Pattern
 
-Route handlers receive authentication context through `Extension<AuthContext>` from Axum request extensions, set by the auth middleware. This replaced the previous header-based extractor approach (`ExtractUserId`, `ExtractRole`, `ExtractToken`, etc.) which has been removed.
+Route handlers receive authentication context through `Extension<AuthContext>` from Axum request extensions, set by the auth middleware.
 
 ### AuthContext Variants
 
@@ -28,8 +27,10 @@ Route handlers receive authentication context through `Extension<AuthContext>` f
 |---------|--------|:------------:|
 | `Anonymous` | (none) | No |
 | `Session` | `user_id`, `username`, `role: Option<ResourceRole>`, `token` | Yes |
-| `ApiToken` | `user_id`, `scope: TokenScope`, `token` | Yes |
-| `ExternalApp` | `user_id`, `scope: UserScope`, `token`, `azp`, `access_request_id: Option<String>` | Yes |
+| `ApiToken` | `user_id`, `role: TokenScope`, `token` | Yes |
+| `ExternalApp` | `user_id`, `role: Option<UserScope>`, `token`, `external_app_token`, `app_client_id`, `access_request_id: Option<String>` | Yes |
+
+The `ExternalApp` variant carries two tokens: `token` is the exchanged (local) access token used for downstream operations; `external_app_token` is the original bearer token from the external client. The `role` is derived from the DB `approved_role`, not from JWT scope claims. When `role` is `None`, `api_auth_middleware` rejects the request.
 
 ### Handler Pattern
 
@@ -53,38 +54,19 @@ let request = Request::builder()
   .with_auth_context(AuthContext::test_session("user", "name", ResourceRole::Admin));
 ```
 
-## Internal Header Constants
-
-All internal headers use `X-BodhiApp-` prefix via `bodhi_header!` macro (see `crates/auth_middleware/src/auth_middleware.rs`):
-
-| Constant | Header Value | Injected By |
-|----------|-------------|-------------|
-| `KEY_HEADER_BODHIAPP_TOKEN` | `X-BodhiApp-Token` | auth_middleware |
-| `KEY_HEADER_BODHIAPP_USERNAME` | `X-BodhiApp-Username` | auth_middleware |
-| `KEY_HEADER_BODHIAPP_ROLE` | `X-BodhiApp-Role` | auth_middleware (session auth) |
-| `KEY_HEADER_BODHIAPP_SCOPE` | `X-BodhiApp-Scope` | auth_middleware (bearer auth) |
-| `KEY_HEADER_BODHIAPP_USER_ID` | `X-BodhiApp-User-Id` | auth_middleware |
-| `KEY_HEADER_BODHIAPP_TOOL_SCOPES` | `X-BodhiApp-Tool-Scopes` | auth_middleware (bearer auth) |
-| `KEY_HEADER_BODHIAPP_AZP` | `X-BodhiApp-Azp` | auth_middleware (bearer auth) |
-
-The `remove_app_headers()` function strips all `X-BodhiApp-*` headers from incoming requests before re-injecting validated values, preventing header injection attacks.
-
 ## HTTP Authentication Middleware Architecture
 
 ### Dual Authentication Middleware Implementation
-Sophisticated middleware architecture supporting multiple authentication patterns (see `crates/auth_middleware/src/auth_middleware.rs`):
+Middleware architecture supporting multiple authentication patterns (see `crates/auth_middleware/src/auth_middleware/middleware.rs`):
 
 ```rust
-// Strict authentication - rejects unauthenticated requests
 pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-  _headers: HeaderMap,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError>;
 
-// Optional authentication - continues on auth failure
 pub async fn optional_auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -94,17 +76,18 @@ pub async fn optional_auth_middleware(
 ```
 
 **Key Authentication Features**:
-- Bearer token authentication takes precedence over session-based authentication for API compatibility
+- Bearer token authentication takes precedence over session-based authentication
 - Same-origin validation using Sec-Fetch-Site headers prevents CSRF attacks on session-based requests
-- Internal header management prevents header injection attacks while providing validated information to routes
-- Dual middleware approach supports both strict authentication and optional authentication patterns
+- `remove_app_headers` strips `X-BodhiApp-*` headers from incoming requests to prevent injection
+- `optional_auth_middleware` inserts `AuthContext::Anonymous` on any auth failure instead of returning an error
+- Session cleanup on token validation failure (refresh not found, expired, auth service error)
 
 ### API Authorization Middleware Implementation
-Fine-grained authorization middleware with configurable role and scope requirements (see `crates/auth_middleware/src/api_auth_middleware.rs`):
+Role-based authorization middleware consuming `AuthContext` from extensions (see `crates/auth_middleware/src/api_auth_middleware.rs`):
 
 ```rust
 pub async fn api_auth_middleware(
-  required_role: Role,
+  required_role: ResourceRole,
   required_token_scope: Option<TokenScope>,
   required_user_scope: Option<UserScope>,
   State(state): State<Arc<dyn RouterState>>,
@@ -113,66 +96,66 @@ pub async fn api_auth_middleware(
 ) -> Result<Response, ApiError>;
 ```
 
-**Authorization Architecture Features**:
-- Role-based authorization follows hierarchical ordering with `has_access_to()` validation from objs crate
-- ResourceScope union type seamlessly handles both TokenScope and UserScope authorization contexts
-- Configurable authorization requirements allow different endpoints to specify different access levels
-- Authorization precedence rules ensure role-based authorization takes precedence over scope-based when both are present
-
-### Toolset Authorization Middleware
-Specialized middleware for toolset execution endpoints (see `crates/auth_middleware/src/toolset_auth_middleware.rs`):
-
-```rust
-pub async fn toolset_auth_middleware(
-  State(state): State<Arc<dyn RouterState>>,
-  Path((id, method)): Path<(String, String)>,
-  req: Request,
-  next: Next,
-) -> Result<Response, ApiError>;
-```
-
-Authorization checks vary by auth type:
-- **Session auth** (has Role header): toolset ownership + app-level type enabled + toolset available
-- **OAuth auth** (has `scope_user_` scope): above checks + app-client registered + toolset scope present in `X-BodhiApp-Tool-Scopes`
+**Authorization logic by AuthContext variant:**
+- `Session { role: Some(role) }` -- checks `role.has_access_to(&required_role)`
+- `Session { role: None }` -- returns `MissingAuth`
+- `ApiToken { role }` -- checks `role.has_access_to(&required_token_scope)` if token scope provided, otherwise `MissingAuth`
+- `ExternalApp { role: Some(role) }` -- checks `role.has_access_to(&required_user_scope)` if user scope provided, otherwise `MissingAuth`
+- `ExternalApp { role: None }` -- returns `MissingAuth`
+- `Anonymous` -- returns `MissingAuth`
 
 ## JWT Token Management Architecture
 
 ### DefaultTokenService Implementation
-Comprehensive token management service coordinating multiple authentication flows (see `crates/auth_middleware/src/token_service.rs`):
+Token management service coordinating multiple authentication flows (see `crates/auth_middleware/src/token_service/service.rs`):
 
 ```rust
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
-  secret_service: Arc<dyn SecretService>,
+  app_instance_service: Arc<dyn AppInstanceService>,
   cache_service: Arc<dyn CacheService>,
   db_service: Arc<dyn DbService>,
   setting_service: Arc<dyn SettingService>,
+  concurrency_service: Arc<dyn ConcurrencyService>,
 }
 ```
 
 Key methods:
-- `validate_bearer_token()` - Validates bearer tokens, checking database for API tokens first, then handling external client tokens
-- `get_valid_session_token()` - Validates session tokens with automatic refresh on expiration
-- `handle_internal_api_token()` - Cache-based validation for internal API tokens with refresh fallback
-- `handle_external_client_token()` - External token validation with issuer/audience checks and RFC 8693 exchange
+- `validate_bearer_token()` -- Entry point for bearer token validation. Routes to API token path (`bodhiapp_*` prefix) or external client token path
+- `get_valid_session_token()` -- Validates session tokens with automatic refresh on expiration, using distributed lock via `ConcurrencyService` to prevent concurrent refresh storms
+- `handle_external_client_token()` -- Validates external token (issuer, audience), looks up access request by scope, validates status/client/user match, performs RFC 8693 token exchange, derives `role` from DB `approved_role`
 
-### Token Digest Security
-Secure token storage using SHA-256 digests (see `crates/auth_middleware/src/token_service.rs`):
+### CachedExchangeResult
+Cached representation of an external token exchange (see `crates/auth_middleware/src/token_service/service.rs`):
 
 ```rust
-pub fn create_token_digest(bearer_token: &str) -> String {
-  let mut hasher = Sha256::new();
-  hasher.update(bearer_token.as_bytes());
-  format!("{:x}", hasher.finalize())[0..12].to_string()
+pub struct CachedExchangeResult {
+  pub token: String,
+  pub app_client_id: String,
+  pub role: Option<String>,
+  pub access_request_id: Option<String>,
 }
 ```
+
+Cached under key `exchanged_token:{token_digest}` where digest is first 12 chars of SHA-256 hex. On cache hit, the exchanged token's expiry is validated before reuse; expired entries trigger a fresh exchange.
+
+### API Token Validation
+API tokens (`bodhiapp_*` prefix) are validated by:
+1. Extracting prefix (first 8 chars after `bodhiapp_`) for DB lookup
+2. Checking token status is `Active`
+3. Computing full SHA-256 hash and comparing with constant-time equality
+4. Parsing `scopes` field into `TokenScope`
 
 ## Security Infrastructure Implementation
 
 ### Same-Origin Validation
-CSRF protection through security header validation (see `crates/auth_middleware/src/auth_middleware.rs`):
+CSRF protection through security header validation (see `crates/auth_middleware/src/auth_middleware/middleware.rs`):
 - `is_same_origin()` checks `Sec-Fetch-Site` header against `HOST` header
 - Localhost requests require `same-origin` value; non-localhost requests are allowed
+
+### Header Security
+- `remove_app_headers()` strips all headers with `X-BodhiApp-` prefix using case-insensitive matching
+- `KEY_PREFIX_HEADER_BODHIAPP` constant defines the prefix
 
 ### Canonical URL Middleware
 SEO and security URL normalization (see `crates/auth_middleware/src/canonical_url_middleware.rs`):
@@ -185,10 +168,9 @@ SEO and security URL normalization (see `crates/auth_middleware/src/canonical_ur
 ### Error Types
 Multiple error enums for different middleware concerns:
 
-- `AuthError` (see `crates/auth_middleware/src/auth_middleware.rs`) - Authentication failures: InvalidAccess, RefreshTokenNotFound, TokenInactive, TowerSession
-- `ApiAuthError` (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Authorization failures: Forbidden, MissingAuth
-- `AccessRequestAuthError` (see `crates/auth_middleware/src/access_request_auth_middleware.rs`) - Access request authorization: MissingAuth, EntityNotFound, EntityNotApproved, AccessRequestNotFound, AccessRequestNotApproved, AppClientMismatch, UserMismatch, AccessRequestInvalid, InvalidApprovedJson
-- `ToolsetAuthError` (see `crates/auth_middleware/src/toolset_auth_middleware.rs`) - Toolset authorization: MissingUserId, MissingAuth, AppClientNotRegistered, MissingToolsetScope, ToolsetNotFound
+- `AuthError` (see `crates/auth_middleware/src/auth_middleware/middleware.rs`) - Authentication failures: Token, Role, TokenScope, UserScope, MissingRoles, InvalidAccess, TokenInactive, TokenNotFound, AuthService, AppInstance, DbError, RefreshTokenNotFound, TowerSession, InvalidToken, AppStatusInvalid
+- `ApiAuthError` (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Authorization failures: Forbidden, MissingAuth, InvalidRole, InvalidScope, InvalidUserScope
+- `AccessRequestAuthError` (see `crates/auth_middleware/src/access_request_auth_middleware/middleware.rs`) - Access request authorization: MissingAuth, EntityNotFound, EntityNotApproved, AccessRequestNotFound, AccessRequestNotApproved, AppClientMismatch, UserMismatch, AccessRequestInvalid, InvalidApprovedJson
 
 All error types use `thiserror` for message formatting and `errmeta_derive::ErrorMeta` with `AppError` trait implementation for consistent HTTP response generation.
 
@@ -202,13 +184,26 @@ Core utility functions (see `crates/auth_middleware/src/utils.rs`):
 ## Testing Infrastructure
 
 ### Unit Tests
-- Auth middleware tests (see `crates/auth_middleware/src/auth_middleware.rs`) - Session and bearer token flows with mock services
-- API auth middleware tests (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Role/scope authorization combinations
-- Toolset auth middleware tests (see `crates/auth_middleware/src/toolset_auth_middleware.rs`) - Session and OAuth auth paths with `MockToolService`
+- Auth middleware tests (see `crates/auth_middleware/src/auth_middleware/tests.rs`) - Session and bearer token flows
+- API auth middleware tests (see `crates/auth_middleware/src/api_auth_middleware.rs`) - Role/scope authorization combinations including `ExternalApp { role: None }` rejection
+- Access request auth middleware tests (see `crates/auth_middleware/src/access_request_auth_middleware/tests.rs`) - Session and OAuth auth paths
+
+### Test Factory Methods
+Behind `test-utils` feature flag (see `crates/auth_middleware/src/test_utils/auth_context.rs`):
+- `AuthContext::test_session(user_id, username, role)` -- Session with `role: Some(role)`, default "test-token"
+- `AuthContext::test_session_no_role(user_id, username)` -- Session with `role: None`
+- `AuthContext::test_session_with_token(user_id, username, role, token)` -- Session with custom token
+- `AuthContext::test_api_token(user_id, role)` -- ApiToken with default "test-api-token"
+- `AuthContext::test_external_app(user_id, role, app_client_id, access_request_id)` -- ExternalApp with `role: Some(role)`, default tokens
+- `AuthContext::test_external_app_no_role(user_id, app_client_id, access_request_id)` -- ExternalApp with `role: None`, default tokens
+- `RequestAuthContextExt::with_auth_context(ctx)` -- Inserts `AuthContext` into request extensions
 
 ### OAuth2 Test Infrastructure
 The `test_utils` module provides OAuth2 integration testing (behind `test-utils` feature):
 - `AuthServerConfig` / `AuthServerTestClient` (see `crates/auth_middleware/src/test_utils/auth_server_test_client.rs`) - Complete OAuth2 client setup workflow with dynamic client creation
+- `ClientInfo` -- Holds `client_id` and `client_secret: Option<String>`
+- `DynamicClients` -- Holds `app_client` and `resource_client` as `ClientInfo`
+- `setup_dynamic_clients()` -- Creates app client, resource client, and makes test user admin
 - Live integration tests (see `crates/auth_middleware/tests/test_live_auth_middleware.rs`) - Requires live OAuth2 server
 
 ## Commands

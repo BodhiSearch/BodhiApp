@@ -65,7 +65,6 @@ impl ClientRegistrationResponseBuilder {
     Self::default()
       .client_id(TEST_CLIENT_ID.to_string())
       .client_secret(TEST_CLIENT_SECRET.to_string())
-      .scope(format!("scope_{}", TEST_CLIENT_ID))
       .to_owned()
   }
 }

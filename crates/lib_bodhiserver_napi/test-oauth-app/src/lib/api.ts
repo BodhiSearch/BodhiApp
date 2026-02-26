@@ -4,6 +4,7 @@ export async function requestAccess(
     app_client_id: string;
     flow_type: string;
     redirect_url: string;
+    requested_role: string;
     requested?: Record<string, unknown>;
   }
 ) {

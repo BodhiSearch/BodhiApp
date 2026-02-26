@@ -6,7 +6,6 @@ pub struct AppInstanceRow {
   pub client_secret: String,
   pub salt_client_secret: String,
   pub nonce_client_secret: String,
-  pub scope: String,
   pub app_status: String,
   pub created_at: i64,
   pub updated_at: i64,
@@ -20,7 +19,6 @@ pub trait AppInstanceRepository: Send + Sync {
     &self,
     client_id: &str,
     client_secret: &str,
-    scope: &str,
     status: &str,
   ) -> Result<(), DbError>;
   async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError>;

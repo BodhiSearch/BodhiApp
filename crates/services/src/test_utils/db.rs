@@ -898,12 +898,11 @@ impl AppInstanceRepository for TestDbService {
     &self,
     client_id: &str,
     client_secret: &str,
-    scope: &str,
     status: &str,
   ) -> Result<(), DbError> {
     self
       .inner
-      .upsert_app_instance(client_id, client_secret, scope, status)
+      .upsert_app_instance(client_id, client_secret, status)
       .await
       .tap(|_| self.notify("upsert_app_instance"))
   }
@@ -983,12 +982,12 @@ impl AccessRequestRepository for TestDbService {
     id: &str,
     user_id: &str,
     approved: &str,
-    resource_scope: &str,
-    access_request_scope: Option<String>,
+    approved_role: &str,
+    access_request_scope: &str,
   ) -> Result<AppAccessRequestRow, DbError> {
     self
       .inner
-      .update_approval(id, user_id, approved, resource_scope, access_request_scope)
+      .update_approval(id, user_id, approved, approved_role, access_request_scope)
       .await
       .tap(|_| self.notify("access_request_update_approval"))
   }
@@ -1079,7 +1078,6 @@ mockall::mock! {
       &self,
       client_id: &str,
       client_secret: &str,
-      scope: &str,
       status: &str,
     ) -> Result<(), DbError>;
     async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError>;
@@ -1174,8 +1172,8 @@ mockall::mock! {
       id: &str,
       user_id: &str,
       approved: &str,
-      resource_scope: &str,
-      access_request_scope: Option<String>,
+      approved_role: &str,
+      access_request_scope: &str,
     ) -> Result<AppAccessRequestRow, DbError>;
     async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError>;
     async fn update_failure(&self, id: &str, error_message: &str) -> Result<AppAccessRequestRow, DbError>;

@@ -147,9 +147,8 @@ pub async fn create_token_handler(
     (ResourceRole::User, TokenScope::User) => Ok(payload.scope),
     (ResourceRole::User, _) => Err(ApiTokenError::PrivilegeEscalation),
 
-    // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens only
+    // Other roles (PowerUser, Manager, Admin) can create user or power_user tokens
     (_, TokenScope::User | TokenScope::PowerUser) => Ok(payload.scope),
-    (_, _) => Err(ApiTokenError::InvalidScope),
   }?;
 
   // Generate cryptographically secure random token

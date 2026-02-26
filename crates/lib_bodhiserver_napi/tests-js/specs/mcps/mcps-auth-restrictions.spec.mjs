@@ -66,7 +66,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ mcp_servers: [{ url: MCP_URL }] }),
       });
     });
@@ -159,15 +159,22 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: null,
       });
     });
 
-    await test.step('Phase 3: Submit access request (auto-approve) and login', async () => {
+    await test.step('Phase 3: Submit access request, approve, and login', async () => {
       await app.config.submitAccessRequest();
-      await app.config.waitForLoginReady();
-      await app.config.clickLogin();
+      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+
+      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      await reviewPage.approve();
+
+      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+      await app.accessCallback.waitForLoaded();
+      await app.accessCallback.clickLogin();
+
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
@@ -229,7 +236,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ mcp_servers: [{ url: MCP_URL }] }),
       });
     });

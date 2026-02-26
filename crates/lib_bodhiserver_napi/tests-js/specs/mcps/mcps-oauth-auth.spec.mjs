@@ -160,7 +160,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }] }),
       });
     });
@@ -303,7 +303,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }] }),
       });
       await app.config.submitAccessRequest();

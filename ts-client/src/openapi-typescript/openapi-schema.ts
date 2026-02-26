@@ -336,7 +336,7 @@ export interface paths {
         put?: never;
         /**
          * Create Access Request
-         * @description Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.
+         * @description Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.
          */
         post: operations["createAccessRequest"];
         delete?: never;
@@ -1332,6 +1332,8 @@ export interface components {
             flow_type: string;
             /** @description Current status */
             status: string;
+            /** @description Role requested by the app */
+            requested_role: string;
             /** @description Resources requested */
             requested: components["schemas"]["RequestedResources"];
             /** @description Tool type information with user instances */
@@ -1341,8 +1343,9 @@ export interface components {
         };
         /** @example {
          *       "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
+         *       "approved_role": "scope_user_user",
          *       "id": "550e8400-e29b-41d4-a716-446655440000",
-         *       "resource_scope": "scope_resource:550e8400-e29b-41d4-a716-446655440000",
+         *       "requested_role": "scope_user_user",
          *       "status": "approved"
          *     } */
         AccessRequestStatusResponse: {
@@ -1350,8 +1353,10 @@ export interface components {
             id: string;
             /** @description Current status: "draft", "approved", "denied", "failed" */
             status: string;
-            /** @description Resource scope (present when approved) */
-            resource_scope?: string | null;
+            /** @description Role requested by the app */
+            requested_role: string;
+            /** @description Role approved (present when approved) */
+            approved_role?: string | null;
             /** @description Access request scope (present when user-approved with tools) */
             access_request_scope?: string | null;
         };
@@ -1569,9 +1574,12 @@ export interface components {
          *             "toolset_type": "builtin-exa-search"
          *           }
          *         ]
-         *       }
+         *       },
+         *       "approved_role": "scope_user_user"
          *     } */
         ApproveAccessRequestBody: {
+            /** @description Role to grant for the approved request (scope_user_user or scope_user_power_user) */
+            approved_role: components["schemas"]["UserScope"];
             /** @description Approved resources with selections */
             approved: components["schemas"]["ApprovedResources"];
         };
@@ -2031,7 +2039,8 @@ export interface components {
          *             "toolset_type": "builtin-exa-search"
          *           }
          *         ]
-         *       }
+         *       },
+         *       "requested_role": "scope_user_user"
          *     } */
         CreateAccessRequestBody: {
             /** @description App client ID from Keycloak */
@@ -2040,6 +2049,8 @@ export interface components {
             flow_type: string;
             /** @description Redirect URL for result notification (required for redirect flow) */
             redirect_url?: string | null;
+            /** @description Role requested for the external app (scope_user_user or scope_user_power_user) */
+            requested_role: components["schemas"]["UserScope"];
             requested?: null | components["schemas"]["RequestedResources"];
         };
         /** @example {
@@ -2050,17 +2061,10 @@ export interface components {
         CreateAccessRequestResponse: {
             /** @description Access request ID */
             id: string;
+            /** @description Status (always "draft") */
+            status: string;
             /** @description Review URL for user to approve/deny */
             review_url: string;
-            /** @enum {string} */
-            status: "draft";
-        } | {
-            /** @description Access request ID */
-            id: string;
-            /** @description Resource scope granted by KC */
-            resource_scope: string;
-            /** @enum {string} */
-            status: "approved";
         };
         CreateAliasRequest: {
             alias: string;
@@ -3484,7 +3488,7 @@ export interface components {
             role: components["schemas"]["TokenScope"];
         };
         /** @enum {string} */
-        TokenScope: "scope_token_user" | "scope_token_power_user" | "scope_token_manager" | "scope_token_admin";
+        TokenScope: "scope_token_user" | "scope_token_power_user";
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
         ToolCapabilities: {
@@ -3854,7 +3858,7 @@ export interface components {
             auth_status: "api_token";
         });
         /** @enum {string} */
-        UserScope: "scope_user_user" | "scope_user_power_user" | "scope_user_manager" | "scope_user_admin";
+        UserScope: "scope_user_user" | "scope_user_power_user";
         /**
          * @description Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.
          * @enum {string}

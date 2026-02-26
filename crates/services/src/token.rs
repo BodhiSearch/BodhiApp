@@ -29,6 +29,13 @@ pub enum AccessRequestValidationError {
   )]
   #[error_meta(error_type = ErrorType::Forbidden)]
   AccessRequestIdMismatch { claim: String, expected: String },
+
+  #[error("Privilege escalation: approved role '{approved_role}' exceeds user's max grantable scope '{max_scope}'.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  PrivilegeEscalation {
+    approved_role: String,
+    max_scope: String,
+  },
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -86,6 +93,8 @@ pub struct ScopeClaims {
   pub scope: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub access_request_id: Option<String>,
+  #[serde(default)]
+  pub resource_access: HashMap<String, ResourceClaims>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

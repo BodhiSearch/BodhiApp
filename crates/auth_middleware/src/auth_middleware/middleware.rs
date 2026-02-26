@@ -1,4 +1,4 @@
-use crate::{app_status_or_default, AuthContext, DefaultTokenService, ResourceScope};
+use crate::{app_status_or_default, AuthContext, DefaultTokenService};
 use axum::{
   extract::{Request, State},
   http::{header::HOST, HeaderMap},
@@ -9,8 +9,8 @@ use axum::{
 use objs::{ApiError, AppError, ErrorType, RoleError, TokenScopeError, UserScopeError};
 use server_core::RouterState;
 use services::{
-  db::DbError, extract_claims, AppInstanceError, AppStatus, AuthServiceError, ScopeClaims,
-  TokenError, UserIdClaims,
+  db::DbError, extract_claims, AppInstanceError, AppStatus, AuthServiceError, TokenError,
+  UserIdClaims,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -23,44 +23,6 @@ pub const SESSION_KEY_USER_ID: &str = "user_id";
 pub const KEY_PREFIX_HEADER_BODHIAPP: &str = "X-BodhiApp-";
 
 const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
-
-/// Builds AuthContext from a bearer token and its scope.
-/// For ExternalApp, pass both the exchanged token and the original external app token.
-fn build_auth_context_from_bearer(
-  access_token: String,
-  resource_scope: ResourceScope,
-  app_client_id: Option<String>,
-  external_app_token: Option<String>,
-) -> AuthContext {
-  match resource_scope {
-    ResourceScope::Token(role) => {
-      let user_id = extract_claims::<ScopeClaims>(&access_token)
-        .map(|c| c.sub)
-        .unwrap_or_default();
-      AuthContext::ApiToken {
-        user_id,
-        role,
-        token: access_token,
-      }
-    }
-    ResourceScope::User(role) => {
-      let (user_id, access_request_id) =
-        if let Ok(scope_claims) = extract_claims::<ScopeClaims>(&access_token) {
-          (scope_claims.sub, scope_claims.access_request_id)
-        } else {
-          (String::new(), None)
-        };
-      AuthContext::ExternalApp {
-        user_id,
-        role,
-        token: access_token,
-        external_app_token: external_app_token.unwrap_or_default(),
-        app_client_id: app_client_id.unwrap_or_default(),
-        access_request_id,
-      }
-    }
-  }
-}
 
 /// Clears authentication data from the session.
 async fn clear_session_auth_data(session: &Session) {
@@ -179,28 +141,10 @@ pub async fn auth_middleware(
   }
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
-    // Check for bearer token in request header
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let bearer_token = header
-      .strip_prefix("Bearer ")
-      .ok_or_else(|| AuthError::InvalidToken("authorization header is malformed".to_string()))?
-      .trim()
-      .to_string();
-    let (access_token, resource_scope, app_client_id) =
-      token_service.validate_bearer_token(header).await?;
-    tracing::debug!(resource_scope = %resource_scope, "auth_middleware: validated bearer token");
-
-    // For ExternalApp, pass the original bearer token
-    let external_app_token =
-      matches!(resource_scope, ResourceScope::User(_)).then(|| bearer_token.clone());
-    let auth_context = build_auth_context_from_bearer(
-      access_token,
-      resource_scope,
-      app_client_id,
-      external_app_token,
-    );
+    let auth_context = token_service.validate_bearer_token(header).await?;
     req.extensions_mut().insert(auth_context);
     Ok(next.run(req).await)
   } else if is_same_origin(req.headers()) {
@@ -266,25 +210,11 @@ pub async fn optional_auth_middleware(
   }
 
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
-    // Bearer token
     debug!("optional_auth_middleware: validating bearer token");
     if let Ok(header) = header.to_str() {
-      let bearer_token = header.strip_prefix("Bearer ").map(|t| t.trim().to_string());
       match token_service.validate_bearer_token(header).await {
-        Ok((access_token, resource_scope, app_client_id)) => {
+        Ok(auth_context) => {
           debug!("optional_auth_middleware: bearer token validated successfully");
-          // For ExternalApp, pass the original bearer token
-          let external_app_token = if matches!(resource_scope, ResourceScope::User(_)) {
-            bearer_token
-          } else {
-            None
-          };
-          let auth_context = build_auth_context_from_bearer(
-            access_token,
-            resource_scope,
-            app_client_id,
-            external_app_token,
-          );
           req.extensions_mut().insert(auth_context);
         }
         Err(err) => {

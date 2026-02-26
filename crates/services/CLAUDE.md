@@ -199,11 +199,21 @@ The `McpService` (module: `mcp_service/`) manages Model Context Protocol server 
 
 ### Access Request Management Architecture
 
-The `AccessRequestService` (module: `access_request_service/`) handles user access control workflows:
+The `AccessRequestService` (module: `access_request_service/`) handles external app access control workflows with role-based authorization:
 
-- User access request creation, approval, and denial
-- Status tracking (pending, approved, denied)
-- Integration with `DbService` for persistence via `AccessRequestRepository`
+**Workflow**:
+1. External app calls `create_draft` with `requested_role` (e.g. `scope_user_user`) — all requests start as drafts requiring user review
+2. User reviews the request in the UI and either approves or denies
+3. On approval, `approve_request` takes `approved_role` (what the reviewer grants), registers consent with Keycloak, and persists the approval
+4. `AppAccessRequestRow` stores both `requested_role` (what the app asked for) and `approved_role` (what was granted, nullable until approved)
+
+**Role Fields**:
+- `requested_role: String` — role requested by the external app at draft creation time
+- `approved_role: Option<String>` — role granted by the reviewing user (NULL until approved)
+
+**Status Tracking**: `draft` → `approved` | `denied` | `failed`
+
+**Dependencies**: `DbService` (via `AccessRequestRepository`), `AuthService` (Keycloak consent registration), `AppInstanceService`, `TimeService`
 
 ### Queue-Based Metadata Extraction
 
@@ -274,11 +284,12 @@ Each external service has an offline stub implementation:
 
 ### AppInstanceService and Credential Encryption
 
-App registration info (OAuth client credentials) is stored in the `apps` SQLite table via `AppInstanceService`. The repository layer (`repository_app_instance.rs`) handles AES-GCM encryption transparently:
+App registration info (OAuth client credentials) is stored in the `apps` SQLite table via `AppInstanceService`. The `AppInstance` struct holds `client_id`, `client_secret`, `status`, `created_at`, and `updated_at`. The repository layer (`repository_app_instance.rs`) handles AES-GCM encryption transparently:
 
 - Client secrets are encrypted before INSERT and decrypted after SELECT — callers never handle ciphertext
 - Random salt and nonce per-encryption prevents replay attacks
-- `AppInstanceRow.client_secret` always holds plaintext after repository operations
+- `AppInstanceRow` fields: `client_id`, `client_secret` (plaintext after repository ops), `salt_client_secret`, `nonce_client_secret`, `app_status`, `created_at`, `updated_at`
+- `create_instance` takes `client_id`, `client_secret`, and `status` parameters
 - `AppInstanceError` variants: `NotFound`, `InvalidStatus(String)`, `InvalidTimestamp(i64)`, `Db(DbError)`
 - `AppStatus` parsing from DB strings is a hard error (returns `InvalidStatus`) — no silent fallback to `Setup`
 - `DbError::MultipleAppInstance` propagates as `AppInstanceError::Db(DbError::MultipleAppInstance)` (error code: `db_error-multiple_app_instance`)

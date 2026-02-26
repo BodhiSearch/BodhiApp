@@ -67,6 +67,18 @@ impl ResourceRole {
       .collect()
   }
 
+  /// Returns the maximum `UserScope` that this resource role is allowed to grant.
+  ///
+  /// - `PowerUser`, `Manager`, `Admin` → `UserScope::PowerUser`
+  /// - `User` → `UserScope::User`
+  pub fn max_user_scope(&self) -> UserScope {
+    if self >= &ResourceRole::PowerUser {
+      UserScope::PowerUser
+    } else {
+      UserScope::User
+    }
+  }
+
   /// Parse the highest role from a slice of resource role strings
   /// Returns the highest valid role found, or an error if no valid roles are present
   pub fn from_resource_role<T: AsRef<str>>(resource_roles: &[T]) -> Result<Self, RoleError> {
@@ -188,6 +200,15 @@ mod tests {
 
     // Test less than or equal (inverse of greater than, or equal)
     assert_eq!(left <= right, !is_greater || left == right);
+  }
+
+  #[rstest]
+  #[case(ResourceRole::User, UserScope::User)]
+  #[case(ResourceRole::PowerUser, UserScope::PowerUser)]
+  #[case(ResourceRole::Manager, UserScope::PowerUser)]
+  #[case(ResourceRole::Admin, UserScope::PowerUser)]
+  fn test_max_user_scope(#[case] role: ResourceRole, #[case] expected: UserScope) {
+    assert_eq!(expected, role.max_user_scope());
   }
 
   #[rstest]

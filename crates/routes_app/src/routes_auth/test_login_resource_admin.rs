@@ -93,7 +93,7 @@ async fn setup_app_service_resource_admin(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::ResourceAdmin,
       created_at: chrono::Utc::now(),
       updated_at: chrono::Utc::now(),

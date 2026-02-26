@@ -145,7 +145,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
       });
     });
@@ -225,7 +225,9 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
    * Test Matrix Case 2:
    * Access Request: WITH toolsets (approved)
    * OAuth Request: WITHOUT access_request_scope
-   * Expected: Token lacks scope -> List returns empty
+   * Expected: Token lacks access_request_scope -> ExternalApp auth fails with 401
+   * (Without access_request_scope, the server cannot link the token to an approved access request
+   * and cannot determine the ExternalApp role, resulting in authentication failure)
    */
   test('App WITH toolset scope + OAuth WITHOUT toolset scope returns empty list', async ({
     page,
@@ -263,7 +265,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ toolset_types: [{ toolset_type: TOOLSET_TYPE }] }),
       });
     });
@@ -293,49 +295,25 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
-    await test.step('Verify toolset list and execute denial', async () => {
+    await test.step('Verify toolset list is rejected without access_request_scope', async () => {
       await app.rest.navigateTo();
 
-      // Test: GET /toolsets with OAuth token (no access_request_scope)
-      // The list endpoint returns all toolsets for the user (no scope filtering)
-      // Scope enforcement happens at the execute endpoint via toolset_auth_middleware
+      // Test: GET /toolsets with OAuth token that lacks access_request_scope
+      // Without access_request_scope, the server cannot link the token to an approved access request,
+      // so ExternalApp authentication fails with 401.
       await app.rest.sendRequest({
         method: 'GET',
         url: '/bodhi/v1/toolsets',
       });
 
-      expect(await app.rest.getResponseStatus()).toBe(200);
-      const data = await app.rest.getResponse();
-      expect(data.toolsets).toBeDefined();
-      expect(Array.isArray(data.toolsets)).toBe(true);
-
-      // User can see their toolsets in the list (list endpoint doesn't filter by scope)
-      // The toolset was created via session auth and is owned by this user
-      const exaToolset = data.toolsets.find((t) => t.toolset_type === TOOLSET_TYPE);
-      expect(exaToolset).toBeTruthy();
-
-      // But executing the toolset should fail without access_request_scope
-      await app.rest.sendRequest({
-        method: 'POST',
-        url: `/bodhi/v1/toolsets/${exaToolset.id}/tools/search/execute`,
-
-        body: JSON.stringify({
-          params: {
-            query: 'test query',
-            num_results: 1,
-          },
-        }),
-      });
-
-      // Without access_request_scope, execute should be denied
-      expect(await app.rest.getResponseStatus()).not.toBe(200);
+      expect(await app.rest.getResponseStatus()).toBe(401);
     });
   });
 
   /**
    * Test Matrix Case 3:
-   * Access Request: WITHOUT toolsets (auto-approved)
-   * OAuth Request: WITH non-existent scope
+   * Access Request: WITHOUT toolsets (draft → review → approve)
+   * OAuth Request: WITH non-existent scope injected
    * Expected: Keycloak error (invalid_scope)
    */
   test('App WITHOUT toolset scope + OAuth WITH toolset scope returns invalid_scope error', async ({
@@ -360,25 +338,27 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: null,
       });
     });
 
-    await test.step('Submit access request (auto-approve) and inject invalid scope', async () => {
-      // Two-step flow: submit access request (auto-approve), wait for scopes
+    await test.step('Submit access request and approve via review page', async () => {
       await app.config.submitAccessRequest();
-      await app.config.waitForLoginReady();
+      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
 
-      // Inject a non-existent scope into the resolved scopes
-      const currentScope = await app.config.getScopeValue();
-      await app.config.setScopes(currentScope + ' scope_ar_nonexistent');
+      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      await reviewPage.approve();
+
+      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+      await app.accessCallback.waitForLoaded();
     });
 
-    await test.step('Login and verify Keycloak rejects invalid scope', async () => {
-      await app.config.clickLogin();
+    await test.step('Inject invalid scope and verify Keycloak rejects it', async () => {
+      const currentScope = await app.accessCallback.getScopeValue();
+      await app.accessCallback.setScopes(currentScope + ' scope_ar_nonexistent');
+      await app.accessCallback.clickLogin();
 
-      // Keycloak should reject this with invalid_scope error
       const errorResult = await app.oauth.expectOAuthError('invalid_scope');
       expect(errorResult.error).toBe('invalid_scope');
     });
@@ -386,7 +366,7 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
 
   /**
    * Test Matrix Case 4:
-   * Access Request: WITHOUT toolsets (auto-approved)
+   * Access Request: WITHOUT toolsets (draft → review → approve)
    * OAuth Request: WITHOUT extra scope
    * Expected: Token lacks scope -> List returns empty
    */
@@ -413,16 +393,22 @@ test.describe('OAuth Token + Toolset Scope Combinations', { tag: ['@oauth', '@to
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: null,
       });
     });
 
-    await test.step('Submit access request (auto-approve) and complete login', async () => {
-      // Two-step flow: submit access request (auto-approve), wait for scopes, then login
+    await test.step('Submit access request, approve, and complete login', async () => {
       await app.config.submitAccessRequest();
-      await app.config.waitForLoginReady();
-      await app.config.clickLogin();
+      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+
+      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      await reviewPage.approve();
+
+      await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+      await app.accessCallback.waitForLoaded();
+      await app.accessCallback.clickLogin();
+      // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
       await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
     });
 
@@ -509,15 +495,22 @@ test.describe(
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
           redirectUri,
-          scope: 'openid profile email scope_user_user',
+          scope: 'openid profile email',
           requested: null,
         });
       });
 
-      await test.step('Submit access request (auto-approve) and complete login', async () => {
+      await test.step('Submit access request, approve, and complete login', async () => {
         await app.config.submitAccessRequest();
-        await app.config.waitForLoginReady();
-        await app.config.clickLogin();
+        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+
+        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        await reviewPage.approve();
+
+        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+        await app.accessCallback.waitForLoaded();
+        await app.accessCallback.clickLogin();
+        // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 

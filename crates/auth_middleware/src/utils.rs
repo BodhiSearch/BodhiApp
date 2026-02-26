@@ -45,7 +45,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let svc = DefaultAppInstanceService::new(Arc::new(test_db_service));
     svc
-      .create_instance("test-client", "test-secret", "", expected.clone())
+      .create_instance("test-client", "test-secret", expected.clone())
       .await?;
     let svc: Arc<dyn AppInstanceService> = Arc::new(svc);
     assert_eq!(expected, app_status_or_default(&svc).await);

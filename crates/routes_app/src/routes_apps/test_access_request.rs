@@ -17,8 +17,8 @@ use server_core::{
 use services::{
   db::{AppAccessRequestRow, DbService, ToolsetRow},
   test_utils::{AppServiceStubBuilder, FrozenTimeService},
-  DefaultAccessRequestService, DefaultAppInstanceService, DefaultToolService, MockAuthService,
-  MockExaService, RegisterAccessRequestConsentResponse,
+  DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
+  RegisterAccessRequestConsentResponse,
 };
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -51,13 +51,10 @@ async fn build_test_harness(mock_auth: MockAuthService) -> anyhow::Result<TestHa
   builder
     .with_app_instance(services::AppInstance::test_default())
     .await;
-  let app_instance_service: Arc<dyn services::AppInstanceService> =
-    Arc::new(DefaultAppInstanceService::new(db_service.clone()));
   let access_request_service: Arc<dyn services::AccessRequestService> =
     Arc::new(DefaultAccessRequestService::new(
       db_service.clone(),
       auth_service.clone(),
-      app_instance_service.clone(),
       time_service.clone(),
       "http://localhost:1135".to_string(),
     ));
@@ -86,6 +83,7 @@ async fn seed_draft_request(
   request_id: &str,
   flow_type: &str,
   redirect_uri: Option<&str>,
+  requested_role: &str,
 ) -> anyhow::Result<AppAccessRequestRow> {
   let now = chrono::Utc::now().timestamp();
   let row = AppAccessRequestRow {
@@ -99,7 +97,8 @@ async fn seed_draft_request(
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: None,
     user_id: None,
-    resource_scope: None,
+    requested_role: requested_role.to_string(),
+    approved_role: None,
     access_request_scope: None,
     error_message: None,
     expires_at: now + 600,
@@ -170,7 +169,6 @@ async fn test_approve_access_request_success(
     .times(1)
     .returning(move |_, _, _, _| {
       Ok(RegisterAccessRequestConsentResponse {
-        scope: "scope_resource:ar-approve-ok".to_string(),
         access_request_id: "ar-approve-ok".to_string(),
         access_request_scope: "scope_access_request:ar-approve-ok".to_string(),
       })
@@ -182,6 +180,7 @@ async fn test_approve_access_request_success(
     request_id,
     flow_type,
     redirect_url,
+    "scope_user_user",
   )
   .await?;
   seed_toolset_instance(
@@ -201,6 +200,7 @@ async fn test_approve_access_request_success(
     .with_state(harness.state);
 
   let body = json!({
+    "approved_role": "scope_user_user",
     "approved": {
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
@@ -256,7 +256,14 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "popup", None).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_user",
+  )
+  .await?;
   // No toolset instance seeded for this user -> "not owned"
 
   let router = Router::new()
@@ -267,6 +274,7 @@ async fn test_approve_access_request_instance_not_owned() -> anyhow::Result<()> 
     .with_state(harness.state);
 
   let body = json!({
+    "approved_role": "scope_user_user",
     "approved": {
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
@@ -314,7 +322,14 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "popup", None).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_user",
+  )
+  .await?;
   seed_toolset_instance(
     harness.db_service.as_ref(),
     instance_id,
@@ -332,6 +347,7 @@ async fn test_approve_access_request_instance_not_enabled() -> anyhow::Result<()
     .with_state(harness.state);
 
   let body = json!({
+    "approved_role": "scope_user_user",
     "approved": {
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
@@ -379,7 +395,14 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
 
   let mock_auth = MockAuthService::default();
   let harness = build_test_harness(mock_auth).await?;
-  seed_draft_request(harness.db_service.as_ref(), request_id, "popup", None).await?;
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_user",
+  )
+  .await?;
   seed_toolset_instance(
     harness.db_service.as_ref(),
     instance_id,
@@ -397,6 +420,7 @@ async fn test_approve_access_request_instance_no_api_key() -> anyhow::Result<()>
     .with_state(harness.state);
 
   let body = json!({
+    "approved_role": "scope_user_user",
     "approved": {
       "toolsets": [{
         "toolset_type": "builtin-exa-search",
@@ -454,6 +478,7 @@ async fn test_deny_access_request_success(
     request_id,
     flow_type,
     redirect_url,
+    "scope_user_user",
   )
   .await?;
 
@@ -491,6 +516,215 @@ async fn test_deny_access_request_success(
       "redirect_url should be absent for popup flow"
     );
   }
+
+  Ok(())
+}
+
+// ============================================================================
+// approve_access_request_handler - error: privilege escalation (user grants power_user)
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_privilege_escalation_user_grants_power_user() -> anyhow::Result<()> {
+  let request_id = "ar-priv-esc";
+  let user_id = "test-user-6";
+
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+  // Request asks for power_user scope
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_power_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_power_user",
+    "approved": {
+      "toolsets": [],
+      "mcps": []
+    }
+  });
+
+  // User has resource_user role — max grantable is scope_user_user, cannot grant scope_user_power_user
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::User,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "app_access_request_error-privilege_escalation",
+    body["error"]["code"].as_str().unwrap()
+  );
+
+  Ok(())
+}
+
+// ============================================================================
+// approve_access_request_handler - success: power_user downgrades scope_user_power_user to scope_user_user
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result<()> {
+  let request_id = "ar-downgrade";
+  let user_id = "test-user-7";
+  let instance_id = "downgrade-instance";
+
+  let mut mock_auth = MockAuthService::default();
+  mock_auth
+    .expect_register_access_request_consent()
+    .times(1)
+    .returning(move |_, _, _, _| {
+      Ok(RegisterAccessRequestConsentResponse {
+        access_request_id: "ar-downgrade".to_string(),
+        access_request_scope: "scope_access_request:ar-downgrade".to_string(),
+      })
+    });
+
+  let harness = build_test_harness(mock_auth).await?;
+  // Request asks for power_user scope
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_power_user",
+  )
+  .await?;
+  seed_toolset_instance(
+    harness.db_service.as_ref(),
+    instance_id,
+    user_id,
+    true,
+    true,
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_user",
+    "approved": {
+      "toolsets": [{
+        "toolset_type": "builtin-exa-search",
+        "status": "approved",
+        "instance": {"id": instance_id}
+      }]
+    }
+  });
+
+  // User has resource_power_user role — max grantable is scope_user_power_user
+  // Approving scope_user_user (downgrade) is valid
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::PowerUser,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::OK, response.status());
+
+  let result = response.json::<AccessRequestActionResponse>().await?;
+  assert_eq!("approved", result.status);
+
+  Ok(())
+}
+
+// ============================================================================
+// approve_access_request_handler - error: approved_role exceeds requested_role
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_approve_privilege_escalation_approved_exceeds_requested() -> anyhow::Result<()> {
+  let request_id = "ar-priv-esc-exceed";
+  let user_id = "test-user-8";
+
+  let mock_auth = MockAuthService::default();
+  let harness = build_test_harness(mock_auth).await?;
+  // Request only asks for scope_user_user
+  seed_draft_request(
+    harness.db_service.as_ref(),
+    request_id,
+    "popup",
+    None,
+    "scope_user_user",
+  )
+  .await?;
+
+  let router = Router::new()
+    .route(
+      ENDPOINT_ACCESS_REQUESTS_APPROVE,
+      put(approve_access_request_handler),
+    )
+    .with_state(harness.state);
+
+  let body = json!({
+    "approved_role": "scope_user_power_user",
+    "approved": {
+      "toolsets": [],
+      "mcps": []
+    }
+  });
+
+  // Approver has PowerUser role (can grant up to power_user), but approved_role exceeds requested_role
+  let request = axum::http::Request::builder()
+    .method("PUT")
+    .uri(format!("/bodhi/v1/access-requests/{}/approve", request_id))
+    .header("Content-Type", "application/json")
+    .body(Body::from(serde_json::to_string(&body)?))?
+    .with_auth_context(AuthContext::test_session_with_token(
+      user_id,
+      "user@test.com",
+      ResourceRole::PowerUser,
+      "dummy-token",
+    ));
+
+  let response = router.oneshot(request).await?;
+  assert_eq!(StatusCode::FORBIDDEN, response.status());
+
+  let body = response.json::<Value>().await?;
+  assert_eq!(
+    "app_access_request_error-privilege_escalation",
+    body["error"]["code"].as_str().unwrap()
+  );
 
   Ok(())
 }

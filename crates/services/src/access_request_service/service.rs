@@ -4,10 +4,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::access_request_service::error::{AccessRequestError, Result};
-use crate::app_instance_service::AppInstanceError;
 use crate::auth_service::AuthService;
 use crate::db::{AppAccessRequestRow, DbService, TimeService};
-use crate::AppInstanceService;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -20,6 +18,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     redirect_uri: Option<String>,
     tools_requested: Vec<objs::ToolsetTypeRequest>,
     mcp_servers_requested: Vec<objs::McpServerRequest>,
+    requested_role: String,
   ) -> Result<AppAccessRequestRow>;
 
   /// Get access request by ID
@@ -33,6 +32,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
     mcp_approvals: Vec<objs::McpApproval>,
+    approved_role: String,
   ) -> Result<AppAccessRequestRow>;
 
   /// Deny access request
@@ -46,7 +46,6 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
 pub struct DefaultAccessRequestService {
   db_service: Arc<dyn DbService>,
   auth_service: Arc<dyn AuthService>,
-  app_instance_service: Arc<dyn AppInstanceService>,
   time_service: Arc<dyn TimeService>,
   frontend_url: String,
 }
@@ -55,14 +54,12 @@ impl DefaultAccessRequestService {
   pub fn new(
     db_service: Arc<dyn DbService>,
     auth_service: Arc<dyn AuthService>,
-    app_instance_service: Arc<dyn AppInstanceService>,
     time_service: Arc<dyn TimeService>,
     frontend_url: String,
   ) -> Self {
     Self {
       db_service,
       auth_service,
-      app_instance_service,
       time_service,
       frontend_url,
     }
@@ -84,7 +81,11 @@ impl DefaultAccessRequestService {
         lines.push(format!("- MCP: {}", approval.url));
       }
     }
-    lines.join("\n")
+    if lines.is_empty() {
+      "Access approved".to_string()
+    } else {
+      lines.join("\n")
+    }
   }
 }
 
@@ -97,6 +98,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     redirect_uri: Option<String>,
     toolsets_requested: Vec<objs::ToolsetTypeRequest>,
     mcp_servers_requested: Vec<objs::McpServerRequest>,
+    requested_role: String,
   ) -> Result<AppAccessRequestRow> {
     if flow_type != "redirect" && flow_type != "popup" {
       return Err(AccessRequestError::InvalidFlowType(flow_type));
@@ -125,67 +127,28 @@ impl AccessRequestService for DefaultAccessRequestService {
       }
     });
 
-    let is_auto_approve = toolsets_requested.is_empty() && mcp_servers_requested.is_empty();
+    let row = AppAccessRequestRow {
+      id: access_request_id,
+      app_client_id,
+      app_name: None,
+      app_description: None,
+      flow_type,
+      redirect_uri: modified_redirect_uri,
+      status: "draft".to_string(),
+      requested: requested_json,
+      approved: None,
+      user_id: None,
+      requested_role,
+      approved_role: None,
+      access_request_scope: None,
+      error_message: None,
+      expires_at: expires_at.timestamp(),
+      created_at: now.timestamp(),
+      updated_at: now.timestamp(),
+    };
 
-    if is_auto_approve {
-      // Auto-approve flow: call auth server to register resource access
-      // This adds the resource's scope as an optional scope to the app client
-      let instance = self
-        .app_instance_service
-        .get_instance()
-        .await?
-        .ok_or(AppInstanceError::NotFound)?;
-      let register_response = self
-        .auth_service
-        .register_resource_access(&instance.client_id, &instance.client_secret, &app_client_id)
-        .await?;
-      let resource_scope = register_response.scope;
-
-      let row = AppAccessRequestRow {
-        id: access_request_id,
-        app_client_id,
-        app_name: None,
-        app_description: None,
-        flow_type,
-        redirect_uri: modified_redirect_uri,
-        status: "approved".to_string(),
-        requested: requested_json,
-        approved: None,
-        user_id: None,
-        resource_scope: Some(resource_scope),
-        access_request_scope: None, // NULL for auto-approve
-        error_message: None,
-        expires_at: expires_at.timestamp(),
-        created_at: now.timestamp(),
-        updated_at: now.timestamp(),
-      };
-
-      let created_row = self.db_service.create(&row).await?;
-      Ok(created_row)
-    } else {
-      // User-approve flow: create draft
-      let row = AppAccessRequestRow {
-        id: access_request_id,
-        app_client_id,
-        app_name: None,
-        app_description: None,
-        flow_type,
-        redirect_uri: modified_redirect_uri,
-        status: "draft".to_string(),
-        requested: requested_json,
-        approved: None,
-        user_id: None,
-        resource_scope: None,
-        access_request_scope: None,
-        error_message: None,
-        expires_at: expires_at.timestamp(),
-        created_at: now.timestamp(),
-        updated_at: now.timestamp(),
-      };
-
-      let created_row = self.db_service.create(&row).await?;
-      Ok(created_row)
-    }
+    let created_row = self.db_service.create(&row).await?;
+    Ok(created_row)
   }
 
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequestRow>> {
@@ -212,6 +175,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
     mcp_approvals: Vec<objs::McpApproval>,
+    approved_role: String,
   ) -> Result<AppAccessRequestRow> {
     let row = self
       .get_request(id)
@@ -249,15 +213,14 @@ impl AccessRequestService for DefaultAccessRequestService {
     }))
     .map_err(|e| AccessRequestError::InvalidStatus(format!("JSON serialization failed: {}", e)))?;
 
-    // Update database with approval
     let updated_row = self
       .db_service
       .update_approval(
         id,
         user_id,
         &approved_json,
-        &kc_response.scope,
-        Some(kc_response.access_request_scope.clone()),
+        &approved_role,
+        &kc_response.access_request_scope,
       )
       .await?;
 
@@ -288,3 +251,7 @@ impl AccessRequestService for DefaultAccessRequestService {
     )
   }
 }
+
+#[cfg(test)]
+#[path = "test_access_request_service.rs"]
+mod test_access_request_service;

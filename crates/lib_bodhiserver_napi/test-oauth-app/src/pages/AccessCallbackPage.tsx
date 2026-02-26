@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label } from '@/components/ui';
-import { ScopeDisplay } from '@/components/ScopeDisplay';
 import { getAccessRequestStatus } from '@/lib/api';
 import { loadConfig, saveConfig } from '@/lib/storage';
 import {
@@ -17,7 +16,6 @@ export function AccessCallbackPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resourceScope, setResourceScope] = useState<string | null>(null);
   const [accessRequestScope, setAccessRequestScope] = useState<string | null>(null);
   const [scope, setScope] = useState('');
   const [ready, setReady] = useState(false);
@@ -46,26 +44,18 @@ export function AccessCallbackPage() {
         const data = await getAccessRequestStatus(config.bodhiServerUrl, id, config.clientId);
 
         if (data.status === 'approved') {
-          const approvedScopes: string[] = [];
-          if (data.resource_scope) approvedScopes.push(data.resource_scope);
-          if (data.access_request_scope) approvedScopes.push(data.access_request_scope);
-
           let updatedScope = config.scope;
-          if (approvedScopes.length > 0) {
-            updatedScope = config.scope + ' ' + approvedScopes.join(' ');
+          if (data.access_request_scope) {
+            updatedScope = config.scope + ' ' + data.access_request_scope;
           }
 
-          // Update config
-          config.approvedScopes = approvedScopes;
           config.accessRequestId = id;
           saveConfig(config);
 
-          setResourceScope(data.resource_scope || null);
           setAccessRequestScope(data.access_request_scope || null);
           setScope(updatedScope);
           setReady(true);
 
-          // Clear URL params
           window.history.replaceState({}, document.title, window.location.pathname);
         } else if (data.status === 'denied') {
           setError('Access request was denied.');
@@ -143,10 +133,15 @@ export function AccessCallbackPage() {
             <CardTitle>Access Request Approved</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ScopeDisplay
-              resourceScope={resourceScope}
-              accessRequestScope={accessRequestScope}
-            />
+            {accessRequestScope && (
+              <div
+                className="rounded-md border border-success/30 bg-success/5 p-4"
+                data-test-access-request-scope={accessRequestScope}
+              >
+                <span className="text-sm font-medium">Access Request Scope: </span>
+                <span className="text-sm">{accessRequestScope}</span>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="scope">Scope (editable)</Label>

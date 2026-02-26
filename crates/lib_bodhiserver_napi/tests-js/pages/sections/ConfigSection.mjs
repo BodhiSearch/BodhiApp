@@ -7,6 +7,7 @@ export class ConfigSection {
     clientId: '[data-testid="input-client-id"]',
     redirectUri: '[data-testid="input-redirect-uri"]',
     scope: '[data-testid="input-scope"]',
+    requestedRole: '[data-testid="select-requested-role"]',
     requested: '[data-testid="input-requested"]',
     confidentialToggle: '[data-testid="toggle-confidential"]',
     clientSecret: '[data-testid="input-client-secret"]',
@@ -33,6 +34,7 @@ export class ConfigSection {
     clientId,
     redirectUri,
     scope,
+    requestedRole,
     requested,
   }) {
     await this.page.fill(this.selectors.bodhiServerUrl, bodhiServerUrl);
@@ -41,7 +43,14 @@ export class ConfigSection {
     await this.page.fill(this.selectors.clientId, clientId);
     await this.page.fill(this.selectors.redirectUri, redirectUri);
     await this.page.fill(this.selectors.scope, scope);
+    if (requestedRole) {
+      await this.setRequestedRole(requestedRole);
+    }
     await this.page.fill(this.selectors.requested, requested || '');
+  }
+
+  async setRequestedRole(value) {
+    await this.page.selectOption(this.selectors.requestedRole, value);
   }
 
   async submitAccessRequest() {
@@ -64,12 +73,6 @@ export class ConfigSection {
 
   async getScopeValue() {
     return await this.page.inputValue(this.selectors.scope);
-  }
-
-  async getResourceScope() {
-    return await this.page
-      .locator('[data-test-resource-scope]')
-      .getAttribute('data-test-resource-scope');
   }
 
   async getAccessRequestScope() {

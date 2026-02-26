@@ -19,11 +19,11 @@ use server_core::{
 };
 use services::{
   extract_claims,
-  test_utils::{test_db_service, AppServiceStubBuilder, SettingServiceStub},
+  test_utils::{test_db_service_with_temp_dir, AppServiceStubBuilder, SettingServiceStub},
   AppInstanceService, AppStatus, Claims, DefaultAppInstanceService, KeycloakAuthService,
   BODHI_AUTH_REALM, BODHI_AUTH_URL,
 };
-use std::{collections::HashMap, env, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 use tower::ServiceExt;
 
@@ -68,11 +68,7 @@ fn auth_client(auth_server_config: &AuthServerConfig) -> AuthServerTestClient {
   AuthServerTestClient::new(auth_server_config.clone())
 }
 
-async fn create_test_state(
-  config: &AuthServerConfig,
-  resource_client_id: &str,
-  resource_client_secret: &str,
-) -> anyhow::Result<Arc<DefaultRouterState>> {
+async fn create_test_state(config: &AuthServerConfig) -> anyhow::Result<Arc<DefaultRouterState>> {
   let setting_service = SettingServiceStub::with_settings(HashMap::from([
     (BODHI_AUTH_URL.to_string(), config.auth_server_url.clone()),
     (BODHI_AUTH_REALM.to_string(), config.realm.clone()),
@@ -86,16 +82,16 @@ async fn create_test_state(
 
   let temp_dir = TempDir::new()?;
   let session_db_path = temp_dir.path().join("session.db");
+  let shared_temp_dir = Arc::new(temp_dir);
 
   let mut app_service_builder = AppServiceStubBuilder::default();
-  let test_db = test_db_service(temp_dir).await;
+  let test_db = test_db_service_with_temp_dir(shared_temp_dir).await;
   let db_svc: Arc<dyn services::db::DbService> = Arc::new(test_db);
   let app_instance_svc = DefaultAppInstanceService::new(db_svc.clone());
   app_instance_svc
     .create_instance(
-      resource_client_id,
-      resource_client_secret,
-      &format!("scope_{}", resource_client_id),
+      &config.resource_client_id,
+      &config.resource_client_secret,
       AppStatus::Ready,
     )
     .await?;
@@ -128,10 +124,12 @@ fn auth_server_config() -> AuthServerConfig {
   AuthServerConfig {
     auth_server_url: std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL must be set"),
     realm: std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM must be set"),
-    dev_console_client_id: std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_ID")
-      .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_ID must be set"),
-    dev_console_client_secret: std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET")
-      .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET must be set"),
+    resource_client_id: std::env::var("INTEG_TEST_RESOURCE_CLIENT_ID")
+      .expect("INTEG_TEST_RESOURCE_CLIENT_ID must be set"),
+    resource_client_secret: std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
+      .expect("INTEG_TEST_RESOURCE_CLIENT_SECRET must be set"),
+    app_client_id: std::env::var("INTEG_TEST_APP_CLIENT_ID")
+      .expect("INTEG_TEST_APP_CLIENT_ID must be set"),
   }
 }
 
@@ -152,37 +150,86 @@ async fn test_cross_client_token_exchange_success(
   test_user: TestUser,
   auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
+  let state = create_test_state(auth_server_config).await?;
 
-  // Step 2: Create test state with dynamic client credentials
-  let resource_client_id = dynamic_clients.resource_client.client_id;
-  let resource_client_secret = dynamic_clients
-    .resource_client
-    .client_secret
-    .as_ref()
-    .unwrap();
-  let state = create_test_state(
-    auth_server_config,
-    &resource_client_id,
-    resource_client_secret,
-  )
-  .await?;
-  let user_token = auth_client
-    .get_app_user_token_with_scope(
-      &dynamic_clients.app_client.client_id,
+  // Create a draft access request in DB
+  let db_service = state.app_service().db_service();
+  let access_request_id = uuid::Uuid::new_v4().to_string();
+  let now = chrono::Utc::now().timestamp();
+  let expires_at = now + 600;
+  let row = services::db::AppAccessRequestRow {
+    id: access_request_id.clone(),
+    app_client_id: auth_server_config.app_client_id.clone(),
+    app_name: None,
+    app_description: None,
+    flow_type: "popup".to_string(),
+    redirect_uri: None,
+    status: "draft".to_string(),
+    requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
+    approved: None,
+    user_id: None,
+    requested_role: "scope_user_user".to_string(),
+    approved_role: None,
+    access_request_scope: None,
+    error_message: None,
+    expires_at,
+    created_at: now,
+    updated_at: now,
+  };
+  db_service.create(&row).await?;
+
+  // Register the consent with Keycloak using a token from the resource client
+  // KC requires the token to be from the resource client (not the app client)
+  let resource_user_token = auth_client
+    .get_user_token(
+      &auth_server_config.resource_client_id,
+      &auth_server_config.resource_client_secret,
       &test_user.username,
       &test_user.password,
-      &[
-        "openid",
-        "email",
-        "profile",
-        "roles",
-        "scope_user_user",
-        &dynamic_clients.resource_scope_name,
-      ],
+      &["openid", "email", "profile", "roles"],
     )
     .await?;
+
+  let auth_service = state.app_service().auth_service();
+  let kc_response = auth_service
+    .register_access_request_consent(
+      &resource_user_token,
+      &auth_server_config.app_client_id,
+      &access_request_id,
+      "Access approved",
+    )
+    .await?;
+
+  // Approve the access request in DB using the KC-returned scope
+  let access_request_scope = kc_response.access_request_scope;
+  let approved_json = r#"{"toolsets":[],"mcps":[]}"#;
+  db_service
+    .update_approval(
+      &access_request_id,
+      &test_user.user_id,
+      approved_json,
+      "scope_user_user",
+      &access_request_scope,
+    )
+    .await?;
+
+  // Get bearer token WITH scope_access_request:<uuid> — KC injects aud and access_request_id claim
+  let scopes = vec![
+    "openid",
+    "email",
+    "profile",
+    "roles",
+    access_request_scope.as_str(),
+  ];
+  let user_token = auth_client
+    .get_app_user_token_with_scope(
+      &auth_server_config.app_client_id,
+      &test_user.username,
+      &test_user.password,
+      &scopes,
+    )
+    .await?;
+
   let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
@@ -191,7 +238,6 @@ async fn test_cross_client_token_exchange_success(
     .body(Body::empty())?;
   let response = router.oneshot(request).await?;
 
-  // Step 5: Verify successful token exchange
   assert_eq!(
     StatusCode::OK,
     response.status(),
@@ -203,84 +249,21 @@ async fn test_cross_client_token_exchange_success(
   );
 
   let body: TestTokenResponse = response.json().await?;
-  assert!(
-    body.token.is_some(),
-    "Expected X-Resource-Token header to be set"
-  );
-  assert!(
-    body.role.is_some(),
-    "Expected X-Resource-Scope header to be set"
-  );
+  assert!(body.token.is_some(), "Expected token to be set");
 
-  // Step 6: Decode JWT and assert claims
   let token = body.token.as_ref().unwrap();
   let claims = extract_claims::<Claims>(token)?;
   assert_eq!(
     claims.preferred_username, test_user.username,
     "JWT preferred_username claim should match test user"
   );
-  assert_eq!(claims.azp, resource_client_id);
-  let mut scopes = claims.scope.split_whitespace().collect::<Vec<&str>>();
-  scopes.sort();
-  let mut expected_scope = vec!["email", "openid", "profile", "roles", "scope_user_user"];
-  expected_scope.sort();
-  assert_eq!(scopes, expected_scope, "JWT scope should match expected");
-  Ok(())
-}
+  assert_eq!(claims.azp, auth_server_config.resource_client_id);
+  assert_eq!(
+    Some("scope_user_user".to_string()),
+    body.role,
+    "Expected role scope_user_user from approved access request"
+  );
 
-#[rstest]
-#[tokio::test]
-#[anyhow_trace]
-async fn test_cross_client_token_exchange_no_user_scope(
-  auth_server_config: &AuthServerConfig,
-  test_user: TestUser,
-  auth_client: AuthServerTestClient,
-) -> anyhow::Result<()> {
-  // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
-
-  // Step 2: Create test state with dynamic client credentials
-  let resource_client_id = dynamic_clients.resource_client.client_id;
-  let resource_client_secret = dynamic_clients
-    .resource_client
-    .client_secret
-    .as_ref()
-    .unwrap();
-  let state = create_test_state(
-    auth_server_config,
-    &resource_client_id,
-    resource_client_secret,
-  )
-  .await?;
-  let user_token = auth_client
-    .get_app_user_token_with_scope(
-      &dynamic_clients.app_client.client_id,
-      &test_user.username,
-      &test_user.password,
-      &[
-        "openid",
-        "email",
-        "profile",
-        "roles",
-        &dynamic_clients.resource_scope_name,
-      ],
-    )
-    .await?;
-
-  // Step 4: Test token exchange - should succeed with role: None
-  let router = create_test_router(state);
-  let request = Request::builder()
-    .method("GET")
-    .uri("/test")
-    .header("Authorization", format!("Bearer {}", user_token))
-    .body(Body::empty())?;
-  let response = router.oneshot(request).await?;
-
-  // Step 5: Verify success response with role: None
-  assert_eq!(StatusCode::OK, response.status());
-  let body: TestTokenResponse = response.json().await?;
-  assert!(body.token.is_some());
-  assert_eq!(None, body.role);
   Ok(())
 }
 
@@ -292,28 +275,18 @@ async fn test_cross_client_token_exchange_auth_service_error(
   test_user: TestUser,
   auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  // Step 1: Setup dynamic clients
-  let dynamic_clients = auth_client.setup_dynamic_clients(&test_user).await?;
+  let state = create_test_state(auth_server_config).await?;
 
-  // Step 2: Create test state with dynamic client credentials
-  let state = create_test_state(
-    auth_server_config,
-    &dynamic_clients.resource_client.client_id,
-    dynamic_clients
-      .resource_client
-      .client_secret
-      .as_ref()
-      .unwrap(),
-  )
-  .await?;
+  // Get token WITHOUT scope_access_request:* → KC does NOT inject aud → audience check fails
   let user_token = auth_client
     .get_app_user_token_with_scope(
-      &dynamic_clients.app_client.client_id,
+      &auth_server_config.app_client_id,
       &test_user.username,
       &test_user.password,
-      &[],
+      &["openid", "email", "profile", "roles"],
     )
     .await?;
+
   let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
@@ -321,10 +294,16 @@ async fn test_cross_client_token_exchange_auth_service_error(
     .header("Authorization", format!("Bearer {}", user_token))
     .body(Body::empty())?;
   let response = router.oneshot(request).await?;
+
+  assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+
+  let body = response.text().await?;
+  // Verify the error is aud-related (missing audience or invalid audience)
   assert!(
-    response.status().is_client_error(),
-    "Expected client error, got {}",
-    response.status()
+    body.contains("audience") || body.contains("aud"),
+    "Expected aud-related error, got: {}",
+    body
   );
+
   Ok(())
 }

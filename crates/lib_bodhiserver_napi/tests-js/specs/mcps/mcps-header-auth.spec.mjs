@@ -207,7 +207,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
         redirectUri,
-        scope: 'openid profile email scope_user_user',
+        scope: 'openid profile email',
         requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.TAVILY_URL }] }),
       });
     });

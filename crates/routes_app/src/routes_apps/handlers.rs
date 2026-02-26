@@ -10,7 +10,10 @@ use axum::{
   response::Json,
   Extension,
 };
-use objs::{ApiError, OpenAIApiError, RequestedResources, ToolsetTypeRequest, API_TAG_AUTH};
+use objs::{
+  ApiError, OpenAIApiError, RequestedResources, ResourceRole, ToolsetTypeRequest, UserScope,
+  API_TAG_AUTH,
+};
 use serde::Deserialize;
 use server_core::RouterState;
 use std::sync::Arc;
@@ -35,7 +38,7 @@ pub struct AccessRequestStatusQuery {
     tag = API_TAG_AUTH,
     operation_id = "createAccessRequest",
     summary = "Create Access Request",
-    description = "Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.",
+    description = "Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.",
     request_body(
         content = CreateAccessRequestBody,
         description = "Access request details"
@@ -100,36 +103,23 @@ pub async fn create_access_request_handler(
       body.redirect_url,
       tool_types,
       mcp_servers,
+      body.requested_role.to_string(),
     )
     .await?;
 
-  // Return response based on status
-  if created.status == "approved" {
-    info!("Access request {} auto-approved", created.id);
-    Ok((
-      StatusCode::CREATED,
-      Json(CreateAccessRequestResponse::Approved {
-        id: created.id,
-        resource_scope: created
-          .resource_scope
-          .expect("resource_scope must be set for approved"),
-      }),
-    ))
-  } else {
-    // Draft status
-    let review_url = access_request_service.build_review_url(&created.id);
-    info!(
-      "Access request {} created with review_url: {}",
-      created.id, review_url
-    );
-    Ok((
-      StatusCode::CREATED,
-      Json(CreateAccessRequestResponse::Draft {
-        id: created.id,
-        review_url,
-      }),
-    ))
-  }
+  let review_url = access_request_service.build_review_url(&created.id);
+  info!(
+    "Access request {} created with review_url: {}",
+    created.id, review_url
+  );
+  Ok((
+    StatusCode::CREATED,
+    Json(CreateAccessRequestResponse {
+      id: created.id,
+      status: "draft".to_string(),
+      review_url,
+    }),
+  ))
 }
 
 /// Get access request status (GET /apps/access-requests/:id)
@@ -171,7 +161,8 @@ pub async fn get_access_request_status_handler(
   Ok(Json(AccessRequestStatusResponse {
     id: request.id,
     status: request.status,
-    resource_scope: request.resource_scope,
+    requested_role: request.requested_role,
+    approved_role: request.approved_role,
     access_request_scope: request.access_request_scope,
   }))
 }
@@ -257,6 +248,7 @@ pub async fn get_access_request_review_handler(
     app_description: request.app_description,
     flow_type: request.flow_type,
     status: request.status,
+    requested_role: request.requested_role,
     requested,
     tools_info,
     mcps_info,
@@ -297,6 +289,44 @@ pub async fn approve_access_request_handler(
   let user_id = auth_context.user_id().expect("requires auth middleware");
   let token = auth_context.token().expect("requires auth middleware");
   info!("User {} approving access request {}", user_id, id);
+
+  // Extract approver's role from session and compute max grantable scope
+  let approver_role = if let AuthContext::Session { role, .. } = &auth_context {
+    role.ok_or(AppAccessRequestError::InsufficientPrivileges)?
+  } else {
+    return Err(AppAccessRequestError::InsufficientPrivileges)?;
+  };
+  let max_grantable = if approver_role >= ResourceRole::PowerUser {
+    UserScope::PowerUser
+  } else {
+    UserScope::User
+  };
+
+  let approved_scope = body.approved_role;
+
+  // Fetch the access request to get requested_role for privilege escalation check
+  let access_request_service = state.app_service().access_request_service();
+  let request = access_request_service
+    .get_request(&id)
+    .await?
+    .ok_or(AppAccessRequestError::NotFound)?;
+
+  let requested_scope: UserScope = request.requested_role.parse()?;
+
+  // Validate: approved can't exceed what was requested
+  if approved_scope > requested_scope {
+    return Err(AppAccessRequestError::PrivilegeEscalation {
+      approved: approved_scope.to_string(),
+      max_allowed: requested_scope.to_string(),
+    })?;
+  }
+  // Validate: approved can't exceed what the approver is allowed to grant
+  if approved_scope > max_grantable {
+    return Err(AppAccessRequestError::PrivilegeEscalation {
+      approved: approved_scope.to_string(),
+      max_allowed: max_grantable.to_string(),
+    })?;
+  }
 
   // Validate tool instances
   let tool_service = state.app_service().tool_service();
@@ -370,7 +400,6 @@ pub async fn approve_access_request_handler(
     }
   }
 
-  let access_request_service = state.app_service().access_request_service();
   let updated = access_request_service
     .approve_request(
       &id,
@@ -378,6 +407,7 @@ pub async fn approve_access_request_handler(
       token,
       body.approved.toolsets,
       body.approved.mcps,
+      approved_scope.to_string(),
     )
     .await?;
 

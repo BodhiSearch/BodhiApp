@@ -79,32 +79,48 @@ to Location header     and redirects to login
 
 ## Role-Based Access Control
 
-### Role Hierarchy
+### Session Role Hierarchy (ResourceRole)
+Session-authenticated users have a `ResourceRole` from Keycloak `resource_access` claims:
 ```
-Administrator
-├── Full system access
-├── User management
-├── System configuration
-└── All lower role permissions
-    ↓
-Manager
-├── User management
-├── Content management
-└── All lower role permissions
-    ↓
-Power User
-├── Advanced features
-├── API access
-└── All lower role permissions
-    ↓
-User
-└── Basic application features
+Admin > Manager > PowerUser > User
 ```
+Used for session-based authorization (user management, system config).
+
+### External App / API Token Roles (UserScope / TokenScope)
+Two-tier enums with only `User` and `PowerUser` variants:
+- **UserScope**: `scope_user_user`, `scope_user_power_user` -- used for external app access requests
+- **TokenScope**: `scope_token_user`, `scope_token_power_user` -- used for API token creation
 
 ### Permission Model
 - **Hierarchical**: Higher roles inherit all permissions of lower roles
 - **Additive**: Permissions are cumulative, not restrictive
-- **Contextual**: Some permissions may be resource-specific
+
+## External App Access Request Workflow
+
+3rd-party apps access BodhiApp via OAuth2 token exchange. The flow requires explicit user approval:
+
+```
+3rd-party App → POST /bodhi/v1/apps/request-access
+  (with app_client_id, requested_role, flow_type, redirect_url)
+    ↓
+  Server creates draft access request
+  Returns { status: "draft", review_url: "/apps/access-requests/review/{id}" }
+    ↓
+  App redirects user to review_url on BodhiApp
+    ↓
+  User reviews and approves (with approved_role, toolset/MCP selections)
+    ↓
+  Server redirects to app callback with scope_access_request:<uuid>
+    ↓
+  App combines scopes → Keycloak authorization → token exchange
+    ↓
+  Exchanged token cached with role from DB approved_role
+```
+
+### Key Design Decisions
+- **No auto-approve**: All access requests require explicit user review
+- **Role from DB, not JWT**: External app role derived from `approved_role` on DB access request record, not from JWT scope parsing
+- **Two role columns**: `requested_role` (NOT NULL, what app requested) + `approved_role` (nullable, what user approved)
 
 ## Token Management
 
@@ -137,10 +153,19 @@ pub struct AppRegInfo {
 **Use Case**: Programmatic access, integrations, automation
 
 **Characteristics**:
-- Long-lived offline tokens
-- Scope-based permissions
+- DB-backed tokens with SHA-256 hash verification
+- Two-tier scope: `scope_token_user` / `scope_token_power_user`
 - Revocable access
 - Machine-to-machine communication
+
+### External App Authentication (OAuth2 Token Exchange)
+**Use Case**: 3rd-party applications accessing BodhiApp resources
+
+**Characteristics**:
+- OAuth2 token exchange via Keycloak
+- Access request workflow with user approval
+- Role derived from DB `approved_role`, not JWT scopes
+- `AuthContext::ExternalApp` with `role: Option<UserScope>`
 
 ### Token Lifecycle
 ```

@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Input, Label, Checkbox, Textarea } from '@/components/ui';
-import { ScopeDisplay } from '@/components/ScopeDisplay';
 import type { OAuthConfig } from '@/context/AuthContext';
 import { requestAccess } from '@/lib/api';
 import { saveConfig, loadConfig } from '@/lib/storage';
-import {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  generateState,
-  buildAuthUrl,
-} from '@/lib/oauth';
 
 interface ConfigFormProps {
   initialError?: string | null;
@@ -24,25 +17,16 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
   const [clientSecret, setClientSecret] = useState(import.meta.env.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET || 'change-me');
   const [redirectUri, setRedirectUri] = useState(`${window.location.origin}/callback`);
   const [scope, setScope] = useState('openid profile email roles');
+  const [requestedRole, setRequestedRole] = useState('scope_user_user');
   const [requested, setRequested] = useState('{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}');
 
-  const [buttonState, setButtonState] = useState<'request-access' | 'login'>('request-access');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError || null);
-
-  const [resourceScope, setResourceScope] = useState<string | null>(null);
-  const [accessRequestScope, setAccessRequestScope] = useState<string | null>(null);
-  const [showScopes, setShowScopes] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (buttonState === 'login') {
-      await handleLogin();
-    } else {
-      await handleRequestAccess();
-    }
+    await handleRequestAccess();
   };
 
   const handleRequestAccess = async () => {
@@ -83,11 +67,13 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         app_client_id: string;
         flow_type: string;
         redirect_url: string;
+        requested_role: string;
         requested?: Record<string, unknown>;
       } = {
         app_client_id: clientId,
         flow_type: 'redirect',
         redirect_url: window.location.origin + '/access-callback',
+        requested_role: requestedRole,
       };
       if (parsedRequested) {
         body.requested = parsedRequested;
@@ -95,28 +81,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
 
       const data = await requestAccess(bodhiServerUrl, body);
 
-      if (data.status === 'approved') {
-        // Auto-approved: append resource_scope and show ready-to-login
-        let updatedScope = scope;
-        if (data.resource_scope) {
-          updatedScope = scope + ' ' + data.resource_scope;
-        }
-
-        // Update config with approved info
-        const storedConfig = loadConfig();
-        if (storedConfig) {
-          storedConfig.approvedScopes = [data.resource_scope].filter(Boolean);
-          storedConfig.accessRequestId = data.id;
-          saveConfig(storedConfig);
-        }
-
-        setScope(updatedScope);
-        setResourceScope(data.resource_scope || null);
-        setAccessRequestScope(null);
-        setShowScopes(true);
-        setButtonState('login');
-      } else if (data.status === 'draft') {
-        // Needs user review: store id and redirect to review URL
+      if (data.status === 'draft') {
         const storedConfig = loadConfig();
         if (storedConfig) {
           storedConfig.accessRequestId = data.id;
@@ -135,33 +100,7 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
     }
   };
 
-  const handleLogin = async () => {
-    const storedConfig = loadConfig();
-    if (!storedConfig) {
-      setError('OAuth configuration not found. Please start the flow again.');
-      return;
-    }
-
-    // Read scope from input (user may have modified it)
-    const finalScope = scope;
-
-    // Generate PKCE parameters
-    const codeVerifier = generateCodeVerifier();
-    const state = generateState();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-    // Update config with PKCE params and final scope
-    storedConfig.codeVerifier = codeVerifier;
-    storedConfig.state = state;
-    storedConfig.scope = finalScope;
-    saveConfig(storedConfig);
-
-    // Build and redirect to auth URL
-    const authUrl = buildAuthUrl(storedConfig, codeChallenge, state);
-    window.location.href = authUrl;
-  };
-
-  const formState = loading ? 'loading' : error ? 'error' : buttonState;
+  const formState = loading ? 'loading' : error ? 'error' : 'request-access';
 
   return (
     <div data-testid="div-config-form" data-test-state={formState} className="space-y-6">
@@ -257,6 +196,20 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="requested-role">Requested Role</Label>
+          <select
+            id="requested-role"
+            data-testid="select-requested-role"
+            value={requestedRole}
+            onChange={(e) => setRequestedRole(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="scope_user_user">scope_user_user (User)</option>
+            <option value="scope_user_power_user">scope_user_power_user (Power User)</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="requested">Requested Resources (JSON)</Label>
           <Textarea
             id="requested"
@@ -268,21 +221,14 @@ export function ConfigForm({ initialError }: ConfigFormProps) {
           />
         </div>
 
-        {showScopes && (
-          <ScopeDisplay
-            resourceScope={resourceScope}
-            accessRequestScope={accessRequestScope}
-          />
-        )}
-
         <div className="pt-2">
           <Button
             type="submit"
             data-testid="btn-request-access"
-            data-test-state={buttonState}
+            data-test-state="request-access"
             disabled={loading}
           >
-            {buttonState === 'login' ? 'Login' : 'Request Access & Login'}
+            Request Access & Login
           </Button>
         </div>
       </form>

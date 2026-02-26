@@ -1,3 +1,5 @@
+import { AccessRequestReviewPage } from '@/pages/AccessRequestReviewPage.mjs';
+import { LoginPage } from '@/pages/LoginPage.mjs';
 import { OAuth2Fixtures } from '@/fixtures/oauth2Fixtures.mjs';
 import { OAuthTestApp } from '@/pages/OAuthTestApp.mjs';
 import {
@@ -34,6 +36,11 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
 
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
+      await test.step('Login to Bodhi server', async () => {
+        const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
+
       await test.step('Navigate to test app', async () => {
         await app.navigate();
       });
@@ -50,15 +57,17 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         });
       });
 
-      await test.step('Submit access request and wait for login ready', async () => {
+      await test.step('Submit access request and approve via review page', async () => {
         await app.config.submitAccessRequest();
-        await app.config.waitForLoginReady();
-      });
+        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
 
-      await test.step('Login via Keycloak', async () => {
-        await app.config.clickLogin();
-        await app.oauth.waitForAuthServerRedirect(authServerConfig.authUrl);
-        await app.oauth.handleLogin(testCredentials.username, testCredentials.password);
+        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        await reviewPage.approve();
+
+        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+        await app.accessCallback.waitForLoaded();
+        await app.accessCallback.clickLogin();
+        // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
         await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
       });
 
@@ -66,7 +75,75 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
         await app.expectLoggedIn();
         await app.rest.navigateTo();
 
-        // Test API access with OAuth token
+        await app.rest.sendRequest({
+          method: 'GET',
+          url: '/bodhi/v1/user',
+        });
+
+        expect(await app.rest.getResponseStatus()).toBe(200);
+        const userInfo = await app.rest.getResponse();
+
+        expect(userInfo).toBeDefined();
+        expect(userInfo.auth_status).toBe('logged_in');
+        expect(userInfo.username).toBe('user@email.com');
+        expect(userInfo.role).toBe('scope_user_user');
+      });
+    });
+  });
+
+  test.describe('Role Downgrade Flow', () => {
+    let testData;
+
+    test.beforeEach(async () => {
+      testData = OAuth2Fixtures.getOAuth2TestData();
+    });
+
+    test('should downgrade role from power_user to user on review approval', async ({ page }) => {
+      const appClient = getPreConfiguredAppClient();
+      const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
+
+      const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
+
+      await test.step('Login to Bodhi server', async () => {
+        const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+        await loginPage.performOAuthLogin();
+      });
+
+      await test.step('Navigate to test app', async () => {
+        await app.navigate();
+      });
+
+      await test.step('Configure OAuth form with power_user role', async () => {
+        await app.config.configureOAuthForm({
+          bodhiServerUrl: SHARED_SERVER_URL,
+          authServerUrl: authServerConfig.authUrl,
+          realm: authServerConfig.authRealm,
+          clientId: appClient.clientId,
+          redirectUri,
+          scope: testData.scopes,
+          requestedRole: 'scope_user_power_user',
+          requested: null,
+        });
+      });
+
+      await test.step('Submit access request and downgrade role on review page', async () => {
+        await app.config.submitAccessRequest();
+        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+
+        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        await reviewPage.approveWithRole('scope_user_user');
+
+        await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
+        await app.accessCallback.waitForLoaded();
+        await app.accessCallback.clickLogin();
+        // KC session already exists from performOAuthLogin, so Keycloak auto-redirects
+        await app.oauth.waitForTokenExchange(SHARED_STATIC_SERVER_URL);
+      });
+
+      await test.step('Verify logged in and token role is downgraded to user', async () => {
+        await app.expectLoggedIn();
+        await app.rest.navigateTo();
+
         await app.rest.sendRequest({
           method: 'GET',
           url: '/bodhi/v1/user',

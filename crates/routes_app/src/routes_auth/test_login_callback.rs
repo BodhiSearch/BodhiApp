@@ -93,7 +93,7 @@ async fn test_auth_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::Ready,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -171,7 +171,7 @@ async fn test_auth_callback_handler_state_not_in_session(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::Ready,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -260,7 +260,7 @@ async fn test_auth_callback_handler_with_loopback_callback_url(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::Ready,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -341,7 +341,7 @@ async fn test_auth_callback_handler_state_mismatch(temp_bodhi_home: TempDir) -> 
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::Ready,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -415,7 +415,7 @@ async fn test_auth_callback_handler_auth_service_error(
     .with_app_instance(services::AppInstance {
       client_id: "test_client_id".to_string(),
       client_secret: "test_client_secret".to_string(),
-      scope: "scope_test_client_id".to_string(),
+
       status: AppStatus::Ready,
       created_at: Utc::now(),
       updated_at: Utc::now(),

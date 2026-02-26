@@ -322,7 +322,6 @@ impl AppServiceStubBuilder {
       .create_instance(
         &instance.client_id,
         &instance.client_secret,
-        &instance.scope,
         instance.status,
       )
       .await

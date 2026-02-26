@@ -164,8 +164,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_ID not set"))?;
   let resource_client_secret = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
     .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SECRET not set"))?;
-  let resource_client_scope = std::env::var("INTEG_TEST_RESOURCE_CLIENT_SCOPE")
-    .map_err(|_| anyhow::anyhow!("INTEG_TEST_RESOURCE_CLIENT_SCOPE not set"))?;
 
   // Create app instance service with registration
   let app_instance_service = DefaultAppInstanceService::new(db_service.clone());
@@ -173,7 +171,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     .create_instance(
       &resource_client_id,
       &resource_client_secret,
-      &resource_client_scope,
       AppStatus::Ready,
     )
     .await?;
@@ -226,7 +223,6 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
-    app_instance_service.clone(),
     time_service.clone(),
     setting_service.public_server_url().await,
   ));
@@ -522,7 +518,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     .create_instance(
       "test-resource-client",
       "test-resource-secret",
-      "openid profile email",
       AppStatus::Ready,
     )
     .await?;
@@ -561,7 +556,6 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   let access_request_service = Arc::new(DefaultAccessRequestService::new(
     db_service.clone(),
     auth_service.clone(),
-    app_instance_service.clone(),
     time_service.clone(),
     setting_service.public_server_url().await,
   ));

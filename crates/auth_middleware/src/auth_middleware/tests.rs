@@ -502,7 +502,6 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
   let instance = AppInstance {
     client_id: "test_client_id".to_string(),
     client_secret: "test_client_secret".to_string(),
-    scope: "scope_test_client_id".to_string(),
     status: AppStatus::Ready,
     created_at: chrono::Utc::now(),
     updated_at: chrono::Utc::now(),
@@ -704,8 +703,6 @@ async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyho
 #[rstest]
 #[case::user("scope_token_user")]
 #[case::power_user("scope_token_power_user")]
-#[case::manager("scope_token_manager")]
-#[case::admin("scope_token_admin")]
 #[tokio::test]
 async fn test_auth_middleware_bodhiapp_token_scope_variations(
   #[case] scope_str: &str,

@@ -15,6 +15,7 @@ import {
   mockDraftNoInstancesResponse,
   mockDraftRedirectResponse,
   mockDraftReviewResponse,
+  mockDraftReviewResponsePowerUser,
   mockExpiredReviewResponse,
 } from '@/test-fixtures/app-access-requests';
 import {
@@ -1140,5 +1141,130 @@ describe('ReviewAccessRequestPage - Mixed Resources', () => {
     await waitFor(() => {
       expect(screen.getByTestId('review-approve-button')).not.toBeDisabled();
     });
+  });
+});
+
+// ============================================================================
+// Role Selection Dropdown
+// ============================================================================
+
+describe('ReviewAccessRequestPage - Role Selection Dropdown', () => {
+  it('shows 2 role options when resource_power_user approves scope_user_power_user request', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_power_user' }),
+      ...mockAppAccessRequestReview(mockDraftReviewResponsePowerUser)
+    );
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approved-role-section')).toBeInTheDocument();
+    });
+
+    const selectTrigger = screen.getByTestId('review-approved-role-select');
+    await user.click(selectTrigger);
+
+    await screen.findByTestId('review-approved-role-option-scope_user_power_user');
+    expect(screen.getByTestId('review-approved-role-option-scope_user_user')).toBeInTheDocument();
+  });
+
+  it('shows only scope_user_user option when resource_user approves scope_user_power_user request', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_user' }),
+      ...mockAppAccessRequestReview(mockDraftReviewResponsePowerUser)
+    );
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approved-role-section')).toBeInTheDocument();
+    });
+
+    const selectTrigger = screen.getByTestId('review-approved-role-select');
+    await user.click(selectTrigger);
+
+    await screen.findByTestId('review-approved-role-option-scope_user_user');
+    expect(screen.queryByTestId('review-approved-role-option-scope_user_power_user')).not.toBeInTheDocument();
+  });
+
+  it('shows only scope_user_user option when requested_role is scope_user_user', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+    setupHandlers(mockDraftReviewResponse);
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approved-role-section')).toBeInTheDocument();
+    });
+
+    const selectTrigger = screen.getByTestId('review-approved-role-select');
+    await user.click(selectTrigger);
+
+    await screen.findByTestId('review-approved-role-option-scope_user_user');
+    expect(screen.queryByTestId('review-approved-role-option-scope_user_power_user')).not.toBeInTheDocument();
+  });
+
+  it('approve sends downgraded approved_role when user selects scope_user_user', async () => {
+    const user = userEvent.setup();
+    mockSearchParams = new URLSearchParams({ id: MOCK_REQUEST_ID });
+
+    let capturedBody: unknown = null;
+    server.use(
+      ...mockAppInfoReady(),
+      ...mockUserLoggedIn({ role: 'resource_power_user' }),
+      ...mockAppAccessRequestReview(mockDraftReviewResponsePowerUser),
+      ...mockAppAccessRequestApprove(MOCK_REQUEST_ID, {
+        onBody: (body) => {
+          capturedBody = body;
+        },
+      })
+    );
+    setupWindowClose();
+
+    await act(async () => {
+      render(<ReviewAccessRequestPage />, { wrapper: createWrapper() });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-approved-role-section')).toBeInTheDocument();
+    });
+
+    // Open role dropdown and select scope_user_user (downgrade)
+    const roleSelect = screen.getByTestId('review-approved-role-select');
+    await user.click(roleSelect);
+    const userRoleOption = await screen.findByTestId('review-approved-role-option-scope_user_user');
+    await user.click(userRoleOption);
+
+    // Select MCP instance
+    const mcpSelect = screen.getByTestId('review-mcp-select-trigger-https://mcp.deepwiki.com/mcp');
+    await user.click(mcpSelect);
+    const mcpOption = await screen.findByText('DeepWiki (deepwiki-prod)');
+    await user.click(mcpOption);
+
+    const approveButton = screen.getByTestId('review-approve-button');
+    await waitFor(() => {
+      expect(approveButton).not.toBeDisabled();
+    });
+    await user.click(approveButton);
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+
+    const body = capturedBody as { approved_role: string };
+    expect(body.approved_role).toBe('scope_user_user');
   });
 });

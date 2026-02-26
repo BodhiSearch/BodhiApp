@@ -1,4 +1,4 @@
-use objs::{ApprovedResources, RequestedResources, Toolset};
+use objs::{ApprovedResources, RequestedResources, Toolset, UserScope};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -8,6 +8,7 @@ use utoipa::ToSchema;
     "app_client_id": "my-app-client",
     "flow_type": "redirect",
     "redirect_url": "https://myapp.com/callback",
+    "requested_role": "scope_user_user",
     "requested": {
         "toolset_types": [
             {"toolset_type": "builtin-exa-search"}
@@ -21,35 +22,26 @@ pub struct CreateAccessRequestBody {
   pub flow_type: String,
   /// Redirect URL for result notification (required for redirect flow)
   pub redirect_url: Option<String>,
+  /// Role requested for the external app (scope_user_user or scope_user_power_user)
+  pub requested_role: UserScope,
   /// Resources requested (tools, etc.)
   pub requested: Option<RequestedResources>,
 }
 
 // Response for POST /apps/request-access
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[serde(tag = "status")]
 #[schema(example = json!({
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "status": "draft",
     "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000"
 }))]
-pub enum CreateAccessRequestResponse {
-  /// Draft status - requires user approval
-  #[serde(rename = "draft")]
-  Draft {
-    /// Access request ID
-    id: String,
-    /// Review URL for user to approve/deny
-    review_url: String,
-  },
-  /// Approved status - auto-approved when no tools requested
-  #[serde(rename = "approved")]
-  Approved {
-    /// Access request ID
-    id: String,
-    /// Resource scope granted by KC
-    resource_scope: String,
-  },
+pub struct CreateAccessRequestResponse {
+  /// Access request ID
+  pub id: String,
+  /// Status (always "draft")
+  pub status: String,
+  /// Review URL for user to approve/deny
+  pub review_url: String,
 }
 
 // Response for GET /apps/access-requests/:id (status polling by apps)
@@ -57,7 +49,8 @@ pub enum CreateAccessRequestResponse {
 #[schema(example = json!({
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "status": "approved",
-    "resource_scope": "scope_resource:550e8400-e29b-41d4-a716-446655440000",
+    "requested_role": "scope_user_user",
+    "approved_role": "scope_user_user",
     "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000"
 }))]
 pub struct AccessRequestStatusResponse {
@@ -65,8 +58,10 @@ pub struct AccessRequestStatusResponse {
   pub id: String,
   /// Current status: "draft", "approved", "denied", "failed"
   pub status: String,
-  /// Resource scope (present when approved)
-  pub resource_scope: Option<String>,
+  /// Role requested by the app
+  pub requested_role: String,
+  /// Role approved (present when approved)
+  pub approved_role: Option<String>,
   /// Access request scope (present when user-approved with tools)
   pub access_request_scope: Option<String>,
 }
@@ -86,6 +81,8 @@ pub struct AccessRequestReviewResponse {
   pub flow_type: String,
   /// Current status
   pub status: String,
+  /// Role requested by the app
+  pub requested_role: String,
   /// Resources requested
   pub requested: RequestedResources,
   /// Tool type information with user instances
@@ -132,6 +129,7 @@ pub struct AccessRequestActionResponse {
 // Request body for PUT /access-requests/:id/approve
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
+    "approved_role": "scope_user_user",
     "approved": {
         "toolsets": [
             {
@@ -150,6 +148,8 @@ pub struct AccessRequestActionResponse {
     }
 }))]
 pub struct ApproveAccessRequestBody {
+  /// Role to grant for the approved request (scope_user_user or scope_user_power_user)
+  pub approved_role: UserScope,
   /// Approved resources with selections
   pub approved: ApprovedResources,
 }

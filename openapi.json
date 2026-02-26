@@ -2085,7 +2085,7 @@
           "auth"
         ],
         "summary": "Create Access Request",
-        "description": "Create an access request for an app to access user resources. If no tools requested, auto-approves. Unauthenticated endpoint.",
+        "description": "Create an access request for an app to access user resources. Always creates a draft for user review. Unauthenticated endpoint.",
         "operationId": "createAccessRequest",
         "requestBody": {
           "description": "Access request details",
@@ -8217,6 +8217,7 @@
           "app_client_id",
           "flow_type",
           "status",
+          "requested_role",
           "requested",
           "tools_info"
         ],
@@ -8251,6 +8252,10 @@
             "type": "string",
             "description": "Current status"
           },
+          "requested_role": {
+            "type": "string",
+            "description": "Role requested by the app"
+          },
           "requested": {
             "$ref": "#/components/schemas/RequestedResources",
             "description": "Resources requested"
@@ -8275,7 +8280,8 @@
         "type": "object",
         "required": [
           "id",
-          "status"
+          "status",
+          "requested_role"
         ],
         "properties": {
           "id": {
@@ -8286,12 +8292,16 @@
             "type": "string",
             "description": "Current status: \"draft\", \"approved\", \"denied\", \"failed\""
           },
-          "resource_scope": {
+          "requested_role": {
+            "type": "string",
+            "description": "Role requested by the app"
+          },
+          "approved_role": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Resource scope (present when approved)"
+            "description": "Role approved (present when approved)"
           },
           "access_request_scope": {
             "type": [
@@ -8303,8 +8313,9 @@
         },
         "example": {
           "access_request_scope": "scope_access_request:550e8400-e29b-41d4-a716-446655440000",
+          "approved_role": "scope_user_user",
           "id": "550e8400-e29b-41d4-a716-446655440000",
-          "resource_scope": "scope_resource:550e8400-e29b-41d4-a716-446655440000",
+          "requested_role": "scope_user_user",
           "status": "approved"
         }
       },
@@ -8858,9 +8869,14 @@
       "ApproveAccessRequestBody": {
         "type": "object",
         "required": [
+          "approved_role",
           "approved"
         ],
         "properties": {
+          "approved_role": {
+            "$ref": "#/components/schemas/UserScope",
+            "description": "Role to grant for the approved request (scope_user_user or scope_user_power_user)"
+          },
           "approved": {
             "$ref": "#/components/schemas/ApprovedResources",
             "description": "Approved resources with selections"
@@ -8886,7 +8902,8 @@
                 "toolset_type": "builtin-exa-search"
               }
             ]
-          }
+          },
+          "approved_role": "scope_user_user"
         }
       },
       "ApproveUserAccessRequest": {
@@ -10632,7 +10649,8 @@
         "type": "object",
         "required": [
           "app_client_id",
-          "flow_type"
+          "flow_type",
+          "requested_role"
         ],
         "properties": {
           "app_client_id": {
@@ -10649,6 +10667,10 @@
               "null"
             ],
             "description": "Redirect URL for result notification (required for redirect flow)"
+          },
+          "requested_role": {
+            "$ref": "#/components/schemas/UserScope",
+            "description": "Role requested for the external app (scope_user_user or scope_user_power_user)"
           },
           "requested": {
             "oneOf": [
@@ -10672,62 +10694,31 @@
                 "toolset_type": "builtin-exa-search"
               }
             ]
-          }
+          },
+          "requested_role": "scope_user_user"
         }
       },
       "CreateAccessRequestResponse": {
-        "oneOf": [
-          {
-            "type": "object",
-            "description": "Draft status - requires user approval",
-            "required": [
-              "id",
-              "review_url",
-              "status"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Access request ID"
-              },
-              "review_url": {
-                "type": "string",
-                "description": "Review URL for user to approve/deny"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "draft"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "Approved status - auto-approved when no tools requested",
-            "required": [
-              "id",
-              "resource_scope",
-              "status"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Access request ID"
-              },
-              "resource_scope": {
-                "type": "string",
-                "description": "Resource scope granted by KC"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "approved"
-                ]
-              }
-            }
-          }
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "review_url"
         ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Access request ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status (always \"draft\")"
+          },
+          "review_url": {
+            "type": "string",
+            "description": "Review URL for user to approve/deny"
+          }
+        },
         "example": {
           "id": "550e8400-e29b-41d4-a716-446655440000",
           "review_url": "http://localhost:1135/ui/apps/access-requests/review?id=550e8400-e29b-41d4-a716-446655440000",
@@ -14854,9 +14845,7 @@
         "type": "string",
         "enum": [
           "scope_token_user",
-          "scope_token_power_user",
-          "scope_token_manager",
-          "scope_token_admin"
+          "scope_token_power_user"
         ]
       },
       "TokenStatus": {
@@ -15841,9 +15830,7 @@
         "type": "string",
         "enum": [
           "scope_user_user",
-          "scope_user_power_user",
-          "scope_user_manager",
-          "scope_user_admin"
+          "scope_user_power_user"
         ]
       },
       "Verbosity": {

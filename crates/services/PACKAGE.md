@@ -11,7 +11,8 @@
 - `src/macros.rs` - `asref_impl!` macro for service trait AsRef implementations
 
 ### Authentication and Security Services
-- `src/auth_service.rs` - OAuth2 PKCE flows with Keycloak integration, token exchange, dynamic client registration
+- `src/auth_service/service.rs` - `AuthService` trait and `DefaultAuthService`: OAuth2 PKCE flows, token exchange, dynamic client registration (`ClientRegistrationResponse`), access request consent (`RegisterAccessRequestConsentResponse`)
+- `src/app_instance_service.rs` - `AppInstanceService` trait and `DefaultAppInstanceService`: OAuth client credential management (`AppInstance` with `client_id`, `client_secret`, `status`)
 - `src/secret_service.rs` - AES-GCM encryption with PBKDF2 key derivation for secret storage
 - `src/keyring_service.rs` - Platform-specific credential storage (Keychain, Secret Service, Windows Credential Manager)
 - `src/session_service/` - Multi-backend HTTP session management (`DefaultSessionService` with `SessionStoreBackend` supporting SQLite and PostgreSQL)
@@ -38,8 +39,8 @@
 
 ### Access Control Services
 - `src/access_request_service/mod.rs` - Module root for access request management
-- `src/access_request_service/service.rs` - `AccessRequestService` trait and implementation
-- `src/access_request_service/error.rs` - Access request error types
+- `src/access_request_service/service.rs` - `AccessRequestService` trait and `DefaultAccessRequestService` implementation (role-based: `requested_role`/`approved_role`)
+- `src/access_request_service/error.rs` - `AccessRequestError` domain error enum
 
 ### Infrastructure Services
 - `src/db/mod.rs` - Database module exports
@@ -47,11 +48,11 @@
 - `src/db/sqlite_pool.rs` - Connection pool management
 - `src/db/encryption.rs` - Database-level API key encryption utilities
 - `src/db/error.rs` - Database error types (`SqlxError`, `SqlxMigrateError`, `ItemNotFound`)
-- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `UserAccessRequest`, `ModelMetadataRow`, `McpRow`, `McpServerRow`, `ToolsetRow`, `AppToolsetConfigRow`, etc.)
+- `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `AppAccessRequestRow`, `ModelMetadataRow`, `McpRow`, `McpServerRow`, `ToolsetRow`, `AppToolsetConfigRow`, etc.)
 - `src/db/mcp_repository.rs` - MCP server and instance persistence
 - `src/db/toolset_repository.rs` - Toolset and app toolset config persistence
 - `src/db/access_repository.rs` - Access control persistence
-- `src/db/access_request_repository.rs` - User access request persistence
+- `src/db/access_request_repository.rs` - App access request persistence (`AccessRequestRepository` trait with role-based approval: `requested_role`/`approved_role`)
 - `src/db/user_alias_repository.rs` - User alias persistence
 
 ### Configuration and Environment
@@ -61,7 +62,7 @@
   - `error.rs` - `SettingServiceError` enum, `Result<T>` alias
 - `src/env_wrapper.rs` - Environment variable abstraction
 - `src/progress_tracking.rs` - Download progress monitoring
-- `src/objs.rs` - Service-specific domain objects (`AppRegInfo`, `AppStatus`)
+- `src/objs.rs` - Service-specific domain objects (`AppInstance`, `AppStatus`, `AppAccessRequest`, `AppAccessResponse`, `AppAccessRequestDetail`)
 - `src/queue_service.rs` - Background metadata extraction queue with async processing
 
 ### Test Utilities (`test-utils` feature)
@@ -262,13 +263,14 @@ let alias = data_service.find_alias("gpt-4").await;
 
 ### Test Organization
 
-All service modules contain inline `#[cfg(test)] mod tests` blocks. Three modules use separate test files:
+All service modules contain inline `#[cfg(test)] mod tests` blocks. Four modules use separate test files:
 
 | Module | Test Location |
 |--------|--------------|
 | `db` | `src/db/tests.rs` (separate file) |
 | `setting_service` | `src/setting_service/tests.rs` (separate file) |
 | `tool_service` | `src/tool_service/tests.rs` (separate file) |
+| `auth_service` | `src/auth_service/tests.rs` (separate file) |
 | `mcp_service` | Inline in `src/mcp_service/service.rs` |
 | `access_request_service` | Inline in `src/access_request_service/service.rs` |
 | All other services | Inline `mod tests` at bottom of source file |
@@ -277,7 +279,7 @@ Additionally, `src/db/encryption.rs`, `src/db/error.rs`, and `src/db/sqlite_pool
 
 ### Modules with Inline Tests
 
-- `src/auth_service.rs` -- OAuth2 flow tests with mockito
+- `src/auth_service/tests.rs` -- OAuth2 flow tests with mockito
 - `src/ai_api_service.rs` -- AI API tests with mockito
 - `src/exa_service.rs` -- Exa search API tests with mockito
 - `src/secret_service.rs` -- Encryption/decryption tests
@@ -356,14 +358,14 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 
 See individual module files for complete implementation details:
 - Service registry: `src/app_service.rs`
-- Authentication: `src/auth_service.rs`, `src/session_service.rs`, `src/concurrency_service.rs`
+- Authentication: `src/auth_service/*.rs`, `src/app_instance_service.rs`, `src/session_service/*.rs`, `src/concurrency_service.rs`
 - Security: `src/secret_service.rs`, `src/keyring_service.rs`
 - Model management: `src/hub_service.rs`, `src/data_service.rs`
 - AI integration: `src/ai_api_service.rs`, `src/tool_service/*.rs`, `src/exa_service.rs`
 - MCP: `src/mcp_service/*.rs`
 - Access control: `src/access_request_service/*.rs`
-- Database: `src/db/*.rs` (includes `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`)
-- Configuration: `src/setting_service.rs`, `src/env_wrapper.rs`
+- Database: `src/db/*.rs` (includes `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`, `app_instance_repository.rs`, `service_access_request.rs`)
+- Configuration: `src/setting_service/*.rs`, `src/env_wrapper.rs`
 - Background processing: `src/queue_service.rs`, `src/progress_tracking.rs`
 - Domain objects: `src/objs.rs`
 - Token handling: `src/token.rs`

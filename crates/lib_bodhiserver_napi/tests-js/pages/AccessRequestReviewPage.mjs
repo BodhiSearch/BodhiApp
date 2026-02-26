@@ -5,6 +5,7 @@ export class AccessRequestReviewPage extends BasePage {
     reviewPage: '[data-testid="review-access-page"]',
     approveButton: '[data-testid="review-approve-button"]',
     denyButton: '[data-testid="review-deny-button"]',
+    approvedRoleSelect: '[data-testid="review-approved-role-select"]',
   };
 
   // Toolset selectors
@@ -51,6 +52,11 @@ export class AccessRequestReviewPage extends BasePage {
     await this.page.click(this.selectors.approveButton);
   }
 
+  async approve() {
+    await this.waitForReviewPage();
+    await this.clickApprove();
+  }
+
   async clickDeny() {
     await this.page.click(this.selectors.denyButton);
   }
@@ -91,6 +97,37 @@ export class AccessRequestReviewPage extends BasePage {
    */
   async approveWithResources({ toolsets = [], mcps = [] }) {
     await this.waitForReviewPage();
+
+    for (const { toolsetType, instanceId } of toolsets) {
+      await this.selectInstance(toolsetType, instanceId);
+    }
+
+    for (const { url, instanceId } of mcps) {
+      await this.selectMcpInstance(url, instanceId);
+    }
+
+    await this.clickApprove();
+  }
+
+  /**
+   * Select the approved role from the role dropdown.
+   * @param {string} role - The role value (e.g. 'scope_user_user', 'scope_user_power_user')
+   */
+  async selectApprovedRole(role) {
+    await this.page.click(this.selectors.approvedRoleSelect);
+    await this.page.locator(`[data-testid="review-approved-role-option-${role}"]`).click();
+  }
+
+  /**
+   * Approve with a specific role and optional resource selections.
+   * @param {string} role - The approved_role value to select
+   * @param {Object} [resources] - Optional resource selections
+   * @param {Array<{toolsetType: string, instanceId: string}>} [resources.toolsets]
+   * @param {Array<{url: string, instanceId: string}>} [resources.mcps]
+   */
+  async approveWithRole(role, { toolsets = [], mcps = [] } = {}) {
+    await this.waitForReviewPage();
+    await this.selectApprovedRole(role);
 
     for (const { toolsetType, instanceId } of toolsets) {
       await this.selectInstance(toolsetType, instanceId);

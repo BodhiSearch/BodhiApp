@@ -14,7 +14,6 @@ use utoipa::ToSchema;
 pub struct ClientRegistrationResponse {
   pub client_id: String,
   pub client_secret: String,
-  pub scope: String,
 }
 
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
@@ -106,16 +105,6 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     description: &str,
   ) -> Result<RegisterAccessRequestConsentResponse>;
 
-  /// Register resource access for auto-approve flow (no user token needed)
-  /// KC endpoint: POST /resources/apps/request-access
-  /// Uses resource service account token, NOT user token
-  async fn register_resource_access(
-    &self,
-    client_id: &str,
-    client_secret: &str,
-    app_client_id: &str,
-  ) -> Result<RegisterResourceAccessResponse>;
-
   /// Get app client info (name, description) from Keycloak
   /// KC endpoint: GET /users/apps/{app_client_id}/info
   async fn get_app_client_info(
@@ -142,14 +131,8 @@ struct KeycloakError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterAccessRequestConsentResponse {
-  pub scope: String,
   pub access_request_id: String,
   pub access_request_scope: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterResourceAccessResponse {
-  pub scope: String, // Only resource_scope returned by KC
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -781,46 +764,6 @@ impl AuthService for KeycloakAuthService {
       )))
     } else {
       // 400, 401, or other errors
-      let error_text = response.text().await?;
-      log::log_http_error("POST", &endpoint, "auth_service", &error_text);
-      Err(AuthServiceError::AuthServiceApiError {
-        status: status.as_u16(),
-        body: error_text,
-      })
-    }
-  }
-
-  async fn register_resource_access(
-    &self,
-    client_id: &str,
-    client_secret: &str,
-    app_client_id: &str,
-  ) -> Result<RegisterResourceAccessResponse> {
-    let access_token = self
-      .get_client_access_token(client_id, client_secret)
-      .await?;
-    let endpoint = format!("{}/resources/apps/request-access", self.auth_api_url());
-
-    log::log_http_request("POST", &endpoint, "auth_service", None);
-
-    let request_body = serde_json::json!({
-      "app_client_id": app_client_id,
-    });
-
-    let response = self
-      .client
-      .post(&endpoint)
-      .json(&request_body)
-      .bearer_auth(access_token.secret())
-      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
-      .send()
-      .await?;
-
-    let status = response.status();
-
-    if status.is_success() {
-      Ok(response.json::<RegisterResourceAccessResponse>().await?)
-    } else {
       let error_text = response.text().await?;
       log::log_http_error("POST", &endpoint, "auth_service", &error_text);
       Err(AuthServiceError::AuthServiceApiError {

@@ -33,54 +33,7 @@ pub enum AppStatus {
 pub struct AppInstance {
   pub client_id: String,
   pub client_secret: String,
-  pub scope: String,
   pub status: AppStatus,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
-}
-
-// ============================================================================
-// Access Request API Types
-// ============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppAccessRequest {
-  pub app_client_id: String,
-  pub flow_type: String, // "redirect" | "popup"
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub redirect_uri: Option<String>, // Required if flow_type == "redirect"
-  pub tools: Vec<objs::ToolsetTypeRequest>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppAccessResponse {
-  pub access_request_id: String,
-  pub review_url: String,
-  #[serde(skip_serializing_if = "Vec::is_empty", default)]
-  pub scopes: Vec<String>, // Empty on draft creation, populated after approval
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
-pub struct AppAccessRequestDetail {
-  pub id: String,
-  pub app_client_id: String,
-  pub flow_type: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub redirect_uri: Option<String>,
-  pub status: String,
-  pub tools_requested: Vec<objs::ToolsetTypeRequest>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools_approved: Option<Vec<objs::ToolsetApproval>>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub user_id: Option<String>,
-  #[serde(skip_serializing_if = "Vec::is_empty", default)]
-  pub scopes: Vec<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub error_message: Option<String>,
-  #[schema(value_type = String, format = "date-time")]
-  pub expires_at: chrono::DateTime<chrono::Utc>,
-  #[schema(value_type = String, format = "date-time")]
-  pub created_at: chrono::DateTime<chrono::Utc>,
-  #[schema(value_type = String, format = "date-time")]
-  pub updated_at: chrono::DateTime<chrono::Utc>,
 }

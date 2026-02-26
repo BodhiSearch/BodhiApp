@@ -40,6 +40,17 @@ pub enum AppAccessRequestError {
   #[error_meta(error_type = ErrorType::BadRequest)]
   ToolInstanceNotConfigured(String),
 
+  #[error("Session role is required to approve access requests.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  InsufficientPrivileges,
+
+  #[error("Approved role '{approved}' exceeds allowed maximum '{max_allowed}' for this user.")]
+  #[error_meta(error_type = ErrorType::Forbidden)]
+  PrivilegeEscalation {
+    approved: String,
+    max_allowed: String,
+  },
+
   #[error(transparent)]
   AccessRequestServiceError(#[from] AccessRequestError),
 

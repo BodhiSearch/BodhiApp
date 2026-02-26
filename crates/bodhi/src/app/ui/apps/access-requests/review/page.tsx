@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import {
@@ -20,6 +22,7 @@ import {
   useDenyAppAccessRequest,
 } from '@/hooks/useAppAccessRequests';
 import type { AccessRequestActionResponse, ApproveAccessRequestBody } from '@/hooks/useAppAccessRequests';
+import { useUser } from '@/hooks/useUsers';
 
 // ============================================================================
 // Non-Draft Status Handler
@@ -80,6 +83,38 @@ const NonDraftStatus = ({ status, flowType }: { status: string; flowType: string
 // Review Content Component
 // ============================================================================
 
+// Role scope constants and utilities
+const SCOPE_ORDER = ['scope_user_power_user', 'scope_user_user'] as const;
+type UserScopeValue = (typeof SCOPE_ORDER)[number];
+
+const SCOPE_LABELS: Record<UserScopeValue, string> = {
+  scope_user_power_user: 'Power User',
+  scope_user_user: 'User',
+};
+
+function computeRoleOptions(
+  requestedRole: string,
+  userRole: string | null | undefined
+): { value: string; label: string }[] {
+  const requestedIndex = SCOPE_ORDER.indexOf(requestedRole as UserScopeValue);
+  if (requestedIndex === -1) return [];
+
+  // resource_power_user, resource_manager, resource_admin can grant scope_user_power_user
+  const maxGrantable =
+    userRole && ['resource_power_user', 'resource_manager', 'resource_admin'].includes(userRole)
+      ? 'scope_user_power_user'
+      : 'scope_user_user';
+  const maxGrantableIndex = SCOPE_ORDER.indexOf(maxGrantable as UserScopeValue);
+
+  // Available options: all scopes at or below min(requestedScope, maxGrantable)
+  // Higher index in SCOPE_ORDER = lower/more-restrictive scope
+  const startIndex = Math.max(requestedIndex, maxGrantableIndex);
+  return SCOPE_ORDER.slice(startIndex).map((scope) => ({
+    value: scope,
+    label: SCOPE_LABELS[scope],
+  }));
+}
+
 const ReviewContent = () => {
   const searchParams = useSearchParams();
   const id = searchParams?.get('id');
@@ -89,10 +124,12 @@ const ReviewContent = () => {
   const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
   const [selectedMcpInstances, setSelectedMcpInstances] = useState<Record<string, string>>({});
   const [approvedMcps, setApprovedMcps] = useState<Record<string, boolean>>({});
+  const [approvedRole, setApprovedRole] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
   const { data: reviewData, isLoading, error } = useAppAccessRequestReview(id);
+  const { data: userData } = useUser();
 
   const handleActionSuccess = (data: AccessRequestActionResponse) => {
     if (data.flow_type === 'popup') {
@@ -119,6 +156,18 @@ const ReviewContent = () => {
     },
   });
 
+  const roleOptions = useMemo(() => {
+    if (!reviewData) return [];
+    const userRole = userData?.auth_status === 'logged_in' ? (userData.role as string | null | undefined) : null;
+    return computeRoleOptions(reviewData.requested_role, userRole);
+  }, [reviewData, userData]);
+
+  useEffect(() => {
+    if (roleOptions.length > 0) {
+      setApprovedRole(roleOptions[0].value);
+    }
+  }, [roleOptions]);
+
   useEffect(() => {
     if (reviewData?.tools_info) {
       const initial: Record<string, boolean> = {};
@@ -138,6 +187,7 @@ const ReviewContent = () => {
 
   const canApprove = useMemo(() => {
     if (!reviewData) return false;
+    if (!approvedRole) return false;
     const toolsValid = (reviewData.tools_info ?? []).every((tool) => {
       if (!approvedTools[tool.toolset_type]) return true;
       if (tool.instances.length === 0) return false;
@@ -217,6 +267,7 @@ const ReviewContent = () => {
   const handleApprove = () => {
     setIsSubmitting(true);
     const body: ApproveAccessRequestBody = {
+      approved_role: approvedRole!,
       approved: {
         toolsets: (reviewData.tools_info ?? []).map((tool) => ({
           toolset_type: tool.toolset_type,
@@ -298,6 +349,28 @@ const ReviewContent = () => {
                   onToggleApproval={(url, approved) => setApprovedMcps((prev) => ({ ...prev, [url]: approved }))}
                 />
               ))}
+            </div>
+          )}
+
+          {roleOptions.length > 0 && (
+            <div className="mb-4" data-testid="review-approved-role-section">
+              <Label className="text-sm font-medium mb-1 block">Approved Role</Label>
+              <Select value={approvedRole ?? ''} onValueChange={setApprovedRole}>
+                <SelectTrigger data-testid="review-approved-role-select">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((opt) => (
+                    <SelectItem
+                      key={opt.value}
+                      value={opt.value}
+                      data-testid={`review-approved-role-option-${opt.value}`}
+                    >
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

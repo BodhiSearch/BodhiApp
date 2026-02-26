@@ -41,6 +41,10 @@ export type AccessRequestReviewResponse = {
      */
     status: string;
     /**
+     * Role requested by the app
+     */
+    requested_role: string;
+    /**
      * Resources requested
      */
     requested: RequestedResources;
@@ -64,9 +68,13 @@ export type AccessRequestStatusResponse = {
      */
     status: string;
     /**
-     * Resource scope (present when approved)
+     * Role requested by the app
      */
-    resource_scope?: string | null;
+    requested_role: string;
+    /**
+     * Role approved (present when approved)
+     */
+    approved_role?: string | null;
     /**
      * Access request scope (present when user-approved with tools)
      */
@@ -256,6 +264,10 @@ export type AppToolsetConfig = {
 };
 
 export type ApproveAccessRequestBody = {
+    /**
+     * Role to grant for the approved request (scope_user_user or scope_user_power_user)
+     */
+    approved_role: UserScope;
     /**
      * Approved resources with selections
      */
@@ -834,6 +846,10 @@ export type CreateAccessRequestBody = {
      * Redirect URL for result notification (required for redirect flow)
      */
     redirect_url?: string | null;
+    /**
+     * Role requested for the external app (scope_user_user or scope_user_power_user)
+     */
+    requested_role: UserScope;
     requested?: null | RequestedResources;
 };
 
@@ -843,20 +859,13 @@ export type CreateAccessRequestResponse = {
      */
     id: string;
     /**
+     * Status (always "draft")
+     */
+    status: string;
+    /**
      * Review URL for user to approve/deny
      */
     review_url: string;
-    status: 'draft';
-} | {
-    /**
-     * Access request ID
-     */
-    id: string;
-    /**
-     * Resource scope granted by KC
-     */
-    resource_scope: string;
-    status: 'approved';
 };
 
 export type CreateAliasRequest = {
@@ -2459,7 +2468,7 @@ export type TokenInfo = {
     role: TokenScope;
 };
 
-export type TokenScope = 'scope_token_user' | 'scope_token_power_user' | 'scope_token_manager' | 'scope_token_admin';
+export type TokenScope = 'scope_token_user' | 'scope_token_power_user';
 
 export type TokenStatus = 'active' | 'inactive';
 
@@ -2882,7 +2891,7 @@ export type UserResponse = {
     auth_status: 'api_token';
 });
 
-export type UserScope = 'scope_user_user' | 'scope_user_power_user' | 'scope_user_manager' | 'scope_user_admin';
+export type UserScope = 'scope_user_user' | 'scope_user_power_user';
 
 /**
  * Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. Currently supported values are `low`, `medium`, and `high`.

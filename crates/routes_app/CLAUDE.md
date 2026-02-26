@@ -123,10 +123,10 @@ Service errors flow through a well-defined chain: service-specific error -> doma
 4. `request_access_handler` -- App-to-app resource access with version-based caching and toolset scope management
 
 ### API Token Privilege Escalation Prevention
-Token creation enforces a strict privilege matrix:
+Token creation enforces a strict privilege matrix. `TokenScope` has two variants: `User` and `PowerUser`.
 - `User` role can only create `scope_token_user` tokens
-- `PowerUser`, `Manager`, `Admin` can create `scope_token_user` or `scope_token_power_user` tokens
-- No role can create `scope_token_manager` or `scope_token_admin` tokens
+- `PowerUser` and higher roles can create `scope_token_user` or `scope_token_power_user` tokens
+- The match is exhaustive over these two `TokenScope` variants, with no catch-all arm
 - Tokens use cryptographic random generation with `bodhiapp_` prefix, SHA-256 hashing, and prefix-based lookup
 
 ### User Access Request Workflow
@@ -165,11 +165,13 @@ All MCP routes are unified under the `/bodhi/v1/mcps/` prefix in the `routes_mcp
 - Shared test infrastructure lives in `test_utils/` (router builders, auth helpers, assertions)
 
 ### App Access Request Workflow
-App access request routes (`routes_apps/`) handle external application resource access:
-1. External app creates access request via `create_access_request_handler` (`POST /bodhi/v1/apps/request-access`)
-2. Admin reviews via `get_access_request_review_handler` (`GET /bodhi/v1/access-requests/{id}/review`)
-3. Approval via `approve_access_request_handler` (`PUT /bodhi/v1/access-requests/{id}/approve`)
-4. Denial via `deny_access_request_handler` (`POST /bodhi/v1/access-requests/{id}/deny`)
+App access request routes (`routes_apps/`) handle external application resource access using a role-based model. The flow centers on `requested_role` (what the app asks for) and `approved_role` (what the user grants):
+
+1. External app creates access request via `create_access_request_handler` (`POST /bodhi/v1/apps/request-access`) -- always creates a "draft" status request with `requested_role`, optionally requested tool types and MCP servers. Returns `review_url` for user approval. No auto-approve logic; all requests go through user review.
+2. External app polls status via `get_access_request_status_handler` (`GET /bodhi/v1/apps/access-requests/{id}`) -- returns `requested_role`, `approved_role` (populated when approved), and `access_request_scope`. Requires `app_client_id` query param for verification.
+3. User reviews via `get_access_request_review_handler` (`GET /bodhi/v1/access-requests/{id}/review`) -- returns full request details including `requested_role`, tool type info with user's configured instances, and MCP server info with user's connected instances. Requires session auth.
+4. User approves via `approve_access_request_handler` (`PUT /bodhi/v1/access-requests/{id}/approve`) -- request body includes `approved_role` (the role to grant) and `approved` resource selections (toolset/MCP instance mappings). Validates instance ownership, enablement, and API key configuration before delegating to service.
+5. User denies via `deny_access_request_handler` (`POST /bodhi/v1/access-requests/{id}/deny`)
 
 ### Model Metadata Refresh
 Supports two modes via discriminated union request body:

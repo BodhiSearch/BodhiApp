@@ -200,7 +200,6 @@ pub async fn setup_handler(
     .create_instance(
       &client_reg.client_id,
       &client_reg.client_secret,
-      &client_reg.scope,
       AppStatus::ResourceAdmin,
     )
     .await?;
