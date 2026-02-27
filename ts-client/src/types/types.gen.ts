@@ -103,10 +103,10 @@ export type ApiAlias = {
     id: string;
     api_format: ApiFormat;
     base_url: string;
-    models: Array<string>;
+    models: JsonVec;
     prefix?: string | null;
     forward_all_with_prefix: boolean;
-    models_cache: Array<string>;
+    models_cache: JsonVec;
     cache_fetched_at: string;
     created_at: string;
     updated_at: string;
@@ -227,7 +227,7 @@ export type AppInfo = {
 
 export type AppRole = ResourceRole | TokenScope | UserScope;
 
-export type AppStatus = 'setup' | 'ready' | 'resource-admin';
+export type AppStatus = 'setup' | 'ready' | 'resource_admin';
 
 /**
  * Application-level toolset configuration
@@ -1242,7 +1242,7 @@ export type CreateMcpAuthConfigRequest = {
     client_secret?: string | null;
     scopes?: string | null;
     /**
-     * `"pre-registered"` (default) or `"dynamic-registration"`
+     * `"pre_registered"` (default) or `"dynamic_registration"`
      */
     registration_type?: RegistrationType;
     registration_access_token?: string | null;
@@ -1595,6 +1595,8 @@ export type InputAudio = {
 };
 
 export type InputAudioFormat = 'wav' | 'mp3';
+
+export type JsonVec = Array<string>;
 
 export type ListMcpServersResponse = {
     mcp_servers: Array<McpServerResponse>;
@@ -2294,7 +2296,7 @@ export type RefreshSource = 'all' | 'model';
 /**
  * OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).
  */
-export type RegistrationType = 'pre-registered' | 'dynamic-registration';
+export type RegistrationType = 'pre_registered' | 'dynamic_registration';
 
 export type RequestedResources = {
     toolset_types?: Array<ToolsetTypeRequest>;
@@ -2783,30 +2785,12 @@ export type UrlCitation = {
 };
 
 export type UserAccessRequest = {
-    /**
-     * Unique identifier for the request
-     */
-    id: number;
-    /**
-     * Username of the requesting user
-     */
+    id: string;
     username: string;
-    /**
-     * User ID (UUID) of the requesting user
-     */
     user_id: string;
     reviewer?: string | null;
-    /**
-     * Current status of the request
-     */
     status: UserAccessRequestStatus;
-    /**
-     * Creation timestamp
-     */
     created_at: string;
-    /**
-     * Last update timestamp
-     */
     updated_at: string;
 };
 
@@ -2841,7 +2825,7 @@ export type UserAlias = {
     filename: string;
     snapshot: string;
     request_params?: OaiRequestParams;
-    context_params?: Array<string>;
+    context_params?: JsonVec;
     created_at: string;
     updated_at: string;
 };
@@ -3180,7 +3164,7 @@ export type ApproveAccessRequestData = {
         /**
          * Access request ID
          */
-        id: number;
+        id: string;
     };
     query?: never;
     url: '/bodhi/v1/access-requests/{id}/approve';
@@ -3327,7 +3311,7 @@ export type RejectAccessRequestData = {
         /**
          * Access request ID
          */
-        id: number;
+        id: string;
     };
     query?: never;
     url: '/bodhi/v1/access-requests/{id}/reject';

@@ -6,7 +6,7 @@ use objs::{TokenScope, UserScope};
 use rstest::rstest;
 use serde_json::json;
 use services::{
-  db::{ApiToken, TokenRepository, TokenStatus},
+  db::{ApiToken, AppAccessRequestStatus, TokenRepository, TokenStatus},
   test_utils::{
     build_token, test_db_service, AppServiceStubBuilder, SettingServiceStub, TestDbService, ISSUER,
     TEST_CLIENT_ID, TEST_CLIENT_SECRET,
@@ -67,6 +67,7 @@ async fn test_validate_bodhiapp_token_scope_variations(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service
@@ -132,6 +133,7 @@ async fn test_validate_bodhiapp_token_success(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service
@@ -198,6 +200,7 @@ async fn test_validate_bodhiapp_token_inactive(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Validate token - should fail due to inactive status
@@ -255,6 +258,7 @@ async fn test_validate_bodhiapp_token_invalid_hash(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Try to validate with different token string (wrong hash)
@@ -291,6 +295,7 @@ async fn test_validate_bearer_token_header_errors(
     Arc::new(test_db_service),
     Arc::new(MockSettingService::default()),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   ));
   let result = token_service.validate_bearer_token(header).await;
   assert!(result.is_err());
@@ -363,6 +368,7 @@ async fn test_validate_external_client_token_success(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   ));
 
   let result = token_service
@@ -494,6 +500,7 @@ async fn test_external_client_token_cache_security_prevents_jti_forgery(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   ));
 
   let legitimate_result = token_service
@@ -592,6 +599,7 @@ async fn test_validate_bearer_token_scope_not_found(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // DB lookup returns None, expect 403 ScopeNotFound
@@ -613,7 +621,9 @@ async fn test_validate_bearer_token_scope_not_found(
 async fn test_validate_bearer_token_scope_not_approved(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -625,9 +635,9 @@ async fn test_validate_bearer_token_scope_not_approved(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "draft".to_string(),
+    status: AppAccessRequestStatus::Draft,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: None,
     user_id: None,
@@ -635,9 +645,9 @@ async fn test_validate_bearer_token_scope_not_approved(
     approved_role: None,
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -673,6 +683,7 @@ async fn test_validate_bearer_token_scope_not_approved(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service
@@ -691,7 +702,9 @@ async fn test_validate_bearer_token_scope_not_approved(
 async fn test_validate_bearer_token_app_client_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -704,9 +717,9 @@ async fn test_validate_bearer_token_app_client_mismatch(
     app_client_id: "app2".to_string(), // Different from token azp
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -714,9 +727,9 @@ async fn test_validate_bearer_token_app_client_mismatch(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -751,6 +764,7 @@ async fn test_validate_bearer_token_app_client_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
   let result = token_service
     .validate_bearer_token(&format!("Bearer {}", external_token))
@@ -768,7 +782,9 @@ async fn test_validate_bearer_token_app_client_mismatch(
 async fn test_validate_bearer_token_user_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -780,9 +796,9 @@ async fn test_validate_bearer_token_user_mismatch(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some("user2".to_string()), // Different from token sub
@@ -790,9 +806,9 @@ async fn test_validate_bearer_token_user_mismatch(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -828,6 +844,7 @@ async fn test_validate_bearer_token_user_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Expect 403 UserMismatch
@@ -842,31 +859,32 @@ async fn test_validate_bearer_token_user_mismatch(
 
 #[anyhow_trace]
 #[rstest]
-#[case::denied("denied")]
-#[case::expired("expired")]
-#[case::failed("failed")]
+#[case::denied(AppAccessRequestStatus::Denied, "denied")]
+#[case::draft(AppAccessRequestStatus::Draft, "draft")]
+#[case::failed(AppAccessRequestStatus::Failed, "failed")]
 #[awt]
 #[tokio::test]
 async fn test_validate_bearer_token_invalid_status(
-  #[case] status: &str,
+  #[case] status: AppAccessRequestStatus,
+  #[case] status_label: &str,
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{AccessRequestRepository, AppAccessRequestRow, FlowType};
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
-  let scope = format!("scope_access_request:status-{}-test", status);
+  let scope = format!("scope_access_request:status-{}-test", status_label);
   let sub = Uuid::new_v4().to_string();
 
-  // Create access request with invalid status
+  // Create access request with non-approved status
   let row = AppAccessRequestRow {
-    id: format!("ar-{}", status),
+    id: format!("ar-{}", status_label),
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: status.to_string(),
+    status,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: None,
     user_id: Some(sub.clone()),
@@ -874,9 +892,9 @@ async fn test_validate_bearer_token_invalid_status(
     approved_role: None,
     access_request_scope: Some(scope.clone()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -911,6 +929,7 @@ async fn test_validate_bearer_token_invalid_status(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Expect 403 NotApproved
@@ -930,7 +949,9 @@ async fn test_validate_bearer_token_invalid_status(
 async fn test_validate_bearer_token_access_request_id_mismatch(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -944,9 +965,9 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -954,9 +975,9 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -1006,6 +1027,7 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Expect 403 AccessRequestIdMismatch
@@ -1025,7 +1047,9 @@ async fn test_validate_bearer_token_access_request_id_mismatch(
 async fn test_validate_bearer_token_missing_access_request_id_claim(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1038,9 +1062,9 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -1048,9 +1072,9 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -1099,6 +1123,7 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   // Expect 403 AccessRequestIdMismatch (claim="missing")
@@ -1118,7 +1143,9 @@ async fn test_validate_bearer_token_missing_access_request_id_claim(
 async fn test_validate_bearer_token_with_access_request_scope_success(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1131,9 +1158,9 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -1141,9 +1168,9 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -1194,6 +1221,7 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service
@@ -1228,7 +1256,9 @@ async fn test_validate_bearer_token_with_access_request_scope_success(
 async fn test_validate_bearer_token_cache_hit_returns_role(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1241,9 +1271,9 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -1251,9 +1281,9 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -1306,6 +1336,7 @@ async fn test_validate_bearer_token_cache_hit_returns_role(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let bearer_header = format!("Bearer {}", external_token);
@@ -1395,6 +1426,7 @@ async fn test_validate_bearer_token_without_access_request_scope(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service
@@ -1427,7 +1459,9 @@ async fn test_validate_bearer_token_without_access_request_scope(
 async fn test_validate_bearer_token_privilege_escalation_rejected(
   #[future] test_db_service: TestDbService,
 ) -> anyhow::Result<()> {
-  use services::db::{AccessRequestRepository, AppAccessRequestRow};
+  use services::db::{
+    AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType,
+  };
 
   let now = test_db_service.now();
   let expires_at = now + chrono::Duration::hours(1);
@@ -1441,9 +1475,9 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
     app_client_id: "external-client".to_string(),
     app_name: Some("Test App".to_string()),
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[]}"#.to_string()),
     user_id: Some(sub.clone()),
@@ -1451,9 +1485,9 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
     approved_role: Some("scope_user_power_user".to_string()),
     access_request_scope: Some(scope.to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   test_db_service.create(&row).await?;
 
@@ -1510,6 +1544,7 @@ async fn test_validate_bearer_token_privilege_escalation_rejected(
     Arc::new(test_db_service),
     Arc::new(setting_service),
     Arc::new(LocalConcurrencyService::new()),
+    Arc::new(services::db::DefaultTimeService),
   );
 
   let result = token_service

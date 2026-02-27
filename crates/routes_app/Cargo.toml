@@ -41,6 +41,7 @@ validator = { workspace = true, features = ["derive"] }
 utoipa = { workspace = true, features = ["axum_extras"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum", "vendored"] }
 url = { workspace = true }
+ulid = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 # Optional deps for test-utils feature

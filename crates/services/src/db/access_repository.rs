@@ -27,10 +27,10 @@ pub trait AccessRepository: Send + Sync {
 
   async fn update_request_status(
     &self,
-    id: i64,
+    id: &str,
     status: UserAccessRequestStatus,
     reviewer: String,
   ) -> Result<(), DbError>;
 
-  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError>;
+  async fn get_request_by_id(&self, id: &str) -> Result<Option<UserAccessRequest>, DbError>;
 }

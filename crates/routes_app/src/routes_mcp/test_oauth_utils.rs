@@ -11,7 +11,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::routing::{delete, get, post};
 use axum::Router;
-use objs::{McpOAuthToken, ResourceRole};
+use objs::{McpOAuthToken, RegistrationType, ResourceRole};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serde_json::{json, Value};
@@ -329,7 +329,7 @@ async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
   let (state, app_service) = build_mcp_test_state_with_app_service(mock).await?;
   let db_service = app_service.db_service();
 
-  let now_ts = fixed_dt().timestamp();
+  let now_ts = fixed_dt();
 
   // Insert prerequisite rows (server -> config -> token)
   let server_row = McpServerRow {
@@ -349,7 +349,7 @@ async fn test_delete_oauth_token_handler_success() -> anyhow::Result<()> {
     id: "oauth-config-uuid-1".to_string(),
     name: "Test OAuth".to_string(),
     mcp_server_id: "server-uuid-1".to_string(),
-    registration_type: "pre_registered".to_string(),
+    registration_type: RegistrationType::PreRegistered,
     client_id: "client-123".to_string(),
     encrypted_client_secret: None,
     client_secret_salt: None,

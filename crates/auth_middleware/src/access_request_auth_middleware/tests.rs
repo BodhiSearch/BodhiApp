@@ -11,7 +11,7 @@ use objs::{ResourceRole, UserScope};
 use rstest::{fixture, rstest};
 use server_core::{DefaultRouterState, MockSharedContext, RouterState};
 use services::{
-  db::AccessRequestRepository,
+  db::{AccessRequestRepository, AppAccessRequestStatus, FlowType},
   test_utils::{AppServiceStubBuilder, MockDbService, TestDbService},
 };
 use std::sync::Arc;
@@ -157,21 +157,21 @@ async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
 // OAuth access request validation tests
 #[rstest]
 #[case::oauth_approved_instance_in_list(
-  "approved",
+  AppAccessRequestStatus::Approved,
   Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#.to_string()),
   StatusCode::OK,
 )]
-#[case::oauth_denied("denied", None, StatusCode::FORBIDDEN)]
-#[case::oauth_draft("draft", None, StatusCode::FORBIDDEN)]
+#[case::oauth_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
+#[case::oauth_draft(AppAccessRequestStatus::Draft, None, StatusCode::FORBIDDEN)]
 #[case::oauth_not_in_approved_list(
-  "approved",
+  AppAccessRequestStatus::Approved,
   Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"different-toolset-id"}}]}"#.to_string()),
   StatusCode::FORBIDDEN,
 )]
 #[tokio::test]
 async fn test_oauth_access_request_validation(
   toolset_validator: Arc<dyn AccessRequestValidator>,
-  #[case] status: &str,
+  #[case] status: AppAccessRequestStatus,
   #[case] approved: Option<String>,
   #[case] expected_status: StatusCode,
 ) {
@@ -187,9 +187,9 @@ async fn test_oauth_access_request_validation(
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: status.to_string(),
+    status,
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved,
     user_id: Some("user123".to_string()),
@@ -197,9 +197,9 @@ async fn test_oauth_access_request_validation(
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: (now + chrono::Duration::hours(1)).timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
   };
 
   test_db.create(&access_request_row).await.unwrap();
@@ -236,9 +236,9 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
       r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#
@@ -249,9 +249,9 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: (now + chrono::Duration::hours(1)).timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
   };
 
   test_db.create(&access_request_row).await.unwrap();
@@ -288,9 +288,9 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
       r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#
@@ -301,9 +301,9 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: (now + chrono::Duration::hours(1)).timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
   };
 
   test_db.create(&access_request_row).await.unwrap();
@@ -340,9 +340,9 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[]}"#.to_string(),
     approved: None,
     user_id: Some("user123".to_string()),
@@ -350,9 +350,9 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: (now + chrono::Duration::hours(1)).timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
   };
 
   test_db.create(&access_request_row).await.unwrap();
@@ -511,20 +511,20 @@ async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessReque
 
 #[rstest]
 #[case::mcp_approved_instance_in_list(
-  "approved",
+  AppAccessRequestStatus::Approved,
   Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#.to_string()),
   StatusCode::OK,
 )]
-#[case::mcp_denied("denied", None, StatusCode::FORBIDDEN)]
+#[case::mcp_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
 #[case::mcp_not_in_approved_list(
-  "approved",
+  AppAccessRequestStatus::Approved,
   Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"different-mcp-id"}}]}"#.to_string()),
   StatusCode::FORBIDDEN,
 )]
 #[tokio::test]
 async fn test_mcp_oauth_access_request_validation(
   mcp_validator: Arc<dyn AccessRequestValidator>,
-  #[case] status: &str,
+  #[case] status: AppAccessRequestStatus,
   #[case] approved: Option<String>,
   #[case] expected_status: StatusCode,
 ) {
@@ -540,9 +540,9 @@ async fn test_mcp_oauth_access_request_validation(
     app_client_id: "app1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "redirect".to_string(),
+    flow_type: FlowType::Redirect,
     redirect_uri: Some("http://localhost:3000/callback".to_string()),
-    status: status.to_string(),
+    status,
     requested: r#"{"mcp_servers":[{"url":"https://mcp.deepwiki.com/mcp"}]}"#.to_string(),
     approved,
     user_id: Some("user123".to_string()),
@@ -550,9 +550,9 @@ async fn test_mcp_oauth_access_request_validation(
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: (now + chrono::Duration::hours(1)).timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at: now + chrono::Duration::hours(1),
+    created_at: now,
+    updated_at: now,
   };
 
   test_db.create(&access_request_row).await.unwrap();

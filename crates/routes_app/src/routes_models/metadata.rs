@@ -6,7 +6,6 @@
 
 use crate::{MetadataError, RefreshRequest, RefreshResponse, RefreshResponseType};
 use axum::{extract::State, Json};
-use chrono::Utc;
 use objs::{Alias, ApiError, API_TAG_MODELS};
 use server_core::RouterState;
 use services::{extract_and_store_metadata, RefreshTask};
@@ -121,7 +120,7 @@ pub async fn refresh_metadata_handler(
     RefreshRequest::All {} => {
       // Bulk async refresh
       let task = RefreshTask::RefreshAll {
-        created_at: Utc::now(),
+        created_at: state.app_service().time_service().utc_now(),
       };
 
       // Enqueue task via QueueProducer

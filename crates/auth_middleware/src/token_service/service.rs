@@ -1,9 +1,8 @@
 use crate::{AuthContext, AuthError, SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
-use chrono::Utc;
 use objs::{ResourceRole, TokenScope, UserScope};
 use serde::{Deserialize, Serialize};
 use services::{
-  db::{DbService, TokenStatus},
+  db::{DbService, TimeService, TokenStatus},
   extract_claims, AppInstanceError, AppInstanceService, AuthService, CacheService, Claims,
   ConcurrencyService, ExpClaims, ScopeClaims, SettingService, TokenError,
 };
@@ -29,6 +28,7 @@ pub struct DefaultTokenService {
   db_service: Arc<dyn DbService>,
   setting_service: Arc<dyn SettingService>,
   concurrency_service: Arc<dyn ConcurrencyService>,
+  time_service: Arc<dyn TimeService>,
 }
 
 impl DefaultTokenService {
@@ -39,6 +39,7 @@ impl DefaultTokenService {
     db_service: Arc<dyn DbService>,
     setting_service: Arc<dyn SettingService>,
     concurrency_service: Arc<dyn ConcurrencyService>,
+    time_service: Arc<dyn TimeService>,
   ) -> Self {
     Self {
       auth_service,
@@ -47,6 +48,7 @@ impl DefaultTokenService {
       db_service,
       setting_service,
       concurrency_service,
+      time_service,
     }
   }
 
@@ -105,7 +107,7 @@ impl DefaultTokenService {
     }
 
     let bearer_claims = extract_claims::<ExpClaims>(bearer_token)?;
-    if bearer_claims.exp < Utc::now().timestamp() as u64 {
+    if bearer_claims.exp < self.time_service.utc_now().timestamp() as u64 {
       return Err(TokenError::Expired)?;
     }
 
@@ -119,7 +121,7 @@ impl DefaultTokenService {
     {
       if let Ok(cached_result) = serde_json::from_str::<CachedExchangeResult>(&cached_json) {
         let scope_claims = extract_claims::<ScopeClaims>(&cached_result.token)?;
-        if scope_claims.exp < Utc::now().timestamp() as u64 {
+        if scope_claims.exp < self.time_service.utc_now().timestamp() as u64 {
           None
         } else {
           let role = cached_result
@@ -204,12 +206,12 @@ impl DefaultTokenService {
           )
         })?;
 
-      if record.status != "approved" {
+      if record.status != services::db::AppAccessRequestStatus::Approved {
         return Err(
           TokenError::AccessRequestValidation(
             services::AccessRequestValidationError::NotApproved {
               id: record.id.clone(),
-              status: record.status.clone(),
+              status: record.status.to_string(),
             },
           )
           .into(),
@@ -373,7 +375,7 @@ impl DefaultTokenService {
     let claims = extract_claims::<Claims>(&access_token)?;
 
     // Check if token is expired
-    let now = Utc::now().timestamp();
+    let now = self.time_service.utc_now().timestamp();
     if now < claims.exp as i64 {
       // Token still valid, return immediately
       let client_id = self
@@ -403,6 +405,7 @@ impl DefaultTokenService {
     // Clone Arc references for use in the closure
     let auth_service = Arc::clone(&self.auth_service);
     let app_instance_service = Arc::clone(&self.app_instance_service);
+    let time_service = Arc::clone(&self.time_service);
     let session_clone = session.clone();
 
     // Execute refresh logic with distributed lock
@@ -430,7 +433,7 @@ impl DefaultTokenService {
 
               // Re-validate the current token - it might have been refreshed
               let current_claims = extract_claims::<Claims>(&current_access_token)?;
-              let now = Utc::now().timestamp();
+              let now = time_service.utc_now().timestamp();
 
               if now < current_claims.exp as i64 {
                 // Token was refreshed by another request, use it

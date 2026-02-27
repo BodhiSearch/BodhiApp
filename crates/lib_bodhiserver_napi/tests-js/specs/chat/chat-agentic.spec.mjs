@@ -1,6 +1,6 @@
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 import { ChatPage } from '@/pages/ChatPage.mjs';
 import { ChatSettingsPage } from '@/pages/ChatSettingsPage.mjs';
@@ -42,11 +42,11 @@ test.describe('Chat Interface - Agentic Flow', () => {
     // Use shared server started by Playwright webServer
   });
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    chatPage = new ChatPage(page, SHARED_SERVER_URL);
-    chatSettingsPage = new ChatSettingsPage(page, SHARED_SERVER_URL);
-    toolsetsPage = new ToolsetsPage(page, SHARED_SERVER_URL);
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    chatPage = new ChatPage(page, sharedServerUrl);
+    chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
+    toolsetsPage = new ToolsetsPage(page, sharedServerUrl);
   });
 
   test('agentic chat with Exa web search executes tool and generates response @integration', async ({

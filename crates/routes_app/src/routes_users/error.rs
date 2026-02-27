@@ -31,7 +31,7 @@ pub enum AccessRequestError {
 
   #[error("Access request {0} not found.")]
   #[error_meta(error_type = ErrorType::NotFound)]
-  RequestNotFound(i64),
+  RequestNotFound(String),
 
   #[error("Insufficient privileges to assign this role.")]
   #[error_meta(error_type = ErrorType::BadRequest)]

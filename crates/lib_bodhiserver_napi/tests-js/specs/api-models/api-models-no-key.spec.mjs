@@ -5,7 +5,7 @@ import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { createMockOpenAIServer } from '@/utils/mock-openai-server.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Models - Optional Key (Mock Server)', () => {
   let loginPage;
@@ -26,11 +26,11 @@ test.describe('API Models - Optional Key (Mock Server)', () => {
     await mockOpenAIServer.start();
   });
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
-    formPage = new ApiModelFormPage(page, SHARED_SERVER_URL);
-    chatPage = new ChatPage(page, SHARED_SERVER_URL);
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    formPage = new ApiModelFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
   });
 
   test.afterAll(async () => {

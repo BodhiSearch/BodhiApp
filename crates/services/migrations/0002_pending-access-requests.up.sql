@@ -1,9 +1,0 @@
-CREATE TABLE access_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    reviewer TEXT DEFAULT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);

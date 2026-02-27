@@ -59,6 +59,31 @@ The error system coordinates across all BodhiApp layers through these key files:
 
 **Why This Architecture**: Domain-specific enums carry contextual meaning that generic HTTP wrappers cannot. The consolidated `IoError` enum simplifies pattern matching and reduces boilerplate while retaining operation-specific context through its variants. Error propagation flows seamlessly from services through routes to clients with consistent messages and OpenAI API compatibility.
 
+## Database Enum Types and JSON Column Types
+
+### **SeaORM-Integrated Domain Enums**
+Enums consolidated from `services` into `objs` with `sea_orm::DeriveValueType` for typed entity fields:
+
+- **Database Enums**: `src/db_enums.rs` - `DownloadStatus`, `TokenStatus`, `AppStatus` with `DeriveValueType` and `snake_case` serialization
+- **Access Request Enums**: `src/access_request.rs` - `AppAccessRequestStatus`, `FlowType`, `UserAccessRequestStatus` with `DeriveValueType`
+
+All enums use the pattern:
+```rust
+#[derive(/* ... */, sea_orm::DeriveValueType)]
+#[sea_orm(value_type = "String")]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum DownloadStatus { Pending, Completed, Error }
+```
+
+### **JSON Column Types (FromJsonQueryResult)**
+Types that map to JSON database columns via SeaORM:
+
+- **JsonVec**: `src/json_vec.rs` - `Vec<String>` newtype with private inner field. Derives `FromJsonQueryResult`. Access via `Deref`/`DerefMut`, mutate via `push()`, construct via `From<Vec<String>>` or `Default`.
+- **ModelArchitecture**: `src/model_metadata.rs` - Uses `FromJsonQueryResult` for structured JSON storage
+
+**Why This Architecture**: Typed enums replace raw String columns, providing compile-time safety and eliminating string parsing at query boundaries. `FromJsonQueryResult` enables structured JSON data in database columns without manual serde roundtrips.
+
 ## GGUF Binary Format System
 
 BodhiApp's comprehensive GGUF support enables safe local AI model management through specialized parsing:

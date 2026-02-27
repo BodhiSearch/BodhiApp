@@ -8,7 +8,6 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use chrono::Utc;
 use objs::{ApiError, OpenAIApiError, Repo, API_TAG_MODELS};
 use server_core::RouterState;
 use services::db::DbError;
@@ -261,7 +260,7 @@ async fn update_download_status(
   };
   download_request.status = status;
   download_request.error = error;
-  download_request.updated_at = Utc::now();
+  download_request.updated_at = app_service.time_service().utc_now();
 
   app_service
     .db_service()

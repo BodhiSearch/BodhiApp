@@ -26,6 +26,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(createOAuthRouter());
 
+app.get('/ping', (_req, res) => {
+  res.send('pong');
+});
+
 app.post('/mcp', handleMcpPost);
 app.get('/mcp', handleMcpGet);
 app.delete('/mcp', handleMcpDelete);

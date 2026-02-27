@@ -62,7 +62,9 @@ pub struct McpServerInfo {
   Display,
   EnumString,
   IntoStaticStr,
+  sea_orm::DeriveValueType,
 )]
+#[sea_orm(value_type = "String")]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum McpAuthType {
@@ -252,9 +254,11 @@ pub struct McpExecutionResponse {
   Display,
   EnumString,
   IntoStaticStr,
+  sea_orm::DeriveValueType,
 )]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
+#[sea_orm(value_type = "String")]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum RegistrationType {
   #[default]
   PreRegistered,
@@ -290,7 +294,7 @@ pub enum CreateMcpAuthConfigRequest {
     client_secret: Option<String>,
     #[serde(default)]
     scopes: Option<String>,
-    /// `"pre-registered"` (default) or `"dynamic-registration"`
+    /// `"pre_registered"` (default) or `"dynamic_registration"`
     #[serde(default)]
     registration_type: RegistrationType,
     #[serde(default)]

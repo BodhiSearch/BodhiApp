@@ -6,7 +6,17 @@ use std::str::FromStr;
 use utoipa::ToSchema;
 
 #[derive(
-  Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder, ToSchema,
+  Deserialize,
+  Serialize,
+  Debug,
+  Clone,
+  PartialEq,
+  Default,
+  PartialOrd,
+  Args,
+  Builder,
+  ToSchema,
+  sea_orm::FromJsonQueryResult,
 )]
 #[
   builder(

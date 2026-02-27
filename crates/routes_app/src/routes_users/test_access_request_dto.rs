@@ -8,7 +8,7 @@ use services::db::{UserAccessRequest, UserAccessRequestStatus};
 fn test_user_access_status_response_from_user_access_request() {
   // Test DTO conversion
   let request = UserAccessRequest {
-    id: 1,
+    id: "01JNFG0000000000000000TEST".to_string(),
     username: "test@example.com".to_string(),
     user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
     reviewer: None,

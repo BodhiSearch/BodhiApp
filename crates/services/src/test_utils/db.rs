@@ -1,18 +1,19 @@
 use crate::db::{
-  AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken, AppAccessRequestRow,
-  AppInstanceRepository, AppInstanceRow, AppToolsetConfigRow, DbCore, DbError, DbSetting,
-  DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRepository, McpRow,
-  McpServerRow, McpWithServerRow, ModelMetadataRow, ModelRepository, SettingsRepository,
-  SqliteDbService, TimeService, TokenRepository, ToolsetRepository, ToolsetRow, UserAccessRequest,
-  UserAccessRequestStatus, UserAliasRepository,
+  sea_migrations::Migrator, AccessRepository, AccessRequestRepository, ApiKeyUpdate, ApiToken,
+  AppAccessRequestRow, AppInstanceRepository, AppInstanceRow, AppToolsetConfigRow, DbCore, DbError,
+  DbSetting, DefaultDbService, DownloadRequest, McpAuthHeaderRow, McpOAuthConfigRow,
+  McpOAuthTokenRow, McpRepository, McpRow, McpServerRow, McpWithServerRow, ModelMetadataRow,
+  ModelRepository, SettingsRepository, TimeService, TokenRepository, ToolsetRepository, ToolsetRow,
+  UserAccessRequest, UserAccessRequestStatus, UserAliasRepository,
 };
 use chrono::{DateTime, Utc};
 use objs::test_utils::temp_dir;
 use objs::ApiAlias;
 use objs::UserAlias;
 use rstest::fixture;
-use sqlx::SqlitePool;
-use std::{fs::File, path::Path, sync::Arc};
+use sea_orm::Database;
+use sea_orm_migration::MigratorTrait;
+use std::{path::Path, sync::Arc};
 use tap::Tap;
 use tempfile::TempDir;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
@@ -24,17 +25,12 @@ pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
 }
 
 pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> TestDbService {
-  let dbfile = shared_temp_dir.path().join("testdb.sqlite");
-  File::create(&dbfile).unwrap();
-  let dbpath = dbfile.to_str().unwrap();
-  let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
-    .await
-    .unwrap();
+  let db = Database::connect("sqlite::memory:").await.unwrap();
+  Migrator::fresh(&db).await.unwrap();
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
-  let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
-  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key.clone());
-  db_service.migrate().await.unwrap();
+  let encryption_key = b"01234567890123456789012345678901".to_vec();
+  let db_service = DefaultDbService::new(db, Arc::new(time_service), encryption_key.clone());
   TestDbService::new(shared_temp_dir, db_service, now, encryption_key)
 }
 
@@ -62,7 +58,7 @@ impl TimeService for FrozenTimeService {
 #[derive(Debug)]
 pub struct TestDbService {
   _temp_dir: Arc<TempDir>,
-  inner: SqliteDbService,
+  inner: DefaultDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
   pub encryption_key: Vec<u8>,
@@ -71,7 +67,7 @@ pub struct TestDbService {
 impl TestDbService {
   pub fn new(
     _temp_dir: Arc<TempDir>,
-    inner: SqliteDbService,
+    inner: DefaultDbService,
     now: DateTime<Utc>,
     encryption_key: Vec<u8>,
   ) -> Self {
@@ -345,7 +341,7 @@ impl AccessRepository for TestDbService {
 
   async fn update_request_status(
     &self,
-    id: i64,
+    id: &str,
     status: UserAccessRequestStatus,
     reviewer: String,
   ) -> Result<(), DbError> {
@@ -356,7 +352,7 @@ impl AccessRepository for TestDbService {
       .tap(|_| self.notify("update_request_status"))
   }
 
-  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
+  async fn get_request_by_id(&self, id: &str) -> Result<Option<UserAccessRequest>, DbError> {
     self
       .inner
       .get_request_by_id(id)
@@ -634,7 +630,7 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("delete_mcp"))
   }
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError> {
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<objs::McpAuthHeader>, DbError> {
     self
       .inner
       .get_mcp_auth_header(id)
@@ -675,7 +671,7 @@ impl McpRepository for TestDbService {
   async fn list_mcp_auth_headers_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<McpAuthHeaderRow>, DbError> {
+  ) -> Result<Vec<objs::McpAuthHeader>, DbError> {
     self
       .inner
       .list_mcp_auth_headers_by_server(mcp_server_id)
@@ -702,7 +698,7 @@ impl McpRepository for TestDbService {
       .tap(|_| self.notify("create_mcp_oauth_config"))
   }
 
-  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError> {
+  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<objs::McpOAuthConfig>, DbError> {
     self
       .inner
       .get_mcp_oauth_config(id)
@@ -713,7 +709,7 @@ impl McpRepository for TestDbService {
   async fn list_mcp_oauth_configs_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<McpOAuthConfigRow>, DbError> {
+  ) -> Result<Vec<objs::McpOAuthConfig>, DbError> {
     self
       .inner
       .list_mcp_oauth_configs_by_server(mcp_server_id)
@@ -763,7 +759,7 @@ impl McpRepository for TestDbService {
     &self,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+  ) -> Result<Option<objs::McpOAuthToken>, DbError> {
     self
       .inner
       .get_mcp_oauth_token(user_id, id)
@@ -774,7 +770,7 @@ impl McpRepository for TestDbService {
   async fn get_latest_oauth_token_by_config(
     &self,
     config_id: &str,
-  ) -> Result<Option<McpOAuthTokenRow>, DbError> {
+  ) -> Result<Option<objs::McpOAuthToken>, DbError> {
     self
       .inner
       .get_latest_oauth_token_by_config(config_id)
@@ -830,6 +826,14 @@ impl McpRepository for TestDbService {
       .get_decrypted_oauth_bearer(id)
       .await
       .tap(|_| self.notify("get_decrypted_oauth_bearer"))
+  }
+
+  async fn get_decrypted_refresh_token(&self, token_id: &str) -> Result<Option<String>, DbError> {
+    self
+      .inner
+      .get_decrypted_refresh_token(token_id)
+      .await
+      .tap(|_| self.notify("get_decrypted_refresh_token"))
   }
 }
 
@@ -898,7 +902,7 @@ impl AppInstanceRepository for TestDbService {
     &self,
     client_id: &str,
     client_secret: &str,
-    status: &str,
+    status: &objs::AppStatus,
   ) -> Result<(), DbError> {
     self
       .inner
@@ -907,7 +911,11 @@ impl AppInstanceRepository for TestDbService {
       .tap(|_| self.notify("upsert_app_instance"))
   }
 
-  async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError> {
+  async fn update_app_instance_status(
+    &self,
+    client_id: &str,
+    status: &objs::AppStatus,
+  ) -> Result<(), DbError> {
     self
       .inner
       .update_app_instance_status(client_id, status)
@@ -1067,8 +1075,8 @@ mockall::mock! {
     async fn get_pending_request(&self, user_id: String) -> Result<Option<UserAccessRequest>, DbError>;
     async fn list_pending_requests(&self, page: u32, per_page: u32) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
     async fn list_all_requests(&self, page: u32, per_page: u32) -> Result<(Vec<UserAccessRequest>, usize), DbError>;
-    async fn update_request_status(&self, id: i64, status: UserAccessRequestStatus, reviewer: String) -> Result<(), DbError>;
-    async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError>;
+    async fn update_request_status(&self, id: &str, status: UserAccessRequestStatus, reviewer: String) -> Result<(), DbError>;
+    async fn get_request_by_id(&self, id: &str) -> Result<Option<UserAccessRequest>, DbError>;
   }
 
   #[async_trait::async_trait]
@@ -1078,9 +1086,13 @@ mockall::mock! {
       &self,
       client_id: &str,
       client_secret: &str,
-      status: &str,
+      status: &objs::AppStatus,
     ) -> Result<(), DbError>;
-    async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError>;
+    async fn update_app_instance_status(
+      &self,
+      client_id: &str,
+      status: &objs::AppStatus,
+    ) -> Result<(), DbError>;
     async fn delete_app_instance(&self, client_id: &str) -> Result<(), DbError>;
   }
 
@@ -1134,25 +1146,26 @@ mockall::mock! {
     async fn update_mcp(&self, row: &McpRow) -> Result<McpRow, DbError>;
     async fn delete_mcp(&self, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn create_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
-    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
+    async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<objs::McpAuthHeader>, DbError>;
     async fn update_mcp_auth_header(&self, row: &McpAuthHeaderRow) -> Result<McpAuthHeaderRow, DbError>;
     async fn delete_mcp_auth_header(&self, id: &str) -> Result<(), DbError>;
-    async fn list_mcp_auth_headers_by_server(&self, mcp_server_id: &str) -> Result<Vec<McpAuthHeaderRow>, DbError>;
+    async fn list_mcp_auth_headers_by_server(&self, mcp_server_id: &str) -> Result<Vec<objs::McpAuthHeader>, DbError>;
     async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
     async fn create_mcp_oauth_config(&self, row: &McpOAuthConfigRow) -> Result<McpOAuthConfigRow, DbError>;
-    async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError>;
-    async fn list_mcp_oauth_configs_by_server(&self, mcp_server_id: &str) -> Result<Vec<McpOAuthConfigRow>, DbError>;
+    async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<objs::McpOAuthConfig>, DbError>;
+    async fn list_mcp_oauth_configs_by_server(&self, mcp_server_id: &str) -> Result<Vec<objs::McpOAuthConfig>, DbError>;
     async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_config_cascade(&self, config_id: &str) -> Result<(), DbError>;
     async fn get_decrypted_client_secret(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
     async fn create_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
-    async fn get_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<Option<McpOAuthTokenRow>, DbError>;
-    async fn get_latest_oauth_token_by_config(&self, config_id: &str) -> Result<Option<McpOAuthTokenRow>, DbError>;
+    async fn get_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<Option<objs::McpOAuthToken>, DbError>;
+    async fn get_latest_oauth_token_by_config(&self, config_id: &str) -> Result<Option<objs::McpOAuthToken>, DbError>;
     async fn update_mcp_oauth_token(&self, row: &McpOAuthTokenRow) -> Result<McpOAuthTokenRow, DbError>;
     async fn delete_mcp_oauth_token(&self, user_id: &str, id: &str) -> Result<(), DbError>;
     async fn delete_oauth_tokens_by_config(&self, config_id: &str) -> Result<(), DbError>;
     async fn delete_oauth_tokens_by_config_and_user(&self, config_id: &str, user_id: &str) -> Result<(), DbError>;
     async fn get_decrypted_oauth_bearer(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
+    async fn get_decrypted_refresh_token(&self, token_id: &str) -> Result<Option<String>, DbError>;
   }
 
   #[async_trait::async_trait]

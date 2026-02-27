@@ -186,6 +186,7 @@ impl SharedContext for DefaultSharedContext {
     alias: Alias,
   ) -> Result<reqwest::Response> {
     // Pattern match to extract local alias information and reject API aliases
+    let empty_params = objs::JsonVec::default();
     let (alias_name, repo, filename, snapshot, context_params) = match &alias {
       Alias::User(user_alias) => (
         &user_alias.alias,
@@ -199,8 +200,7 @@ impl SharedContext for DefaultSharedContext {
         &model_alias.repo,
         &model_alias.filename,
         &model_alias.snapshot,
-        // Model aliases don't have context_params, use empty vector
-        &Vec::<String>::new(),
+        &empty_params,
       ),
       Alias::Api(_) => {
         return Err(ContextError::Unreachable(

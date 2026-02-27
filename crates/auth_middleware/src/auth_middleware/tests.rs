@@ -316,6 +316,7 @@ async fn test_auth_middleware_with_expired_session_token(
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(AppInstance::test_default())
     .await
+    .time_service(Arc::new(services::db::DefaultTimeService))
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
     .with_db_service()
@@ -414,6 +415,7 @@ async fn test_auth_middleware_token_refresh_persists_to_session(
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(AppInstance::test_default())
     .await
+    .time_service(Arc::new(services::db::DefaultTimeService))
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
     .with_db_service()
@@ -509,6 +511,7 @@ async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
   let app_service = AppServiceStubBuilder::default()
     .with_app_instance(instance)
     .await
+    .time_service(Arc::new(services::db::DefaultTimeService))
     .auth_service(Arc::new(mock_auth_service))
     .session_service(session_service.clone())
     .build()

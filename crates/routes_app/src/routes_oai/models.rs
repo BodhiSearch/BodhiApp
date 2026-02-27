@@ -82,7 +82,8 @@ pub async fn oai_models_handler(
 
         // If forward_all and cache is empty/stale, spawn async refresh
         if api_alias.forward_all_with_prefix
-          && (api_alias.is_cache_empty() || api_alias.is_cache_stale())
+          && (api_alias.is_cache_empty()
+            || api_alias.is_cache_stale(state.app_service().time_service().utc_now()))
         {
           let app_service = state.app_service();
           let alias_id = api_alias.id.clone();

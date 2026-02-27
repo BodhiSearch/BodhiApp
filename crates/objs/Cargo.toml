@@ -15,7 +15,6 @@ derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 dirs = { workspace = true, optional = true }
 derive-new = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
 fs_extra = { workspace = true, optional = true }
 hf-hub = { workspace = true }
 http-body-util = { workspace = true, optional = true }
@@ -24,6 +23,7 @@ once_cell = { workspace = true }
 
 regex = { workspace = true }
 reqwest = { workspace = true }
+sea-orm = { workspace = true, features = ["macros", "with-chrono", "with-json"] }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
@@ -36,6 +36,7 @@ thiserror = { workspace = true }
 utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 url.workspace = true
+ulid.workspace = true
 
 [dev-dependencies]
 anyhow = { workspace = true }

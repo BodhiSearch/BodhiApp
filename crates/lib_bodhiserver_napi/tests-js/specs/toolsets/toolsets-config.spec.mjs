@@ -2,7 +2,7 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ToolsetsPage } from '@/pages/ToolsetsPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 /**
  * Toolsets Configuration E2E Tests
@@ -28,9 +28,9 @@ test.describe('Toolsets Configuration', () => {
     // Use shared server started by Playwright webServer
   });
 
-  test.beforeEach(async ({ page }) => {
-    toolsetsPage = new ToolsetsPage(page, SHARED_SERVER_URL);
-    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    toolsetsPage = new ToolsetsPage(page, sharedServerUrl);
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
   });
 
   test('displays toolsets list page', async ({ page }) => {

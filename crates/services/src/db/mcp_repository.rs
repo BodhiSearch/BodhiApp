@@ -2,6 +2,7 @@ use crate::db::{
   DbError, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRow, McpServerRow,
   McpWithServerRow,
 };
+use objs::{McpAuthHeader, McpOAuthConfig, McpOAuthToken};
 
 #[async_trait::async_trait]
 pub trait McpRepository: Send + Sync {
@@ -41,7 +42,7 @@ pub trait McpRepository: Send + Sync {
     row: &McpAuthHeaderRow,
   ) -> Result<McpAuthHeaderRow, DbError>;
 
-  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeaderRow>, DbError>;
+  async fn get_mcp_auth_header(&self, id: &str) -> Result<Option<McpAuthHeader>, DbError>;
 
   async fn update_mcp_auth_header(
     &self,
@@ -53,7 +54,7 @@ pub trait McpRepository: Send + Sync {
   async fn list_mcp_auth_headers_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<McpAuthHeaderRow>, DbError>;
+  ) -> Result<Vec<McpAuthHeader>, DbError>;
 
   /// Get the decrypted auth header (key, value) for an MCP auth header config.
   async fn get_decrypted_auth_header(&self, id: &str) -> Result<Option<(String, String)>, DbError>;
@@ -64,12 +65,12 @@ pub trait McpRepository: Send + Sync {
     row: &McpOAuthConfigRow,
   ) -> Result<McpOAuthConfigRow, DbError>;
 
-  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfigRow>, DbError>;
+  async fn get_mcp_oauth_config(&self, id: &str) -> Result<Option<McpOAuthConfig>, DbError>;
 
   async fn list_mcp_oauth_configs_by_server(
     &self,
     mcp_server_id: &str,
-  ) -> Result<Vec<McpOAuthConfigRow>, DbError>;
+  ) -> Result<Vec<McpOAuthConfig>, DbError>;
 
   async fn delete_mcp_oauth_config(&self, id: &str) -> Result<(), DbError>;
 
@@ -92,12 +93,12 @@ pub trait McpRepository: Send + Sync {
     &self,
     user_id: &str,
     id: &str,
-  ) -> Result<Option<McpOAuthTokenRow>, DbError>;
+  ) -> Result<Option<McpOAuthToken>, DbError>;
 
   async fn get_latest_oauth_token_by_config(
     &self,
     config_id: &str,
-  ) -> Result<Option<McpOAuthTokenRow>, DbError>;
+  ) -> Result<Option<McpOAuthToken>, DbError>;
 
   async fn update_mcp_oauth_token(
     &self,
@@ -120,4 +121,7 @@ pub trait McpRepository: Send + Sync {
   /// Not user-scoped; used for admin preview flows.
   async fn get_decrypted_oauth_bearer(&self, id: &str)
     -> Result<Option<(String, String)>, DbError>;
+
+  /// Get the decrypted refresh token for an OAuth token, if present.
+  async fn get_decrypted_refresh_token(&self, token_id: &str) -> Result<Option<String>, DbError>;
 }

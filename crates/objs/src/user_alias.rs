@@ -1,19 +1,29 @@
-use crate::{is_default, OAIRequestParams, Repo};
+use crate::{is_default, JsonVec, OAIRequestParams, Repo};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(
-  Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, strum::Display,
+  Debug,
+  Clone,
+  Default,
+  Serialize,
+  Deserialize,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  strum::Display,
+  strum::EnumString,
+  sea_orm::DeriveValueType,
 )]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
+#[sea_orm(value_type = "String")]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum AliasSource {
   #[default]
   User,
   Model,
-  #[serde(rename = "api")]
-  #[strum(serialize = "api")]
   Api,
 }
 
@@ -31,9 +41,9 @@ pub struct UserAlias {
   #[serde(default, skip_serializing_if = "is_default")]
   #[builder(default)]
   pub request_params: OAIRequestParams,
-  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  #[serde(default, skip_serializing_if = "JsonVec::is_empty")]
   #[builder(default)]
-  pub context_params: Vec<String>,
+  pub context_params: JsonVec,
   #[schema(value_type = String, format = "date-time")]
   #[builder(setter(skip))]
   pub created_at: DateTime<Utc>,
@@ -45,7 +55,7 @@ pub struct UserAlias {
 impl UserAliasBuilder {
   pub fn build_with_time(&self, now: DateTime<Utc>) -> Result<UserAlias, crate::BuilderError> {
     Ok(UserAlias {
-      id: uuid::Uuid::new_v4().to_string(),
+      id: ulid::Ulid::new().to_string(),
       alias: self
         .alias
         .clone()

@@ -9,7 +9,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 /**
  * MCP Authentication Restrictions E2E Tests
@@ -33,14 +33,15 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
   test('App WITH MCP scope + OAuth WITH scope can list MCPs and execute tools', async ({
     page,
+    sharedServerUrl,
   }) => {
     let mcpInstanceId;
 
     await test.step('Phase 1: Session login and create MCP server + instance', async () => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();
 
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
       const serverData = McpFixtures.createServerData();
       const instanceData = McpFixtures.createLifecycleData();
 
@@ -61,7 +62,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.navigate();
 
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -73,9 +74,9 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
     await test.step('Phase 3: Submit access request and approve with MCP', async () => {
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: mcpInstanceId }]);
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
@@ -133,12 +134,15 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
     });
   });
 
-  test('App WITHOUT MCP scope + OAuth returns empty MCP list', async ({ page }) => {
+  test('App WITHOUT MCP scope + OAuth returns empty MCP list', async ({
+    page,
+    sharedServerUrl,
+  }) => {
     await test.step('Phase 1: Session login and create MCP server + instance', async () => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();
 
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
       const serverData = McpFixtures.createServerData();
       const instanceData = McpFixtures.createLifecycleData();
 
@@ -154,7 +158,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.navigate();
 
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -166,9 +170,9 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
     await test.step('Phase 3: Submit access request, approve, and login', async () => {
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approve();
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
@@ -196,15 +200,16 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
   test('App with MCP scope can access approved MCP but gets 401 on restricted MCP', async ({
     page,
+    sharedServerUrl,
   }) => {
     let approvedInstanceId;
     let restrictedInstanceId;
 
     await test.step('Phase 1: Session login and create MCP server + two instances', async () => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();
 
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
       const serverData = McpFixtures.createServerData();
 
       await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
@@ -231,7 +236,7 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
       await app.navigate();
 
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -243,9 +248,9 @@ test.describe('OAuth Token + MCP Access Request Flow', { tag: ['@oauth', '@mcps'
 
     await test.step('Phase 3: Submit access request and approve only deepwiki', async () => {
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([{ url: MCP_URL, instanceId: approvedInstanceId }]);
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);

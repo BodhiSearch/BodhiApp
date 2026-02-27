@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useDiscoverMcp } from '@/hooks/useMcps';
 
 type AuthConfigType = 'header' | 'oauth';
-type OAuthRegistrationType = 'pre-registered' | 'dynamic-registration';
+type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 interface AuthConfigFormProps {
   // Server context
@@ -72,7 +72,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
 
       // Ensure registration type is set to dynamic-registration after successful discovery
       if (props.enableAutoDcr && data.registration_endpoint) {
-        props.onRegistrationTypeChange('dynamic-registration');
+        props.onRegistrationTypeChange('dynamic_registration');
       }
 
       if (data.authorization_endpoint) props.onAuthEndpointChange(data.authorization_endpoint);
@@ -85,7 +85,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
 
       if (props.enableAutoDcr && !autoDcrFailed) {
         // First auto-DCR failure - silent switch
-        props.onRegistrationTypeChange('pre-registered');
+        props.onRegistrationTypeChange('pre_registered');
         setAutoDcrFailed(true);
         setDiscoverError('');
       } else {
@@ -108,7 +108,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
   // Auto-DCR on first OAuth selection (new page only)
   useEffect(() => {
     if (props.enableAutoDcr && props.type === 'oauth' && !hasAttemptedAutoDcr && props.serverUrl) {
-      props.onRegistrationTypeChange('dynamic-registration');
+      props.onRegistrationTypeChange('dynamic_registration');
       setHasAttemptedAutoDcr(true);
       setIsDiscovering(true);
       discoverMcp.mutate({ mcp_server_url: props.serverUrl });
@@ -130,7 +130,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
     if (
       props.enableAutoDcr &&
       props.type === 'oauth' &&
-      props.registrationType === 'dynamic-registration' &&
+      props.registrationType === 'dynamic_registration' &&
       autoDcrFailed &&
       props.serverUrl
     ) {
@@ -210,8 +210,8 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
                   <SelectValue placeholder="Select registration type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pre-registered">Pre-Registered</SelectItem>
-                  <SelectItem value="dynamic-registration">Dynamic Registration</SelectItem>
+                  <SelectItem value="pre_registered">Pre-Registered</SelectItem>
+                  <SelectItem value="dynamic_registration">Dynamic Registration</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -236,7 +236,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
                 <button
                   type="button"
                   className="text-sm text-primary underline mt-1"
-                  onClick={() => props.onRegistrationTypeChange('pre-registered')}
+                  onClick={() => props.onRegistrationTypeChange('pre_registered')}
                   data-testid="auth-config-switch-to-prereg"
                 >
                   Switch to Pre-Registered (manual entry)
@@ -246,7 +246,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
           )}
 
           {/* Pre-registered fields */}
-          {(!props.enableAutoDcr || props.registrationType === 'pre-registered') && (
+          {(!props.enableAutoDcr || props.registrationType === 'pre_registered') && (
             <>
               <div className="space-y-2">
                 <Label>Client ID</Label>
@@ -291,7 +291,7 @@ export function AuthConfigForm(props: AuthConfigFormProps) {
           </div>
 
           {/* Dynamic registration endpoint */}
-          {(!props.enableAutoDcr || props.registrationType === 'dynamic-registration') && (
+          {(!props.enableAutoDcr || props.registrationType === 'dynamic_registration') && (
             <div className="space-y-2">
               <Label>Registration Endpoint</Label>
               <Input

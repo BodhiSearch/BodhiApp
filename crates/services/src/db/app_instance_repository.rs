@@ -1,14 +1,14 @@
 use super::DbError;
+use chrono::{DateTime, Utc};
+use objs::AppStatus;
 
 #[derive(Debug, Clone)]
 pub struct AppInstanceRow {
   pub client_id: String,
   pub client_secret: String,
-  pub salt_client_secret: String,
-  pub nonce_client_secret: String,
-  pub app_status: String,
-  pub created_at: i64,
-  pub updated_at: i64,
+  pub app_status: AppStatus,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
 }
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -19,8 +19,12 @@ pub trait AppInstanceRepository: Send + Sync {
     &self,
     client_id: &str,
     client_secret: &str,
-    status: &str,
+    status: &AppStatus,
   ) -> Result<(), DbError>;
-  async fn update_app_instance_status(&self, client_id: &str, status: &str) -> Result<(), DbError>;
+  async fn update_app_instance_status(
+    &self,
+    client_id: &str,
+    status: &AppStatus,
+  ) -> Result<(), DbError>;
   async fn delete_app_instance(&self, client_id: &str) -> Result<(), DbError>;
 }

@@ -17,28 +17,26 @@ impl PartialEq for SqlxError {
 impl Eq for SqlxError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("Database migration error: {source}.")]
+#[error("SeaORM database error: {source}.")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
-pub struct SqlxMigrateError {
+pub struct SeaOrmDbError {
   #[from]
-  source: sqlx::migrate::MigrateError,
+  pub source: sea_orm::DbErr,
 }
 
-impl PartialEq for SqlxMigrateError {
+impl PartialEq for SeaOrmDbError {
   fn eq(&self, other: &Self) -> bool {
     self.source.to_string() == other.source.to_string()
   }
 }
 
-impl Eq for SqlxMigrateError {}
+impl Eq for SeaOrmDbError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DbError {
   #[error(transparent)]
-  SqlxError(#[from] SqlxError),
-  #[error(transparent)]
-  SqlxMigrateError(#[from] SqlxMigrateError),
+  SeaOrmError(#[from] SeaOrmDbError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::BadRequest, code="db_error-strum_parse", args_delegate = false)]
   StrumParse(#[from] strum::ParseError),
@@ -57,13 +55,15 @@ pub enum DbError {
   #[error("Multiple application instances found, expected at most one.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   MultipleAppInstance,
+  #[error("Data conversion error: {0}.")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  Conversion(String),
 }
 
-impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
 impl_error_from!(
-  ::sqlx::migrate::MigrateError,
-  DbError::SqlxMigrateError,
-  crate::db::SqlxMigrateError
+  ::sea_orm::DbErr,
+  DbError::SeaOrmError,
+  crate::db::SeaOrmDbError
 );
 
 #[cfg(test)]

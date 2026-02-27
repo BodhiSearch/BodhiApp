@@ -9,7 +9,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 /**
  * Shared DCR setup helper: login, create MCP server, discover endpoints,
@@ -17,9 +17,9 @@ import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs'
  *
  * Returns { serverId, dcrConfigId, mcpInstanceId }.
  */
-async function setupDcrMcpInstance(page, authServerConfig, testCredentials) {
-  const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-  const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+async function setupDcrMcpInstance(page, sharedServerUrl, authServerConfig, testCredentials) {
+  const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+  const mcpsPage = new McpsPage(page, sharedServerUrl);
   const serverData = McpFixtures.createDcrServerData();
   const instanceData = McpFixtures.createDcrInstanceData();
 
@@ -29,7 +29,7 @@ async function setupDcrMcpInstance(page, authServerConfig, testCredentials) {
   const serverId = await mcpsPage.getServerUuidByName(serverData.name);
 
   const discovery = await mcpsPage.discoverMcpEndpointsViaApi(serverData.url);
-  const redirectUri = `${SHARED_SERVER_URL}/ui/mcps/oauth/callback`;
+  const redirectUri = `${sharedServerUrl}/ui/mcps/oauth/callback`;
   const dcrResult = await mcpsPage.dynamicRegisterViaApi({
     registrationEndpoint: discovery.registration_endpoint,
     redirectUri,
@@ -76,9 +76,10 @@ test.describe(
 
     test('UI-driven DCR flow: discover via API, register, select config, authorize, create MCP, verify in playground', async ({
       page,
+      sharedServerUrl,
     }) => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
       const serverData = McpFixtures.createDcrServerData();
       const instanceData = McpFixtures.createDcrInstanceData();
       let serverId;
@@ -99,7 +100,7 @@ test.describe(
         expect(discovery.authorization_endpoint).toBeTruthy();
         expect(discovery.token_endpoint).toBeTruthy();
 
-        const redirectUri = `${SHARED_SERVER_URL}/ui/mcps/oauth/callback`;
+        const redirectUri = `${sharedServerUrl}/ui/mcps/oauth/callback`;
         const dcrResult = await mcpsPage.dynamicRegisterViaApi({
           registrationEndpoint: discovery.registration_endpoint,
           redirectUri,
@@ -167,17 +168,25 @@ test.describe(
       });
     });
 
-    test('Edit DCR MCP: disconnect and update without reconnecting', async ({ page }) => {
+    test('Edit DCR MCP: disconnect and update without reconnecting', async ({
+      page,
+      sharedServerUrl,
+    }) => {
       let mcpInstanceId;
       let instanceName;
 
       await test.step('Login and create DCR MCP server and instance', async () => {
-        const setup = await setupDcrMcpInstance(page, authServerConfig, testCredentials);
+        const setup = await setupDcrMcpInstance(
+          page,
+          sharedServerUrl,
+          authServerConfig,
+          testCredentials
+        );
         mcpInstanceId = setup.mcpInstanceId;
         instanceName = setup.instanceData.name;
       });
 
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
 
       await test.step('Navigate to edit page and verify connected card', async () => {
         await mcpsPage.clickEditById(mcpInstanceId);
@@ -200,11 +209,17 @@ test.describe(
 
     test('DCR access request: 3rd party app executes tool on DCR MCP via REST', async ({
       page,
+      sharedServerUrl,
     }) => {
       let mcpInstanceId;
 
       await test.step('Phase 1: Login, create DCR MCP server and instance via UI', async () => {
-        const setup = await setupDcrMcpInstance(page, authServerConfig, testCredentials);
+        const setup = await setupDcrMcpInstance(
+          page,
+          sharedServerUrl,
+          authServerConfig,
+          testCredentials
+        );
         mcpInstanceId = setup.mcpInstanceId;
       });
 
@@ -215,7 +230,7 @@ test.describe(
       await test.step('Phase 2: Configure external app with DCR MCP request', async () => {
         await app.navigate();
         await app.config.configureOAuthForm({
-          bodhiServerUrl: SHARED_SERVER_URL,
+          bodhiServerUrl: sharedServerUrl,
           authServerUrl: authServerConfig.authUrl,
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
@@ -227,9 +242,9 @@ test.describe(
 
       await test.step('Phase 3: Submit access request and approve with DCR MCP', async () => {
         await app.config.submitAccessRequest();
-        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         await reviewPage.approveWithMcps([
           { url: McpFixtures.OAUTH_DCR_MCP_URL, instanceId: mcpInstanceId },
         ]);

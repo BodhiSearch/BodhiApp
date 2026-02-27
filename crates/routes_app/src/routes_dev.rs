@@ -168,7 +168,7 @@ mod tests {
       filename: "test.gguf".to_string(),
       snapshot: "main".to_string(),
       request_params: Default::default(),
-      context_params: vec![],
+      context_params: Default::default(),
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
     };
@@ -185,8 +185,8 @@ mod tests {
       encrypted_api_key: None,
       salt: None,
       nonce: None,
-      created_at: app_service.time_service().utc_now().timestamp(),
-      updated_at: app_service.time_service().utc_now().timestamp(),
+      created_at: app_service.time_service().utc_now(),
+      updated_at: app_service.time_service().utc_now(),
     };
     db_service.create_toolset(&toolset).await?;
 
@@ -195,10 +195,10 @@ mod tests {
       id: "test-api-alias".to_string(),
       api_format: ApiFormat::OpenAI,
       base_url: "http://localhost".to_string(),
-      models: vec!["model1".to_string()],
+      models: vec!["model1".to_string()].into(),
       prefix: Some("test-".to_string()),
       forward_all_with_prefix: false,
-      models_cache: vec![],
+      models_cache: vec![].into(),
       cache_fetched_at: app_service.time_service().utc_now(),
       created_at: app_service.time_service().utc_now(),
       updated_at: app_service.time_service().utc_now(),
@@ -207,19 +207,14 @@ mod tests {
 
     // Create metadata
     let metadata = ModelMetadataRow {
-      id: 1,
+      id: String::new(),
       source: AliasSource::Model.to_string(),
       repo: Some("test/repo".to_string()),
       filename: Some("test.gguf".to_string()),
       snapshot: Some("main".to_string()),
       api_model_id: None,
-      capabilities_vision: Some(0),
-      capabilities_audio: Some(0),
-      capabilities_thinking: Some(0),
-      capabilities_function_calling: Some(0),
-      capabilities_structured_output: Some(0),
-      context_max_input_tokens: None,
-      context_max_output_tokens: None,
+      capabilities: None,
+      context: None,
       architecture: None,
       additional_metadata: None,
       chat_template: None,

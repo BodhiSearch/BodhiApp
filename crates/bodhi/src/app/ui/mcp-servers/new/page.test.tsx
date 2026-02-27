@@ -186,7 +186,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
     const authConfig = req.auth_config as Record<string, unknown>;
     expect(authConfig).toBeDefined();
     expect(authConfig.type).toBe('oauth');
-    expect(authConfig.registration_type).toBe('dynamic-registration');
+    expect(authConfig.registration_type).toBe('dynamic_registration');
     expect(authConfig.client_id).toBe('test-client-id');
     expect(authConfig.client_secret).toBe('test-client-secret');
 

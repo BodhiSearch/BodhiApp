@@ -9,7 +9,7 @@ use serde_yaml::Value as YamlValue;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::test_utils::TEST_CLIENT_ID;
 use services::{
-  db::{DbCore, DefaultTimeService, SqliteDbService},
+  db::{DbCore, DefaultDbService, DefaultTimeService},
   hash_key,
   test_utils::{access_token_claims, build_token, test_auth_service, OfflineHubService, StubQueue},
   AppInstanceService, AppService, AppStatus, DefaultAccessRequestService, DefaultAiApiService,
@@ -20,7 +20,6 @@ use services::{
   BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_PORT, BODHI_VERSION, HF_HOME,
   SETTINGS_YAML,
 };
-use sqlx::SqlitePool;
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use tempfile::TempDir;
 use time::{Duration, OffsetDateTime};
@@ -128,10 +127,10 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
   let encryption_key = hash_key(&encryption_key_raw);
-  let app_db_url = format!("sqlite:{}", app_db_path.display());
-  let app_pool = SqlitePool::connect(&app_db_url).await?;
-  let db_service = Arc::new(SqliteDbService::new(
-    app_pool,
+  let app_db_url = format!("sqlite:{}?mode=rwc", app_db_path.display());
+  let db = sea_orm::Database::connect(&app_db_url).await?;
+  let db_service = Arc::new(DefaultDbService::new(
+    db,
     time_service.clone(),
     encryption_key.clone(),
   ));
@@ -481,10 +480,10 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
   // Build DB service with pool (needed by setting_service)
   let encryption_key_raw = env_wrapper.var(BODHI_ENCRYPTION_KEY).unwrap();
   let encryption_key = hash_key(&encryption_key_raw);
-  let app_db_url = format!("sqlite:{}", app_db_path.display());
-  let app_pool = SqlitePool::connect(&app_db_url).await?;
-  let db_service = Arc::new(SqliteDbService::new(
-    app_pool,
+  let app_db_url = format!("sqlite:{}?mode=rwc", app_db_path.display());
+  let db = sea_orm::Database::connect(&app_db_url).await?;
+  let db_service = Arc::new(DefaultDbService::new(
+    db,
     time_service.clone(),
     encryption_key.clone(),
   ));

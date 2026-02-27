@@ -11,7 +11,9 @@ pub struct ModelMetadata {
   pub chat_template: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, sea_orm::FromJsonQueryResult,
+)]
 pub struct ModelCapabilities {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub vision: Option<bool>,
@@ -22,7 +24,9 @@ pub struct ModelCapabilities {
   pub tools: ToolCapabilities,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, sea_orm::FromJsonQueryResult,
+)]
 pub struct ToolCapabilities {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub function_calling: Option<bool>,
@@ -30,7 +34,9 @@ pub struct ToolCapabilities {
   pub structured_output: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, sea_orm::FromJsonQueryResult,
+)]
 pub struct ContextLimits {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub max_input_tokens: Option<u64>,
@@ -38,7 +44,9 @@ pub struct ContextLimits {
   pub max_output_tokens: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, sea_orm::FromJsonQueryResult,
+)]
 pub struct ModelArchitecture {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub family: Option<String>,

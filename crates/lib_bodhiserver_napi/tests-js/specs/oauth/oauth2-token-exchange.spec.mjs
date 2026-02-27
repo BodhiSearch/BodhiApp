@@ -10,7 +10,7 @@ import {
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () => {
   let authServerConfig;
@@ -30,14 +30,17 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
       testData = OAuth2Fixtures.getOAuth2TestData();
     });
 
-    test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({ page }) => {
+    test('should complete OAuth2 Token Exchange flow with dynamic audience', async ({
+      page,
+      sharedServerUrl,
+    }) => {
       const appClient = getPreConfiguredAppClient();
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
       await test.step('Login to Bodhi server', async () => {
-        const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+        const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
         await loginPage.performOAuthLogin();
       });
 
@@ -47,7 +50,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
 
       await test.step('Configure OAuth form', async () => {
         await app.config.configureOAuthForm({
-          bodhiServerUrl: SHARED_SERVER_URL,
+          bodhiServerUrl: sharedServerUrl,
           authServerUrl: authServerConfig.authUrl,
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
@@ -59,9 +62,9 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
 
       await test.step('Submit access request and approve via review page', async () => {
         await app.config.submitAccessRequest();
-        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         await reviewPage.approve();
 
         await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);
@@ -98,14 +101,17 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
       testData = OAuth2Fixtures.getOAuth2TestData();
     });
 
-    test('should downgrade role from power_user to user on review approval', async ({ page }) => {
+    test('should downgrade role from power_user to user on review approval', async ({
+      page,
+      sharedServerUrl,
+    }) => {
       const appClient = getPreConfiguredAppClient();
       const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
 
       const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
 
       await test.step('Login to Bodhi server', async () => {
-        const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+        const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
         await loginPage.performOAuthLogin();
       });
 
@@ -115,7 +121,7 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
 
       await test.step('Configure OAuth form with power_user role', async () => {
         await app.config.configureOAuthForm({
-          bodhiServerUrl: SHARED_SERVER_URL,
+          bodhiServerUrl: sharedServerUrl,
           authServerUrl: authServerConfig.authUrl,
           realm: authServerConfig.authRealm,
           clientId: appClient.clientId,
@@ -128,9 +134,9 @@ test.describe('OAuth2 Token Exchange Integration Tests', { tag: '@oauth' }, () =
 
       await test.step('Submit access request and downgrade role on review page', async () => {
         await app.config.submitAccessRequest();
-        await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+        await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-        const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+        const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
         await reviewPage.approveWithRole('scope_user_user');
 
         await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);

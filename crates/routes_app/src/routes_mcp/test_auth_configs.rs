@@ -212,7 +212,7 @@ async fn test_create_auth_config_oauth_prereg_success() -> anyhow::Result<()> {
     "authorization_endpoint": "https://auth.example.com/authorize",
     "token_endpoint": "https://auth.example.com/token",
     "scopes": "openid",
-    "registration_type": "pre-registered"
+    "registration_type": "pre_registered"
   });
   let response = router
     .clone()
@@ -279,7 +279,7 @@ async fn test_create_auth_config_oauth_dcr_success() -> anyhow::Result<()> {
     "authorization_endpoint": "https://auth.example.com/authorize",
     "token_endpoint": "https://auth.example.com/token",
     "scopes": "openid profile",
-    "registration_type": "dynamic-registration",
+    "registration_type": "dynamic_registration",
     "registration_access_token": "dcr-reg-token",
     "registration_endpoint": "https://auth.example.com/register",
     "token_endpoint_auth_method": "none",

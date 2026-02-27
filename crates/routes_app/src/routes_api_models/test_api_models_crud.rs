@@ -24,7 +24,7 @@ use services::test_utils::{
 };
 use std::sync::Arc;
 use tower::ServiceExt;
-use uuid::Uuid;
+use ulid::Ulid;
 
 /// Create expected ApiModelResponse for testing
 fn create_expected_response(
@@ -244,7 +244,7 @@ async fn test_create_api_model_handler_success(
   // Verify response body
   let api_response = response.json::<ApiModelResponse>().await?;
 
-  // Verify the response structure (note: ID is now auto-generated UUID)
+  // Verify the response structure (note: ID is now auto-generated ULID)
   assert_eq!(api_response.api_format, objs::ApiFormat::OpenAI);
   assert_eq!(api_response.base_url, expected_url);
   assert_eq!(api_response.api_key_masked, Some("***".to_string()));
@@ -254,8 +254,8 @@ async fn test_create_api_model_handler_success(
   );
   assert_eq!(api_response.prefix, None);
 
-  // Verify that ID is a valid UUID
-  assert!(Uuid::parse_str(&api_response.id).is_ok());
+  // Verify that ID is a valid ULID
+  assert!(Ulid::from_string(&api_response.id).is_ok());
 
   Ok(())
 }
@@ -289,17 +289,17 @@ async fn test_create_api_model_handler_generates_uuid(
     forward_all_with_prefix: false,
   };
 
-  // Make POST request to create API model (should succeed since UUIDs are unique)
+  // Make POST request to create API model (should succeed since ULIDs are unique)
   let response = test_router(Arc::new(app_service))
     .oneshot(Request::post(ENDPOINT_API_MODELS).json(create_request)?)
     .await?;
 
-  // Verify response status is 201 Created (no duplicate ID issue with UUIDs)
+  // Verify response status is 201 Created (no duplicate ID issue with ULIDs)
   assert_eq!(response.status(), StatusCode::CREATED);
 
   // Verify response structure
   let api_response = response.json::<ApiModelResponse>().await?;
-  assert!(Uuid::parse_str(&api_response.id).is_ok());
+  assert!(Ulid::from_string(&api_response.id).is_ok());
 
   Ok(())
 }

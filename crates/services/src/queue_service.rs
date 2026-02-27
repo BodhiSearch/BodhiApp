@@ -92,29 +92,19 @@ pub async fn extract_and_store_metadata(
   // Extract chat template directly from GGUF metadata
   let chat_template = get_chat_template(&gguf_metadata);
 
-  // Helper to convert Option<bool> to Option<i64> (SQLite boolean representation)
-  let bool_to_i64 = |b: Option<bool>| b.map(|v| if v { 1 } else { 0 });
-
   // Convert to database row
   // Always use AliasSource::Model since this represents the physical GGUF file
   let now = db_service.now();
   let metadata_row = ModelMetadataRow {
-    id: 0, // Will be set by database
+    id: String::new(),
     source: AliasSource::Model.to_string(),
     repo: Some(repo_str.clone()),
     filename: Some(filename.clone()),
     snapshot: Some(snapshot.clone()),
     api_model_id: None,
-    capabilities_vision: bool_to_i64(model_metadata.capabilities.vision),
-    capabilities_audio: bool_to_i64(model_metadata.capabilities.audio),
-    capabilities_thinking: bool_to_i64(model_metadata.capabilities.thinking),
-    capabilities_function_calling: bool_to_i64(model_metadata.capabilities.tools.function_calling),
-    capabilities_structured_output: bool_to_i64(
-      model_metadata.capabilities.tools.structured_output,
-    ),
-    context_max_input_tokens: model_metadata.context.max_input_tokens.map(|v| v as i64),
-    context_max_output_tokens: model_metadata.context.max_output_tokens.map(|v| v as i64),
-    architecture: serde_json::to_string(&model_metadata.architecture).ok(),
+    capabilities: Some(model_metadata.capabilities),
+    context: Some(model_metadata.context),
+    architecture: Some(model_metadata.architecture),
     additional_metadata: None,
     chat_template,
     extracted_at: now,

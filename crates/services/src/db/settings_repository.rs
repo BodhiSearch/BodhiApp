@@ -1,12 +1,14 @@
+use chrono::{DateTime, Utc};
+
 use super::DbError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DbSetting {
   pub key: String,
   pub value: String,
   pub value_type: String,
-  pub created_at: i64,
-  pub updated_at: i64,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
 }
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]

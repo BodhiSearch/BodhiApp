@@ -3,7 +3,6 @@ use crate::db::{
   encryption::encrypt_api_key, ApiKeyUpdate, DbError, DbService, TimeService, ToolsetRow,
 };
 use crate::exa_service::ExaService;
-use chrono::DateTime;
 use objs::{
   FunctionDefinition, ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionRequest,
   ToolsetExecutionResponse,
@@ -11,7 +10,7 @@ use objs::{
 use serde_json::json;
 use std::fmt::Debug;
 use std::sync::Arc;
-use uuid::Uuid;
+use ulid::Ulid;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
@@ -241,8 +240,8 @@ impl DefaultToolService {
       description: row.description,
       enabled: row.enabled,
       has_api_key: row.encrypted_api_key.is_some(),
-      created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-      updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+      created_at: row.created_at,
+      updated_at: row.updated_at,
     }
   }
 }
@@ -338,9 +337,9 @@ impl ToolService for DefaultToolService {
       .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 
     // Create row
-    let now = self.time_service.utc_now().timestamp();
+    let now = self.time_service.utc_now();
     let row = ToolsetRow {
-      id: Uuid::new_v4().to_string(),
+      id: Ulid::new().to_string(),
       user_id: user_id.to_string(),
       toolset_type: toolset_type.to_string(),
       slug: slug.to_string(),
@@ -424,7 +423,7 @@ impl ToolService for DefaultToolService {
     };
 
     // Update row
-    let now = self.time_service.utc_now().timestamp();
+    let now = self.time_service.utc_now();
     let row = ToolsetRow {
       id: id.to_string(),
       user_id: user_id.to_string(),
@@ -579,8 +578,8 @@ impl ToolService for DefaultToolService {
       description: type_def.description,
       enabled: db_row.enabled,
       updated_by: db_row.updated_by,
-      created_at: DateTime::from_timestamp(db_row.created_at, 0).unwrap(),
-      updated_at: DateTime::from_timestamp(db_row.updated_at, 0).unwrap(),
+      created_at: db_row.created_at,
+      updated_at: db_row.updated_at,
     })
   }
 
@@ -600,8 +599,8 @@ impl ToolService for DefaultToolService {
             description: type_def.description,
             enabled: row.enabled,
             updated_by: row.updated_by,
-            created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-            updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+            created_at: row.created_at,
+            updated_at: row.updated_at,
           })
       })
       .collect();
@@ -616,7 +615,6 @@ impl ToolService for DefaultToolService {
     let db_row = self.db_service.get_app_toolset_config(toolset_type).await?;
 
     Ok(db_row.and_then(|row| {
-      // Enrich with name/description from ToolsetDefinition
       self
         .get_type(&row.toolset_type)
         .map(|type_def| objs::AppToolsetConfig {
@@ -625,8 +623,8 @@ impl ToolService for DefaultToolService {
           description: type_def.description,
           enabled: row.enabled,
           updated_by: row.updated_by,
-          created_at: DateTime::from_timestamp(row.created_at, 0).unwrap(),
-          updated_at: DateTime::from_timestamp(row.updated_at, 0).unwrap(),
+          created_at: row.created_at,
+          updated_at: row.updated_at,
         })
     }))
   }

@@ -9,7 +9,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] }, () => {
   let authServerConfig;
@@ -22,9 +22,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
 
   test('UI-driven OAuth flow: select pre-created config, authorize, create MCP, verify in playground', async ({
     page,
+    sharedServerUrl,
   }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createOAuthServerData();
     const instanceData = McpFixtures.createOAuthInstanceData();
     let serverId;
@@ -117,9 +118,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
 
   test('OAuth access request: 3rd party app executes tool on OAuth MCP via REST', async ({
     page,
+    sharedServerUrl,
   }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createOAuthServerData();
     const instanceData = McpFixtures.createOAuthInstanceData();
     let serverId;
@@ -155,7 +157,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     await test.step('Phase 2: Configure external app with OAuth MCP request', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -167,9 +169,9 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
 
     await test.step('Phase 3: Submit access request and approve with OAuth MCP', async () => {
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([
         { url: McpFixtures.OAUTH_MCP_URL, instanceId: mcpInstanceId },
       ]);
@@ -208,9 +210,12 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     });
   });
 
-  test('Edit OAuth MCP: disconnect and update without reconnecting', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('Edit OAuth MCP: disconnect and update without reconnecting', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createOAuthServerData();
     const instanceData = McpFixtures.createOAuthInstanceData();
     let serverId;
@@ -260,9 +265,10 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
 
   test('OAuth denied access: 3rd party gets error state when access request denied', async ({
     page,
+    sharedServerUrl,
   }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createOAuthServerData();
     const instanceData = McpFixtures.createOAuthInstanceData();
     let serverId;
@@ -298,7 +304,7 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
     await test.step('Phase 2: Configure external app and submit access request', async () => {
       await app.navigate();
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -307,11 +313,11 @@ test.describe('MCP OAuth Authentication', { tag: ['@mcps', '@auth', '@oauth'] },
         requested: JSON.stringify({ mcp_servers: [{ url: McpFixtures.OAUTH_MCP_URL }] }),
       });
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
     });
 
     await test.step('Phase 3: Deny the access request on review page', async () => {
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.waitForReviewPage();
       await reviewPage.clickDeny();
     });

@@ -98,11 +98,11 @@ pub struct SetupRequest {
 /// Response containing the updated application status after setup
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
-    "status": "resource-admin"
+    "status": "resource_admin"
 }))]
 pub struct SetupResponse {
   /// New application status after successful setup
-  #[schema(example = "resource-admin")]
+  #[schema(example = "resource_admin")]
   pub status: AppStatus,
 }
 
@@ -130,7 +130,7 @@ impl IntoResponse for SetupResponse {
     responses(
         (status = 200, description = "Application setup completed successfully", body = SetupResponse,
          example = json!({
-             "status": "resource-admin"
+             "status": "resource_admin"
          })),
     )
 )]

@@ -5,7 +5,7 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('API Models Forward All With Prefix', () => {
   let loginPage;
@@ -26,16 +26,16 @@ test.describe('API Models Forward All With Prefix', () => {
     testData = { apiKey, authServerConfig, testCredentials };
   });
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(
       page,
-      SHARED_SERVER_URL,
+      sharedServerUrl,
       testData.authServerConfig,
       testData.testCredentials
     );
-    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
-    formPage = new ApiModelFormPage(page, SHARED_SERVER_URL);
-    chatPage = new ChatPage(page, SHARED_SERVER_URL);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    formPage = new ApiModelFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
   });
 
   test('forward_all_with_prefix lifecycle: create, list models, chat, prefix uniqueness, delete', async ({

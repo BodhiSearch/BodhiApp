@@ -34,9 +34,9 @@ pub async fn app_service_stub_builder(
 ) -> AppServiceStubBuilder {
   AppServiceStubBuilder::default()
     .with_hub_service()
+    .db_service(Arc::new(test_db_service))
     .with_data_service()
     .await
-    .db_service(Arc::new(test_db_service))
     .with_session_service()
     .await
     .to_owned()

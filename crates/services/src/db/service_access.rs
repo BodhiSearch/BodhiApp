@@ -1,98 +1,52 @@
 use crate::db::{
-  AccessRepository, DbError, SqliteDbService, UserAccessRequest, UserAccessRequestStatus,
+  entities::access_request, AccessRepository, DbError, DefaultDbService, UserAccessRequest,
+  UserAccessRequestStatus,
 };
-use chrono::{DateTime, Utc};
-use sqlx::query_as;
-use std::str::FromStr;
+use sea_orm::prelude::*;
+use sea_orm::{QueryOrder, QuerySelect, Set};
 
 #[async_trait::async_trait]
-impl AccessRepository for SqliteDbService {
+impl AccessRepository for DefaultDbService {
   async fn insert_pending_request(
     &self,
     username: String,
     user_id: String,
   ) -> Result<UserAccessRequest, DbError> {
     let now = self.time_service.utc_now();
-    let result = query_as::<
-      _,
-      (
-        i64,
-        String,
-        String,
-        Option<String>,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      "INSERT INTO access_requests (username, user_id, created_at, updated_at, status)
-         VALUES (?, ?, ?, ?, ?)
-         RETURNING id, username, user_id, reviewer, status, created_at, updated_at",
-    )
-    .bind(&username)
-    .bind(&user_id)
-    .bind(now)
-    .bind(now)
-    .bind(UserAccessRequestStatus::Pending.to_string())
-    .fetch_one(&self.pool)
-    .await?;
+    let id = ulid::Ulid::new().to_string();
 
-    Ok(UserAccessRequest {
-      id: result.0,
-      username: result.1,
-      user_id: result.2,
-      reviewer: result.3,
-      status: UserAccessRequestStatus::from_str(&result.4)?,
-      created_at: result.5,
-      updated_at: result.6,
-    })
+    let model = access_request::ActiveModel {
+      id: Set(id.clone()),
+      username: Set(username),
+      user_id: Set(user_id),
+      reviewer: Set(None),
+      status: Set(UserAccessRequestStatus::Pending),
+      created_at: Set(now),
+      updated_at: Set(now),
+    };
+
+    access_request::Entity::insert(model)
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    self
+      .get_request_by_id(&id)
+      .await?
+      .ok_or_else(|| DbError::from(sea_orm::DbErr::RecordNotInserted))
   }
 
   async fn get_pending_request(
     &self,
     user_id: String,
   ) -> Result<Option<UserAccessRequest>, DbError> {
-    let result = query_as::<
-      _,
-      (
-        i64,
-        String,
-        String,
-        Option<String>,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      "SELECT id, username, user_id, reviewer, status, created_at, updated_at
-         FROM access_requests
-         WHERE user_id = ? AND status = ?",
-    )
-    .bind(&user_id)
-    .bind(UserAccessRequestStatus::Pending.to_string())
-    .fetch_optional(&self.pool)
-    .await?;
+    let result = access_request::Entity::find()
+      .filter(access_request::Column::UserId.eq(user_id))
+      .filter(access_request::Column::Status.eq(UserAccessRequestStatus::Pending.to_string()))
+      .one(&self.db)
+      .await
+      .map_err(DbError::from)?;
 
-    let result = result
-      .map(
-        |(id, username, user_id, reviewer, status, created_at, updated_at)| {
-          let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
-            tracing::warn!("unknown request status: {} for id: {}", status, id);
-            return None;
-          };
-          let result = UserAccessRequest {
-            id,
-            username,
-            user_id,
-            reviewer,
-            status,
-            created_at,
-            updated_at,
-          };
-          Some(result)
-        },
-      )
-      .unwrap_or(None);
     Ok(result)
   }
 
@@ -101,58 +55,24 @@ impl AccessRepository for SqliteDbService {
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
-    let offset = (page - 1) * per_page;
-    // Get total count of pending requests
-    let total_count: (i64,) = query_as("SELECT COUNT(*) FROM access_requests WHERE status = ?")
-      .bind(UserAccessRequestStatus::Pending.to_string())
-      .fetch_one(&self.pool)
-      .await?;
-    let results = query_as::<
-      _,
-      (
-        i64,
-        String,
-        String,
-        Option<String>,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      "SELECT id, username, user_id, reviewer, status, created_at, updated_at
-         FROM access_requests
-         WHERE status = ?
-         ORDER BY created_at ASC
-         LIMIT ? OFFSET ?",
-    )
-    .bind(UserAccessRequestStatus::Pending.to_string())
-    .bind(per_page as i64)
-    .bind(offset as i64)
-    .fetch_all(&self.pool)
-    .await?;
+    let offset = ((page - 1) * per_page) as u64;
 
-    let results = results
-      .into_iter()
-      .filter_map(
-        |(id, username, user_id, reviewer, status, created_at, updated_at)| {
-          let Ok(status) = UserAccessRequestStatus::from_str(&status) else {
-            tracing::warn!("unknown request status: {} for id: {}", status, id);
-            return None;
-          };
-          let result = UserAccessRequest {
-            id,
-            username,
-            user_id,
-            reviewer,
-            status,
-            created_at,
-            updated_at,
-          };
-          Some(result)
-        },
-      )
-      .collect::<Vec<UserAccessRequest>>();
-    Ok((results, total_count.0 as usize))
+    let total = access_request::Entity::find()
+      .filter(access_request::Column::Status.eq(UserAccessRequestStatus::Pending.to_string()))
+      .count(&self.db)
+      .await
+      .map_err(DbError::from)? as usize;
+
+    let results = access_request::Entity::find()
+      .filter(access_request::Column::Status.eq(UserAccessRequestStatus::Pending.to_string()))
+      .order_by_asc(access_request::Column::CreatedAt)
+      .offset(offset)
+      .limit(per_page as u64)
+      .all(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    Ok((results, total))
   }
 
   async fn list_all_requests(
@@ -160,109 +80,52 @@ impl AccessRepository for SqliteDbService {
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<UserAccessRequest>, usize), DbError> {
-    let offset = (page - 1) * per_page;
-    // Get total count of all requests
-    let total_count: (i64,) = query_as("SELECT COUNT(*) FROM access_requests")
-      .fetch_one(&self.pool)
-      .await?;
-    let results = query_as::<
-      _,
-      (
-        i64,
-        String,
-        String,
-        Option<String>,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      "SELECT id, username, user_id, reviewer, status, created_at, updated_at
-         FROM access_requests
-         ORDER BY created_at ASC
-         LIMIT ? OFFSET ?",
-    )
-    .bind(per_page as i64)
-    .bind(offset as i64)
-    .fetch_all(&self.pool)
-    .await?;
+    let offset = ((page - 1) * per_page) as u64;
 
-    let results = results
-      .into_iter()
-      .filter_map(
-        |(id, username, user_id, reviewer, status, created_at, updated_at)| {
-          let status = UserAccessRequestStatus::from_str(&status).ok()?;
-          let result = UserAccessRequest {
-            id,
-            username,
-            user_id,
-            reviewer,
-            status,
-            created_at,
-            updated_at,
-          };
-          Some(result)
-        },
-      )
-      .collect::<Vec<UserAccessRequest>>();
-    Ok((results, total_count.0 as usize))
+    let total = access_request::Entity::find()
+      .count(&self.db)
+      .await
+      .map_err(DbError::from)? as usize;
+
+    let results = access_request::Entity::find()
+      .order_by_asc(access_request::Column::CreatedAt)
+      .offset(offset)
+      .limit(per_page as u64)
+      .all(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
+    Ok((results, total))
   }
 
   async fn update_request_status(
     &self,
-    id: i64,
+    id: &str,
     status: UserAccessRequestStatus,
     reviewer: String,
   ) -> Result<(), DbError> {
     let now = self.time_service.utc_now();
-    sqlx::query(
-      "UPDATE access_requests
-         SET status = ?, updated_at = ?, reviewer = ?
-         WHERE id = ?",
-    )
-    .bind(status.to_string())
-    .bind(now)
-    .bind(&reviewer)
-    .bind(id)
-    .execute(&self.pool)
-    .await?;
+
+    let mut active: access_request::ActiveModel = Default::default();
+    active.id = Set(id.to_string());
+    active.status = Set(status);
+    active.reviewer = Set(Some(reviewer));
+    active.updated_at = Set(now);
+
+    access_request::Entity::update(active)
+      .exec(&self.db)
+      .await
+      .map_err(DbError::from)?;
+
     Ok(())
   }
 
-  async fn get_request_by_id(&self, id: i64) -> Result<Option<UserAccessRequest>, DbError> {
-    let result = query_as::<
-      _,
-      (
-        i64,
-        String,
-        String,
-        Option<String>,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      "SELECT id, username, user_id, reviewer, status, created_at, updated_at
-         FROM access_requests
-         WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(&self.pool)
-    .await?;
+  async fn get_request_by_id(&self, id: &str) -> Result<Option<UserAccessRequest>, DbError> {
+    let result = access_request::Entity::find_by_id(id.to_string())
+      .one(&self.db)
+      .await
+      .map_err(DbError::from)?;
 
-    if let Some((id, username, user_id, reviewer, status, created_at, updated_at)) = result {
-      let status = UserAccessRequestStatus::from_str(&status).map_err(DbError::StrumParse)?;
-      Ok(Some(UserAccessRequest {
-        id,
-        username,
-        user_id,
-        reviewer,
-        status,
-        created_at,
-        updated_at,
-      }))
-    } else {
-      Ok(None)
-    }
+    Ok(result)
   }
 }

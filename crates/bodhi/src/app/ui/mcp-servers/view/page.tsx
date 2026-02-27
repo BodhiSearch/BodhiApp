@@ -51,8 +51,8 @@ function ServerViewContent() {
   const [formName, setFormName] = useState('');
   const [formHeaderKey, setFormHeaderKey] = useState('');
   const [formHeaderValue, setFormHeaderValue] = useState('');
-  const [formRegistrationType, setFormRegistrationType] = useState<'pre-registered' | 'dynamic-registration'>(
-    'pre-registered'
+  const [formRegistrationType, setFormRegistrationType] = useState<'pre_registered' | 'dynamic_registration'>(
+    'pre_registered'
   );
   const [formClientId, setFormClientId] = useState('');
   const [formClientSecret, setFormClientSecret] = useState('');
@@ -95,7 +95,7 @@ function ServerViewContent() {
     setFormName('');
     setFormHeaderKey('');
     setFormHeaderValue('');
-    setFormRegistrationType('pre-registered');
+    setFormRegistrationType('pre_registered');
     setFormClientId('');
     setFormClientSecret('');
     setFormAuthEndpoint('');
@@ -113,7 +113,7 @@ function ServerViewContent() {
         header_key: formHeaderKey,
         header_value: formHeaderValue,
       });
-    } else if (formType === 'oauth' && formRegistrationType === 'dynamic-registration') {
+    } else if (formType === 'oauth' && formRegistrationType === 'dynamic_registration') {
       // Dynamic registration: call standalone DCR first
       if (!formRegistrationEndpoint) {
         toast({ title: 'Registration endpoint is required for dynamic registration', variant: 'destructive' });
@@ -131,7 +131,7 @@ function ServerViewContent() {
           mcp_server_id: serverId,
           type: 'oauth',
           name: formName || 'OAuth',
-          registration_type: 'dynamic-registration',
+          registration_type: 'dynamic_registration',
           authorization_endpoint: formAuthEndpoint,
           token_endpoint: formTokenEndpoint,
           registration_endpoint: formRegistrationEndpoint || undefined,
@@ -145,13 +145,13 @@ function ServerViewContent() {
       } catch {
         // Error already handled by hook's onError
       }
-    } else if (formType === 'oauth' && formRegistrationType === 'pre-registered') {
+    } else if (formType === 'oauth' && formRegistrationType === 'pre_registered') {
       // Pre-registered OAuth: user provides client_id directly
       createAuthConfig.mutate({
         mcp_server_id: serverId,
         type: 'oauth',
         name: formName,
-        registration_type: 'pre-registered',
+        registration_type: 'pre_registered',
         client_id: formClientId,
         client_secret: formClientSecret || undefined,
         authorization_endpoint: formAuthEndpoint,

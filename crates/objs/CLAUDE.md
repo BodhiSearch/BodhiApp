@@ -60,13 +60,26 @@ Comprehensive configuration architecture for multi-environment deployments:
 - **Setting System**: Hierarchical configuration with source tracking (System > CommandLine > Environment > User)
 - **SettingMetadata**: Configuration mutation tracking and validation requirements
 
+### Database Enum Types (SeaORM Integration)
+Domain enums that map directly to database string columns via `sea_orm::DeriveValueType`:
+- **`db_enums.rs`**: `DownloadStatus` (Pending/Completed/Error), `TokenStatus` (Active/Inactive), `AppStatus` (Setup/Ready/ResourceAdmin) -- all with `snake_case` serialization
+- **`access_request.rs`**: `AppAccessRequestStatus` (Draft/Approved/Denied/Failed), `FlowType` (Redirect/Popup), `UserAccessRequestStatus` (Pending/Approved/Rejected)
+- These enums were consolidated from `services` crate into `objs` during the SeaORM migration so entity fields use typed enums instead of raw Strings
+- All derive `DeriveValueType` with `#[sea_orm(value_type = "String")]` for seamless SeaORM entity integration
+- All use `snake_case` serialization (`#[serde(rename_all = "snake_case")]`, `#[strum(serialize_all = "snake_case")]`)
+
+### JsonVec and JSON Type System
+- **JsonVec** (`json_vec.rs`): Newtype wrapper around `Vec<String>` with private inner field. Derives `FromJsonQueryResult` for SeaORM JSON column mapping. Access via `Deref`/`DerefMut` for reading and mutation, `push()` for appending. Construct via `From<Vec<String>>` or `Default`.
+- **ModelArchitecture** (`model_metadata.rs`): Uses `FromJsonQueryResult` for JSON column storage in SeaORM entities
+- These types enable structured JSON data storage in database columns without manual serialization
+
 ### MCP Domain Types
 - **McpAuthType enum**: `Public`, `Header`, `Oauth` with kebab-case serialization (`public`, `header`, `oauth`)
 - Implements `Default` (Public), `FromStr`, `Display`, `as_str()`
 - Used by `Mcp.auth_type` field
-- **RegistrationType enum**: `PreRegistered` | `DynamicRegistration`, serializes to `"pre-registered"` / `"dynamic-registration"`. Implements `Default` (PreRegistered), `FromStr`, `Display`, `as_str()`. Used by the `Oauth` variant of `CreateMcpAuthConfigRequest` to distinguish OAuth flavors without separate enum variants.
+- **RegistrationType enum**: `PreRegistered` | `DynamicRegistration`, serializes to `"pre_registered"` / `"dynamic_registration"` (snake_case). Implements `Default` (PreRegistered), `FromStr`, `Display`, `as_str()`. Used by the `Oauth` variant of `CreateMcpAuthConfigRequest` to distinguish OAuth flavors without separate enum variants.
 - **CreateMcpAuthConfigRequest enum**: Discriminated union (`Header`, `Oauth`) tagged by `type` field, flattened into `CreateAuthConfigBody` with `mcp_server_id`
-- `Oauth` variant carries a `registration_type: RegistrationType` field (`PreRegistered` or `DynamicRegistration`, serializes to `"pre-registered"` / `"dynamic-registration"`) to distinguish OAuth flavors
+- `Oauth` variant carries a `registration_type: RegistrationType` field (`PreRegistered` or `DynamicRegistration`, serializes to `"pre_registered"` / `"dynamic_registration"`) to distinguish OAuth flavors
 - **`validate_oauth_endpoint_url(url, field_name)`**: Shared validator for OAuth endpoint URLs (authorization, token, discovery endpoints). Rejects empty strings, non-HTTPS URLs (except `http://localhost`), and URLs exceeding `MAX_MCP_AUTH_CONFIG_URL_LEN`. Used in both `objs` validation and `routes_app` request handlers.
 
 ### API Organization and Documentation System
@@ -80,7 +93,7 @@ Structured API surface management for OpenAPI generation:
 
 The `objs` crate serves as BodhiApp's **architectural keystone** -- the foundation crate with no workspace dependencies.
 
-**Upstream dependencies**: None (this is the foundation crate)
+**Upstream dependencies**: None (this is the foundation crate). External dependencies include `sea_orm` (for `DeriveValueType`, `FromJsonQueryResult`) and `ulid` (for ID generation, replacing the removed `uuid` dependency).
 
 **Downstream consumers** (all workspace crates depend on this):
 - [`services`](../services/CLAUDE.md) -- domain types, error handling, `IoError`, `impl_error_from!` macro

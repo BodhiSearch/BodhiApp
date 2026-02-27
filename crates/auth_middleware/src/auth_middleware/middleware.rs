@@ -134,6 +134,7 @@ pub async fn auth_middleware(
     app_service.db_service(),
     app_service.setting_service(),
     app_service.concurrency_service(),
+    app_service.time_service(),
   );
 
   if app_status_or_default(&app_instance_service).await == AppStatus::Setup {
@@ -201,6 +202,7 @@ pub async fn optional_auth_middleware(
     app_service.db_service(),
     app_service.setting_service(),
     app_service.concurrency_service(),
+    app_service.time_service(),
   );
 
   // Check app status

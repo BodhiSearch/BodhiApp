@@ -67,7 +67,7 @@ export function mockAppInfoSetup() {
  * Uses generated OpenAPI types directly
  */
 export function mockAppInfoResourceAdmin() {
-  return mockAppInfo({ status: 'resource-admin' });
+  return mockAppInfo({ status: 'resource_admin' });
 }
 
 // ============================================================================

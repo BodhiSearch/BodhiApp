@@ -7,6 +7,9 @@ pub mod test_utils;
 // -- Error handling
 mod error;
 
+// -- SeaORM shared types
+mod json_vec;
+
 // -- Model & alias system
 mod alias;
 mod api_model_alias;
@@ -33,6 +36,9 @@ mod toolsets;
 // -- MCP
 mod mcp;
 
+// -- Database enums
+mod db_enums;
+
 // -- Configuration & environment
 mod app_command;
 mod envs;
@@ -43,6 +49,9 @@ mod api_tags;
 
 // -- Utilities
 mod utils;
+
+// -- Re-exports: SeaORM shared types
+pub use json_vec::*;
 
 // -- Re-exports: error handling
 pub use error::*;
@@ -71,6 +80,9 @@ pub use toolsets::*;
 
 // -- Re-exports: MCP
 pub use mcp::*;
+
+// -- Re-exports: database enums
+pub use db_enums::*;
 
 // -- Re-exports: configuration & environment
 pub use app_command::*;

@@ -164,8 +164,8 @@ async fn update_download_progress(
     .await?
     .ok_or_else(|| format!("Download request {} not found", request_id))?;
 
-  download_request.downloaded_bytes = downloaded_bytes;
-  download_request.total_bytes = Some(total_bytes);
+  download_request.downloaded_bytes = downloaded_bytes as i64;
+  download_request.total_bytes = Some(total_bytes as i64);
   download_request.updated_at = db_service.now();
 
   if download_request.started_at.is_none() {

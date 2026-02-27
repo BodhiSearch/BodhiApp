@@ -166,7 +166,7 @@ async fn test_approve_request_clears_user_sessions(temp_bodhi_home: TempDir) -> 
   let updated_request = state
     .app_service()
     .db_service()
-    .get_request_by_id(access_request.id)
+    .get_request_by_id(&access_request.id)
     .await?
     .unwrap();
   assert_eq!(UserAccessRequestStatus::Approved, updated_request.status);
@@ -329,7 +329,7 @@ async fn test_reject_request_success(temp_bodhi_home: TempDir) -> anyhow::Result
   let updated = state
     .app_service()
     .db_service()
-    .get_request_by_id(access_request.id)
+    .get_request_by_id(&access_request.id)
     .await?
     .unwrap();
   assert_eq!(UserAccessRequestStatus::Rejected, updated.status);

@@ -6,6 +6,7 @@ mod envs;
 mod hf;
 mod objs;
 mod queue;
+mod sea;
 mod session;
 mod settings;
 
@@ -17,5 +18,6 @@ pub use envs::*;
 pub use hf::*;
 pub use objs::*;
 pub use queue::*;
+pub use sea::*;
 pub use session::*;
 pub use settings::*;

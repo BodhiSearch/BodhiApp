@@ -5,7 +5,7 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { ModelsListPage } from '@/pages/ModelsListPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('Local Model Alias Management - Consolidated User Journeys', () => {
   let loginPage;
@@ -22,16 +22,16 @@ test.describe('Local Model Alias Management - Consolidated User Journeys', () =>
     testData = { authServerConfig, testCredentials };
   });
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
     loginPage = new LoginPage(
       page,
-      SHARED_SERVER_URL,
+      sharedServerUrl,
       testData.authServerConfig,
       testData.testCredentials
     );
-    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
-    formPage = new LocalModelFormPage(page, SHARED_SERVER_URL);
-    chatPage = new ChatPage(page, SHARED_SERVER_URL);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    formPage = new LocalModelFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
   });
 
   test('complete local model lifecycle with chat integration and context parameters', async ({

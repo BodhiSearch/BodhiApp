@@ -1,33 +1,6 @@
 use chrono::{DateTime, Utc};
+pub use objs::AppStatus;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
-#[derive(
-  Debug,
-  Serialize,
-  Deserialize,
-  PartialEq,
-  strum::Display,
-  Clone,
-  Default,
-  strum::EnumString,
-  ToSchema,
-)]
-#[strum(serialize_all = "kebab-case")]
-#[serde(rename_all = "kebab-case")]
-#[schema(example = "ready")]
-pub enum AppStatus {
-  #[default]
-  /// Initial setup required
-  #[schema(rename = "setup")]
-  Setup,
-  /// Application is ready
-  #[schema(rename = "ready")]
-  Ready,
-  /// Admin setup required
-  #[schema(rename = "resource-admin")]
-  ResourceAdmin,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AppInstance {

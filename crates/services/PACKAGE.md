@@ -42,18 +42,21 @@
 - `src/access_request_service/service.rs` - `AccessRequestService` trait and `DefaultAccessRequestService` implementation (role-based: `requested_role`/`approved_role`)
 - `src/access_request_service/error.rs` - `AccessRequestError` domain error enum
 
-### Infrastructure Services
+### Infrastructure Services (SeaORM)
 - `src/db/mod.rs` - Database module exports
-- `src/db/service.rs` - SQLite operations with migration support, `TimeService` trait, `DbService` trait
-- `src/db/sqlite_pool.rs` - Connection pool management
+- `src/db/service.rs` - `TimeService` trait, `DbService` trait, repository trait definitions
+- `src/db/default_service.rs` - `DefaultDbService` (SeaORM-based, the sole DbService implementation)
 - `src/db/encryption.rs` - Database-level API key encryption utilities
-- `src/db/error.rs` - Database error types (`SqlxError`, `SqlxMigrateError`, `ItemNotFound`)
+- `src/db/error.rs` - Database error types (`DbError` with `ItemNotFound`, `StrumParse`, `TokenValidation`, etc.)
 - `src/db/objs.rs` - Database domain objects (`DownloadRequest`, `ApiToken`, `AppAccessRequestRow`, `ModelMetadataRow`, `McpRow`, `McpServerRow`, `ToolsetRow`, `AppToolsetConfigRow`, etc.)
-- `src/db/mcp_repository.rs` - MCP server and instance persistence
-- `src/db/toolset_repository.rs` - Toolset and app toolset config persistence
-- `src/db/access_repository.rs` - Access control persistence
-- `src/db/access_request_repository.rs` - App access request persistence (`AccessRequestRepository` trait with role-based approval: `requested_role`/`approved_role`)
-- `src/db/user_alias_repository.rs` - User alias persistence
+- `src/db/entities/` - SeaORM entity definitions with populated `Relation` enums for FK relationships
+- `src/db/sea_migrations/` - SeaORM migrations (14 migration files, supporting both SQLite and PostgreSQL)
+- `src/db/service_*.rs` - Repository implementations using SeaORM (model, token, access, mcp, toolset, user_alias, settings, app_instance, access_request)
+- `src/db/mcp_repository.rs` - MCP server and instance repository trait
+- `src/db/toolset_repository.rs` - Toolset and app toolset config repository trait
+- `src/db/access_repository.rs` - Access control repository trait
+- `src/db/access_request_repository.rs` - App access request repository trait (`AccessRequestRepository` with role-based approval: `requested_role`/`approved_role`)
+- `src/db/user_alias_repository.rs` - User alias repository trait
 
 ### Configuration and Environment
 - `src/setting_service/` - Application configuration management module
@@ -163,7 +166,6 @@ pub trait ConcurrencyService: Send + Sync + std::fmt::Debug {
 impl_error_from!(reqwest::Error, AuthServiceError::Reqwest, ::objs::ReqwestError);
 impl_error_from!(serde_yaml::Error, DataServiceError::SerdeYamlError, ::objs::SerdeYamlError);
 impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
-impl_error_from!(sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
 ```
 
 ## Error Types by Service
@@ -175,7 +177,7 @@ impl_error_from!(sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
 | SecretService | `SecretServiceError` | `IoError(IoError)` | `KeyMismatch`, `KeyNotFound`, `EncryptionError`, `DecryptionError` |
 | SettingService | `SettingServiceError` | `Io(IoError)` | `SerdeYaml`, `LockError`, `InvalidSource` |
 | AuthService | `AuthServiceError` | (none) | `Reqwest`, `AuthServiceApiError`, `TokenExchangeError` |
-| DbService | `DbError` | (none) | `SqlxError`, `SqlxMigrateError`, `StrumParse`, `TokenValidation`, `PrefixExists` |
+| DbService | `DbError` | (none) | `SeaOrmError`, `StrumParse`, `TokenValidation`, `EncryptionError`, `PrefixExists`, `ItemNotFound`, `MultipleAppInstance`, `Conversion` |
 | SessionService | `SessionServiceError` | (none) | `SqlxError`, `SessionStoreError` |
 | AiApiService | `AiApiServiceError` | (none) | `Reqwest`, `ApiError`, `Unauthorized`, `NotFound`, `RateLimit`, `PromptTooLong` |
 | ToolService | `ToolsetError` | (none) | `ToolsetNotFound`, `MethodNotFound`, `ToolsetNotConfigured`, `ToolsetDisabled`, `ToolsetAppDisabled`, `SlugExists`, `InvalidSlug`, `InvalidDescription`, `InvalidToolsetType`, `DbError`, `ExaError` |
@@ -210,10 +212,12 @@ cargo doc -p services --features test-utils --open
 ### Service Initialization
 ```rust
 use services::{DefaultAppService, DefaultTimeService};
+use services::db::DefaultDbService;
 
-let time_service = Arc::new(DefaultTimeService::new());
-let db_service = Arc::new(SqliteDbService::new(pool, time_service.clone()));
-let secret_service = Arc::new(DefaultSecretService::new(/* ... */));
+let time_service = Arc::new(DefaultTimeService);
+let db = Database::connect(&db_url).await?;
+Migrator::fresh(&db).await?;
+let db_service = Arc::new(DefaultDbService::new(db, time_service.clone(), encryption_key));
 
 let app_service = DefaultAppService::new(
   env_service, hub_service, data_service,
@@ -301,7 +305,8 @@ The `src/test_utils/` module provides reusable test infrastructure:
 
 | File | Key Exports | Purpose |
 |------|-------------|---------|
-| `db.rs` | `TestDbService`, `FrozenTimeService`, `MockDbService`, `test_db_service` | Real SQLite fixture with event broadcasting, frozen timestamps, composite mock |
+| `db.rs` | `TestDbService`, `FrozenTimeService`, `MockDbService`, `test_db_service` | TestDbService wraps `DefaultDbService` (SeaORM) with event broadcasting, frozen timestamps, composite mock |
+| `sea.rs` | `SeaTestContext`, `sea_context()` | Dual-database test fixture (SQLite or PostgreSQL) with `DefaultDbService` and fresh migrations |
 | `app.rs` | `AppServiceStub`, `AppServiceStubBuilder` | Full service composition for integration-style tests |
 | `auth.rs` | `test_auth_service`, embedded RSA keys | AuthService with configurable base URL for mockito |
 | `data.rs` | Data service helpers | Temp directory fixtures for alias/model tests |
@@ -332,12 +337,13 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 ## Dependencies
 
 ### Core Dependencies
-- `objs` - Domain objects, error types, `IoError` enum, `impl_error_from!` macro
+- `objs` - Domain objects, error types, `IoError` enum, `impl_error_from!` macro, typed DB enums (`DeriveValueType`)
 - `llama_server_proc` - LLM process management
 - `mcp_client` - MCP protocol client for tool discovery and execution
+- `sea-orm` - Database ORM (SQLite and PostgreSQL backends)
+- `sea-orm-migration` - Schema migrations with dual-database support
 - `async-trait` - Async trait support
 - `axum` - HTTP framework integration
-- `sqlx` - Database operations (SQLite)
 - `oauth2` - OAuth2 client
 - `jsonwebtoken` - JWT handling
 - `aes-gcm` / `pbkdf2` - Encryption and key derivation
@@ -346,6 +352,7 @@ For detailed patterns and migration checklists, see `.claude/skills/test-service
 - `hf-hub` - HuggingFace API integration
 - `reqwest` - HTTP client
 - `walkdir` - Directory traversal for model discovery
+- `ulid` - ULID-based ID generation (replaced UUID)
 
 ### Optional Dependencies (test-utils)
 - `mockall` - Mock generation for service traits
@@ -364,7 +371,7 @@ See individual module files for complete implementation details:
 - AI integration: `src/ai_api_service.rs`, `src/tool_service/*.rs`, `src/exa_service.rs`
 - MCP: `src/mcp_service/*.rs`
 - Access control: `src/access_request_service/*.rs`
-- Database: `src/db/*.rs` (includes `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`, `app_instance_repository.rs`, `service_access_request.rs`)
+- Database: `src/db/*.rs` (includes `default_service.rs`, `entities/`, `sea_migrations/`, `service_*.rs` repository impls, `mcp_repository.rs`, `toolset_repository.rs`, `access_repository.rs`, `access_request_repository.rs`)
 - Configuration: `src/setting_service/*.rs`, `src/env_wrapper.rs`
 - Background processing: `src/queue_service.rs`, `src/progress_tracking.rs`
 - Domain objects: `src/objs.rs`

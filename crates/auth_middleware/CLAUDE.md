@@ -55,7 +55,7 @@ The `remove_app_headers` function strips any incoming `X-BodhiApp-*` headers fro
 
 ### JWT Token Management Architecture
 
-- **Token Service Coordination**: `DefaultTokenService` handles token validation, refresh, and exchange operations
+- **Token Service Coordination**: `DefaultTokenService` handles token validation, refresh, and exchange operations. Constructor accepts `Arc<dyn TimeService>` for testable timestamp operations -- no direct `Utc::now()` calls.
 - **Multi-Token Type Support**: Session tokens, API tokens (`bodhiapp_*`), and external client tokens with different validation rules
 - **Cache-Based Performance**: Token exchange results cached via `CachedExchangeResult` with `role: Option<String>` and `access_request_id: Option<String>` for quick lookup
 - **Database Token Tracking**: API token status management with active/inactive state tracking and SHA-256 hash-based lookup
@@ -170,7 +170,7 @@ Behind the `test-utils` feature flag in `test_utils/auth_context.rs`:
 - `auth_middleware/` -- `auth_middleware`, `optional_auth_middleware`, `remove_app_headers`, `AuthError`, session key constants
 - `api_auth_middleware.rs` -- `api_auth_middleware`, `ApiAuthError`, role-based authorization logic
 - `access_request_auth_middleware/` -- `access_request_auth_middleware`, `AccessRequestAuthError`, `AccessRequestValidator` trait, `ToolsetAccessRequestValidator`, `McpAccessRequestValidator`
-- `token_service/` -- `DefaultTokenService`, `CachedExchangeResult`, token validation/refresh/exchange orchestration
+- `token_service/` -- `DefaultTokenService` (takes `Arc<dyn TimeService>` in constructor), `CachedExchangeResult`, token validation/refresh/exchange orchestration
 - `canonical_url_middleware.rs` -- Canonical URL redirection middleware
 - `utils.rs` -- `app_status_or_default`, `generate_random_string`, `ApiErrorResponse`
 - `test_utils/` -- Test infrastructure (behind `test-utils` feature): `auth_context.rs` (factory methods, `RequestAuthContextExt`), `auth_server_test_client.rs` (OAuth2 integration test client)

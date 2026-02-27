@@ -9,7 +9,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 // TODO(I19): All 3 tests in this describe block depend on the external Tavily API
 // (https://mcp.tavily.com/mcp/) and require INTEG_TEST_TAVILY_API_KEY to be set.
@@ -27,9 +27,12 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     testCredentials = getTestCredentials();
   });
 
-  test('Create MCP with header auth, fetch tools, and execute via playground', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('Create MCP with header auth, fetch tools, and execute via playground', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createTavilyServerData();
     const instanceData = McpFixtures.createTavilyInstanceData();
     let serverId;
@@ -86,9 +89,9 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     });
   });
 
-  test('Edit MCP: switch header auth to public and back', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('Edit MCP: switch header auth to public and back', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createTavilyServerData();
     const instanceData = McpFixtures.createTavilyInstanceData();
     let serverId;
@@ -161,6 +164,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
 
   test('OAuth access request with header-auth MCP and tool execution via REST', async ({
     page,
+    sharedServerUrl,
   }) => {
     let mcpInstanceId;
     let serverId;
@@ -168,10 +172,10 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
     const instanceData = McpFixtures.createTavilyInstanceData();
 
     await test.step('Phase 1: Session login, create Tavily MCP server + header-auth instance', async () => {
-      const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+      const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
       await loginPage.performOAuthLogin();
 
-      const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+      const mcpsPage = new McpsPage(page, sharedServerUrl);
       await mcpsPage.createMcpServer(serverData.url, serverData.name, serverData.description);
 
       serverId = await mcpsPage.getServerUuidByName(serverData.name);
@@ -202,7 +206,7 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
       await app.navigate();
 
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -214,9 +218,9 @@ test.describe('MCP Header Authentication', { tag: ['@mcps', '@auth'] }, () => {
 
     await test.step('Phase 3: Submit access request and approve with Tavily MCP', async () => {
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approveWithMcps([
         { url: McpFixtures.TAVILY_URL, instanceId: mcpInstanceId },
       ]);

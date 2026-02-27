@@ -6,9 +6,20 @@ import {
   getAuthServerConfig,
   getPreConfiguredResourceClient,
 } from '../utils/auth-server-client.mjs';
+import { getDbConfig } from '../utils/db-config.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Parse CLI args
+const args = process.argv.slice(2);
+function getArg(name) {
+  const idx = args.indexOf(`--${name}`);
+  return idx >= 0 && idx + 1 < args.length ? args[idx + 1] : null;
+}
+
+const port = parseInt(getArg('port') || '51135', 10);
+const dbType = getArg('db-type') || 'sqlite';
 
 async function main() {
   // Load .env.test defensively (won't exist in CI)
@@ -25,18 +36,30 @@ async function main() {
   const authServerConfig = getAuthServerConfig();
   const resourceClient = getPreConfiguredResourceClient();
 
-  console.log('Creating server with configuration...');
-  const server = createTestServer(bindings, {
-    port: 51135,
+  console.log(`Creating ${dbType} server with configuration...`);
+  const serverOptions = {
+    port,
     host: 'localhost',
     appStatus: 'ready',
     authUrl: authServerConfig.authUrl,
     authRealm: authServerConfig.authRealm,
     clientId: resourceClient.clientId,
     clientSecret: resourceClient.clientSecret,
-  });
+  };
 
-  console.log('Starting server on port 51135...');
+  // Add DB URLs for postgres (uses db-config.mjs as single source of truth)
+  if (dbType === 'postgres') {
+    const dbConfig = getDbConfig('postgres');
+    serverOptions.envVars = {
+      ...serverOptions.envVars,
+      [bindings.BODHI_APP_DB_URL]: dbConfig.appDbUrl,
+      [bindings.BODHI_SESSION_DB_URL]: dbConfig.sessionDbUrl,
+    };
+  }
+
+  const server = createTestServer(bindings, serverOptions);
+
+  console.log(`Starting ${dbType} server on port ${port}...`);
   await server.start();
 
   console.log('Waiting for server to be ready...');
@@ -45,7 +68,7 @@ async function main() {
     throw new Error('Server failed to become ready within timeout');
   }
 
-  console.log('Shared server ready on http://localhost:51135');
+  console.log(`Shared ${dbType} server ready on http://localhost:${port}`);
 
   // Setup signal handlers for graceful shutdown
   const shutdown = async () => {
@@ -65,6 +88,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Failed to start shared server:', error);
+  console.error(`Failed to start shared ${dbType} server:`, error);
   process.exit(1);
 });

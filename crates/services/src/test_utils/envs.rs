@@ -19,13 +19,25 @@ use std::{
 };
 use tempfile::TempDir;
 
+fn load_env_test() {
+  let env_path = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.env.test"));
+  if env_path.exists() {
+    let _ = dotenv::from_filename(env_path).ok();
+  }
+}
+
+#[fixture]
+pub fn setup_env() {
+  load_env_test();
+}
+
 pub fn hf_test_token_allowed() -> Option<String> {
-  dotenv::from_filename(".env.test").ok();
+  setup_env();
   Some(std::env::var("HF_TEST_TOKEN_ALLOWED").unwrap())
 }
 
 pub fn hf_test_token_public() -> Option<String> {
-  dotenv::from_filename(".env.test").ok();
+  setup_env();
   Some(std::env::var("HF_TEST_TOKEN_PUBLIC").unwrap())
 }
 

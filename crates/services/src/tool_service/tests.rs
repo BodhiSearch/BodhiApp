@@ -10,6 +10,7 @@ use rstest::rstest;
 use std::sync::Arc;
 
 fn test_toolset_row(id: &str, user_id: &str, slug: &str) -> ToolsetRow {
+  let ts = Utc.timestamp_opt(1700000000, 0).unwrap();
   ToolsetRow {
     id: id.to_string(),
     user_id: user_id.to_string(),
@@ -20,8 +21,8 @@ fn test_toolset_row(id: &str, user_id: &str, slug: &str) -> ToolsetRow {
     encrypted_api_key: Some("encrypted".to_string()),
     salt: Some("salt".to_string()),
     nonce: Some("nonce".to_string()),
-    created_at: 1700000000,
-    updated_at: 1700000000,
+    created_at: ts,
+    updated_at: ts,
   }
 }
 
@@ -325,11 +326,12 @@ async fn test_create_success() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -369,11 +371,12 @@ async fn test_create_fails_when_name_already_exists() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -497,11 +500,12 @@ async fn test_create_same_name_different_user_succeeds() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -548,11 +552,12 @@ async fn test_update_success() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -674,11 +679,12 @@ async fn test_update_same_name_different_case_succeeds() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -715,11 +721,12 @@ async fn test_update_with_api_key_set() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 
@@ -763,11 +770,12 @@ async fn test_update_with_api_key_keep() -> anyhow::Result<()> {
     .with(eq("builtin-exa-search"))
     .returning(|toolset_type| {
       Ok(Some(AppToolsetConfigRow {
+        id: ulid::Ulid::new().to_string(),
         toolset_type: toolset_type.to_string(),
         enabled: true,
         updated_by: "admin".to_string(),
-        created_at: 1700000000,
-        updated_at: 1700000000,
+        created_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
+        updated_at: Utc.timestamp_opt(1700000000, 0).unwrap(),
       }))
     });
 

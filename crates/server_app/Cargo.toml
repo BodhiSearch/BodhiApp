@@ -52,7 +52,7 @@ rstest = { workspace = true }
 serde = { workspace = true }
 serial_test = { workspace = true }
 sha2 = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }
+sea-orm = { workspace = true }
 tempfile = { workspace = true }
 time = { workspace = true }
 tower = { workspace = true }

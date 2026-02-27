@@ -3,7 +3,6 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('MCP Server Management', () => {
   let authServerConfig;
@@ -14,9 +13,9 @@ test.describe('MCP Server Management', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('MCP Server and Instance CRUD Lifecycle', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Server and Instance CRUD Lifecycle', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createServerData();
     const instanceData = McpFixtures.createLifecycleData();
 
@@ -52,9 +51,9 @@ test.describe('MCP Server Management', () => {
     });
   });
 
-  test('MCP Server Tool Discovery', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Server Tool Discovery', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createServerData();
     const instanceData = McpFixtures.createToolDiscoveryData();
 
@@ -79,9 +78,9 @@ test.describe('MCP Server Management', () => {
     });
   });
 
-  test('MCP Playground - Tool Execution', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Playground - Tool Execution', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createServerData();
     const instanceData = McpFixtures.createPlaygroundData();
 
@@ -153,9 +152,9 @@ test.describe('MCP Server Management', () => {
     });
   });
 
-  test('MCP Playground - Non-Whitelisted Tool Error', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Playground - Non-Whitelisted Tool Error', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createServerData();
     const instanceData = McpFixtures.createPlaygroundData();
 
@@ -204,9 +203,9 @@ test.describe('MCP Server Management', () => {
     });
   });
 
-  test('MCP Playground - Refresh and Disabled States', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Playground - Refresh and Disabled States', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const serverData = McpFixtures.createServerData();
     const instanceData = McpFixtures.createPlaygroundData();
 

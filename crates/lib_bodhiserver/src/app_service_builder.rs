@@ -1,7 +1,7 @@
 use crate::BootstrapError;
 use objs::{EnvType, IoError};
 use services::{
-  db::{DbCore, DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
+  db::{DbCore, DbService, DefaultDbService, DefaultTimeService, TimeService},
   hash_key, AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService,
   AuthService, BootstrapParts, CacheService, DataService, DefaultAccessRequestService,
   DefaultAiApiService, DefaultAppInstanceService, DefaultAppService, DefaultExaService,
@@ -9,9 +9,9 @@ use services::{
   DefaultToolService, ExaService, HfHubService, HubService, InMemoryQueue, KeycloakAuthService,
   KeyringStore, LocalConcurrencyService, LocalDataService, McpService, MokaCacheService,
   NetworkService, QueueConsumer, QueueProducer, RefreshWorker, SessionService, SettingService,
-  SystemKeyringStore, ToolService, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, HF_TOKEN, PROD_DB,
+  SystemKeyringStore, ToolService, BODHI_APP_DB_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
+  HF_TOKEN, PROD_DB,
 };
-use std::path::PathBuf;
 use std::sync::Arc;
 
 const SECRET_KEY: &str = "secret_key";
@@ -88,12 +88,21 @@ impl AppServiceBuilder {
     let encryption_key_value = parts.env_wrapper.var(BODHI_ENCRYPTION_KEY).ok();
     let encryption_key = build_encryption_key(is_production, encryption_key_value).await?;
 
-    let db_service = Self::build_db_service(
-      parts.bodhi_home.join(PROD_DB),
-      time_service.clone(),
-      encryption_key.clone(),
-    )
-    .await?;
+    let app_db_url = parts
+      .env_wrapper
+      .var(BODHI_APP_DB_URL)
+      .ok()
+      .or_else(|| {
+        parts
+          .file_defaults
+          .get(BODHI_APP_DB_URL)
+          .and_then(|v| v.as_str())
+          .map(|s| s.to_string())
+      })
+      .unwrap_or_else(|| format!("sqlite:{}", parts.bodhi_home.join(PROD_DB).display()));
+
+    let db_service =
+      Self::build_db_service(&app_db_url, time_service.clone(), encryption_key.clone()).await?;
 
     let setting_service: Arc<dyn SettingService> =
       Arc::new(DefaultSettingService::from_parts(parts, db_service.clone()));
@@ -186,14 +195,27 @@ impl AppServiceBuilder {
     Arc::new(DefaultTimeService)
   }
 
-  /// Builds the database service using a direct db_path.
+  /// Builds the database service from a connection URL.
+  /// Supports both `sqlite:` and `postgres://` URLs via SeaORM.
   async fn build_db_service(
-    db_path: PathBuf,
+    db_url: &str,
     time_service: Arc<dyn TimeService>,
     encryption_key: Vec<u8>,
   ) -> Result<Arc<dyn DbService>, BootstrapError> {
-    let app_db_pool = DbPool::connect(&format!("sqlite:{}", db_path.display())).await?;
-    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
+    // For SQLite URLs, append ?mode=rwc to create the file if missing
+    let connect_url = if db_url.starts_with("sqlite:") && !db_url.contains("mode=") {
+      if db_url.contains('?') {
+        format!("{db_url}&mode=rwc")
+      } else {
+        format!("{db_url}?mode=rwc")
+      }
+    } else {
+      db_url.to_string()
+    };
+    let db = sea_orm::Database::connect(&connect_url)
+      .await
+      .map_err(|e| BootstrapError::Db(e.into()))?;
+    let db_service = DefaultDbService::new(db, time_service, encryption_key);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }

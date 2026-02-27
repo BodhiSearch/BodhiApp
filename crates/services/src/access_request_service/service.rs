@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use chrono::Duration;
 use std::sync::Arc;
-use uuid::Uuid;
+use ulid::Ulid;
 
 use crate::access_request_service::error::{AccessRequestError, Result};
 use crate::auth_service::AuthService;
-use crate::db::{AppAccessRequestRow, DbService, TimeService};
+use crate::db::{AppAccessRequestRow, AppAccessRequestStatus, DbService, FlowType, TimeService};
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -100,15 +100,17 @@ impl AccessRequestService for DefaultAccessRequestService {
     mcp_servers_requested: Vec<objs::McpServerRequest>,
     requested_role: String,
   ) -> Result<AppAccessRequestRow> {
-    if flow_type != "redirect" && flow_type != "popup" {
-      return Err(AccessRequestError::InvalidFlowType(flow_type));
-    }
+    let flow_type_enum = match flow_type.as_str() {
+      "redirect" => FlowType::Redirect,
+      "popup" => FlowType::Popup,
+      _ => return Err(AccessRequestError::InvalidFlowType(flow_type)),
+    };
 
-    if flow_type == "redirect" && redirect_uri.is_none() {
+    if flow_type_enum == FlowType::Redirect && redirect_uri.is_none() {
       return Err(AccessRequestError::MissingRedirectUri);
     }
 
-    let access_request_id = Uuid::new_v4().to_string();
+    let access_request_id = Ulid::new().to_string();
 
     let now = self.time_service.utc_now();
     let expires_at = now + Duration::minutes(10);
@@ -132,9 +134,9 @@ impl AccessRequestService for DefaultAccessRequestService {
       app_client_id,
       app_name: None,
       app_description: None,
-      flow_type,
+      flow_type: flow_type_enum,
       redirect_uri: modified_redirect_uri,
-      status: "draft".to_string(),
+      status: AppAccessRequestStatus::Draft,
       requested: requested_json,
       approved: None,
       user_id: None,
@@ -142,9 +144,9 @@ impl AccessRequestService for DefaultAccessRequestService {
       approved_role: None,
       access_request_scope: None,
       error_message: None,
-      expires_at: expires_at.timestamp(),
-      created_at: now.timestamp(),
-      updated_at: now.timestamp(),
+      expires_at,
+      created_at: now,
+      updated_at: now,
     };
 
     let created_row = self.db_service.create(&row).await?;
@@ -156,8 +158,8 @@ impl AccessRequestService for DefaultAccessRequestService {
 
     if let Some(row) = row {
       // Check expiry for draft status
-      if row.status == "draft" {
-        let now = self.time_service.utc_now().timestamp();
+      if row.status == AppAccessRequestStatus::Draft {
+        let now = self.time_service.utc_now();
         if row.expires_at < now {
           return Err(AccessRequestError::Expired(id.to_string()));
         }
@@ -182,7 +184,7 @@ impl AccessRequestService for DefaultAccessRequestService {
       .await?
       .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
 
-    if row.status != "draft" {
+    if row.status != AppAccessRequestStatus::Draft {
       return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
     }
 
@@ -234,12 +236,10 @@ impl AccessRequestService for DefaultAccessRequestService {
       .await?
       .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
 
-    // Check status
-    if row.status != "draft" {
+    if row.status != AppAccessRequestStatus::Draft {
       return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
     }
 
-    // Update database with denial
     let updated_row = self.db_service.update_denial(id, user_id).await?;
     Ok(updated_row)
   }

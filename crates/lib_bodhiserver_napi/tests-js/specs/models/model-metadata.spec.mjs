@@ -8,6 +8,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { createServerManager } from '@/utils/bodhi-app-server.mjs';
+import { randomPort } from '@/test-helpers.mjs';
 import { expect, test } from '@playwright/test';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -106,7 +107,7 @@ test.describe('Model Metadata Refresh and Preview', () => {
     // Server setup with custom HF_HOME
     const authServerConfig = getAuthServerConfig();
     const testCredentials = getTestCredentials();
-    const port = 41135;
+    const port = randomPort();
     const serverUrl = `http://localhost:${port}`;
 
     // Create dynamic resource client for port 41135

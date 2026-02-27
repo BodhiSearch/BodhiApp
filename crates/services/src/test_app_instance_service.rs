@@ -157,9 +157,9 @@ async fn test_create_two_instances_triggers_multiple_error(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.upsert_app_instance("client-one", "secret-one", "setup")
+  db.upsert_app_instance("client-one", "secret-one", &AppStatus::Setup)
     .await?;
-  db.upsert_app_instance("client-two", "secret-two", "setup")
+  db.upsert_app_instance("client-two", "secret-two", &AppStatus::Setup)
     .await?;
 
   let svc = make_service(db);
@@ -183,13 +183,13 @@ async fn test_repository_encryption_roundtrip(
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let secret = "super-secret-value-123";
-  db.upsert_app_instance(TEST_CLIENT_ID, secret, "ready")
+  db.upsert_app_instance(TEST_CLIENT_ID, secret, &AppStatus::Ready)
     .await?;
 
   let row = db.get_app_instance().await?.expect("row should exist");
   assert_eq!(secret, row.client_secret);
   assert_eq!(TEST_CLIENT_ID, row.client_id);
-  assert_eq!("ready", row.app_status);
+  assert_eq!(AppStatus::Ready, row.app_status);
   Ok(())
 }
 
@@ -207,7 +207,7 @@ async fn test_update_status_nonexistent_client_id_returns_not_found(
   db: TestDbService,
 ) -> anyhow::Result<()> {
   let result = db
-    .update_app_instance_status("nonexistent-client", "ready")
+    .update_app_instance_status("nonexistent-client", &AppStatus::Ready)
     .await;
   let err = result.unwrap_err();
   assert_eq!("db_error-item_not_found", err.code());
@@ -227,7 +227,7 @@ async fn test_delete_app_instance(
   #[from(test_db_service)]
   db: TestDbService,
 ) -> anyhow::Result<()> {
-  db.upsert_app_instance(TEST_CLIENT_ID, TEST_CLIENT_SECRET, "ready")
+  db.upsert_app_instance(TEST_CLIENT_ID, TEST_CLIENT_SECRET, &AppStatus::Ready)
     .await?;
   db.delete_app_instance(TEST_CLIENT_ID).await?;
   let row = db.get_app_instance().await?;

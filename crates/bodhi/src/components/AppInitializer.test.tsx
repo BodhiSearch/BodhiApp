@@ -95,7 +95,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   it.each([
     { status: 'setup', expectedPath: '/ui/setup' },
     { status: 'ready', expectedPath: ROUTE_DEFAULT },
-    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
+    { status: 'resource_admin', expectedPath: '/ui/setup/resource-admin' },
   ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
     server.use(...mockAppInfo({ status: status as any }));
 
@@ -105,21 +105,21 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
 
   // Update the status mismatch test cases
   it.each([
-    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup' },
+    { currentStatus: 'setup', allowedStatus: 'resource_admin', expectedPath: '/ui/setup' },
     { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup' },
     { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup' },
     {
-      currentStatus: 'resource-admin',
+      currentStatus: 'resource_admin',
       allowedStatus: 'setup',
       expectedPath: '/ui/setup/resource-admin',
     },
     {
-      currentStatus: 'resource-admin',
+      currentStatus: 'resource_admin',
       allowedStatus: 'ready',
       expectedPath: '/ui/setup/resource-admin',
     },
     {
-      currentStatus: 'resource-admin',
+      currentStatus: 'resource_admin',
       allowedStatus: undefined,
       expectedPath: '/ui/setup/resource-admin',
     },
@@ -130,7 +130,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     },
     {
       currentStatus: 'ready',
-      allowedStatus: 'resource-admin',
+      allowedStatus: 'resource_admin',
       expectedPath: ROUTE_DEFAULT,
     },
     {
@@ -152,7 +152,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   it.each([
     { currentStatus: 'ready', allowedStatus: 'ready' },
     { currentStatus: 'setup', allowedStatus: 'setup' },
-    { currentStatus: 'resource-admin', allowedStatus: 'resource-admin' },
+    { currentStatus: 'resource_admin', allowedStatus: 'resource_admin' },
   ])(
     'stays on page when currentStatus=$currentStatus matches allowedStatus=$allowedStatus',
     async ({ currentStatus, allowedStatus }) => {

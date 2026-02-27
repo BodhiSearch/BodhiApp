@@ -462,7 +462,7 @@ pub async fn update_alias_handler(
     filename,
     snapshot: local_model_file.snapshot,
     request_params: payload.request_params.unwrap_or_default(),
-    context_params: payload.context_params.unwrap_or_default(),
+    context_params: payload.context_params.unwrap_or_default().into(),
     created_at: existing.created_at,
     updated_at: state.app_service().time_service().utc_now(),
   };

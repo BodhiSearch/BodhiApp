@@ -19,7 +19,7 @@ import { extractSecondLevelDomain } from '@/lib/urlUtils';
 import { AuthConfigForm } from '../components/AuthConfigForm';
 
 type AuthConfigType = 'none' | 'header' | 'oauth';
-type OAuthRegistrationType = 'pre-registered' | 'dynamic-registration';
+type OAuthRegistrationType = 'pre_registered' | 'dynamic_registration';
 
 function NewMcpServerContent() {
   const router = useRouter();
@@ -32,7 +32,7 @@ function NewMcpServerContent() {
   // Auth config state
   const [showAuthConfig, setShowAuthConfig] = useState(false);
   const [authConfigType, setAuthConfigType] = useState<AuthConfigType>('none');
-  const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>('pre-registered');
+  const [oauthRegistrationType, setOauthRegistrationType] = useState<OAuthRegistrationType>('pre_registered');
   const [authName, setAuthName] = useState('');
   const [headerKey, setHeaderKey] = useState('');
   const [headerValue, setHeaderValue] = useState('');
@@ -87,7 +87,7 @@ function NewMcpServerContent() {
       };
     }
 
-    if (authConfigType === 'oauth' && oauthRegistrationType === 'pre-registered') {
+    if (authConfigType === 'oauth' && oauthRegistrationType === 'pre_registered') {
       return {
         type: 'oauth',
         name: authName || 'OAuth',
@@ -96,7 +96,7 @@ function NewMcpServerContent() {
         authorization_endpoint: authEndpoint,
         token_endpoint: tokenEndpoint,
         scopes: scopes || undefined,
-        registration_type: 'pre-registered',
+        registration_type: 'pre_registered',
       };
     }
 
@@ -108,7 +108,7 @@ function NewMcpServerContent() {
     e.preventDefault();
     if (!validate()) return;
 
-    if (showAuthConfig && authConfigType === 'oauth' && oauthRegistrationType === 'dynamic-registration') {
+    if (showAuthConfig && authConfigType === 'oauth' && oauthRegistrationType === 'dynamic_registration') {
       // Step 1: Call standalone DCR to get client credentials
       if (!registrationEndpoint) {
         toast({ title: 'Registration endpoint is required for dynamic registration', variant: 'destructive' });
@@ -132,7 +132,7 @@ function NewMcpServerContent() {
           auth_config: {
             type: 'oauth',
             name: authName || 'OAuth',
-            registration_type: 'dynamic-registration',
+            registration_type: 'dynamic_registration',
             authorization_endpoint: authEndpoint,
             token_endpoint: tokenEndpoint,
             registration_endpoint: registrationEndpoint || undefined,

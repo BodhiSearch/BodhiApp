@@ -1,20 +1,24 @@
 use crate::{
   db::{
-    encryption::{decrypt_api_key, encrypt_api_key},
-    McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow, McpRepository, McpRow, McpServerRow,
+    encryption::encrypt_api_key, McpAuthHeaderRow, McpOAuthConfigRow, McpOAuthTokenRow,
+    McpRepository, McpRow, McpServerRow,
   },
-  test_utils::{test_db_service, TestDbService},
+  test_utils::{sea_context, setup_env},
 };
 use anyhow_trace::anyhow_trace;
-use objs::AppError;
+use chrono::{DateTime, Utc};
+use objs::{AppError, McpAuthType, RegistrationType};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
+use serial_test::serial;
 
-fn test_mcp_server_row(now: i64) -> McpServerRow {
+const ENCRYPTION_KEY: &[u8] = b"01234567890123456789012345678901";
+
+fn test_mcp_server_row(id: &str, url: &str, now: DateTime<Utc>) -> McpServerRow {
   McpServerRow {
-    id: "server-1".to_string(),
-    url: "https://mcp.example.com/mcp".to_string(),
-    name: "Test MCP Server".to_string(),
+    id: id.to_string(),
+    url: url.to_string(),
+    name: format!("Server {}", id),
     description: Some("A test server".to_string()),
     enabled: true,
     created_by: "admin".to_string(),
@@ -24,42 +28,37 @@ fn test_mcp_server_row(now: i64) -> McpServerRow {
   }
 }
 
-fn test_mcp_row_public(now: i64) -> McpRow {
+fn test_mcp_row(
+  id: &str,
+  server_id: &str,
+  slug: &str,
+  user_id: &str,
+  now: DateTime<Utc>,
+) -> McpRow {
   McpRow {
-    id: "mcp-pub-1".to_string(),
-    created_by: "user-1".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    name: "Public MCP".to_string(),
-    slug: "public-mcp".to_string(),
+    id: id.to_string(),
+    created_by: user_id.to_string(),
+    mcp_server_id: server_id.to_string(),
+    name: format!("MCP {}", id),
+    slug: slug.to_string(),
     description: None,
     enabled: true,
     tools_cache: None,
     tools_filter: None,
-    auth_type: "public".to_string(),
+    auth_type: McpAuthType::Public,
     auth_uuid: None,
     created_at: now,
     updated_at: now,
   }
 }
 
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_db_service_get_decrypted_auth_header_roundtrip(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = service.now().timestamp();
-  service.create_mcp_server(&test_mcp_server_row(now)).await?;
-
+fn test_auth_header_row(id: &str, server_id: &str, now: DateTime<Utc>) -> McpAuthHeaderRow {
   let (encrypted, salt, nonce) =
-    encrypt_api_key(&service.encryption_key, "Bearer sk-secret-token-123")?;
-  let auth_header_row = McpAuthHeaderRow {
-    id: "auth-header-1".to_string(),
+    encrypt_api_key(ENCRYPTION_KEY, "Bearer sk-secret-token-123").expect("encryption failed");
+  McpAuthHeaderRow {
+    id: id.to_string(),
     name: "Header".to_string(),
-    mcp_server_id: "server-1".to_string(),
+    mcp_server_id: server_id.to_string(),
     header_key: "Authorization".to_string(),
     encrypted_header_value: encrypted,
     header_value_salt: salt,
@@ -67,183 +66,17 @@ async fn test_db_service_get_decrypted_auth_header_roundtrip(
     created_by: "user-1".to_string(),
     created_at: now,
     updated_at: now,
-  };
-  service.create_mcp_auth_header(&auth_header_row).await?;
-
-  let result = service.get_decrypted_auth_header("auth-header-1").await?;
-  let fetched = service.get_mcp_auth_header("auth-header-1").await?;
-  assert!(fetched.is_some());
-  assert_eq!(
-    Some((
-      "Authorization".to_string(),
-      "Bearer sk-secret-token-123".to_string()
-    )),
-    result
-  );
-  Ok(())
+  }
 }
 
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_db_service_get_decrypted_auth_header_returns_none_for_missing(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let result = service.get_decrypted_auth_header("nonexistent").await?;
-  assert_eq!(None, result);
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_db_service_mcp_crud_with_auth_uuid(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = service.now().timestamp();
-  service.create_mcp_server(&test_mcp_server_row(now)).await?;
-
-  let (encrypted, salt, nonce) = encrypt_api_key(&service.encryption_key, "Bearer secret")?;
-  let auth_header_row = McpAuthHeaderRow {
-    id: "auth-header-2".to_string(),
-    name: "Header".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    header_key: "X-Api-Key".to_string(),
-    encrypted_header_value: encrypted,
-    header_value_salt: salt,
-    header_value_nonce: nonce,
-    created_by: "user-1".to_string(),
-    created_at: now,
-    updated_at: now,
-  };
-  service.create_mcp_auth_header(&auth_header_row).await?;
-
-  let mcp_row = McpRow {
-    id: "mcp-auth-1".to_string(),
-    created_by: "user-1".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    name: "Header MCP".to_string(),
-    slug: "header-mcp".to_string(),
-    description: None,
-    enabled: true,
-    tools_cache: None,
-    tools_filter: None,
-    auth_type: "header".to_string(),
-    auth_uuid: Some("auth-header-2".to_string()),
-    created_at: now,
-    updated_at: now,
-  };
-  service.create_mcp(&mcp_row).await?;
-
-  let mcps = service.list_mcps_with_server("user-1").await?;
-  assert_eq!(1, mcps.len());
-  assert_eq!("header", mcps[0].auth_type);
-  assert_eq!(Some("auth-header-2".to_string()), mcps[0].auth_uuid);
-
-  let fetched = service.get_mcp("user-1", "mcp-auth-1").await?;
-  assert!(fetched.is_some());
-  let fetched = fetched.unwrap();
-  assert_eq!("header", fetched.auth_type);
-  assert_eq!(Some("auth-header-2".to_string()), fetched.auth_uuid);
-
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_db_service_list_mcps_with_server_public(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = service.now().timestamp();
-  service.create_mcp_server(&test_mcp_server_row(now)).await?;
-  service.create_mcp(&test_mcp_row_public(now)).await?;
-
-  let mcps = service.list_mcps_with_server("user-1").await?;
-  assert_eq!(1, mcps.len());
-  assert_eq!("public", mcps[0].auth_type);
-  assert_eq!(None, mcps[0].auth_uuid);
-
-  Ok(())
-}
-
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_db_service_mcp_auth_header_crud(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = service.now().timestamp();
-  service.create_mcp_server(&test_mcp_server_row(now)).await?;
-
-  let (encrypted, salt, nonce) = encrypt_api_key(&service.encryption_key, "my-secret")?;
-  let row = McpAuthHeaderRow {
-    id: "ah-crud-1".to_string(),
-    name: "Header".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    header_key: "X-Key".to_string(),
-    encrypted_header_value: encrypted,
-    header_value_salt: salt,
-    header_value_nonce: nonce,
-    created_by: "user-1".to_string(),
-    created_at: now,
-    updated_at: now,
-  };
-  let created = service.create_mcp_auth_header(&row).await?;
-  assert_eq!("ah-crud-1", created.id);
-  assert_eq!("X-Key", created.header_key);
-
-  let fetched = service.get_mcp_auth_header("ah-crud-1").await?;
-  assert!(fetched.is_some());
-  assert_eq!("X-Key", fetched.unwrap().header_key);
-
-  let (encrypted2, salt2, nonce2) = encrypt_api_key(&service.encryption_key, "new-secret")?;
-  let updated_row = McpAuthHeaderRow {
-    id: "ah-crud-1".to_string(),
-    name: "Header".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    header_key: "X-New-Key".to_string(),
-    encrypted_header_value: encrypted2,
-    header_value_salt: salt2,
-    header_value_nonce: nonce2,
-    created_by: "user-1".to_string(),
-    created_at: now,
-    updated_at: now + 1,
-  };
-  let updated = service.update_mcp_auth_header(&updated_row).await?;
-  assert_eq!("X-New-Key", updated.header_key);
-
-  service.delete_mcp_auth_header("ah-crud-1").await?;
-  let gone = service.get_mcp_auth_header("ah-crud-1").await?;
-  assert!(gone.is_none());
-
-  Ok(())
-}
-
-// ============================================================================
-// OAuth Config Tests
-// ============================================================================
-
-fn test_oauth_config_row(encryption_key: &[u8], now: i64) -> McpOAuthConfigRow {
+fn test_oauth_config_row(id: &str, server_id: &str, now: DateTime<Utc>) -> McpOAuthConfigRow {
   let (encrypted, salt, nonce) =
-    encrypt_api_key(encryption_key, "my-client-secret-123").expect("encryption failed");
+    encrypt_api_key(ENCRYPTION_KEY, "my-client-secret-123").expect("encryption failed");
   McpOAuthConfigRow {
-    id: uuid::Uuid::new_v4().to_string(),
+    id: id.to_string(),
     name: "OAuth".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    registration_type: "pre-registered".to_string(),
+    mcp_server_id: server_id.to_string(),
+    registration_type: RegistrationType::PreRegistered,
     client_id: "my-client-id".to_string(),
     encrypted_client_secret: Some(encrypted),
     client_secret_salt: Some(salt),
@@ -263,13 +96,13 @@ fn test_oauth_config_row(encryption_key: &[u8], now: i64) -> McpOAuthConfigRow {
   }
 }
 
-fn test_oauth_token_row(encryption_key: &[u8], config_id: &str, now: i64) -> McpOAuthTokenRow {
+fn test_oauth_token_row(config_id: &str, id: &str, now: DateTime<Utc>) -> McpOAuthTokenRow {
   let (enc_access, salt_access, nonce_access) =
-    encrypt_api_key(encryption_key, "access-token-abc").expect("encryption failed");
+    encrypt_api_key(ENCRYPTION_KEY, "access-token-abc").expect("encryption failed");
   let (enc_refresh, salt_refresh, nonce_refresh) =
-    encrypt_api_key(encryption_key, "refresh-token-xyz").expect("encryption failed");
+    encrypt_api_key(ENCRYPTION_KEY, "refresh-token-xyz").expect("encryption failed");
   McpOAuthTokenRow {
-    id: uuid::Uuid::new_v4().to_string(),
+    id: id.to_string(),
     mcp_oauth_config_id: config_id.to_string(),
     encrypted_access_token: enc_access,
     access_token_salt: salt_access,
@@ -278,162 +111,954 @@ fn test_oauth_token_row(encryption_key: &[u8], config_id: &str, now: i64) -> Mcp
     refresh_token_salt: Some(salt_refresh),
     refresh_token_nonce: Some(nonce_refresh),
     scopes_granted: Some("openid profile".to_string()),
-    expires_at: Some(now + 3600),
+    expires_at: Some(now + chrono::Duration::seconds(3600)),
     created_by: "user-1".to_string(),
     created_at: now,
     updated_at: now,
   }
 }
 
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_init_service_create_mcp_oauth_config_and_read(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
-    .await?;
-  let row = test_oauth_config_row(&db_service.encryption_key, now);
-  let created = db_service.create_mcp_oauth_config(&row).await?;
-  assert_eq!(row.id, created.id);
-  assert_eq!("my-client-id", created.client_id);
-  assert_eq!("server-1", created.mcp_server_id);
+// ============================================================================
+// MCP Server Tests
+// ============================================================================
 
-  let fetched = db_service.get_mcp_oauth_config(&row.id).await?;
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_create_and_get_mcp_server(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let row = test_mcp_server_row("s1", "https://mcp.example.com", ctx.now);
+  let created = ctx.service.create_mcp_server(&row).await?;
+  assert_eq!(row.id, created.id);
+  assert_eq!(row.url, created.url);
+  assert_eq!(row.name, created.name);
+  assert_eq!(row.description, created.description);
+  assert_eq!(row.enabled, created.enabled);
+
+  let fetched = ctx.service.get_mcp_server("s1").await?;
   assert!(fetched.is_some());
   let fetched = fetched.unwrap();
-  assert_eq!(row.id, fetched.id);
+  assert_eq!("s1", fetched.id);
+  assert_eq!("https://mcp.example.com", fetched.url);
+  assert_eq!(ctx.now, fetched.created_at);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_server_not_found(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let result = ctx.service.get_mcp_server("nonexistent").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_update_mcp_server(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let row = test_mcp_server_row("s1", "https://mcp.example.com", ctx.now);
+  ctx.service.create_mcp_server(&row).await?;
+
+  let updated_at = ctx.now + chrono::Duration::seconds(60);
+  let updated_row = McpServerRow {
+    url: "https://mcp-updated.example.com".to_string(),
+    name: "Updated Server".to_string(),
+    description: Some("Updated description".to_string()),
+    enabled: false,
+    updated_by: "admin2".to_string(),
+    updated_at,
+    ..row
+  };
+  let updated = ctx.service.update_mcp_server(&updated_row).await?;
+  assert_eq!("https://mcp-updated.example.com", updated.url);
+  assert_eq!("Updated Server", updated.name);
+  assert_eq!(false, updated.enabled);
+  assert_eq!(updated_at, updated.updated_at);
+
+  let fetched = ctx.service.get_mcp_server("s1").await?.unwrap();
+  assert_eq!("https://mcp-updated.example.com", fetched.url);
+  assert_eq!(false, fetched.enabled);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_server_by_url(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let row = test_mcp_server_row("s1", "https://mcp.example.com/api", ctx.now);
+  ctx.service.create_mcp_server(&row).await?;
+
+  let found = ctx
+    .service
+    .get_mcp_server_by_url("https://mcp.example.com/api")
+    .await?;
+  assert!(found.is_some());
+  assert_eq!("s1", found.unwrap().id);
+
+  let not_found = ctx
+    .service
+    .get_mcp_server_by_url("https://other.example.com")
+    .await?;
+  assert_eq!(None, not_found);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_list_mcp_servers(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://one.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_server(&McpServerRow {
+      enabled: false,
+      ..test_mcp_server_row("s2", "https://two.example.com", ctx.now)
+    })
+    .await?;
+
+  let all = ctx.service.list_mcp_servers(None).await?;
+  assert_eq!(2, all.len());
+
+  let enabled = ctx.service.list_mcp_servers(Some(true)).await?;
+  assert_eq!(1, enabled.len());
+  assert_eq!("s1", enabled[0].id);
+
+  let disabled = ctx.service.list_mcp_servers(Some(false)).await?;
+  assert_eq!(1, disabled.len());
+  assert_eq!("s2", disabled[0].id);
+  Ok(())
+}
+
+// ============================================================================
+// MCP Instance Tests
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_create_and_get_mcp(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  let mcp = test_mcp_row("m1", "s1", "my-mcp", "user-1", ctx.now);
+  let created = ctx.service.create_mcp(&mcp).await?;
+  assert_eq!("m1", created.id);
+  assert_eq!("my-mcp", created.slug);
+
+  let fetched = ctx.service.get_mcp("user-1", "m1").await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!("m1", fetched.id);
+  assert_eq!("user-1", fetched.created_by);
+  assert_eq!("s1", fetched.mcp_server_id);
+  assert_eq!(ctx.now, fetched.created_at);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_wrong_user(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "my-mcp", "user-1", ctx.now))
+    .await?;
+
+  let result = ctx.service.get_mcp("user-2", "m1").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_by_slug(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "my-mcp-slug", "user-1", ctx.now))
+    .await?;
+
+  let found = ctx.service.get_mcp_by_slug("user-1", "my-mcp-slug").await?;
+  assert!(found.is_some());
+  assert_eq!("m1", found.unwrap().id);
+
+  let wrong_user = ctx.service.get_mcp_by_slug("user-2", "my-mcp-slug").await?;
+  assert_eq!(None, wrong_user);
+
+  let wrong_slug = ctx
+    .service
+    .get_mcp_by_slug("user-1", "no-such-slug")
+    .await?;
+  assert_eq!(None, wrong_slug);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_update_mcp(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  let mcp = test_mcp_row("m1", "s1", "my-mcp", "user-1", ctx.now);
+  ctx.service.create_mcp(&mcp).await?;
+
+  let updated_at = ctx.now + chrono::Duration::seconds(30);
+  let updated = McpRow {
+    name: "Updated MCP".to_string(),
+    slug: "updated-mcp".to_string(),
+    description: Some("Now with description".to_string()),
+    enabled: false,
+    tools_cache: Some("{\"tools\":[]}".to_string()),
+    tools_filter: Some("[\"tool1\"]".to_string()),
+    auth_type: McpAuthType::Header,
+    auth_uuid: Some("auth-1".to_string()),
+    updated_at,
+    ..mcp
+  };
+  let result = ctx.service.update_mcp(&updated).await?;
+  assert_eq!("Updated MCP", result.name);
+  assert_eq!("updated-mcp", result.slug);
+  assert_eq!(false, result.enabled);
+  assert_eq!(Some("{\"tools\":[]}".to_string()), result.tools_cache);
+  assert_eq!(updated_at, result.updated_at);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "my-mcp", "user-1", ctx.now))
+    .await?;
+
+  ctx.service.delete_mcp("user-1", "m1").await?;
+  let gone = ctx.service.get_mcp("user-1", "m1").await?;
+  assert_eq!(None, gone);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp_wrong_user_noop(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "my-mcp", "user-1", ctx.now))
+    .await?;
+
+  // delete by wrong user should be a no-op
+  ctx.service.delete_mcp("user-2", "m1").await?;
+  let still_exists = ctx.service.get_mcp("user-1", "m1").await?;
+  assert!(still_exists.is_some());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_list_mcps_with_server(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "mcp-one", "user-1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m2", "s1", "mcp-two", "user-1", ctx.now))
+    .await?;
+  // Different user — should not appear
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m3", "s1", "mcp-three", "user-2", ctx.now))
+    .await?;
+
+  let results = ctx.service.list_mcps_with_server("user-1").await?;
+  assert_eq!(2, results.len());
+  assert_eq!("https://mcp.example.com", results[0].server_url);
+  assert_eq!("Server s1", results[0].server_name);
+  assert_eq!(true, results[0].server_enabled);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_list_mcps_with_server_with_auth(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_auth_header(&test_auth_header_row("ah-1", "s1", ctx.now))
+    .await?;
+
+  let mcp = McpRow {
+    auth_type: McpAuthType::Header,
+    auth_uuid: Some("ah-1".to_string()),
+    ..test_mcp_row("m1", "s1", "mcp-with-auth", "user-1", ctx.now)
+  };
+  ctx.service.create_mcp(&mcp).await?;
+
+  let results = ctx.service.list_mcps_with_server("user-1").await?;
+  assert_eq!(1, results.len());
+  assert_eq!(McpAuthType::Header, results[0].auth_type);
+  assert_eq!(Some("ah-1".to_string()), results[0].auth_uuid);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_count_mcps_by_server_id(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  // Create 2 enabled + 1 disabled
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m1", "s1", "mcp-one", "user-1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&test_mcp_row("m2", "s1", "mcp-two", "user-1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp(&McpRow {
+      enabled: false,
+      ..test_mcp_row("m3", "s1", "mcp-three", "user-1", ctx.now)
+    })
+    .await?;
+
+  let (enabled, disabled) = ctx.service.count_mcps_by_server_id("s1").await?;
+  assert_eq!(2, enabled);
+  assert_eq!(1, disabled);
+
+  // Non-existent server returns (0, 0)
+  let (e, d) = ctx.service.count_mcps_by_server_id("nonexistent").await?;
+  assert_eq!(0, e);
+  assert_eq!(0, d);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_clear_mcp_tools_by_server_id(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s2",
+      "https://other.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  // Create MCPs with tools on both servers
+  ctx
+    .service
+    .create_mcp(&McpRow {
+      tools_cache: Some("{\"tools\":[]}".to_string()),
+      tools_filter: Some("[\"tool1\"]".to_string()),
+      ..test_mcp_row("m1", "s1", "mcp-one", "user-1", ctx.now)
+    })
+    .await?;
+  ctx
+    .service
+    .create_mcp(&McpRow {
+      tools_cache: Some("{\"tools\":[\"t2\"]}".to_string()),
+      ..test_mcp_row("m2", "s1", "mcp-two", "user-1", ctx.now)
+    })
+    .await?;
+  ctx
+    .service
+    .create_mcp(&McpRow {
+      tools_cache: Some("{\"other\":[]}".to_string()),
+      ..test_mcp_row("m3", "s2", "mcp-three", "user-1", ctx.now)
+    })
+    .await?;
+
+  let affected = ctx.service.clear_mcp_tools_by_server_id("s1").await?;
+  assert_eq!(2, affected);
+
+  // Verify s1 MCPs cleared
+  let m1 = ctx.service.get_mcp("user-1", "m1").await?.unwrap();
+  assert_eq!(None, m1.tools_cache);
+  assert_eq!(None, m1.tools_filter);
+
+  let m2 = ctx.service.get_mcp("user-1", "m2").await?.unwrap();
+  assert_eq!(None, m2.tools_cache);
+
+  // Verify s2 MCP untouched
+  let m3 = ctx.service.get_mcp("user-1", "m3").await?.unwrap();
+  assert_eq!(Some("{\"other\":[]}".to_string()), m3.tools_cache);
+  Ok(())
+}
+
+// ============================================================================
+// MCP Auth Header Tests
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_create_and_get_mcp_auth_header(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  let row = test_auth_header_row("ah-1", "s1", ctx.now);
+  let created = ctx.service.create_mcp_auth_header(&row).await?;
+  assert_eq!("ah-1", created.id);
+  assert_eq!("Authorization", created.header_key);
+
+  let fetched = ctx.service.get_mcp_auth_header("ah-1").await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!("ah-1", fetched.id);
+  assert_eq!("s1", fetched.mcp_server_id);
+  assert_eq!(ctx.now, fetched.created_at);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_auth_header_not_found(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let result = ctx.service.get_mcp_auth_header("nonexistent").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_update_mcp_auth_header(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  let row = test_auth_header_row("ah-1", "s1", ctx.now);
+  ctx.service.create_mcp_auth_header(&row).await?;
+
+  let (enc2, salt2, nonce2) = encrypt_api_key(ENCRYPTION_KEY, "new-secret")?;
+  let updated_at = ctx.now + chrono::Duration::seconds(30);
+  let updated_row = McpAuthHeaderRow {
+    header_key: "X-Api-Key".to_string(),
+    encrypted_header_value: enc2,
+    header_value_salt: salt2,
+    header_value_nonce: nonce2,
+    updated_at,
+    ..row
+  };
+  let result = ctx.service.update_mcp_auth_header(&updated_row).await?;
+  assert_eq!("X-Api-Key", result.header_key);
+  assert_eq!(updated_at, result.updated_at);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp_auth_header(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_auth_header(&test_auth_header_row("ah-1", "s1", ctx.now))
+    .await?;
+
+  ctx.service.delete_mcp_auth_header("ah-1").await?;
+  let gone = ctx.service.get_mcp_auth_header("ah-1").await?;
+  assert_eq!(None, gone);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_list_mcp_auth_headers_by_server(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s2",
+      "https://other.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  ctx
+    .service
+    .create_mcp_auth_header(&test_auth_header_row("ah-1", "s1", ctx.now))
+    .await?;
+  let later = ctx.now + chrono::Duration::seconds(10);
+  ctx
+    .service
+    .create_mcp_auth_header(&McpAuthHeaderRow {
+      id: "ah-2".to_string(),
+      name: "Header 2".to_string(),
+      created_at: later,
+      updated_at: later,
+      ..test_auth_header_row("ah-2", "s1", later)
+    })
+    .await?;
+  ctx
+    .service
+    .create_mcp_auth_header(&test_auth_header_row("ah-3", "s2", ctx.now))
+    .await?;
+
+  let results = ctx.service.list_mcp_auth_headers_by_server("s1").await?;
+  assert_eq!(2, results.len());
+  // Ordered by created_at DESC
+  assert_eq!("ah-2", results[0].id);
+  assert_eq!("ah-1", results[1].id);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_decrypted_auth_header_roundtrip(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_auth_header(&test_auth_header_row("ah-1", "s1", ctx.now))
+    .await?;
+
+  let result = ctx.service.get_decrypted_auth_header("ah-1").await?;
+  assert_eq!(
+    Some((
+      "Authorization".to_string(),
+      "Bearer sk-secret-token-123".to_string()
+    )),
+    result
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_decrypted_auth_header_not_found(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let result = ctx.service.get_decrypted_auth_header("nonexistent").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+// ============================================================================
+// MCP OAuth Config Tests
+// ============================================================================
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_create_and_get_mcp_oauth_config(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+
+  let row = test_oauth_config_row("oc-1", "s1", ctx.now);
+  let created = ctx.service.create_mcp_oauth_config(&row).await?;
+  assert_eq!("oc-1", created.id);
+  assert_eq!("my-client-id", created.client_id);
+
+  let fetched = ctx.service.get_mcp_oauth_config("oc-1").await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!("oc-1", fetched.id);
+  assert_eq!("s1", fetched.mcp_server_id);
   assert_eq!("my-client-id", fetched.client_id);
-  assert_eq!("server-1", fetched.mcp_server_id);
   assert_eq!(
     "https://auth.example.com/authorize",
     fetched.authorization_endpoint
   );
   assert_eq!("https://auth.example.com/token", fetched.token_endpoint);
   assert_eq!(Some("openid profile".to_string()), fetched.scopes);
-  assert_eq!("user-1", fetched.created_by);
-  assert_eq!(now, fetched.created_at);
-  assert_eq!(now, fetched.updated_at);
+  assert_eq!(ctx.now, fetched.created_at);
 
-  assert!(fetched.encrypted_client_secret.is_some());
-  assert_ne!(
-    Some("my-client-secret-123".to_string()),
-    fetched.encrypted_client_secret
-  );
-  assert!(fetched
-    .client_secret_salt
-    .as_ref()
-    .map_or(false, |s| !s.is_empty()));
-  assert!(fetched
-    .client_secret_nonce
-    .as_ref()
-    .map_or(false, |s| !s.is_empty()));
-
+  // Encrypted secret should be masked via has_client_secret flag
+  assert!(fetched.has_client_secret);
   Ok(())
 }
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_list_mcp_oauth_configs_by_server(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_oauth_config_not_found(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  let result = ctx.service.get_mcp_oauth_config("nonexistent").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_list_mcp_oauth_configs_by_server(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
 
-  let config1 = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config1).await?;
-
-  let (encrypted2, salt2, nonce2) =
-    encrypt_api_key(&db_service.encryption_key, "secret-2").expect("encryption failed");
-  let config2 = McpOAuthConfigRow {
-    id: uuid::Uuid::new_v4().to_string(),
-    name: "OAuth 2".to_string(),
-    mcp_server_id: "server-1".to_string(),
-    registration_type: "pre-registered".to_string(),
-    client_id: "other-client".to_string(),
-    encrypted_client_secret: Some(encrypted2),
-    client_secret_salt: Some(salt2),
-    client_secret_nonce: Some(nonce2),
-    authorization_endpoint: "https://auth2.example.com/authorize".to_string(),
-    token_endpoint: "https://auth2.example.com/token".to_string(),
-    registration_endpoint: None,
-    encrypted_registration_access_token: None,
-    registration_access_token_salt: None,
-    registration_access_token_nonce: None,
-    client_id_issued_at: None,
-    token_endpoint_auth_method: None,
-    scopes: None,
-    created_by: "user-1".to_string(),
-    created_at: now + 1,
-    updated_at: now + 1,
-  };
-  db_service.create_mcp_oauth_config(&config2).await?;
-
-  let results = db_service
-    .list_mcp_oauth_configs_by_server("server-1")
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
     .await?;
+  let later = ctx.now + chrono::Duration::seconds(10);
+  ctx
+    .service
+    .create_mcp_oauth_config(&McpOAuthConfigRow {
+      id: "oc-2".to_string(),
+      name: "OAuth 2".to_string(),
+      client_id: "other-client".to_string(),
+      created_at: later,
+      updated_at: later,
+      ..test_oauth_config_row("oc-2", "s1", later)
+    })
+    .await?;
+
+  let results = ctx.service.list_mcp_oauth_configs_by_server("s1").await?;
   assert_eq!(2, results.len());
-  assert_eq!(config2.id, results[0].id);
-  assert_eq!(config1.id, results[1].id);
-
+  // Ordered by created_at DESC
+  assert_eq!("oc-2", results[0].id);
+  assert_eq!("oc-1", results[1].id);
   Ok(())
 }
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_delete_mcp_oauth_config(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp_oauth_config(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let row = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&row).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
 
-  let fetched = db_service.get_mcp_oauth_config(&row.id).await?;
-  assert!(fetched.is_some());
-
-  db_service.delete_mcp_oauth_config(&row.id).await?;
-
-  let gone = db_service.get_mcp_oauth_config(&row.id).await?;
+  ctx.service.delete_mcp_oauth_config("oc-1").await?;
+  let gone = ctx.service.get_mcp_oauth_config("oc-1").await?;
   assert_eq!(None, gone);
-
   Ok(())
 }
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_get_decrypted_client_secret(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_oauth_config_cascade(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let row = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&row).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-2", ctx.now))
+    .await?;
 
-  let result = db_service.get_decrypted_client_secret(&row.id).await?;
+  ctx.service.delete_oauth_config_cascade("oc-1").await?;
+
+  let config_gone = ctx.service.get_mcp_oauth_config("oc-1").await?;
+  assert_eq!(None, config_gone);
+  let token1_gone = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  assert_eq!(None, token1_gone);
+  let token2_gone = ctx.service.get_mcp_oauth_token("user-1", "ot-2").await?;
+  assert_eq!(None, token2_gone);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_decrypted_client_secret(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+
+  let result = ctx.service.get_decrypted_client_secret("oc-1").await?;
   assert_eq!(
     Some((
       "my-client-id".to_string(),
@@ -441,167 +1066,178 @@ async fn test_init_service_get_decrypted_client_secret(
     )),
     result
   );
+  Ok(())
+}
 
-  // Config not found should return an error, not None
-  let missing = db_service.get_decrypted_client_secret("nonexistent").await;
-  assert!(missing.is_err());
-  let err = missing.unwrap_err();
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_decrypted_client_secret_not_found(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let result = ctx.service.get_decrypted_client_secret("nonexistent").await;
+  assert!(result.is_err());
+  let err = result.unwrap_err();
   assert_eq!("db_error-item_not_found", err.code());
-
   Ok(())
 }
 
 // ============================================================================
-// OAuth Token Tests
+// MCP OAuth Token Tests
 // ============================================================================
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_create_mcp_oauth_token_and_read(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_create_and_get_mcp_oauth_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let config = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
 
-  let token = test_oauth_token_row(&db_service.encryption_key, &config.id, now);
-  let created = db_service.create_mcp_oauth_token(&token).await?;
-  assert_eq!(token.id, created.id);
-  assert_eq!(config.id, created.mcp_oauth_config_id);
+  let token = test_oauth_token_row("oc-1", "ot-1", ctx.now);
+  let created = ctx.service.create_mcp_oauth_token(&token).await?;
+  assert_eq!("ot-1", created.id);
+  assert_eq!("oc-1", created.mcp_oauth_config_id);
 
-  let fetched = db_service
-    .get_mcp_oauth_token("user-1", &token.id)
-    .await?
-    .expect("token should exist");
-  assert_eq!(token.id, fetched.id);
-  assert_eq!(config.id, fetched.mcp_oauth_config_id);
+  let fetched = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!("ot-1", fetched.id);
   assert_eq!(Some("openid profile".to_string()), fetched.scopes_granted);
-  assert_eq!(Some(now + 3600), fetched.expires_at);
-  assert_eq!("user-1", fetched.created_by);
-  assert_eq!(now, fetched.created_at);
+  assert_eq!(
+    Some((ctx.now + chrono::Duration::seconds(3600)).timestamp()),
+    fetched.expires_at
+  );
+  assert_eq!(ctx.now, fetched.created_at);
 
-  assert_ne!("access-token-abc", fetched.encrypted_access_token);
-  assert!(fetched.encrypted_refresh_token.is_some());
-
+  // Encrypted values should be masked via has_* flags
+  assert!(fetched.has_access_token);
   Ok(())
 }
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_get_latest_oauth_token_by_config(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_mcp_oauth_token_wrong_user(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let config = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
 
-  let older_token = McpOAuthTokenRow {
-    created_at: now,
-    updated_at: now,
-    ..test_oauth_token_row(&db_service.encryption_key, &config.id, now)
+  let result = ctx.service.get_mcp_oauth_token("user-2", "ot-1").await?;
+  assert_eq!(None, result);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_latest_oauth_token_by_config(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+
+  let older = test_oauth_token_row("oc-1", "ot-1", ctx.now);
+  ctx.service.create_mcp_oauth_token(&older).await?;
+
+  let later = ctx.now + chrono::Duration::seconds(100);
+  let newer = McpOAuthTokenRow {
+    id: "ot-2".to_string(),
+    created_at: later,
+    updated_at: later,
+    ..test_oauth_token_row("oc-1", "ot-2", later)
   };
-  db_service.create_mcp_oauth_token(&older_token).await?;
+  ctx.service.create_mcp_oauth_token(&newer).await?;
 
-  let newer_token = McpOAuthTokenRow {
-    created_at: now + 100,
-    updated_at: now + 100,
-    ..test_oauth_token_row(&db_service.encryption_key, &config.id, now + 100)
-  };
-  db_service.create_mcp_oauth_token(&newer_token).await?;
+  let latest = ctx.service.get_latest_oauth_token_by_config("oc-1").await?;
+  assert!(latest.is_some());
+  assert_eq!("ot-2", latest.unwrap().id);
 
-  let latest = db_service
-    .get_latest_oauth_token_by_config(&config.id)
-    .await?
-    .expect("latest token should exist");
-  assert_eq!(newer_token.id, latest.id);
-  assert_eq!(now + 100, latest.created_at);
-
-  let missing = db_service
-    .get_latest_oauth_token_by_config("nonexistent-config")
+  let missing = ctx
+    .service
+    .get_latest_oauth_token_by_config("nonexistent")
     .await?;
   assert_eq!(None, missing);
-
   Ok(())
 }
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_delete_oauth_tokens_by_config(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
-    .await?;
-  let config = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config).await?;
-
-  let token1 = test_oauth_token_row(&db_service.encryption_key, &config.id, now);
-  let token2 = McpOAuthTokenRow {
-    created_at: now + 50,
-    updated_at: now + 50,
-    ..test_oauth_token_row(&db_service.encryption_key, &config.id, now + 50)
-  };
-  db_service.create_mcp_oauth_token(&token1).await?;
-  db_service.create_mcp_oauth_token(&token2).await?;
-
-  db_service.delete_oauth_tokens_by_config(&config.id).await?;
-
-  let gone1 = db_service.get_mcp_oauth_token("user-1", &token1.id).await?;
-  let gone2 = db_service.get_mcp_oauth_token("user-1", &token2.id).await?;
-  assert_eq!(None, gone1);
-  assert_eq!(None, gone2);
-
-  Ok(())
-}
-
-// ============================================================================
-// Token Update Test
-// ============================================================================
-
-#[rstest]
-#[awt]
+#[serial(pg_app)]
 #[anyhow_trace]
-#[tokio::test]
-async fn test_init_service_update_mcp_oauth_token(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+async fn test_sea_update_mcp_oauth_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let config = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  let token = test_oauth_token_row("oc-1", "ot-1", ctx.now);
+  ctx.service.create_mcp_oauth_token(&token).await?;
 
-  let token = test_oauth_token_row(&db_service.encryption_key, &config.id, now);
-  db_service.create_mcp_oauth_token(&token).await?;
-
-  // Encrypt new values
   let (new_enc_at, new_salt_at, new_nonce_at) =
-    encrypt_api_key(&db_service.encryption_key, "new-access-token-xyz")?;
+    encrypt_api_key(ENCRYPTION_KEY, "new-access-token-xyz")?;
   let (new_enc_rt, new_salt_rt, new_nonce_rt) =
-    encrypt_api_key(&db_service.encryption_key, "new-refresh-token-uvw")?;
-
+    encrypt_api_key(ENCRYPTION_KEY, "new-refresh-token-uvw")?;
+  let updated_at = ctx.now + chrono::Duration::seconds(100);
   let updated_row = McpOAuthTokenRow {
     encrypted_access_token: new_enc_at,
     access_token_salt: new_salt_at,
@@ -609,65 +1245,216 @@ async fn test_init_service_update_mcp_oauth_token(
     encrypted_refresh_token: Some(new_enc_rt),
     refresh_token_salt: Some(new_salt_rt),
     refresh_token_nonce: Some(new_nonce_rt),
-    expires_at: Some(now + 7200),
-    updated_at: now + 100,
+    expires_at: Some(ctx.now + chrono::Duration::seconds(7200)),
+    updated_at,
     ..token.clone()
   };
+  let result = ctx.service.update_mcp_oauth_token(&updated_row).await?;
+  assert_eq!("ot-1", result.id);
+  assert_eq!(
+    Some(ctx.now + chrono::Duration::seconds(7200)),
+    result.expires_at
+  );
+  assert_eq!(updated_at, result.updated_at);
 
-  let result = db_service.update_mcp_oauth_token(&updated_row).await?;
-  assert_eq!(token.id, result.id);
-  assert_eq!(Some(now + 7200), result.expires_at);
-  assert_eq!(now + 100, result.updated_at);
-
-  // Verify decrypted values match the new plaintext
-  let fetched = db_service
-    .get_mcp_oauth_token("user-1", &token.id)
+  // Verify decrypted values match new plaintext via decrypt methods
+  let (header_key, header_value) = ctx
+    .service
+    .get_decrypted_oauth_bearer("ot-1")
     .await?
-    .expect("token should exist");
+    .unwrap();
+  assert_eq!("Authorization", header_key);
+  assert_eq!("Bearer new-access-token-xyz", header_value);
 
-  let decrypted_at = decrypt_api_key(
-    &db_service.encryption_key,
-    &fetched.encrypted_access_token,
-    &fetched.access_token_salt,
-    &fetched.access_token_nonce,
-  )?;
-  assert_eq!("new-access-token-xyz", decrypted_at);
-
-  let decrypted_rt = decrypt_api_key(
-    &db_service.encryption_key,
-    fetched.encrypted_refresh_token.as_ref().unwrap(),
-    fetched.refresh_token_salt.as_ref().unwrap(),
-    fetched.refresh_token_nonce.as_ref().unwrap(),
-  )?;
+  let decrypted_rt = ctx
+    .service
+    .get_decrypted_refresh_token("ot-1")
+    .await?
+    .unwrap();
   assert_eq!("new-refresh-token-uvw", decrypted_rt);
-
   Ok(())
 }
 
-// ============================================================================
-// Decrypted OAuth Bearer Test
-// ============================================================================
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp_oauth_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
+
+  ctx.service.delete_mcp_oauth_token("user-1", "ot-1").await?;
+  let gone = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  assert_eq!(None, gone);
+  Ok(())
+}
 
 #[rstest]
-#[awt]
-#[anyhow_trace]
 #[tokio::test]
-async fn test_init_service_get_decrypted_oauth_bearer(
-  #[future]
-  #[from(test_db_service)]
-  db_service: TestDbService,
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_mcp_oauth_token_wrong_user_noop(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = db_service.now().timestamp();
-  db_service
-    .create_mcp_server(&test_mcp_server_row(now))
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
     .await?;
-  let config = test_oauth_config_row(&db_service.encryption_key, now);
-  db_service.create_mcp_oauth_config(&config).await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
 
-  let token = test_oauth_token_row(&db_service.encryption_key, &config.id, now);
-  db_service.create_mcp_oauth_token(&token).await?;
+  // Wrong user should be a no-op
+  ctx.service.delete_mcp_oauth_token("user-2", "ot-1").await?;
+  let still_exists = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  assert!(still_exists.is_some());
+  Ok(())
+}
 
-  let result = db_service.get_decrypted_oauth_bearer(&token.id).await?;
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_oauth_tokens_by_config(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-2", ctx.now))
+    .await?;
+
+  ctx.service.delete_oauth_tokens_by_config("oc-1").await?;
+  let gone1 = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  let gone2 = ctx.service.get_mcp_oauth_token("user-1", "ot-2").await?;
+  assert_eq!(None, gone1);
+  assert_eq!(None, gone2);
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_delete_oauth_tokens_by_config_and_user(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+
+  // user-1 token
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
+  // user-2 token
+  ctx
+    .service
+    .create_mcp_oauth_token(&McpOAuthTokenRow {
+      id: "ot-2".to_string(),
+      created_by: "user-2".to_string(),
+      ..test_oauth_token_row("oc-1", "ot-2", ctx.now)
+    })
+    .await?;
+
+  ctx
+    .service
+    .delete_oauth_tokens_by_config_and_user("oc-1", "user-1")
+    .await?;
+
+  let gone = ctx.service.get_mcp_oauth_token("user-1", "ot-1").await?;
+  assert_eq!(None, gone);
+  // user-2 token should still exist
+  let still = ctx.service.get_mcp_oauth_token("user-2", "ot-2").await?;
+  assert!(still.is_some());
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+#[serial(pg_app)]
+#[anyhow_trace]
+async fn test_sea_get_decrypted_oauth_bearer(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  ctx
+    .service
+    .create_mcp_server(&test_mcp_server_row(
+      "s1",
+      "https://mcp.example.com",
+      ctx.now,
+    ))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_config(&test_oauth_config_row("oc-1", "s1", ctx.now))
+    .await?;
+  ctx
+    .service
+    .create_mcp_oauth_token(&test_oauth_token_row("oc-1", "ot-1", ctx.now))
+    .await?;
+
+  let result = ctx.service.get_decrypted_oauth_bearer("ot-1").await?;
   assert_eq!(
     Some((
       "Authorization".to_string(),
@@ -676,9 +1463,10 @@ async fn test_init_service_get_decrypted_oauth_bearer(
     result
   );
 
-  // Non-existent token returns None
-  let missing = db_service.get_decrypted_oauth_bearer("nonexistent").await?;
+  let missing = ctx
+    .service
+    .get_decrypted_oauth_bearer("nonexistent")
+    .await?;
   assert_eq!(None, missing);
-
   Ok(())
 }

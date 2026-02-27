@@ -124,7 +124,7 @@ impl From<UserAlias> for UserAliasResponse {
 
       model_params: HashMap::new(),
       request_params: alias.request_params,
-      context_params: alias.context_params,
+      context_params: alias.context_params.into(),
       created_at: alias.created_at,
       updated_at: alias.updated_at,
       metadata: None,
@@ -194,7 +194,7 @@ pub struct ApiAliasResponse {
 
 impl From<ApiAlias> for ApiAliasResponse {
   fn from(alias: ApiAlias) -> Self {
-    let models = alias.get_models().clone();
+    let models = alias.get_models().to_vec();
     Self {
       source: "api".to_string(),
       id: alias.id,

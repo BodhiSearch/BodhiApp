@@ -30,9 +30,11 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
   let mut config = create_napi_app_options();
 
   // Set basic configuration
+  let app_db_url = format!("sqlite:{}", temp_dir.path().join("app.db").display());
   config = set_env_var(config, BODHI_HOME.to_string(), bodhi_home);
   config = set_env_var(config, BODHI_HOST.to_string(), "127.0.0.1".to_string());
   config = set_env_var(config, BODHI_PORT.to_string(), port.to_string());
+  config = set_env_var(config, "BODHI_APP_DB_URL".to_string(), app_db_url);
 
   // Set system settings for basic app setup
   config = set_system_setting(

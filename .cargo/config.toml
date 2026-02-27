@@ -1,2 +1,8 @@
 [alias]
 xtask = "run --package xtask --"
+
+[env]
+# Increase default thread stack size to 16MB for test threads.
+# Required because deeply nested derive macros (DeriveValueType, ToSchema, etc.)
+# produce stack-heavy code in debug builds.
+RUST_MIN_STACK = "16777216"

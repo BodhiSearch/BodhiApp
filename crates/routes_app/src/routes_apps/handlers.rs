@@ -160,7 +160,7 @@ pub async fn get_access_request_status_handler(
 
   Ok(Json(AccessRequestStatusResponse {
     id: request.id,
-    status: request.status,
+    status: request.status.to_string(),
     requested_role: request.requested_role,
     approved_role: request.approved_role,
     access_request_scope: request.access_request_scope,
@@ -246,8 +246,8 @@ pub async fn get_access_request_review_handler(
     app_client_id: request.app_client_id,
     app_name: request.app_name,
     app_description: request.app_description,
-    flow_type: request.flow_type,
-    status: request.status,
+    flow_type: request.flow_type.to_string(),
+    status: request.status.to_string(),
     requested_role: request.requested_role,
     requested,
     tools_info,
@@ -413,8 +413,8 @@ pub async fn approve_access_request_handler(
 
   info!("Access request {} approved by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
-    status: updated.status,
-    flow_type: updated.flow_type,
+    status: updated.status.to_string(),
+    flow_type: updated.flow_type.to_string(),
     redirect_url: updated.redirect_uri,
   }))
 }
@@ -452,8 +452,8 @@ pub async fn deny_access_request_handler(
 
   info!("Access request {} denied by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
-    status: updated.status,
-    flow_type: updated.flow_type,
+    status: updated.status.to_string(),
+    flow_type: updated.flow_type.to_string(),
     redirect_url: updated.redirect_uri,
   }))
 }

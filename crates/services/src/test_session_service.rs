@@ -1,9 +1,12 @@
-use crate::session_service::{AppSessionStoreExt, DefaultSessionService, SessionService};
+use crate::{
+  session_service::{AppSessionStoreExt, DefaultSessionService, SessionService},
+  test_utils::setup_env,
+};
 use anyhow_trace::anyhow_trace;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 use tempfile::TempDir;
 use time::OffsetDateTime;
 use tower_sessions::{
@@ -12,10 +15,6 @@ use tower_sessions::{
 };
 
 fn pg_url() -> String {
-  let env_path = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.env.test"));
-  if env_path.exists() {
-    let _ = dotenv::from_filename(env_path).ok();
-  }
   std::env::var("INTEG_TEST_SESSION_PG_URL")
     .expect("INTEG_TEST_SESSION_PG_URL must be set for postgres integration tests")
 }
@@ -69,7 +68,10 @@ fn make_record(user_id: Option<&str>) -> Record {
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_save_with_user_id(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_save_with_user_id(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
   let record = make_record(Some("user123"));
@@ -96,7 +98,10 @@ async fn test_session_service_save_with_user_id(#[case] backend: &str) -> anyhow
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_save_without_user_id(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_save_without_user_id(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
   let record = make_record(None);
@@ -119,7 +124,10 @@ async fn test_session_service_save_without_user_id(#[case] backend: &str) -> any
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_load_and_delete(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_load_and_delete(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
   let record = make_record(Some("user_load"));
@@ -142,7 +150,10 @@ async fn test_session_service_load_and_delete(#[case] backend: &str) -> anyhow::
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_clear_sessions_for_user(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_clear_sessions_for_user(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
 
@@ -170,7 +181,10 @@ async fn test_session_service_clear_sessions_for_user(#[case] backend: &str) -> 
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_clear_all_sessions(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_clear_all_sessions(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
 
@@ -193,7 +207,10 @@ async fn test_session_service_clear_all_sessions(#[case] backend: &str) -> anyho
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_count_and_get_ids(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_count_and_get_ids(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
 
@@ -220,7 +237,10 @@ async fn test_session_service_count_and_get_ids(#[case] backend: &str) -> anyhow
 #[tokio::test]
 #[serial(pg_session)]
 #[anyhow_trace]
-async fn test_session_service_multi_user_isolation(#[case] backend: &str) -> anyhow::Result<()> {
+async fn test_session_service_multi_user_isolation(
+  _setup_env: (),
+  #[case] backend: &str,
+) -> anyhow::Result<()> {
   let (service, _temp_dir) = create_session_service(backend).await;
   let store = service.get_session_store();
 

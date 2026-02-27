@@ -38,7 +38,7 @@ export function mockSetupSuccessWithDelay(delayMs: number = 1000) {
 }
 
 export function mockSetupResourceAdmin() {
-  return mockSetup({ status: 'resource-admin' });
+  return mockSetup({ status: 'resource_admin' });
 }
 
 /**

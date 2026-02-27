@@ -10,7 +10,7 @@ include Makefile.website.mk
 	test.deps.up test.deps.down \
 	build build.native build.ui build.ui-clean build.ui-rebuild build.ts-client \
 	format format.all \
-	run run.native app.clear app.run \
+	run run.native app.clear app.run app.run.pg \
 	test.extension-download test.model-download
 
 help: ## Show this help message
@@ -120,6 +120,15 @@ app.run: ## Run the BodhiApp
 		BODHI_LOG_LEVEL=info \
 		BODHI_LOG_STDOUT=true \
 		BODHI_HOME=~/.cache/bodhi-dev-makefile \
+		cargo run --bin bodhi -- serve --port 1135
+
+app.run.pg: ## Run the BodhiApp with PostgreSQL test databases
+	BODHI_ENCRYPTION_KEY=dummy-key \
+		BODHI_LOG_LEVEL=info \
+		BODHI_LOG_STDOUT=true \
+		BODHI_HOME=~/.cache/bodhi-dev-makefile \
+		BODHI_APP_DB_URL=postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app \
+		BODHI_SESSION_DB_URL=postgres://bodhi_test:bodhi_test@localhost:54320/bodhi_sessions \
 		cargo run --bin bodhi -- serve --port 1135
 
 test.extension-download: ## Download Bodhi browser extension for testing (use FORCE=1 to check for updates)

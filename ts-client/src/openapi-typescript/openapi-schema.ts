@@ -1379,10 +1379,10 @@ export interface components {
             id: string;
             api_format: components["schemas"]["ApiFormat"];
             base_url: string;
-            models: string[];
+            models: components["schemas"]["JsonVec"];
             prefix?: string | null;
             forward_all_with_prefix: boolean;
-            models_cache: string[];
+            models_cache: components["schemas"]["JsonVec"];
             /** Format: date-time */
             cache_fetched_at: string;
             /** Format: date-time */
@@ -1528,7 +1528,7 @@ export interface components {
          * @example ready
          * @enum {string}
          */
-        AppStatus: "setup" | "ready" | "resource-admin";
+        AppStatus: "setup" | "ready" | "resource_admin";
         /** @description Application-level toolset configuration */
         AppToolsetConfig: {
             /** @description Toolset type identifier (e.g., "builtin-exa-search") */
@@ -2386,7 +2386,7 @@ export interface components {
             token_endpoint: string;
             client_secret?: string | null;
             scopes?: string | null;
-            /** @description `"pre-registered"` (default) or `"dynamic-registration"` */
+            /** @description `"pre_registered"` (default) or `"dynamic_registration"` */
             registration_type?: components["schemas"]["RegistrationType"];
             registration_access_token?: string | null;
             registration_endpoint?: string | null;
@@ -2679,6 +2679,7 @@ export interface components {
         };
         /** @enum {string} */
         InputAudioFormat: "wav" | "mp3";
+        JsonVec: string[];
         ListMcpServersResponse: {
             mcp_servers: components["schemas"]["McpServerResponse"][];
         };
@@ -3317,7 +3318,7 @@ export interface components {
          * @description OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).
          * @enum {string}
          */
-        RegistrationType: "pre-registered" | "dynamic-registration";
+        RegistrationType: "pre_registered" | "dynamic_registration";
         RequestedResources: {
             toolset_types?: components["schemas"]["ToolsetTypeRequest"][];
             mcp_servers?: components["schemas"]["McpServerRequest"][];
@@ -3413,7 +3414,7 @@ export interface components {
         /**
          * @description Response containing the updated application status after setup
          * @example {
-         *       "status": "resource-admin"
+         *       "status": "resource_admin"
          *     }
          */
         SetupResponse: {
@@ -3718,27 +3719,14 @@ export interface components {
             url: string;
         };
         UserAccessRequest: {
-            /**
-             * Format: int64
-             * @description Unique identifier for the request
-             */
-            id: number;
-            /** @description Username of the requesting user */
+            id: string;
             username: string;
-            /** @description User ID (UUID) of the requesting user */
             user_id: string;
             reviewer?: string | null;
-            /** @description Current status of the request */
             status: components["schemas"]["UserAccessRequestStatus"];
-            /**
-             * Format: date-time
-             * @description Creation timestamp
-             */
+            /** Format: date-time */
             created_at: string;
-            /**
-             * Format: date-time
-             * @description Last update timestamp
-             */
+            /** Format: date-time */
             updated_at: string;
         };
         /** @enum {string} */
@@ -3774,7 +3762,7 @@ export interface components {
             filename: string;
             snapshot: string;
             request_params?: components["schemas"]["OAIRequestParams"];
-            context_params?: string[];
+            context_params?: components["schemas"]["JsonVec"];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -4392,7 +4380,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Access request ID */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -4540,7 +4528,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Access request ID */
-                id: number;
+                id: string;
             };
             cookie?: never;
         };
@@ -8426,7 +8414,7 @@ export interface operations {
                 };
                 content: {
                     /** @example {
-                     *       "status": "resource-admin"
+                     *       "status": "resource_admin"
                      *     } */
                     "application/json": components["schemas"]["SetupResponse"];
                 };

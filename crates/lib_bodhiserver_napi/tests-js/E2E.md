@@ -41,9 +41,9 @@ Reference these specs as models for different test scenarios:
 All new tests should use `test.step()` for major phases. This integrates with Playwright's trace viewer and HTML reports, making failures easier to locate.
 
 ```js
-test('MCP Server CRUD Lifecycle', async ({ page }) => {
-  const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-  const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+test('MCP Server CRUD Lifecycle', async ({ page, sharedServerUrl }) => {
+  const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+  const mcpsPage = new McpsPage(page, sharedServerUrl);
 
   await test.step('Login and verify empty list', async () => {
     await loginPage.performOAuthLogin('/ui/chat/');
@@ -70,9 +70,10 @@ test('MCP Server CRUD Lifecycle', async ({ page }) => {
 ### Import Rules
 
 ```js
-// Shared server (auto DB reset before each test):
+// Shared server (auto DB reset before each test, sharedServerUrl fixture):
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL } from '@/test-helpers.mjs';
+// Use { sharedServerUrl } in test/beforeEach parameters -- it resolves
+// the correct server URL based on the Playwright project (sqlite/postgres).
 
 // Dedicated server (manage own state):
 import { expect, test } from '@playwright/test';
@@ -80,7 +81,7 @@ import { createServerManager } from '@/utils/bodhi-app-server.mjs';
 import { randomPort } from '@/test-helpers.mjs';
 ```
 
-Importing from `@/fixtures.mjs` gives you the `autoResetDb` fixture that calls `POST /dev/db-reset` before each test. Dedicated-server tests import from `@playwright/test` directly because the DB reset targets port 51135 (the shared server), not the dedicated server.
+Importing from `@/fixtures.mjs` gives you the `autoResetDb` fixture that calls `POST /dev/db-reset` before each test, and the `sharedServerUrl` fixture that resolves the correct server URL for the active Playwright project (SQLite on port 51135, PostgreSQL on port 41135). Dedicated-server tests import from `@playwright/test` directly because the DB reset targets the shared server, not the dedicated server.
 
 ### Setup and Teardown
 
@@ -181,7 +182,6 @@ import { LoginPage } from '@/pages/LoginPage.mjs';
 import { McpsPage } from '@/pages/McpsPage.mjs';
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL } from '@/test-helpers.mjs';
 
 test.describe('MCP Server Management', () => {
   let authServerConfig;
@@ -192,9 +192,9 @@ test.describe('MCP Server Management', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('MCP Server CRUD Lifecycle', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Server CRUD Lifecycle', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const testData = McpFixtures.createLifecycleData();
 
     await test.step('Login and verify empty MCP list', async () => {
@@ -229,9 +229,9 @@ test.describe('MCP Server Management', () => {
     });
   });
 
-  test('MCP Server Tool Discovery', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    const mcpsPage = new McpsPage(page, SHARED_SERVER_URL);
+  test('MCP Server Tool Discovery', async ({ page, sharedServerUrl }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    const mcpsPage = new McpsPage(page, sharedServerUrl);
     const testData = McpFixtures.createToolDiscoveryData();
 
     await test.step('Login and create MCP server', async () => {
@@ -447,4 +447,6 @@ After any navigation, call `waitForSPAReady()` before interacting with elements.
 | `bodhi-app-server.mjs`       | `createServerManager()` for dedicated-server lifecycle (start/stop)                                                                                                                        |
 | `browser-with-extension.mjs` | `BrowserWithExtension` for Chromium with Bodhi extension loaded                                                                                                                            |
 | `mock-openai-server.mjs`     | `MockOpenAIServer` for API model tests without real API keys                                                                                                                               |
-| `test-helpers.mjs`           | `SHARED_SERVER_URL`, `SHARED_STATIC_SERVER_URL`, `loadBindings()`, `createTestServer()`, `resetDatabase()`, `randomPort()`, `sleep()`, `waitForServer()`                                   |
+| `test-helpers.mjs`           | `SHARED_STATIC_SERVER_URL`, `loadBindings()`, `createTestServer()`, `resetDatabase()`, `randomPort()`, `sleep()`, `waitForServer()`                                                        |
+| `fixtures.mjs`               | `test` (extended with `sharedServerUrl` and `autoResetDb` fixtures), `expect`                                                                                                               |
+| `utils/db-config.mjs`        | `getDbConfig(projectName)`, `getServerUrl(projectName)` -- resolves port/DB URLs per Playwright project                                                                                     |

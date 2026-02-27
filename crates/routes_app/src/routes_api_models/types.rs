@@ -318,7 +318,7 @@ impl ApiModelResponse {
   pub fn from_alias(alias: ApiAlias, has_api_key: bool) -> Self {
     // get_models() returns models_cache for forward_all, models for regular aliases
     // All models are returned WITHOUT prefix - the UI will apply the prefix
-    let models = alias.get_models().clone();
+    let models = alias.get_models().to_vec();
     Self {
       id: alias.id,
       api_format: alias.api_format,

@@ -114,13 +114,13 @@ Advanced database testing with event broadcasting and temporal control:
 #[derive(Debug)]
 pub struct TestDbService {
   _temp_dir: Arc<TempDir>,
-  inner: SqliteDbService,
+  inner: DefaultDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
 }
 
 impl TestDbService {
-  pub fn new(_temp_dir: Arc<TempDir>, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
+  pub fn new(_temp_dir: Arc<TempDir>, inner: DefaultDbService, now: DateTime<Utc>) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService { _temp_dir, inner, event_sender, now }
   }

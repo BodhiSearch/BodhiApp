@@ -51,6 +51,7 @@ export const BODHI_PUBLIC_SCHEME: string
 export const BODHI_PUBLIC_HOST: string
 export const BODHI_PUBLIC_PORT: string
 export const BODHI_SESSION_DB_URL: string
+export const BODHI_APP_DB_URL: string
 export const BODHI_DEPLOYMENT: string
 export const HF_HOME: string
 export const DEFAULT_HOST: string

@@ -6,6 +6,8 @@ See [crates/services/PACKAGE.md](crates/services/PACKAGE.md) for implementation 
 
 The `services` crate implements BodhiApp's **business logic orchestration layer**, providing 16 interconnected services that coordinate OAuth2 authentication, AI API integrations, model management, toolset execution, MCP server management, user access control, data persistence, concurrency control, and multi-layer security. This crate bridges domain objects from `objs` with external systems while maintaining deployment flexibility across standalone servers, desktop applications, and embedded contexts.
 
+**Database Layer**: Fully migrated to **SeaORM** with dual-database support (SQLite for development, PostgreSQL for production). `DefaultDbService` is the sole `DbService` implementation. All entity fields use typed enums from `objs` (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings. SeaORM migrations live in `src/db/sea_migrations/`. ID generation uses ULID (`ulid::Ulid::new()`) instead of UUID.
+
 ## Architecture Position
 
 **Upstream dependencies** (crates this depends on):
@@ -93,7 +95,7 @@ std::io::Error -> IoError (via IoError::from) -> DataServiceError::Io (via #[fro
 
 The macro signature is: `impl_error_from!(source_type, target_enum::variant, intermediate_type)`
 
-This pattern is used consistently across all service error enums for external errors like `std::io::Error`, `reqwest::Error`, `serde_yaml::Error`, `serde_json::Error`, and `sqlx::Error`.
+This pattern is used consistently across all service error enums for external errors like `std::io::Error`, `reqwest::Error`, `serde_yaml::Error`, and `serde_json::Error`.
 
 ## Cross-Crate Coordination Patterns
 
@@ -196,6 +198,15 @@ The `McpService` (module: `mcp_service/`) manages Model Context Protocol server 
 **Dependencies**: `mcp_client` crate for MCP protocol communication, `DbService` for persistence, `TimeService` for timestamps
 
 **Migration 0012**: Indexes on `mcp_oauth_configs(mcp_server_id)` and `mcp_oauth_tokens(mcp_oauth_config_id)`
+
+### Database Schema and Entity Architecture
+
+**SeaORM Entity Model**:
+- All entities live in `src/db/entities/` with populated `Relation` enums for FK relationships
+- MCP tables have CASCADE foreign key constraints (deleting an MCP server cascades to auth headers, OAuth configs, and tokens)
+- Entity fields use typed enums from `objs` (e.g., `DownloadStatus`, `TokenStatus`, `AppStatus`) instead of raw Strings via `DeriveValueType`
+- Migrations in `src/db/sea_migrations/` support both SQLite and PostgreSQL
+- Migration 0014 (`snake_case_enums`) converts existing kebab-case enum values (e.g., `"pre-registered"`) to snake_case (`"pre_registered"`) in `RegistrationType` and `AppStatus` columns
 
 ### Access Request Management Architecture
 
@@ -341,7 +352,7 @@ let err = result.unwrap_err();
 assert_eq!("auth_service_error-auth_service_api_error", err.code());
 ```
 
-Error codes are auto-generated as `enum_name-variant_name` in snake_case. **Important**: transparent errors delegate to the inner error code (e.g., `DbError::SqlxError` produces `"sqlx_error"`, not `"db_error-sqlx_error"`).
+Error codes are auto-generated as `enum_name-variant_name` in snake_case. **Important**: transparent errors delegate to the inner error code (e.g., `DbError::SeaOrmError` produces `"sea_orm_db_error"`, not `"db_error-sea_orm_error"`).
 
 ### Assertion Style
 
@@ -349,11 +360,14 @@ Use `assert_eq!(expected, actual)` with `use pretty_assertions::assert_eq;` in e
 
 ### Key Test Infrastructure
 
-- **TestDbService**: Real SQLite in temp directory with `FrozenTimeService` for deterministic timestamps, event broadcasting for operation verification. See `src/test_utils/db.rs`.
+- **TestDbService**: Wraps `DefaultDbService` (SeaORM) with event broadcasting for operation verification. Uses in-memory SQLite with SeaORM migrations. Provides `FrozenTimeService` for deterministic timestamps. See `src/test_utils/db.rs`.
+- **SeaTestContext**: Dual-database test fixture (`sea_context("sqlite")` or `sea_context("postgres")`) providing `DefaultDbService` with fresh migrations. See `src/test_utils/sea.rs`.
 - **MockDbService**: Composite `mockall::mock!` implementation covering all repository traits. See `src/test_utils/db.rs`.
 - **mockito::Server**: HTTP mock server for testing AuthService, AiApiService, ExaService. See `src/auth_service.rs`, `src/ai_api_service.rs`, `src/exa_service.rs`.
 - **EnvWrapperStub**: In-memory environment variable stub for SettingService tests. See `src/test_utils/envs.rs`.
 - **MockSettingsChangeListener**: Verifies setting change notifications with expectation-driven assertions.
+
+**Note**: Test files have been consolidated -- all repository tests are in `test_*_repository.rs` files.
 
 ### Skill Reference
 

@@ -12,3 +12,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  bodhi_app_db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: bodhi_app
+      POSTGRES_USER: bodhi_test
+      POSTGRES_PASSWORD: bodhi_test
+    ports:
+      - "64320:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bodhi_test -d bodhi_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

@@ -49,6 +49,10 @@ pub enum BootstrapError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   MissingBootstrapParts,
 
+  #[error("Setting '{0}' is not set.")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  SettingNotFound(String),
+
   // --- transparent service error variants ---
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]

@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 60
     env:
       HF_HOME: /home/runner/.cache/huggingface
+      INTEG_TEST_APP_DB_PG_URL: postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app
     services:
       postgres:
         image: postgres:17
@@ -32,6 +33,19 @@ jobs:
           POSTGRES_PASSWORD: bodhi_test
         ports:
           - 54320:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      bodhi_app_db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bodhi_app
+          POSTGRES_USER: bodhi_test
+          POSTGRES_PASSWORD: bodhi_test
+        ports:
+          - 64320:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -100,9 +114,37 @@ jobs:
     needs: build-and-test
     if: needs.build-and-test.outputs.coverage-success == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60 
+    timeout-minutes: 60
     env:
       HF_HOME: /home/runner/.cache/huggingface
+      INTEG_TEST_APP_DB_PG_URL: postgres://bodhi_test:bodhi_test@localhost:64320/bodhi_app
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bodhi_sessions
+          POSTGRES_USER: bodhi_test
+          POSTGRES_PASSWORD: bodhi_test
+        ports:
+          - 54320:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      bodhi_app_db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: bodhi_app
+          POSTGRES_USER: bodhi_test
+          POSTGRES_PASSWORD: bodhi_test
+        ports:
+          - 64320:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     permissions:
       checks: write
       contents: read

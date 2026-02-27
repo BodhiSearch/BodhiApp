@@ -82,7 +82,7 @@ impl SessionStore for SessionStoreBackend {
   }
 }
 
-pub(crate) fn is_postgres_url(url: &str) -> bool {
+pub fn is_postgres_url(url: &str) -> bool {
   url.starts_with("postgres://") || url.starts_with("postgresql://")
 }
 

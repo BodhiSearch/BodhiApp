@@ -7,7 +7,7 @@ use axum::{
 };
 use objs::{ApiError, AppError, ApprovedResources, ErrorType};
 use server_core::RouterState;
-use services::db::DbService;
+use services::db::{AppAccessRequestStatus, DbService};
 use std::sync::Arc;
 
 pub trait AccessRequestValidator: Send + Sync + 'static {
@@ -97,10 +97,10 @@ async fn validate_access_request(
     },
   )?;
 
-  if access_request.status != "approved" {
+  if access_request.status != AppAccessRequestStatus::Approved {
     return Err(AccessRequestAuthError::AccessRequestNotApproved {
       access_request_id: access_request_id.to_string(),
-      status: access_request.status,
+      status: access_request.status.to_string(),
     });
   }
 

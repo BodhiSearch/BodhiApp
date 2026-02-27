@@ -1,7 +1,7 @@
 use crate::{
   access_request_service::{AccessRequestService, DefaultAccessRequestService},
   auth_service::MockAuthService,
-  db::{AccessRequestRepository, AppAccessRequestRow},
+  db::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType},
   test_utils::{test_db_service, TestDbService},
 };
 use anyhow_trace::anyhow_trace;
@@ -43,9 +43,9 @@ async fn test_create_draft_popup_valid(
     )
     .await?;
 
-  assert_eq!("draft", result.status);
+  assert_eq!(AppAccessRequestStatus::Draft, result.status);
   assert_eq!("app-client-1", result.app_client_id);
-  assert_eq!("popup", result.flow_type);
+  assert_eq!(FlowType::Popup, result.flow_type);
   assert_eq!(None, result.redirect_uri);
   assert_eq!("scope_user_user", result.requested_role);
   assert_eq!(None, result.approved_role);
@@ -85,8 +85,8 @@ async fn test_create_draft_redirect_valid(
     )
     .await?;
 
-  assert_eq!("draft", result.status);
-  assert_eq!("redirect", result.flow_type);
+  assert_eq!(AppAccessRequestStatus::Draft, result.status);
+  assert_eq!(FlowType::Redirect, result.flow_type);
   assert_eq!("scope_user_power_user", result.requested_role);
   // redirect_uri should have ?id=<uuid> appended
   let redirect = result.redirect_uri.unwrap();
@@ -156,9 +156,9 @@ async fn test_approve_request_already_processed(
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "popup".to_string(),
+    flow_type: FlowType::Popup,
     redirect_uri: None,
-    status: "approved".to_string(),
+    status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
     approved: Some(r#"{"toolsets":[],"mcps":[]}"#.to_string()),
     user_id: Some("user-1".to_string()),
@@ -166,9 +166,9 @@ async fn test_approve_request_already_processed(
     approved_role: Some("scope_user_user".to_string()),
     access_request_scope: Some("scope_access_request:ar-approved-001".to_string()),
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   db.create(&row).await?;
 
@@ -219,9 +219,9 @@ async fn test_approve_request_threads_approved_role(
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "popup".to_string(),
+    flow_type: FlowType::Popup,
     redirect_uri: None,
-    status: "draft".to_string(),
+    status: AppAccessRequestStatus::Draft,
     requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
     approved: None,
     user_id: None,
@@ -229,9 +229,9 @@ async fn test_approve_request_threads_approved_role(
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   db.create(&row).await?;
 
@@ -271,7 +271,7 @@ async fn test_approve_request_threads_approved_role(
     )
     .await?;
 
-  assert_eq!("approved", result.status);
+  assert_eq!(AppAccessRequestStatus::Approved, result.status);
   assert_eq!(Some("user-1".to_string()), result.user_id);
   assert_eq!(
     Some("scope_user_power_user".to_string()),
@@ -303,9 +303,9 @@ async fn test_get_request_expired_draft(
     app_client_id: "app-client-1".to_string(),
     app_name: None,
     app_description: None,
-    flow_type: "popup".to_string(),
+    flow_type: FlowType::Popup,
     redirect_uri: None,
-    status: "draft".to_string(),
+    status: AppAccessRequestStatus::Draft,
     requested: r#"{"toolset_types":[],"mcp_servers":[]}"#.to_string(),
     approved: None,
     user_id: None,
@@ -313,9 +313,9 @@ async fn test_get_request_expired_draft(
     approved_role: None,
     access_request_scope: None,
     error_message: None,
-    expires_at: expires_at.timestamp(),
-    created_at: now.timestamp(),
-    updated_at: now.timestamp(),
+    expires_at,
+    created_at: now,
+    updated_at: now,
   };
   db.create(&row).await?;
 

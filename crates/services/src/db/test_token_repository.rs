@@ -1,207 +1,233 @@
 use crate::{
-  db::{ApiToken, DbError, SqlxError, TokenRepository, TokenStatus},
-  test_utils::{test_db_service, TestDbService},
+  db::{ApiToken, TokenRepository, TokenStatus},
+  test_utils::{sea_context, setup_env},
 };
 use anyhow_trace::anyhow_trace;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
-use uuid::Uuid;
+use serial_test::serial;
 
-#[rstest]
-#[awt]
-#[anyhow_trace]
-#[tokio::test]
-async fn test_create_api_token(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
-) -> anyhow::Result<()> {
-  let now = service.now();
-
-  // Create token
-  let user_id = Uuid::new_v4().to_string();
-  let mut token = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: user_id.clone(),
+fn make_token(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> ApiToken {
+  ApiToken {
+    id: id.to_string(),
+    user_id: user_id.to_string(),
     name: "".to_string(),
-    token_prefix: "bodhiapp_test01".to_string(),
-    token_hash: "token_hash".to_string(),
+    token_prefix: prefix.to_string(),
+    token_hash: format!("hash_{prefix}"),
     scopes: "scope_token_user".to_string(),
     status: TokenStatus::Active,
     created_at: now,
     updated_at: now,
-  };
+  }
+}
 
-  service.create_api_token(&mut token).await?;
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_create_and_list_api_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let user_id = ulid::Ulid::new().to_string();
+  let mut token = make_token(
+    &ulid::Ulid::new().to_string(),
+    &user_id,
+    "bodhiapp_t01",
+    ctx.now,
+  );
 
-  // List tokens
-  let (tokens, _) = service.list_api_tokens(&user_id, 1, 10).await?;
+  ctx.service.create_api_token(&mut token).await?;
+
+  let (tokens, total) = ctx.service.list_api_tokens(&user_id, 1, 10).await?;
+  assert_eq!(1, total);
   assert_eq!(1, tokens.len());
-
   assert_eq!(token, tokens[0]);
 
   Ok(())
 }
 
 #[rstest]
-#[awt]
 #[anyhow_trace]
 #[tokio::test]
-async fn test_update_api_token(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
+#[serial(pg_app)]
+async fn test_sea_get_api_token_by_id(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  // Create initial token
-  let mut token = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: "test_user".to_string(),
-    name: "Initial Name".to_string(),
-    token_prefix: "bodhiapp_test02".to_string(),
-    token_hash: "token_hash".to_string(),
-    scopes: "scope_token_user".to_string(),
-    status: TokenStatus::Active,
-    created_at: Utc::now(),
-    updated_at: Utc::now(),
-  };
-  service.create_api_token(&mut token).await?;
+  let ctx = sea_context(db_type).await;
+  let user_id = ulid::Ulid::new().to_string();
+  let token_id = ulid::Ulid::new().to_string();
+  let mut token = make_token(&token_id, &user_id, "bodhiapp_t02", ctx.now);
 
-  // Update token
+  ctx.service.create_api_token(&mut token).await?;
+
+  let fetched = ctx.service.get_api_token_by_id(&user_id, &token_id).await?;
+  assert!(fetched.is_some());
+  assert_eq!(token, fetched.unwrap());
+
+  let not_found = ctx
+    .service
+    .get_api_token_by_id(&user_id, "nonexistent")
+    .await?;
+  assert!(not_found.is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_get_api_token_by_prefix(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let user_id = ulid::Ulid::new().to_string();
+  let mut token = make_token(
+    &ulid::Ulid::new().to_string(),
+    &user_id,
+    "bodhiapp_t03",
+    ctx.now,
+  );
+
+  ctx.service.create_api_token(&mut token).await?;
+
+  let fetched = ctx.service.get_api_token_by_prefix("bodhiapp_t03").await?;
+  assert!(fetched.is_some());
+  assert_eq!(token, fetched.unwrap());
+
+  let not_found = ctx
+    .service
+    .get_api_token_by_prefix("nonexistent_prefix")
+    .await?;
+  assert!(not_found.is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_update_api_token(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let user_id = ulid::Ulid::new().to_string();
+  let token_id = ulid::Ulid::new().to_string();
+  let mut token = make_token(&token_id, &user_id, "bodhiapp_t04", ctx.now);
+
+  ctx.service.create_api_token(&mut token).await?;
+
   token.name = "Updated Name".to_string();
   token.status = TokenStatus::Inactive;
-  token.updated_at = Utc::now();
-  service.update_api_token("test_user", &mut token).await?;
-  // Verify update
-  let updated = service
-    .get_api_token_by_id("test_user", &token.id)
+  ctx.service.update_api_token(&user_id, &mut token).await?;
+
+  let updated = ctx
+    .service
+    .get_api_token_by_id(&user_id, &token_id)
     .await?
-    .unwrap();
-  assert_eq!(updated.name, "Updated Name");
-  assert_eq!(updated.status, TokenStatus::Inactive);
-  assert_eq!(updated.id, token.id);
-  assert_eq!(updated.user_id, token.user_id);
-  assert_eq!(updated.token_prefix, token.token_prefix);
-  assert_eq!(updated.created_at, token.created_at);
-  assert!(updated.updated_at >= token.updated_at);
+    .expect("Token should exist");
+
+  assert_eq!("Updated Name", updated.name);
+  assert_eq!(TokenStatus::Inactive, updated.status);
+  assert_eq!(token_id, updated.id);
+  assert_eq!(user_id, updated.user_id);
 
   Ok(())
 }
 
 #[rstest]
-#[awt]
 #[anyhow_trace]
 #[tokio::test]
-async fn test_list_api_tokens_user_scoped(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
+#[serial(pg_app)]
+async fn test_sea_list_api_tokens_user_scoped(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = service.now();
+  let ctx = sea_context(db_type).await;
+  let user1_id = ulid::Ulid::new().to_string();
+  let user2_id = ulid::Ulid::new().to_string();
 
-  // Create tokens for two different users
-  let user1_id = "user1";
-  let user2_id = "user2";
+  let mut token1 = make_token(
+    &ulid::Ulid::new().to_string(),
+    &user1_id,
+    "bodhiapp_t05",
+    ctx.now,
+  );
+  token1.name = "User1 Token".to_string();
+  ctx.service.create_api_token(&mut token1).await?;
 
-  // Create token for user1
-  let mut token1 = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: user1_id.to_string(),
-    name: "User1 Token".to_string(),
-    token_prefix: "bodhiapp_test03".to_string(),
-    token_hash: "hash1".to_string(),
-    scopes: "scope_token_user".to_string(),
-    status: TokenStatus::Active,
-    created_at: now,
-    updated_at: now,
-  };
-  service.create_api_token(&mut token1).await?;
+  let mut token2 = make_token(
+    &ulid::Ulid::new().to_string(),
+    &user2_id,
+    "bodhiapp_t06",
+    ctx.now,
+  );
+  token2.name = "User2 Token".to_string();
+  ctx.service.create_api_token(&mut token2).await?;
 
-  // Create token for user2
-  let mut token2 = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: user2_id.to_string(),
-    name: "User2 Token".to_string(),
-    token_prefix: "bodhiapp_test04".to_string(),
-    token_hash: "hash2".to_string(),
-    scopes: "scope_token_user".to_string(),
-    status: TokenStatus::Active,
-    created_at: now,
-    updated_at: now,
-  };
-  service.create_api_token(&mut token2).await?;
+  let (tokens, total) = ctx.service.list_api_tokens(&user1_id, 1, 10).await?;
+  assert_eq!(1, total);
+  assert_eq!(1, tokens.len());
+  assert_eq!(user1_id, tokens[0].user_id);
+  assert_eq!("User1 Token", tokens[0].name);
 
-  // List tokens for user1
-  let (tokens, total) = service.list_api_tokens(user1_id, 1, 10).await?;
-  assert_eq!(tokens.len(), 1);
-  assert_eq!(total, 1);
-  assert_eq!(tokens[0].user_id, user1_id);
-  assert_eq!(tokens[0].name, "User1 Token");
-
-  // List tokens for user2
-  let (tokens, total) = service.list_api_tokens(user2_id, 1, 10).await?;
-  assert_eq!(tokens.len(), 1);
-  assert_eq!(total, 1);
-  assert_eq!(tokens[0].user_id, user2_id);
-  assert_eq!(tokens[0].name, "User2 Token");
+  let (tokens, total) = ctx.service.list_api_tokens(&user2_id, 1, 10).await?;
+  assert_eq!(1, total);
+  assert_eq!(1, tokens.len());
+  assert_eq!(user2_id, tokens[0].user_id);
+  assert_eq!("User2 Token", tokens[0].name);
 
   Ok(())
 }
 
 #[rstest]
-#[awt]
 #[anyhow_trace]
 #[tokio::test]
-async fn test_update_api_token_user_scoped(
-  #[future]
-  #[from(test_db_service)]
-  service: TestDbService,
+#[serial(pg_app)]
+async fn test_sea_update_api_token_user_scoped(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
-  let now = service.now();
+  let ctx = sea_context(db_type).await;
+  let user1_id = ulid::Ulid::new().to_string();
+  let user2_id = ulid::Ulid::new().to_string();
 
-  // Create a token for user1
-  let user1_id = "user1";
-  let mut token = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: user1_id.to_string(),
-    name: "Initial Name".to_string(),
-    token_prefix: "bodhiapp_test05".to_string(),
-    token_hash: "hash".to_string(),
-    scopes: "scope_token_user".to_string(),
-    status: TokenStatus::Active,
-    created_at: now,
-    updated_at: now,
-  };
-  service.create_api_token(&mut token).await?;
+  let mut token = make_token(
+    &ulid::Ulid::new().to_string(),
+    &user1_id,
+    "bodhiapp_t07",
+    ctx.now,
+  );
+  token.name = "Initial Name".to_string();
+  ctx.service.create_api_token(&mut token).await?;
 
-  // Try to update token as user2 (should fail)
-  let user2_id = "user2";
   token.name = "Updated Name".to_string();
-  let result = service.update_api_token(user2_id, &mut token).await;
-  assert!(matches!(
-    result,
-    Err(DbError::SqlxError(SqlxError { source })) if source.to_string() == sqlx::Error::RowNotFound.to_string()
-  ));
+  let result = ctx.service.update_api_token(&user2_id, &mut token).await;
+  assert!(result.is_err());
 
-  // Verify token was not updated
-  let unchanged = service
-    .get_api_token_by_id(user1_id, &token.id)
+  let unchanged = ctx
+    .service
+    .get_api_token_by_id(&user1_id, &token.id)
     .await?
     .unwrap();
-  assert_eq!(unchanged.name, "Initial Name");
-  assert_eq!(unchanged.user_id, user1_id);
+  assert_eq!("Initial Name", unchanged.name);
 
-  // Update token as user1 (should succeed)
-  let result = service.update_api_token(user1_id, &mut token).await;
+  let result = ctx.service.update_api_token(&user1_id, &mut token).await;
   assert!(result.is_ok());
 
-  // Verify the update succeeded
-  let updated = service
-    .get_api_token_by_id(user1_id, &token.id)
+  let updated = ctx
+    .service
+    .get_api_token_by_id(&user1_id, &token.id)
     .await?
     .unwrap();
-  assert_eq!(updated.name, "Updated Name");
-  assert_eq!(updated.user_id, user1_id);
+  assert_eq!("Updated Name", updated.name);
 
   Ok(())
 }

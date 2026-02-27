@@ -162,9 +162,15 @@ pub fn create_test_model_metadata_with_capabilities(
     .repo(repo)
     .filename(filename)
     .snapshot(snapshot)
-    .capabilities_vision(vision as i64)
-    .capabilities_thinking(thinking as i64)
-    .capabilities_function_calling(function_calling as i64);
+    .capabilities(objs::ModelCapabilities {
+      vision: Some(vision),
+      audio: None,
+      thinking: Some(thinking),
+      tools: objs::ToolCapabilities {
+        function_calling: Some(function_calling),
+        structured_output: None,
+      },
+    });
   builder
     .build()
     .expect("Failed to build test ModelMetadataRow with capabilities")
@@ -185,16 +191,18 @@ pub fn create_test_api_model_metadata(
 /// Creates a test ModelMetadataRow for an API model with context limits.
 pub fn create_test_api_model_metadata_with_context(
   api_model_id: &str,
-  max_input_tokens: i64,
-  max_output_tokens: i64,
+  max_input_tokens: u64,
+  max_output_tokens: u64,
   now: DateTime<Utc>,
 ) -> crate::db::ModelMetadataRow {
   let mut builder = model_metadata_builder(now);
   builder
     .source("api")
     .api_model_id(api_model_id)
-    .context_max_input_tokens(max_input_tokens)
-    .context_max_output_tokens(max_output_tokens);
+    .context(objs::ContextLimits {
+      max_input_tokens: Some(max_input_tokens),
+      max_output_tokens: Some(max_output_tokens),
+    });
   builder
     .build()
     .expect("Failed to build test API ModelMetadataRow with context")

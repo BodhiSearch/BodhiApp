@@ -304,6 +304,7 @@ async fn auth_initiate_handler_with_token_response(
   let mut builder = AppServiceStubBuilder::default();
   builder
     .with_temp_home_as(temp_bodhi_home)
+    .time_service(Arc::new(services::db::DefaultTimeService))
     .setting_service(Arc::new(
       SettingServiceStub::default()
         .append_settings(HashMap::from([

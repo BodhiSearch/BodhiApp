@@ -7,7 +7,7 @@ import {
   getTestCredentials,
 } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 /**
  * OAuth Chat Streaming E2E Tests
@@ -26,8 +26,11 @@ test.describe('OAuth Chat Streaming', () => {
     testCredentials = getTestCredentials();
   });
 
-  test('3rd-party app: OAuth token → streaming chat completion', async ({ page }) => {
-    const loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
+  test('3rd-party app: OAuth token → streaming chat completion', async ({
+    page,
+    sharedServerUrl,
+  }) => {
+    const loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
     const appClient = getPreConfiguredAppClient();
     const redirectUri = `${SHARED_STATIC_SERVER_URL}/callback`;
     const app = new OAuthTestApp(page, SHARED_STATIC_SERVER_URL);
@@ -40,7 +43,7 @@ test.describe('OAuth Chat Streaming', () => {
       await app.navigate();
 
       await app.config.configureOAuthForm({
-        bodhiServerUrl: SHARED_SERVER_URL,
+        bodhiServerUrl: sharedServerUrl,
         authServerUrl: authServerConfig.authUrl,
         realm: authServerConfig.authRealm,
         clientId: appClient.clientId,
@@ -50,9 +53,9 @@ test.describe('OAuth Chat Streaming', () => {
       });
 
       await app.config.submitAccessRequest();
-      await app.oauth.waitForAccessRequestRedirect(SHARED_SERVER_URL);
+      await app.oauth.waitForAccessRequestRedirect(sharedServerUrl);
 
-      const reviewPage = new AccessRequestReviewPage(page, SHARED_SERVER_URL);
+      const reviewPage = new AccessRequestReviewPage(page, sharedServerUrl);
       await reviewPage.approve();
 
       await app.oauth.waitForAccessRequestCallback(SHARED_STATIC_SERVER_URL);

@@ -2,8 +2,8 @@ use super::*;
 use rstest::rstest;
 
 #[rstest]
-#[case::pre_registered(RegistrationType::PreRegistered, "\"pre-registered\"")]
-#[case::dynamic_registration(RegistrationType::DynamicRegistration, "\"dynamic-registration\"")]
+#[case::pre_registered(RegistrationType::PreRegistered, "\"pre_registered\"")]
+#[case::dynamic_registration(RegistrationType::DynamicRegistration, "\"dynamic_registration\"")]
 fn test_registration_type_serde_roundtrip(
   #[case] variant: RegistrationType,
   #[case] expected_json: &str,
@@ -15,15 +15,15 @@ fn test_registration_type_serde_roundtrip(
 }
 
 #[rstest]
-#[case::pre_registered(RegistrationType::PreRegistered, "pre-registered")]
-#[case::dynamic_registration(RegistrationType::DynamicRegistration, "dynamic-registration")]
+#[case::pre_registered(RegistrationType::PreRegistered, "pre_registered")]
+#[case::dynamic_registration(RegistrationType::DynamicRegistration, "dynamic_registration")]
 fn test_registration_type_display(#[case] variant: RegistrationType, #[case] expected: &str) {
   assert_eq!(expected, variant.to_string());
 }
 
 #[rstest]
-#[case::pre_registered("pre-registered", Ok(RegistrationType::PreRegistered))]
-#[case::dynamic_registration("dynamic-registration", Ok(RegistrationType::DynamicRegistration))]
+#[case::pre_registered("pre_registered", Ok(RegistrationType::PreRegistered))]
+#[case::dynamic_registration("dynamic_registration", Ok(RegistrationType::DynamicRegistration))]
 #[case::invalid("invalid", Err(()))]
 fn test_registration_type_from_str(
   #[case] input: &str,

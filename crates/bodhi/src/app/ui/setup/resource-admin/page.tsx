@@ -111,7 +111,7 @@ function ResourceAdminContent() {
 
 export default function ResourceAdminPage() {
   return (
-    <AppInitializer allowedStatus="resource-admin" authenticated={false}>
+    <AppInitializer allowedStatus="resource_admin" authenticated={false}>
       <ResourceAdminContent />
     </AppInitializer>
   );

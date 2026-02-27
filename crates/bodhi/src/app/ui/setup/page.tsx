@@ -64,7 +64,7 @@ function SetupContent() {
 
   const { mutate: setup, isLoading } = useSetupApp({
     onSuccess: (appInfo) => {
-      if (appInfo.status === 'resource-admin') {
+      if (appInfo.status === 'resource_admin') {
         router.push(ROUTE_SETUP_RESOURCE_ADMIN);
       } else {
         router.push(ROUTE_SETUP_DOWNLOAD_MODELS);

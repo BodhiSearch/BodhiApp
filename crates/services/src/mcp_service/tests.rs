@@ -11,7 +11,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 async fn setup_server(db: &dyn DbService) -> McpServerRow {
-  let now = db.now().timestamp();
+  let now = db.now();
   let row = McpServerRow {
     id: "server-1".to_string(),
     url: "https://mcp.example.com/mcp".to_string(),

@@ -204,7 +204,7 @@ pub async fn list_all_requests_handler(
     summary = "Approve Access Request",
     description = "Approve an access request and assign a role. Requires manager or admin role.",
     params(
-        ("id" = i64, Path, description = "Access request ID")
+        ("id" = String, Path, description = "Access request ID")
     ),
     request_body(
         content = ApproveUserAccessRequest,
@@ -221,7 +221,7 @@ pub async fn list_all_requests_handler(
 pub async fn approve_request_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
-  Path(id): Path<i64>,
+  Path(id): Path<String>,
   Json(request): Json<ApproveUserAccessRequest>,
 ) -> Result<StatusCode, ApiError> {
   let AuthContext::Session {
@@ -253,14 +253,14 @@ pub async fn approve_request_handler(
 
   // Get the request details to obtain the user's email
   let access_request = db_service
-    .get_request_by_id(id)
+    .get_request_by_id(&id)
     .await?
-    .ok_or(AccessRequestError::RequestNotFound(id))?;
+    .ok_or_else(|| AccessRequestError::RequestNotFound(id.clone()))?;
 
   // Update request status to approved
   db_service
     .update_request_status(
-      id,
+      &id,
       UserAccessRequestStatus::Approved,
       approver_username.to_string(),
     )
@@ -297,7 +297,7 @@ pub async fn approve_request_handler(
     summary = "Reject Access Request",
     description = "Reject an access request. Requires manager or admin role.",
     params(
-        ("id" = i64, Path, description = "Access request ID")
+        ("id" = String, Path, description = "Access request ID")
     ),
     responses(
         (status = 200, description = "Request rejected successfully"),
@@ -310,7 +310,7 @@ pub async fn approve_request_handler(
 pub async fn reject_request_handler(
   Extension(auth_context): Extension<AuthContext>,
   State(state): State<Arc<dyn RouterState>>,
-  Path(id): Path<i64>,
+  Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
   let token = auth_context.token().expect("requires auth middleware");
   let claims: Claims = extract_claims::<Claims>(token)?;
@@ -324,7 +324,7 @@ pub async fn reject_request_handler(
   let db_service = state.app_service().db_service();
   db_service
     .update_request_status(
-      id,
+      &id,
       UserAccessRequestStatus::Rejected,
       claims.preferred_username.clone(),
     )

@@ -156,7 +156,7 @@ impl DataService for LocalDataService {
 
     let now = self.db_service.now();
     let new_user_alias = UserAlias {
-      id: uuid::Uuid::new_v4().to_string(),
+      id: ulid::Ulid::new().to_string(),
       alias: new_alias.to_string(),
       repo: user_alias.repo.clone(),
       filename: user_alias.filename.clone(),

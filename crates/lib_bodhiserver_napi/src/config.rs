@@ -195,6 +195,9 @@ pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
 pub const BODHI_SESSION_DB_URL: &str = "BODHI_SESSION_DB_URL";
 
 #[napi]
+pub const BODHI_APP_DB_URL: &str = "BODHI_APP_DB_URL";
+
+#[napi]
 pub const BODHI_DEPLOYMENT: &str = "BODHI_DEPLOYMENT";
 
 #[napi]

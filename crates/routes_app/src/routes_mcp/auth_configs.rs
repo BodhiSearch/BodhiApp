@@ -183,7 +183,7 @@ pub async fn oauth_login_handler(
   let code_verifier = generate_random_string(43);
   let code_challenge =
     general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
-  let oauth_state = uuid::Uuid::new_v4().to_string();
+  let oauth_state = ulid::Ulid::new().to_string();
 
   let created_at = state.app_service().time_service().utc_now().timestamp();
   let session_key = format!("mcp_oauth_{}", config_id);

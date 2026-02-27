@@ -1,3 +1,4 @@
+use crate::JsonVec;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -7,8 +8,17 @@ pub const CACHE_TTL_HOURS: i64 = 24;
 
 /// API format/protocol specification
 #[derive(
-  Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, strum::Display, strum::EnumString,
+  Debug,
+  Clone,
+  Serialize,
+  Deserialize,
+  ToSchema,
+  PartialEq,
+  strum::Display,
+  strum::EnumString,
+  sea_orm::DeriveValueType,
 )]
+#[sea_orm(value_type = "String")]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -30,13 +40,13 @@ pub struct ApiAlias {
   pub api_format: ApiFormat,
   pub base_url: String,
   #[builder(default)]
-  pub models: Vec<String>,
+  pub models: JsonVec,
   #[builder(default)]
   pub prefix: Option<String>,
   #[builder(default)]
   pub forward_all_with_prefix: bool,
   #[builder(default)]
-  pub models_cache: Vec<String>,
+  pub models_cache: JsonVec,
   #[schema(value_type = String, format = "date-time")]
   #[builder(setter(skip))]
   pub cache_fetched_at: DateTime<Utc>,
@@ -53,7 +63,7 @@ impl ApiAlias {
     id: impl Into<String>,
     api_format: ApiFormat,
     base_url: impl Into<String>,
-    models: Vec<String>,
+    models: impl Into<JsonVec>,
     prefix: Option<String>,
     forward_all_with_prefix: bool,
     created_at: DateTime<Utc>,
@@ -67,10 +77,10 @@ impl ApiAlias {
       id: id.into(),
       api_format,
       base_url: base_url.into(),
-      models,
+      models: models.into(),
       prefix,
       forward_all_with_prefix,
-      models_cache: Vec::new(),
+      models_cache: JsonVec::default(),
       cache_fetched_at: epoch,
       created_at,
       updated_at: created_at,
@@ -85,7 +95,7 @@ impl ApiAlias {
   /// Returns the appropriate models list based on the forward_all_with_prefix flag.
   /// - If forward_all_with_prefix=true: returns models_cache (unprefixed cached models)
   /// - If forward_all_with_prefix=false: returns models (user-specified models)
-  pub fn get_models(&self) -> &Vec<String> {
+  pub fn get_models(&self) -> &[String] {
     if self.forward_all_with_prefix {
       &self.models_cache
     } else {
@@ -96,7 +106,7 @@ impl ApiAlias {
   pub fn matchable_models(&self) -> Vec<String> {
     let prefix = self.prefix.as_deref().unwrap_or("");
 
-    let source = if self.forward_all_with_prefix {
+    let source: &[String] = if self.forward_all_with_prefix {
       &self.models_cache
     } else {
       &self.models
@@ -121,8 +131,8 @@ impl ApiAlias {
   }
 
   /// Check if the cache is stale (older than TTL).
-  pub fn is_cache_stale(&self) -> bool {
-    Utc::now() - self.cache_fetched_at > Duration::hours(CACHE_TTL_HOURS)
+  pub fn is_cache_stale(&self, now: DateTime<Utc>) -> bool {
+    now - self.cache_fetched_at > Duration::hours(CACHE_TTL_HOURS)
   }
 
   /// Check if the cache is empty.
@@ -185,7 +195,7 @@ impl std::fmt::Display for ApiAlias {
     write!(
       f,
       "ApiAlias {{ id: {}, api_format: {}, prefix: {:?}, models: {:?} }}",
-      self.id, self.api_format, self.prefix, self.models
+      self.id, self.api_format, self.prefix, &*self.models
     )
   }
 }

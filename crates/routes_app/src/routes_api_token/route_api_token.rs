@@ -20,8 +20,8 @@ use services::{
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use ulid::Ulid;
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 /// Request to create a new API token
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -170,7 +170,7 @@ pub async fn create_token_handler(
 
   // Create ApiToken
   let mut api_token = ApiToken {
-    id: Uuid::new_v4().to_string(),
+    id: Ulid::new().to_string(),
     user_id,
     name: payload.name.unwrap_or_default(),
     token_prefix: token_prefix.to_string(),

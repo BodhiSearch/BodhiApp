@@ -1,6 +1,6 @@
 import { getAuthServerConfig, getTestCredentials } from '@/utils/auth-server-client.mjs';
 import { expect, test } from '@/fixtures.mjs';
-import { SHARED_SERVER_URL, SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
+import { SHARED_STATIC_SERVER_URL } from '@/test-helpers.mjs';
 
 import { ChatFixtures } from '@/fixtures/ChatFixtures.mjs';
 import { ApiModelFormPage } from '@/pages/ApiModelFormPage.mjs';
@@ -31,13 +31,13 @@ test.describe('Chat Interface - Core Functionality', () => {
     // Note: DB reset will be addressed in PR3 when we solve the dev routes availability issue
   });
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page, SHARED_SERVER_URL, authServerConfig, testCredentials);
-    modelsPage = new ModelsListPage(page, SHARED_SERVER_URL);
-    apiModelFormPage = new ApiModelFormPage(page, SHARED_SERVER_URL);
-    chatPage = new ChatPage(page, SHARED_SERVER_URL);
-    chatHistoryPage = new ChatHistoryPage(page, SHARED_SERVER_URL);
-    chatSettingsPage = new ChatSettingsPage(page, SHARED_SERVER_URL);
+  test.beforeEach(async ({ page, sharedServerUrl }) => {
+    loginPage = new LoginPage(page, sharedServerUrl, authServerConfig, testCredentials);
+    modelsPage = new ModelsListPage(page, sharedServerUrl);
+    apiModelFormPage = new ApiModelFormPage(page, sharedServerUrl);
+    chatPage = new ChatPage(page, sharedServerUrl);
+    chatHistoryPage = new ChatHistoryPage(page, sharedServerUrl);
+    chatSettingsPage = new ChatSettingsPage(page, sharedServerUrl);
   });
 
   test('basic chat functionality with simple Q&A @smoke @integration', async ({ page }) => {

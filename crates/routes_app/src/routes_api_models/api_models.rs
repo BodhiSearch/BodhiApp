@@ -13,7 +13,7 @@ use axum_extra::extract::WithRejection;
 use objs::{ApiAlias, ApiError, ApiFormat, ObjValidationError, OpenAIApiError, API_TAG_API_MODELS};
 use server_core::RouterState;
 use std::sync::Arc;
-use uuid::Uuid;
+use ulid::Ulid;
 use validator::Validate;
 
 /// List all API model configurations
@@ -173,8 +173,8 @@ pub async fn create_api_model_handler(
   let db_service = state.app_service().db_service();
   let time_service = state.app_service().time_service();
 
-  // Generate a unique UUID for the API model
-  let id = Uuid::new_v4().to_string();
+  // Generate a unique ULID for the API model
+  let id = Ulid::new().to_string();
 
   // Create the API model alias
   let now = time_service.utc_now();
@@ -270,7 +270,7 @@ pub async fn update_api_model_handler(
   // Update all fields (api_key is handled separately for security)
   api_alias.api_format = payload.api_format;
   api_alias.base_url = payload.base_url.trim_end_matches('/').to_string();
-  api_alias.models = payload.models;
+  api_alias.models = payload.models.into();
   api_alias.prefix = if payload.prefix.as_ref().is_some_and(|p| p.is_empty()) {
     None
   } else {

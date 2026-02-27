@@ -715,8 +715,7 @@
             "description": "Access request ID",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -908,8 +907,7 @@
             "description": "Access request ID",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -6000,7 +5998,7 @@
                   "$ref": "#/components/schemas/SetupResponse"
                 },
                 "example": {
-                  "status": "resource-admin"
+                  "status": "resource_admin"
                 }
               }
             }
@@ -8434,10 +8432,7 @@
             "type": "string"
           },
           "models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/JsonVec"
           },
           "prefix": {
             "type": [
@@ -8449,10 +8444,7 @@
             "type": "boolean"
           },
           "models_cache": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/JsonVec"
           },
           "cache_fetched_at": {
             "type": "string",
@@ -8815,7 +8807,7 @@
         "enum": [
           "setup",
           "ready",
-          "resource-admin"
+          "resource_admin"
         ],
         "example": "ready"
       },
@@ -11473,7 +11465,7 @@
               },
               "registration_type": {
                 "$ref": "#/components/schemas/RegistrationType",
-                "description": "`\"pre-registered\"` (default) or `\"dynamic-registration\"`"
+                "description": "`\"pre_registered\"` (default) or `\"dynamic_registration\"`"
               },
               "registration_access_token": {
                 "type": [
@@ -11800,13 +11792,11 @@
               "integer",
               "null"
             ],
-            "format": "int64",
-            "minimum": 0
+            "format": "int64"
           },
           "downloaded_bytes": {
             "type": "integer",
-            "format": "int64",
-            "minimum": 0
+            "format": "int64"
           },
           "started_at": {
             "type": "string",
@@ -12313,6 +12303,12 @@
           "wav",
           "mp3"
         ]
+      },
+      "JsonVec": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       },
       "ListMcpServersResponse": {
         "type": "object",
@@ -14350,8 +14346,8 @@
         "type": "string",
         "description": "OAuth 2.1 registration type: pre-registered client or dynamic client registration (DCR).",
         "enum": [
-          "pre-registered",
-          "dynamic-registration"
+          "pre_registered",
+          "dynamic_registration"
         ]
       },
       "RequestedResources": {
@@ -14643,7 +14639,7 @@
           }
         },
         "example": {
-          "status": "resource-admin"
+          "status": "resource_admin"
         }
       },
       "ShowRequest": {
@@ -15462,17 +15458,13 @@
         ],
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64",
-            "description": "Unique identifier for the request"
+            "type": "string"
           },
           "username": {
-            "type": "string",
-            "description": "Username of the requesting user"
+            "type": "string"
           },
           "user_id": {
-            "type": "string",
-            "description": "User ID (UUID) of the requesting user"
+            "type": "string"
           },
           "reviewer": {
             "type": [
@@ -15481,18 +15473,15 @@
             ]
           },
           "status": {
-            "$ref": "#/components/schemas/UserAccessRequestStatus",
-            "description": "Current status of the request"
+            "$ref": "#/components/schemas/UserAccessRequestStatus"
           },
           "created_at": {
             "type": "string",
-            "format": "date-time",
-            "description": "Creation timestamp"
+            "format": "date-time"
           },
           "updated_at": {
             "type": "string",
-            "format": "date-time",
-            "description": "Last update timestamp"
+            "format": "date-time"
           }
         }
       },
@@ -15570,10 +15559,7 @@
             "$ref": "#/components/schemas/OAIRequestParams"
           },
           "context_params": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/JsonVec"
           },
           "created_at": {
             "type": "string",

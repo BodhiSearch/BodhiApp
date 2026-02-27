@@ -31,8 +31,8 @@ async fn make_service(
         key: key.to_string(),
         value: value.to_string(),
         value_type: "number".to_string(),
-        created_at: 0,
-        updated_at: 0,
+        created_at: chrono::DateTime::<chrono::Utc>::UNIX_EPOCH,
+        updated_at: chrono::DateTime::<chrono::Utc>::UNIX_EPOCH,
       },
     );
   }

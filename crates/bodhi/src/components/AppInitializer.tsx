@@ -50,7 +50,7 @@ export default function AppInitializer({
           case 'ready':
             router.push(ROUTE_DEFAULT);
             break;
-          case 'resource-admin':
+          case 'resource_admin':
             router.push(ROUTE_RESOURCE_ADMIN);
             break;
         }
@@ -118,7 +118,7 @@ export default function AppInitializer({
   }
 
   if (appInfo?.status) {
-    if (!['setup', 'ready', 'resource-admin'].includes(appInfo.status)) {
+    if (!['setup', 'ready', 'resource_admin'].includes(appInfo.status)) {
       return (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
