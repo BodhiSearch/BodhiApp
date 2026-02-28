@@ -1,7 +1,7 @@
 import { PaginatedUserAccessResponse, UserAccessStatusResponse, UserAccessRequest } from '@bodhiapp/ts-client';
 
 export const mockPendingRequest: UserAccessRequest = {
-  id: 1,
+  id: '01HQXYZ0000000000000000001',
   user_id: '550e8400-e29b-41d4-a716-446655440001',
   username: 'user@example.com',
   status: 'pending',
@@ -11,7 +11,7 @@ export const mockPendingRequest: UserAccessRequest = {
 };
 
 export const mockApprovedRequest: UserAccessRequest = {
-  id: 2,
+  id: '01HQXYZ0000000000000000002',
   user_id: '550e8400-e29b-41d4-a716-446655440002',
   username: 'approved@example.com',
   status: 'approved',
@@ -21,7 +21,7 @@ export const mockApprovedRequest: UserAccessRequest = {
 };
 
 export const mockRejectedRequest: UserAccessRequest = {
-  id: 3,
+  id: '01HQXYZ0000000000000000003',
   user_id: '550e8400-e29b-41d4-a716-446655440003',
   username: 'rejected@example.com',
   status: 'rejected',

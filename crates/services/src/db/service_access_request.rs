@@ -4,6 +4,65 @@ use crate::db::{
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
+impl DefaultDbService {
+  /// If the record is a draft and past its `expires_at`, mark it as `Expired` in DB and return the updated row.
+  /// Otherwise return the row unchanged.
+  async fn expire_if_draft_and_expired(
+    &self,
+    row: AppAccessRequestRow,
+  ) -> Result<AppAccessRequestRow, DbError> {
+    if row.status == AppAccessRequestStatus::Draft {
+      let now = self.time_service.utc_now();
+      if row.expires_at < now {
+        let updated_at = now;
+        let active = app_access_request::ActiveModel {
+          id: Set(row.id.clone()),
+          status: Set(AppAccessRequestStatus::Expired),
+          updated_at: Set(updated_at),
+          ..Default::default()
+        };
+        let model = active.update(&self.db).await.map_err(DbError::from)?;
+        return Ok(AppAccessRequestRow::from(model));
+      }
+    }
+    Ok(row)
+  }
+
+  /// Fetch the record (raw, without auto-expire), and if it's a draft past expiry mark it
+  /// expired and return an error. If it's not a draft, return an error. Otherwise return Ok(()).
+  async fn validate_draft_for_update(&self, id: &str) -> Result<(), DbError> {
+    let row = app_access_request::Entity::find_by_id(id)
+      .one(&self.db)
+      .await
+      .map_err(DbError::from)?
+      .map(AppAccessRequestRow::from)
+      .ok_or_else(|| DbError::ItemNotFound {
+        id: id.to_string(),
+        item_type: "app_access_request".to_string(),
+      })?;
+    if row.status == AppAccessRequestStatus::Draft {
+      let now = self.time_service.utc_now();
+      if row.expires_at < now {
+        // Mark as expired in DB
+        let active = app_access_request::ActiveModel {
+          id: Set(id.to_string()),
+          status: Set(AppAccessRequestStatus::Expired),
+          updated_at: Set(now),
+          ..Default::default()
+        };
+        active.update(&self.db).await.map_err(DbError::from)?;
+        return Err(DbError::AccessRequestExpired(id.to_string()));
+      }
+      Ok(())
+    } else {
+      Err(DbError::AccessRequestNotDraft {
+        id: id.to_string(),
+        status: row.status.to_string(),
+      })
+    }
+  }
+}
+
 #[async_trait::async_trait]
 impl AccessRequestRepository for DefaultDbService {
   async fn create(&self, row: &AppAccessRequestRow) -> Result<AppAccessRequestRow, DbError> {
@@ -35,7 +94,13 @@ impl AccessRequestRepository for DefaultDbService {
       .one(&self.db)
       .await
       .map_err(DbError::from)?;
-    Ok(result.map(AppAccessRequestRow::from))
+    match result {
+      Some(model) => {
+        let row = AppAccessRequestRow::from(model);
+        Ok(Some(self.expire_if_draft_and_expired(row).await?))
+      }
+      None => Ok(None),
+    }
   }
 
   async fn update_approval(
@@ -46,6 +111,7 @@ impl AccessRequestRepository for DefaultDbService {
     approved_role: &str,
     access_request_scope: &str,
   ) -> Result<AppAccessRequestRow, DbError> {
+    self.validate_draft_for_update(id).await?;
     let now = self.time_service.utc_now();
     let active = app_access_request::ActiveModel {
       id: Set(id.to_string()),
@@ -62,6 +128,7 @@ impl AccessRequestRepository for DefaultDbService {
   }
 
   async fn update_denial(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow, DbError> {
+    self.validate_draft_for_update(id).await?;
     let now = self.time_service.utc_now();
     let active = app_access_request::ActiveModel {
       id: Set(id.to_string()),
@@ -79,6 +146,7 @@ impl AccessRequestRepository for DefaultDbService {
     id: &str,
     error_message: &str,
   ) -> Result<AppAccessRequestRow, DbError> {
+    self.validate_draft_for_update(id).await?;
     let now = self.time_service.utc_now();
     let active = app_access_request::ActiveModel {
       id: Set(id.to_string()),

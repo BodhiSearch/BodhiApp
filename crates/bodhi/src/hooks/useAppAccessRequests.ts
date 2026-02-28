@@ -1,9 +1,13 @@
 import {
+  AccessRequestActionResponse,
   AccessRequestReviewResponse,
+  ApproveAccessRequestBody,
+  McpApproval,
   McpServerReviewInfo,
   OpenAiApiError,
   RequestedResources,
   Toolset,
+  ToolsetApproval,
   ToolTypeReviewInfo,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -15,33 +19,17 @@ import { UseMutationResult, UseQueryResult } from '@/hooks/useQuery';
 type ErrorResponse = OpenAiApiError;
 
 // Re-export types for consumers
-export type { AccessRequestReviewResponse, McpServerReviewInfo, RequestedResources, ToolTypeReviewInfo, Toolset };
-
-export interface ToolApprovalItem {
-  toolset_type: string;
-  status: string;
-  instance?: { id: string };
-}
-
-export interface McpApprovalItem {
-  url: string;
-  status: string;
-  instance?: { id: string };
-}
-
-export interface ApproveAccessRequestBody {
-  approved_role: string;
-  approved: {
-    toolsets: ToolApprovalItem[];
-    mcps: McpApprovalItem[];
-  };
-}
-
-export interface AccessRequestActionResponse {
-  status: string;
-  flow_type: string;
-  redirect_url?: string;
-}
+export type {
+  AccessRequestActionResponse,
+  AccessRequestReviewResponse,
+  ApproveAccessRequestBody,
+  McpApproval,
+  McpServerReviewInfo,
+  RequestedResources,
+  ToolsetApproval,
+  ToolTypeReviewInfo,
+  Toolset,
+};
 
 // ============================================================================
 // Endpoints

@@ -58,6 +58,12 @@ pub enum DbError {
   #[error("Data conversion error: {0}.")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   Conversion(String),
+  #[error("Access request '{0}' has expired.")]
+  #[error_meta(error_type = ErrorType::Conflict)]
+  AccessRequestExpired(String),
+  #[error("Access request '{id}' has status '{status}' and cannot be updated.")]
+  #[error_meta(error_type = ErrorType::Conflict)]
+  AccessRequestNotDraft { id: String, status: String },
 }
 
 impl_error_from!(

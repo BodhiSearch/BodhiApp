@@ -1,9 +1,10 @@
 use crate::{
-  db::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, FlowType},
+  db::{AccessRequestRepository, AppAccessRequestRow, AppAccessRequestStatus, DbError, FlowType},
   test_utils::{sea_context, setup_env},
 };
 use anyhow_trace::anyhow_trace;
 use chrono::Duration;
+use objs::AppError;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 use serial_test::serial;
@@ -189,6 +190,147 @@ async fn test_sea_get_by_access_request_scope(
     .get_by_access_request_scope("nonexistent-scope")
     .await?;
   assert!(not_found.is_none());
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_get_marks_expired_draft(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let id = ulid::Ulid::new().to_string();
+  let mut row = make_request(&id, ctx.now);
+  // Set expires_at in the past
+  row.expires_at = ctx.now - Duration::minutes(5);
+  ctx.service.create(&row).await?;
+
+  let fetched = ctx.service.get(&id).await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!(AppAccessRequestStatus::Expired, fetched.status);
+
+  Ok(())
+}
+
+#[rstest]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_get_returns_draft_when_not_expired(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let id = ulid::Ulid::new().to_string();
+  let row = make_request(&id, ctx.now);
+  ctx.service.create(&row).await?;
+
+  let fetched = ctx.service.get(&id).await?;
+  assert!(fetched.is_some());
+  let fetched = fetched.unwrap();
+  assert_eq!(AppAccessRequestStatus::Draft, fetched.status);
+
+  Ok(())
+}
+
+/// Helper enum to parameterize update operations across approval/denial/failure
+enum UpdateOp {
+  Approval,
+  Denial,
+  Failure,
+}
+
+async fn perform_update(
+  service: &crate::db::DefaultDbService,
+  id: &str,
+  op: &UpdateOp,
+) -> Result<AppAccessRequestRow, DbError> {
+  match op {
+    UpdateOp::Approval => {
+      service
+        .update_approval(id, "user-1", "{}", "scope_user_user", "scope")
+        .await
+    }
+    UpdateOp::Denial => service.update_denial(id, "user-1").await,
+    UpdateOp::Failure => service.update_failure(id, "some error").await,
+  }
+}
+
+/// Transition a draft to a non-draft state so we can test rejection of updates on non-draft records
+async fn transition_to_non_draft(
+  service: &crate::db::DefaultDbService,
+  id: &str,
+  op: &UpdateOp,
+) -> Result<(), DbError> {
+  match op {
+    UpdateOp::Approval => {
+      service
+        .update_approval(id, "user-1", "{}", "scope_user_user", "scope")
+        .await?;
+    }
+    UpdateOp::Denial => {
+      service.update_denial(id, "user-1").await?;
+    }
+    UpdateOp::Failure => {
+      service.update_failure(id, "original error").await?;
+    }
+  }
+  Ok(())
+}
+
+#[rstest]
+#[case::approval(UpdateOp::Approval)]
+#[case::denial(UpdateOp::Denial)]
+#[case::failure(UpdateOp::Failure)]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_update_rejects_expired_draft(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+  #[case] op: UpdateOp,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let id = ulid::Ulid::new().to_string();
+  let mut row = make_request(&id, ctx.now);
+  row.expires_at = ctx.now - Duration::minutes(5);
+  ctx.service.create(&row).await?;
+
+  let result = perform_update(&ctx.service, &id, &op).await;
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("db_error-access_request_expired", err.code());
+
+  Ok(())
+}
+
+#[rstest]
+#[case::approval(UpdateOp::Approval)]
+#[case::denial(UpdateOp::Denial)]
+#[case::failure(UpdateOp::Failure)]
+#[anyhow_trace]
+#[tokio::test]
+#[serial(pg_app)]
+async fn test_sea_update_rejects_non_draft(
+  _setup_env: (),
+  #[values("sqlite", "postgres")] db_type: &str,
+  #[case] op: UpdateOp,
+) -> anyhow::Result<()> {
+  let ctx = sea_context(db_type).await;
+  let id = ulid::Ulid::new().to_string();
+  let row = make_request(&id, ctx.now);
+  ctx.service.create(&row).await?;
+  transition_to_non_draft(&ctx.service, &id, &op).await?;
+
+  let result = perform_update(&ctx.service, &id, &op).await;
+  assert!(result.is_err());
+  let err = result.unwrap_err();
+  assert_eq!("db_error-access_request_not_draft", err.code());
 
   Ok(())
 }

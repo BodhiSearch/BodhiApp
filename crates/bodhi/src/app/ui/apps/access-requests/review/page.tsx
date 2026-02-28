@@ -22,6 +22,7 @@ import {
   useDenyAppAccessRequest,
 } from '@/hooks/useAppAccessRequests';
 import type { AccessRequestActionResponse, ApproveAccessRequestBody } from '@/hooks/useAppAccessRequests';
+import type { UserScope } from '@bodhiapp/ts-client';
 import { useUser } from '@/hooks/useUsers';
 
 // ============================================================================
@@ -124,7 +125,7 @@ const ReviewContent = () => {
   const [approvedTools, setApprovedTools] = useState<Record<string, boolean>>({});
   const [selectedMcpInstances, setSelectedMcpInstances] = useState<Record<string, string>>({});
   const [approvedMcps, setApprovedMcps] = useState<Record<string, boolean>>({});
-  const [approvedRole, setApprovedRole] = useState<string | null>(null);
+  const [approvedRole, setApprovedRole] = useState<UserScope | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionResult, setActionResult] = useState<AccessRequestActionResponse | null>(null);
 
@@ -164,7 +165,7 @@ const ReviewContent = () => {
 
   useEffect(() => {
     if (roleOptions.length > 0) {
-      setApprovedRole(roleOptions[0].value);
+      setApprovedRole(roleOptions[0].value as UserScope);
     }
   }, [roleOptions]);
 
@@ -355,7 +356,7 @@ const ReviewContent = () => {
           {roleOptions.length > 0 && (
             <div className="mb-4" data-testid="review-approved-role-section">
               <Label className="text-sm font-medium mb-1 block">Approved Role</Label>
-              <Select value={approvedRole ?? ''} onValueChange={setApprovedRole}>
+              <Select value={approvedRole ?? ''} onValueChange={(v) => setApprovedRole(v as UserScope)}>
                 <SelectTrigger data-testid="review-approved-role-select">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>

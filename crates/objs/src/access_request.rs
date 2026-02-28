@@ -7,6 +7,25 @@ use utoipa::ToSchema;
   Copy,
   PartialEq,
   Eq,
+  Serialize,
+  Deserialize,
+  strum::EnumString,
+  strum::Display,
+  ToSchema,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum ApprovalStatus {
+  Approved,
+  Denied,
+}
+
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  PartialEq,
+  Eq,
   strum::Display,
   strum::EnumIter,
   strum::EnumString,
@@ -23,6 +42,7 @@ pub enum AppAccessRequestStatus {
   Approved,
   Denied,
   Failed,
+  Expired,
 }
 
 #[derive(
@@ -72,7 +92,7 @@ pub struct ToolsetTypeRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ToolsetApproval {
   pub toolset_type: String,
-  pub status: String,
+  pub status: ApprovalStatus,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub instance: Option<ToolsetInstance>,
 }
@@ -90,7 +110,7 @@ pub struct McpServerRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct McpApproval {
   pub url: String,
-  pub status: String,
+  pub status: ApprovalStatus,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub instance: Option<McpInstance>,
 }

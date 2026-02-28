@@ -142,12 +142,12 @@ export function mockAccessRequestsPendingError(
  * Mock handler for access request approval - success case
  * Only responds to the specified ID, returns 404 for others
  */
-export function mockAccessRequestApprove(id: number, { stub }: { delayMs?: number; stub?: boolean } = {}) {
+export function mockAccessRequestApprove(id: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
-      if (params.id !== id.toString()) return;
+      if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -157,7 +157,7 @@ export function mockAccessRequestApprove(id: number, { stub }: { delayMs?: numbe
 }
 
 export function mockAccessRequestApproveError(
-  id: number,
+  id: string,
   {
     code = INTERNAL_SERVER_ERROR.code,
     message = INTERNAL_SERVER_ERROR.message,
@@ -172,7 +172,7 @@ export function mockAccessRequestApproveError(
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_APPROVE, async ({ params, response }) => {
       // Only return error for matching ID
-      if (params.id !== id.toString()) return;
+      if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -191,13 +191,13 @@ export function mockAccessRequestApproveError(
  * Mock handler for access request rejection - success case
  * Only responds to the specified ID, returns 404 for others
  */
-export function mockAccessRequestReject(id: number, { stub }: { delayMs?: number; stub?: boolean } = {}) {
+export function mockAccessRequestReject(id: string, { stub }: { delayMs?: number; stub?: boolean } = {}) {
   let hasBeenCalled = false;
 
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only respond with success if ID matches
-      if (params.id !== id.toString()) return;
+      if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -207,7 +207,7 @@ export function mockAccessRequestReject(id: number, { stub }: { delayMs?: number
 }
 
 export function mockAccessRequestRejectError(
-  id: number,
+  id: string,
   {
     code = INTERNAL_SERVER_ERROR.code,
     message = INTERNAL_SERVER_ERROR.message,
@@ -222,7 +222,7 @@ export function mockAccessRequestRejectError(
   return [
     typedHttp.post(ENDPOINT_ACCESS_REQUEST_REJECT, async ({ params, response }) => {
       // Only return error for matching ID
-      if (params.id !== id.toString()) return;
+      if (params.id !== id) return;
       if (hasBeenCalled && !stub) return;
       hasBeenCalled = true;
 
@@ -356,7 +356,7 @@ export function mockAccessRequestsDefault() {
   return mockAccessRequests({
     requests: [
       {
-        id: 1,
+        id: '1',
         user_id: '550e8400-e29b-41d4-a716-446655440001',
         username: 'user@example.com',
         status: 'pending',
@@ -365,7 +365,7 @@ export function mockAccessRequestsDefault() {
         reviewer: null,
       },
       {
-        id: 2,
+        id: '2',
         user_id: '550e8400-e29b-41d4-a716-446655440002',
         username: 'approved@example.com',
         status: 'approved',
@@ -374,7 +374,7 @@ export function mockAccessRequestsDefault() {
         reviewer: 'admin@example.com',
       },
       {
-        id: 3,
+        id: '3',
         user_id: '550e8400-e29b-41d4-a716-446655440003',
         username: 'rejected@example.com',
         status: 'rejected',
@@ -408,7 +408,7 @@ export function mockAccessRequestsPendingDefault() {
   return mockAccessRequestsPending({
     requests: [
       {
-        id: 1,
+        id: '1',
         user_id: '550e8400-e29b-41d4-a716-446655440001',
         username: 'user@example.com',
         status: 'pending',

@@ -75,7 +75,7 @@ export function mockAppAccessRequestApprove(
     onBody,
     flowType = 'popup',
     redirectUrl,
-  }: { stub?: boolean; onBody?: (body: unknown) => void; flowType?: string; redirectUrl?: string } = {}
+  }: { stub?: boolean; onBody?: (body: unknown) => void; flowType?: 'redirect' | 'popup'; redirectUrl?: string } = {}
 ) {
   let hasBeenCalled = false;
 
@@ -136,7 +136,11 @@ export function mockAppAccessRequestApproveError(
  */
 export function mockAppAccessRequestDeny(
   id: string,
-  { stub, flowType = 'popup', redirectUrl }: { stub?: boolean; flowType?: string; redirectUrl?: string } = {}
+  {
+    stub,
+    flowType = 'popup',
+    redirectUrl,
+  }: { stub?: boolean; flowType?: 'redirect' | 'popup'; redirectUrl?: string } = {}
 ) {
   let hasBeenCalled = false;
 

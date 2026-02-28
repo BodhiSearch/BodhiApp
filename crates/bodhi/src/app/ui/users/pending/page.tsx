@@ -96,7 +96,7 @@ function PendingRequestsContent() {
   // Dummy sort values - no actual sorting functionality
   const dummySort: SortState = { column: '', direction: 'asc' };
   const noOpSortChange = () => {}; // No-op function
-  const getItemId = (request: UserAccessRequest) => request.id.toString();
+  const getItemId = (request: UserAccessRequest) => request.id;
 
   const { data: userInfo } = useAuthenticatedUser();
   const { data: requestsData, isLoading, error } = usePendingRequests(page, pageSize);

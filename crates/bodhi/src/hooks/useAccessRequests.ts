@@ -96,10 +96,10 @@ export function useAllRequests(
 export function useApproveRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: number; role: string }> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, { id: string; role: string }> {
   const queryClient = useQueryClient();
-  // Transform from: {id: number; role: string} → endpoint: /access-requests/${id}/approve, body: {role: role as Role}
-  return useMutationQuery<void, { id: number; role: string }>(
+  // Transform from: {id: string; role: string} → endpoint: /access-requests/${id}/approve, body: {role: role as Role}
+  return useMutationQuery<void, { id: string; role: string }>(
     ({ id }) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/approve`,
     'post',
     {
@@ -122,11 +122,11 @@ export function useApproveRequest(options?: {
 export function useRejectRequest(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, number> {
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, string> {
   const queryClient = useQueryClient();
   // POST with path variables and no meaningful body
-  return useMutationQuery<void, number>(
-    (id: number) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/reject`,
+  return useMutationQuery<void, string>(
+    (id: string) => `${ENDPOINT_ACCESS_REQUESTS}/${id}/reject`,
     'post',
     {
       onSuccess: () => {

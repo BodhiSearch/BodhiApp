@@ -180,7 +180,7 @@ describe('NewMcpServerPage - OAuth Auto-DCR', () => {
       expect(capturedRequest).not.toBeNull();
     });
 
-    const req = capturedRequest as Record<string, unknown>;
+    const req = capturedRequest as unknown as Record<string, unknown>;
     expect(req.url).toBe('https://mcp.asana.com/mcp');
     expect(req.name).toBe('asana');
     const authConfig = req.auth_config as Record<string, unknown>;

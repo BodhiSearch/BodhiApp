@@ -11,8 +11,8 @@ use axum::{
   Extension,
 };
 use objs::{
-  ApiError, OpenAIApiError, RequestedResources, ResourceRole, ToolsetTypeRequest, UserScope,
-  API_TAG_AUTH,
+  ApiError, AppAccessRequestStatus, ApprovalStatus, FlowType, OpenAIApiError, RequestedResources,
+  ResourceRole, ToolsetTypeRequest, UserScope, API_TAG_AUTH,
 };
 use serde::Deserialize;
 use server_core::RouterState;
@@ -59,13 +59,8 @@ pub async fn create_access_request_handler(
     body.app_client_id
   );
 
-  // Validate flow_type
-  if body.flow_type != "redirect" && body.flow_type != "popup" {
-    return Err(AppAccessRequestError::InvalidFlowType(body.flow_type))?;
-  }
-
   // Validate redirect_url for redirect flow
-  if body.flow_type == "redirect" && body.redirect_url.is_none() {
+  if body.flow_type == FlowType::Redirect && body.redirect_url.is_none() {
     return Err(AppAccessRequestError::MissingRedirectUrl)?;
   }
 
@@ -103,7 +98,7 @@ pub async fn create_access_request_handler(
       body.redirect_url,
       tool_types,
       mcp_servers,
-      body.requested_role.to_string(),
+      body.requested_role,
     )
     .await?;
 
@@ -116,7 +111,7 @@ pub async fn create_access_request_handler(
     StatusCode::CREATED,
     Json(CreateAccessRequestResponse {
       id: created.id,
-      status: "draft".to_string(),
+      status: AppAccessRequestStatus::Draft,
       review_url,
     }),
   ))
@@ -160,7 +155,7 @@ pub async fn get_access_request_status_handler(
 
   Ok(Json(AccessRequestStatusResponse {
     id: request.id,
-    status: request.status.to_string(),
+    status: request.status,
     requested_role: request.requested_role,
     approved_role: request.approved_role,
     access_request_scope: request.access_request_scope,
@@ -246,8 +241,8 @@ pub async fn get_access_request_review_handler(
     app_client_id: request.app_client_id,
     app_name: request.app_name,
     app_description: request.app_description,
-    flow_type: request.flow_type.to_string(),
-    status: request.status.to_string(),
+    flow_type: request.flow_type,
+    status: request.status,
     requested_role: request.requested_role,
     requested,
     tools_info,
@@ -332,7 +327,7 @@ pub async fn approve_access_request_handler(
   let tool_service = state.app_service().tool_service();
 
   for approval in &body.approved.toolsets {
-    if approval.status == "approved" {
+    if approval.status == ApprovalStatus::Approved {
       let instance = approval.instance.as_ref().ok_or_else(|| {
         AppAccessRequestError::ToolInstanceNotConfigured(format!(
           "instance required for approved toolset_type: {}",
@@ -371,7 +366,7 @@ pub async fn approve_access_request_handler(
   let mcp_service = state.app_service().mcp_service();
 
   for approval in &body.approved.mcps {
-    if approval.status == "approved" {
+    if approval.status == ApprovalStatus::Approved {
       let instance = approval.instance.as_ref().ok_or_else(|| {
         AppAccessRequestError::ToolInstanceNotConfigured(format!(
           "instance required for approved MCP: {}",
@@ -407,14 +402,14 @@ pub async fn approve_access_request_handler(
       token,
       body.approved.toolsets,
       body.approved.mcps,
-      approved_scope.to_string(),
+      approved_scope,
     )
     .await?;
 
   info!("Access request {} approved by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
-    status: updated.status.to_string(),
-    flow_type: updated.flow_type.to_string(),
+    status: updated.status,
+    flow_type: updated.flow_type,
     redirect_url: updated.redirect_uri,
   }))
 }
@@ -452,8 +447,8 @@ pub async fn deny_access_request_handler(
 
   info!("Access request {} denied by user {}", id, user_id);
   Ok(Json(AccessRequestActionResponse {
-    status: updated.status.to_string(),
-    flow_type: updated.flow_type.to_string(),
+    status: updated.status,
+    flow_type: updated.flow_type,
     redirect_url: updated.redirect_uri,
   }))
 }

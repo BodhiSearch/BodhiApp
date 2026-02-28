@@ -318,7 +318,7 @@ describe('PendingRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestReject(1)
+      ...mockAccessRequestReject(mockPendingRequest.id)
     );
 
     await act(async () => {
@@ -384,7 +384,7 @@ describe('PendingRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApproveError(1)
+      ...mockAccessRequestApproveError(mockPendingRequest.id)
     );
 
     await act(async () => {
@@ -423,7 +423,7 @@ describe('PendingRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestRejectError(1)
+      ...mockAccessRequestRejectError(mockPendingRequest.id)
     );
 
     await act(async () => {
@@ -563,7 +563,7 @@ describe('PendingRequestsPage UI Interactions', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove(1)
+      ...mockAccessRequestApprove(mockPendingRequest.id)
     );
 
     await act(async () => {

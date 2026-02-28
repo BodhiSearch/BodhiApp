@@ -9,16 +9,12 @@ pub enum AppAccessRequestError {
   NotFound,
 
   #[error("Access request has expired.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
+  #[error_meta(error_type = ErrorType::Conflict)]
   Expired,
 
   #[error("Access request already processed.")]
   #[error_meta(error_type = ErrorType::Conflict)]
   AlreadyProcessed,
-
-  #[error("Invalid flow type: {0}. Must be 'redirect' or 'popup'.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidFlowType(String),
 
   #[error("Redirect URL required for redirect flow.")]
   #[error_meta(error_type = ErrorType::BadRequest)]

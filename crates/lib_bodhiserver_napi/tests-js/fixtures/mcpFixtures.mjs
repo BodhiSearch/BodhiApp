@@ -102,7 +102,7 @@ export class McpFixtures {
       authorization_endpoint: `${McpFixtures.OAUTH_SERVER_BASE}/authorize`,
       token_endpoint: `${McpFixtures.OAUTH_SERVER_BASE}/token`,
       scopes: 'mcp:tools',
-      registration_type: 'pre-registered',
+      registration_type: 'pre_registered',
     };
   }
 

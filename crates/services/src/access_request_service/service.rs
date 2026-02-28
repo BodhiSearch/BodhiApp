@@ -6,6 +6,7 @@ use ulid::Ulid;
 use crate::access_request_service::error::{AccessRequestError, Result};
 use crate::auth_service::AuthService;
 use crate::db::{AppAccessRequestRow, AppAccessRequestStatus, DbService, FlowType, TimeService};
+use objs::{ApprovalStatus, UserScope};
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
@@ -14,11 +15,11 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
   async fn create_draft(
     &self,
     app_client_id: String,
-    flow_type: String,
+    flow_type: FlowType,
     redirect_uri: Option<String>,
     tools_requested: Vec<objs::ToolsetTypeRequest>,
     mcp_servers_requested: Vec<objs::McpServerRequest>,
-    requested_role: String,
+    requested_role: UserScope,
   ) -> Result<AppAccessRequestRow>;
 
   /// Get access request by ID
@@ -32,7 +33,7 @@ pub trait AccessRequestService: Send + Sync + std::fmt::Debug {
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
     mcp_approvals: Vec<objs::McpApproval>,
-    approved_role: String,
+    approved_role: UserScope,
   ) -> Result<AppAccessRequestRow>;
 
   /// Deny access request
@@ -72,12 +73,12 @@ impl DefaultAccessRequestService {
   ) -> String {
     let mut lines = Vec::new();
     for approval in tool_approvals {
-      if approval.status == "approved" {
+      if approval.status == ApprovalStatus::Approved {
         lines.push(format!("- {}", approval.toolset_type));
       }
     }
     for approval in mcp_approvals {
-      if approval.status == "approved" {
+      if approval.status == ApprovalStatus::Approved {
         lines.push(format!("- MCP: {}", approval.url));
       }
     }
@@ -94,19 +95,13 @@ impl AccessRequestService for DefaultAccessRequestService {
   async fn create_draft(
     &self,
     app_client_id: String,
-    flow_type: String,
+    flow_type: FlowType,
     redirect_uri: Option<String>,
     toolsets_requested: Vec<objs::ToolsetTypeRequest>,
     mcp_servers_requested: Vec<objs::McpServerRequest>,
-    requested_role: String,
+    requested_role: UserScope,
   ) -> Result<AppAccessRequestRow> {
-    let flow_type_enum = match flow_type.as_str() {
-      "redirect" => FlowType::Redirect,
-      "popup" => FlowType::Popup,
-      _ => return Err(AccessRequestError::InvalidFlowType(flow_type)),
-    };
-
-    if flow_type_enum == FlowType::Redirect && redirect_uri.is_none() {
+    if flow_type == FlowType::Redirect && redirect_uri.is_none() {
       return Err(AccessRequestError::MissingRedirectUri);
     }
 
@@ -134,13 +129,13 @@ impl AccessRequestService for DefaultAccessRequestService {
       app_client_id,
       app_name: None,
       app_description: None,
-      flow_type: flow_type_enum,
+      flow_type,
       redirect_uri: modified_redirect_uri,
       status: AppAccessRequestStatus::Draft,
       requested: requested_json,
       approved: None,
       user_id: None,
-      requested_role,
+      requested_role: requested_role.to_string(),
       approved_role: None,
       access_request_scope: None,
       error_message: None,
@@ -155,19 +150,7 @@ impl AccessRequestService for DefaultAccessRequestService {
 
   async fn get_request(&self, id: &str) -> Result<Option<AppAccessRequestRow>> {
     let row = self.db_service.get(id).await?;
-
-    if let Some(row) = row {
-      // Check expiry for draft status
-      if row.status == AppAccessRequestStatus::Draft {
-        let now = self.time_service.utc_now();
-        if row.expires_at < now {
-          return Err(AccessRequestError::Expired(id.to_string()));
-        }
-      }
-      Ok(Some(row))
-    } else {
-      Ok(None)
-    }
+    Ok(row)
   }
 
   async fn approve_request(
@@ -177,15 +160,21 @@ impl AccessRequestService for DefaultAccessRequestService {
     user_token: &str,
     tool_approvals: Vec<objs::ToolsetApproval>,
     mcp_approvals: Vec<objs::McpApproval>,
-    approved_role: String,
+    approved_role: UserScope,
   ) -> Result<AppAccessRequestRow> {
     let row = self
       .get_request(id)
       .await?
       .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
 
-    if row.status != AppAccessRequestStatus::Draft {
-      return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
+    match row.status {
+      AppAccessRequestStatus::Draft => {}
+      AppAccessRequestStatus::Expired => {
+        return Err(AccessRequestError::Expired(id.to_string()));
+      }
+      _ => {
+        return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
+      }
     }
 
     let description = self.generate_description(&tool_approvals, &mcp_approvals);
@@ -221,7 +210,7 @@ impl AccessRequestService for DefaultAccessRequestService {
         id,
         user_id,
         &approved_json,
-        &approved_role,
+        &approved_role.to_string(),
         &kc_response.access_request_scope,
       )
       .await?;
@@ -230,14 +219,19 @@ impl AccessRequestService for DefaultAccessRequestService {
   }
 
   async fn deny_request(&self, id: &str, user_id: &str) -> Result<AppAccessRequestRow> {
-    // Get current request
     let row = self
       .get_request(id)
       .await?
       .ok_or_else(|| AccessRequestError::NotFound(id.to_string()))?;
 
-    if row.status != AppAccessRequestStatus::Draft {
-      return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
+    match row.status {
+      AppAccessRequestStatus::Draft => {}
+      AppAccessRequestStatus::Expired => {
+        return Err(AccessRequestError::Expired(id.to_string()));
+      }
+      _ => {
+        return Err(AccessRequestError::AlreadyProcessed(id.to_string()));
+      }
     }
 
     let updated_row = self.db_service.update_denial(id, user_id).await?;

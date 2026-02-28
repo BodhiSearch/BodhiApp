@@ -7,6 +7,7 @@ use anyhow_trace::anyhow_trace;
 use auth_middleware::{test_utils::RequestAuthContextExt, AuthContext};
 use axum::{body::Body, http::StatusCode, routing::put};
 use axum::{routing::post, Router};
+use objs::AppAccessRequestStatus;
 use objs::ResourceRole;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -15,7 +16,7 @@ use server_core::{
   test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
 };
 use services::{
-  db::{AppAccessRequestRow, AppAccessRequestStatus, DbService, FlowType, ToolsetRow},
+  db::{AppAccessRequestRow, DbService, FlowType, ToolsetRow},
   test_utils::{AppServiceStubBuilder, FrozenTimeService},
   DefaultAccessRequestService, DefaultToolService, MockAuthService, MockExaService,
   RegisterAccessRequestConsentResponse,
@@ -175,7 +176,7 @@ async fn test_approve_access_request_success(
     });
 
   let harness = build_test_harness(mock_auth).await?;
-  let expected_flow_type = flow_type.to_string();
+  let expected_flow_type = flow_type.clone();
   seed_draft_request(
     harness.db_service.as_ref(),
     request_id,
@@ -227,7 +228,7 @@ async fn test_approve_access_request_success(
   assert_eq!(StatusCode::OK, response.status());
 
   let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!("approved", result.status);
+  assert_eq!(AppAccessRequestStatus::Approved, result.status);
   assert_eq!(expected_flow_type, result.flow_type);
   if expect_redirect {
     assert!(
@@ -469,8 +470,8 @@ async fn test_deny_access_request_success(
   #[case] redirect_url: Option<&str>,
   #[case] expect_redirect: bool,
 ) -> anyhow::Result<()> {
-  let expected_flow_type = flow_type.to_string();
-  let request_id = &format!("ar-deny-{}", expected_flow_type);
+  let expected_flow_type = flow_type.clone();
+  let request_id = &format!("ar-deny-{}", flow_type);
   let user_id = "test-user-5";
 
   let mock_auth = MockAuthService::default();
@@ -505,7 +506,7 @@ async fn test_deny_access_request_success(
   assert_eq!(StatusCode::OK, response.status());
 
   let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!("denied", result.status);
+  assert_eq!(AppAccessRequestStatus::Denied, result.status);
   assert_eq!(expected_flow_type, result.flow_type);
   if expect_redirect {
     assert!(
@@ -663,7 +664,7 @@ async fn test_approve_valid_downgrade_power_user_grants_user() -> anyhow::Result
   assert_eq!(StatusCode::OK, response.status());
 
   let result = response.json::<AccessRequestActionResponse>().await?;
-  assert_eq!("approved", result.status);
+  assert_eq!(AppAccessRequestStatus::Approved, result.status);
 
   Ok(())
 }

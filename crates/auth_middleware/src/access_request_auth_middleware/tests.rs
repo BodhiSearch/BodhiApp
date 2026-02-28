@@ -124,7 +124,7 @@ async fn test_session_auth_passes_through(toolset_validator: Arc<dyn AccessReque
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -144,7 +144,7 @@ async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -158,7 +158,7 @@ async fn test_missing_auth(toolset_validator: Arc<dyn AccessRequestValidator>) {
 #[rstest]
 #[case::oauth_approved_instance_in_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#.to_string()),
+  Some(r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
   StatusCode::OK,
 )]
 #[case::oauth_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
@@ -211,7 +211,7 @@ async fn test_oauth_access_request_validation(
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -241,7 +241,7 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
         .to_string(),
     ),
     user_id: Some("user123".to_string()),
@@ -263,7 +263,7 @@ async fn test_oauth_app_client_mismatch(toolset_validator: Arc<dyn AccessRequest
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -293,7 +293,7 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
     status: AppAccessRequestStatus::Approved,
     requested: r#"{"toolset_types":[{"toolset_type":"builtin-exa-search"}]}"#.to_string(),
     approved: Some(
-      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#
+      r#"{"toolsets":[{"toolset_type":"builtin-exa-search","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#
         .to_string(),
     ),
     user_id: Some("user1".to_string()),
@@ -315,7 +315,7 @@ async fn test_oauth_user_mismatch(toolset_validator: Arc<dyn AccessRequestValida
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -364,7 +364,7 @@ async fn test_oauth_auto_approved_no_toolsets(toolset_validator: Arc<dyn AccessR
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -395,7 +395,7 @@ async fn test_oauth_access_request_not_found(toolset_validator: Arc<dyn AccessRe
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/toolsets/550e8400-e29b-41d4-a716-446655440000/execute/search")
+        .uri("/toolsets/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute/search")
         .body(Body::empty())
         .unwrap(),
     )
@@ -499,7 +499,7 @@ async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessReque
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/mcps/550e8400-e29b-41d4-a716-446655440000/tools/read/execute")
+        .uri("/mcps/01ARZ3NDEKTSV4RRFFQ69G5FAV/tools/read/execute")
         .body(Body::empty())
         .unwrap(),
     )
@@ -512,7 +512,7 @@ async fn test_mcp_session_auth_passes_through(mcp_validator: Arc<dyn AccessReque
 #[rstest]
 #[case::mcp_approved_instance_in_list(
   AppAccessRequestStatus::Approved,
-  Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"550e8400-e29b-41d4-a716-446655440000"}}]}"#.to_string()),
+  Some(r#"{"toolsets":[],"mcps":[{"url":"https://mcp.deepwiki.com/mcp","status":"approved","instance":{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAV"}}]}"#.to_string()),
   StatusCode::OK,
 )]
 #[case::mcp_denied(AppAccessRequestStatus::Denied, None, StatusCode::FORBIDDEN)]
@@ -564,7 +564,7 @@ async fn test_mcp_oauth_access_request_validation(
     .oneshot(
       Request::builder()
         .method("POST")
-        .uri("/mcps/550e8400-e29b-41d4-a716-446655440000/tools/read/execute")
+        .uri("/mcps/01ARZ3NDEKTSV4RRFFQ69G5FAV/tools/read/execute")
         .body(Body::empty())
         .unwrap(),
     )

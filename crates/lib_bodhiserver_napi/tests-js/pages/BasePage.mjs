@@ -52,13 +52,13 @@ export class BasePage {
     // Get the toast text content
     const toastText = await this.page.locator(this.baseSelectors.successToast).textContent();
 
-    // Extract UUID from the toast message using regex
-    // UUID pattern: 8-4-4-4-12 hexadecimal characters
-    const uuidPattern = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
-    const match = toastText.match(uuidPattern);
+    // Extract ULID from the toast message using regex
+    // ULID pattern: 26 Crockford Base32 characters
+    const ulidPattern = /([0-9A-HJKMNP-TV-Z]{26})/i;
+    const match = toastText.match(ulidPattern);
 
     if (!match) {
-      throw new Error(`Failed to extract UUID from toast message: "${toastText}"`);
+      throw new Error(`Failed to extract ULID from toast message: "${toastText}"`);
     }
 
     return match[1];

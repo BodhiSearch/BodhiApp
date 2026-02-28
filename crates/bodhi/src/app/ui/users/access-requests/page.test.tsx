@@ -330,7 +330,7 @@ describe('AllRequestsPage Request Management', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApprove(1)
+      ...mockAccessRequestApprove(mockPendingRequest.id)
     );
 
     await act(async () => {
@@ -361,7 +361,7 @@ describe('AllRequestsPage Request Management', () => {
   });
 
   it('successfully rejects request when reject button clicked', async () => {
-    server.use(...mockAccessRequestReject(1));
+    server.use(...mockAccessRequestReject(mockPendingRequest.id));
 
     await act(async () => {
       render(<AllRequestsPage />, { wrapper: createWrapper() });
@@ -421,7 +421,7 @@ describe('AllRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestApproveError(1)
+      ...mockAccessRequestApproveError(mockPendingRequest.id)
     );
 
     await act(async () => {
@@ -454,7 +454,7 @@ describe('AllRequestsPage Error Handling', () => {
         page: 1,
         page_size: 10,
       }),
-      ...mockAccessRequestRejectError(1)
+      ...mockAccessRequestRejectError(mockPendingRequest.id)
     );
 
     await act(async () => {

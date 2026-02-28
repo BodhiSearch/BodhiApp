@@ -104,6 +104,23 @@ export const mockApprovedReviewResponse: AccessRequestReviewResponse = {
   mcps_info: [],
 };
 
+// Failed status
+export const mockFailedReviewResponse: AccessRequestReviewResponse = {
+  id: REQUEST_ID,
+  app_client_id: APP_CLIENT_ID,
+  app_name: 'Test Application',
+  app_description: null,
+  flow_type: 'redirect',
+  status: 'failed',
+  requested_role: 'scope_user_user',
+  requested: {
+    toolset_types: [{ toolset_type: 'builtin-exa-search' }],
+    mcp_servers: [],
+  },
+  tools_info: [],
+  mcps_info: [],
+};
+
 // Expired status
 export const mockExpiredReviewResponse: AccessRequestReviewResponse = {
   id: REQUEST_ID,

@@ -402,11 +402,11 @@ export class ApiModelFormComponent {
     await this.waitForToast(messagePattern);
 
     const toastText = await this.page.locator(this.selectors.successToast).textContent();
-    const uuidPattern = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
-    const match = toastText.match(uuidPattern);
+    const ulidPattern = /([0-9A-HJKMNP-TV-Z]{26})/i;
+    const match = toastText.match(ulidPattern);
 
     if (!match) {
-      throw new Error(`Failed to extract UUID from toast message: "${toastText}"`);
+      throw new Error(`Failed to extract ULID from toast message: "${toastText}"`);
     }
 
     return match[1];

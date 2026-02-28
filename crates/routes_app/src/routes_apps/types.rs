@@ -1,4 +1,6 @@
-use objs::{ApprovedResources, RequestedResources, Toolset, UserScope};
+use objs::{
+  AppAccessRequestStatus, ApprovedResources, FlowType, RequestedResources, Toolset, UserScope,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -19,7 +21,7 @@ pub struct CreateAccessRequestBody {
   /// App client ID from Keycloak
   pub app_client_id: String,
   /// Flow type: "redirect" or "popup"
-  pub flow_type: String,
+  pub flow_type: FlowType,
   /// Redirect URL for result notification (required for redirect flow)
   pub redirect_url: Option<String>,
   /// Role requested for the external app (scope_user_user or scope_user_power_user)
@@ -39,7 +41,7 @@ pub struct CreateAccessRequestResponse {
   /// Access request ID
   pub id: String,
   /// Status (always "draft")
-  pub status: String,
+  pub status: AppAccessRequestStatus,
   /// Review URL for user to approve/deny
   pub review_url: String,
 }
@@ -57,7 +59,7 @@ pub struct AccessRequestStatusResponse {
   /// Access request ID
   pub id: String,
   /// Current status: "draft", "approved", "denied", "failed"
-  pub status: String,
+  pub status: AppAccessRequestStatus,
   /// Role requested by the app
   pub requested_role: String,
   /// Role approved (present when approved)
@@ -78,9 +80,9 @@ pub struct AccessRequestReviewResponse {
   /// App description from KC (if available)
   pub app_description: Option<String>,
   /// Flow type: "redirect" or "popup"
-  pub flow_type: String,
+  pub flow_type: FlowType,
   /// Current status
-  pub status: String,
+  pub status: AppAccessRequestStatus,
   /// Role requested by the app
   pub requested_role: String,
   /// Resources requested
@@ -118,9 +120,9 @@ pub struct McpServerReviewInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AccessRequestActionResponse {
   /// Updated status after action
-  pub status: String,
+  pub status: AppAccessRequestStatus,
   /// Flow type of the access request
-  pub flow_type: String,
+  pub flow_type: FlowType,
   /// Redirect URL (present for redirect flow)
   #[serde(skip_serializing_if = "Option::is_none")]
   pub redirect_url: Option<String>,

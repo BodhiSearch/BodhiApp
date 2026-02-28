@@ -12,7 +12,7 @@ pub enum AccessRequestError {
   NotFound(String),
 
   #[error("Access request '{0}' has expired.")]
-  #[error_meta(error_type = ErrorType::NotFound)]
+  #[error_meta(error_type = ErrorType::Conflict)]
   Expired(String),
 
   #[error("Access request '{0}' has already been processed.")]
@@ -22,10 +22,6 @@ pub enum AccessRequestError {
   #[error("Invalid status '{0}' for access request.")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidStatus(String),
-
-  #[error("Invalid flow type '{0}'. Expected 'redirect' or 'popup'.")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidFlowType(String),
 
   #[error("Redirect URI is required for redirect flow.")]
   #[error_meta(error_type = ErrorType::BadRequest)]

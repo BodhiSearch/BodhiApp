@@ -77,12 +77,13 @@ use async_openai::types::{
   models::{ListModelResponse, Model},
 };
 use objs::{
-  Alias, ApiFormat, AppRole, CreateMcpAuthConfigRequest, McpAuthConfigResponse,
-  McpAuthConfigsListResponse, McpAuthType, McpServer, McpServerInfo, McpTool, OAIRequestParams,
-  OpenAIApiError, ResourceRole, SettingInfo, SettingMetadata, SettingSource, TokenScope,
-  ToolDefinition, Toolset, ToolsetDefinition, ToolsetExecutionResponse, UserInfo, UserScope,
-  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA,
-  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
+  Alias, ApiFormat, AppAccessRequestStatus, AppRole, ApprovalStatus, CreateMcpAuthConfigRequest,
+  FlowType, McpAuthConfigResponse, McpAuthConfigsListResponse, McpAuthType, McpServer,
+  McpServerInfo, McpTool, OAIRequestParams, OpenAIApiError, ResourceRole, SettingInfo,
+  SettingMetadata, SettingSource, TokenScope, ToolDefinition, Toolset, ToolsetDefinition,
+  ToolsetExecutionResponse, UserInfo, UserScope, API_TAG_API_KEYS, API_TAG_API_MODELS,
+  API_TAG_AUTH, API_TAG_MCPS, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS,
+  API_TAG_SETUP, API_TAG_SYSTEM, API_TAG_TOOLSETS,
 };
 use services::db::DownloadStatus;
 use services::{
@@ -299,6 +300,9 @@ curl -H "Authorization: Bearer <oauth_exchanged_token>" \
             AccessRequestReviewResponse,
             ApproveAccessRequestBody,
             AccessRequestActionResponse,
+            FlowType,
+            AppAccessRequestStatus,
+            ApprovalStatus,
             // user management
             ListUsersParams,
             UserListResponse,

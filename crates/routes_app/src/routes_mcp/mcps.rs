@@ -76,7 +76,7 @@ async fn extract_approved_mcp_ids(
   approvals
     .mcps
     .iter()
-    .filter(|a| a.status == "approved")
+    .filter(|a| a.status == objs::ApprovalStatus::Approved)
     .filter_map(|a| a.instance.as_ref().map(|i| i.id.clone()))
     .collect()
 }

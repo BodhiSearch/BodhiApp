@@ -77,12 +77,21 @@ enum AccessRequestAuthFlow {
   },
 }
 
-fn extract_uuid_from_path(path: &str) -> Result<String, AccessRequestAuthError> {
-  path
-    .split('/')
-    .find(|seg| seg.len() == 36 && seg.contains('-'))
-    .map(|s| s.to_string())
-    .ok_or(AccessRequestAuthError::EntityNotFound)
+fn extract_id_from_path(
+  path: &str,
+  resource_prefix: &str,
+) -> Result<String, AccessRequestAuthError> {
+  let mut segments = path.split('/');
+  while let Some(seg) = segments.next() {
+    if seg == resource_prefix {
+      return segments
+        .next()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .ok_or(AccessRequestAuthError::EntityNotFound);
+    }
+  }
+  Err(AccessRequestAuthError::EntityNotFound)
 }
 
 async fn validate_access_request(
@@ -177,7 +186,7 @@ pub struct ToolsetAccessRequestValidator;
 
 impl AccessRequestValidator for ToolsetAccessRequestValidator {
   fn extract_entity_id(&self, path: &str) -> Result<String, AccessRequestAuthError> {
-    extract_uuid_from_path(path)
+    extract_id_from_path(path, "toolsets")
   }
 
   fn validate_approved(
@@ -197,10 +206,10 @@ impl AccessRequestValidator for ToolsetAccessRequestValidator {
       }
     })?;
 
-    let instance_approved = approvals
-      .toolsets
-      .iter()
-      .any(|a| a.status == "approved" && a.instance.as_ref().is_some_and(|i| i.id == entity_id));
+    let instance_approved = approvals.toolsets.iter().any(|a| {
+      a.status == objs::ApprovalStatus::Approved
+        && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+    });
 
     if !instance_approved {
       return Err(AccessRequestAuthError::EntityNotApproved {
@@ -216,7 +225,7 @@ pub struct McpAccessRequestValidator;
 
 impl AccessRequestValidator for McpAccessRequestValidator {
   fn extract_entity_id(&self, path: &str) -> Result<String, AccessRequestAuthError> {
-    extract_uuid_from_path(path)
+    extract_id_from_path(path, "mcps")
   }
 
   fn validate_approved(
@@ -236,10 +245,10 @@ impl AccessRequestValidator for McpAccessRequestValidator {
       }
     })?;
 
-    let instance_approved = approvals
-      .mcps
-      .iter()
-      .any(|a| a.status == "approved" && a.instance.as_ref().is_some_and(|i| i.id == entity_id));
+    let instance_approved = approvals.mcps.iter().any(|a| {
+      a.status == objs::ApprovalStatus::Approved
+        && a.instance.as_ref().is_some_and(|i| i.id == entity_id)
+    });
 
     if !instance_approved {
       return Err(AccessRequestAuthError::EntityNotApproved {
