@@ -26,7 +26,7 @@ fn make_alias(id: &str, alias: &str, now: chrono::DateTime<chrono::Utc>) -> User
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_create_and_get_user_alias_by_id(
+async fn test_create_and_get_user_alias_by_id(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -50,7 +50,7 @@ async fn test_sea_create_and_get_user_alias_by_id(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_user_alias_by_name(
+async fn test_get_user_alias_by_name(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -74,7 +74,7 @@ async fn test_sea_get_user_alias_by_name(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_user_alias(
+async fn test_update_user_alias(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -114,7 +114,7 @@ async fn test_sea_update_user_alias(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_delete_user_alias(
+async fn test_delete_user_alias(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -135,7 +135,7 @@ async fn test_sea_delete_user_alias(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_list_user_aliases_ordered(
+async fn test_list_user_aliases_ordered(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -158,7 +158,7 @@ async fn test_sea_list_user_aliases_ordered(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_user_alias_with_json_fields(
+async fn test_user_alias_with_json_fields(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

@@ -1,4 +1,4 @@
-use crate::{queue_service::RefreshTask, QueueProducer};
+use crate::{QueueProducer, RefreshTask};
 use async_trait::async_trait;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

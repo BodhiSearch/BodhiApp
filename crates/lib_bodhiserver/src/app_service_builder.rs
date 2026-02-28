@@ -146,6 +146,8 @@ impl AppServiceBuilder {
     });
 
     // Build and return the complete app service
+    let token_service: Arc<dyn services::TokenService> =
+      Arc::new(services::DefaultTokenService::new(db_service.clone()));
     let app_service = DefaultAppService::new(
       setting_service,
       hub_service,
@@ -163,6 +165,7 @@ impl AppServiceBuilder {
       network_service,
       access_request_service,
       mcp_service,
+      token_service,
     );
     Ok(app_service)
   }

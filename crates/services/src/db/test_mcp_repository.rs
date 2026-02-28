@@ -126,7 +126,7 @@ fn test_oauth_token_row(config_id: &str, id: &str, now: DateTime<Utc>) -> McpOAu
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_mcp_server(
+async fn test_create_and_get_mcp_server(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -152,7 +152,7 @@ async fn test_sea_create_and_get_mcp_server(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_server_not_found(
+async fn test_get_mcp_server_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -166,7 +166,7 @@ async fn test_sea_get_mcp_server_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_mcp_server(
+async fn test_update_mcp_server(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -200,7 +200,7 @@ async fn test_sea_update_mcp_server(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_server_by_url(
+async fn test_get_mcp_server_by_url(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -227,7 +227,7 @@ async fn test_sea_get_mcp_server_by_url(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_mcp_servers(
+async fn test_list_mcp_servers(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -269,7 +269,7 @@ async fn test_sea_list_mcp_servers(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_mcp(
+async fn test_create_and_get_mcp(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -302,7 +302,7 @@ async fn test_sea_create_and_get_mcp(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_wrong_user(
+async fn test_get_mcp_wrong_user(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -329,7 +329,7 @@ async fn test_sea_get_mcp_wrong_user(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_by_slug(
+async fn test_get_mcp_by_slug(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -366,7 +366,7 @@ async fn test_sea_get_mcp_by_slug(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_mcp(
+async fn test_update_mcp(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -408,7 +408,7 @@ async fn test_sea_update_mcp(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp(
+async fn test_delete_mcp(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -436,7 +436,7 @@ async fn test_sea_delete_mcp(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp_wrong_user_noop(
+async fn test_delete_mcp_wrong_user_noop(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -465,7 +465,7 @@ async fn test_sea_delete_mcp_wrong_user_noop(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_mcps_with_server(
+async fn test_list_mcps_with_server(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -504,7 +504,7 @@ async fn test_sea_list_mcps_with_server(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_mcps_with_server_with_auth(
+async fn test_list_mcps_with_server_with_auth(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -540,7 +540,7 @@ async fn test_sea_list_mcps_with_server_with_auth(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_count_mcps_by_server_id(
+async fn test_count_mcps_by_server_id(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -586,7 +586,7 @@ async fn test_sea_count_mcps_by_server_id(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_clear_mcp_tools_by_server_id(
+async fn test_clear_mcp_tools_by_server_id(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -657,7 +657,7 @@ async fn test_sea_clear_mcp_tools_by_server_id(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_mcp_auth_header(
+async fn test_create_and_get_mcp_auth_header(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -689,7 +689,7 @@ async fn test_sea_create_and_get_mcp_auth_header(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_auth_header_not_found(
+async fn test_get_mcp_auth_header_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -703,7 +703,7 @@ async fn test_sea_get_mcp_auth_header_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_mcp_auth_header(
+async fn test_update_mcp_auth_header(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -739,7 +739,7 @@ async fn test_sea_update_mcp_auth_header(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp_auth_header(
+async fn test_delete_mcp_auth_header(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -767,7 +767,7 @@ async fn test_sea_delete_mcp_auth_header(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_mcp_auth_headers_by_server(
+async fn test_list_mcp_auth_headers_by_server(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -821,7 +821,7 @@ async fn test_sea_list_mcp_auth_headers_by_server(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_decrypted_auth_header_roundtrip(
+async fn test_get_decrypted_auth_header_roundtrip(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -854,7 +854,7 @@ async fn test_sea_get_decrypted_auth_header_roundtrip(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_decrypted_auth_header_not_found(
+async fn test_get_decrypted_auth_header_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -872,7 +872,7 @@ async fn test_sea_get_decrypted_auth_header_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_mcp_oauth_config(
+async fn test_create_and_get_mcp_oauth_config(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -914,7 +914,7 @@ async fn test_sea_create_and_get_mcp_oauth_config(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_oauth_config_not_found(
+async fn test_get_mcp_oauth_config_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -928,7 +928,7 @@ async fn test_sea_get_mcp_oauth_config_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_mcp_oauth_configs_by_server(
+async fn test_list_mcp_oauth_configs_by_server(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -971,7 +971,7 @@ async fn test_sea_list_mcp_oauth_configs_by_server(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp_oauth_config(
+async fn test_delete_mcp_oauth_config(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -999,7 +999,7 @@ async fn test_sea_delete_mcp_oauth_config(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_oauth_config_cascade(
+async fn test_delete_oauth_config_cascade(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1040,7 +1040,7 @@ async fn test_sea_delete_oauth_config_cascade(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_decrypted_client_secret(
+async fn test_get_decrypted_client_secret(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1073,7 +1073,7 @@ async fn test_sea_get_decrypted_client_secret(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_decrypted_client_secret_not_found(
+async fn test_get_decrypted_client_secret_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1093,7 +1093,7 @@ async fn test_sea_get_decrypted_client_secret_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_mcp_oauth_token(
+async fn test_create_and_get_mcp_oauth_token(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1136,7 +1136,7 @@ async fn test_sea_create_and_get_mcp_oauth_token(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_mcp_oauth_token_wrong_user(
+async fn test_get_mcp_oauth_token_wrong_user(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1167,7 +1167,7 @@ async fn test_sea_get_mcp_oauth_token_wrong_user(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_latest_oauth_token_by_config(
+async fn test_get_latest_oauth_token_by_config(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1213,7 +1213,7 @@ async fn test_sea_get_latest_oauth_token_by_config(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_mcp_oauth_token(
+async fn test_update_mcp_oauth_token(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1279,7 +1279,7 @@ async fn test_sea_update_mcp_oauth_token(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp_oauth_token(
+async fn test_delete_mcp_oauth_token(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1311,7 +1311,7 @@ async fn test_sea_delete_mcp_oauth_token(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_mcp_oauth_token_wrong_user_noop(
+async fn test_delete_mcp_oauth_token_wrong_user_noop(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1344,7 +1344,7 @@ async fn test_sea_delete_mcp_oauth_token_wrong_user_noop(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_oauth_tokens_by_config(
+async fn test_delete_oauth_tokens_by_config(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1382,7 +1382,7 @@ async fn test_sea_delete_oauth_tokens_by_config(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_oauth_tokens_by_config_and_user(
+async fn test_delete_oauth_tokens_by_config_and_user(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -1432,7 +1432,7 @@ async fn test_sea_delete_oauth_tokens_by_config_and_user(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_decrypted_oauth_bearer(
+async fn test_get_decrypted_oauth_bearer(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

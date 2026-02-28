@@ -28,7 +28,7 @@ fn make_toolset(id: &str, user_id: &str, slug: &str, now: DateTime<Utc>) -> Tool
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_create_and_get_toolset(
+async fn test_create_and_get_toolset(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -50,7 +50,7 @@ async fn test_sea_create_and_get_toolset(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_list_toolsets(
+async fn test_list_toolsets(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -95,7 +95,7 @@ async fn test_sea_list_toolsets(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_delete_toolset(
+async fn test_delete_toolset(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -118,7 +118,7 @@ async fn test_sea_delete_toolset(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_toolset_encrypted_api_key(
+async fn test_toolset_encrypted_api_key(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -146,7 +146,7 @@ async fn test_sea_toolset_encrypted_api_key(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_toolset(
+async fn test_update_toolset(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -177,7 +177,7 @@ async fn test_sea_update_toolset(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_app_toolset_config_crud(
+async fn test_app_toolset_config_crud(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

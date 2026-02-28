@@ -2,7 +2,7 @@ use crate::{
   db::{DbService, TimeService},
   AccessRequestService, AiApiService, AppInstanceService, AuthService, CacheService,
   ConcurrencyService, DataService, HubService, McpService, NetworkService, QueueProducer,
-  SessionService, SettingService, ToolService,
+  SessionService, SettingService, TokenService, ToolService,
 };
 use std::sync::Arc;
 
@@ -40,6 +40,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 
   fn mcp_service(&self) -> Arc<dyn McpService>;
 
+  fn token_service(&self) -> Arc<dyn TokenService>;
+
   fn queue_status(&self) -> String {
     self.queue_producer().queue_status()
   }
@@ -64,6 +66,7 @@ pub struct DefaultAppService {
   network_service: Arc<dyn NetworkService>,
   access_request_service: Arc<dyn AccessRequestService>,
   mcp_service: Arc<dyn McpService>,
+  token_service: Arc<dyn TokenService>,
 }
 
 impl AppService for DefaultAppService {
@@ -129,5 +132,9 @@ impl AppService for DefaultAppService {
 
   fn mcp_service(&self) -> Arc<dyn McpService> {
     self.mcp_service.clone()
+  }
+
+  fn token_service(&self) -> Arc<dyn TokenService> {
+    self.token_service.clone()
   }
 }

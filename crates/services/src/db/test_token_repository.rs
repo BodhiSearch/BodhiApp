@@ -26,7 +26,7 @@ fn make_token(id: &str, user_id: &str, prefix: &str, now: DateTime<Utc>) -> ApiT
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_create_and_list_api_token(
+async fn test_create_and_list_api_token(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -53,7 +53,7 @@ async fn test_sea_create_and_list_api_token(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_api_token_by_id(
+async fn test_get_api_token_by_id(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -81,7 +81,7 @@ async fn test_sea_get_api_token_by_id(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_api_token_by_prefix(
+async fn test_get_api_token_by_prefix(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -113,7 +113,7 @@ async fn test_sea_get_api_token_by_prefix(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_api_token(
+async fn test_update_api_token(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -146,7 +146,7 @@ async fn test_sea_update_api_token(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_list_api_tokens_user_scoped(
+async fn test_list_api_tokens_user_scoped(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -191,7 +191,7 @@ async fn test_sea_list_api_tokens_user_scoped(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_api_token_user_scoped(
+async fn test_update_api_token_user_scoped(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

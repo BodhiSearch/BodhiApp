@@ -16,7 +16,7 @@ use serial_test::serial;
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_upsert_and_get_roundtrip(
+async fn test_upsert_and_get_roundtrip(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -50,7 +50,7 @@ async fn test_sea_upsert_and_get_roundtrip(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_app_instance_empty(
+async fn test_get_app_instance_empty(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -68,7 +68,7 @@ async fn test_sea_get_app_instance_empty(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_upsert_update_existing(
+async fn test_upsert_update_existing(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -113,7 +113,7 @@ async fn test_sea_upsert_update_existing(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_app_instance_status(
+async fn test_update_app_instance_status(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -147,7 +147,7 @@ async fn test_sea_update_app_instance_status(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_status_not_found(
+async fn test_update_status_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -172,7 +172,7 @@ async fn test_sea_update_status_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_app_instance(
+async fn test_delete_app_instance(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -199,7 +199,7 @@ async fn test_sea_delete_app_instance(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_multiple_app_instances_error(
+async fn test_multiple_app_instances_error(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

@@ -14,7 +14,7 @@ use serial_test::serial;
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_create_and_get_download_request(
+async fn test_create_and_get_download_request(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -31,7 +31,7 @@ async fn test_sea_create_and_get_download_request(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_update_download_request(
+async fn test_update_download_request(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -60,7 +60,7 @@ async fn test_sea_update_download_request(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_download_requests(
+async fn test_list_download_requests(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -79,7 +79,7 @@ async fn test_sea_list_download_requests(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_find_download_by_repo_filename(
+async fn test_find_download_by_repo_filename(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -105,7 +105,7 @@ async fn test_sea_find_download_by_repo_filename(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_api_model_alias_crud(
+async fn test_api_model_alias_crud(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -149,7 +149,7 @@ async fn test_sea_api_model_alias_crud(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_upsert_and_get_model_metadata(
+async fn test_upsert_and_get_model_metadata(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -212,7 +212,7 @@ async fn test_sea_upsert_and_get_model_metadata(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_batch_get_metadata(
+async fn test_batch_get_metadata(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -260,7 +260,7 @@ async fn test_sea_batch_get_metadata(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_model_metadata(
+async fn test_list_model_metadata(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

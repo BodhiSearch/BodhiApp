@@ -10,40 +10,28 @@ mod env_wrapper;
 mod macros;
 
 // -- Authentication & security
-mod access_request_service;
-mod app_instance_service;
-mod auth_service;
-mod keyring_service;
-mod session_service;
-#[cfg(test)]
-#[path = "test_session_service.rs"]
-mod test_session_service;
+mod app_access_requests;
+mod apps;
+mod auth;
 mod token;
+mod tokens;
 
 // -- AI & external API services
-mod ai_api_service;
-mod exa_service;
-mod mcp_service;
-mod tool_service;
+mod ai_apis;
+mod mcps;
+mod toolsets;
 
 // -- Model & data management
-mod cache_service;
-mod data_service;
-mod hub_service;
-
-// -- Network operations
-mod network_service;
+mod models;
 
 // -- Persistence
 pub mod db;
 
 // -- Configuration
-mod setting_service;
+mod settings;
 
-// -- Concurrency & async processing
-mod concurrency_service;
-mod progress_tracking;
-mod queue_service;
+// -- Utility services
+mod utils;
 
 // -- Domain object extensions
 mod objs;
@@ -53,34 +41,25 @@ pub use app_service::*;
 pub use env_wrapper::*;
 
 // -- Re-exports: authentication & security
-pub use access_request_service::*;
-pub use app_instance_service::*;
-pub use auth_service::*;
-pub use keyring_service::*;
-pub use session_service::*;
+pub use app_access_requests::*;
+pub use apps::*;
+pub use auth::*;
 pub use token::*;
+pub use tokens::*;
 
 // -- Re-exports: AI & external API services
-pub use ai_api_service::*;
-pub use exa_service::*;
-pub use mcp_service::*;
-pub use tool_service::*;
+pub use ai_apis::*;
+pub use mcps::*;
+pub use toolsets::*;
 
 // -- Re-exports: model & data management
-pub use cache_service::*;
-pub use data_service::*;
-pub use hub_service::*;
-
-// -- Re-exports: network operations
-pub use network_service::*;
+pub use models::*;
 
 // -- Re-exports: configuration
-pub use setting_service::*;
+pub use settings::*;
 
-// -- Re-exports: concurrency & async processing
-pub use concurrency_service::*;
-pub use progress_tracking::*;
-pub use queue_service::*;
+// -- Re-exports: utility services
+pub use utils::*;
 
 // -- Re-exports: domain object extensions
 pub use objs::*;

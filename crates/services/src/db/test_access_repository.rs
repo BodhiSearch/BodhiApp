@@ -11,7 +11,7 @@ use serial_test::serial;
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_insert_and_get_pending_request(
+async fn test_insert_and_get_pending_request(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -43,7 +43,7 @@ async fn test_sea_insert_and_get_pending_request(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_request_by_id(
+async fn test_get_request_by_id(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -67,7 +67,7 @@ async fn test_sea_get_request_by_id(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_list_pending_requests(
+async fn test_list_pending_requests(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -107,7 +107,7 @@ async fn test_sea_list_pending_requests(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_list_all_requests(
+async fn test_list_all_requests(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -146,7 +146,7 @@ async fn test_sea_list_all_requests(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_request_status(
+async fn test_update_request_status(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

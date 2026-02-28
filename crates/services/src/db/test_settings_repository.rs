@@ -22,7 +22,7 @@ fn make_setting(key: &str, value: &str, value_type: &str) -> DbSetting {
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_upsert_and_get_setting(
+async fn test_upsert_and_get_setting(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -50,7 +50,7 @@ async fn test_sea_upsert_and_get_setting(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_upsert_update_existing(
+async fn test_upsert_update_existing(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -77,7 +77,7 @@ async fn test_sea_upsert_update_existing(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_get_setting_not_found(
+async fn test_get_setting_not_found(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -91,7 +91,7 @@ async fn test_sea_get_setting_not_found(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_delete_setting(
+async fn test_delete_setting(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -117,7 +117,7 @@ async fn test_sea_delete_setting(
 #[tokio::test]
 #[serial(pg_app)]
 #[anyhow_trace]
-async fn test_sea_list_settings_sorted_by_key(
+async fn test_list_settings_sorted_by_key(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {

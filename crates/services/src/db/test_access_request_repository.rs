@@ -35,7 +35,7 @@ fn make_request(id: &str, now: chrono::DateTime<chrono::Utc>) -> AppAccessReques
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_create_and_get_access_request(
+async fn test_create_and_get_access_request(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -60,7 +60,7 @@ async fn test_sea_create_and_get_access_request(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_create_access_request_popup_flow(
+async fn test_create_access_request_popup_flow(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -81,7 +81,7 @@ async fn test_sea_create_access_request_popup_flow(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_approval(
+async fn test_update_approval(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -118,7 +118,7 @@ async fn test_sea_update_approval(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_denial(
+async fn test_update_denial(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -139,7 +139,7 @@ async fn test_sea_update_denial(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_failure(
+async fn test_update_failure(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -166,7 +166,7 @@ async fn test_sea_update_failure(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_by_access_request_scope(
+async fn test_get_by_access_request_scope(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -198,7 +198,7 @@ async fn test_sea_get_by_access_request_scope(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_marks_expired_draft(
+async fn test_get_marks_expired_draft(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -221,7 +221,7 @@ async fn test_sea_get_marks_expired_draft(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_get_returns_draft_when_not_expired(
+async fn test_get_returns_draft_when_not_expired(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
 ) -> anyhow::Result<()> {
@@ -290,7 +290,7 @@ async fn transition_to_non_draft(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_rejects_expired_draft(
+async fn test_update_rejects_expired_draft(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
   #[case] op: UpdateOp,
@@ -316,7 +316,7 @@ async fn test_sea_update_rejects_expired_draft(
 #[anyhow_trace]
 #[tokio::test]
 #[serial(pg_app)]
-async fn test_sea_update_rejects_non_draft(
+async fn test_update_rejects_non_draft(
   _setup_env: (),
   #[values("sqlite", "postgres")] db_type: &str,
   #[case] op: UpdateOp,

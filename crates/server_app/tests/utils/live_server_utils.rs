@@ -240,6 +240,8 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
   ));
 
   // Build DefaultAppService with all services in correct order
+  let token_service: Arc<dyn services::TokenService> =
+    Arc::new(services::DefaultTokenService::new(db_service.clone()));
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -257,6 +259,7 @@ async fn setup_minimal_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dyn
     network_service,
     access_request_service,
     mcp_service,
+    token_service,
   );
 
   Ok(Arc::new(app_service))
@@ -570,6 +573,8 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     time_service.clone(),
   ));
 
+  let token_service: Arc<dyn services::TokenService> =
+    Arc::new(services::DefaultTokenService::new(db_service.clone()));
   let app_service = DefaultAppService::new(
     setting_service,
     hub_service,
@@ -587,6 +592,7 @@ pub async fn setup_test_app_service(temp_dir: &TempDir) -> anyhow::Result<Arc<dy
     network_service,
     access_request_service,
     mcp_service,
+    token_service,
   );
 
   Ok(Arc::new(app_service))

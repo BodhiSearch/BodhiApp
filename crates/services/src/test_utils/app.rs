@@ -1,16 +1,14 @@
 use crate::{
   db::{DbService, TimeService},
-  queue_service::{MockQueueProducer, QueueProducer},
   test_utils::{test_db_service, test_db_service_with_temp_dir, SettingServiceStub, TestDbService},
   AccessRequestService, AiApiService, AppInstance, AppInstanceService, AppService, AuthService,
   CacheService, ConcurrencyService, DataService, DefaultAppInstanceService, DefaultMcpService,
   DefaultSessionService, DefaultToolService, HfHubService, HubService, LocalConcurrencyService,
   LocalDataService, McpService, MockAccessRequestService, MockAuthService, MockExaService,
-  MockHubService, MokaCacheService, NetworkService, SessionService, SettingService, ToolService,
+  MockHubService, MockQueueProducer, MokaCacheService, NetworkService, QueueProducer,
+  SessionService, SettingService, StubNetworkService, TokenService, ToolService,
   BODHI_EXEC_LOOKUP_PATH,
 };
-
-use crate::network_service::StubNetworkService;
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
 use rstest::fixture;
@@ -84,6 +82,8 @@ pub struct AppServiceStub {
   pub access_request_service: Option<Arc<dyn AccessRequestService>>,
   #[builder(default = "self.default_mcp_service()")]
   pub mcp_service: Option<Arc<dyn McpService>>,
+  #[builder(default = "self.default_token_service()")]
+  pub token_service: Option<Arc<dyn TokenService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -183,6 +183,16 @@ impl AppServiceStubBuilder {
       mcp_client,
       time_service,
     )))
+  }
+
+  fn default_token_service(&self) -> Option<Arc<dyn TokenService>> {
+    let db_service = self
+      .db_service
+      .as_ref()
+      .and_then(|o| o.as_ref())
+      .cloned()
+      .expect("db_service must be set before building token_service");
+    Some(Arc::new(crate::DefaultTokenService::new(db_service)))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -440,5 +450,9 @@ impl AppService for AppServiceStub {
 
   fn mcp_service(&self) -> Arc<dyn McpService> {
     self.mcp_service.clone().unwrap()
+  }
+
+  fn token_service(&self) -> Arc<dyn TokenService> {
+    self.token_service.clone().unwrap()
   }
 }
