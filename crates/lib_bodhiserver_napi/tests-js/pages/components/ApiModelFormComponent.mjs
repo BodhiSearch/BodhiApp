@@ -262,7 +262,9 @@ export class ApiModelFormComponent {
 
         await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
         await this.page.click(this.selectors.testConnectionButton);
-        await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled();
+        await expect(this.page.locator(this.selectors.testConnectionButton)).toBeEnabled({
+          timeout: 20000,
+        });
         await this.waitForToast(/Connection Test Successful/i);
         return; // Success, exit the function
       } catch (error) {

@@ -118,11 +118,11 @@ test.describe('API Models Forward All With Prefix', () => {
 
     // Open model combobox and verify prefixed models appear
     await chatPage.toggleModelCombobox();
-    await chatPage.expectModelOptionVisible('fwd/gpt-4');
+    await chatPage.expectModelOptionVisible(`fwd/${ApiModelFixtures.OPENAI_MODEL}`);
     await chatPage.toggleModelCombobox();
 
     // ===== SCENARIO C: Chat with forward_all prefixed model =====
-    const prefixedModel = 'fwd/gpt-4';
+    const prefixedModel = `fwd/${ApiModelFixtures.OPENAI_MODEL}`;
     await chatPage.selectModel(prefixedModel);
 
     await chatPage.sendMessage('What is 1+1?');
@@ -157,7 +157,7 @@ test.describe('API Models Forward All With Prefix', () => {
 
     // Open model combobox and verify prefixed models are no longer visible
     await chatPage.toggleModelCombobox();
-    await chatPage.expectModelOptionNotVisible('fwd/gpt-4');
+    await chatPage.expectModelOptionNotVisible(`fwd/${ApiModelFixtures.OPENAI_MODEL}`);
   });
 
   test('toggle between forward_all and selected_models modes', async ({ page }) => {
@@ -190,7 +190,7 @@ test.describe('API Models Forward All With Prefix', () => {
 
     // Fetch and select models normally
     await formPage.form.fillApiKey(testData.apiKey);
-    await formPage.form.fetchAndSelectModels(['gpt-4']);
+    await formPage.form.fetchAndSelectModels([ApiModelFixtures.OPENAI_MODEL]);
 
     // Create with selected models mode
     const selectedModeModelId = await formPage.createModelAndCaptureId();

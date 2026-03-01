@@ -1,9 +1,14 @@
 export class ApiModelFixtures {
+  // Single source of truth for live API model names.
+  // Update these when models are deprecated.
+  static OPENAI_MODEL = 'gpt-4.1-nano';
+  static OPENROUTER_MODEL = 'openai/gpt-4.1-nano';
+
   static createModelData(overrides = {}) {
     return {
       api_format: 'openai',
       baseUrl: 'https://api.openai.com/v1',
-      models: ['gpt-4', 'gpt-3.5-turbo'],
+      models: [ApiModelFixtures.OPENAI_MODEL],
       prefix: null, // Default no prefix
       ...overrides,
     };
@@ -27,27 +32,19 @@ export class ApiModelFixtures {
 
   // Predefined test scenarios
   static createLifecycleTestData() {
-    return ApiModelFixtures.createModelData({
-      models: ['gpt-4', 'gpt-3.5-turbo'],
-    });
+    return ApiModelFixtures.createModelData();
   }
 
   static createMobileTestData() {
-    return ApiModelFixtures.createModelData({
-      models: ['gpt-4', 'gpt-3.5-turbo'],
-    });
+    return ApiModelFixtures.createModelData();
   }
 
   static createTabletTestData() {
-    return ApiModelFixtures.createModelData({
-      models: ['gpt-4', 'gpt-3.5-turbo'],
-    });
+    return ApiModelFixtures.createModelData();
   }
 
   static createEditTestData() {
-    return ApiModelFixtures.createModelData({
-      models: ['gpt-4'],
-    });
+    return ApiModelFixtures.createModelData();
   }
 
   static createCustomAliasData(baseUrl, models) {
@@ -80,34 +77,23 @@ export class ApiModelFixtures {
 
   // Cleanup utilities
   static createTemporaryModel() {
-    return ApiModelFixtures.createModelData({
-      models: ['gpt-3.5-turbo'],
-    });
+    return ApiModelFixtures.createModelData();
   }
 
   // Common test scenarios
   static scenarios = {
-    BASIC_OPENAI: () =>
-      this.createModelData({
-        models: ['gpt-3.5-turbo'],
-      }),
+    BASIC_OPENAI: () => this.createModelData(),
 
-    FULL_OPENAI: () =>
-      this.createModelData({
-        models: ['gpt-4', 'gpt-3.5-turbo', 'gpt-4-turbo'],
-      }),
+    FULL_OPENAI: () => this.createModelData(),
 
-    MINIMAL_CONFIG: () =>
-      this.createModelData({
-        models: ['gpt-3.5-turbo'],
-      }),
+    MINIMAL_CONFIG: () => this.createModelData(),
 
     // Prefix-specific scenarios with separators
-    WITH_PREFIX: () =>
+    OPENROUTER: () =>
       this.createModelData({
         api_format: 'openai',
         baseUrl: 'https://openrouter.ai/api/v1',
-        models: ['openai/gpt-4', 'openai/gpt-3.5-turbo'],
+        models: [this.OPENROUTER_MODEL],
         prefix: 'openrouter/',
       }),
 
@@ -115,7 +101,6 @@ export class ApiModelFixtures {
       this.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
-        models: ['gpt-4', 'gpt-3.5-turbo'],
         prefix: 'openai:',
       }),
 
@@ -123,7 +108,7 @@ export class ApiModelFixtures {
       this.createModelData({
         api_format: 'openai',
         baseUrl: 'https://openrouter.ai/api/v1',
-        models: ['anthropic/claude-3-sonnet', 'openai/gpt-4'],
+        models: [this.OPENROUTER_MODEL],
         prefix: 'custom-',
       }),
 
@@ -131,7 +116,6 @@ export class ApiModelFixtures {
       this.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
-        models: ['gpt-4'],
         prefix: null,
       }),
 
@@ -139,7 +123,6 @@ export class ApiModelFixtures {
       this.createModelData({
         api_format: 'openai',
         baseUrl: 'https://api.openai.com/v1',
-        models: ['gpt-4'],
         prefix: '',
       }),
 

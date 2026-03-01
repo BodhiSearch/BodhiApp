@@ -51,7 +51,7 @@ test.describe('API Models Integration', () => {
     // Step 2: Create API model with validation testing - select only gpt-4 for chat testing
     await formPage.form.waitForFormReady();
     await formPage.form.fillBasicInfo(testData.apiKey, modelData.baseUrl);
-    await formPage.form.fetchAndSelectModels(['gpt-4']); // Select only gpt-4 for chat integration
+    await formPage.form.fetchAndSelectModels([ApiModelFixtures.OPENAI_MODEL]);
     await formPage.form.testConnection();
 
     // Capture the generated ID when creating the model
@@ -65,7 +65,7 @@ test.describe('API Models Integration', () => {
     await modelsPage.verifyApiModelInList(createdModelId, 'openai', modelData.baseUrl);
 
     // Step 4: Test chat integration with model
-    const modelName = 'gpt-4'; // Use the exact model we selected during creation
+    const modelName = ApiModelFixtures.OPENAI_MODEL;
     await modelsPage.clickChatWithModel(modelName);
 
     // Verify we're on chat page with model pre-selected
